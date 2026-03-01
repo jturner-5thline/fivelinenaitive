@@ -11,9 +11,18 @@ const QUICKBOOKS_CLIENT_SECRET = Deno.env.get("QUICKBOOKS_CLIENT_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// QuickBooks OAuth URLs
 const QB_AUTH_URL = "https://appcenter.intuit.com/connect/oauth2";
 const QB_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
+
+// Consistent redirect URI used everywhere
+const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/quickbooks-auth?action=callback`;
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -27,63 +36,85 @@ serve(async (req) => {
 
     console.log(`[QuickBooks Auth] Action: ${action}`);
 
-    // Get user from auth header
-    const authHeader = req.headers.get("Authorization");
-    let userId: string | null = null;
-
-    if (authHeader) {
+    // Helper to get user from auth header
+    async function getUserId(): Promise<string | null> {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) return null;
       const token = authHeader.replace("Bearer ", "");
       const { data: { user }, error } = await supabase.auth.getUser(token);
-      if (!error && user) {
-        userId = user.id;
-      }
+      if (error || !user) return null;
+      return user.id;
     }
 
-    if (action === "authorize") {
-      // Generate authorization URL
+    // ── CONNECT: Generate OAuth URL and redirect ──
+    if (action === "connect" || action === "authorize") {
+      const userId = await getUserId();
       if (!userId) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: "Unauthorized" }, 401);
       }
 
-      const redirectUri = `${SUPABASE_URL}/functions/v1/quickbooks-auth?action=callback`;
-      const scope = "com.intuit.quickbooks.accounting";
-      const state = btoa(JSON.stringify({ userId }));
+      // Generate random state and store it in DB
+      const state = crypto.randomUUID();
+      const { error: stateError } = await supabase
+        .from("quickbooks_oauth_states")
+        .insert({ user_id: userId, state });
 
-      const authUrl = `${QB_AUTH_URL}?client_id=${QUICKBOOKS_CLIENT_ID}&response_type=code&scope=${encodeURIComponent(scope)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+      if (stateError) {
+        console.error("[QuickBooks Auth] Failed to store state:", stateError);
+        return jsonResponse({ error: "Failed to initiate OAuth" }, 500);
+      }
+
+      // Clean up expired states
+      await supabase
+        .from("quickbooks_oauth_states")
+        .delete()
+        .lt("expires_at", new Date().toISOString());
+
+      const scope = "com.intuit.quickbooks.accounting";
+      const authUrl = `${QB_AUTH_URL}?client_id=${QUICKBOOKS_CLIENT_ID}&response_type=code&scope=${encodeURIComponent(scope)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${encodeURIComponent(state)}`;
 
       console.log(`[QuickBooks Auth] Generated auth URL for user ${userId}`);
 
-      return new Response(JSON.stringify({ authUrl }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ authUrl });
     }
 
+    // ── CALLBACK: Handle OAuth redirect from Intuit ──
     if (action === "callback") {
-      // Handle OAuth callback
       const code = url.searchParams.get("code");
       const realmId = url.searchParams.get("realmId");
       const state = url.searchParams.get("state");
 
       if (!code || !realmId || !state) {
-        console.error("[QuickBooks Auth] Missing callback params");
-        return new Response("Missing required parameters", { status: 400 });
+        console.error("[QuickBooks Auth] Missing callback params:", { code: !!code, realmId: !!realmId, state: !!state });
+        return redirectToApp("error=missing_params");
       }
 
-      let stateData;
-      try {
-        stateData = JSON.parse(atob(state));
-      } catch (e) {
-        console.error("[QuickBooks Auth] Invalid state");
-        return new Response("Invalid state", { status: 400 });
+      // Validate state against DB
+      const { data: stateRecord, error: stateError } = await supabase
+        .from("quickbooks_oauth_states")
+        .select("user_id, expires_at")
+        .eq("state", state)
+        .maybeSingle();
+
+      if (stateError || !stateRecord) {
+        console.error("[QuickBooks Auth] Invalid state:", state);
+        return redirectToApp("error=invalid_state");
       }
 
-      const { userId: stateUserId } = stateData;
-      const redirectUri = `${SUPABASE_URL}/functions/v1/quickbooks-auth?action=callback`;
+      // Check expiry
+      if (new Date(stateRecord.expires_at) < new Date()) {
+        console.error("[QuickBooks Auth] State expired");
+        await supabase.from("quickbooks_oauth_states").delete().eq("state", state);
+        return redirectToApp("error=state_expired");
+      }
+
+      const userId = stateRecord.user_id;
+
+      // Delete the used state
+      await supabase.from("quickbooks_oauth_states").delete().eq("state", state);
 
       // Exchange code for tokens
+      console.log("[QuickBooks Auth] Exchanging code for tokens...");
       const tokenResponse = await fetch(QB_TOKEN_URL, {
         method: "POST",
         headers: {
@@ -93,27 +124,26 @@ serve(async (req) => {
         body: new URLSearchParams({
           grant_type: "authorization_code",
           code,
-          redirect_uri: redirectUri,
+          redirect_uri: REDIRECT_URI,
         }),
       });
 
       if (!tokenResponse.ok) {
-        const error = await tokenResponse.text();
-        console.error("[QuickBooks Auth] Token exchange failed:", error);
-        return new Response(`Token exchange failed: ${error}`, { status: 500 });
+        const errorText = await tokenResponse.text();
+        console.error("[QuickBooks Auth] Token exchange failed:", errorText);
+        return redirectToApp("error=token_exchange_failed");
       }
 
       const tokens = await tokenResponse.json();
       console.log("[QuickBooks Auth] Token exchange successful");
 
-      // Calculate expiry time (tokens.expires_in is in seconds)
       const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-      // Store tokens in database
+      // Store tokens in quickbooks_tokens table
       const { error: upsertError } = await supabase
         .from("quickbooks_tokens")
         .upsert({
-          user_id: stateUserId,
+          user_id: userId,
           realm_id: realmId,
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token,
@@ -126,22 +156,20 @@ serve(async (req) => {
 
       if (upsertError) {
         console.error("[QuickBooks Auth] Failed to store tokens:", upsertError);
-        return new Response("Failed to store tokens", { status: 500 });
+        return redirectToApp("error=storage_failed");
       }
 
-      console.log(`[QuickBooks Auth] Tokens stored for user ${stateUserId}, realm ${realmId}`);
+      console.log(`[QuickBooks Auth] Tokens stored for user ${userId}, realm ${realmId}`);
 
-      // Redirect back to the app
-      const appUrl = Deno.env.get("APP_URL") || "https://id-preview--3072785e-3519-420c-ad58-facf63660c85.lovable.app";
-      return Response.redirect(`${appUrl}/integrations?quickbooks=connected`, 302);
+      // Redirect back to app on success
+      return redirectToApp("qb=success");
     }
 
+    // ── STATUS: Check connection status ──
     if (action === "status") {
-      // Check connection status
+      const userId = await getUserId();
       if (!userId) {
-        return new Response(JSON.stringify({ connected: false }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ connected: false });
       }
 
       const { data: tokens } = await supabase
@@ -151,32 +179,26 @@ serve(async (req) => {
         .maybeSingle();
 
       if (!tokens) {
-        return new Response(JSON.stringify({ connected: false }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ connected: false });
       }
 
       const isExpired = new Date(tokens.expires_at) < new Date();
 
-      return new Response(JSON.stringify({
+      return jsonResponse({
         connected: true,
         realmId: tokens.realm_id,
         isExpired,
         lastSync: tokens.updated_at,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // ── DISCONNECT: Remove connection ──
     if (action === "disconnect") {
+      const userId = await getUserId();
       if (!userId) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: "Unauthorized" }, 401);
       }
 
-      // Delete tokens and synced data
       await supabase.from("quickbooks_tokens").delete().eq("user_id", userId);
       await supabase.from("quickbooks_customers").delete().eq("user_id", userId);
       await supabase.from("quickbooks_invoices").delete().eq("user_id", userId);
@@ -185,21 +207,24 @@ serve(async (req) => {
 
       console.log(`[QuickBooks Auth] Disconnected for user ${userId}`);
 
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: true });
     }
 
-    return new Response(JSON.stringify({ error: "Invalid action" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Invalid action" }, 400);
   } catch (error) {
     console.error("[QuickBooks Auth] Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: errorMessage }, 500);
   }
 });
+
+function redirectToApp(params: string) {
+  const appUrl = Deno.env.get("APP_URL") || "https://id-preview--3072785e-3519-420c-ad58-facf63660c85.lovable.app";
+  return new Response(null, {
+    status: 302,
+    headers: {
+      ...corsHeaders,
+      "Location": `${appUrl}/integrations?${params}`,
+    },
+  });
+}

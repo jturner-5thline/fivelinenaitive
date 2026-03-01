@@ -58,12 +58,6 @@ export function useQuickBooksStatus() {
   return useQuery({
     queryKey: ["quickbooks-status", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("quickbooks-auth", {
-        body: {},
-        method: "GET",
-      });
-
-      // Use URL params approach instead
       const { data: session } = await supabase.auth.getSession();
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quickbooks-auth?action=status`,
@@ -78,7 +72,7 @@ export function useQuickBooksStatus() {
       return response.json();
     },
     enabled: !!user,
-    refetchInterval: 60000, // Check every minute
+    refetchInterval: 60000,
   });
 }
 
@@ -86,16 +80,21 @@ export function useQuickBooksConnect() {
   return useMutation({
     mutationFn: async () => {
       const { data: session } = await supabase.auth.getSession();
+      if (!session.session?.access_token) throw new Error("Not authenticated");
+      
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quickbooks-auth?action=authorize`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quickbooks-auth?action=connect`,
         {
           headers: {
-            Authorization: `Bearer ${session.session?.access_token}`,
+            Authorization: `Bearer ${session.session.access_token}`,
           },
         }
       );
 
-      if (!response.ok) throw new Error("Failed to get auth URL");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to get auth URL");
+      }
       const data = await response.json();
       return data.authUrl;
     },
