@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Maximize2, TrendingUp, TrendingDown, ArrowUpRight
@@ -13,8 +12,9 @@ import {
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Area, AreaChart, Cell,
   ComposedChart
 } from 'recharts';
+import { type ChartConfig, type ChartType, COLOR_THEMES, DEFAULT_CHART_CONFIG } from './ChartConfigPanel';
 
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+const DEFAULT_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 // Revenue by segment
 const REVENUE_SEGMENT = [
@@ -40,7 +40,7 @@ const REVENUE_WATERFALL = [
   { name: 'Current Month', value: 9500, fill: 'hsl(var(--primary))' },
 ];
 
-// OPEX by department — actuals vs budget
+// OPEX by department
 const OPEX_COMPARISON = [
   { dept: 'S&M', actuals: 2100, budget: 2000 },
   { dept: 'R&D', actuals: 1800, budget: 1750 },
@@ -73,10 +73,171 @@ const tooltipStyle = { fontSize: 11, background: 'hsl(var(--popover))', border: 
 
 interface RevenueOPEXChartsProps {
   onDrillDown?: (metric: string, segment: string) => void;
+  chartConfig?: ChartConfig;
 }
 
-export function RevenueOPEXCharts({ onDrillDown }: RevenueOPEXChartsProps) {
+function getColors(config?: ChartConfig): string[] {
+  if (!config) return DEFAULT_COLORS;
+  const theme = COLOR_THEMES.find(t => t.id === config.colorTheme);
+  return theme?.colors || DEFAULT_COLORS;
+}
+
+function renderRevenueChart(chartType: ChartType, colors: string[], config: ChartConfig) {
+  const gridProps = config.showGridLines
+    ? { strokeDasharray: "3 3", stroke: "hsl(var(--border))" }
+    : { stroke: "transparent" };
+
+  const segments = ['Enterprise', 'Mid-market', 'SMB'];
+
+  if (chartType === 'bar') {
+    return (
+      <BarChart data={REVENUE_SEGMENT}>
+        <CartesianGrid {...gridProps} />
+        <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+        <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(0)}M`} />
+        <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
+        {segments.map((seg, i) => (
+          <Bar key={seg} dataKey={seg} stackId="1" fill={colors[i]} radius={i === segments.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]} isAnimationActive={config.animationEnabled} />
+        ))}
+        {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
+      </BarChart>
+    );
+  }
+
+  if (chartType === 'line') {
+    return (
+      <LineChart data={REVENUE_SEGMENT}>
+        <CartesianGrid {...gridProps} />
+        <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+        <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(0)}M`} />
+        <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
+        {segments.map((seg, i) => (
+          <Line key={seg} type={config.curveType} dataKey={seg} stroke={colors[i]} strokeWidth={2} dot={{ r: 2 }} isAnimationActive={config.animationEnabled} />
+        ))}
+        {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
+      </LineChart>
+    );
+  }
+
+  if (chartType === 'composed') {
+    return (
+      <ComposedChart data={REVENUE_SEGMENT}>
+        <CartesianGrid {...gridProps} />
+        <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+        <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(0)}M`} />
+        <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
+        <Bar dataKey="Enterprise" fill={colors[0]} barSize={20} isAnimationActive={config.animationEnabled} />
+        <Line type={config.curveType} dataKey="Mid-market" stroke={colors[1]} strokeWidth={2} isAnimationActive={config.animationEnabled} />
+        <Area type={config.curveType} dataKey="SMB" fill={colors[2]} fillOpacity={0.3} stroke={colors[2]} isAnimationActive={config.animationEnabled} />
+        {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
+      </ComposedChart>
+    );
+  }
+
+  // Default: area
+  return (
+    <AreaChart data={REVENUE_SEGMENT}>
+      <CartesianGrid {...gridProps} />
+      <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+      <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(0)}M`} />
+      <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
+      {segments.map((seg, i) => (
+        <Area key={seg} type={config.curveType} dataKey={seg} stackId="1" stroke={colors[i]} fill={colors[i]} fillOpacity={0.6} isAnimationActive={config.animationEnabled} />
+      ))}
+      {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
+    </AreaChart>
+  );
+}
+
+function renderMarginChart(chartType: ChartType, colors: string[], config: ChartConfig) {
+  const gridProps = config.showGridLines
+    ? { strokeDasharray: "3 3", stroke: "hsl(var(--border))" }
+    : { stroke: "transparent" };
+
+  const metrics = ['Gross Margin', 'EBITDA Margin', 'Net Margin'];
+
+  if (chartType === 'bar') {
+    return (
+      <BarChart data={MARGIN_TRENDS}>
+        <CartesianGrid {...gridProps} />
+        <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+        <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}%`} />
+        <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, undefined]} />
+        {metrics.map((m, i) => (
+          <Bar key={m} dataKey={m} fill={colors[i]} barSize={10} isAnimationActive={config.animationEnabled} />
+        ))}
+        {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
+      </BarChart>
+    );
+  }
+
+  if (chartType === 'area') {
+    return (
+      <AreaChart data={MARGIN_TRENDS}>
+        <CartesianGrid {...gridProps} />
+        <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+        <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}%`} />
+        <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, undefined]} />
+        {metrics.map((m, i) => (
+          <Area key={m} type={config.curveType} dataKey={m} stroke={colors[i]} fill={colors[i]} fillOpacity={0.15} strokeWidth={2} isAnimationActive={config.animationEnabled} />
+        ))}
+        {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
+      </AreaChart>
+    );
+  }
+
+  // Default: line
+  return (
+    <LineChart data={MARGIN_TRENDS}>
+      <CartesianGrid {...gridProps} />
+      <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+      <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}%`} />
+      <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, undefined]} />
+      {metrics.map((m, i) => (
+        <Line key={m} type={config.curveType} dataKey={m} stroke={colors[i]} strokeWidth={2} dot={{ r: 2 }} isAnimationActive={config.animationEnabled} />
+      ))}
+      {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
+    </LineChart>
+  );
+}
+
+function renderOpexChart(chartType: ChartType, colors: string[], config: ChartConfig) {
+  const gridProps = config.showGridLines
+    ? { strokeDasharray: "3 3", stroke: "hsl(var(--border))" }
+    : { stroke: "transparent" };
+
+  if (chartType === 'line' || chartType === 'area') {
+    return (
+      <BarChart data={OPEX_COMPARISON} layout="vertical">
+        <CartesianGrid {...gridProps} />
+        <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}K`} />
+        <YAxis type="category" dataKey="dept" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={40} />
+        <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
+        <Bar dataKey="budget" fill="hsl(var(--muted-foreground))" opacity={0.3} barSize={16} radius={[0, 3, 3, 0]} name="Budget" isAnimationActive={config.animationEnabled} />
+        <Bar dataKey="actuals" fill={colors[0]} barSize={16} radius={[0, 3, 3, 0]} name="Actuals" isAnimationActive={config.animationEnabled} />
+        {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
+      </BarChart>
+    );
+  }
+
+  // Default: bar (horizontal)
+  return (
+    <BarChart data={OPEX_COMPARISON} layout="vertical">
+      <CartesianGrid {...gridProps} />
+      <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}K`} />
+      <YAxis type="category" dataKey="dept" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={40} />
+      <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
+      <Bar dataKey="budget" fill="hsl(var(--muted-foreground))" opacity={0.3} barSize={16} radius={[0, 3, 3, 0]} name="Budget" isAnimationActive={config.animationEnabled} />
+      <Bar dataKey="actuals" fill={colors[0]} barSize={16} radius={[0, 3, 3, 0]} name="Actuals" isAnimationActive={config.animationEnabled} />
+      {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
+    </BarChart>
+  );
+}
+
+export function RevenueOPEXCharts({ onDrillDown, chartConfig }: RevenueOPEXChartsProps) {
   const [revenueView, setRevenueView] = useState<'trend' | 'waterfall'>('trend');
+  const cfg = chartConfig || DEFAULT_CHART_CONFIG;
+  const colors = getColors(cfg);
 
   return (
     <div className="space-y-4">
@@ -109,25 +270,16 @@ export function RevenueOPEXCharts({ onDrillDown }: RevenueOPEXChartsProps) {
           <CardContent className="pt-0">
             {revenueView === 'trend' ? (
               <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={REVENUE_SEGMENT}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(0)}M`} />
-                  <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
-                  <Area type="monotone" dataKey="Enterprise" stackId="1" stroke={COLORS[0]} fill={COLORS[0]} fillOpacity={0.6} />
-                  <Area type="monotone" dataKey="Mid-market" stackId="1" stroke={COLORS[1]} fill={COLORS[1]} fillOpacity={0.6} />
-                  <Area type="monotone" dataKey="SMB" stackId="1" stroke={COLORS[2]} fill={COLORS[2]} fillOpacity={0.6} />
-                  <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
-                </AreaChart>
+                {renderRevenueChart(cfg.revenueChartType, colors, cfg)}
               </ResponsiveContainer>
             ) : (
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={REVENUE_WATERFALL}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={cfg.showGridLines ? "hsl(var(--border))" : "transparent"} />
                   <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" angle={-20} textAnchor="end" height={50} />
                   <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(1)}M`} domain={[0, 10000]} />
                   <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
-                  <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+                  <Bar dataKey="value" radius={[3, 3, 0, 0]} isAnimationActive={cfg.animationEnabled}>
                     {REVENUE_WATERFALL.map((entry, index) => (
                       <Cell key={index} fill={entry.fill} />
                     ))}
@@ -145,16 +297,7 @@ export function RevenueOPEXCharts({ onDrillDown }: RevenueOPEXChartsProps) {
           </CardHeader>
           <CardContent className="pt-0">
             <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={MARGIN_TRENDS}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}%`} />
-                <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, undefined]} />
-                <Line type="monotone" dataKey="Gross Margin" stroke={COLORS[0]} strokeWidth={2} dot={{ r: 2 }} />
-                <Line type="monotone" dataKey="EBITDA Margin" stroke={COLORS[1]} strokeWidth={2} dot={{ r: 2 }} />
-                <Line type="monotone" dataKey="Net Margin" stroke={COLORS[2]} strokeWidth={2} dot={{ r: 2 }} />
-                <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
-              </LineChart>
+              {renderMarginChart(cfg.marginChartType, colors, cfg)}
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -162,22 +305,13 @@ export function RevenueOPEXCharts({ onDrillDown }: RevenueOPEXChartsProps) {
 
       {/* Row 2: OPEX Comparison + Top Vendors */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* OPEX Actuals vs Budget */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">OPEX — Actuals vs Budget ($K)</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={OPEX_COMPARISON} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}K`} />
-                <YAxis type="category" dataKey="dept" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={40} />
-                <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
-                <Bar dataKey="budget" fill="hsl(var(--muted-foreground))" opacity={0.3} barSize={16} radius={[0, 3, 3, 0]} name="Budget" />
-                <Bar dataKey="actuals" fill={COLORS[0]} barSize={16} radius={[0, 3, 3, 0]} name="Actuals" />
-                <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
-              </BarChart>
+              {renderOpexChart(cfg.opexChartType, colors, cfg)}
             </ResponsiveContainer>
             <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground">
               {OPEX_COMPARISON.map(d => {
