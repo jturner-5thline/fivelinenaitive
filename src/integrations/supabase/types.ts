@@ -6407,6 +6407,7 @@ export type Database = {
         Row: {
           access_token: string
           company_id: string | null
+          company_name: string | null
           created_at: string
           expires_at: string
           id: string
@@ -6420,6 +6421,7 @@ export type Database = {
         Insert: {
           access_token: string
           company_id?: string | null
+          company_name?: string | null
           created_at?: string
           expires_at: string
           id?: string
@@ -6433,6 +6435,7 @@ export type Database = {
         Update: {
           access_token?: string
           company_id?: string | null
+          company_name?: string | null
           created_at?: string
           expires_at?: string
           id?: string

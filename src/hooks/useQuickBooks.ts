@@ -3,9 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
+export interface QuickBooksConnection {
+  realmId: string;
+  companyName: string | null;
+  isExpired: boolean;
+  lastSync: string | null;
+}
+
 export interface QuickBooksCustomer {
   id: string;
   qb_id: string;
+  realm_id: string;
   display_name: string | null;
   company_name: string | null;
   given_name: string | null;
@@ -20,6 +28,7 @@ export interface QuickBooksCustomer {
 export interface QuickBooksInvoice {
   id: string;
   qb_id: string;
+  realm_id: string;
   doc_number: string | null;
   customer_id: string | null;
   customer_name: string | null;
@@ -34,6 +43,7 @@ export interface QuickBooksInvoice {
 export interface QuickBooksPayment {
   id: string;
   qb_id: string;
+  realm_id: string;
   customer_id: string | null;
   customer_name: string | null;
   txn_date: string | null;
@@ -44,6 +54,7 @@ export interface QuickBooksPayment {
 
 export interface QuickBooksSyncHistory {
   id: string;
+  realm_id: string;
   sync_type: string;
   status: string;
   records_synced: number | null;
@@ -69,7 +80,13 @@ export function useQuickBooksStatus() {
       );
 
       if (!response.ok) throw new Error("Failed to check status");
-      return response.json();
+      return response.json() as Promise<{
+        connected: boolean;
+        connections: QuickBooksConnection[];
+        realmId?: string;
+        isExpired?: boolean;
+        lastSync?: string;
+      }>;
     },
     enabled: !!user,
     refetchInterval: 60000,
@@ -111,10 +128,13 @@ export function useQuickBooksDisconnect() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (realmId?: string) => {
       const { data: session } = await supabase.auth.getSession();
+      const params = new URLSearchParams({ action: "disconnect" });
+      if (realmId) params.set("realmId", realmId);
+
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quickbooks-auth?action=disconnect`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quickbooks-auth?${params}`,
         {
           headers: {
             Authorization: `Bearer ${session.session?.access_token}`,
@@ -130,6 +150,7 @@ export function useQuickBooksDisconnect() {
       queryClient.invalidateQueries({ queryKey: ["quickbooks-customers"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-history"] });
       toast.success("QuickBooks disconnected");
     },
     onError: (error) => {
@@ -142,9 +163,9 @@ export function useQuickBooksSync() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (syncType?: string) => {
+    mutationFn: async (params?: { syncType?: string; realmId?: string }) => {
       const { data, error } = await supabase.functions.invoke("quickbooks-sync", {
-        body: { syncType },
+        body: { syncType: params?.syncType, realmId: params?.realmId },
       });
 
       if (error) throw error;
@@ -156,11 +177,7 @@ export function useQuickBooksSync() {
       queryClient.invalidateQueries({ queryKey: ["quickbooks-payments"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-history"] });
 
-      const results = data.results;
-      const totalSynced = Object.values(results as Record<string, { synced: number }>).reduce(
-        (acc, r) => acc + r.synced,
-        0
-      );
+      const totalSynced = data.totalSynced ?? 0;
       toast.success(`Synced ${totalSynced} records from QuickBooks`);
     },
     onError: (error) => {
@@ -169,17 +186,20 @@ export function useQuickBooksSync() {
   });
 }
 
-export function useQuickBooksCustomers() {
+export function useQuickBooksCustomers(realmId?: string) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["quickbooks-customers", user?.id],
+    queryKey: ["quickbooks-customers", user?.id, realmId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("quickbooks_customers")
         .select("*")
         .order("display_name");
 
+      if (realmId) query = query.eq("realm_id", realmId);
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as QuickBooksCustomer[];
     },
@@ -187,17 +207,20 @@ export function useQuickBooksCustomers() {
   });
 }
 
-export function useQuickBooksInvoices() {
+export function useQuickBooksInvoices(realmId?: string) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["quickbooks-invoices", user?.id],
+    queryKey: ["quickbooks-invoices", user?.id, realmId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("quickbooks_invoices")
         .select("*")
         .order("txn_date", { ascending: false });
 
+      if (realmId) query = query.eq("realm_id", realmId);
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as QuickBooksInvoice[];
     },
@@ -205,17 +228,20 @@ export function useQuickBooksInvoices() {
   });
 }
 
-export function useQuickBooksPayments() {
+export function useQuickBooksPayments(realmId?: string) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["quickbooks-payments", user?.id],
+    queryKey: ["quickbooks-payments", user?.id, realmId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("quickbooks_payments")
         .select("*")
         .order("txn_date", { ascending: false });
 
+      if (realmId) query = query.eq("realm_id", realmId);
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as QuickBooksPayment[];
     },
@@ -223,18 +249,21 @@ export function useQuickBooksPayments() {
   });
 }
 
-export function useQuickBooksSyncHistory() {
+export function useQuickBooksSyncHistory(realmId?: string) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["quickbooks-sync-history", user?.id],
+    queryKey: ["quickbooks-sync-history", user?.id, realmId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("quickbooks_sync_history")
         .select("*")
         .order("started_at", { ascending: false })
         .limit(10);
 
+      if (realmId) query = query.eq("realm_id", realmId);
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as QuickBooksSyncHistory[];
     },

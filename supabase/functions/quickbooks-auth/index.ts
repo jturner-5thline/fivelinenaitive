@@ -13,8 +13,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const QB_AUTH_URL = "https://appcenter.intuit.com/connect/oauth2";
 const QB_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
+const QB_API_BASE = "https://quickbooks.api.intuit.com/v3/company";
 
-// Hardcoded redirect URI to exactly match Intuit Developer Console registration
 // Clean URL with NO query params — Intuit Production rejects query strings in redirect URIs
 const REDIRECT_URI = "https://tgkksvazruzbghssnxde.supabase.co/functions/v1/quickbooks-auth";
 
@@ -22,6 +22,17 @@ function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function redirectToApp(params: string) {
+  const appUrl = Deno.env.get("APP_URL") || "https://preview--fivelinenaitive.lovable.app";
+  return new Response(null, {
+    status: 302,
+    headers: {
+      ...corsHeaders,
+      "Location": `${appUrl}/integrations?${params}`,
+    },
   });
 }
 
@@ -37,7 +48,6 @@ serve(async (req) => {
 
     console.log(`[QuickBooks Auth] Action: ${action}`);
 
-    // Helper to get user from auth header
     async function getUserId(): Promise<string | null> {
       const authHeader = req.headers.get("Authorization");
       if (!authHeader) return null;
@@ -47,14 +57,11 @@ serve(async (req) => {
       return user.id;
     }
 
-    // ── CONNECT: Generate OAuth URL and redirect ──
+    // ── CONNECT: Generate OAuth URL ──
     if (action === "connect" || action === "authorize") {
       const userId = await getUserId();
-      if (!userId) {
-        return jsonResponse({ error: "Unauthorized" }, 401);
-      }
+      if (!userId) return jsonResponse({ error: "Unauthorized" }, 401);
 
-      // Generate random state and store it in DB
       const state = crypto.randomUUID();
       const { error: stateError } = await supabase
         .from("quickbooks_oauth_states")
@@ -75,13 +82,10 @@ serve(async (req) => {
       const authUrl = `${QB_AUTH_URL}?client_id=${QUICKBOOKS_CLIENT_ID}&response_type=code&scope=${encodeURIComponent(scope)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${encodeURIComponent(state)}`;
 
       console.log(`[QuickBooks Auth] Generated auth URL for user ${userId}`);
-      console.log(`[QuickBooks Auth] redirect_uri used: ${REDIRECT_URI}`);
-      console.log(`[QuickBooks Auth] Full auth URL: ${authUrl}`);
-
       return jsonResponse({ authUrl });
     }
 
-    // ── CALLBACK: Detect by presence of 'code' param (Intuit appends code, state, realmId) ──
+    // ── CALLBACK: Detect by presence of 'code' param ──
     if (url.searchParams.has("code")) {
       try {
         const code = url.searchParams.get("code");
@@ -89,11 +93,11 @@ serve(async (req) => {
         const state = url.searchParams.get("state");
 
         if (!code || !realmId || !state) {
-          console.error("[QuickBooks Auth] Missing callback params:", { code: !!code, realmId: !!realmId, state: !!state });
+          console.error("[QuickBooks Auth] Missing callback params");
           return redirectToApp("error=missing_params");
         }
 
-        // Validate state against DB
+        // Validate state
         const { data: stateRecord, error: stateError } = await supabase
           .from("quickbooks_oauth_states")
           .select("user_id, expires_at")
@@ -101,24 +105,19 @@ serve(async (req) => {
           .maybeSingle();
 
         if (stateError || !stateRecord) {
-          console.error("[QuickBooks Auth] Invalid state:", state, stateError);
+          console.error("[QuickBooks Auth] Invalid state:", state);
           return redirectToApp("error=invalid_state");
         }
 
-        // Check expiry
         if (new Date(stateRecord.expires_at) < new Date()) {
-          console.error("[QuickBooks Auth] State expired");
           await supabase.from("quickbooks_oauth_states").delete().eq("state", state);
           return redirectToApp("error=state_expired");
         }
 
         const userId = stateRecord.user_id;
-
-        // Delete the used state
         await supabase.from("quickbooks_oauth_states").delete().eq("state", state);
 
-        console.log("[QuickBooks Auth] Exchanging code for tokens...");
-        console.log(`[QuickBooks Auth] Token exchange redirect_uri: ${REDIRECT_URI}`);
+        // Exchange code for tokens
         const tokenResponse = await fetch(QB_TOKEN_URL, {
           method: "POST",
           headers: {
@@ -139,11 +138,30 @@ serve(async (req) => {
         }
 
         const tokens = await tokenResponse.json();
-        console.log("[QuickBooks Auth] Token exchange successful");
-
         const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-        // Store tokens in quickbooks_tokens table
+        // Fetch the company name from QuickBooks CompanyInfo
+        let companyName: string | null = null;
+        try {
+          const companyInfoRes = await fetch(
+            `${QB_API_BASE}/${realmId}/companyinfo/${realmId}`,
+            {
+              headers: {
+                "Authorization": `Bearer ${tokens.access_token}`,
+                "Accept": "application/json",
+              },
+            }
+          );
+          if (companyInfoRes.ok) {
+            const companyInfo = await companyInfoRes.json();
+            companyName = companyInfo?.CompanyInfo?.CompanyName || null;
+            console.log(`[QuickBooks Auth] Company name: ${companyName}`);
+          }
+        } catch (e) {
+          console.warn("[QuickBooks Auth] Failed to fetch company name:", e);
+        }
+
+        // Upsert tokens — supports multiple companies per user via (user_id, realm_id) unique
         const { error: upsertError } = await supabase
           .from("quickbooks_tokens")
           .upsert({
@@ -154,6 +172,7 @@ serve(async (req) => {
             expires_at: expiresAt,
             token_type: tokens.token_type,
             scope: tokens.scope || "com.intuit.quickbooks.accounting",
+            company_name: companyName,
           }, {
             onConflict: "user_id,realm_id",
           });
@@ -163,9 +182,7 @@ serve(async (req) => {
           return redirectToApp("error=storage_failed");
         }
 
-        console.log(`[QuickBooks Auth] Tokens stored for user ${userId}, realm ${realmId}`);
-
-        // Redirect back to app on success
+        console.log(`[QuickBooks Auth] Tokens stored for user ${userId}, realm ${realmId} (${companyName})`);
         return redirectToApp("qb=success");
       } catch (callbackError) {
         console.error("[QuickBooks Auth] Callback error:", callbackError);
@@ -174,47 +191,62 @@ serve(async (req) => {
       }
     }
 
-    // ── STATUS: Check connection status ──
+    // ── STATUS: Return ALL connected companies ──
     if (action === "status") {
       const userId = await getUserId();
-      if (!userId) {
-        return jsonResponse({ connected: false });
-      }
+      if (!userId) return jsonResponse({ connected: false, connections: [] });
 
-      const { data: tokens } = await supabase
+      const { data: allTokens } = await supabase
         .from("quickbooks_tokens")
-        .select("realm_id, expires_at, updated_at")
+        .select("realm_id, company_name, expires_at, updated_at")
         .eq("user_id", userId)
-        .maybeSingle();
+        .order("created_at");
 
-      if (!tokens) {
-        return jsonResponse({ connected: false });
+      if (!allTokens || allTokens.length === 0) {
+        return jsonResponse({ connected: false, connections: [] });
       }
 
-      const isExpired = new Date(tokens.expires_at) < new Date();
+      const connections = allTokens.map((t) => ({
+        realmId: t.realm_id,
+        companyName: t.company_name,
+        isExpired: new Date(t.expires_at) < new Date(),
+        lastSync: t.updated_at,
+      }));
 
       return jsonResponse({
         connected: true,
-        realmId: tokens.realm_id,
-        isExpired,
-        lastSync: tokens.updated_at,
+        connections,
+        // Backwards compat
+        realmId: allTokens[0].realm_id,
+        isExpired: new Date(allTokens[0].expires_at) < new Date(),
+        lastSync: allTokens[0].updated_at,
       });
     }
 
-    // ── DISCONNECT: Remove connection ──
+    // ── DISCONNECT: Remove a specific company or all ──
     if (action === "disconnect") {
       const userId = await getUserId();
-      if (!userId) {
-        return jsonResponse({ error: "Unauthorized" }, 401);
+      if (!userId) return jsonResponse({ error: "Unauthorized" }, 401);
+
+      const realmId = url.searchParams.get("realmId");
+
+      if (realmId) {
+        // Disconnect a specific company
+        await supabase.from("quickbooks_tokens").delete().eq("user_id", userId).eq("realm_id", realmId);
+        await supabase.from("quickbooks_customers").delete().eq("user_id", userId).eq("realm_id", realmId);
+        await supabase.from("quickbooks_invoices").delete().eq("user_id", userId).eq("realm_id", realmId);
+        await supabase.from("quickbooks_payments").delete().eq("user_id", userId).eq("realm_id", realmId);
+        await supabase.from("quickbooks_sync_history").delete().eq("user_id", userId).eq("realm_id", realmId);
+        console.log(`[QuickBooks Auth] Disconnected realm ${realmId} for user ${userId}`);
+      } else {
+        // Disconnect all
+        await supabase.from("quickbooks_tokens").delete().eq("user_id", userId);
+        await supabase.from("quickbooks_customers").delete().eq("user_id", userId);
+        await supabase.from("quickbooks_invoices").delete().eq("user_id", userId);
+        await supabase.from("quickbooks_payments").delete().eq("user_id", userId);
+        await supabase.from("quickbooks_sync_history").delete().eq("user_id", userId);
+        console.log(`[QuickBooks Auth] Disconnected all for user ${userId}`);
       }
-
-      await supabase.from("quickbooks_tokens").delete().eq("user_id", userId);
-      await supabase.from("quickbooks_customers").delete().eq("user_id", userId);
-      await supabase.from("quickbooks_invoices").delete().eq("user_id", userId);
-      await supabase.from("quickbooks_payments").delete().eq("user_id", userId);
-      await supabase.from("quickbooks_sync_history").delete().eq("user_id", userId);
-
-      console.log(`[QuickBooks Auth] Disconnected for user ${userId}`);
 
       return jsonResponse({ success: true });
     }
@@ -226,14 +258,3 @@ serve(async (req) => {
     return jsonResponse({ error: errorMessage }, 500);
   }
 });
-
-function redirectToApp(params: string) {
-  const appUrl = Deno.env.get("APP_URL") || "https://preview--fivelinenaitive.lovable.app";
-  return new Response(null, {
-    status: 302,
-    headers: {
-      ...corsHeaders,
-      "Location": `${appUrl}/integrations?${params}`,
-    },
-  });
-}
