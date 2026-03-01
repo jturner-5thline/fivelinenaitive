@@ -82,89 +82,95 @@ serve(async (req) => {
 
     // ── CALLBACK: Handle OAuth redirect from Intuit ──
     if (action === "callback") {
-      const code = url.searchParams.get("code");
-      const realmId = url.searchParams.get("realmId");
-      const state = url.searchParams.get("state");
+      try {
+        const code = url.searchParams.get("code");
+        const realmId = url.searchParams.get("realmId");
+        const state = url.searchParams.get("state");
 
-      if (!code || !realmId || !state) {
-        console.error("[QuickBooks Auth] Missing callback params:", { code: !!code, realmId: !!realmId, state: !!state });
-        return redirectToApp("error=missing_params");
-      }
+        if (!code || !realmId || !state) {
+          console.error("[QuickBooks Auth] Missing callback params:", { code: !!code, realmId: !!realmId, state: !!state });
+          return redirectToApp("error=missing_params");
+        }
 
-      // Validate state against DB
-      const { data: stateRecord, error: stateError } = await supabase
-        .from("quickbooks_oauth_states")
-        .select("user_id, expires_at")
-        .eq("state", state)
-        .maybeSingle();
+        // Validate state against DB
+        const { data: stateRecord, error: stateError } = await supabase
+          .from("quickbooks_oauth_states")
+          .select("user_id, expires_at")
+          .eq("state", state)
+          .maybeSingle();
 
-      if (stateError || !stateRecord) {
-        console.error("[QuickBooks Auth] Invalid state:", state);
-        return redirectToApp("error=invalid_state");
-      }
+        if (stateError || !stateRecord) {
+          console.error("[QuickBooks Auth] Invalid state:", state, stateError);
+          return redirectToApp("error=invalid_state");
+        }
 
-      // Check expiry
-      if (new Date(stateRecord.expires_at) < new Date()) {
-        console.error("[QuickBooks Auth] State expired");
+        // Check expiry
+        if (new Date(stateRecord.expires_at) < new Date()) {
+          console.error("[QuickBooks Auth] State expired");
+          await supabase.from("quickbooks_oauth_states").delete().eq("state", state);
+          return redirectToApp("error=state_expired");
+        }
+
+        const userId = stateRecord.user_id;
+
+        // Delete the used state
         await supabase.from("quickbooks_oauth_states").delete().eq("state", state);
-        return redirectToApp("error=state_expired");
-      }
 
-      const userId = stateRecord.user_id;
-
-      // Delete the used state
-      await supabase.from("quickbooks_oauth_states").delete().eq("state", state);
-
-      console.log("[QuickBooks Auth] Exchanging code for tokens...");
-      console.log(`[QuickBooks Auth] Token exchange redirect_uri: ${REDIRECT_URI}`);
-      const tokenResponse = await fetch(QB_TOKEN_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": `Basic ${btoa(`${QUICKBOOKS_CLIENT_ID}:${QUICKBOOKS_CLIENT_SECRET}`)}`,
-        },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code,
-          redirect_uri: REDIRECT_URI,
-        }),
-      });
-
-      if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        console.error("[QuickBooks Auth] Token exchange failed:", errorText);
-        return redirectToApp("error=token_exchange_failed");
-      }
-
-      const tokens = await tokenResponse.json();
-      console.log("[QuickBooks Auth] Token exchange successful");
-
-      const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
-
-      // Store tokens in quickbooks_tokens table
-      const { error: upsertError } = await supabase
-        .from("quickbooks_tokens")
-        .upsert({
-          user_id: userId,
-          realm_id: realmId,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          expires_at: expiresAt,
-          token_type: tokens.token_type,
-          scope: tokens.scope || "com.intuit.quickbooks.accounting",
-        }, {
-          onConflict: "user_id,realm_id",
+        console.log("[QuickBooks Auth] Exchanging code for tokens...");
+        console.log(`[QuickBooks Auth] Token exchange redirect_uri: ${REDIRECT_URI}`);
+        const tokenResponse = await fetch(QB_TOKEN_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": `Basic ${btoa(`${QUICKBOOKS_CLIENT_ID}:${QUICKBOOKS_CLIENT_SECRET}`)}`,
+          },
+          body: new URLSearchParams({
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: REDIRECT_URI,
+          }),
         });
 
-      if (upsertError) {
-        console.error("[QuickBooks Auth] Failed to store tokens:", upsertError);
-        return redirectToApp("error=storage_failed");
+        if (!tokenResponse.ok) {
+          const errorText = await tokenResponse.text();
+          console.error("[QuickBooks Auth] Token exchange failed:", errorText);
+          return redirectToApp("error=token_exchange_failed");
+        }
+
+        const tokens = await tokenResponse.json();
+        console.log("[QuickBooks Auth] Token exchange successful");
+
+        const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+
+        // Store tokens in quickbooks_tokens table
+        const { error: upsertError } = await supabase
+          .from("quickbooks_tokens")
+          .upsert({
+            user_id: userId,
+            realm_id: realmId,
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            expires_at: expiresAt,
+            token_type: tokens.token_type,
+            scope: tokens.scope || "com.intuit.quickbooks.accounting",
+          }, {
+            onConflict: "user_id,realm_id",
+          });
+
+        if (upsertError) {
+          console.error("[QuickBooks Auth] Failed to store tokens:", upsertError);
+          return redirectToApp("error=storage_failed");
+        }
+
+        console.log(`[QuickBooks Auth] Tokens stored for user ${userId}, realm ${realmId}`);
+
+        // Redirect back to app on success
+        return redirectToApp("qb=success");
+      } catch (callbackError) {
+        console.error("[QuickBooks Auth] Callback error:", callbackError);
+        const msg = callbackError instanceof Error ? callbackError.message : "callback_unknown_error";
+        return redirectToApp(`error=${encodeURIComponent(msg)}`);
       }
-
-      console.log(`[QuickBooks Auth] Tokens stored for user ${userId}, realm ${realmId}`);
-
-      // Redirect back to app on success
-      return redirectToApp("qb=success");
     }
 
     // ── STATUS: Check connection status ──
@@ -221,7 +227,7 @@ serve(async (req) => {
 });
 
 function redirectToApp(params: string) {
-  const appUrl = Deno.env.get("APP_URL") || "https://id-preview--3072785e-3519-420c-ad58-facf63660c85.lovable.app";
+  const appUrl = Deno.env.get("APP_URL") || "https://preview--fivelinenaitive.lovable.app";
   return new Response(null, {
     status: 302,
     headers: {
