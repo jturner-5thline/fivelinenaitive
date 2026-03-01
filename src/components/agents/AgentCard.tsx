@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -22,7 +23,9 @@ import {
   Activity,
   Target,
   Search,
-  Zap
+  Zap,
+  Workflow,
+  MessageCircle,
 } from 'lucide-react';
 import type { Agent } from '@/hooks/useAgents';
 import { formatDistanceToNow } from 'date-fns';
@@ -34,10 +37,14 @@ interface AgentCardProps {
   onDuplicate: (agent: Agent) => void;
   onDelete: (agent: Agent) => void;
   onManageTriggers?: (agent: Agent) => void;
+  onOpenCanvas?: (agent: Agent) => void;
   isOwn: boolean;
 }
 
-export function AgentCard({ agent, onTest, onEdit, onDuplicate, onDelete, onManageTriggers, isOwn }: AgentCardProps) {
+export function AgentCard({ agent, onTest, onEdit, onDuplicate, onDelete, onManageTriggers, onOpenCanvas, isOwn }: AgentCardProps) {
+  const hasGraph = !!(agent as any).graph_config;
+  const nodeCount = hasGraph ? ((agent as any).graph_config?.nodes?.length || 0) : 0;
+
   const capabilities = [
     { key: 'deals', enabled: agent.can_access_deals, icon: Database, label: 'Deals' },
     { key: 'lenders', enabled: agent.can_access_lenders, icon: Building2, label: 'Lenders' },
@@ -90,6 +97,17 @@ export function AgentCard({ agent, onTest, onEdit, onDuplicate, onDelete, onMana
           </div>
           
           <div className="flex items-center gap-2 flex-shrink-0">
+            {hasGraph && (
+              <Tooltip>
+                <TooltipTrigger>
+                  <Badge variant="secondary" className="gap-1 text-xs">
+                    <Workflow className="h-3 w-3" />
+                    {nodeCount}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>Visual agent with {nodeCount} nodes</TooltipContent>
+              </Tooltip>
+            )}
             {getVisibilityBadge()}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -99,14 +117,20 @@ export function AgentCard({ agent, onTest, onEdit, onDuplicate, onDelete, onMana
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => onTest(agent)}>
-                  <Play className="mr-2 h-4 w-4" />
-                  Test Agent
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Chat with Agent
                 </DropdownMenuItem>
+                {hasGraph && onOpenCanvas && (
+                  <DropdownMenuItem onClick={() => onOpenCanvas(agent)}>
+                    <Workflow className="mr-2 h-4 w-4" />
+                    Open in Canvas
+                  </DropdownMenuItem>
+                )}
                 {isOwn && (
                   <>
                     <DropdownMenuItem onClick={() => onEdit(agent)}>
                       <Pencil className="mr-2 h-4 w-4" />
-                      Edit
+                      Edit Settings
                     </DropdownMenuItem>
                     {onManageTriggers && (
                       <DropdownMenuItem onClick={() => onManageTriggers(agent)}>
@@ -160,14 +184,35 @@ export function AgentCard({ agent, onTest, onEdit, onDuplicate, onDelete, onMana
           </span>
         </div>
         
-        <Button 
-          variant="secondary" 
-          className="w-full"
-          onClick={() => onTest(agent)}
-        >
-          <Play className="mr-2 h-4 w-4" />
-          Test Agent
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="secondary" 
+            className="flex-1"
+            onClick={() => onTest(agent)}
+          >
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Chat
+          </Button>
+          {hasGraph && onOpenCanvas ? (
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => onOpenCanvas(agent)}
+            >
+              <Workflow className="mr-2 h-4 w-4" />
+              Canvas
+            </Button>
+          ) : isOwn ? (
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => onEdit(agent)}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );
