@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Calculator, Database } from 'lucide-react';
 import { 
   MetricWidgetConfig, 
   MetricWidgetType, 
@@ -23,12 +28,16 @@ import {
   MetricWidgetSize,
   METRIC_WIDGET_DATA_SOURCES 
 } from '@/contexts/MetricsWidgetsContext';
+import { FormulaBuilder } from './FormulaBuilder';
+import { FormulaNode, FormulaResultType } from '@/lib/customMetricEngine';
+import { useCustomMetrics } from '@/hooks/useCustomMetrics';
 
 interface MetricWidgetEditorProps {
   widget?: MetricWidgetConfig;
   isOpen: boolean;
   onClose: () => void;
   onSave: (widget: Omit<MetricWidgetConfig, 'id' | 'createdAt'>) => void;
+  availableWidgets?: { id: string; title: string }[];
 }
 
 const SIZE_OPTIONS: { value: MetricWidgetSize; label: string }[] = [
@@ -63,13 +72,25 @@ const COLOR_OPTIONS = [
   { value: 'hsl(var(--destructive))', label: 'Red', className: 'bg-destructive' },
 ];
 
-export function MetricWidgetEditor({ widget, isOpen, onClose, onSave }: MetricWidgetEditorProps) {
+type DataMode = 'preset' | 'custom';
+
+export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableWidgets = [] }: MetricWidgetEditorProps) {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<MetricWidgetType>('chart');
   const [chartType, setChartType] = useState<MetricChartType>('bar');
   const [dataSource, setDataSource] = useState('');
   const [size, setSize] = useState<MetricWidgetSize>('medium');
   const [color, setColor] = useState('hsl(var(--primary))');
+  const [dataMode, setDataMode] = useState<DataMode>('preset');
+
+  // Custom metric fields
+  const [customName, setCustomName] = useState('');
+  const [customDescription, setCustomDescription] = useState('');
+  const [formula, setFormula] = useState<FormulaNode | null>(null);
+  const [resultType, setResultType] = useState<FormulaResultType>('number');
+  const [selectedCustomMetricId, setSelectedCustomMetricId] = useState('');
+
+  const { metrics: customMetrics, createMetric, updateMetric } = useCustomMetrics();
 
   useEffect(() => {
     if (widget) {
@@ -79,6 +100,22 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave }: MetricWi
       setDataSource(widget.dataSource);
       setSize(widget.size);
       setColor(widget.color);
+      // Check if this is a custom metric data source
+      if (widget.dataSource.startsWith('custom-')) {
+        setDataMode('custom');
+        const metricId = widget.dataSource.replace('custom-', '');
+        setSelectedCustomMetricId(metricId);
+        const existing = customMetrics.find(m => m.id === metricId);
+        if (existing) {
+          setCustomName(existing.name);
+          setCustomDescription(existing.description || '');
+          setFormula(existing.formula);
+          setResultType(existing.result_type);
+        }
+      } else {
+        setDataMode('preset');
+        setSelectedCustomMetricId('');
+      }
     } else {
       setTitle('');
       setType('chart');
@@ -86,66 +123,238 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave }: MetricWi
       setDataSource('');
       setSize('medium');
       setColor('hsl(var(--primary))');
+      setDataMode('preset');
+      setCustomName('');
+      setCustomDescription('');
+      setFormula(null);
+      setResultType('number');
+      setSelectedCustomMetricId('');
     }
-  }, [widget, isOpen]);
+  }, [widget, isOpen, customMetrics]);
 
   const filteredDataSources = METRIC_WIDGET_DATA_SOURCES.filter(ds => ds.type === type);
 
-  const handleSave = () => {
-    if (!title.trim() || !dataSource) return;
-    onSave({ 
-      title: title.trim(), 
-      type, 
-      chartType: type === 'chart' ? chartType : undefined, 
-      dataSource, 
-      size, 
-      color 
-    });
+  const handleSave = async () => {
+    if (!title.trim()) return;
+
+    if (dataMode === 'custom') {
+      if (!formula || !customName.trim()) return;
+
+      try {
+        let metricId = selectedCustomMetricId;
+        if (metricId && customMetrics.find(m => m.id === metricId)) {
+          // Update existing
+          await updateMetric.mutateAsync({
+            id: metricId,
+            name: customName.trim(),
+            description: customDescription.trim() || undefined,
+            formula,
+            result_type: resultType,
+          });
+        } else {
+          // Create new
+          const result = await createMetric.mutateAsync({
+            name: customName.trim(),
+            description: customDescription.trim() || undefined,
+            formula,
+            result_type: resultType,
+          });
+          metricId = result.id;
+        }
+
+        onSave({
+          title: title.trim(),
+          type: 'stat', // Custom metrics render as stat cards
+          dataSource: `custom-${metricId}`,
+          size,
+          color,
+        });
+      } catch {
+        return; // Error already shown via toast
+      }
+    } else {
+      if (!dataSource) return;
+      onSave({
+        title: title.trim(),
+        type,
+        chartType: type === 'chart' ? chartType : undefined,
+        dataSource,
+        size,
+        color,
+      });
+    }
     onClose();
   };
 
+  const isValid = dataMode === 'preset'
+    ? title.trim() && dataSource
+    : title.trim() && customName.trim() && formula;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>{widget ? 'Edit Widget' : 'Add Widget'}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Widget title"
-            />
-          </div>
 
-          <div className="space-y-2">
-            <Label>Widget Type</Label>
-            <Select value={type} onValueChange={(v) => {
-              setType(v as MetricWidgetType);
-              setDataSource('');
-            }}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="stat">Stat Card</SelectItem>
-                <SelectItem value="chart">Chart</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {type === 'chart' && (
+        <ScrollArea className="flex-1 pr-4">
+          <div className="space-y-4 pb-4">
+            {/* Title */}
             <div className="space-y-2">
-              <Label>Chart Type</Label>
-              <Select value={chartType} onValueChange={(v) => setChartType(v as MetricChartType)}>
+              <Label htmlFor="title">Widget Title</Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Widget title"
+              />
+            </div>
+
+            {/* Data Mode Toggle */}
+            <div className="space-y-2">
+              <Label>Data Source Mode</Label>
+              <Tabs value={dataMode} onValueChange={(v) => setDataMode(v as DataMode)}>
+                <TabsList className="w-full grid grid-cols-2">
+                  <TabsTrigger value="preset" className="gap-1.5">
+                    <Database className="h-3.5 w-3.5" /> Preset Source
+                  </TabsTrigger>
+                  <TabsTrigger value="custom" className="gap-1.5">
+                    <Calculator className="h-3.5 w-3.5" /> Custom Formula
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Preset Data Source */}
+                <TabsContent value="preset" className="space-y-4 mt-3">
+                  <div className="space-y-2">
+                    <Label>Widget Type</Label>
+                    <Select value={type} onValueChange={(v) => {
+                      setType(v as MetricWidgetType);
+                      setDataSource('');
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="stat">Stat Card</SelectItem>
+                        <SelectItem value="chart">Chart</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {type === 'chart' && (
+                    <div className="space-y-2">
+                      <Label>Chart Type</Label>
+                      <Select value={chartType} onValueChange={(v) => setChartType(v as MetricChartType)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CHART_TYPE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Data Source</Label>
+                    <Select value={dataSource} onValueChange={setDataSource}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select data source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredDataSources.map((ds) => (
+                          <SelectItem key={ds.id} value={ds.id}>
+                            {ds.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Existing Custom Metrics as presets */}
+                  {customMetrics.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Or use a saved custom metric</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {customMetrics.map((m) => (
+                          <Badge
+                            key={m.id}
+                            variant={dataSource === `custom-${m.id}` ? 'default' : 'outline'}
+                            className="cursor-pointer text-xs"
+                            onClick={() => {
+                              setDataSource(`custom-${m.id}`);
+                              setType('stat');
+                            }}
+                          >
+                            <Calculator className="h-3 w-3 mr-1" />
+                            {m.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Custom Formula */}
+                <TabsContent value="custom" className="space-y-4 mt-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="metric-name">Metric Name</Label>
+                    <Input
+                      id="metric-name"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder="e.g., Net Revenue, Win Rate, ROI"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="metric-desc">Description (optional)</Label>
+                    <Textarea
+                      id="metric-desc"
+                      value={customDescription}
+                      onChange={(e) => setCustomDescription(e.target.value)}
+                      placeholder="Describe what this metric calculates..."
+                      className="min-h-[60px]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Result Format</Label>
+                    <Select value={resultType} onValueChange={(v) => setResultType(v as FormulaResultType)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="number">Number</SelectItem>
+                        <SelectItem value="currency">Currency ($)</SelectItem>
+                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Formula Builder */}
+                  <FormulaBuilder
+                    value={formula}
+                    onChange={setFormula}
+                    availableWidgets={availableWidgets}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            {/* Size */}
+            <div className="space-y-2">
+              <Label>Size</Label>
+              <Select value={size} onValueChange={(v) => setSize(v as MetricWidgetSize)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CHART_TYPE_OPTIONS.map((opt) => (
+                  {SIZE_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>
@@ -153,61 +362,31 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave }: MetricWi
                 </SelectContent>
               </Select>
             </div>
-          )}
 
-          <div className="space-y-2">
-            <Label>Data Source</Label>
-            <Select value={dataSource} onValueChange={setDataSource}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select data source" />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredDataSources.map((ds) => (
-                  <SelectItem key={ds.id} value={ds.id}>
-                    {ds.label}
-                  </SelectItem>
+            {/* Color */}
+            <div className="space-y-2">
+              <Label>Color</Label>
+              <div className="flex gap-2">
+                {COLOR_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className={`h-8 w-8 rounded-full ${opt.className} ${
+                      color === opt.value ? 'ring-2 ring-offset-2 ring-foreground' : ''
+                    }`}
+                    onClick={() => setColor(opt.value)}
+                    title={opt.label}
+                  />
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Size</Label>
-            <Select value={size} onValueChange={(v) => setSize(v as MetricWidgetSize)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SIZE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Color</Label>
-            <div className="flex gap-2">
-              {COLOR_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  className={`h-8 w-8 rounded-full ${opt.className} ${
-                    color === opt.value ? 'ring-2 ring-offset-2 ring-foreground' : ''
-                  }`}
-                  onClick={() => setColor(opt.value)}
-                  title={opt.label}
-                />
-              ))}
+              </div>
             </div>
           </div>
-        </div>
+        </ScrollArea>
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!title.trim() || !dataSource}>
+          <Button onClick={handleSave} disabled={!isValid}>
             {widget ? 'Save Changes' : 'Add Widget'}
           </Button>
         </DialogFooter>

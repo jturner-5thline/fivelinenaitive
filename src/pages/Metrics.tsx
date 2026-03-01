@@ -98,7 +98,8 @@ import {
   QuickBooksFinancialDashboard,
 } from "@/components/metrics/dashboards";
 import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
-
+import { useCustomMetrics } from "@/hooks/useCustomMetrics";
+import { evaluateFormula, FormulaContext } from "@/lib/customMetricEngine";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Management Snapshot', isFavorite: true },
@@ -752,9 +753,80 @@ function renderChartContent(
 function renderStatContent(
   widget: MetricWidgetConfig,
   metrics: ReturnType<typeof useMetricsData>['data'],
-  qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data']
+  qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data'],
+  customMetricDefs?: ReturnType<typeof useCustomMetrics>['metrics'],
+  allWidgets?: MetricWidgetConfig[],
 ) {
-  if (!metrics && !widget.dataSource.startsWith('qb-')) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('custom-')) return null;
+
+  // Handle custom calculated metrics
+  if (widget.dataSource.startsWith('custom-')) {
+    const metricId = widget.dataSource.replace('custom-', '');
+    const metricDef = customMetricDefs?.find(m => m.id === metricId);
+    if (!metricDef) {
+      return (
+        <CardContent className="pt-6">
+          <p className="text-xs text-muted-foreground">Custom metric not found</p>
+        </CardContent>
+      );
+    }
+
+    // Build evaluation context from live data
+    const sourceValues: Record<string, number> = {};
+    if (metrics) {
+      sourceValues['active-pipeline'] = metrics.totalPipelineValue;
+      sourceValues['closed-won'] = metrics.totalClosedWonValue;
+      sourceValues['total-fees'] = metrics.totalFees;
+      sourceValues['avg-deal-size'] = metrics.avgDealSize;
+    }
+    if (qbMetrics) {
+      sourceValues['qb-total-revenue'] = qbMetrics.totalRevenue;
+      sourceValues['qb-accounts-receivable'] = qbMetrics.totalAR;
+      sourceValues['qb-total-payments'] = qbMetrics.totalPayments;
+      sourceValues['qb-active-customers'] = qbMetrics.activeCustomers;
+      sourceValues['qb-collection-rate'] = qbMetrics.collectionRate;
+      sourceValues['qb-overdue-amount'] = qbMetrics.overdueAmount;
+    }
+
+    // Resolve widget references
+    const widgetValues: Record<string, number> = {};
+    allWidgets?.forEach(w => {
+      if (w.type === 'stat' && !w.dataSource.startsWith('custom-')) {
+        const val = sourceValues[w.dataSource];
+        if (val !== undefined) widgetValues[w.id] = val;
+      }
+    });
+
+    const ctx: FormulaContext = { sources: sourceValues, widgets: widgetValues };
+    let result = 0;
+    try {
+      result = evaluateFormula(metricDef.formula, ctx);
+    } catch {
+      result = 0;
+    }
+
+    let formattedValue: string;
+    switch (metricDef.result_type) {
+      case 'currency':
+        formattedValue = formatCurrency(result);
+        break;
+      case 'percentage':
+        formattedValue = `${result.toFixed(1)}%`;
+        break;
+      default:
+        formattedValue = result >= 1000 ? `${(result / 1000).toFixed(1)}k` : result.toFixed(1);
+    }
+
+    return (
+      <StatWidgetContent
+        title={widget.title}
+        value={formattedValue}
+        subtitle={metricDef.description || 'Custom calculated metric'}
+        icon="percent"
+        color={widget.color}
+      />
+    );
+  }
 
   switch (widget.dataSource) {
     case 'active-pipeline':
@@ -847,6 +919,7 @@ export default function Metrics() {
   const [reportingMonth, setReportingMonth] = useState(format(new Date(), "MMM-yy"));
   const { data: metrics, isLoading, error } = useMetricsData();
   const { data: qbMetrics } = useQuickBooksMetrics();
+  const { metrics: customMetricDefs } = useCustomMetrics();
   const {
     widgets, 
     addWidget, 
@@ -1247,7 +1320,7 @@ export default function Metrics() {
                           setDeleteConfirmOpen(true);
                         }}
                       >
-                        {renderStatContent(widget, metrics, qbMetrics)}
+                        {renderStatContent(widget, metrics, qbMetrics, customMetricDefs, widgets)}
                       </SortableMetricWidget>
                     ))}
                   </div>
@@ -1287,6 +1360,7 @@ export default function Metrics() {
         isOpen={editorOpen}
         onClose={() => setEditorOpen(false)}
         onSave={handleSave}
+        availableWidgets={widgets.filter(w => w.type === 'stat').map(w => ({ id: w.id, title: w.title }))}
       />
 
       {/* Delete Confirmation */}
