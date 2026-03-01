@@ -10,6 +10,8 @@ import { BalanceCashFlow } from './dashboard/BalanceCashFlow';
 import { ScenarioModeling } from './dashboard/ScenarioModeling';
 import { StressTesting } from './dashboard/StressTesting';
 import { SensitivityTable } from './dashboard/SensitivityTable';
+import { VarianceReviewPanel } from './collaboration/VarianceReviewPanel';
+import { BudgetApprovalWorkflow } from './collaboration/BudgetApprovalWorkflow';
 
 export function DashboardModule() {
   const [dashboardTab, setDashboardTab] = useState('overview');
@@ -28,6 +30,7 @@ export function DashboardModule() {
             <TabsTrigger value="balance" className="text-xs">Balance Sheet</TabsTrigger>
             <TabsTrigger value="cashflow" className="text-xs">Cash Flow</TabsTrigger>
             <TabsTrigger value="scenarios" className="text-xs">Scenarios</TabsTrigger>
+            <TabsTrigger value="collaborate" className="text-xs">Collaborate</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
@@ -95,6 +98,13 @@ export function DashboardModule() {
           <ScenarioModeling />
           <SensitivityTable />
           <StressTesting />
+        </div>
+      )}
+
+      {dashboardTab === 'collaborate' && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <VarianceReviewPanel />
+          <BudgetApprovalWorkflow />
         </div>
       )}
     </div>
