@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
-  Maximize2, TrendingUp, TrendingDown, ArrowUpRight
+  Maximize2, Minimize2, TrendingUp, TrendingDown, ArrowUpRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -245,12 +246,73 @@ function renderOpexChart(chartType: ChartType, colors: string[], config: ChartCo
 
 export function RevenueOPEXCharts({ onDrillDown, chartConfig, visibilityConfig }: RevenueOPEXChartsProps) {
   const [revenueView, setRevenueView] = useState<'trend' | 'waterfall'>('trend');
+  const [expandedChart, setExpandedChart] = useState<string | null>(null);
   const cfg = chartConfig || DEFAULT_CHART_CONFIG;
   const colors = getColors(cfg);
   const vis = visibilityConfig || { revenueChart: true, marginTrends: true, opexComparison: true, topVendors: true, waterfallBridge: true };
 
+  const renderExpandedContent = () => {
+    if (!expandedChart) return null;
+    const height = 450;
+    switch (expandedChart) {
+      case 'revenue':
+        return revenueView === 'trend' || !vis.waterfallBridge ? (
+          <ResponsiveContainer width="100%" height={height}>
+            {renderRevenueChart(cfg.revenueChartType, colors, cfg)}
+          </ResponsiveContainer>
+        ) : (
+          <ResponsiveContainer width="100%" height={height}>
+            <BarChart data={REVENUE_WATERFALL}>
+              <CartesianGrid strokeDasharray="3 3" stroke={cfg.showGridLines ? "hsl(var(--border))" : "transparent"} />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(1)}M`} domain={[0, 10000]} />
+              <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
+              <Bar dataKey="value" radius={[3, 3, 0, 0]} isAnimationActive={cfg.animationEnabled}>
+                {REVENUE_WATERFALL.map((entry, index) => (
+                  <Cell key={index} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        );
+      case 'margins':
+        return (
+          <ResponsiveContainer width="100%" height={height}>
+            {renderMarginChart(cfg.marginChartType, colors, cfg)}
+          </ResponsiveContainer>
+        );
+      case 'opex':
+        return (
+          <ResponsiveContainer width="100%" height={height}>
+            {renderOpexChart(cfg.opexChartType, colors, cfg)}
+          </ResponsiveContainer>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const chartTitles: Record<string, string> = {
+    revenue: 'Revenue',
+    margins: 'Margin Trends',
+    opex: 'OPEX — Actuals vs Budget',
+  };
+
   return (
     <div className="space-y-4" role="region" aria-label="Financial Charts">
+      {/* Expanded Chart Dialog */}
+      <Dialog open={!!expandedChart} onOpenChange={(open) => { if (!open) setExpandedChart(null); }}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center justify-between">
+              {expandedChart ? chartTitles[expandedChart] || 'Chart' : 'Chart'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="pt-2">
+            {renderExpandedContent()}
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Row 1: Revenue + Margins */}
       {(vis.revenueChart || vis.marginTrends) && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -276,7 +338,7 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig, visibilityConfig }
                 </div>
                 )}
               </div>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setExpandedChart('revenue')} aria-label="Expand revenue chart">
                 <Maximize2 className="h-3.5 w-3.5" />
               </Button>
             </div>
@@ -308,8 +370,13 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig, visibilityConfig }
         {/* Margin Trends */}
         {vis.marginTrends && (
         <Card className={vis.revenueChart ? undefined : "lg:col-span-3"} role="figure" aria-label="Margin trends showing Gross Margin, EBITDA Margin, and Net Margin over time">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Margin Trends</CardTitle>
+           <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">Margin Trends</CardTitle>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setExpandedChart('margins')} aria-label="Expand margin trends chart">
+                <Maximize2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="pt-0">
             <ResponsiveContainer width="100%" height={240}>
@@ -327,7 +394,12 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig, visibilityConfig }
         {vis.opexComparison && (
         <Card role="figure" aria-label="Operating expenses comparison showing actuals versus budget by department">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">OPEX — Actuals vs Budget ($K)</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">OPEX — Actuals vs Budget ($K)</CardTitle>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setExpandedChart('opex')} aria-label="Expand OPEX chart">
+                <Maximize2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="pt-0">
             <ResponsiveContainer width="100%" height={200}>
