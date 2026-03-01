@@ -7,8 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Plus, Search, Users, Globe, Lock, Zap, History, Workflow } from 'lucide-react';
-import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
+import { Card, CardContent } from '@/components/ui/card';
+import { Bot, Plus, Search, Users, Globe, Lock, Zap, History, Workflow, MessageCircle, Sparkles, ArrowRight } from 'lucide-react';
+import { NaitiveIcon } from '@/components/NaitiveIcon';
 import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent, useDuplicateAgent, type Agent, type CreateAgentData } from '@/hooks/useAgents';
 import { useAuth } from '@/contexts/AuthContext';
 import { AgentCard } from '@/components/agents/AgentCard';
@@ -19,6 +20,7 @@ import { AgentRunsHistory } from '@/components/agents/AgentRunsHistory';
 import { AgentTemplatesGallery } from '@/components/agents/AgentTemplatesGallery';
 import { AgentSuggestionsPanel } from '@/components/agents/AgentSuggestionsPanel';
 import { AgentCanvas } from '@/components/agents/canvas/AgentCanvas';
+import { FloatingAgentChat } from '@/components/agents/FloatingAgentChat';
 import { type AgentSuggestion } from '@/hooks/useAgentSuggestions';
 import type { Node, Edge } from '@xyflow/react';
 import { toast } from 'sonner';
@@ -41,6 +43,7 @@ export default function Agents() {
   const [pendingSuggestion, setPendingSuggestion] = useState<AgentSuggestion | null>(null);
   const [canvasAgent, setCanvasAgent] = useState<Agent | null>(null);
   const [showCanvas, setShowCanvas] = useState(false);
+  const [floatingChatAgent, setFloatingChatAgent] = useState<Agent | null>(null);
 
   const myAgents = agents?.filter(a => a.user_id === user?.id) || [];
   const sharedAgents = agents?.filter(a => a.is_shared && a.user_id !== user?.id) || [];
@@ -142,6 +145,7 @@ export default function Agents() {
             onEdit={handleEdit}
             onDuplicate={handleDuplicate}
             onDelete={setDeletingAgent}
+            onOpenCanvas={handleOpenCanvas}
           />
         ))}
       </div>
@@ -188,7 +192,7 @@ export default function Agents() {
             <Bot className="h-8 w-8 text-primary" />
             <div>
               <h1 className="text-3xl font-bold">AI Agents</h1>
-              <p className="text-muted-foreground">Build and customize AI assistants for your workflow</p>
+              <p className="text-muted-foreground">Build, test, and deploy intelligent automations</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -202,6 +206,42 @@ export default function Agents() {
             </Button>
           </div>
         </div>
+
+        {/* Quick-start cards for new users */}
+        {myAgents.length === 0 && !isLoading && (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card className="border-dashed border-primary/30 hover:border-primary/60 transition-colors cursor-pointer group" onClick={() => setIsBuilderOpen(true)}>
+              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+                  <Bot className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="font-semibold text-sm">Simple Agent</h3>
+                <p className="text-xs text-muted-foreground mt-1">Create a chat agent with custom prompt and data access</p>
+                <ArrowRight className="h-4 w-4 text-primary mt-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </CardContent>
+            </Card>
+            <Card className="border-dashed border-primary/30 hover:border-primary/60 transition-colors cursor-pointer group" onClick={() => handleOpenCanvas()}>
+              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+                  <Workflow className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="font-semibold text-sm">Visual Builder</h3>
+                <p className="text-xs text-muted-foreground mt-1">Design multi-agent flows with drag-and-drop canvas</p>
+                <ArrowRight className="h-4 w-4 text-primary mt-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </CardContent>
+            </Card>
+            <Card className="border-dashed border-primary/30 hover:border-primary/60 transition-colors cursor-pointer group" onClick={() => setActiveTab('templates')}>
+              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="font-semibold text-sm">From Template</h3>
+                <p className="text-xs text-muted-foreground mt-1">Start with a pre-built agent and customize it</p>
+                <ArrowRight className="h-4 w-4 text-primary mt-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Search */}
         <div className="relative max-w-md">
@@ -226,7 +266,7 @@ export default function Agents() {
               Builder
             </TabsTrigger>
             <TabsTrigger value="templates" className="gap-2">
-              <Sparkles className="h-4 w-4" />
+              <NaitiveIcon className="h-4 w-4" />
               Templates
             </TabsTrigger>
             <TabsTrigger value="team" className="gap-2">
@@ -329,6 +369,13 @@ export default function Agents() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Floating chat widget */}
+      <FloatingAgentChat
+        agents={agents || []}
+        activeAgent={floatingChatAgent}
+        onSelectAgent={setFloatingChatAgent}
+      />
 
       {/* Agent Builder Dialog */}
       <Dialog open={isBuilderOpen} onOpenChange={(open) => {
