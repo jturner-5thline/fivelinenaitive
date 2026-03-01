@@ -260,7 +260,7 @@ export function TaskListView({
                 </button>
 
                 {!isCollapsed && (
-                  <div className="mx-3 mb-3 mt-1 rounded-lg border border-border/40 bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl shadow-[inset_0_1px_2px_hsl(0,0%,100%,0.04),0_4px_16px_hsl(0,0%,0%,0.3)] relative overflow-hidden">
+                  <div className="mx-3 mb-3 mt-1 rounded-lg border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] relative overflow-hidden before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)]">
                     <div className="relative z-10">
                       {group.tasks.map((task, taskIndex) => {
                         // Calculate global index for focus tracking
