@@ -14,8 +14,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const QB_AUTH_URL = "https://appcenter.intuit.com/connect/oauth2";
 const QB_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
 
-// Consistent redirect URI used everywhere
-const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/quickbooks-auth?action=callback`;
+// Hardcoded redirect URI to exactly match Intuit Developer Console registration
+const REDIRECT_URI = "https://tgkksvazruzbghssnxde.supabase.co/functions/v1/quickbooks-auth?action=callback";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -74,6 +74,8 @@ serve(async (req) => {
       const authUrl = `${QB_AUTH_URL}?client_id=${QUICKBOOKS_CLIENT_ID}&response_type=code&scope=${encodeURIComponent(scope)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${encodeURIComponent(state)}`;
 
       console.log(`[QuickBooks Auth] Generated auth URL for user ${userId}`);
+      console.log(`[QuickBooks Auth] redirect_uri used: ${REDIRECT_URI}`);
+      console.log(`[QuickBooks Auth] Full auth URL: ${authUrl}`);
 
       return jsonResponse({ authUrl });
     }
@@ -113,8 +115,8 @@ serve(async (req) => {
       // Delete the used state
       await supabase.from("quickbooks_oauth_states").delete().eq("state", state);
 
-      // Exchange code for tokens
       console.log("[QuickBooks Auth] Exchanging code for tokens...");
+      console.log(`[QuickBooks Auth] Token exchange redirect_uri: ${REDIRECT_URI}`);
       const tokenResponse = await fetch(QB_TOKEN_URL, {
         method: "POST",
         headers: {
