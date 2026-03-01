@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown,
-  DollarSign, BarChart3, Percent, Clock, ChevronRight
+  DollarSign, BarChart3, Percent, Clock, ChevronRight, Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -22,6 +23,15 @@ export interface KPI {
   sparkline: number[];
   category: 'revenue' | 'cost' | 'margin' | 'operational';
 }
+
+const KPI_TOOLTIPS: Record<string, string> = {
+  revenue: 'Total top-line revenue from all streams. Includes recurring, one-time, and service revenue before any deductions.',
+  'gross-margin': 'Revenue minus COGS as a percentage. Measures production efficiency — higher is better. Target: >65%.',
+  opex: 'Total operating expenses including payroll, rent, marketing, and G&A. Excludes COGS and interest.',
+  ebitda: 'Earnings Before Interest, Taxes, Depreciation & Amortization. Key profitability proxy used by lenders.',
+  runway: 'Months of operations remaining at current net burn rate. Below 12 months signals urgency.',
+  burn: 'Monthly net cash outflow (expenses minus revenue). Decreasing burn is positive for runway.',
+};
 
 const KPIS: KPI[] = [
   { id: 'revenue', label: 'Total Revenue', value: '$9.5M', change: '+6.2%', trend: 'up', isPositive: true, period: 'MoM', detail: '$8.94M → $9.5M', sparkline: [7800, 8200, 8500, 8700, 8940, 9500], category: 'revenue' },
@@ -56,7 +66,17 @@ export function KPICards({ onKPIClick, selectedKPI }: KPICardsProps) {
           >
             <CardContent className="p-3">
               <div className="flex items-start justify-between mb-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</p>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground/50 hover:text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[220px] text-xs">
+                      {KPI_TOOLTIPS[kpi.id] || kpi.label}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
               </div>
               <div className="flex items-end justify-between">
