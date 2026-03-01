@@ -35,14 +35,14 @@ function MainContent({
         className,
       )}
       style={{
-        background: 'rgba(8, 10, 18, 0.55)',
-        backdropFilter: 'blur(24px) saturate(1.3) brightness(1.05)',
-        WebkitBackdropFilter: 'blur(24px) saturate(1.3) brightness(1.05)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.09)',
+        background: 'rgba(8, 10, 18, 0.60)',
+        backdropFilter: 'blur(20px) saturate(1.25) brightness(0.98)',
+        WebkitBackdropFilter: 'blur(20px) saturate(1.25) brightness(0.98)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
         borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
         borderRight: '1px solid rgba(255, 255, 255, 0.04)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.02), inset 1px 0 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.45)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), inset 1px 0 0 rgba(255,255,255,0.03)',
       }}
       onClick={handleMainClick}
     >
