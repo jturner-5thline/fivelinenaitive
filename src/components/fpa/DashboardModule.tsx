@@ -7,6 +7,9 @@ import { KPICards } from './dashboard/KPICards';
 import { InteractivePLTable } from './dashboard/InteractivePLTable';
 import { RevenueOPEXCharts } from './dashboard/RevenueOPEXCharts';
 import { BalanceCashFlow } from './dashboard/BalanceCashFlow';
+import { ScenarioModeling } from './dashboard/ScenarioModeling';
+import { StressTesting } from './dashboard/StressTesting';
+import { SensitivityTable } from './dashboard/SensitivityTable';
 
 export function DashboardModule() {
   const [dashboardTab, setDashboardTab] = useState('overview');
@@ -24,6 +27,7 @@ export function DashboardModule() {
             <TabsTrigger value="pnl" className="text-xs">P&L</TabsTrigger>
             <TabsTrigger value="balance" className="text-xs">Balance Sheet</TabsTrigger>
             <TabsTrigger value="cashflow" className="text-xs">Cash Flow</TabsTrigger>
+            <TabsTrigger value="scenarios" className="text-xs">Scenarios</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
@@ -84,6 +88,14 @@ export function DashboardModule() {
 
       {dashboardTab === 'cashflow' && (
         <BalanceCashFlow view="cashflow" />
+      )}
+
+      {dashboardTab === 'scenarios' && (
+        <div className="space-y-4">
+          <ScenarioModeling />
+          <SensitivityTable />
+          <StressTesting />
+        </div>
       )}
     </div>
   );
