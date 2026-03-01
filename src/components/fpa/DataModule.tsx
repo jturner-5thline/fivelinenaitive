@@ -13,6 +13,7 @@ import {
   FileSpreadsheet, BarChart3, GitBranch, Filter, Columns, MoreHorizontal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ConnectorDetailPanel } from './ConnectorDetailPanel';
 
 // Demo connectors
 const CONNECTORS = [
@@ -67,6 +68,7 @@ export function DataModule() {
   const [subTab, setSubTab] = useState('connectors');
   const [search, setSearch] = useState('');
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [selectedConnector, setSelectedConnector] = useState<typeof CONNECTORS[0] | null>(null);
 
   const connectedCount = CONNECTORS.filter(c => c.status === 'connected').length;
 
@@ -118,7 +120,7 @@ export function DataModule() {
               <Card key={connector.id} className={cn(
                 "cursor-pointer transition-all hover:shadow-md",
                 connector.status === 'connected' && "border-primary/30"
-              )}>
+              )} onClick={() => setSelectedConnector(connector)}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -149,16 +151,16 @@ export function DataModule() {
                         <span className="font-medium text-foreground">{connector.records}</span>
                       </div>
                       <div className="flex gap-1.5 mt-2">
-                        <Button variant="outline" size="sm" className="h-6 text-[10px] flex-1 gap-1">
+                        <Button variant="outline" size="sm" className="h-6 text-[10px] flex-1 gap-1" onClick={(e) => { e.stopPropagation(); }}>
                           <RefreshCw className="h-3 w-3" /> Sync
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1">
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={(e) => { e.stopPropagation(); setSelectedConnector(connector); }}>
                           <Settings2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
                   ) : (
-                    <Button variant="outline" size="sm" className="w-full h-7 text-[10px] mt-2 gap-1">
+                    <Button variant="outline" size="sm" className="w-full h-7 text-[10px] mt-2 gap-1" onClick={(e) => { e.stopPropagation(); setSelectedConnector(connector); }}>
                       <Plus className="h-3 w-3" /> Connect
                     </Button>
                   )}
@@ -342,6 +344,13 @@ export function DataModule() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Connector Detail Panel */}
+      <ConnectorDetailPanel
+        open={!!selectedConnector}
+        onOpenChange={(open) => !open && setSelectedConnector(null)}
+        connector={selectedConnector}
+      />
     </div>
   );
 }

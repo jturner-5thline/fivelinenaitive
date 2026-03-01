@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SpreadsheetWorkspace } from '@/components/finance/spreadsheet/SpreadsheetWorkspace';
 import { SheetsSidebar } from './sheets/SheetsSidebar';
 import { SyncPanel } from './sheets/SyncPanel';
+import { FormulaHelpPanel } from './FormulaAutocomplete';
 import { DrillDownModal } from './sheets/DrillDownModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -75,8 +76,9 @@ export function SheetsModule() {
       <div className="flex gap-3">
         {/* Left Sidebar */}
         {sidebarOpen && (
-          <div className="w-64 flex-shrink-0">
+          <div className="w-64 flex-shrink-0 space-y-3">
             <SheetsSidebar />
+            <FormulaHelpPanel />
           </div>
         )}
 
