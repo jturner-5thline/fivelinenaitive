@@ -233,7 +233,6 @@ const Sidebar = React.forwardRef<
       <div
         className={cn(
           "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex",
-          // Use full width when expanded OR hovering
           effectiveState === "expanded" ? "w-[--sidebar-width]" : "",
           state === "collapsed" && !isHovering
             ? variant === "floating" || variant === "inset"
@@ -246,24 +245,26 @@ const Sidebar = React.forwardRef<
           "p-2 pr-[3px]",
           className,
         )}
+        style={{
+          background: 'rgba(10, 12, 20, 0.38)',
+          backdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
+          WebkitBackdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
+          borderRadius: '12px',
+        }}
         {...props}
       >
         <div
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col rounded-xl overflow-hidden transition-all duration-200 relative",
-            "border-r-[1px] border-[rgba(255,255,255,0.07)]",
+            "flex h-full w-full flex-col rounded-xl transition-all duration-200 relative",
+            "border border-[rgba(255,255,255,0.07)]",
             "shadow-[inset_-1px_0_0_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.04)]",
             "before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,rgba(126,184,247,0.03)_0%,transparent_50%)]",
             isHovering && state === "collapsed" && "shadow-xl",
             className,
           )}
-          style={{
-            background: 'rgba(10, 12, 20, 0.38)',
-            backdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
-            WebkitBackdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
-          }}
+          style={{ background: 'transparent' }}
         >
           {children}
         </div>
