@@ -615,6 +615,32 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
             pattern="[0-9]*"
           />
         </FlexChangedFieldWrapper>
+        <FlexChangedFieldWrapper fieldKey="customerBase" changedFields={changedFields} className="space-y-2">
+          <Label>Customer Base</Label>
+          <div className="flex flex-wrap gap-2">
+            {['B2B', 'B2C', 'Both'].map((option) => {
+              const isSelected = data.customerBase?.includes(option);
+              return (
+                <Button
+                  key={option}
+                  type="button"
+                  variant={isSelected ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    const current = data.customerBase || [];
+                    if (isSelected) {
+                      updateField('customerBase', current.filter(v => v !== option));
+                    } else {
+                      updateField('customerBase', [...current, option]);
+                    }
+                  }}
+                >
+                  {option}
+                </Button>
+              );
+            })}
+          </div>
+        </FlexChangedFieldWrapper>
         <FlexChangedFieldWrapper fieldKey="headcount" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="headcount">Headcount</Label>
           <Input

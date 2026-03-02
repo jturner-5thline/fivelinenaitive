@@ -7,6 +7,7 @@ export type WriteUpFieldId =
   | 'location'
   | 'industries'
   | 'yearFounded'
+  | 'customerBase'
   | 'headcount'
   | 'dealTypes'
   | 'billingModels'
@@ -33,6 +34,7 @@ export const WRITEUP_FIELD_CONFIG: Record<WriteUpFieldId, { label: string; requi
   location: { label: 'Location', required: true },
   industries: { label: 'Industry', required: true },
   yearFounded: { label: 'Year Founded' },
+  customerBase: { label: 'Customer Base' },
   headcount: { label: 'Headcount' },
   dealTypes: { label: 'Deal Type', required: true },
   billingModels: { label: 'Billing Model', required: true },
@@ -55,6 +57,7 @@ const DEFAULT_FIELD_ORDER: WriteUpFieldId[] = [
   'location',
   'industries',
   'yearFounded',
+  'customerBase',
   'headcount',
   'dealTypes',
   'billingModels',

@@ -347,6 +347,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                   { label: 'Headquarters', value: data.location },
                   { label: 'Industry', value: data.industries.join(', ') },
                   { label: 'Year Founded', value: data.yearFounded },
+                  { label: 'Customer Base', value: data.customerBase?.join(', ') },
                   { label: 'Headcount', value: data.headcount },
                   { label: 'Business Model', value: data.billingModels.join(', ') },
                   { label: 'Profitability', value: data.profitability },
