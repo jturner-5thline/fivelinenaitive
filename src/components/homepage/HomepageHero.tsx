@@ -46,7 +46,7 @@ export const HomepageHero = () => {
           {/* CTA — shares left edge with tagline and wordmark "n" */}
           <Button
             size="lg"
-            className="mt-8 rounded-full px-10 py-6 text-base font-semibold text-white bg-[hsl(270,65%,50%)] hover:bg-[hsl(270,65%,45%)] border-0"
+            className="mt-8 px-10 py-6 text-base font-semibold text-white bg-[hsl(270,65%,50%)] hover:bg-[hsl(270,65%,45%)] border-0"
             asChild
           >
             <Link to="/waitlist">Request Access</Link>
