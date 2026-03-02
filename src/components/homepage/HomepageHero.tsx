@@ -28,12 +28,12 @@ export const HomepageHero = () => {
 
       {/* Left-aligned, vertically centered content */}
       <div className="relative z-10 container mx-auto px-6 md:px-[8%] lg:px-[10%]">
-        <div className="max-w-[50%] flex flex-col items-start gap-0">
+        <div className="max-w-[50%] flex flex-col items-start gap-2">
           {/* Wordmark — negative left margin so the dot-ring bleeds left while the "n" aligns with text below */}
           <img
             src={naitiveLogoDark}
             alt="naitive"
-            className="h-60 md:h-72 lg:h-80 -ml-[4.5rem] md:-ml-[5.5rem] lg:-ml-24 mb-[-3rem]"
+            className="h-60 md:h-72 lg:h-80 -ml-[4.5rem] md:-ml-[5.5rem] lg:-ml-24 -mb-14"
           />
 
           {/* Tagline — shares left edge with the "n" in the wordmark */}

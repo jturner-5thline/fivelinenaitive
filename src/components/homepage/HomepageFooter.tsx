@@ -23,7 +23,7 @@ export const HomepageFooter = () => {
             <Link to="/homepage" className="inline-block mb-4">
               <Logo className="h-32" />
             </Link>
-            <p className="text-white/50 text-sm leading-relaxed mb-6 max-w-xs">
+            <p className="text-white/70 text-sm leading-relaxed mb-6 max-w-xs">
               The AI-powered deal management platform for transaction-advisory professionals and lenders.
             </p>
           </div>
