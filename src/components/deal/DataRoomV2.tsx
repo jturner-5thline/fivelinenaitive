@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { toast } from 'sonner';
 import JSZip from 'jszip';
 import { supabase } from '@/integrations/supabase/client';
+import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
 
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
@@ -51,6 +52,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
   const { comments, addComment, deleteComment, getCommentsForItem } = useDataRoomComments(dealId);
   const { entries: auditEntries, loading: auditLoading, logAction } = useDataRoomAudit(dealId);
   const { links: shareLinks, createLink, deactivateLink, deleteLink } = useDataRoomShareLinks(dealId);
+  const { uploadFinancial } = useDealSpaceFinancials(dealId);
 
   // UI state
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -194,9 +196,22 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
     if (job) await completeJob(job.id, successCount, failCount);
     await refetchAttachments();
 
-    // Audit log
+    // Audit log + auto-link Excel files to financials section
     for (const att of uploadedAttachments) {
       logAction('upload', 'file', att.id, att.name, { size: att.size_bytes });
+      // Feature #7: Auto-link Excel files to deal space financials
+      const ext = att.name.split('.').pop()?.toLowerCase();
+      if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+        try {
+          // Find the original file from the files array to pass to uploadFinancial
+          const originalFile = files.find(f => f.name === att.name);
+          if (originalFile) {
+            await uploadFinancial(originalFile);
+          }
+        } catch (err) {
+          console.error('Failed to auto-link Excel to financials:', err);
+        }
+      }
     }
 
     if (targetItemId && uploadedAttachments.length > 0) {
@@ -473,8 +488,35 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
         </div>
       )}
 
-      {/* Three-pane resizable layout */}
-      <div className="grid grid-cols-[30%_30%_1fr] gap-2 h-[624px]">
+      {/* Two-column layout: Checklist with nested files (primary) + Detail Panel */}
+      <div className="grid grid-cols-[1fr_340px] gap-3 h-[640px]">
+        {/* Primary: Checklist with nested files */}
+        <div className="min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+          <ChecklistTreePane
+            categories={categories}
+            grouped={grouped}
+            progressData={progressData}
+            statusMap={statusMap}
+            selectedItemId={selectedItemId}
+            setSelectedItemId={setSelectedItemId}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            getFilesForItem={getFilesForItem}
+            getCategoryByName={getCategoryByName}
+            unmappedFiles={unmappedFiles}
+            handleUploadFiles={handleUploadFiles}
+            attachments={attachments}
+            getItemsForFile={getItemsForFile}
+            setPreviewFile={handleSetPreviewFile}
+            handleDownloadFile={handleDownloadFile}
+            onOpenMappingDialog={openMappingDialog}
+            allItems={allItems}
+          />
+        </div>
+
+        {/* Right: Context/Detail panel */}
         <div className="min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
           <ContextPane
             selectedItem={selectedItem}
@@ -500,46 +542,6 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
             onDeleteComment={deleteComment}
             getCommentsForItem={getCommentsForItem}
             currentUserId={user?.id}
-          />
-        </div>
-
-        <div className="min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
-          <ChecklistTreePane
-            categories={categories}
-            grouped={grouped}
-            progressData={progressData}
-            statusMap={statusMap}
-            selectedItemId={selectedItemId}
-            setSelectedItemId={setSelectedItemId}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            getFilesForItem={getFilesForItem}
-            getCategoryByName={getCategoryByName}
-            unmappedFiles={unmappedFiles}
-            handleUploadFiles={handleUploadFiles}
-          />
-        </div>
-
-        <div className="min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
-          <FileListPane
-            selectedItem={selectedItem}
-            selectedItemFiles={selectedItemFiles}
-            attachments={attachments}
-            selectedFiles={selectedFiles}
-            setSelectedFiles={setSelectedFiles}
-            getItemsForFile={getItemsForFile}
-            getFilesForItem={getFilesForItem}
-            handleDownloadFile={handleDownloadFile}
-            handleUploadFiles={handleUploadFiles}
-            deleteAttachment={deleteAttachment}
-            setSelectedItemId={setSelectedItemId}
-            setPreviewFile={handleSetPreviewFile}
-            onOpenMappingDialog={openMappingDialog}
-            fileInputRef={fileInputRef}
-            allItems={allItems}
-            onRenameFile={renameAttachment}
           />
         </div>
       </div>

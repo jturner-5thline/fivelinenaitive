@@ -15,6 +15,7 @@ import { DefaultMilestonesSettings } from '@/components/settings/DefaultMileston
 import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
 import { DataRoomChecklistSettings } from '@/components/settings/DataRoomChecklistSettings';
+import { DefaultChecklistSettings } from '@/components/settings/DefaultChecklistSettings';
 import { LenderMatchingSettings } from '@/components/settings/LenderMatchingSettings';
 import { ScheduledReportsSettings } from '@/components/settings/ScheduledReportsSettings';
 import { SLARulesSettings } from '@/components/settings/SLARulesSettings';
@@ -269,6 +270,7 @@ export default function Settings() {
                   {isVisible('default-milestones') && <DefaultMilestonesSettings isAdmin={isAdmin} />}
                   {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
                   {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
+                  {isVisible('data-room-checklist') && <DefaultChecklistSettings isAdmin={isAdmin} />}
                   {isVisible('gamma-templates') && <GammaTemplatesSettings isAdmin={isAdmin} />}
                 </TabsContent>
 

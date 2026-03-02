@@ -1,4 +1,4 @@
-import { Check, ChevronDown, AlertCircle, Link2, Filter } from 'lucide-react';
+import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,10 +11,12 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getCategoryColorClasses } from '@/hooks/useChecklistCategories';
 import { getCategoryIcon } from '@/components/settings/CategoryIconPicker';
 import { cn } from '@/lib/utils';
 import { FileIcon } from './FileIcon';
+import { formatBytes, formatRelativeTime } from './helpers';
 import type { UnifiedChecklistItem, StatusFilter, ProgressData, DataRoomContextValue } from './types';
 import type { DealAttachment } from '@/hooks/useDealAttachments';
 
@@ -41,12 +43,20 @@ interface ChecklistTreePaneProps {
   getCategoryByName: DataRoomContextValue['getCategoryByName'];
   unmappedFiles: DealAttachment[];
   handleUploadFiles: DataRoomContextValue['handleUploadFiles'];
+  // New props for nested file display
+  attachments?: DealAttachment[];
+  getItemsForFile?: DataRoomContextValue['getItemsForFile'];
+  setPreviewFile?: (f: DealAttachment | null) => void;
+  handleDownloadFile?: DataRoomContextValue['handleDownloadFile'];
+  onOpenMappingDialog?: (files: DealAttachment[]) => void;
+  allItems?: UnifiedChecklistItem[];
 }
 
 export function ChecklistTreePane({
   categories, grouped, progressData, statusMap, selectedItemId, setSelectedItemId,
   searchQuery, setSearchQuery, statusFilter, setStatusFilter,
   getFilesForItem, getCategoryByName, unmappedFiles, handleUploadFiles,
+  attachments = [], getItemsForFile, setPreviewFile, handleDownloadFile, onOpenMappingDialog, allItems,
 }: ChecklistTreePaneProps) {
 
   const filterItem = (item: UnifiedChecklistItem): boolean => {
@@ -60,6 +70,14 @@ export function ChecklistTreePane({
       case 'has_files': return fileCount > 0;
       default: return true;
     }
+  };
+
+  // Get actual file objects for a checklist item
+  const getFilesForItemResolved = (itemId: string): DealAttachment[] => {
+    const mappings = getFilesForItem(itemId);
+    return mappings
+      .map(m => attachments.find(a => a.id === m.file_id))
+      .filter(Boolean) as DealAttachment[];
   };
 
   return (
@@ -134,35 +152,63 @@ export function ChecklistTreePane({
                       const fileCount = getFilesForItem(item.id).length;
                       const isComplete = statusMap.get(item.id)?.isComplete || fileCount > 0;
                       const isSelected = selectedItemId === item.id;
+                      const nestedFiles = getFilesForItemResolved(item.id);
 
                       return (
-                        <button
-                          key={item.id}
-                          onClick={() => setSelectedItemId(item.id)}
-                          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-                          onDrop={(e) => {
-                            e.preventDefault(); e.stopPropagation();
-                            const files = Array.from(e.dataTransfer.files);
-                            if (files.length > 0) handleUploadFiles(files, item.id);
-                          }}
-                          className={cn(
-                            "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left transition-colors text-xs",
-                            isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted/50",
+                        <div key={item.id}>
+                          <button
+                            onClick={() => setSelectedItemId(item.id)}
+                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                            onDrop={(e) => {
+                              e.preventDefault(); e.stopPropagation();
+                              const files = Array.from(e.dataTransfer.files);
+                              if (files.length > 0) handleUploadFiles(files, item.id);
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left transition-colors text-xs",
+                              isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted/50",
+                            )}
+                          >
+                            {isComplete ? (
+                              <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                            ) : (
+                              <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40 shrink-0" />
+                            )}
+                            <span className={cn("flex-1 truncate", isComplete && "text-muted-foreground")}>{item.name}</span>
+                            {item.is_required && (
+                              <span className="text-[9px] text-amber-600 font-medium shrink-0">REQ</span>
+                            )}
+                            {fileCount > 0 && (
+                              <Badge variant="secondary" className="h-4 px-1 text-[10px]">{fileCount}</Badge>
+                            )}
+                          </button>
+                          {/* Nested files under checklist item */}
+                          {nestedFiles.length > 0 && (
+                            <div className="ml-7 mb-1 space-y-px">
+                              {nestedFiles.map(file => (
+                                <div
+                                  key={file.id}
+                                  className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-muted-foreground hover:bg-muted/30 cursor-pointer group/file"
+                                  onClick={() => setPreviewFile?.(file)}
+                                >
+                                  <FileIcon name={file.name} className="h-3 w-3 shrink-0" />
+                                  <span className="truncate flex-1">{file.name}</span>
+                                  <span className="text-[9px] shrink-0">{formatBytes(file.size_bytes)}</span>
+                                  {handleDownloadFile && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-4 w-4 opacity-0 group-hover/file:opacity-100 shrink-0"
+                                      onClick={(e) => { e.stopPropagation(); handleDownloadFile(file); }}
+                                    >
+                                      <Download className="h-2.5 w-2.5" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           )}
-                        >
-                          {isComplete ? (
-                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                          ) : (
-                            <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40 shrink-0" />
-                          )}
-                          <span className={cn("flex-1 truncate", isComplete && "text-muted-foreground")}>{item.name}</span>
-                          {item.is_required && (
-                            <span className="text-[9px] text-amber-600 font-medium shrink-0">REQ</span>
-                          )}
-                          {fileCount > 0 && (
-                            <Badge variant="secondary" className="h-4 px-1 text-[10px]">{fileCount}</Badge>
-                          )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -176,13 +222,29 @@ export function ChecklistTreePane({
             <>
               <Separator className="my-2" />
               <div className="px-2 py-1.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="text-xs font-semibold text-amber-600">Unmapped Files ({unmappedFiles.length})</span>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                    <span className="text-xs font-semibold text-amber-600">Unmapped Files ({unmappedFiles.length})</span>
+                  </div>
+                  {onOpenMappingDialog && unmappedFiles.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-5 px-2 text-[10px] gap-1"
+                      onClick={() => onOpenMappingDialog(unmappedFiles)}
+                    >
+                      <Link2 className="h-2.5 w-2.5" /> Map All
+                    </Button>
+                  )}
                 </div>
                 <div className="space-y-px ml-1">
                   {unmappedFiles.slice(0, 10).map(file => (
-                    <div key={file.id} className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
+                    <div
+                      key={file.id}
+                      className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-pointer"
+                      onClick={() => setPreviewFile?.(file)}
+                    >
                       <FileIcon name={file.name} className="h-3.5 w-3.5" />
                       <span className="truncate">{file.name}</span>
                     </div>
