@@ -138,12 +138,16 @@ export const usePageAccessFlags = () => {
   const { data: flags, isLoading } = useFeatureFlags();
   
   const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
+  const isDemoAccount = user?.email === 'demo@5thline.co';
   
   const pageFlags = flags?.filter(f => f.name.startsWith('page_')) ?? [];
   
   const isJames = user?.email === 'jturner@5thline.co';
   
   const hasPageAccess = (pageName: string): boolean => {
+    // Demo account cannot access finance page
+    if (isDemoAccount && pageName === 'finance') return false;
+    
     const flag = pageFlags.find(f => f.name === `page_${pageName}`);
     
     if (!flag) return true; // If no flag exists, allow access
