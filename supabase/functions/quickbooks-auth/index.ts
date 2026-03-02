@@ -191,14 +191,14 @@ serve(async (req) => {
       }
     }
 
-    // ── STATUS: Return ALL connected companies ──
+    // ── STATUS: Return ALL connected companies (with auto-refresh) ──
     if (action === "status") {
       const userId = await getUserId();
       if (!userId) return jsonResponse({ connected: false, connections: [] });
 
       const { data: allTokens } = await supabase
         .from("quickbooks_tokens")
-        .select("realm_id, company_name, expires_at, updated_at")
+        .select("id, realm_id, company_name, access_token, refresh_token, expires_at, updated_at")
         .eq("user_id", userId)
         .order("created_at");
 
@@ -206,20 +206,64 @@ serve(async (req) => {
         return jsonResponse({ connected: false, connections: [] });
       }
 
-      const connections = allTokens.map((t) => ({
-        realmId: t.realm_id,
-        companyName: t.company_name,
-        isExpired: new Date(t.expires_at) < new Date(),
-        lastSync: t.updated_at,
-      }));
+      // Auto-refresh any expired tokens silently
+      const connections = [];
+      for (const t of allTokens) {
+        let isExpired = new Date(t.expires_at) < new Date();
+
+        if (isExpired && t.refresh_token) {
+          try {
+            console.log(`[QuickBooks Auth] Auto-refreshing expired token for realm ${t.realm_id}`);
+            const refreshResponse = await fetch(QB_TOKEN_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": `Basic ${btoa(`${QUICKBOOKS_CLIENT_ID}:${QUICKBOOKS_CLIENT_SECRET}`)}`,
+              },
+              body: new URLSearchParams({
+                grant_type: "refresh_token",
+                refresh_token: t.refresh_token,
+              }),
+            });
+
+            if (refreshResponse.ok) {
+              const newTokens = await refreshResponse.json();
+              const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
+
+              await supabase
+                .from("quickbooks_tokens")
+                .update({
+                  access_token: newTokens.access_token,
+                  refresh_token: newTokens.refresh_token || t.refresh_token,
+                  expires_at: newExpiresAt,
+                })
+                .eq("id", t.id);
+
+              isExpired = false;
+              console.log(`[QuickBooks Auth] Token refreshed successfully for realm ${t.realm_id}`);
+            } else {
+              console.warn(`[QuickBooks Auth] Token refresh failed for realm ${t.realm_id}: ${refreshResponse.status}`);
+            }
+          } catch (refreshError) {
+            console.warn(`[QuickBooks Auth] Token refresh error for realm ${t.realm_id}:`, refreshError);
+          }
+        }
+
+        connections.push({
+          realmId: t.realm_id,
+          companyName: t.company_name,
+          isExpired,
+          lastSync: t.updated_at,
+        });
+      }
 
       return jsonResponse({
         connected: true,
         connections,
         // Backwards compat
-        realmId: allTokens[0].realm_id,
-        isExpired: new Date(allTokens[0].expires_at) < new Date(),
-        lastSync: allTokens[0].updated_at,
+        realmId: connections[0].realmId,
+        isExpired: connections[0].isExpired,
+        lastSync: connections[0].lastSync,
       });
     }
 
