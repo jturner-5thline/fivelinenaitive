@@ -19,6 +19,7 @@ interface EventsRequest {
   time_max?: string;
   max_results?: number;
   page_token?: string;
+  timezone?: string;
   event_data?: {
     summary: string;
     description?: string;
@@ -319,6 +320,7 @@ serve(async (req: Request): Promise<Response> => {
 
         const calendarId = body.calendar_id || "primary";
         const ed = body.event_data;
+        const userTz = body.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
         const nylasEvent: any = {
           title: ed.summary,
           description: ed.description || undefined,
@@ -331,6 +333,8 @@ serve(async (req: Request): Promise<Response> => {
           nylasEvent.when = {
             start_time: Math.floor(new Date(ed.start).getTime() / 1000),
             end_time: Math.floor(new Date(ed.end).getTime() / 1000),
+            start_timezone: userTz,
+            end_timezone: userTz,
           };
         }
 
@@ -367,6 +371,7 @@ serve(async (req: Request): Promise<Response> => {
 
         const calendarId = body.calendar_id || "primary";
         const ed = body.event_data;
+        const userTz = body.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
         const nylasUpdate: any = {
           title: ed.summary,
           description: ed.description || "",
@@ -379,6 +384,8 @@ serve(async (req: Request): Promise<Response> => {
           nylasUpdate.when = {
             start_time: Math.floor(new Date(ed.start).getTime() / 1000),
             end_time: Math.floor(new Date(ed.end).getTime() / 1000),
+            start_timezone: userTz,
+            end_timezone: userTz,
           };
         }
 

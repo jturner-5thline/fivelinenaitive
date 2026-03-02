@@ -238,10 +238,12 @@ export function useGoogleCalendar() {
   }, calendarId?: string) => {
     if (!user) return null;
     try {
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: {
           action: 'create',
           calendar_id: calendarId,
+          timezone: userTimezone,
           event_data: {
             summary: eventData.summary,
             description: eventData.description,
@@ -272,11 +274,13 @@ export function useGoogleCalendar() {
   }, calendarId?: string) => {
     if (!user) return null;
     try {
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: {
           action: 'update',
           event_id: eventId,
           calendar_id: calendarId,
+          timezone: userTimezone,
           event_data: {
             summary: eventData.summary,
             description: eventData.description,
