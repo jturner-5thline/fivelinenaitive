@@ -96,7 +96,7 @@ export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete 
         icon: AlertTriangle,
         message: `${outstandingItemsCount} outstanding item${outstandingItemsCount > 1 ? 's' : ''} pending`,
         count: outstandingItemsCount,
-        tab: 'deal-management',
+        tab: 'deal-info',
       });
     }
 
