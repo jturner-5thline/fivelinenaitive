@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,50 +29,60 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { CopyProtection } from "@/components/CopyProtection";
 import { WelcomeScreenWrapper } from "@/components/WelcomeScreenWrapper";
 import { AppLayout } from "@/components/AppLayout";
-import Waitlist from "./pages/Waitlist";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
-import Deals from "./pages/Deals";
-import Dashboard from "./pages/Dashboard";
-import DealDetail from "./pages/DealDetail";
-import Settings from "./pages/Settings";
-import Account from "./pages/Account";
-import Lenders from "./pages/Lenders";
-import LenderDatabaseConfig from "./pages/LenderDatabaseConfig";
-import LenderSyncHistory from "./pages/LenderSyncHistory";
-import Preferences from "./pages/Preferences";
-import Analytics from "./pages/Analytics";
-import Reports from "./pages/Reports";
-import Metrics from "./pages/Metrics";
-import Insights from "./pages/Insights";
-import SalesBD from "./pages/SalesBD";
-import HR from "./pages/HR";
-import Operations from "./pages/Operations";
-import Database from "./pages/Database";
-import Workflows from "./pages/Workflows";
-import Tasks from "./pages/Tasks";
-import TaskDetail from "./pages/TaskDetail";
-import Company from "./pages/Company";
-import AcceptInvite from "./pages/AcceptInvite";
-import Notifications from "./pages/Notifications";
-import Help from "./pages/Help";
+import { Loader2 } from "lucide-react";
 
-import MigrationTool from "./pages/MigrationTool";
-import Admin from "./pages/Admin";
-import Integrations from "./pages/Integrations";
-import NewsFeed from "./pages/NewsFeed";
-import Research from "./pages/Research";
-import Agents from "./pages/Agents";
-import Finance from "./pages/Finance";
-import NotFound from "./pages/NotFound";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import TermsOfService from "./pages/TermsOfService";
-import PendingApproval from "./pages/PendingApproval";
-import Homepage from "./pages/Homepage";
-import Promo from "./pages/Promo";
+// Lazy-load all pages to reduce initial bundle / dev server pressure
+const Waitlist = lazy(() => import("./pages/Waitlist"));
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Deals = lazy(() => import("./pages/Deals"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DealDetail = lazy(() => import("./pages/DealDetail"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Account = lazy(() => import("./pages/Account"));
+const Lenders = lazy(() => import("./pages/Lenders"));
+const LenderDatabaseConfig = lazy(() => import("./pages/LenderDatabaseConfig"));
+const LenderSyncHistory = lazy(() => import("./pages/LenderSyncHistory"));
+const Preferences = lazy(() => import("./pages/Preferences"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Metrics = lazy(() => import("./pages/Metrics"));
+const Insights = lazy(() => import("./pages/Insights"));
+const SalesBD = lazy(() => import("./pages/SalesBD"));
+const HR = lazy(() => import("./pages/HR"));
+const Operations = lazy(() => import("./pages/Operations"));
+const Database = lazy(() => import("./pages/Database"));
+const Workflows = lazy(() => import("./pages/Workflows"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const TaskDetail = lazy(() => import("./pages/TaskDetail"));
+const Company = lazy(() => import("./pages/Company"));
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Help = lazy(() => import("./pages/Help"));
+const MigrationTool = lazy(() => import("./pages/MigrationTool"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Integrations = lazy(() => import("./pages/Integrations"));
+const NewsFeed = lazy(() => import("./pages/NewsFeed"));
+const Research = lazy(() => import("./pages/Research"));
+const Agents = lazy(() => import("./pages/Agents"));
+const Finance = lazy(() => import("./pages/Finance"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const PendingApproval = lazy(() => import("./pages/PendingApproval"));
+const Homepage = lazy(() => import("./pages/Homepage"));
+const Promo = lazy(() => import("./pages/Promo"));
 
 const queryClient = new QueryClient();
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+    </div>
+  );
+}
 
 const App = () => (
   <HelmetProvider>
@@ -102,6 +113,7 @@ const App = () => (
                       <BrowserRouter>
                         <CookieConsent />
                         <FloatingCopilotDrawer />
+                        <Suspense fallback={<PageLoader />}>
                         <Routes>
                         <Route path="/" element={<Homepage />} />
                           <Route path="/waitlist" element={<Waitlist />} />
@@ -210,6 +222,7 @@ const App = () => (
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
                         </Routes>
+                        </Suspense>
                       </BrowserRouter>
                       </CopyProtection>
                     </TooltipProvider>
