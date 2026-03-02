@@ -1735,35 +1735,64 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                 <ScrollArea className="flex-1" ref={timeGridScrollRef}>
                   <div className="flex min-h-0">
                     <div className="shrink-0 w-14 border-r">
-                      {/* Timezone label */}
-                      <Popover open={showTzDropdown} onOpenChange={setShowTzDropdown}>
-                        <PopoverTrigger asChild>
-                          <button className="w-full text-center py-1 text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium border-b flex items-center justify-center gap-0.5">
-                            <Globe className="h-2.5 w-2.5" />
-                            {displayTimezone}
-                            <ChevronDown className="h-2 w-2" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-36 p-1" align="start">
-                          {TIMEZONE_OPTIONS.map(tz => (
-                            <button
-                              key={tz.value}
-                              onClick={() => { setDisplayTimezone(tz.label); setShowTzDropdown(false); }}
-                              className={cn(
-                                'w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted/50 flex items-center justify-between',
-                                displayTimezone === tz.label && 'text-primary font-medium'
-                              )}
-                            >
-                              {tz.label}
-                              {displayTimezone === tz.label && <Check className="h-3 w-3" />}
+                      {/* Header spacer to match day column headers */}
+                      {view === 'week' ? (
+                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b py-2">
+                          <Popover open={showTzDropdown} onOpenChange={setShowTzDropdown}>
+                            <PopoverTrigger asChild>
+                              <button className="w-full text-center text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium flex items-center justify-center gap-0.5 py-1">
+                                <Globe className="h-2.5 w-2.5" />
+                                {displayTimezone}
+                                <ChevronDown className="h-2 w-2" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-36 p-1" align="start">
+                              {TIMEZONE_OPTIONS.map(tz => (
+                                <button
+                                  key={tz.value}
+                                  onClick={() => { setDisplayTimezone(tz.label); setShowTzDropdown(false); }}
+                                  className={cn(
+                                    'w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted/50 flex items-center justify-between',
+                                    displayTimezone === tz.label && 'text-primary font-medium'
+                                  )}
+                                >
+                                  {tz.label}
+                                  {displayTimezone === tz.label && <Check className="h-3 w-3" />}
+                                </button>
+                              ))}
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      ) : (
+                        <Popover open={showTzDropdown} onOpenChange={setShowTzDropdown}>
+                          <PopoverTrigger asChild>
+                            <button className="w-full text-center py-1 text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium border-b flex items-center justify-center gap-0.5">
+                              <Globe className="h-2.5 w-2.5" />
+                              {displayTimezone}
+                              <ChevronDown className="h-2 w-2" />
                             </button>
-                          ))}
-                        </PopoverContent>
-                      </Popover>
-                      <div style={{ height: HOURS.length * HOUR_HEIGHT }}>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-36 p-1" align="start">
+                            {TIMEZONE_OPTIONS.map(tz => (
+                              <button
+                                key={tz.value}
+                                onClick={() => { setDisplayTimezone(tz.label); setShowTzDropdown(false); }}
+                                className={cn(
+                                  'w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted/50 flex items-center justify-between',
+                                  displayTimezone === tz.label && 'text-primary font-medium'
+                                )}
+                              >
+                                {tz.label}
+                                {displayTimezone === tz.label && <Check className="h-3 w-3" />}
+                              </button>
+                            ))}
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                      <div className="relative" style={{ height: HOURS.length * HOUR_HEIGHT }}>
                         {HOURS.map(h => (
-                          <div key={h} className="flex items-start justify-end pr-2 text-[10px] text-muted-foreground font-medium" style={{ height: HOUR_HEIGHT }}>
-                            {h === 0 ? '' : format(new Date(2000, 0, 1, h), 'h a')}
+                          <div key={h} className="absolute left-0 right-0 flex items-center justify-end pr-2 text-[10px] text-muted-foreground font-medium" style={{ top: h * HOUR_HEIGHT, height: HOUR_HEIGHT }}>
+                            <span className="-mt-[0.6em]">{h === 0 ? '' : format(new Date(2000, 0, 1, h), 'h a')}</span>
                           </div>
                         ))}
                       </div>
