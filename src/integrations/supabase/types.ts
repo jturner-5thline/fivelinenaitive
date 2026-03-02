@@ -2763,6 +2763,7 @@ export type Database = {
           company_name: string
           company_url: string | null
           created_at: string
+          customer_base: string | null
           data_room_url: string | null
           deal_id: string
           deal_type: string | null
@@ -2804,6 +2805,7 @@ export type Database = {
           company_name?: string
           company_url?: string | null
           created_at?: string
+          customer_base?: string | null
           data_room_url?: string | null
           deal_id: string
           deal_type?: string | null
@@ -2845,6 +2847,7 @@ export type Database = {
           company_name?: string
           company_url?: string | null
           created_at?: string
+          customer_base?: string | null
           data_room_url?: string | null
           deal_id?: string
           deal_type?: string | null

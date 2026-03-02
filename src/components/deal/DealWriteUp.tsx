@@ -91,6 +91,7 @@ export interface DealWriteUpData {
   industries: string[];
   location: string;
   yearFounded: string;
+  customerBase: string[];
   headcount: string;
   dealTypes: string[];
   billingModels: string[];
@@ -134,6 +135,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   industries: [],
   location: '',
   yearFounded: '',
+  customerBase: [],
   headcount: '',
   dealTypes: deal?.dealTypes || [],
   billingModels: [],
@@ -1276,6 +1278,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <DataPreviewRow label="Industry" value={data.industries.join(', ') || '—'} />
                   <DataPreviewRow label="Location" value={data.location} />
                   <DataPreviewRow label="Year Founded" value={data.yearFounded || '—'} />
+                  <DataPreviewRow label="Customer Base" value={data.customerBase?.join(', ') || '—'} />
                   <DataPreviewRow label="Headcount" value={data.headcount || '—'} />
                 </div>
               </div>

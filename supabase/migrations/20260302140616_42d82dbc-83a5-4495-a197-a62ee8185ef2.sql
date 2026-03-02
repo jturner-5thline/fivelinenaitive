@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_writeups ADD COLUMN customer_base text NULL;
