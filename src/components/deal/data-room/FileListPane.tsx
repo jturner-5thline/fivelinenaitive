@@ -242,19 +242,38 @@ export function FileListPane({
                       {formatBytes(att.size_bytes)} · {formatRelativeTime(att.created_at)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {itemMappings.length > 0 && (
+                  <div className="flex items-center gap-0.5 shrink-0 flex-wrap justify-end max-w-[40%]" onClick={(e) => e.stopPropagation()}>
+                    {itemMappings.length > 0 ? (
                       <Tooltip>
-                        <TooltipTrigger>
-                          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] gap-0.5">
-                            <Link2 className="h-2.5 w-2.5" />
-                            {itemMappings.length}
-                          </Badge>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center gap-0.5 flex-wrap justify-end">
+                            {itemMappings.slice(0, 2).map(m => {
+                              const matchedItem = allItems.find(i => i.id === m.checklist_item_id);
+                              return (
+                                <Badge key={m.id} variant="secondary" className="h-5 px-1.5 text-[10px] max-w-[120px] truncate">
+                                  {matchedItem?.name || 'Unknown'}
+                                </Badge>
+                              );
+                            })}
+                            {itemMappings.length > 2 && (
+                              <Badge variant="outline" className="h-5 px-1 text-[10px]">
+                                +{itemMappings.length - 2}
+                              </Badge>
+                            )}
+                          </div>
                         </TooltipTrigger>
-                        <TooltipContent className="text-xs">
-                          Mapped to {itemMappings.length} checklist item(s)
+                        <TooltipContent className="text-xs max-w-[250px]">
+                          <p className="font-medium mb-1">Mapped to:</p>
+                          {itemMappings.map(m => {
+                            const matchedItem = allItems.find(i => i.id === m.checklist_item_id);
+                            return <p key={m.id}>• {matchedItem?.name || 'Unknown'}</p>;
+                          })}
                         </TooltipContent>
                       </Tooltip>
+                    ) : (
+                      <Badge variant="outline" className="h-5 px-1.5 text-[10px] text-amber-600 border-amber-300">
+                        Unmapped
+                      </Badge>
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
