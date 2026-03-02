@@ -1,16 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
 
 export const HomepageHeader = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
       <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Logo + Nav links */}
+        {/* Nav links */}
         <div className="flex items-center gap-6">
-          <Link to="/">
-            <img src={naitiveLogoDark} alt="naitive" className="h-7" />
-          </Link>
           <nav className="flex items-center gap-6">
             <a href="#product" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
               Product
