@@ -185,16 +185,28 @@ export default function Tasks() {
       }
     });
 
+  const JUNK_NAMES = ['test', 'asdf', 'aaa', 'abc', 'xxx', 'zzz', 'asd', 'qwe', 'foo', 'bar'];
+  const [taskNameWarning, setTaskNameWarning] = useState('');
+  const [taskNameConfirmed, setTaskNameConfirmed] = useState(false);
+
   const handleCreateTask = () => {
-    if (!newTaskTitle.trim()) return;
-    createTask.mutate({ title: newTaskTitle.trim() });
+    const trimmed = newTaskTitle.trim();
+    if (!trimmed) return;
+    if (!taskNameConfirmed && (trimmed.length < 3 || JUNK_NAMES.includes(trimmed.toLowerCase()))) {
+      setTaskNameWarning('Please enter a descriptive task name (at least 3 characters).');
+      setTaskNameConfirmed(true);
+      return;
+    }
+    createTask.mutate({ title: trimmed });
     setNewTaskTitle('');
+    setTaskNameWarning('');
+    setTaskNameConfirmed(false);
     setTimeout(() => newTaskRef.current?.focus(), 50);
   };
 
   const handleNewTaskKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter') { e.preventDefault(); handleCreateTask(); }
-    if (e.key === 'Escape') { setIsCreating(false); setNewTaskTitle(''); }
+    if (e.key === 'Escape') { setIsCreating(false); setNewTaskTitle(''); setTaskNameWarning(''); setTaskNameConfirmed(false); }
   };
 
   const handleToggleSelect = useCallback((id: string) => {
@@ -274,7 +286,11 @@ export default function Tasks() {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
       if (selectedTaskId) return; // Don't interfere with detail drawer
 
-      if (e.key === 'ArrowDown' || e.key === 'j') {
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        setIsCreating(true);
+        setTimeout(() => newTaskRef.current?.focus(), 50);
+      } else if (e.key === 'ArrowDown' || e.key === 'j') {
         e.preventDefault();
         setFocusedTaskIndex(prev => Math.min(prev + 1, filtered.length - 1));
       } else if (e.key === 'ArrowUp' || e.key === 'k') {
@@ -664,10 +680,11 @@ export default function Tasks() {
             <Button
               size="sm"
               className="h-8 text-xs gap-1.5"
-              onClick={() => { setIsCreating(true); setTimeout(() => newTaskRef.current?.focus(), 50); }}
+              onClick={() => { setIsCreating(true); setTaskNameWarning(''); setTaskNameConfirmed(false); setTimeout(() => newTaskRef.current?.focus(), 50); }}
             >
               <Plus className="h-3.5 w-3.5" />
               Add Task
+              <span className="text-muted-foreground/60 text-[10px] ml-0.5">(N)</span>
             </Button>
           </HintTooltip>
         </div>
@@ -690,10 +707,11 @@ export default function Tasks() {
                 isCreating={isCreating}
                 newTaskTitle={newTaskTitle}
                 newTaskRef={newTaskRef}
-                onNewTaskChange={setNewTaskTitle}
+                onNewTaskChange={(v) => { setNewTaskTitle(v); setTaskNameWarning(''); setTaskNameConfirmed(false); }}
                 onNewTaskKeyDown={handleNewTaskKeyDown}
                 onNewTaskCreate={handleCreateTask}
-                onCancelCreate={() => { setIsCreating(false); setNewTaskTitle(''); }}
+                onCancelCreate={() => { setIsCreating(false); setNewTaskTitle(''); setTaskNameWarning(''); setTaskNameConfirmed(false); }}
+                taskNameWarning={taskNameWarning}
                 onSelectTask={setSelectedTaskId}
                 onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
                 onDeleteTask={id => handleDeleteWithUndo(id)}

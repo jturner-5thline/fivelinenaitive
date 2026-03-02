@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { type Task } from '@/hooks/useTasks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -59,9 +60,27 @@ export function TaskReportingView({ tasks }: TaskReportingViewProps) {
       ).length,
     }));
 
+    // Deal breakdown
+    const dealMap = new Map<string | null, { dealName: string; dealId: string | null; total: number; open: number; overdue: number; completed: number }>();
+    tasks.forEach(t => {
+      const dId = t.deal_id || null;
+      const dName = t.deal?.company || '— No Deal';
+      if (!dealMap.has(dId)) dealMap.set(dId, { dealName: dName, dealId: dId, total: 0, open: 0, overdue: 0, completed: 0 });
+      const row = dealMap.get(dId)!;
+      row.total++;
+      if (t.status === 'complete') row.completed++;
+      else {
+        row.open++;
+        if (t.due_date && isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00'))) {
+          row.overdue++;
+        }
+      }
+    });
+    const dealBreakdown = Array.from(dealMap.values()).sort((a, b) => b.open - a.open);
+
     return {
       total, completed, inProgress, blocked, notStarted,
-      overdue, dueToday, dueSoon, completionRate, byPriority, completionTrend,
+      overdue, dueToday, dueSoon, completionRate, byPriority, completionTrend, dealBreakdown,
     };
   }, [tasks]);
 
@@ -236,6 +255,56 @@ export function TaskReportingView({ tasks }: TaskReportingViewProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Tasks by Deal */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-1.5">
+            Tasks by Deal
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left px-3 py-2 font-medium">Deal Name</th>
+                  <th className="text-center px-3 py-2 font-medium">Total</th>
+                  <th className="text-center px-3 py-2 font-medium">Open</th>
+                  <th className="text-center px-3 py-2 font-medium">Overdue</th>
+                  <th className="text-center px-3 py-2 font-medium">Completed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.dealBreakdown.map(row => (
+                  <tr key={row.dealId || 'no-deal'} className="border-b last:border-b-0 hover:bg-muted/20">
+                    <td className="px-3 py-2">
+                      {row.dealId ? (
+                        <Link to={`/deal/${row.dealId}`} className="text-primary hover:underline">
+                          {row.dealName}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">— No Deal</span>
+                      )}
+                    </td>
+                    <td className="text-center px-3 py-2">{row.total}</td>
+                    <td className="text-center px-3 py-2">{row.open}</td>
+                    <td className="text-center px-3 py-2">
+                      {row.overdue > 0 ? (
+                        <span className="text-destructive font-medium">{row.overdue}</span>
+                      ) : '0'}
+                    </td>
+                    <td className="text-center px-3 py-2">{row.completed}</td>
+                  </tr>
+                ))}
+                {stats.dealBreakdown.length === 0 && (
+                  <tr><td colSpan={5} className="text-center text-muted-foreground py-4">No tasks with deals</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

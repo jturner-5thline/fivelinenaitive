@@ -91,6 +91,9 @@ function calculateNextDueDate(currentDueDate: string | null, rule: string): stri
     case 'monthly':
       date.setMonth(date.getMonth() + 1);
       break;
+    case 'quarterly':
+      date.setMonth(date.getMonth() + 3);
+      break;
     default:
       return null;
   }
