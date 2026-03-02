@@ -515,7 +515,14 @@ export default function Tasks() {
 
         {/* Main content */}
         <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-auto">
+          <div
+            className="overflow-auto"
+            style={{
+              flex: selectedTask ? '1 1 0%' : '1 1 100%',
+              transition: 'flex 200ms ease',
+              minWidth: 0,
+            }}
+          >
             {(viewMode === 'list' || viewMode === 'focus') && (
               <TaskListView
                 tasks={filtered}
@@ -567,20 +574,12 @@ export default function Tasks() {
           </div>
 
           {selectedTask && (
-            <>
-              <div
-                className="fixed inset-0 z-30"
-                onClick={() => setSelectedTaskId(null)}
-              />
-              <div className="relative z-40">
-                <TaskDetailDrawer
-                  task={selectedTask}
-                  onClose={() => setSelectedTaskId(null)}
-                  onUpdate={(updates) => updateTask.mutate({ id: selectedTask.id, ...updates })}
-                  onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTaskId(null); }}
-                />
-              </div>
-            </>
+            <TaskDetailDrawer
+              task={selectedTask}
+              onClose={() => setSelectedTaskId(null)}
+              onUpdate={(updates) => updateTask.mutate({ id: selectedTask.id, ...updates })}
+              onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTaskId(null); }}
+            />
           )}
         </div>
 

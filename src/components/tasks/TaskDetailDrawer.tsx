@@ -11,7 +11,7 @@ import { useCreateMentions } from '@/hooks/useTaskMentions';
 import { MentionTextarea, MentionText } from '@/components/tasks/MentionTextarea';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -34,7 +34,7 @@ import {
   X, Calendar, Flag, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
   Tag, Link2, Timer, Paperclip, Download, FileText, Users,
-  Star, Repeat, Eye, EyeOff,
+  Star, Repeat, Eye, EyeOff, ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
@@ -52,6 +52,7 @@ interface TaskDetailDrawerProps {
   onClose: () => void;
   onUpdate: (updates: Partial<Task>) => void;
   onDelete: () => void;
+  fullPage?: boolean;
 }
 
 function fireCelebration() {
@@ -76,7 +77,8 @@ function formatMinutes(mins: number) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDetailDrawerProps) {
+export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage = false }: TaskDetailDrawerProps) {
+  const navigate = useNavigate();
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
   const [descValue, setDescValue] = useState(task.description || '');
@@ -166,7 +168,10 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
   const availableDeps = allTasks.filter(t => t.id !== task.id && !blockedBy.some(d => d.depends_on_task_id === t.id));
 
   return (
-    <div className="w-[420px] border-l bg-background flex flex-col h-full shrink-0">
+    <div className={cn(
+      "border-l bg-background flex flex-col h-full shrink-0",
+      fullPage ? "w-full border-l-0" : "w-[380px]"
+    )}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-2">
@@ -178,6 +183,9 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
           <span className="text-xs text-muted-foreground capitalize">{task.task_type}</span>
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/tasks/${task.id}`)} title="Open full page">
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -325,6 +333,18 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
               </Select>
             </div>
 
+            {/* Completed on */}
+            {isComplete && task.completed_at && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+                  <CheckSquare className="h-3 w-3" /> Completed
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Completed on {format(new Date(task.completed_at), 'MMM d, yyyy')}
+                </span>
+              </div>
+            )}
+
             {/* Labels */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
@@ -430,7 +450,13 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
               <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
                 <Timer className="h-3 w-3" /> Time
               </div>
-              <span className="text-xs">{totalMinutes > 0 ? formatMinutes(totalMinutes) : 'No time logged'}</span>
+              <div className="flex items-center gap-1.5">
+                {totalMinutes > 0 ? (
+                  <Badge variant="blue" className="text-[10px] h-5 px-1.5 font-normal">{formatMinutes(totalMinutes)} logged</Badge>
+                ) : (
+                  <span className="text-xs text-muted-foreground">No time logged</span>
+                )}
+              </div>
               <Button variant="ghost" size="sm" className="h-5 text-[10px] ml-auto" onClick={() => setShowTimeInput(!showTimeInput)}>
                 + Log
               </Button>
@@ -765,9 +791,10 @@ function DealLinkField({ dealId }: { dealId: string }) {
       </div>
       <Link
         to={`/deal/${deal.id}`}
-        className="text-xs text-primary hover:underline"
+        className="text-xs text-primary hover:underline flex items-center gap-1"
         onClick={e => e.stopPropagation()}
       >
+        <Link2 className="h-3 w-3" />
         {deal.company}
       </Link>
     </div>
