@@ -2,18 +2,24 @@ import { useMemo, useState } from 'react';
 import { type Task } from '@/hooks/useTasks';
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
-  format, isToday, isSameMonth, isSameDay, addMonths, subMonths,
+  format, isToday, isSameMonth, addMonths, subMonths,
 } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 
-const PRIORITY_DOT: Record<string, string> = {
-  urgent: 'bg-destructive',
-  high: 'bg-orange-500',
-  medium: 'bg-primary',
-  low: 'bg-muted-foreground/40',
+const PRIORITY_BORDER: Record<string, string> = {
+  urgent: 'border-l-[hsl(0,84%,60%)]',
+  high: 'border-l-[hsl(25,95%,53%)]',
+  medium: 'border-l-primary',
+  low: 'border-l-muted-foreground/40',
+};
+
+const PRIORITY_BG: Record<string, string> = {
+  urgent: 'bg-[hsl(0,84%,60%,0.08)]',
+  high: 'bg-[hsl(25,95%,53%,0.08)]',
+  medium: 'bg-primary/5',
+  low: 'bg-muted/30',
 };
 
 interface TaskCalendarViewProps {
@@ -26,12 +32,15 @@ interface TaskCalendarViewProps {
 export function TaskCalendarView({ tasks, onSelectTask, onUpdateTask, selectedTaskId }: TaskCalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   const tasksByDate = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -49,6 +58,14 @@ export function TaskCalendarView({ tasks, onSelectTask, onUpdateTask, selectedTa
     const dateStr = format(day, 'yyyy-MM-dd');
     onUpdateTask(draggedTaskId, { due_date: dateStr } as any);
     setDraggedTaskId(null);
+  };
+
+  const toggleExpand = (dateStr: string) => {
+    setExpandedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(dateStr)) next.delete(dateStr); else next.add(dateStr);
+      return next;
+    });
   };
 
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -89,6 +106,9 @@ export function TaskCalendarView({ tasks, onSelectTask, onUpdateTask, selectedTa
           const dayTasks = tasksByDate.get(dateStr) || [];
           const inMonth = isSameMonth(day, currentMonth);
           const today = isToday(day);
+          const isExpanded = expandedDays.has(dateStr);
+          const visibleCount = isExpanded ? dayTasks.length : Math.min(dayTasks.length, 2);
+          const hiddenCount = dayTasks.length - visibleCount;
 
           return (
             <div
@@ -111,26 +131,49 @@ export function TaskCalendarView({ tasks, onSelectTask, onUpdateTask, selectedTa
               </div>
 
               <div className="space-y-0.5 overflow-hidden">
-                {dayTasks.slice(0, 3).map(task => (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={() => setDraggedTaskId(task.id)}
-                    onDragEnd={() => setDraggedTaskId(null)}
-                    onClick={() => onSelectTask(task.id)}
-                    className={cn(
-                      'text-[10px] px-1.5 py-0.5 rounded cursor-pointer truncate flex items-center gap-1',
-                      'hover:bg-muted transition-colors',
-                      task.status === 'complete' && 'line-through text-muted-foreground',
-                      selectedTaskId === task.id && 'ring-1 ring-primary bg-primary/5',
-                    )}
+                {dayTasks.slice(0, visibleCount).map(task => {
+                  const isOverdue = task.due_date && task.due_date < todayStr && task.status !== 'complete';
+                  const daysOverdue = isOverdue ? Math.ceil((new Date(todayStr).getTime() - new Date(task.due_date + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+                  return (
+                    <div
+                      key={task.id}
+                      draggable
+                      onDragStart={() => setDraggedTaskId(task.id)}
+                      onDragEnd={() => setDraggedTaskId(null)}
+                      onClick={() => onSelectTask(task.id)}
+                      className={cn(
+                        'text-[10px] px-1.5 py-0.5 rounded cursor-pointer truncate border-l-2',
+                        PRIORITY_BORDER[task.priority] || PRIORITY_BORDER.medium,
+                        PRIORITY_BG[task.priority] || PRIORITY_BG.medium,
+                        'hover:brightness-95 transition-all',
+                        task.status === 'complete' && 'line-through text-muted-foreground opacity-60',
+                        selectedTaskId === task.id && 'ring-1 ring-primary',
+                        isOverdue && daysOverdue >= 4 && 'text-[hsl(0,74%,50%)] font-bold',
+                        isOverdue && daysOverdue >= 1 && daysOverdue < 4 && 'text-[hsl(0,84%,60%)] font-medium',
+                      )}
+                      title={task.title}
+                    >
+                      {daysOverdue >= 8 && <AlertTriangle className="h-2.5 w-2.5 inline mr-0.5 -mt-0.5" />}
+                      {task.title.length > 20 ? task.title.slice(0, 20) + '…' : task.title}
+                    </div>
+                  );
+                })}
+                {hiddenCount > 0 && (
+                  <button
+                    className="text-[9px] text-primary hover:underline pl-1 cursor-pointer"
+                    onClick={() => toggleExpand(dateStr)}
                   >
-                    <div className={cn('h-1.5 w-1.5 rounded-full shrink-0', PRIORITY_DOT[task.priority] || PRIORITY_DOT.medium)} />
-                    {task.title}
-                  </div>
-                ))}
-                {dayTasks.length > 3 && (
-                  <span className="text-[9px] text-muted-foreground pl-1">+{dayTasks.length - 3} more</span>
+                    +{hiddenCount} more
+                  </button>
+                )}
+                {isExpanded && dayTasks.length > 2 && (
+                  <button
+                    className="text-[9px] text-muted-foreground hover:underline pl-1 cursor-pointer"
+                    onClick={() => toggleExpand(dateStr)}
+                  >
+                    show less
+                  </button>
                 )}
               </div>
             </div>
@@ -152,7 +195,10 @@ export function TaskCalendarView({ tasks, onSelectTask, onUpdateTask, selectedTa
                 onDragStart={() => setDraggedTaskId(task.id)}
                 onDragEnd={() => setDraggedTaskId(null)}
                 onClick={() => onSelectTask(task.id)}
-                className="text-[10px] px-2 py-0.5 rounded border bg-card cursor-grab hover:shadow-sm"
+                className={cn(
+                  "text-[10px] px-2 py-0.5 rounded border-l-2 cursor-grab hover:shadow-sm bg-card",
+                  PRIORITY_BORDER[task.priority] || PRIORITY_BORDER.medium,
+                )}
               >
                 {task.title}
               </div>

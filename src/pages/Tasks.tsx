@@ -39,11 +39,12 @@ import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
   SlidersHorizontal, Group, Trash2, BarChart3, Bell,
   Bookmark, BookmarkPlus, Download, FileDown, Star, MoreVertical,
-  Zap, Tag, ClipboardList, GripVertical, Users, Briefcase,
+  Zap, Tag, ClipboardList, GripVertical, Users, Briefcase, AlertTriangle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { isToday, isPast, addDays } from 'date-fns';
+import { isToday, isPast, addDays, startOfDay, format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import {
   DndContext, closestCenter, DragOverlay, PointerSensor, TouchSensor,
   useSensor, useSensors, DragStartEvent, DragEndEvent, DragOverEvent,
@@ -124,9 +125,19 @@ export default function Tasks() {
   // Focus view: today's tasks + overdue + high priority
   const focusTasks = tasks.filter(t => {
     if (t.status === 'complete') return false;
-    if (t.due_date && isToday(new Date(t.due_date + 'T00:00:00'))) return true;
+    // Overdue
     if (t.due_date && isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00'))) return true;
-    if (t.priority === 'urgent' || t.priority === 'high') return true;
+    // Due today
+    if (t.due_date && isToday(new Date(t.due_date + 'T00:00:00'))) return true;
+    // Due this week (next 7 days)
+    if (t.due_date) {
+      const d = new Date(t.due_date + 'T00:00:00');
+      const todayDate = startOfDay(new Date());
+      const weekOut = addDays(todayDate, 7);
+      if (d > todayDate && d <= weekOut) return true;
+    }
+    // High/Urgent priority not started
+    if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started') return true;
     return false;
   });
 
@@ -687,7 +698,7 @@ export default function Tasks() {
                 onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
                 onDeleteTask={id => handleDeleteWithUndo(id)}
                 selectedTaskId={selectedTaskId}
-                groupBy={viewMode === 'focus' ? 'time' : groupBy}
+                groupBy={viewMode === 'focus' ? 'focus' : groupBy}
                 selectedTaskIds={selectedTaskIds}
                 onToggleSelect={handleToggleSelect}
                 onSelectAll={handleSelectAll}
@@ -971,6 +982,18 @@ function SortableTaskCard({ task, priorityColors, selectedTaskId, onSelectTask }
     opacity: isDragging ? 0.4 : 1,
   };
 
+  const priorityLabels: Record<string, { label: string; cls: string }> = {
+    urgent: { label: 'Urgent', cls: 'bg-destructive/15 text-destructive border-destructive/30' },
+    high: { label: 'High', cls: 'bg-orange-500/15 text-orange-600 border-orange-500/30' },
+    medium: { label: 'Medium', cls: 'bg-primary/15 text-primary border-primary/30' },
+    low: { label: 'Low', cls: 'bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20' },
+  };
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const isOverdue = task.due_date && task.due_date < todayStr && task.status !== 'complete';
+  const daysOverdue = isOverdue ? Math.ceil((new Date(todayStr).getTime() - new Date(task.due_date + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  const pStyle = priorityLabels[task.priority] || priorityLabels.medium;
+
   return (
     <div
       ref={setNodeRef}
@@ -993,14 +1016,26 @@ function SortableTaskCard({ task, priorityColors, selectedTaskId, onSelectTask }
           <p className={`text-sm font-medium ${task.status === 'complete' ? 'line-through text-muted-foreground' : ''}`}>
             {task.title}
           </p>
-          <div className="flex items-center gap-2 mt-2">
+          {task.deal?.company && (
+            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{task.deal.company}</p>
+          )}
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${pStyle.cls}`}>
+              {pStyle.label}
+            </span>
             {task.due_date && (
-              <span className="text-[10px] text-muted-foreground">
-                {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              <span className={cn(
+                'text-[10px]',
+                isOverdue
+                  ? daysOverdue >= 4 ? 'text-destructive font-bold' : 'text-destructive font-medium'
+                  : 'text-muted-foreground'
+              )}>
+                {daysOverdue >= 8 && <AlertTriangle className="h-2.5 w-2.5 inline mr-0.5 -mt-0.5" />}
+                {format(new Date(task.due_date + 'T00:00:00'), 'MMM d')}
               </span>
             )}
             {task.assignee_profile && (
-              <span className="text-[10px] text-muted-foreground ml-auto truncate max-w-[100px]">
+              <span className="text-[10px] text-muted-foreground ml-auto truncate max-w-[80px]">
                 {task.assignee_profile.display_name}
               </span>
             )}
