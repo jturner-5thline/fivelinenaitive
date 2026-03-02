@@ -203,16 +203,25 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
       for (const att of uploadedAttachments) {
         await mapFileToItem(att.id, targetItemId, 'manual_drag');
       }
+      // Mark the target checklist item as complete
+      await toggleItemStatus(targetItemId, true);
       toast.success(`${uploadedAttachments.length} file(s) uploaded and mapped`);
     } else if (uploadedAttachments.length > 0) {
       // Auto-map files with high-confidence matches
       let autoMapped = 0;
+      const autoMappedItemIds = new Set<string>();
       for (const att of uploadedAttachments) {
         const suggestions = suggestMappings(att.name, allItems, 1);
         if (suggestions.length > 0 && suggestions[0].score > 0.6) {
           await mapFileToItem(att.id, suggestions[0].item.id, 'auto_suggest');
+          autoMappedItemIds.add(suggestions[0].item.id);
           autoMapped++;
         }
+      }
+
+      // Mark auto-mapped checklist items as complete
+      for (const itemId of autoMappedItemIds) {
+        await toggleItemStatus(itemId, true);
       }
 
       // Show mapping dialog for remaining files
@@ -228,7 +237,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
         setShowMappingDialog(true);
       }
     }
-  }, [user, createJob, completeJob, uploadAttachment, refetchAttachments, mapFileToItem, logAction]);
+  }, [user, createJob, completeJob, uploadAttachment, refetchAttachments, mapFileToItem, logAction, toggleItemStatus]);
 
   // Global drag/drop
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -568,6 +577,11 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
         allItems={allItems}
         getItemsForFile={getItemsForFile}
         mapFileToItems={mapFileToItems}
+        onMarkItemsComplete={async (itemIds) => {
+          for (const itemId of itemIds) {
+            await toggleItemStatus(itemId, true);
+          }
+        }}
       />
 
       <ChecklistEditor
