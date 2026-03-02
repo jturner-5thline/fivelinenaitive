@@ -47,6 +47,10 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Keyboard,
+  Globe,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -63,6 +67,21 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -81,6 +100,7 @@ interface FullCalendarViewProps {
 // ─── Constants ───────────────────────────────────────────────
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60;
+const MIN_EVENT_HEIGHT = 24;
 
 const EVENT_PALETTE = [
   { bg: 'bg-primary/15 border-primary/30', text: 'text-foreground', dot: 'bg-primary', label: 'Default', glow: 'shadow-[0_0_12px_hsl(var(--primary)/0.15)]' },
@@ -92,6 +112,28 @@ const EVENT_PALETTE = [
   { bg: 'bg-indigo-600/15 border-indigo-500/30', text: 'text-foreground', dot: 'bg-indigo-600', label: 'Indigo', glow: 'shadow-[0_0_12px_rgba(79,70,229,0.15)]' },
 ];
 
+const TIMEZONE_OPTIONS = [
+  { label: 'EST', value: 'America/New_York' },
+  { label: 'CST', value: 'America/Chicago' },
+  { label: 'MST', value: 'America/Denver' },
+  { label: 'PST', value: 'America/Los_Angeles' },
+  { label: 'UTC', value: 'UTC' },
+  { label: 'GMT', value: 'Europe/London' },
+  { label: 'CET', value: 'Europe/Berlin' },
+  { label: 'JST', value: 'Asia/Tokyo' },
+];
+
+const KEYBOARD_SHORTCUTS = [
+  { key: 'N', description: 'New Event' },
+  { key: 'T', description: 'Jump to Today' },
+  { key: '←/→', description: 'Navigate period' },
+  { key: 'D', description: 'Day view' },
+  { key: 'W', description: 'Week view' },
+  { key: 'M', description: 'Month view' },
+  { key: 'A', description: 'Agenda view' },
+  { key: 'Esc', description: 'Close modal/popover' },
+];
+
 function getColorIndex(event: CalendarEvent, idx: number): number {
   if (event.color_id) return parseInt(event.color_id, 10) % EVENT_PALETTE.length;
   return idx % EVENT_PALETTE.length;
@@ -100,6 +142,23 @@ function getColorIndex(event: CalendarEvent, idx: number): number {
 function getEventColorClass(event: CalendarEvent, idx: number): string {
   const c = EVENT_PALETTE[getColorIndex(event, idx)];
   return `${c.bg} ${c.text} ${c.glow}`;
+}
+
+function getLocalTimezoneAbbr(): string {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' });
+    const parts = fmt.formatToParts(new Date());
+    return parts.find(p => p.type === 'timeZoneName')?.value || 'Local';
+  } catch { return 'Local'; }
+}
+
+function getVideoProvider(url: string): { icon: string; label: string } | null {
+  if (!url) return null;
+  if (url.includes('zoom.us')) return { icon: '📹', label: 'Zoom' };
+  if (url.includes('meet.google.com')) return { icon: '🟢', label: 'Google Meet' };
+  if (url.includes('teams.microsoft.com')) return { icon: '🟣', label: 'Teams' };
+  if (url.includes('webex.com')) return { icon: '🔵', label: 'Webex' };
+  return null;
 }
 
 // ─── Deal matching for event tagging ─────────────────────────
@@ -132,7 +191,6 @@ function useDealMatches(events: CalendarEvent[]) {
 
     for (const deal of deals) {
       const dealNameLower = deal.name.toLowerCase();
-      // Match deal name in event summary or description
       if (dealNameLower.length > 3 && (summaryLower.includes(dealNameLower) || descLower.includes(dealNameLower))) {
         return { id: deal.id, name: deal.name, stage: deal.stage };
       }
@@ -372,6 +430,10 @@ function EventDetailPopover({
   const [showResearch, setShowResearch] = useState(false);
   const [research, setResearch] = useState<string | null>(null);
   const [isResearching, setIsResearching] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+
+  const videoLink = event.hangout_link || '';
+  const videoProvider = getVideoProvider(videoLink);
 
   const runResearch = async () => {
     setShowResearch(true);
@@ -450,9 +512,13 @@ function EventDetailPopover({
               </div>
             )}
             {hasVideo && (
-              <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => window.open(event.hangout_link || '', '_blank')}>
-                <Video className="h-3.5 w-3.5" />
-                Join video call
+              <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => window.open(videoLink || '', '_blank')}>
+                {videoProvider ? (
+                  <span className="text-sm">{videoProvider.icon}</span>
+                ) : (
+                  <Video className="h-3.5 w-3.5" />
+                )}
+                {videoProvider ? `Join ${videoProvider.label}` : 'Join video call'}
                 <ExternalLink className="h-3 w-3 ml-auto" />
               </Button>
             )}
@@ -477,7 +543,30 @@ function EventDetailPopover({
             {event.description && (
               <>
                 <Separator />
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap">{event.description}</p>
+                <div className="relative">
+                  <p className={cn(
+                    "text-xs text-muted-foreground whitespace-pre-wrap",
+                    !descriptionExpanded && "line-clamp-3"
+                  )}>
+                    {event.description}
+                  </p>
+                  {event.description.length > 150 && !descriptionExpanded && (
+                    <button
+                      onClick={() => setDescriptionExpanded(true)}
+                      className="text-xs text-primary hover:underline mt-1"
+                    >
+                      Show more
+                    </button>
+                  )}
+                  {descriptionExpanded && event.description.length > 150 && (
+                    <button
+                      onClick={() => setDescriptionExpanded(false)}
+                      className="text-xs text-primary hover:underline mt-1"
+                    >
+                      Show less
+                    </button>
+                  )}
+                </div>
               </>
             )}
 
@@ -495,20 +584,29 @@ function EventDetailPopover({
                   Edit
                 </Button>
               )}
-              <Button
-                variant={showResearch ? "secondary" : "default"}
-                size="sm"
-                className="flex-1 gap-2 text-xs"
-                onClick={runResearch}
-                disabled={isResearching}
-              >
-                {isResearching ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Brain className="h-3.5 w-3.5" />
-                )}
-                {isResearching ? 'Researching...' : showResearch ? 'Refresh' : 'AI Intel'}
-              </Button>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={showResearch ? "secondary" : "default"}
+                      size="sm"
+                      className="flex-1 gap-2 text-xs"
+                      onClick={runResearch}
+                      disabled={isResearching}
+                    >
+                      {isResearching ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Brain className="h-3.5 w-3.5" />
+                      )}
+                      {isResearching ? 'Researching...' : showResearch ? 'Refresh' : 'AI Intel'}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[240px] text-xs">
+                    Generate an AI-powered meeting brief with attendee context, deal background, and suggested talking points.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
 
@@ -632,15 +730,15 @@ function CurrentTimeIndicator() {
     return () => clearInterval(interval);
   }, []);
 
-  const now = new Date();
-  const minutes = getHours(now) * 60 + getMinutes(now);
+  const nowTime = new Date();
+  const minutes = getHours(nowTime) * 60 + getMinutes(nowTime);
   const top = (minutes / 60) * HOUR_HEIGHT;
 
   return (
     <div className="absolute left-0 right-0 z-[5] pointer-events-none" style={{ top }}>
       <div className="flex items-center">
-        <div className="w-2 h-2 rounded-full bg-destructive -ml-1" />
-        <div className="flex-1 h-[2px] bg-destructive" />
+        <div className="w-3 h-3 rounded-full bg-destructive -ml-1.5 shadow-[0_0_6px_hsl(var(--destructive)/0.5)]" />
+        <div className="flex-1 h-[2px] bg-destructive shadow-[0_0_4px_hsl(var(--destructive)/0.3)]" />
       </div>
     </div>
   );
@@ -773,12 +871,11 @@ function DayColumn({
 
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onSlotClick) return;
-    // Only trigger if clicking the background, not an event
     if ((e.target as HTMLElement).closest('button')) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const hour = Math.floor(y / HOUR_HEIGHT);
-    const minutes = Math.round(((y % HOUR_HEIGHT) / HOUR_HEIGHT) * 2) * 30; // snap to 30min
+    const minutes = Math.round(((y % HOUR_HEIGHT) / HOUR_HEIGHT) * 2) * 30;
     const clickedHour = Math.max(0, Math.min(23, hour));
     onSlotClick(date, clickedHour + minutes / 60);
   };
@@ -814,7 +911,7 @@ function DayColumn({
               event={event}
               colorClass={getEventColorClass(event, idx)}
               onClick={() => onEventClick(event)}
-              style={{ top, height: Math.max(height, 20), minHeight: 20 }}
+              style={{ top, height: Math.max(height, MIN_EVENT_HEIGHT), minHeight: MIN_EVENT_HEIGHT }}
             />
           );
         })}
@@ -835,6 +932,8 @@ function MonthView({
   onEventClick: (event: CalendarEvent) => void;
   onDayClick: (date: Date) => void;
 }) {
+  const [morePopoverDay, setMorePopoverDay] = useState<Date | null>(null);
+
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calStart = startOfWeek(monthStart);
@@ -858,6 +957,7 @@ function MonthView({
             {week.map(day => {
               const dayEvents = getEventsForDay(day);
               const inMonth = isSameMonth(day, currentDate);
+              const isMoreOpen = morePopoverDay && isSameDay(morePopoverDay, day);
               return (
                 <div
                   key={day.toISOString()}
@@ -883,7 +983,31 @@ function MonthView({
                       </button>
                     ))}
                     {dayEvents.length > 3 && (
-                      <p className="text-[9px] text-muted-foreground text-center">+{dayEvents.length - 3} more</p>
+                      <Popover open={!!isMoreOpen} onOpenChange={(open) => setMorePopoverDay(open ? day : null)}>
+                        <PopoverTrigger asChild>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setMorePopoverDay(day); }}
+                            className="text-[9px] text-primary hover:underline text-center w-full"
+                          >
+                            +{dayEvents.length - 3} more
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2" align="start" side="bottom" onClick={(e) => e.stopPropagation()}>
+                          <p className="text-xs font-semibold text-foreground mb-2">{format(day, 'EEEE, MMMM d')}</p>
+                          <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                            {dayEvents.map((event, idx) => (
+                              <button
+                                key={event.id}
+                                onClick={() => { onEventClick(event); setMorePopoverDay(null); }}
+                                className={cn('w-full text-left rounded px-2 py-1.5 text-xs truncate hover:brightness-110', getEventColorClass(event, idx))}
+                              >
+                                {!event.all_day && <span className="opacity-80 mr-1">{format(parseISO(event.start), 'h:mm a')}</span>}
+                                {event.summary}
+                              </button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     )}
                   </div>
                 </div>
@@ -906,7 +1030,6 @@ function AgendaView({
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
 }) {
-  // Show 14 days from current date
   const agendaDays = eachDayOfInterval({
     start: currentDate,
     end: addDays(currentDate, 13),
@@ -914,38 +1037,44 @@ function AgendaView({
 
   return (
     <ScrollArea className="flex-1">
-      <div className="divide-y divide-border">
-        {agendaDays.map(day => {
+      <div>
+        {agendaDays.map((day, dayIdx) => {
           const dayEvents = allEvents
             .filter(e => isSameDay(parseISO(e.start), day))
             .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime());
 
           return (
-            <div key={day.toISOString()} className="flex min-h-[56px]">
-              {/* Date column */}
+            <div key={day.toISOString()}>
+              {/* Full-width day divider */}
               <div className={cn(
-                'w-24 shrink-0 p-3 text-right border-r',
-                isToday(day) && 'bg-primary/5',
+                "flex items-center gap-3 px-4 py-2.5 border-b bg-muted/30",
+                isToday(day) && "bg-primary/5"
               )}>
-                <p className={cn(
-                  'text-xs uppercase tracking-wider font-medium',
-                  isToday(day) ? 'text-primary' : 'text-muted-foreground',
+                <div className={cn(
+                  'h-10 w-10 rounded-full flex items-center justify-center shrink-0',
+                  isToday(day) ? 'bg-primary text-primary-foreground' : 'bg-muted'
                 )}>
-                  {format(day, 'EEE')}
-                </p>
-                <p className={cn(
-                  'text-2xl font-semibold leading-tight',
-                  isToday(day) ? 'text-primary' : 'text-foreground',
-                )}>
-                  {format(day, 'd')}
-                </p>
-                <p className="text-[10px] text-muted-foreground">{format(day, 'MMM')}</p>
+                  <span className="text-sm font-bold">{format(day, 'd')}</span>
+                </div>
+                <div>
+                  <p className={cn(
+                    'text-sm font-semibold',
+                    isToday(day) ? 'text-primary' : 'text-foreground'
+                  )}>
+                    {format(day, 'EEEE')}
+                    {isToday(day) && <span className="text-xs font-normal ml-2 text-primary/80">Today</span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{format(day, 'MMMM d, yyyy')}</p>
+                </div>
+                {dayEvents.length > 0 && (
+                  <Badge variant="secondary" className="ml-auto text-[10px]">{dayEvents.length} event{dayEvents.length > 1 ? 's' : ''}</Badge>
+                )}
               </div>
 
-              {/* Events column */}
-              <div className="flex-1 py-2 px-3 space-y-1.5">
+              {/* Events */}
+              <div className="py-1 px-3">
                 {dayEvents.length === 0 ? (
-                  <p className="text-xs text-muted-foreground/50 py-2">No events</p>
+                  <p className="text-xs text-muted-foreground/50 py-3 pl-14">No events</p>
                 ) : (
                   dayEvents.map((event, idx) => {
                     const start = parseISO(event.start);
@@ -1121,6 +1250,30 @@ function CalendarAIPanel({
   );
 }
 
+// ─── Keyboard Shortcuts Overlay ──────────────────────────────
+function KeyboardShortcutsOverlay({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-background/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-card border border-border rounded-xl shadow-2xl p-6 w-[320px]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-foreground">Keyboard Shortcuts</h3>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {KEYBOARD_SHORTCUTS.map(s => (
+            <div key={s.key} className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{s.description}</span>
+              <kbd className="text-[10px] font-mono bg-muted px-2 py-0.5 rounded border text-foreground">{s.key}</kbd>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────
 export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) {
   const { events: liveEvents, status: calendarStatus, listEvents, isLoading: calendarLoading, createEvent, updateEvent, deleteEvent } = useGoogleCalendar();
@@ -1133,6 +1286,95 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [displayTimezone, setDisplayTimezone] = useState(getLocalTimezoneAbbr());
+  const [showTzDropdown, setShowTzDropdown] = useState(false);
+
+  const timeGridScrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to current time on mount / view change
+  useEffect(() => {
+    if (!open) return;
+    if (view !== 'day' && view !== 'week') return;
+
+    const timer = setTimeout(() => {
+      const scrollEl = timeGridScrollRef.current;
+      if (!scrollEl) return;
+      // Find the Radix ScrollArea viewport
+      const viewport = scrollEl.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+      const target = viewport || scrollEl;
+      const nowHour = new Date();
+      const currentMinutes = getHours(nowHour) * 60 + getMinutes(nowHour);
+      const scrollTo = (currentMinutes / 60) * HOUR_HEIGHT - target.clientHeight / 2;
+      target.scrollTop = Math.max(0, scrollTo);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [open, view, currentDate]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+      switch (e.key) {
+        case 'n':
+        case 'N':
+          e.preventDefault();
+          handleNewEvent();
+          break;
+        case 't':
+        case 'T':
+          e.preventDefault();
+          navigate('today');
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          navigate('prev');
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          navigate('next');
+          break;
+        case 'd':
+        case 'D':
+          e.preventDefault();
+          setView('day');
+          break;
+        case 'w':
+        case 'W':
+          e.preventDefault();
+          setView('week');
+          break;
+        case 'm':
+        case 'M':
+          e.preventDefault();
+          setView('month');
+          break;
+        case 'a':
+        case 'A':
+          e.preventDefault();
+          setView('agenda');
+          break;
+        case 'Escape':
+          if (showShortcuts) { setShowShortcuts(false); break; }
+          if (selectedEvent) { setSelectedEvent(null); break; }
+          if (eventDialogOpen) { setEventDialogOpen(false); break; }
+          break;
+        case '?':
+          e.preventDefault();
+          setShowShortcuts(s => !s);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, showShortcuts, selectedEvent, eventDialogOpen]);
 
   const refreshEvents = useCallback(() => {
     if (!calendarStatus?.connected) return;
@@ -1144,7 +1386,6 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
     listEvents({ timeMin: timeMin.toISOString(), timeMax: timeMax.toISOString(), maxResults: 200 });
   }, [calendarStatus?.connected, view, currentDate, listEvents]);
 
-  // Fetch live calendar events for the visible date range when dialog opens or view changes
   useEffect(() => {
     if (!open) return;
     refreshEvents();
@@ -1179,6 +1420,11 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
 
   const handleDeleteEvent = useCallback(async () => {
     if (!editingEvent?.id) return;
+    setDeleteConfirmOpen(true);
+  }, [editingEvent]);
+
+  const confirmDelete = useCallback(async () => {
+    if (!editingEvent?.id) return;
     setIsMutating(true);
     try {
       await deleteEvent(editingEvent.id, editingEvent.calendar_id);
@@ -1186,6 +1432,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
       setEventDialogOpen(false);
       setEditingEvent(null);
       setSelectedEvent(null);
+      setDeleteConfirmOpen(false);
       refreshEvents();
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete event');
@@ -1237,13 +1484,13 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
     ).sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime()).slice(0, 10);
   }, [allEvents, searchQuery]);
 
-  // Upcoming events (next 3 from now)
+  // Upcoming events (next 10 from now)
   const upcomingEvents = useMemo(() => {
     const nowDate = new Date();
     return allEvents
       .filter(e => !e.all_day && isAfter(parseISO(e.start), nowDate))
       .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())
-      .slice(0, 3);
+      .slice(0, 10);
   }, [allEvents]);
 
   const navigate = useCallback((direction: 'prev' | 'next' | 'today') => {
@@ -1301,7 +1548,8 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
 
   const handleMiniDateSelect = (date: Date) => {
     setCurrentDate(date);
-    if (view === 'month' || view === 'agenda') setView('day');
+    // Always switch to day view when clicking mini calendar
+    setView('day');
   };
 
   return (
@@ -1351,6 +1599,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                   {searchResults.map((event, idx) => {
                     const start = parseISO(event.start);
                     const ci = getColorIndex(event, idx);
+                    const dealMatch = matchEventToDeal(event);
                     return (
                       <button
                         key={event.id}
@@ -1362,6 +1611,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                           <p className="text-xs font-medium text-foreground truncate">{event.summary}</p>
                           <p className="text-[10px] text-muted-foreground">{format(start, 'EEE, MMM d · h:mm a')}</p>
                           {event.location && <p className="text-[10px] text-muted-foreground truncate">{event.location}</p>}
+                          {dealMatch && <p className="text-[10px] text-primary truncate">🏢 {dealMatch.name}</p>}
                         </div>
                       </button>
                     );
@@ -1381,6 +1631,18 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           )}
 
           {!calendarStatus?.connected && <Badge variant="secondary" className="text-[10px] h-5 mr-2">Demo Data</Badge>}
+
+          {/* Keyboard shortcuts button */}
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowShortcuts(true)}>
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Keyboard shortcuts (?)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <div className="flex items-center bg-muted rounded-lg p-0.5">
             {(['day', 'week', 'month', 'agenda'] as CalendarViewMode[]).map(v => (
@@ -1413,13 +1675,15 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                     <Timer className="h-3.5 w-3.5 text-primary" />
                     <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Coming Up</p>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
                     {upcomingEvents.map((event, idx) => {
                       const start = parseISO(event.start);
-                      const end = parseISO(event.end);
                       const ci = getColorIndex(event, idx);
                       const minutesUntil = differenceInMinutes(start, new Date());
-                      const timeLabel = minutesUntil <= 0 ? 'Now' : minutesUntil < 60 ? `in ${minutesUntil}m` : `in ${Math.floor(minutesUntil / 60)}h`;
+                      const eventIsToday = isToday(start);
+                      const timeLabel = eventIsToday
+                        ? (minutesUntil <= 0 ? 'Now' : minutesUntil < 60 ? `in ${minutesUntil}m` : `in ${Math.floor(minutesUntil / 60)}h`)
+                        : null;
 
                       return (
                         <button
@@ -1431,10 +1695,17 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                           <div className="min-w-0 flex-1">
                             <p className="text-[11px] font-medium text-foreground truncate">{event.summary}</p>
                             <div className="flex items-center justify-between gap-1">
-                              <p className="text-[10px] text-muted-foreground">{format(start, 'h:mm a')}</p>
-                              <Badge variant={minutesUntil <= 15 ? 'destructive' : 'secondary'} className="text-[9px] h-4 px-1">
-                                {timeLabel}
-                              </Badge>
+                              <p className="text-[10px] text-muted-foreground">
+                                {eventIsToday
+                                  ? format(start, 'h:mm a')
+                                  : `${format(start, 'EEE')} · ${format(start, 'h:mm a')}`
+                                }
+                              </p>
+                              {timeLabel && (
+                                <Badge variant={minutesUntil <= 15 ? 'destructive' : 'secondary'} className="text-[9px] h-4 px-1">
+                                  {timeLabel}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </button>
@@ -1461,9 +1732,34 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                   events={allDayEvents.filter(e => view === 'day' ? isSameDay(parseISO(e.start), currentDate) : true)}
                   onEventClick={setSelectedEvent}
                 />
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1" ref={timeGridScrollRef}>
                   <div className="flex min-h-0">
                     <div className="shrink-0 w-14 border-r">
+                      {/* Timezone label */}
+                      <Popover open={showTzDropdown} onOpenChange={setShowTzDropdown}>
+                        <PopoverTrigger asChild>
+                          <button className="w-full text-center py-1 text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium border-b flex items-center justify-center gap-0.5">
+                            <Globe className="h-2.5 w-2.5" />
+                            {displayTimezone}
+                            <ChevronDown className="h-2 w-2" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-36 p-1" align="start">
+                          {TIMEZONE_OPTIONS.map(tz => (
+                            <button
+                              key={tz.value}
+                              onClick={() => { setDisplayTimezone(tz.label); setShowTzDropdown(false); }}
+                              className={cn(
+                                'w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted/50 flex items-center justify-between',
+                                displayTimezone === tz.label && 'text-primary font-medium'
+                              )}
+                            >
+                              {tz.label}
+                              {displayTimezone === tz.label && <Check className="h-3 w-3" />}
+                            </button>
+                          ))}
+                        </PopoverContent>
+                      </Popover>
                       <div style={{ height: HOURS.length * HOUR_HEIGHT }}>
                         {HOURS.map(h => (
                           <div key={h} className="flex items-start justify-end pr-2 text-[10px] text-muted-foreground font-medium" style={{ height: HOUR_HEIGHT }}>
@@ -1522,6 +1818,27 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           onDelete={editingEvent?.id ? handleDeleteEvent : undefined}
           isLoading={isMutating}
         />
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Event</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this event? This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Keyboard Shortcuts Overlay */}
+        {showShortcuts && <KeyboardShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
       </DialogContent>
     </Dialog>
   );
