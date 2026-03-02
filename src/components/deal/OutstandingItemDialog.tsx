@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { SearchableRequesterList } from '@/components/deal/SearchableRequesterList';
 import { format, isPast, isToday } from 'date-fns';
 import { Calendar, User, Send, Trash2, Clock, Pencil, Check, X, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, ArrowUp, ArrowUpRight, UserPlus } from 'lucide-react';
 
@@ -274,30 +275,12 @@ export function OutstandingItemDialog({
                       <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="start">
-                    <div className="max-h-[300px] overflow-auto p-1">
-                      {requestedByOptions.map((option) => {
-                        const isSelected = requesterValue.includes(option);
-                        return (
-                          <div
-                            key={option}
-                            className={cn(
-                              'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                              isSelected && 'bg-accent/50'
-                            )}
-                            onClick={() => toggleRequester(option)}
-                          >
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={() => toggleRequester(option)}
-                              className="pointer-events-none"
-                            />
-                            <span className="flex-1">{option}</span>
-                            {isSelected && <Check className="h-4 w-4 text-primary" />}
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="start">
+                    <SearchableRequesterList
+                      options={requestedByOptions}
+                      selected={requesterValue}
+                      onToggle={toggleRequester}
+                    />
                   </PopoverContent>
                 </Popover>
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveRequester}>
