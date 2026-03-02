@@ -55,6 +55,7 @@ export function useFlexChangedFields(
     compare('industries', data.industries?.join(', ') || '', 'industry');
     compare('dealTypes', data.dealTypes?.join(', ') || '', 'deal_type');
     compare('billingModels', data.billingModels?.join(', ') || '', 'billing_model');
+    compare('customerBase', data.customerBase?.join(', ') || '', 'customer_base');
 
     // Compare JSON arrays by stringifying
     const jsonCompare = (fieldKey: string, currentVal: unknown, syncedKey: string) => {
