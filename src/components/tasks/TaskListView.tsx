@@ -46,7 +46,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   complete: { label: 'Complete', color: 'bg-emerald-500' },
 };
 
-export type GroupBy = 'status' | 'time' | 'priority';
+export type GroupBy = 'status' | 'time' | 'priority' | 'focus';
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -110,6 +110,36 @@ function getPriorityGroups(tasks: Task[]) {
     label: PRIORITY_CONFIG[key]?.label || key,
     tasks: tasks.filter(t => t.priority === key),
   })).filter(g => g.tasks.length > 0);
+}
+
+function getFocusGroups(tasks: Task[]) {
+  const today = startOfDay(new Date());
+  const weekOut = addDays(today, 7);
+  const groups = [
+    { key: 'overdue', label: '🔴 Overdue', tasks: [] as Task[], indicatorClass: 'bg-destructive' },
+    { key: 'due_today', label: '🟠 Due Today', tasks: [] as Task[], indicatorClass: 'bg-orange-500' },
+    { key: 'due_this_week', label: '🔵 Due This Week', tasks: [] as Task[], indicatorClass: 'bg-primary' },
+    { key: 'high_priority_not_started', label: '🟣 High Priority — Not Started', tasks: [] as Task[], indicatorClass: 'bg-purple-500' },
+  ];
+
+  tasks.forEach(t => {
+    if (t.status === 'complete') return;
+    const assigned: Set<string> = new Set();
+
+    if (t.due_date) {
+      const d = new Date(t.due_date + 'T00:00:00');
+      if (isPast(d) && !isToday(d)) { groups[0].tasks.push(t); assigned.add('overdue'); }
+      else if (isToday(d)) { groups[1].tasks.push(t); assigned.add('due_today'); }
+      else if (d > today && d <= weekOut) { groups[2].tasks.push(t); assigned.add('due_this_week'); }
+    }
+
+    if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started' && !assigned.has('overdue') && !assigned.has('due_today')) {
+      groups[3].tasks.push(t);
+    }
+  });
+
+  // Always return all sections, even empty
+  return groups;
 }
 
 function fireCelebration() {
@@ -190,7 +220,9 @@ export function TaskListView({
 
   // Build groups based on groupBy mode
   let groups: { key: string; label: string; tasks: Task[] }[];
-  if (groupBy === 'time') {
+  if (groupBy === 'focus') {
+    groups = getFocusGroups(tasks);
+  } else if (groupBy === 'time') {
     groups = getTimeGroups(tasks);
   } else if (groupBy === 'priority') {
     groups = getPriorityGroups(tasks);
