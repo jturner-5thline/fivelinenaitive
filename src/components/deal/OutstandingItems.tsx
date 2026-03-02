@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { SearchableRequesterList } from '@/components/deal/SearchableRequesterList';
 import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus, Group } from 'lucide-react';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 
@@ -579,30 +580,12 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                   <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
-                <div className="max-h-[300px] overflow-auto p-1">
-                  {requestedByOptions.map((option) => {
-                    const isOptionSelected = editingRequestedBy.includes(option);
-                    return (
-                      <div
-                        key={option}
-                        className={cn(
-                          'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                          isOptionSelected && 'bg-accent/50'
-                        )}
-                        onClick={() => toggleEditingRequestedBy(option)}
-                      >
-                        <Checkbox
-                          checked={isOptionSelected}
-                          onCheckedChange={() => toggleEditingRequestedBy(option)}
-                          className="pointer-events-none"
-                        />
-                        <span className="flex-1">{option}</span>
-                        {isOptionSelected && <Check className="h-4 w-4 text-primary" />}
-                      </div>
-                    );
-                  })}
-                </div>
+              <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="end">
+                <SearchableRequesterList
+                  options={requestedByOptions}
+                  selected={editingRequestedBy}
+                  onToggle={toggleEditingRequestedBy}
+                />
               </PopoverContent>
             </Popover>
             <Button size="sm" variant="gradient" onClick={handleSaveEdit}>Save</Button>
@@ -814,30 +797,12 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="start">
-                <div className="max-h-[300px] overflow-auto p-1">
-                  {requestedByOptions.map((option) => {
-                    const isOptionSelected = filterByLender.includes(option);
-                    return (
-                      <div
-                        key={option}
-                        className={cn(
-                          'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                          isOptionSelected && 'bg-accent/50'
-                        )}
-                        onClick={() => toggleFilterLender(option)}
-                      >
-                        <Checkbox
-                          checked={isOptionSelected}
-                          onCheckedChange={() => toggleFilterLender(option)}
-                          className="pointer-events-none"
-                        />
-                        <span className="flex-1">{option}</span>
-                        {isOptionSelected && <Check className="h-4 w-4 text-primary" />}
-                      </div>
-                    );
-                  })}
-                </div>
+              <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="start">
+                <SearchableRequesterList
+                  options={requestedByOptions}
+                  selected={filterByLender}
+                  onToggle={toggleFilterLender}
+                />
                 {filterByLender.length > 0 && (
                   <div className="border-t border-border p-1">
                     <Button
@@ -959,30 +924,12 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                     <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
-                  <div className="max-h-[300px] overflow-auto p-1">
-                    {requestedByOptions.map((option) => {
-                      const isOptionSelected = newRequestedBy.includes(option);
-                      return (
-                        <div
-                          key={option}
-                          className={cn(
-                            'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                            isOptionSelected && 'bg-accent/50'
-                          )}
-                          onClick={() => toggleRequestedBy(option)}
-                        >
-                          <Checkbox
-                            checked={isOptionSelected}
-                            onCheckedChange={() => toggleRequestedBy(option)}
-                            className="pointer-events-none"
-                          />
-                          <span className="flex-1">{option}</span>
-                          {isOptionSelected && <Check className="h-4 w-4 text-primary" />}
-                        </div>
-                      );
-                    })}
-                  </div>
+                <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="end">
+                  <SearchableRequesterList
+                    options={requestedByOptions}
+                    selected={newRequestedBy}
+                    onToggle={toggleRequestedBy}
+                  />
                 </PopoverContent>
               </Popover>
             </div>
