@@ -28,6 +28,10 @@ export function RichTextEditor({
   const mentionUsersRef = useRef(mentionUsers);
   mentionUsersRef.current = mentionUsers;
   const mentionActiveRef = useRef(false);
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
   const [MentionExt, setMentionExt] = useState<any>(null);
 
   useEffect(() => {
@@ -122,9 +126,13 @@ export function RichTextEditor({
         if (event.key === 'Enter' && !event.shiftKey) {
           if (!mentionActiveRef.current) {
             event.preventDefault();
-            onSave();
+            onSaveRef.current();
             return true;
           }
+        }
+        if (event.key === 'Escape') {
+          onCancelRef.current();
+          return true;
         }
         return false;
       },
