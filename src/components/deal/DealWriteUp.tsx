@@ -506,6 +506,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     industry: data.industries.join(', '),
     location: data.location,
     yearFounded: data.yearFounded,
+    customerBase: data.customerBase?.join(', ') || '',
     headcount: data.headcount,
     dealType: data.dealTypes.join(', '),
     billingModel: data.billingModels.join(', '),
