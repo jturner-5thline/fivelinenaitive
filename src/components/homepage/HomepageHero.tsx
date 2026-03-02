@@ -7,8 +7,10 @@ export const HomepageHero = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.2)_0%,_hsl(270,80%,4%)_40%,_hsl(270,100%,2%)_100%)]">
       {/* Globe — scaled down, pushed right */}
-      <div className="absolute inset-0 blur-[2px]" style={{ transform: 'translateX(25%) scale(0.75)' }}>
-        <SpinningGlobe />
+      <div className="absolute inset-0 flex items-center justify-end overflow-hidden">
+        <div className="w-[65%] h-full relative right-[-8%]">
+          <SpinningGlobe />
+        </div>
       </div>
 
       {/* Purple radial glow behind globe */}
