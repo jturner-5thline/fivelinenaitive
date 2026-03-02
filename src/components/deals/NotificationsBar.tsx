@@ -69,8 +69,10 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
     let maxDays = 0;
     let staleLenderCount = 0;
     
+    const excludedStages = ['passed', 'on hold', 'on deck', 'not a fit', 'unresponsive'];
     deal.lenders?.forEach(lender => {
-      if (lender.trackingStatus === 'active' && lender.updatedAt) {
+      const lenderStage = (lender.stage || '').toLowerCase();
+      if (lender.trackingStatus === 'active' && lender.updatedAt && !excludedStages.includes(lenderStage)) {
         const daysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
         if (daysSinceUpdate >= yellowThreshold) {
           staleLenderCount++;
