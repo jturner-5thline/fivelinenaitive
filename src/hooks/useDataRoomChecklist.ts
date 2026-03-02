@@ -243,7 +243,22 @@ export function useDealChecklistStatus(dealId: string | undefined) {
     if (!user || !dealId) return false;
 
     try {
-      const existingStatus = statuses.find(s => s.checklist_item_id === checklistItemId);
+      // Check if this is a deal-specific item (exists in deal_checklist_items table)
+      const isDealSpecific = await (async () => {
+        const { data } = await supabase
+          .from('deal_checklist_items')
+          .select('id')
+          .eq('id', checklistItemId)
+          .eq('deal_id', dealId)
+          .maybeSingle();
+        return !!data;
+      })();
+
+      // Find existing status - check both columns
+      const existingStatus = statuses.find(s => 
+        s.checklist_item_id === checklistItemId || 
+        (s as any).deal_checklist_item_id === checklistItemId
+      );
 
       if (existingStatus) {
         const { error } = await supabase
@@ -270,16 +285,24 @@ export function useDealChecklistStatus(dealId: string | undefined) {
             : s
         ));
       } else {
+        // Insert with appropriate column based on item type
+        const insertData: any = {
+          deal_id: dealId,
+          is_complete: isComplete,
+          attachment_id: attachmentId ?? null,
+          completed_at: isComplete ? new Date().toISOString() : null,
+          completed_by: isComplete ? user.id : null,
+        };
+
+        if (isDealSpecific) {
+          insertData.deal_checklist_item_id = checklistItemId;
+        } else {
+          insertData.checklist_item_id = checklistItemId;
+        }
+
         const { data, error } = await supabase
           .from('deal_checklist_status')
-          .insert({
-            deal_id: dealId,
-            checklist_item_id: checklistItemId,
-            is_complete: isComplete,
-            attachment_id: attachmentId ?? null,
-            completed_at: isComplete ? new Date().toISOString() : null,
-            completed_by: isComplete ? user.id : null,
-          })
+          .insert(insertData)
           .select()
           .single();
 

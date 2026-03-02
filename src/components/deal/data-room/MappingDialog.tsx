@@ -24,11 +24,12 @@ interface MappingDialogProps {
   allItems: UnifiedChecklistItem[];
   getItemsForFile: DataRoomContextValue['getItemsForFile'];
   mapFileToItems: DataRoomContextValue['mapFileToItems'];
+  onMarkItemsComplete?: (itemIds: string[]) => Promise<void>;
 }
 
 export function MappingDialog({
   open, onOpenChange, filesToMap, categories, grouped, allItems,
-  getItemsForFile, mapFileToItems,
+  getItemsForFile, mapFileToItems, onMarkItemsComplete,
 }: MappingDialogProps) {
   const [selections, setSelections] = useState<Set<string>>(new Set());
 
@@ -66,6 +67,10 @@ export function MappingDialog({
       if (itemIds.length > 0) {
         await mapFileToItems(file.id, itemIds, 'manual_picker');
       }
+    }
+    // Mark mapped checklist items as complete
+    if (onMarkItemsComplete && itemIds.length > 0) {
+      await onMarkItemsComplete(itemIds);
     }
     onOpenChange(false);
     setSelections(new Set());

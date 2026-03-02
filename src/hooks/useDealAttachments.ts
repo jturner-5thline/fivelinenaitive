@@ -95,6 +95,21 @@ export function useDealAttachments(dealId: string | null) {
     fetchAttachments();
   }, [fetchAttachments]);
 
+  // Real-time subscription for instant updates
+  useEffect(() => {
+    if (!dealId) return;
+    const channel = supabase
+      .channel(`deal-attachments-${dealId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'deal_attachments',
+        filter: `deal_id=eq.${dealId}`,
+      }, () => { fetchAttachments(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [dealId, fetchAttachments]);
+
   const uploadAttachment = async (file: File, category: DealAttachmentCategory = 'materials') => {
     if (!user || !dealId) {
       toast.error('Please log in to upload attachments');
