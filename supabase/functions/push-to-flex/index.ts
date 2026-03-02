@@ -24,6 +24,7 @@ interface WriteUpData {
   industry: string;
   location: string;
   yearFounded: string;
+  customerBase: string;
   headcount: string;
   dealType: string;
   billingModel: string;
@@ -366,6 +367,7 @@ serve(async (req) => {
         industry: writeUpData!.industry,
         state: writeUpData!.location,
         year_founded: (writeUpData as any).yearFounded || undefined,
+        customer_base: (writeUpData as any).customerBase || undefined,
         headcount: (writeUpData as any).headcount || undefined,
         deal_type: writeUpData!.dealType,
         billing_model: writeUpData!.billingModel || undefined,

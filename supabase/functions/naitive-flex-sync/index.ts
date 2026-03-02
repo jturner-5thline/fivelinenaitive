@@ -124,6 +124,7 @@ function mapDealToWriteup(deal: DealPayload, userId: string, dealId: string) {
     capital_ask: formatCurrency(getValue<string | number>(deal, 'capital_ask', 'capitalAsk')),
     accounting_system: getValue<string>(deal, 'accounting_system', 'accountingSystem') || null,
     use_of_funds: getValue<string>(deal, 'use_of_funds', 'useOfFunds') || null,
+    customer_base: getValue<string>(deal, 'customer_base', 'customerBase') || null,
     existing_debt_details: getValue<string>(deal, 'existing_debt', 'existingDebt') || null,
     description: deal.description || null,
     key_items: getValue<KeyItem[]>(deal, 'key_items', 'keyItems') || null,
