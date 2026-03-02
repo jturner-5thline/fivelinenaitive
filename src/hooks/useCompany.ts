@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -33,158 +34,133 @@ export interface CompanyMember {
   avatar_url?: string | null;
 }
 
+interface PublicProfile {
+  user_id: string;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+}
+
+async function fetchCompanyData(userId: string, userEmail?: string | null) {
+  // Get user's company membership
+  const { data: memberData, error: memberError } = await supabase
+    .from('company_members')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (memberError) throw memberError;
+
+  if (!memberData) {
+    return { company: null, members: [], userRole: null };
+  }
+
+  const userRole = memberData.role as CompanyRole;
+
+  // Get company details
+  const { data: companyData, error: companyError } = await supabase
+    .from('companies')
+    .select('*')
+    .eq('id', memberData.company_id)
+    .single();
+
+  if (companyError) throw companyError;
+
+  // Get all members
+  const { data: membersData, error: membersError } = await supabase
+    .from('company_members')
+    .select('*')
+    .eq('company_id', memberData.company_id);
+
+  if (membersError) throw membersError;
+
+  let membersWithProfiles: CompanyMember[] = [];
+
+  if (membersData && membersData.length > 0) {
+    const userIds = membersData.map(m => m.user_id);
+    
+    const { data: rawProfilesData, error: profilesError } = await supabase
+      .from('profiles_public' as any)
+      .select('user_id, display_name, first_name, last_name, avatar_url')
+      .in('user_id', userIds);
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+    }
+
+    const profilesData = (rawProfilesData || []) as unknown as PublicProfile[];
+
+    // Generate signed URLs for avatars stored in Supabase storage
+    const profilesWithSignedUrls = await Promise.all(
+      profilesData.map(async (profile) => {
+        let signedAvatarUrl = profile.avatar_url;
+        
+        if (profile.avatar_url && !profile.avatar_url.startsWith('http')) {
+          const { data: signedData } = await supabase.storage
+            .from('avatars')
+            .createSignedUrl(profile.avatar_url, 3600);
+          signedAvatarUrl = signedData?.signedUrl || profile.avatar_url;
+        }
+        
+        return { ...profile, avatar_url: signedAvatarUrl };
+      })
+    );
+
+    membersWithProfiles = membersData.map(member => {
+      const profile = profilesWithSignedUrls?.find(p => p.user_id === member.user_id);
+      const displayName = profile?.display_name || 
+        (profile?.first_name && profile?.last_name 
+          ? `${profile.first_name} ${profile.last_name}`.trim() 
+          : profile?.first_name || null);
+      return {
+        ...member,
+        display_name: displayName,
+        avatar_url: profile?.avatar_url || null,
+        email: member.user_id === userId ? (userEmail || null) : null
+      };
+    });
+  }
+
+  return { company: companyData as Company, members: membersWithProfiles, userRole };
+}
+
 export function useCompany() {
   const { user } = useAuth();
-  const [company, setCompany] = useState<Company | null>(null);
-  const [members, setMembers] = useState<CompanyMember[]>([]);
-  const [userRole, setUserRole] = useState<CompanyRole | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
 
+  const { data, isLoading } = useQuery({
+    queryKey: ['company', user?.id],
+    queryFn: () => fetchCompanyData(user!.id, user!.email),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000, // 5 minutes - prevents refetches across components
+    gcTime: 10 * 60 * 1000,
+  });
+
+  const company = data?.company ?? null;
+  const members = data?.members ?? [];
+  const userRole = data?.userRole ?? null;
   const isAdmin = userRole === 'owner' || userRole === 'admin';
   const isOwner = userRole === 'owner';
 
-  const fetchCompany = useCallback(async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // Get user's company membership
-      const { data: memberData, error: memberError } = await supabase
-        .from('company_members')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (memberError) throw memberError;
-
-      if (!memberData) {
-        setCompany(null);
-        setUserRole(null);
-        setMembers([]);
-        setIsLoading(false);
-        return;
-      }
-
-      setUserRole(memberData.role as CompanyRole);
-
-      // Get company details
-      const { data: companyData, error: companyError } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', memberData.company_id)
-        .single();
-
-      if (companyError) throw companyError;
-      setCompany(companyData);
-
-      // Get all members
-      const { data: membersData, error: membersError } = await supabase
-        .from('company_members')
-        .select('*')
-        .eq('company_id', memberData.company_id);
-
-      if (membersError) throw membersError;
-
-      // Fetch profile data for each member using the profiles_public view
-      // This view only exposes non-sensitive fields (excludes phone, backup_email, etc.)
-      if (membersData && membersData.length > 0) {
-        const userIds = membersData.map(m => m.user_id);
-        
-        // Query the profiles_public view for team member display info
-        // This is a secure view that only exposes: display_name, first_name, last_name, avatar_url, company_name, company_role
-        // Email is fetched separately only for the current user
-        const { data: rawProfilesData, error: profilesError } = await supabase
-          .from('profiles_public' as any)
-          .select('user_id, display_name, first_name, last_name, avatar_url')
-          .in('user_id', userIds);
-
-        if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
-        }
-
-        // Type the profiles data (profiles_public view excludes sensitive fields like email, phone)
-        interface PublicProfile {
-          user_id: string;
-          display_name: string | null;
-          first_name: string | null;
-          last_name: string | null;
-          avatar_url: string | null;
-        }
-        
-        const profilesData = (rawProfilesData || []) as unknown as PublicProfile[];
-
-        // Generate signed URLs for avatars stored in Supabase storage
-        const profilesWithSignedUrls = await Promise.all(
-          profilesData.map(async (profile) => {
-            let signedAvatarUrl = profile.avatar_url;
-            
-            // If avatar_url is a storage path (not a full URL), generate signed URL
-            if (profile.avatar_url && !profile.avatar_url.startsWith('http')) {
-              const { data: signedData } = await supabase.storage
-                .from('avatars')
-                .createSignedUrl(profile.avatar_url, 3600);
-              signedAvatarUrl = signedData?.signedUrl || profile.avatar_url;
-            }
-            
-            return { ...profile, avatar_url: signedAvatarUrl };
-          })
-        );
-
-        // Merge profile data with members
-        // Note: Email is only provided for the current user (from auth context)
-        // Other team members' emails are not exposed for privacy/security
-        const membersWithProfiles = membersData.map(member => {
-          const profile = profilesWithSignedUrls?.find(p => p.user_id === member.user_id);
-          // Build display name from first+last if display_name is missing
-          const displayName = profile?.display_name || 
-            (profile?.first_name && profile?.last_name 
-              ? `${profile.first_name} ${profile.last_name}`.trim() 
-              : profile?.first_name || null);
-          return {
-            ...member,
-            display_name: displayName,
-            avatar_url: profile?.avatar_url || null,
-            // Only expose email for the current authenticated user
-            email: member.user_id === user.id ? user.email : null
-          };
-        });
-
-        setMembers(membersWithProfiles);
-      } else {
-        setMembers([]);
-      }
-    } catch (error) {
-      console.error('Error fetching company:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchCompany();
-  }, [fetchCompany]);
+  const refetch = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['company', user?.id] });
+  }, [queryClient, user?.id]);
 
   const createCompany = async (name: string) => {
     if (!user) return { error: 'Not authenticated' };
 
     setIsSaving(true);
     try {
-      // Important: we cannot rely on `insert(...).select()` here because RLS SELECT
-      // policies for `companies` require membership, which doesn't exist until
-      // after we insert into `company_members`.
       const companyId = crypto.randomUUID();
 
-      // 1) Create company (no returning/representation needed)
       const { error: companyError } = await supabase
         .from('companies')
         .insert({ id: companyId, name });
 
       if (companyError) throw companyError;
 
-      // 2) Add user as owner
       const { error: memberError } = await supabase
         .from('company_members')
         .insert({
@@ -195,28 +171,7 @@ export function useCompany() {
 
       if (memberError) throw memberError;
 
-      // 3) Now that membership exists, fetch company details
-      const { data: newCompany, error: fetchError } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', companyId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      setCompany(newCompany);
-      setUserRole('owner');
-      setMembers([
-        {
-          id: '',
-          company_id: companyId,
-          user_id: user.id,
-          role: 'owner',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ]);
-
+      refetch();
       toast.success('Company created successfully');
       return { error: null };
     } catch (error: any) {
@@ -233,7 +188,7 @@ export function useCompany() {
 
     setIsSaving(true);
     try {
-      const { data, error, count } = await supabase
+      const { data: updatedData, error } = await supabase
         .from('companies')
         .update(updates)
         .eq('id', company.id)
@@ -241,12 +196,9 @@ export function useCompany() {
         .single();
 
       if (error) throw error;
+      if (!updatedData) throw new Error('Update failed - no rows affected');
 
-      if (!data) {
-        throw new Error('Update failed - no rows affected');
-      }
-
-      setCompany(data);
+      refetch();
       toast.success('Company updated successfully');
       return { error: null };
     } catch (error: any) {
@@ -260,9 +212,6 @@ export function useCompany() {
 
   const inviteMember = async (email: string, role: CompanyRole = 'member') => {
     if (!company || !isAdmin) return { error: 'Not authorized' };
-    
-    // Note: This is a simplified version. In production, you'd send an invite email
-    // and have the user accept it. For now, this assumes the user already exists.
     toast.info('Member invitation system requires email integration');
     return { error: 'Not implemented' };
   };
@@ -279,9 +228,7 @@ export function useCompany() {
 
       if (error) throw error;
 
-      setMembers(prev => 
-        prev.map(m => m.id === memberId ? { ...m, role: newRole } : m)
-      );
+      refetch();
       toast.success('Member role updated');
       return { error: null };
     } catch (error: any) {
@@ -302,7 +249,7 @@ export function useCompany() {
 
       if (error) throw error;
 
-      setMembers(prev => prev.filter(m => m.id !== memberId));
+      refetch();
       toast.success('Member removed');
       return { error: null };
     } catch (error: any) {
@@ -325,6 +272,6 @@ export function useCompany() {
     inviteMember,
     updateMemberRole,
     removeMember,
-    refetch: fetchCompany
+    refetch
   };
 }
