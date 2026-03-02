@@ -1,4 +1,6 @@
 import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
 import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
@@ -25,6 +27,11 @@ import {
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
@@ -32,7 +39,7 @@ import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
   SlidersHorizontal, Group, Trash2, BarChart3, Bell,
   Bookmark, BookmarkPlus, Download, FileDown, Star, MoreVertical,
-  Zap, Tag, ClipboardList, GripVertical, Users,
+  Zap, Tag, ClipboardList, GripVertical, Users, Briefcase,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -49,7 +56,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 type ViewMode = 'list' | 'board' | 'calendar' | 'reporting' | 'focus';
 type FilterStatus = 'all' | 'incomplete' | 'not_started' | 'in_progress' | 'blocked' | 'complete';
-type SortBy = 'due_date' | 'priority' | 'created_at' | 'title';
+type SortBy = 'due_date' | 'priority' | 'created_at' | 'title' | 'deal';
 
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
@@ -75,6 +82,42 @@ export default function Tasks() {
   const [newLabelColor, setNewLabelColor] = useState('#6366f1');
   const newTaskRef = useRef<HTMLInputElement>(null);
   const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
+  const [filterDealIds, setFilterDealIds] = useState<Set<string>>(new Set());
+  const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Fetch label assignments for all tasks for filtering
+  const { data: allLabelAssignments = [] } = useQuery({
+    queryKey: ['all-task-label-assignments'],
+    enabled: !!tasks.length,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('task_label_assignments')
+        .select('task_id, label_id');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const taskLabelMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    allLabelAssignments.forEach(a => {
+      if (!map.has(a.task_id)) map.set(a.task_id, new Set());
+      map.get(a.task_id)!.add(a.label_id);
+    });
+    return map;
+  }, [allLabelAssignments]);
+
+  // Unique deals across tasks for the deal filter
+  const uniqueDeals = useMemo(() => {
+    const dealMap = new Map<string, string>();
+    tasks.forEach(t => {
+      if (t.deal_id && t.deal?.company) {
+        dealMap.set(t.deal_id, t.deal.company);
+      }
+    });
+    return Array.from(dealMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [tasks]);
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
 
@@ -93,6 +136,11 @@ export default function Tasks() {
       if (filterStatus === 'incomplete' && t.status === 'complete') return false;
       if (filterStatus !== 'all' && filterStatus !== 'incomplete' && t.status !== filterStatus) return false;
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+      if (filterDealIds.size > 0 && (!t.deal_id || !filterDealIds.has(t.deal_id))) return false;
+      if (filterLabelIds.size > 0) {
+        const taskLabels = taskLabelMap.get(t.id);
+        if (!taskLabels || ![...filterLabelIds].some(lid => taskLabels.has(lid))) return false;
+      }
       return true;
     })
     .sort((a, b) => {
@@ -109,6 +157,14 @@ export default function Tasks() {
         case 'priority': {
           const order = { urgent: 0, high: 1, medium: 2, low: 3 };
           return (order[a.priority as keyof typeof order] ?? 2) - (order[b.priority as keyof typeof order] ?? 2);
+        }
+        case 'deal': {
+          const aDeal = a.deal?.company || '';
+          const bDeal = b.deal?.company || '';
+          if (!aDeal && !bDeal) return 0;
+          if (!aDeal) return 1;
+          if (!bDeal) return -1;
+          return aDeal.localeCompare(bDeal);
         }
         case 'title':
           return a.title.localeCompare(b.title);
@@ -149,14 +205,17 @@ export default function Tasks() {
   }, [selectedTaskIds, updateTask]);
 
   const handleBulkDelete = useCallback(() => {
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const confirmBulkDelete = useCallback(() => {
     const count = selectedTaskIds.size;
     const ids = Array.from(selectedTaskIds);
     const promises = ids.map(id => deleteTask.mutateAsync(id));
     Promise.all(promises).then(() => {
       setSelectedTaskIds(new Set());
-      toast.success(`Deleted ${count} task(s)`, {
-        action: { label: 'Undo is not available for bulk delete', onClick: () => {} },
-      });
+      setShowDeleteConfirm(false);
+      toast.success(`Deleted ${count} task(s)`);
     });
   }, [selectedTaskIds, deleteTask]);
 
@@ -404,6 +463,94 @@ export default function Tasks() {
               <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Deal filter */}
+          {uniqueDeals.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant={filterDealIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-8 text-xs gap-1.5">
+                  <Briefcase className="h-3 w-3" />
+                  {filterDealIds.size > 0
+                    ? `Deal: ${uniqueDeals.filter(([id]) => filterDealIds.has(id)).map(([, name]) => name).join(', ')}`
+                    : 'Deal'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-1 max-h-[260px] overflow-auto" align="start">
+                {filterDealIds.size > 0 && (
+                  <>
+                    <button
+                      className="w-full text-left px-2 py-1.5 text-xs text-destructive rounded hover:bg-muted"
+                      onClick={() => setFilterDealIds(new Set())}
+                    >
+                      Clear filter
+                    </button>
+                    <div className="border-t my-1" />
+                  </>
+                )}
+                {uniqueDeals.map(([id, name]) => (
+                  <button
+                    key={id}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                    onClick={() => {
+                      setFilterDealIds(prev => {
+                        const next = new Set(prev);
+                        if (next.has(id)) next.delete(id); else next.add(id);
+                        return next;
+                      });
+                    }}
+                  >
+                    <Checkbox checked={filterDealIds.has(id)} className="h-3.5 w-3.5" />
+                    <span className="truncate">{name}</span>
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          )}
+
+          {/* Labels filter */}
+          {labels.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant={filterLabelIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-8 text-xs gap-1.5">
+                  <Tag className="h-3 w-3" />
+                  {filterLabelIds.size > 0
+                    ? `Labels: ${labels.filter(l => filterLabelIds.has(l.id)).map(l => l.name).join(', ')}`
+                    : 'Labels'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-1 max-h-[260px] overflow-auto" align="start">
+                {filterLabelIds.size > 0 && (
+                  <>
+                    <button
+                      className="w-full text-left px-2 py-1.5 text-xs text-destructive rounded hover:bg-muted"
+                      onClick={() => setFilterLabelIds(new Set())}
+                    >
+                      Clear filter
+                    </button>
+                    <div className="border-t my-1" />
+                  </>
+                )}
+                {labels.map(l => (
+                  <button
+                    key={l.id}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                    onClick={() => {
+                      setFilterLabelIds(prev => {
+                        const next = new Set(prev);
+                        if (next.has(l.id)) next.delete(l.id); else next.add(l.id);
+                        return next;
+                      });
+                    }}
+                  >
+                    <Checkbox checked={filterLabelIds.has(l.id)} className="h-3.5 w-3.5" />
+                    <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: l.color }} />
+                    <span className="truncate">{l.name}</span>
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          )}
+
           <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
             <SelectTrigger className="h-8 w-[130px] text-xs">
               <SlidersHorizontal className="h-3 w-3 mr-1.5" /><SelectValue />
@@ -411,6 +558,7 @@ export default function Tasks() {
             <SelectContent>
               <SelectItem value="due_date" className="text-xs">Due date</SelectItem>
               <SelectItem value="priority" className="text-xs">Priority</SelectItem>
+              <SelectItem value="deal" className="text-xs">Deal</SelectItem>
               <SelectItem value="created_at" className="text-xs">Created</SelectItem>
               <SelectItem value="title" className="text-xs">Name</SelectItem>
             </SelectContent>
@@ -608,6 +756,24 @@ export default function Tasks() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Delete confirmation dialog */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {selectedTaskIds.size} task{selectedTaskIds.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </>
   );

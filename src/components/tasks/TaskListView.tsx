@@ -1,4 +1,5 @@
 import { KeyboardEvent, RefObject, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { type Task } from '@/hooks/useTasks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -213,7 +214,7 @@ export function TaskListView({
     >
       <div className="divide-y">
         {/* Column header */}
-        <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground bg-muted/30 sticky top-0 z-10">
+        <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground bg-muted/30 sticky top-0 z-10">
           <div />
           <div
             className="cursor-pointer"
@@ -230,6 +231,7 @@ export function TaskListView({
           <div />
           <div>Task name</div>
           <div>Owner</div>
+          <div>Deal</div>
           <div>Due date</div>
           <div>Priority</div>
           <div>Status</div>
@@ -295,7 +297,7 @@ export function TaskListView({
                       {group === groups[0] && (
                         <>
                           {isCreating ? (
-                            <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
+                            <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
                               <div />
                               <div />
                               <div className="w-5" />
@@ -309,6 +311,7 @@ export function TaskListView({
                                 className="h-7 text-sm border-primary"
                                 autoFocus
                               />
+                              <div />
                               <div />
                               <div />
                               <div />
@@ -493,7 +496,7 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, isFocused, onSelec
       ref={setNodeRef}
       style={style}
       className={cn(
-        'grid grid-cols-[20px_20px_auto_16px_1fr_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5 hover:bg-muted/30 cursor-pointer transition-colors group',
+        'grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5 hover:bg-muted/30 cursor-pointer transition-colors group',
         isSelected && 'bg-primary/5 border-r-2 border-r-primary',
         isMultiSelected && 'bg-primary/10',
         isFocused && 'ring-1 ring-inset ring-primary/40 bg-primary/5',
@@ -589,6 +592,21 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, isFocused, onSelec
               {task.assignee_profile.display_name?.split(' ')[0]}
             </span>
           </>
+        ) : (
+          <span className="text-[11px] text-muted-foreground/40">—</span>
+        )}
+      </div>
+
+      {/* Deal */}
+      <div className="min-w-0" onClick={e => e.stopPropagation()}>
+        {task.deal_id && task.deal ? (
+          <Link
+            to={`/deal/${task.deal_id}`}
+            className="text-[11px] text-primary hover:underline truncate block"
+            onClick={e => e.stopPropagation()}
+          >
+            {task.deal.company}
+          </Link>
         ) : (
           <span className="text-[11px] text-muted-foreground/40">—</span>
         )}

@@ -150,12 +150,29 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     },
   });
 
+  // Fetch deal names for tasks with deal_id
+  const dealIds = [...new Set(tasks.map(t => t.deal_id).filter(Boolean))] as string[];
+  const { data: deals = [] } = useQuery({
+    queryKey: ['task-deals', dealIds.sort().join(',')],
+    enabled: dealIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, company')
+        .in('id', dealIds);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
+  const dealMap = Object.fromEntries(deals.map(d => [d.id, { company: d.company }]));
 
   const enrichedTasks = tasks.map(t => ({
     ...t,
     assignee_profile: profileMap[t.assigned_to] || null,
     creator_profile: profileMap[t.assigned_by] || null,
+    deal: t.deal_id ? dealMap[t.deal_id] || null : null,
   }));
 
   const createTask = useMutation({
