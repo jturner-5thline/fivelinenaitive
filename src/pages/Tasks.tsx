@@ -327,16 +327,19 @@ export default function Tasks() {
               const visibleOverdue = filtered.filter(t => !t.due_date ? false : (isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00')) && t.status !== 'complete')).length;
               const visibleDueToday = filtered.filter(t => !t.due_date ? false : (isToday(new Date(t.due_date + 'T00:00:00')) && t.status !== 'complete')).length;
               return (visibleOverdue > 0 || visibleDueToday > 0) ? (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   {visibleOverdue > 0 && (
-                    <Badge variant="destructive" className="text-[10px] h-5 px-1.5 gap-1">
-                      <Bell className="h-2.5 w-2.5" /> {visibleOverdue} overdue
-                    </Badge>
+                    <span className="text-sm text-destructive/80 flex items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+                      </svg>
+                      {visibleOverdue} overdue
+                    </span>
                   )}
                   {visibleDueToday > 0 && (
-                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1 border-amber-500/30 text-amber-600">
+                    <span className="text-sm text-muted-foreground">
                       {visibleDueToday} due today
-                    </Badge>
+                    </span>
                   )}
                 </div>
               ) : null;

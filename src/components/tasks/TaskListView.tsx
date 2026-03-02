@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/popover';
 import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
-  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star,
+  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -128,7 +128,7 @@ export function TaskListView({
   groupBy = 'status', selectedTaskIds, onToggleSelect, onSelectAll,
   onToggleStar, focusedTaskIndex,
 }: TaskListViewProps) {
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['complete']));
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -245,7 +245,10 @@ export function TaskListView({
                 {/* Section header */}
                 <button
                   onClick={() => toggleSection(group.key)}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-muted/40 transition-colors text-left"
+                  className={cn(
+                    "w-full flex items-center gap-2 px-4 py-2 hover:bg-muted/40 transition-colors text-left",
+                    groupBy === 'status' && group.key === 'blocked' && 'bg-[rgba(239,68,68,0.07)]'
+                  )}
                 >
                   {isCollapsed ? (
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
@@ -257,6 +260,11 @@ export function TaskListView({
                   )}
                   <span className="text-xs font-semibold">{group.label}</span>
                   <span className="text-[10px] text-muted-foreground ml-1">({group.tasks.length})</span>
+                  {group.key === 'complete' && (
+                    <span className="text-[10px] text-muted-foreground ml-2 hover:text-foreground transition-colors">
+                      {isCollapsed ? 'Show completed' : 'Hide completed'}
+                    </span>
+                  )}
                 </button>
 
                 {!isCollapsed && (
@@ -358,13 +366,24 @@ function QuickDatePicker({ value, onChange }: { value: string | null; onChange: 
     <Popover>
       <PopoverTrigger asChild>
         <button className="flex items-center gap-1 text-xs hover:bg-muted/40 rounded px-1.5 py-0.5 transition-colors">
-          {value ? (
-            <span className={cn(
-              value < today ? 'text-destructive font-medium' : 'text-muted-foreground'
-            )}>
-              {format(new Date(value + 'T00:00:00'), 'MMM d')}
-            </span>
-          ) : (
+          {value ? (() => {
+            const isOverdue = value < today;
+            const daysOverdue = isOverdue ? Math.ceil((new Date(today).getTime() - new Date(value + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24)) : 0;
+            const isSevere = daysOverdue >= 4;
+            const isCritical = daysOverdue >= 8;
+            return (
+              <span className={cn(
+                isOverdue
+                  ? isSevere
+                    ? 'text-[#DC2626] font-bold'
+                    : 'text-[#EF4444] font-medium'
+                  : 'text-muted-foreground'
+              )}>
+                {isCritical && <AlertTriangle className="h-3 w-3 inline mr-0.5 -mt-0.5" />}
+                {format(new Date(value + 'T00:00:00'), 'MMM d')}
+              </span>
+            );
+          })() : (
             <span className="text-muted-foreground/40">No date</span>
           )}
         </button>
@@ -418,7 +437,7 @@ function InlinePriorityPicker({ value, onChange }: { value: string; onChange: (v
   const conf = PRIORITY_CONFIG[value] || PRIORITY_CONFIG.medium;
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-5 text-[10px] border-none bg-transparent px-0 w-[80px] focus:ring-0">
+      <SelectTrigger className="h-5 text-[10px] border-none bg-transparent px-0 w-[80px] focus:ring-0 [&>svg]:opacity-0 [&>svg]:group-hover:opacity-100 [&>svg]:transition-opacity">
         <Badge variant="outline" className={cn('text-[10px] h-5 px-1.5', conf.className)}>
           {conf.label}
         </Badge>
@@ -600,7 +619,7 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, isFocused, onSelec
             if (v === 'complete') fireCelebration();
           }}
         >
-          <SelectTrigger className="h-6 text-[10px] border-none bg-transparent px-1 w-[90px]">
+          <SelectTrigger className="h-6 text-[10px] border-none bg-transparent px-1 w-[90px] [&>svg]:opacity-0 [&>svg]:group-hover:opacity-100 [&>svg]:transition-opacity">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
