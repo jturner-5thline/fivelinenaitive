@@ -38,6 +38,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
+import { populateDefaultChecklist } from '@/hooks/useDefaultChecklistConfig';
 import { useProfile } from '@/hooks/useProfile';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
@@ -56,7 +57,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
   const navigate = useNavigate();
   const { user } = useAuth();
   const { createDeal } = useDealsContext();
-  const { members } = useCompany();
+  const { members, company } = useCompany();
   const { profile } = useProfile();
   const { stages: dealStages, defaultStageId } = useDealStages();
   const { dealTypes: availableDealTypes } = useDealTypes();
@@ -186,6 +187,13 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
       });
 
       if (newDeal) {
+        // Auto-populate default checklist based on deal type
+        if (selectedDealTypes.length > 0 && user && company?.id) {
+          for (const dealType of selectedDealTypes) {
+            const dealTypeId = dealType.toLowerCase().replace(/\s+/g, '-');
+            await populateDefaultChecklist(newDeal.id, dealTypeId, company.id, user.id);
+          }
+        }
         toast.success(`Deal "${dealName}" created successfully!`);
         setOpen(false);
         setConfirmBlankOpen(false);
