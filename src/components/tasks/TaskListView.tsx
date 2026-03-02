@@ -69,6 +69,7 @@ interface TaskListViewProps {
   onSelectAll?: () => void;
   onToggleStar?: (id: string, current: boolean) => void;
   focusedTaskIndex?: number;
+  taskNameWarning?: string;
 }
 
 function getTimeGroups(tasks: Task[]) {
@@ -157,7 +158,7 @@ export function TaskListView({
   onNewTaskChange, onNewTaskKeyDown, onNewTaskCreate, onCancelCreate,
   onSelectTask, onUpdateTask, onDeleteTask, selectedTaskId,
   groupBy = 'status', selectedTaskIds, onToggleSelect, onSelectAll,
-  onToggleStar, focusedTaskIndex,
+  onToggleStar, focusedTaskIndex, taskNameWarning,
 }: TaskListViewProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['complete']));
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
@@ -329,27 +330,32 @@ export function TaskListView({
                       {group === groups[0] && (
                         <>
                           {isCreating ? (
-                            <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
-                              <div />
-                              <div />
-                              <div className="w-5" />
-                              <div />
-                              <Input
-                                ref={newTaskRef as any}
-                                value={newTaskTitle}
-                                onChange={e => onNewTaskChange(e.target.value)}
-                                onKeyDown={onNewTaskKeyDown}
-                                placeholder="Task name... (Enter to create, Esc to cancel)"
-                                className="h-7 text-sm border-primary"
-                                autoFocus
-                              />
-                              <div />
-                              <div />
-                              <div />
-                              <div />
-                              <div />
-                              <div />
-                            </div>
+                            <>
+                              <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
+                                <div />
+                                <div />
+                                <div className="w-5" />
+                                <div />
+                                <Input
+                                  ref={newTaskRef as any}
+                                  value={newTaskTitle}
+                                  onChange={e => onNewTaskChange(e.target.value)}
+                                  onKeyDown={onNewTaskKeyDown}
+                                  placeholder="Task name... (Enter to create, Esc to cancel)"
+                                  className="h-7 text-sm border-primary"
+                                  autoFocus
+                                />
+                                <div />
+                                <div />
+                                <div />
+                                <div />
+                                <div />
+                                <div />
+                              </div>
+                              {taskNameWarning && (
+                                <p className="text-destructive text-[11px] px-4 py-1">{taskNameWarning}</p>
+                              )}
+                            </>
                           ) : (
                             <button
                               onClick={() => onNewTaskChange('')}
@@ -436,6 +442,12 @@ function QuickDatePicker({ value, onChange }: { value: string | null; onChange: 
             onClick={() => onChange(tomorrow)}
           >
             <Sunrise className="h-3 w-3 text-amber-500" /> Tomorrow
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors"
+            onClick={() => onChange(format(addDays(new Date(), 7), 'yyyy-MM-dd'))}
+          >
+            <CalendarIcon className="h-3 w-3 text-primary" /> +1 Week
           </button>
           <button
             className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors"

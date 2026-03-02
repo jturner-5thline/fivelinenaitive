@@ -262,39 +262,39 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
                 <Calendar className="h-3 w-3" /> Due date
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-wrap">
                 <Input
                   type="date"
                   value={task.due_date || ''}
                   onChange={e => onUpdate({ due_date: e.target.value || null } as any)}
                   className="h-7 text-xs w-[130px]"
                 />
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                      <Clock className="h-3 w-3" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[160px] p-1" align="start">
-                    <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted" onClick={() => onUpdate({ due_date: today } as any)}>
-                      <Sun className="h-3 w-3 text-orange-500" /> Today
-                    </button>
-                    <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted" onClick={() => onUpdate({ due_date: tomorrow } as any)}>
-                      <Sunrise className="h-3 w-3 text-amber-500" /> Tomorrow
-                    </button>
-                    <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted" onClick={() => onUpdate({ due_date: nextMon } as any)}>
-                      <ArrowRight className="h-3 w-3 text-primary" /> Next Monday
-                    </button>
-                    {task.due_date && (
-                      <>
-                        <div className="border-t my-1" />
-                        <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted text-destructive" onClick={() => onUpdate({ due_date: null } as any)}>
-                          Remove
-                        </button>
-                      </>
-                    )}
-                  </PopoverContent>
-                </Popover>
+                <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 rounded-full"
+                    onClick={() => onUpdate({ due_date: today } as any)}
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 rounded-full"
+                    onClick={() => onUpdate({ due_date: tomorrow } as any)}
+                  >
+                    Tomorrow
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 rounded-full"
+                    onClick={() => onUpdate({ due_date: format(addDays(new Date(), 7), 'yyyy-MM-dd') } as any)}
+                  >
+                    +1 Week
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -413,17 +413,33 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                 value={task.recurrence_rule || 'none'}
                 onValueChange={v => onUpdate({ recurrence_rule: v === 'none' ? null : v } as any)}
               >
-                <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-7 w-[130px] text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none" className="text-xs">No repeat</SelectItem>
                   <SelectItem value="daily" className="text-xs">Daily</SelectItem>
-                  <SelectItem value="weekdays" className="text-xs">Weekdays</SelectItem>
                   <SelectItem value="weekly" className="text-xs">Weekly</SelectItem>
-                  <SelectItem value="biweekly" className="text-xs">Biweekly</SelectItem>
+                  <SelectItem value="biweekly" className="text-xs">Bi-weekly</SelectItem>
                   <SelectItem value="monthly" className="text-xs">Monthly</SelectItem>
+                  <SelectItem value="quarterly" className="text-xs">Quarterly</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Recurrence end date */}
+            {task.recurrence_rule && task.recurrence_rule !== 'none' && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+                  <Calendar className="h-3 w-3" /> End date
+                </div>
+                <Input
+                  type="date"
+                  value={(task as any).recurrence_end_date || ''}
+                  onChange={e => onUpdate({ recurrence_end_date: e.target.value || null } as any)}
+                  className="h-7 text-xs w-[130px]"
+                  placeholder="No end date"
+                />
+              </div>
+            )}
 
             {/* Watchers */}
             <div className="flex items-center gap-3">

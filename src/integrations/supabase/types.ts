@@ -7664,6 +7664,7 @@ export type Database = {
           position: number
           priority: string
           project_id: string | null
+          recurrence_end_date: string | null
           recurrence_parent_id: string | null
           recurrence_rule: string | null
           recurrence_source_id: string | null
@@ -7693,6 +7694,7 @@ export type Database = {
           position?: number
           priority?: string
           project_id?: string | null
+          recurrence_end_date?: string | null
           recurrence_parent_id?: string | null
           recurrence_rule?: string | null
           recurrence_source_id?: string | null
@@ -7722,6 +7724,7 @@ export type Database = {
           position?: number
           priority?: string
           project_id?: string | null
+          recurrence_end_date?: string | null
           recurrence_parent_id?: string | null
           recurrence_rule?: string | null
           recurrence_source_id?: string | null
