@@ -53,6 +53,7 @@ export interface CreateDealInitialValues {
   contactName?: string;
   contactInfo?: string;
   dealStatusNote?: string;
+  narrative?: string;
   referralName?: string;
   referralEmail?: string;
   dealManager?: string;
@@ -100,6 +101,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [contactName, setContactName] = useState(initialValues?.contactName || '');
   const [contactInfo, setContactInfo] = useState(initialValues?.contactInfo || '');
   const [dealStatusNote, setDealStatusNote] = useState(initialValues?.dealStatusNote || '');
+  const [narrative, setNarrative] = useState(initialValues?.narrative || '');
   const [referralName, setReferralName] = useState(initialValues?.referralName || '');
   const [referralEmail, setReferralEmail] = useState(initialValues?.referralEmail || '');
   const [isCreating, setIsCreating] = useState(false);
@@ -192,6 +194,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         contact: contactName.trim(),
         contactInfo: contactInfo.trim(),
         notes: dealStatusNote.trim(),
+        narrative: narrative.trim() || undefined,
         status: 'on-track',
         stage: dealStage,
         dealTypes: selectedDealTypes.length > 0 ? selectedDealTypes : undefined,
@@ -240,6 +243,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     setContactName('');
     setContactInfo('');
     setDealStatusNote('');
+    setNarrative('');
     setReferralName('');
     setReferralEmail('');
     setBlankFields([]);
@@ -456,6 +460,19 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   onChange={(e) => setDealStatusNote(e.target.value)}
                   placeholder="e.g., Client kickoff call to intro lenders"
                   required
+                />
+              </div>
+
+              {/* Deal Narrative */}
+              <div className="grid gap-1.5">
+                <Label htmlFor="narrative">Deal Narrative</Label>
+                <textarea
+                  id="narrative"
+                  value={narrative}
+                  onChange={(e) => setNarrative(e.target.value)}
+                  placeholder="Summary of the business, business model, what they're looking for, and key financial information..."
+                  className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  rows={4}
                 />
               </div>
 

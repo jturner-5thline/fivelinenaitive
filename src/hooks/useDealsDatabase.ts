@@ -474,6 +474,7 @@ export function useDealsDatabase() {
           referred_by: dealData.referredBy?.name || null,
           notes: dealData.notes || null,
           notes_updated_at: dealData.notes ? new Date().toISOString() : null,
+          narrative: dealData.narrative || null,
           contact: dealData.contact || null,
           contact_info: dealData.contactInfo || null,
           deal_type: dealData.dealTypes && dealData.dealTypes.length > 0 ? JSON.stringify(dealData.dealTypes) : null,

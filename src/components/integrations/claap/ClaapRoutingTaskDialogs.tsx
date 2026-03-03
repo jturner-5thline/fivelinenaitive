@@ -208,6 +208,7 @@ export function DealCreationDialog({ task, open, onOpenChange }: {
     // These will be extracted from transcript by the webhook AI analysis
     dealAmount: prefilled.suggested_amount || '',
     dealStatusNote: prefilled.suggested_status || '',
+    narrative: prefilled.deal_narrative || '',
     referralName: prefilled.referral_name || '',
     referralEmail: prefilled.referral_email || '',
     onCreated: (dealId: string) => {
