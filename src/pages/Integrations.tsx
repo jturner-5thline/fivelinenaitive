@@ -27,6 +27,7 @@ import { GoogleCalendarIntegration } from "@/components/integrations/GoogleCalen
 import { QuickBooksIntegration } from "@/components/integrations/QuickBooksIntegration";
 import { HubSpotIntegration } from "@/components/integrations/HubSpotIntegration";
 import { ClaapIntegration } from "@/components/integrations/ClaapIntegration";
+import { ClaapSettingsPage } from "@/components/integrations/claap/ClaapSettingsPage";
 import { ZapierIntegration } from "@/components/integrations/ZapierIntegration";
 import { 
   Plug, 
