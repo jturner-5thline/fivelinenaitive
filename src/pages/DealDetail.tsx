@@ -2578,7 +2578,7 @@ export default function DealDetail() {
           </Card>
 
           {/* Main Content Grid */}
-          <div className="grid gap-6">
+          <div className="grid gap-6 min-w-0 overflow-hidden">
             {/* Main Content */}
             <div className="flex flex-col gap-6">
               {/* Tab Navigation */}
