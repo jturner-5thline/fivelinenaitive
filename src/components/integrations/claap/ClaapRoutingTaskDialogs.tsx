@@ -234,6 +234,14 @@ export function DealCreationDialog({ task, open, onOpenChange }: {
         }
       );
     },
+    onDismiss: () => {
+      dismissTask.mutate(task.id, {
+        onSuccess: () => {
+          toast.success('Meeting task dismissed');
+          onOpenChange(false);
+        },
+      });
+    },
   };
 
   if (!open) return null;
