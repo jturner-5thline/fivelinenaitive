@@ -1,644 +1,531 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useIntegrations, Integration } from "@/hooks/useIntegrations";
-import { formatDistanceToNow } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { GmailIntegration } from "@/components/integrations/GmailIntegration";
-import { GoogleCalendarIntegration } from "@/components/integrations/GoogleCalendarIntegration";
-import { QuickBooksIntegration } from "@/components/integrations/QuickBooksIntegration";
-import { HubSpotIntegration } from "@/components/integrations/HubSpotIntegration";
-import { ClaapIntegration } from "@/components/integrations/ClaapIntegration";
-import { ClaapSettingsPage } from "@/components/integrations/claap/ClaapSettingsPage";
-import { ZapierIntegration } from "@/components/integrations/ZapierIntegration";
-import { 
-  Plug, 
-  Plus, 
-  Settings2, 
-  Trash2, 
-  RefreshCw, 
-  CheckCircle2, 
-  XCircle, 
-  Clock,
-  Webhook,
-  Database,
+import { supabase } from "@/integrations/supabase/client";
+import { formatDistanceToNow } from "date-fns";
+import { Helmet } from "react-helmet-async";
+import {
+  Plug,
+  Info,
+  X,
+  Users,
   Mail,
   Calendar,
-  FileText,
-  MessageSquare,
+  Video,
   Zap,
-  Copy,
-  Eye,
-  EyeOff,
-  Loader2,
-  Play,
+  Webhook,
   Linkedin,
-  FolderOpen,
-  Users
+  FileText,
+  Database,
+  CreditCard,
 } from "lucide-react";
 
-const INTEGRATION_TEMPLATES = [
-  { 
-    id: "webhook", 
-    name: "Webhook", 
-    description: "Send data to external services via HTTP webhooks",
-    icon: Webhook,
-    fields: ["url", "secret"]
-  },
-  { 
-    id: "zapier", 
-    name: "Zapier", 
-    description: "Connect to thousands of apps via Zapier",
-    icon: Zap,
-    fields: ["webhookUrl"]
-  },
-  { 
-    id: "slack", 
-    name: "Slack", 
-    description: "Send notifications to Slack channels",
-    icon: MessageSquare,
-    fields: ["webhookUrl", "channel"]
-  },
-  { 
-    id: "gmail", 
-    name: "Gmail", 
-    description: "Send and receive emails via Gmail API",
-    icon: Mail,
-    fields: ["clientId", "clientSecret", "refreshToken"]
-  },
-  { 
-    id: "google-calendar", 
-    name: "Google Calendar", 
-    description: "Sync milestones and events with Google Calendar",
-    icon: Calendar,
-    fields: ["clientId", "clientSecret", "calendarId"]
-  },
-  { 
-    id: "google-drive", 
-    name: "Google Drive", 
-    description: "Store and access documents in Google Drive",
-    icon: FolderOpen,
-    fields: ["clientId", "clientSecret", "folderId"]
-  },
-  { 
-    id: "hubspot", 
-    name: "HubSpot", 
-    description: "Sync contacts, deals, and activities with HubSpot CRM",
-    icon: Users,
-    fields: ["apiKey", "portalId"]
-  },
-  { 
-    id: "linkedin", 
-    name: "LinkedIn", 
-    description: "Connect with LinkedIn for professional networking",
-    icon: Linkedin,
-    fields: ["clientId", "clientSecret", "accessToken"]
-  },
-  { 
-    id: "email", 
-    name: "Email SMTP", 
-    description: "Send emails via custom SMTP server",
-    icon: Mail,
-    fields: ["host", "port", "username", "password"]
-  },
-  { 
-    id: "crm", 
-    name: "CRM Integration", 
-    description: "Sync deals with Salesforce or Pipedrive",
-    icon: Database,
-    fields: ["apiKey", "endpoint"]
-  },
-  { 
-    id: "docs", 
-    name: "Document Storage", 
-    description: "Connect to Dropbox or OneDrive",
-    icon: FileText,
-    fields: ["provider", "accessToken"]
-  },
-];
+// Hooks
+import { useHubSpot, useHubSpotContacts, useHubSpotDeals, useHubSpotCompanies } from "@/hooks/useHubSpot";
+import { useQuickBooksStatus, useQuickBooksConnect, useQuickBooksDisconnect, useQuickBooksCustomers, useQuickBooksInvoices, useQuickBooksPayments } from "@/hooks/useQuickBooks";
+import { useGmail } from "@/hooks/useGmail";
+import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
+import { useIntegrations } from "@/hooks/useIntegrations";
+import { useIntegrationInterest } from "@/hooks/useIntegrationInterest";
 
-const getIconForType = (type: string) => {
-  const template = INTEGRATION_TEMPLATES.find(t => t.id === type);
-  return template?.icon || Plug;
-};
+// Components
+import { IntegrationCard, ComingSoonCard, type IntegrationStatus } from "@/components/integrations/IntegrationCard";
+import { HubSpotSyncSettingsModal } from "@/components/integrations/HubSpotSyncSettingsModal";
+import { QuickBooksSyncSettingsModal } from "@/components/integrations/QuickBooksSyncSettingsModal";
+import { GmailSyncSettingsModal } from "@/components/integrations/GmailSyncSettingsModal";
+import { CalendarSyncSettingsModal } from "@/components/integrations/CalendarSyncSettingsModal";
+import { ClaapIntegration } from "@/components/integrations/ClaapIntegration";
+import { ZapierIntegration } from "@/components/integrations/ZapierIntegration";
+
+const BANNER_DISMISSED_KEY = "naitive_integrations_banner_dismissed";
+
+const COMING_SOON_INTEGRATIONS = [
+  { key: "webhook", name: "Webhook", icon: Webhook, description: "Send nAItive event data to external services via HTTP webhooks" },
+  { key: "linkedin", name: "LinkedIn", icon: Linkedin, description: "Enrich deal and contact profiles with LinkedIn data" },
+  { key: "email-smtp", name: "Email SMTP", icon: Mail, description: "Send transactional emails via your own custom SMTP server" },
+  { key: "document-storage", name: "Document Storage", icon: FileText, description: "Connect Dropbox or OneDrive to store and access deal documents" },
+  { key: "crm-integration", name: "CRM Integration", icon: Database, description: "Sync deals with Salesforce or Pipedrive" },
+];
 
 export default function Integrations() {
   const { user } = useAuth();
-  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
-  const { 
-    integrations, 
-    isLoading, 
-    createIntegration, 
-    updateIntegration, 
-    deleteIntegration, 
-    toggleIntegration 
-  } = useIntegrations();
+  const is5thLine = user?.email?.endsWith("@5thline.co") ?? false;
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
-  const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<typeof INTEGRATION_TEMPLATES[0] | null>(null);
-  const [newIntegrationName, setNewIntegrationName] = useState("");
-  const [configValues, setConfigValues] = useState<Record<string, string>>({});
-  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
-  const [testingIntegrationId, setTestingIntegrationId] = useState<string | null>(null);
+  // Banner
+  const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem(BANNER_DISMISSED_KEY) === "true");
 
-  const handleAddIntegration = async () => {
-    if (!selectedTemplate || !newIntegrationName) {
-      toast.error("Please fill in all required fields");
-      return;
+  // Modals
+  const [hubspotModalOpen, setHubspotModalOpen] = useState(false);
+  const [quickbooksModalOpen, setQuickbooksModalOpen] = useState(false);
+  const [gmailModalOpen, setGmailModalOpen] = useState(false);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+
+  // === HubSpot ===
+  const hubspot = useHubSpot();
+  const { data: contactsData } = useHubSpotContacts();
+  const { data: dealsData } = useHubSpotDeals();
+  const { data: companiesData } = useHubSpotCompanies();
+  const [hubspotStatus, setHubspotStatus] = useState<IntegrationStatus>("disconnected");
+  const [hubspotChecked, setHubspotChecked] = useState(false);
+
+  // === QuickBooks ===
+  const { data: qbStatus, isLoading: qbLoading } = useQuickBooksStatus();
+  const qbConnect = useQuickBooksConnect();
+  const qbDisconnect = useQuickBooksDisconnect();
+  const qbConnections = qbStatus?.connections || [];
+  const firstRealm = qbConnections[0]?.realmId;
+  const { data: qbCustomers = [] } = useQuickBooksCustomers(firstRealm);
+  const { data: qbInvoices = [] } = useQuickBooksInvoices(firstRealm);
+  const { data: qbPayments = [] } = useQuickBooksPayments(firstRealm);
+
+  // === Gmail ===
+  const gmail = useGmail();
+
+  // === Calendar ===
+  const calendar = useGoogleCalendar();
+
+  // === Claap/Zapier from integrations table ===
+  const { integrations } = useIntegrations();
+  const claapIntegration = integrations.find((i) => i.type === "claap");
+
+  // === Coming Soon Interest ===
+  const { interests, notifyMe } = useIntegrationInterest();
+
+  // Handle OAuth callbacks
+  useEffect(() => {
+    const qbParam = searchParams.get("qb");
+    const qbError = searchParams.get("error");
+    const legacyStatus = searchParams.get("quickbooks");
+
+    if (qbParam === "success" || legacyStatus === "connected") {
+      toast.success("QuickBooks connected successfully!");
+      searchParams.delete("qb");
+      searchParams.delete("quickbooks");
+      setSearchParams(searchParams, { replace: true });
+    } else if (qbParam === "error" || qbError) {
+      toast.error("QuickBooks connection failed", { description: qbError || "Please try again" });
+      searchParams.delete("qb");
+      searchParams.delete("error");
+      searchParams.delete("quickbooks");
+      setSearchParams(searchParams, { replace: true });
     }
 
-    await createIntegration.mutateAsync({
-      name: newIntegrationName,
-      type: selectedTemplate.id,
-      config: configValues,
-    });
-
-    setIsAddDialogOpen(false);
-    setSelectedTemplate(null);
-    setNewIntegrationName("");
-    setConfigValues({});
-  };
-
-  const handleTestConnection = async (integration: Integration) => {
-    if (!user) {
-      toast.error("You must be logged in to test webhooks");
-      return;
-    }
-
-    // Check if webhook URL is configured
-    const webhookUrl = integration.config?.url || integration.config?.webhookUrl || integration.config?.webhook_url;
-    if (!webhookUrl && integration.type === 'webhook') {
-      toast.error("No webhook URL configured for this integration");
-      return;
-    }
-
-    setTestingIntegrationId(integration.id);
-
-    try {
-      // Send a test payload via the webhook-sync edge function
-      const testPayload = {
-        type: 'TEST' as const,
-        table: 'test',
-        record: {
-          id: 'test-' + Date.now(),
-          message: 'This is a test webhook from your integration',
-          integration_name: integration.name,
-          timestamp: new Date().toISOString(),
-          sample_deal: {
-            id: 'sample-deal-123',
-            company: 'Acme Corporation',
-            value: 1000000,
-            stage: 'diligence',
-            status: 'on-track',
-          }
-        },
-        old_record: null,
-        user_id: user.id,
-        timestamp: new Date().toISOString(),
-      };
-
-      const { data, error } = await supabase.functions.invoke('webhook-sync', {
-        body: testPayload,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data?.success && data?.sent > 0) {
-        toast.success(`Test webhook sent successfully to ${integration.name}!`, {
-          description: `Delivered to ${data.sent} endpoint(s)`,
-        });
-      } else if (data?.success && data?.sent === 0) {
-        toast.warning("No webhooks were sent", {
-          description: integration.status !== 'connected' 
-            ? "Integration is not enabled. Enable it first to receive webhooks."
-            : "Check your webhook configuration.",
-        });
-      } else if (data?.results) {
-        const failedResults = data.results.filter((r: any) => !r.success);
-        if (failedResults.length > 0) {
-          toast.error(`Webhook test failed: ${failedResults[0].error || 'Unknown error'}`);
+    // Gmail callback
+    const gmailCode = searchParams.get("code");
+    const isGmailCallback = searchParams.get("gmail_callback");
+    if (gmailCode && isGmailCallback && user) {
+      gmail.exchangeCode(gmailCode).then((success) => {
+        searchParams.delete("code");
+        searchParams.delete("gmail_callback");
+        searchParams.delete("scope");
+        searchParams.delete("authuser");
+        searchParams.delete("prompt");
+        setSearchParams(searchParams, { replace: true });
+        if (success) {
+          toast.success("Gmail connected!");
+          gmail.checkStatus();
         }
-      }
-    } catch (error: any) {
-      console.error('Webhook test error:', error);
-      toast.error("Failed to send test webhook", {
-        description: error.message || "Please check your configuration and try again",
       });
-    } finally {
-      setTestingIntegrationId(null);
     }
-  };
 
-  const handleDeleteIntegration = async (id: string) => {
-    await deleteIntegration.mutateAsync(id);
-  };
-
-  const handleToggleIntegration = async (id: string, enabled: boolean) => {
-    await toggleIntegration.mutateAsync({ id, enabled });
-  };
-
-  const handleSaveConfig = async () => {
-    if (selectedIntegration) {
-      await updateIntegration.mutateAsync({
-        id: selectedIntegration.id,
-        updates: { config: configValues },
+    // Calendar callback
+    const calCode = searchParams.get("code");
+    const isCalCallback = searchParams.get("calendar_callback");
+    if (calCode && isCalCallback && user) {
+      calendar.exchangeCode(calCode).then((success) => {
+        searchParams.delete("code");
+        searchParams.delete("calendar_callback");
+        searchParams.delete("scope");
+        searchParams.delete("authuser");
+        searchParams.delete("prompt");
+        setSearchParams(searchParams, { replace: true });
+        if (success) {
+          toast.success("Google Calendar connected!");
+          calendar.checkStatus();
+        }
       });
-      setIsConfigDialogOpen(false);
-      setSelectedIntegration(null);
-      setConfigValues({});
-      toast.success("Configuration saved");
     }
+  }, [searchParams]);
+
+  // HubSpot auto health check
+  useEffect(() => {
+    if (hubspotChecked) return;
+    setHubspotChecked(true);
+    hubspot.testConnection()
+      .then(() => setHubspotStatus("connected"))
+      .catch(() => setHubspotStatus("disconnected"));
+  }, []);
+
+  const dismissBanner = () => {
+    setBannerDismissed(true);
+    localStorage.setItem(BANNER_DISMISSED_KEY, "true");
   };
 
-  const openConfigDialog = (integration: Integration) => {
-    setSelectedIntegration(integration);
-    setConfigValues(integration.config as Record<string, string>);
-    setIsConfigDialogOpen(true);
+  // === Determine connected integrations ===
+  const isHubspotConnected = hubspotStatus === "connected";
+  const isQBConnected = qbStatus?.connected ?? false;
+  const isGmailConnected = gmail.status?.connected ?? false;
+  const isCalendarConnected = calendar.status?.connected ?? false;
+  const isClaapConnected = claapIntegration?.status === "connected";
+
+  // Zapier is always "available" via the webhook config section
+  const isZapierActive = true; // Always show in connected for 5thLine users
+
+  const getGmailStatus = (): IntegrationStatus => {
+    if (!isGmailConnected) return "disconnected";
+    if (gmail.status?.is_expired) return "requires_reauth";
+    return "connected";
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "connected":
-        return <Badge variant="default" className="bg-green-500/10 text-green-600 border-green-500/20">Connected</Badge>;
-      case "error":
-        return <Badge variant="destructive">Error</Badge>;
-      default:
-        return <Badge variant="secondary">Disconnected</Badge>;
-    }
+  const getCalendarStatus = (): IntegrationStatus => {
+    if (!isCalendarConnected) return "disconnected";
+    if (calendar.status?.is_expired) return "requires_reauth";
+    return "connected";
   };
 
-  const formatLastSync = (lastSyncAt: string | null) => {
-    if (!lastSyncAt) return null;
-    return formatDistanceToNow(new Date(lastSyncAt), { addSuffix: true });
+  const getQBStatus = (): IntegrationStatus => {
+    if (!isQBConnected) return "disconnected";
+    const anyExpired = qbConnections.some((c) => c.isExpired);
+    if (anyExpired) return "requires_reauth";
+    return "connected";
   };
 
-  if (isLoading) {
-    return (
-      <AppLayout mainClassName="bg-background">
-        <div className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <Skeleton className="h-9 w-48 mb-2" />
-              <Skeleton className="h-5 w-72" />
-            </div>
-            <Skeleton className="h-10 w-36" />
-          </div>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-20 w-full" />
-            ))}
-          </div>
-        </div>
-      </AppLayout>
-    );
+  // Build connected list
+  type ConnectedIntegration = { key: string; render: () => React.ReactNode };
+  const connectedIntegrations: ConnectedIntegration[] = [];
+
+  if (is5thLine && isHubspotConnected) {
+    connectedIntegrations.push({
+      key: "hubspot",
+      render: () => (
+        <IntegrationCard
+          name="HubSpot"
+          icon={Users}
+          description="Syncs contacts, deals, and companies to power deal analysis and workflow automation."
+          status={hubspotStatus}
+          isConnected
+          lastSynced={null}
+          recordCounts={[
+            { label: "Contacts", count: contactsData?.results?.length || 0 },
+            { label: "Deals", count: dealsData?.results?.length || 0 },
+            { label: "Companies", count: companiesData?.results?.length || 0 },
+          ]}
+          externalUrl="https://app.hubspot.com"
+          externalLabel="Open HubSpot"
+          onSyncSettings={() => setHubspotModalOpen(true)}
+          onTestConnection={async () => {
+            try {
+              await hubspot.testConnection();
+              setHubspotStatus("connected");
+              toast.success("HubSpot connection healthy!");
+            } catch {
+              setHubspotStatus("error");
+              toast.error("HubSpot connection failed");
+            }
+          }}
+        />
+      ),
+    });
   }
+
+  if (is5thLine && isQBConnected) {
+    const lastSync = qbConnections[0]?.lastSync;
+    connectedIntegrations.push({
+      key: "quickbooks",
+      render: () => (
+        <IntegrationCard
+          name="QuickBooks"
+          icon={CreditCard}
+          description="Financial data powers deal and company financial context."
+          status={getQBStatus()}
+          isConnected
+          lastSynced={lastSync}
+          statusDetail={qbConnections.map((c) => c.companyName).filter(Boolean).join(", ")}
+          recordCounts={[
+            { label: "Customers", count: qbCustomers.length },
+            { label: "Invoices", count: qbInvoices.length },
+            { label: "Payments", count: qbPayments.length },
+          ]}
+          externalUrl="https://app.qbo.intuit.com"
+          externalLabel="Open QuickBooks"
+          onSyncSettings={() => setQuickbooksModalOpen(true)}
+          onDisconnect={async () => {
+            await qbDisconnect.mutateAsync(firstRealm);
+          }}
+        />
+      ),
+    });
+  }
+
+  if (is5thLine && isGmailConnected) {
+    connectedIntegrations.push({
+      key: "gmail",
+      render: () => (
+        <IntegrationCard
+          name="Gmail"
+          icon={Mail}
+          description="Email metadata enriches deal timelines and communication history."
+          status={getGmailStatus()}
+          isConnected
+          statusDetail={user?.email || undefined}
+          lastSynced={gmail.status?.connected_at}
+          externalUrl="https://mail.google.com"
+          externalLabel="Open Gmail"
+          onSyncSettings={() => setGmailModalOpen(true)}
+          onTestConnection={async () => {
+            await gmail.checkStatus();
+            toast.success("Gmail connection healthy!");
+          }}
+          onDisconnect={async () => {
+            await gmail.disconnect();
+          }}
+        />
+      ),
+    });
+  }
+
+  if (is5thLine && isCalendarConnected) {
+    connectedIntegrations.push({
+      key: "calendar",
+      render: () => (
+        <IntegrationCard
+          name="Google Calendar"
+          icon={Calendar}
+          description="Meeting events enrich deal timelines and track touchpoints."
+          status={getCalendarStatus()}
+          isConnected
+          statusDetail={`${calendar.status?.email || user?.email} · Read-only`}
+          lastSynced={calendar.status?.connected_at}
+          externalUrl="https://calendar.google.com"
+          externalLabel="Open Google Calendar"
+          onSyncSettings={() => setCalendarModalOpen(true)}
+          onTestConnection={async () => {
+            await calendar.checkStatus();
+            toast.success("Calendar connection healthy!");
+          }}
+          onDisconnect={async () => {
+            await calendar.disconnect();
+          }}
+        />
+      ),
+    });
+  }
+
+  if (is5thLine && isClaapConnected) {
+    connectedIntegrations.push({
+      key: "claap",
+      render: () => (
+        <Card>
+          <CardContent className="p-0">
+            <ClaapIntegration />
+          </CardContent>
+        </Card>
+      ),
+    });
+  }
+
+  if (is5thLine) {
+    connectedIntegrations.push({
+      key: "zapier",
+      render: () => (
+        <Card>
+          <CardContent className="p-0">
+            <ZapierIntegration />
+          </CardContent>
+        </Card>
+      ),
+    });
+  }
+
+  // === Available (not yet connected) ===
+  type AvailableIntegration = { key: string; render: () => React.ReactNode };
+  const availableIntegrations: AvailableIntegration[] = [];
+
+  if (is5thLine && !isHubspotConnected) {
+    availableIntegrations.push({
+      key: "hubspot",
+      render: () => (
+        <IntegrationCard
+          name="HubSpot"
+          icon={Users}
+          description="Sync contacts, deals, and companies to power deal analysis."
+          status="disconnected"
+          isConnected={false}
+          onConnect={() => toast.info("Configure HubSpot API key in settings to connect.")}
+        />
+      ),
+    });
+  }
+
+  if (is5thLine && !isQBConnected) {
+    availableIntegrations.push({
+      key: "quickbooks",
+      render: () => (
+        <IntegrationCard
+          name="QuickBooks"
+          icon={CreditCard}
+          description="Display financial context on deal and company profiles."
+          status="disconnected"
+          isConnected={false}
+          onConnect={() => qbConnect.mutate()}
+        />
+      ),
+    });
+  }
+
+  if (is5thLine && !isGmailConnected) {
+    availableIntegrations.push({
+      key: "gmail",
+      render: () => (
+        <IntegrationCard
+          name="Gmail"
+          icon={Mail}
+          description="Enrich deal timelines with email communication history via Gmail."
+          status="disconnected"
+          isConnected={false}
+          onConnect={() => gmail.connect()}
+        />
+      ),
+    });
+  }
+
+  if (is5thLine && !isCalendarConnected) {
+    availableIntegrations.push({
+      key: "calendar",
+      render: () => (
+        <IntegrationCard
+          name="Google Calendar"
+          icon={Calendar}
+          description="Enrich deal timelines with meeting and event data from Google Calendar."
+          status="disconnected"
+          isConnected={false}
+          onConnect={() => calendar.connect()}
+        />
+      ),
+    });
+  }
+
+  if (is5thLine && !isClaapConnected) {
+    availableIntegrations.push({
+      key: "claap",
+      render: () => (
+        <Card>
+          <CardContent className="p-0">
+            <ClaapIntegration />
+          </CardContent>
+        </Card>
+      ),
+    });
+  }
+
+  const totalConnected = connectedIntegrations.length;
 
   return (
     <AppLayout mainClassName="bg-background">
+      <Helmet>
+        <title>Integrations | nAItive</title>
+      </Helmet>
+
       <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
           <p className="text-muted-foreground">
             Connect and manage external platforms and services
           </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Integration
+
+        {/* Info Banner */}
+        {!bannerDismissed && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <Info className="h-4 w-4 text-blue-400 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                This page is for connecting integrations and monitoring sync health only. To work with synced data, go to Deals, Finance, or other modules.
+              </p>
+            </div>
+            <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={dismissBanner}>
+              <X className="h-3.5 w-3.5" />
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Add New Integration</DialogTitle>
-              <DialogDescription>
-                Choose an integration type and configure it to connect with external services.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Integration Name</Label>
-                <Input
-                  placeholder="My Integration"
-                  value={newIntegrationName}
-                  onChange={(e) => setNewIntegrationName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Integration Type</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {INTEGRATION_TEMPLATES.map((template) => (
-                    <Card
-                      key={template.id}
-                      className={`cursor-pointer transition-all ${
-                        selectedTemplate?.id === template.id
-                          ? "ring-2 ring-primary"
-                          : "hover:border-primary/50"
-                      }`}
-                      onClick={() => {
-                        setSelectedTemplate(template);
-                        setConfigValues({});
-                      }}
-                    >
-                      <CardContent className="p-3 flex items-start gap-3">
-                        <template.icon className="h-5 w-5 text-primary mt-0.5" />
-                        <div className="space-y-1">
-                          <p className="font-medium text-sm">{template.name}</p>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {template.description}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-              {selectedTemplate && (
-                <div className="space-y-3 pt-2">
-                  <Label className="text-sm font-medium">Configuration</Label>
-                  {selectedTemplate.fields.map((field) => (
-                    <div key={field} className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground capitalize">
-                        {field.replace(/([A-Z])/g, " $1").trim()}
-                      </Label>
-                      <Input
-                        type={field.toLowerCase().includes("password") || field.toLowerCase().includes("secret") || field.toLowerCase().includes("key") || field.toLowerCase().includes("token") ? "password" : "text"}
-                        placeholder={`Enter ${field}`}
-                        value={configValues[field] || ""}
-                        onChange={(e) => setConfigValues({ ...configValues, [field]: e.target.value })}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleAddIntegration}
-                disabled={createIntegration.isPending}
-              >
-                {createIntegration.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add Integration
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Tabs defaultValue={is5thLine ? "hubspot" : "active"} className="space-y-4">
-        <TabsList>
-          {is5thLine && <TabsTrigger value="hubspot">HubSpot</TabsTrigger>}
-          {is5thLine && <TabsTrigger value="quickbooks">QuickBooks</TabsTrigger>}
-          {is5thLine && <TabsTrigger value="gmail">Gmail</TabsTrigger>}
-          {is5thLine && <TabsTrigger value="calendar">Calendar</TabsTrigger>}
-          {is5thLine && <TabsTrigger value="claap">Claap</TabsTrigger>}
-          {is5thLine && <TabsTrigger value="zapier">Zapier</TabsTrigger>}
-          <TabsTrigger value="active">Active Integrations ({integrations.length})</TabsTrigger>
-          <TabsTrigger value="available">Available Integrations</TabsTrigger>
-        </TabsList>
-
-        {is5thLine && (
-          <TabsContent value="hubspot">
-            <HubSpotIntegration />
-          </TabsContent>
+          </div>
         )}
 
-        {is5thLine && (
-          <TabsContent value="quickbooks">
-            <QuickBooksIntegration />
-          </TabsContent>
-        )}
-
-        {is5thLine && (
-          <TabsContent value="gmail">
-            <GmailIntegration />
-          </TabsContent>
-        )}
-
-        {is5thLine && (
-          <TabsContent value="calendar">
-            <GoogleCalendarIntegration />
-          </TabsContent>
-        )}
-
-        {is5thLine && (
-          <TabsContent value="claap">
-            <ClaapIntegration />
-            <div className="mt-6">
-              <ClaapSettingsPage />
-            </div>
-          </TabsContent>
-        )}
-
-        {is5thLine && (
-          <TabsContent value="zapier">
-            <ZapierIntegration />
-          </TabsContent>
-        )}
-
-        <TabsContent value="active" className="space-y-4">
-          {integrations.length === 0 ? (
+        {/* Connected Integrations */}
+        <div>
+          <h2 className="text-lg font-semibold mb-3">
+            Connected Integrations ({totalConnected})
+          </h2>
+          {totalConnected === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Plug className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium">No integrations configured</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Add your first integration to connect with external services
+                <h3 className="text-lg font-medium">No integrations connected yet</h3>
+                <p className="text-sm text-muted-foreground">
+                  Add one from the available integrations below.
                 </p>
-                <Button onClick={() => setIsAddDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Integration
-                </Button>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {integrations.map((integration) => {
-                const IconComponent = getIconForType(integration.type);
-                return (
-                  <Card key={integration.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <IconComponent className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium">{integration.name}</h3>
-                              {getStatusBadge(integration.status)}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {integration.last_sync_at 
-                                ? `Last sync: ${formatLastSync(integration.last_sync_at)}`
-                                : "Never synced"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={integration.status === "connected"}
-                            onCheckedChange={(checked) => handleToggleIntegration(integration.id, checked)}
-                            disabled={toggleIntegration.isPending}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleTestConnection(integration)}
-                            disabled={testingIntegrationId === integration.id}
-                            title="Send test webhook"
-                          >
-                            {testingIntegrationId === integration.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Play className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openConfigDialog(integration)}
-                          >
-                            <Settings2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteIntegration(integration.id)}
-                            disabled={deleteIntegration.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <div className="grid gap-4 md:grid-cols-2">
+              {connectedIntegrations.map((item) => (
+                <div key={item.key}>{item.render()}</div>
+              ))}
             </div>
           )}
-        </TabsContent>
+        </div>
 
-        <TabsContent value="available" className="space-y-4">
+        {/* Available Integrations */}
+        {availableIntegrations.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-3">Available Integrations</h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {availableIntegrations.map((item) => (
+                <div key={item.key}>{item.render()}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Coming Soon */}
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Coming Soon</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {INTEGRATION_TEMPLATES.map((template) => (
-              <Card key={template.id} className="hover:border-primary/50 transition-colors">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <template.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <CardTitle className="text-base">{template.name}</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="mb-4">
-                    {template.description}
-                  </CardDescription>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      setSelectedTemplate(template);
-                      setIsAddDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Configure
-                  </Button>
-                </CardContent>
-              </Card>
+            {COMING_SOON_INTEGRATIONS.map((cs) => (
+              <ComingSoonCard
+                key={cs.key}
+                name={cs.name}
+                icon={cs.icon}
+                description={cs.description}
+                isNotified={interests.includes(cs.key)}
+                onNotifyMe={() => notifyMe.mutate(cs.key)}
+                isNotifying={notifyMe.isPending}
+              />
             ))}
           </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Configuration Dialog */}
-      <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Configure {selectedIntegration?.name}</DialogTitle>
-            <DialogDescription>
-              Update the configuration for this integration.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {selectedIntegration && Object.entries(selectedIntegration.config as Record<string, string>).map(([key, value]) => (
-              <div key={key} className="space-y-2">
-                <Label className="capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type={showSecrets[key] ? "text" : (key.toLowerCase().includes("password") || key.toLowerCase().includes("secret") || key.toLowerCase().includes("key") || key.toLowerCase().includes("token") ? "password" : "text")}
-                    value={configValues[key] || ""}
-                    onChange={(e) => setConfigValues({ ...configValues, [key]: e.target.value })}
-                  />
-                  {(key.toLowerCase().includes("password") || key.toLowerCase().includes("secret") || key.toLowerCase().includes("key") || key.toLowerCase().includes("token")) && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowSecrets({ ...showSecrets, [key]: !showSecrets[key] })}
-                      >
-                        {showSecrets[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          navigator.clipboard.writeText(configValues[key] || "");
-                          toast.success("Copied to clipboard");
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsConfigDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSaveConfig}
-              disabled={updateIntegration.isPending}
-            >
-              {updateIntegration.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
       </div>
+
+      {/* Sync Settings Modals */}
+      <HubSpotSyncSettingsModal open={hubspotModalOpen} onClose={() => setHubspotModalOpen(false)} />
+      <QuickBooksSyncSettingsModal open={quickbooksModalOpen} onClose={() => setQuickbooksModalOpen(false)} />
+      <GmailSyncSettingsModal
+        open={gmailModalOpen}
+        onClose={() => setGmailModalOpen(false)}
+        email={user?.email || undefined}
+        onDisconnect={() => { gmail.disconnect(); setGmailModalOpen(false); }}
+      />
+      <CalendarSyncSettingsModal
+        open={calendarModalOpen}
+        onClose={() => setCalendarModalOpen(false)}
+        email={calendar.status?.email || user?.email || undefined}
+        onDisconnect={() => { calendar.disconnect(); setCalendarModalOpen(false); }}
+      />
     </AppLayout>
   );
 }
