@@ -1,5 +1,5 @@
 import React from 'react';
-import { Briefcase, ListTodo, Bell, Calendar, CalendarDays, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare, Clock, Phone } from 'lucide-react';
+import { Briefcase, ListTodo, Bell, Calendar, CalendarDays, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare, Clock, Phone, Inbox } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { lazyRetry } from '@/lib/lazyRetry';
 
@@ -30,6 +30,7 @@ const CustomFilterWidget = React.lazy(lazyRetry(() => import('./CustomFilterWidg
 const WeeklyHoursWidget = React.lazy(lazyRetry(() => import('./WeeklyHoursWidget').then(m => ({ default: m.WeeklyHoursWidget }))));
 const SalesCallPrepWidget = React.lazy(lazyRetry(() => import('./SalesCallPrepWidget').then(m => ({ default: m.SalesCallPrepWidget }))));
 const ExpectedThisWeekWidget = React.lazy(lazyRetry(() => import('./ExpectedThisWeekWidget').then(m => ({ default: m.ExpectedThisWeekWidget }))));
+const RequestBatchingWidget = React.lazy(lazyRetry(() => import('./RequestBatchingWidget').then(m => ({ default: m.RequestBatchingWidget }))));
 
 export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
   'my-deals': {
@@ -181,6 +182,16 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: { w: 6, h: 5 },
     minSize: { w: 3, h: 3 },
     component: ExpectedThisWeekWidget,
+  },
+  'request-batching': {
+    type: 'request-batching',
+    label: 'Request Batching',
+    description: 'Batch client requests and approve email drafts before sending',
+    icon: Inbox,
+    category: 'core',
+    defaultSize: { w: 6, h: 5 },
+    minSize: { w: 3, h: 3 },
+    component: RequestBatchingWidget,
   },
 };
 

@@ -1080,6 +1080,201 @@ export type Database = {
         }
         Relationships: []
       }
+      client_request_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          draft_id: string | null
+          id: string
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          draft_id?: string | null
+          id?: string
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          draft_id?: string | null
+          id?: string
+          performed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_request_audit_log_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "client_request_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_request_drafts: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          body_html: string
+          body_text: string | null
+          client_email: string | null
+          client_name: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          id: string
+          new_requests_pending: boolean
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_notes: string | null
+          request_count: number
+          sent_at: string | null
+          status: Database["public"]["Enums"]["client_draft_status"]
+          subject: string | null
+          thread_id: string | null
+          trigger_reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          body_html: string
+          body_text?: string | null
+          client_email?: string | null
+          client_name?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          id?: string
+          new_requests_pending?: boolean
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_notes?: string | null
+          request_count?: number
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["client_draft_status"]
+          subject?: string | null
+          thread_id?: string | null
+          trigger_reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          body_html?: string
+          body_text?: string | null
+          client_email?: string | null
+          client_name?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          id?: string
+          new_requests_pending?: boolean
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_notes?: string | null
+          request_count?: number
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["client_draft_status"]
+          subject?: string | null
+          thread_id?: string | null
+          trigger_reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_request_drafts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_request_drafts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_requests: {
+        Row: {
+          client_email: string | null
+          client_name: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          description: string | null
+          draft_id: string | null
+          id: string
+          status: Database["public"]["Enums"]["client_request_status"]
+          thread_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_email?: string | null
+          client_name?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          description?: string | null
+          draft_id?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["client_request_status"]
+          thread_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_email?: string | null
+          client_name?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          description?: string | null
+          draft_id?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["client_request_status"]
+          thread_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_requests_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_requests_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "client_request_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address: string | null
@@ -9753,6 +9948,13 @@ export type Database = {
         | "confirm_company"
         | "create_deal"
         | "disambiguate_deal"
+      client_draft_status: "needs_approval" | "approved" | "rejected" | "sent"
+      client_request_status:
+        | "pending"
+        | "queued_for_email"
+        | "included_in_draft"
+        | "approved"
+        | "sent"
       company_role: "owner" | "admin" | "member"
       data_access_scope: "all" | "team" | "own" | "none"
       feature_status: "disabled" | "staging" | "deployed" | "james_only"
@@ -9916,6 +10118,14 @@ export const Constants = {
         "confirm_company",
         "create_deal",
         "disambiguate_deal",
+      ],
+      client_draft_status: ["needs_approval", "approved", "rejected", "sent"],
+      client_request_status: [
+        "pending",
+        "queued_for_email",
+        "included_in_draft",
+        "approved",
+        "sent",
       ],
       company_role: ["owner", "admin", "member"],
       data_access_scope: ["all", "team", "own", "none"],
