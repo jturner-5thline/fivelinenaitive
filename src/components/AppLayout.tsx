@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useLocation } from "react-router-dom";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
@@ -87,6 +88,8 @@ function BodyScrollLock() {
 }
 
 export function AppLayout({ children, mainClassName }: AppLayoutProps) {
+  const location = useLocation();
+  const isTasksPage = location.pathname === '/tasks' || location.pathname.startsWith('/tasks/');
   return (
     <SidebarProvider defaultOpen={true} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
       <BodyScrollLock />
@@ -152,9 +155,11 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         <AppSidebar />
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
-      <div className="fixed top-3 right-3 z-50">
-        <ClaapRoutingTasksBadge />
-      </div>
+      {isTasksPage && (
+        <div className="fixed top-3 right-3 z-50">
+          <ClaapRoutingTasksBadge />
+        </div>
+      )}
       <FeedbackWidget />
       <TaskAssignmentBanner />
       <PlatformTour />
