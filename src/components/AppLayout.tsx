@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { TaskAssignmentBanner } from "@/components/TaskAssignmentBanner";
 import { PlatformTour } from "@/components/PlatformTour";
+import { ClaapRoutingTasksBadge } from "@/components/integrations/claap/ClaapRoutingTasksBadge";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
@@ -150,6 +151,9 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       <div className="flex w-full h-full min-h-0 bg-transparent p-2 gap-1" style={{ isolation: 'auto' }}>
         <AppSidebar />
         <MainContent className={mainClassName}>{children}</MainContent>
+      </div>
+      <div className="fixed top-3 right-3 z-50">
+        <ClaapRoutingTasksBadge />
       </div>
       <FeedbackWidget />
       <TaskAssignmentBanner />
