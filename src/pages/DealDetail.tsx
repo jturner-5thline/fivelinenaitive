@@ -2583,7 +2583,7 @@ export default function DealDetail() {
             <div className="flex flex-col gap-6 min-w-0 w-full">
               {/* Tab Navigation */}
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails')}>
-                <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden">
+                <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden flex-nowrap">
                   <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
                   <HintTooltip
                     hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
@@ -2591,7 +2591,7 @@ export default function DealDetail() {
                     onDismiss={() => dismissHint('deal-tabs')}
                     side="bottom"
                   >
-                    <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto max-w-full">
+                    <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink">
                     <TabsTrigger value="deal-space" className="gap-2">
                       <Sparkles className="h-4 w-4" />
                       Deal Space
@@ -2633,7 +2633,7 @@ export default function DealDetail() {
                   </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
-                  <div className="flex items-center gap-2 ml-auto">
+                   <div className="flex items-center gap-2 ml-auto flex-shrink-0">
                     <CreateTaskButton dealId={id!} dealName={deal?.company} />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
