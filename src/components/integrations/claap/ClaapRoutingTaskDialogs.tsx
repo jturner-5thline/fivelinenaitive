@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useClaapResolveTask, useClaapDismissTask, ClaapRoutingTask } from '@/hooks/useClaapMeetings';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { CreateDealDialog, CreateDealInitialValues } from '@/components/deals/CreateDealDialog';
 
 // ============================================
 // Contact Confirmation Dialog
@@ -184,7 +185,7 @@ export function CompanyConfirmationDialog({ task, open, onOpenChange }: {
 }
 
 // ============================================
-// Deal Creation Dialog
+// Deal Creation Dialog — reuses the real CreateDealDialog
 // ============================================
 export function DealCreationDialog({ task, open, onOpenChange }: {
   task: ClaapRoutingTask;
@@ -193,87 +194,60 @@ export function DealCreationDialog({ task, open, onOpenChange }: {
 }) {
   const resolveTask = useClaapResolveTask();
   const dismissTask = useClaapDismissTask();
-  const { stages } = useDealStages();
 
-  const [dealName, setDealName] = useState(task.prefilled_data?.suggested_name || '');
-  const [dealStage, setDealStage] = useState('');
-  const [dealOwner, setDealOwner] = useState('');
+  const prefilled = task.prefilled_data || {};
+  
+  // Build contacts info from prefilled data
+  const contacts = (prefilled.contacts || []) as Array<{ name?: string; email?: string }>;
+  const primaryContact = contacts[0];
 
-  const handleConfirm = async () => {
-    if (!dealName.trim()) { toast.error('Deal name is required'); return; }
-    if (!dealStage) { toast.error('Deal stage is required'); return; }
-
-    // TODO: Create deal via DealsContext
-    resolveTask.mutate(
-      {
-        taskId: task.id,
-        resolvedData: {
-          deal_name: dealName,
-          deal_stage: dealStage,
-          deal_owner: dealOwner,
-          company_id: task.prefilled_data?.company_id,
-          organizer_user_id: task.prefilled_data?.organizer_user_id,
+  const initialValues: CreateDealInitialValues = {
+    dealName: prefilled.suggested_name || '',
+    contactName: primaryContact?.name || '',
+    contactInfo: primaryContact?.email || '',
+    // These will be extracted from transcript by the webhook AI analysis
+    dealAmount: prefilled.suggested_amount || '',
+    dealStatusNote: prefilled.suggested_status || '',
+    referralName: prefilled.referral_name || '',
+    referralEmail: prefilled.referral_email || '',
+    onCreated: (dealId: string) => {
+      // Resolve the routing task with the new deal id
+      resolveTask.mutate(
+        {
+          taskId: task.id,
+          resolvedData: {
+            deal_id: dealId,
+            company_id: prefilled.company_id,
+            organizer_user_id: prefilled.organizer_user_id,
+          },
         },
-      },
-      {
-        onSuccess: () => {
-          toast.success(`Deal "${dealName}" created`);
-          onOpenChange(false);
-        },
-      }
-    );
+        {
+          onSuccess: () => {
+            // Also link the meeting to the new deal
+            supabase
+              .from('claap_meetings')
+              .update({ deal_id: dealId, status: 'routed' } as any)
+              .eq('id', task.meeting_id)
+              .then();
+          },
+        }
+      );
+    },
   };
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Briefcase className="h-5 w-5 text-primary" />
-            Create Deal from Meeting
-          </DialogTitle>
-        </DialogHeader>
-        <p className="text-sm text-muted-foreground">
-          This meeting matches a financing review pattern. Review and create a deal.
-        </p>
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <Label>Deal Name</Label>
-            <Input value={dealName} onChange={e => setDealName(e.target.value)} />
-          </div>
-          {task.prefilled_data?.company_name && (
-            <div className="flex items-center gap-2 text-sm">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              <span>Company: <strong>{task.prefilled_data.company_name}</strong></span>
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label>Deal Stage <span className="text-destructive">*</span></Label>
-            <Select value={dealStage} onValueChange={setDealStage}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="Select stage" /></SelectTrigger>
-              <SelectContent>
-                {stages.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Deal Manager</Label>
-            <Input value={task.prefilled_data?.organizer_email || ''} disabled className="bg-muted" />
-            <p className="text-xs text-muted-foreground">Auto-set to meeting organizer</p>
-          </div>
-          <div className="space-y-2">
-            <Label>Deal Owner <span className="text-destructive">*</span></Label>
-            <Input value={dealOwner} onChange={e => setDealOwner(e.target.value)} placeholder="Enter deal owner name" />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => { dismissTask.mutate(task.id); onOpenChange(false); }}>Dismiss</Button>
-          <Button onClick={handleConfirm} disabled={resolveTask.isPending}>Create Deal</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <CreateDealDialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          // If dialog closed without creating, offer dismiss option
+          onOpenChange(false);
+        }
+      }}
+      initialValues={initialValues}
+    />
   );
 }
 
