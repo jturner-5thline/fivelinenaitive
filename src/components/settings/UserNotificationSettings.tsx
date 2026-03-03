@@ -28,7 +28,7 @@ const CHANNEL_ICONS: Record<string, React.ReactNode> = {
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
-  in_app: 'In-App',
+  in_app: 'Platform',
   email: 'Email',
   slack: 'Slack',
   sms: 'SMS',
