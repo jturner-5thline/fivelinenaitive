@@ -2591,7 +2591,7 @@ export default function DealDetail() {
                     onDismiss={() => dismissHint('deal-tabs')}
                     side="bottom"
                   >
-                    <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink">
+                    <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink scrollbar-none" style={{ scrollbarWidth: 'none' }}>
                     <TabsTrigger value="deal-space" className="gap-2">
                       <Sparkles className="h-4 w-4" />
                       Deal Space
