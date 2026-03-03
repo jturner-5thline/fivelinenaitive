@@ -1,5 +1,5 @@
 import React from 'react';
-import { Briefcase, ListTodo, Bell, Calendar, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare, Clock, Phone } from 'lucide-react';
+import { Briefcase, ListTodo, Bell, Calendar, CalendarDays, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare, Clock, Phone } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { lazyRetry } from '@/lib/lazyRetry';
 
@@ -29,6 +29,7 @@ const RecentActivityWidget = React.lazy(lazyRetry(() => import('./RecentActivity
 const CustomFilterWidget = React.lazy(lazyRetry(() => import('./CustomFilterWidget')));
 const WeeklyHoursWidget = React.lazy(lazyRetry(() => import('./WeeklyHoursWidget').then(m => ({ default: m.WeeklyHoursWidget }))));
 const SalesCallPrepWidget = React.lazy(lazyRetry(() => import('./SalesCallPrepWidget').then(m => ({ default: m.SalesCallPrepWidget }))));
+const ExpectedThisWeekWidget = React.lazy(lazyRetry(() => import('./ExpectedThisWeekWidget').then(m => ({ default: m.ExpectedThisWeekWidget }))));
 
 export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
   'my-deals': {
@@ -170,6 +171,16 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: { w: 4, h: 5 },
     minSize: { w: 3, h: 3 },
     component: WeeklyHoursWidget,
+  },
+  'expected-this-week': {
+    type: 'expected-this-week',
+    label: 'Expected This Week',
+    description: 'Milestones and pending items due this week across your deals',
+    icon: CalendarDays,
+    category: 'core',
+    defaultSize: { w: 6, h: 5 },
+    minSize: { w: 3, h: 3 },
+    component: ExpectedThisWeekWidget,
   },
 };
 
