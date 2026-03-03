@@ -5299,6 +5299,27 @@ export type Database = {
           },
         ]
       }
+      integration_interest: {
+        Row: {
+          created_at: string
+          id: string
+          integration_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          integration_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          integration_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       integration_logs: {
         Row: {
           created_at: string
