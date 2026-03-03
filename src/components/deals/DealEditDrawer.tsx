@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Archive, Trash2, ExternalLink, ArrowRightLeft } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
 import { Deal, DealStatus, DealStage, EngagementType, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, ExclusivityType } from '@/types/deal';
 import { Button } from '@/components/ui/button';
@@ -77,6 +78,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
     preSigningHours: deal.preSigningHours || 0,
     postSigningHours: deal.postSigningHours || 0,
+    notes: deal.notes || '',
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -95,6 +97,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
         preSigningHours: deal.preSigningHours || 0,
         postSigningHours: deal.postSigningHours || 0,
+        notes: deal.notes || '',
       });
     }
   }, [deal, isOpen]);
@@ -114,6 +117,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         dealOwner: formData.dealOwner || undefined,
         preSigningHours: formData.preSigningHours,
         postSigningHours: formData.postSigningHours,
+        notes: formData.notes,
       };
       
       // Update deal without modifying referredBy (handled separately if needed)
@@ -233,6 +237,19 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Status Note */}
+            <div className="space-y-2">
+              <Label htmlFor="statusNote">Status Note</Label>
+              <Textarea
+                id="statusNote"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Add a status note..."
+                rows={3}
+                className="resize-none"
+              />
             </div>
 
             {/* Stage */}
