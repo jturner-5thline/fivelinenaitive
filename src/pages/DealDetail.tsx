@@ -622,6 +622,35 @@ export default function DealDetail() {
 
 
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
+  const [directFetchedLender, setDirectFetchedLender] = useState<import('@/hooks/useMasterLenders').MasterLender | null>(null);
+
+  // When a lender popup opens, if the lender isn't in the cached masterLenders list yet
+  // (background load still in progress), do a targeted single-row fetch so contacts show instantly.
+  useEffect(() => {
+    if (!selectedLenderName) {
+      setDirectFetchedLender(null);
+      return;
+    }
+    const alreadyCached = masterLenders.find(ml => ml.name === selectedLenderName);
+    if (alreadyCached) {
+      setDirectFetchedLender(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('master_lenders')
+        .select('*')
+        .ilike('name', selectedLenderName)
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled && data) {
+        setDirectFetchedLender(data as import('@/hooks/useMasterLenders').MasterLender);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedLenderName, masterLenders]);
+
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
   const [requestedItemsDrawerLender, setRequestedItemsDrawerLender] = useState<string | null>(null);
@@ -4457,8 +4486,8 @@ export default function DealDetail() {
             </DialogTitle>
           </DialogHeader>
           {selectedLenderName && (() => {
-            // Look up lender from the master lenders directory (database)
-            const masterLender = masterLenders.find(ml => ml.name === selectedLenderName);
+            // Look up lender from the master lenders directory (database), with direct-fetch fallback
+            const masterLender = masterLenders.find(ml => ml.name === selectedLenderName) || directFetchedLender;
             const lenderDetails = getLenderDetails(selectedLenderName);
             const lenderOutstandingItems = outstandingItems.filter(
               item => !item.deliveredToLenders.includes(selectedLenderName) && (Array.isArray(item.requestedBy) 
