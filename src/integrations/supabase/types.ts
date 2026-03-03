@@ -752,6 +752,334 @@ export type Database = {
           },
         ]
       }
+      claap_integration_config: {
+        Row: {
+          company_id: string
+          created_at: string
+          excluded_title_patterns: string[]
+          fallback_admin_user_id: string | null
+          id: string
+          internal_domains: string[]
+          is_active: boolean
+          min_duration_seconds: number
+          task_expiry_days: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          excluded_title_patterns?: string[]
+          fallback_admin_user_id?: string | null
+          id?: string
+          internal_domains?: string[]
+          is_active?: boolean
+          min_duration_seconds?: number
+          task_expiry_days?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          excluded_title_patterns?: string[]
+          fallback_admin_user_id?: string | null
+          id?: string
+          internal_domains?: string[]
+          is_active?: boolean
+          min_duration_seconds?: number
+          task_expiry_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_integration_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_meeting_participants: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          domain: string | null
+          email: string | null
+          id: string
+          is_internal: boolean | null
+          meeting_id: string
+          name: string | null
+          resolved: boolean | null
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          domain?: string | null
+          email?: string | null
+          id?: string
+          is_internal?: boolean | null
+          meeting_id: string
+          name?: string | null
+          resolved?: boolean | null
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          domain?: string | null
+          email?: string | null
+          id?: string
+          is_internal?: boolean | null
+          meeting_id?: string
+          name?: string | null
+          resolved?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_meeting_participants_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_meeting_participants_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_meeting_participants_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "claap_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_meetings: {
+        Row: {
+          ai_summary: string | null
+          claap_id: string
+          company_id: string | null
+          created_at: string
+          deal_id: string | null
+          duration_seconds: number | null
+          exclusion_reason: string | null
+          id: string
+          key_decisions: string[] | null
+          next_steps: string[] | null
+          no_internal_participant: boolean | null
+          organizer_email: string | null
+          raw_payload: Json | null
+          recording_url: string | null
+          sentiment: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["claap_meeting_status"]
+          title: string | null
+          topics: string[] | null
+          transcript: string | null
+          transcript_missing: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          claap_id: string
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          duration_seconds?: number | null
+          exclusion_reason?: string | null
+          id?: string
+          key_decisions?: string[] | null
+          next_steps?: string[] | null
+          no_internal_participant?: boolean | null
+          organizer_email?: string | null
+          raw_payload?: Json | null
+          recording_url?: string | null
+          sentiment?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["claap_meeting_status"]
+          title?: string | null
+          topics?: string[] | null
+          transcript?: string | null
+          transcript_missing?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          ai_summary?: string | null
+          claap_id?: string
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          duration_seconds?: number | null
+          exclusion_reason?: string | null
+          id?: string
+          key_decisions?: string[] | null
+          next_steps?: string[] | null
+          no_internal_participant?: boolean | null
+          organizer_email?: string | null
+          raw_payload?: Json | null
+          recording_url?: string | null
+          sentiment?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["claap_meeting_status"]
+          title?: string | null
+          topics?: string[] | null
+          transcript?: string | null
+          transcript_missing?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_meetings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_meetings_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_routing_rules: {
+        Row: {
+          actions: Json
+          company_id: string
+          condition_logic: string
+          conditions: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json
+          company_id: string
+          condition_logic?: string
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          company_id?: string
+          condition_logic?: string
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_routing_rules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_routing_tasks: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          meeting_id: string
+          prefilled_data: Json | null
+          resolved_data: Json | null
+          status: Database["public"]["Enums"]["claap_task_status"]
+          task_type: Database["public"]["Enums"]["claap_task_type"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          meeting_id: string
+          prefilled_data?: Json | null
+          resolved_data?: Json | null
+          status?: Database["public"]["Enums"]["claap_task_status"]
+          task_type: Database["public"]["Enums"]["claap_task_type"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          meeting_id?: string
+          prefilled_data?: Json | null
+          resolved_data?: Json | null
+          status?: Database["public"]["Enums"]["claap_task_status"]
+          task_type?: Database["public"]["Enums"]["claap_task_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_routing_tasks_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "claap_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_webhook_errors: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string | null
+          id: string
+          payload: Json | null
+          resolved: boolean | null
+          retry_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string | null
+          id?: string
+          payload?: Json | null
+          resolved?: boolean | null
+          retry_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string | null
+          id?: string
+          payload?: Json | null
+          resolved?: boolean | null
+          retry_count?: number | null
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           address: string | null
@@ -9324,6 +9652,17 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      claap_meeting_status:
+        | "pending_review"
+        | "routed"
+        | "excluded"
+        | "awaiting_confirmation"
+      claap_task_status: "pending" | "completed" | "expired" | "dismissed"
+      claap_task_type:
+        | "confirm_contact"
+        | "confirm_company"
+        | "create_deal"
+        | "disambiguate_deal"
       company_role: "owner" | "admin" | "member"
       data_access_scope: "all" | "team" | "own" | "none"
       feature_status: "disabled" | "staging" | "deployed" | "james_only"
@@ -9475,6 +9814,19 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      claap_meeting_status: [
+        "pending_review",
+        "routed",
+        "excluded",
+        "awaiting_confirmation",
+      ],
+      claap_task_status: ["pending", "completed", "expired", "dismissed"],
+      claap_task_type: [
+        "confirm_contact",
+        "confirm_company",
+        "create_deal",
+        "disambiguate_deal",
+      ],
       company_role: ["owner", "admin", "member"],
       data_access_scope: ["all", "team", "own", "none"],
       feature_status: ["disabled", "staging", "deployed", "james_only"],
