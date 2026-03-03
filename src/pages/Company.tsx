@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CompanyProfileSettings } from '@/components/company/CompanyProfileSettings';
 import { CompanyMembersSettings } from '@/components/company/CompanyMembersSettings';
+import { CompanyJoinRequestsPanel } from '@/components/admin/CompanyJoinRequestsPanel';
 import { CreateCompanyDialog } from '@/components/company/CreateCompanyDialog';
 import { useCompany } from '@/hooks/useCompany';
+import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 import { Loader2, Building2 } from 'lucide-react';
 
 export default function Company() {
   const { company, isLoading, isAdmin } = useCompany();
+  const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
 
   if (isLoading) {
     return (
@@ -94,6 +97,16 @@ export default function Company() {
               <TabsList>
                 <TabsTrigger value="profile">Company Profile</TabsTrigger>
                 <TabsTrigger value="members">Team Members</TabsTrigger>
+                {isAdmin && (
+                  <TabsTrigger value="join-requests" className="flex items-center gap-1.5">
+                    Join Requests
+                    {pendingJoinCount > 0 && (
+                      <span className="h-5 min-w-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold flex items-center justify-center">
+                        {pendingJoinCount}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value="profile">
@@ -103,6 +116,12 @@ export default function Company() {
               <TabsContent value="members">
                 <CompanyMembersSettings />
               </TabsContent>
+
+              {isAdmin && (
+                <TabsContent value="join-requests">
+                  <CompanyJoinRequestsPanel />
+                </TabsContent>
+              )}
             </Tabs>
           </div>
         </main>
