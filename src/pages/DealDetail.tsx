@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
@@ -58,6 +58,8 @@ import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
 import { LenderDirectoryDialog } from '@/components/deal/LenderDirectoryDialog';
+import { RequestedItemsSummary } from '@/components/deal/RequestedItemsSummary';
+import { RequestedItemsPanel } from '@/components/deal/RequestedItemsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { DealTasksPanel } from '@/components/deal/DealTasksPanel';
@@ -621,6 +623,7 @@ export default function DealDetail() {
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
+  const [requestedItemsDrawerLender, setRequestedItemsDrawerLender] = useState<string | null>(null);
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
@@ -3841,29 +3844,11 @@ export default function DealDetail() {
                                     />
                                   );
                                 })()}
-                                {lenderOutstandingItems.length > 0 && (
-                                  <div className="ml-2 mt-2 space-y-1">
-                                    {lenderOutstandingItems.map((item) => (
-                                      <div 
-                                        key={item.id} 
-                                        className="flex items-center gap-2 text-xs text-muted-foreground pl-2 border-l-2 border-muted"
-                                      >
-                                        <span className={item.deliveredToLenders.includes(lender.name) ? "line-through" : ""}>
-                                          {item.text}
-                                        </span>
-                                        {item.deliveredToLenders.includes(lender.name) ? (
-                                          <span className="text-emerald-600 text-[10px] font-medium">Delivered</span>
-                                        ) : item.approved ? (
-                                          <span className="text-emerald-600 text-[10px] font-medium">Approved</span>
-                                        ) : item.received ? (
-                                          <span className="text-blue-600 text-[10px] font-medium">Received</span>
-                                        ) : (
-                                          <span className="text-amber-600 text-[10px] font-medium">Pending</span>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
+                                <RequestedItemsSummary
+                                  items={lenderOutstandingItems}
+                                  lenderName={lender.name}
+                                  onViewAll={() => setRequestedItemsDrawerLender(lender.name)}
+                                />
                                 {/* Lender Notes */}
                                 <div className="ml-2 mt-2 space-y-1">
                                   <div className="flex items-start gap-2">
@@ -4237,29 +4222,11 @@ export default function DealDetail() {
                                             />
                                           );
                                         })()}
-                                        {lenderOutstandingItems.length > 0 && (
-                                          <div className="ml-2 mt-2 space-y-1">
-                                            {lenderOutstandingItems.map((item) => (
-                                              <div 
-                                                key={item.id} 
-                                                className="flex items-center gap-2 text-xs text-muted-foreground pl-2 border-l-2 border-muted"
-                                              >
-                                                <span className={item.deliveredToLenders.includes(lender.name) ? "line-through" : ""}>
-                                                  {item.text}
-                                                </span>
-                                                {item.deliveredToLenders.includes(lender.name) ? (
-                                                  <span className="text-emerald-600 text-[10px] font-medium">Delivered</span>
-                                                ) : item.approved ? (
-                                                  <span className="text-emerald-600 text-[10px] font-medium">Approved</span>
-                                                ) : item.received ? (
-                                                  <span className="text-blue-600 text-[10px] font-medium">Received</span>
-                                                ) : (
-                                                  <span className="text-amber-600 text-[10px] font-medium">Pending</span>
-                                                )}
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
+                                        <RequestedItemsSummary
+                                          items={lenderOutstandingItems}
+                                          lenderName={lender.name}
+                                          onViewAll={() => setRequestedItemsDrawerLender(lender.name)}
+                                        />
                                         {/* Lender Notes */}
                                         <div className="ml-2 mt-2 space-y-1">
                                           <div className="flex items-start gap-2">
@@ -4539,35 +4506,26 @@ export default function DealDetail() {
 
                   {/* Outstanding Items for this Lender */}
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Requested Items</h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold">Requested Items</h4>
+                      {lenderOutstandingItems.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => setRequestedItemsDrawerLender(selectedLenderName)}
+                        >
+                          <ListChecks className="h-3 w-3" />
+                          View All ({lenderOutstandingItems.length})
+                        </Button>
+                      )}
+                    </div>
                     {lenderOutstandingItems.length > 0 ? (
-                      <div className="space-y-2">
-                        {lenderOutstandingItems.map((item) => (
-                          <div 
-                            key={item.id} 
-                            className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg text-sm"
-                          >
-                            <Checkbox
-                              checked={false}
-                              onCheckedChange={(checked) => {
-                                if (checked && selectedLenderName) {
-                                  updateOutstandingItem(item.id, {
-                                    deliveredToLenders: [...item.deliveredToLenders, selectedLenderName]
-                                  });
-                                }
-                              }}
-                            />
-                            <span className="flex-1">{item.text}</span>
-                            {item.approved ? (
-                              <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">Approved</Badge>
-                            ) : item.received ? (
-                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">Received</Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">Requested</Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      <RequestedItemsSummary
+                        items={lenderOutstandingItems}
+                        lenderName={selectedLenderName!}
+                        onViewAll={() => setRequestedItemsDrawerLender(selectedLenderName)}
+                      />
                     ) : (
                       <p className="text-sm text-muted-foreground italic">No items requested by this lender</p>
                     )}
@@ -4862,6 +4820,19 @@ export default function DealDetail() {
           dealSize: lenderHistoryDealContext?.dealSize,
           geography: lenderHistoryDealContext?.geography,
         }}
+      />
+
+      {/* Requested Items Drawer */}
+      <RequestedItemsPanel
+        open={!!requestedItemsDrawerLender}
+        onOpenChange={(open) => { if (!open) setRequestedItemsDrawerLender(null); }}
+        items={requestedItemsDrawerLender ? outstandingItems.filter(
+          item => Array.isArray(item.requestedBy)
+            ? item.requestedBy.includes(requestedItemsDrawerLender)
+            : item.requestedBy === requestedItemsDrawerLender
+        ) : []}
+        lenderName={requestedItemsDrawerLender || ''}
+        onUpdateItem={updateOutstandingItem}
       />
 
       {/* Lenders Kanban Dialog */}
