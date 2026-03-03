@@ -482,12 +482,13 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, dealId, action, sectionKey } = await req.json();
+    const { messages, dealId, action, sectionKey, documentId } = await req.json();
 
     if (action === "summarize") return await handleSummarize(dealId);
     if (action === "extract-writeup") return await handleExtractWriteUp(dealId);
     if (action === "generate-memo") return await handleGenerateMemo(dealId);
     if (action === "regenerate-section") return await handleRegenerateSection(dealId, sectionKey);
+    if (action === "extract-document") return await handleExtractDocument(dealId, documentId);
 
     // ── Chat mode (Ask AI) ──────────────────────────────────────────
     if (!dealId || !messages || !Array.isArray(messages)) {
@@ -1114,6 +1115,275 @@ Return ONLY a valid JSON array.`
     );
   } catch (error) {
     console.error("Write-up extraction error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Extraction failed" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ─── Extract structured document data (full schema) ─────────────────
+
+async function handleExtractDocument(dealId: string, documentId?: string) {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Determine which documents to process
+    let docsToProcess: { id: string; name: string; file_path: string; content_type: string; bucket: string }[] = [];
+
+    if (documentId) {
+      // Single document extraction
+      const { data: dsDoc } = await supabase.from("deal_space_documents").select("id, name, file_path, content_type").eq("id", documentId).single();
+      if (dsDoc) {
+        docsToProcess.push({ ...dsDoc, bucket: "deal-space" });
+      } else {
+        const { data: drDoc } = await supabase.from("deal_attachments").select("id, name, file_path, content_type").eq("id", documentId).single();
+        if (drDoc) docsToProcess.push({ ...drDoc, bucket: "deal-attachments" });
+      }
+    } else {
+      // All deal documents
+      const [dsResult, drResult] = await Promise.all([
+        supabase.from("deal_space_documents").select("id, name, file_path, content_type").eq("deal_id", dealId),
+        supabase.from("deal_attachments").select("id, name, file_path, content_type").eq("deal_id", dealId),
+      ]);
+      for (const d of (dsResult.data || [])) docsToProcess.push({ ...d, bucket: "deal-space" });
+      for (const d of (drResult.data || [])) docsToProcess.push({ ...d, bucket: "deal-attachments" });
+    }
+
+    if (docsToProcess.length === 0) {
+      return new Response(JSON.stringify({ error: "No documents found" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Extract content from all target documents
+    const docContents: { name: string; text: string; pageCount?: number }[] = [];
+    for (const doc of docsToProcess) {
+      try {
+        const { data: fileData, error: downloadError } = await supabase.storage.from(doc.bucket).download(doc.file_path);
+        if (downloadError) continue;
+        const extracted = await extractContent(fileData, doc.name);
+        if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
+          let fullText = "";
+          if (extracted.sheets && extracted.sheets.length > 0) {
+            fullText = extracted.sheets.map(s => `[Sheet: ${s.sheetName}]\n${s.content}`).join("\n\n");
+          } else if (extracted.slides && extracted.slides.length > 0) {
+            fullText = extracted.slides.map(s => `[Slide ${s.slideNumber}]\n${s.content}`).join("\n\n");
+          } else if (extracted.pages && extracted.pages.length > 0) {
+            fullText = extracted.pages.map(p => `[Page ${p.pageNumber}]\n${p.content}`).join("\n\n");
+          } else {
+            fullText = extracted.text;
+          }
+          docContents.push({
+            name: doc.name,
+            text: fullText.substring(0, 60000),
+            pageCount: extracted.pages?.length || extracted.slides?.length || extracted.sheets?.length || undefined,
+          });
+        }
+      } catch (err) {
+        console.error(`Error extracting ${doc.name}:`, err);
+      }
+    }
+
+    if (docContents.length === 0) {
+      return new Response(JSON.stringify({ error: "Could not extract content from any documents" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const combinedDocContent = docContents.map(d => `### Document: ${d.name}\n${d.text}`).join("\n\n---\n\n");
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // Detect document type heuristically for variant-specific instructions
+    const lowerNames = docContents.map(d => d.name.toLowerCase()).join(" ");
+    const lowerContent = combinedDocContent.substring(0, 5000).toLowerCase();
+    const isAgreement = /agreement|loan|credit|facility|covenant|lender|borrower|collateral|security interest|term sheet/.test(lowerContent) ||
+                        /agreement|contract|loan/.test(lowerNames);
+    const isFinancial = /revenue|ebitda|income statement|balance sheet|cash flow|p&l|profit|loss|gross margin/.test(lowerContent) ||
+                        /financial|income|p&l|balance/.test(lowerNames);
+
+    let variantInstructions = "";
+    if (isAgreement) {
+      variantInstructions = `This appears to be a loan agreement or customer agreement.
+Focus on extracting:
+- contracts.loan_agreements: lender name, facility type, commitment amount, maturity, rate, covenants, collateral
+- contracts.customer_agreements: customer, value, term, renewal, termination
+- risk_flags: tight covenants, unfavorable termination, concentration risk, unusual clauses
+Each risk flag must include category, severity, description, and source_reference with page and text_snippet.`;
+    } else if (isFinancial) {
+      variantInstructions = `This appears to be a financial document.
+Focus on extracting:
+- financials.periods: revenue, gross_margin_percent, ebitda, ebitda_margin_percent, net_income, opex breakdown
+- ARR/MRR only if explicitly labeled
+- risk_flags: deteriorating revenue/margins, large OPEX changes, high leverage, weak equity
+Search income statements, P&L tables, KPI sections, and management summaries thoroughly before returning null.`;
+    } else {
+      variantInstructions = `Classify this document and extract all applicable sections of the schema.
+Prioritize: company_profile, financials, contracts, cap_table as relevant.
+Create risk_flags for any concerns identified.`;
+    }
+
+    const systemPrompt = `You are an AI document analyst for a financial services platform focused on growth-stage and lower middle market companies.
+
+Your task: Read the document(s) thoroughly and extract structured data into the JSON schema below.
+
+RULES:
+- Be precise, conservative, and grounded in the document text.
+- Never invent or fabricate data that is not present.
+- When ambiguous or incomplete, return null and explain in meta.uncertainty_notes.
+- Numbers: use JSON numbers, not strings. Percentages: numeric without % sign.
+- Dates: keep as strings. Currency fields must NOT include symbols.
+- ARR/MRR: only populate if clearly labeled (do NOT derive one from the other).
+- For revenue, margins, profit, OPEX: search thoroughly before returning null.
+- In meta.processing_notes, include page/snippet references for key values.
+
+${variantInstructions}
+
+OUTPUT SCHEMA (return ONLY this JSON object, no other text):
+{
+  "document_metadata": {
+    "document_type": "financial_pdf | pitch_deck | loan_agreement | customer_agreement | cap_table | other",
+    "title": "string | null",
+    "source_filename": "string | null",
+    "page_count": "number | null",
+    "company_name": "string | null",
+    "company_legal_name": "string | null",
+    "reporting_period": "string | null",
+    "currency": "string | null"
+  },
+  "company_profile": {
+    "industry": "string | null",
+    "business_description": "string | null",
+    "hq_location": "string | null",
+    "website": "string | null",
+    "founded_year": "number | null"
+  },
+  "financials": {
+    "periods": [
+      {
+        "label": "string | null",
+        "period_start_date": "string | null",
+        "period_end_date": "string | null",
+        "revenue": "number | null",
+        "arr": "number | null",
+        "mrr": "number | null",
+        "gross_margin_percent": "number | null",
+        "ebitda": "number | null",
+        "ebitda_margin_percent": "number | null",
+        "net_income": "number | null",
+        "opex": {
+          "sales_and_marketing": "number | null",
+          "research_and_development": "number | null",
+          "general_and_administrative": "number | null",
+          "other_opex": "number | null"
+        },
+        "total_assets": "number | null",
+        "total_liabilities": "number | null",
+        "total_equity": "number | null"
+      }
+    ]
+  },
+  "cap_table": {
+    "entries": [
+      {
+        "holder_name": "string",
+        "security_type": "string | null",
+        "shares_or_units": "number | null",
+        "ownership_percent": "number | null",
+        "class_or_series": "string | null"
+      }
+    ]
+  },
+  "contracts": {
+    "loan_agreements": [
+      {
+        "lender_name": "string | null",
+        "facility_type": "string | null",
+        "commitment_amount": "number | null",
+        "maturity_date": "string | null",
+        "interest_rate": "string | null",
+        "financial_covenants": "string | null",
+        "security_or_collateral": "string | null"
+      }
+    ],
+    "customer_agreements": [
+      {
+        "customer_name": "string | null",
+        "contract_value": "number | null",
+        "contract_term": "string | null",
+        "renewal_terms": "string | null",
+        "termination_rights": "string | null"
+      }
+    ]
+  },
+  "risk_flags": [
+    {
+      "category": "financial | covenant | concentration | legal | other",
+      "severity": "low | medium | high",
+      "description": "string",
+      "source_reference": {
+        "page": "number | null",
+        "text_snippet": "string | null"
+      }
+    }
+  ],
+  "qa_support": {
+    "key_points_summary": "string | null",
+    "qa_ready_context": "string | null"
+  },
+  "meta": {
+    "processing_notes": "string | null",
+    "uncertainty_notes": "string | null"
+  }
+}`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Extract structured data from the following document(s):\n\n${combinedDocContent}` },
+        ],
+        temperature: 0.1,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const errText = await aiResponse.text();
+      console.error("AI extraction error:", aiResponse.status, errText);
+      throw new Error("AI extraction failed");
+    }
+
+    const aiData = await aiResponse.json();
+    let rawContent = aiData.choices?.[0]?.message?.content || "{}";
+    rawContent = rawContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    let extraction;
+    try {
+      extraction = JSON.parse(rawContent);
+    } catch (e) {
+      console.error("Failed to parse extraction JSON:", e, rawContent.substring(0, 500));
+      extraction = { error: "Failed to parse AI response", raw: rawContent.substring(0, 2000) };
+    }
+
+    return new Response(
+      JSON.stringify({
+        extraction,
+        documentsProcessed: docContents.map(d => d.name),
+        documentCount: docContents.length,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Document extraction error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Extraction failed" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
