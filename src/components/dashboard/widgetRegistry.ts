@@ -1,5 +1,5 @@
 import React from 'react';
-import { Briefcase, ListTodo, Bell, Calendar, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare, Clock } from 'lucide-react';
+import { Briefcase, ListTodo, Bell, Calendar, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare, Clock, Phone } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { lazyRetry } from '@/lib/lazyRetry';
 
@@ -28,12 +28,13 @@ const NewsFeedWidget = React.lazy(lazyRetry(() => import('../deals/NewsFeedWidge
 const RecentActivityWidget = React.lazy(lazyRetry(() => import('./RecentActivityWidget')));
 const CustomFilterWidget = React.lazy(lazyRetry(() => import('./CustomFilterWidget')));
 const WeeklyHoursWidget = React.lazy(lazyRetry(() => import('./WeeklyHoursWidget').then(m => ({ default: m.WeeklyHoursWidget }))));
+const SalesCallPrepWidget = React.lazy(lazyRetry(() => import('./SalesCallPrepWidget').then(m => ({ default: m.SalesCallPrepWidget }))));
 
 export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
   'my-deals': {
     type: 'my-deals',
     label: 'My Deals',
-    description: 'Active deals where you are the manager with status notes and filters',
+    description: 'Active deals with search, filters, status notes, and lender hover cards',
     icon: Briefcase,
     category: 'core',
     defaultSize: { w: 6, h: 6 },
@@ -43,7 +44,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
   'my-tasks': {
     type: 'my-tasks',
     label: 'My Tasks',
-    description: 'Milestones and tasks grouped by deal or date with due-today filters',
+    description: 'Milestones and tasks scoped to your deals with Mine/Team toggle',
     icon: ListTodo,
     category: 'core',
     defaultSize: { w: 6, h: 6 },
@@ -69,6 +70,16 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: { w: 4, h: 4 },
     minSize: { w: 3, h: 3 },
     component: MyDayWidget,
+  },
+  'sales-call-prep': {
+    type: 'sales-call-prep',
+    label: 'Sales Call Prep',
+    description: 'Today\'s calls with AI-generated pre-call briefings and talking points',
+    icon: Phone,
+    category: 'intelligence',
+    defaultSize: { w: 6, h: 5 },
+    minSize: { w: 4, h: 3 },
+    component: SalesCallPrepWidget,
   },
   'email-intelligence': {
     type: 'email-intelligence',

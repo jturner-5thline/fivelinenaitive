@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, isToday, isBefore, addDays, startOfDay, isPast } from 'date-fns';
-import { CheckCircle2, Circle, ListTodo, ChevronDown, ChevronUp, CalendarDays, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Circle, ListTodo, ChevronDown, ChevronUp, CalendarDays, AlertTriangle, Plus, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,10 +10,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAllMilestones, MilestoneWithDeal } from '@/hooks/useAllMilestones';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { cn } from '@/lib/utils';
 
 type TaskFilter = 'today' | 'overdue' | 'upcoming' | 'all';
 type GroupBy = 'date' | 'deal';
+type Scope = 'mine' | 'team';
 
 interface MyTasksWidgetProps {
   variant?: 'compact' | 'expanded';
@@ -22,13 +25,27 @@ interface MyTasksWidgetProps {
 
 export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTasksWidgetProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { profile } = useProfile();
   const { milestones, isLoading } = useAllMilestones();
   const [filter, setFilter] = useState<TaskFilter>('today');
   const [groupBy, setGroupBy] = useState<GroupBy>('date');
+  const [scope, setScope] = useState<Scope>('mine');
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
+  // Scope milestones to user's own deals
+  const scopedMilestones = useMemo(() => {
+    if (scope === 'team') return milestones;
+    
+    const displayName = profile?.display_name || profile?.first_name || '';
+    return milestones.filter(m => {
+      // Only show milestones for deals where the user is the owner/manager
+      return m.deal_owner?.toLowerCase() === displayName?.toLowerCase();
+    });
+  }, [milestones, scope, profile]);
+
   const tasks = useMemo(() => {
-    const incomplete = milestones.filter(m => !m.completed);
+    const incomplete = scopedMilestones.filter(m => !m.completed);
     const today = startOfDay(new Date());
     const threeDaysOut = addDays(today, 3);
 
@@ -47,7 +64,7 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
       default:
         return incomplete;
     }
-  }, [milestones, filter]);
+  }, [scopedMilestones, filter]);
 
   const grouped = useMemo(() => {
     if (groupBy === 'deal') {
@@ -70,12 +87,12 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
   }, [tasks, groupBy]);
 
   const overdueCount = useMemo(() => {
-    return milestones.filter(m => !m.completed && m.due_date && isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date))).length;
-  }, [milestones]);
+    return scopedMilestones.filter(m => !m.completed && m.due_date && isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date))).length;
+  }, [scopedMilestones]);
 
   const todayCount = useMemo(() => {
-    return milestones.filter(m => !m.completed && m.due_date && isToday(new Date(m.due_date))).length;
-  }, [milestones]);
+    return scopedMilestones.filter(m => !m.completed && m.due_date && isToday(new Date(m.due_date))).length;
+  }, [scopedMilestones]);
 
   if (isLoading) {
     return (
@@ -96,7 +113,7 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
             <CardTitle className="text-base font-medium flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ListTodo className="h-4 w-4 text-primary" />
-                My Tasks
+                {scope === 'mine' ? 'My Tasks' : 'Team Tasks'}
                 {overdueCount > 0 && (
                   <Badge variant="destructive" className="text-[10px] h-5">{overdueCount} overdue</Badge>
                 )}
@@ -121,6 +138,17 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                 <ToggleGroupItem value="upcoming" className="text-xs h-7 px-2.5">Next 3 days</ToggleGroupItem>
                 <ToggleGroupItem value="all" className="text-xs h-7 px-2.5">All</ToggleGroupItem>
               </ToggleGroup>
+              <div className="flex items-center gap-1">
+                <ToggleGroup type="single" value={scope} onValueChange={(v) => v && setScope(v as Scope)} className="justify-end">
+                  <ToggleGroupItem value="mine" className="text-xs h-7 px-2" title="My tasks only">Mine</ToggleGroupItem>
+                  <ToggleGroupItem value="team" className="text-xs h-7 px-2 gap-1" title="All team tasks">
+                    <Users className="h-3 w-3" />Team
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end">
               <ToggleGroup type="single" value={groupBy} onValueChange={(v) => v && setGroupBy(v as GroupBy)} className="justify-end">
                 <ToggleGroupItem value="date" className="text-xs h-7 px-2">By date</ToggleGroupItem>
                 <ToggleGroupItem value="deal" className="text-xs h-7 px-2">By deal</ToggleGroupItem>
@@ -130,10 +158,22 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
             <ScrollArea className="flex-1 min-h-0">
               {tasks.length === 0 ? (
                 <div className="text-center py-8">
-                  <CheckCircle2 className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <CheckCircle2 className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    {filter === 'today' ? 'No tasks due today — you\'re all caught up!' : 'No tasks match this filter.'}
+                    {filter === 'today' ? 'No tasks due today.' : 'No tasks match this filter.'}
                   </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {filter === 'today' ? 'Check your deals for upcoming milestones or create a new task.' : 'Try a different filter or scope.'}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 text-xs gap-1"
+                    onClick={() => navigate('/tasks')}
+                  >
+                    <Plus className="h-3 w-3" />
+                    Create Task
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
