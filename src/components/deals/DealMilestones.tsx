@@ -180,14 +180,18 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
             <div className="relative flex justify-between min-w-0 w-full overflow-hidden">
               {milestones.map((milestone) => (
                 <div key={milestone.id} className="flex flex-col items-center min-w-0 flex-shrink-0" style={{ maxWidth: `${100 / milestones.length}%` }}>
-                  {/* Diamond Icon */}
+                  {/* Diamond Icon — click to toggle completion */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div
                         className={cn(
-                          "transition-colors cursor-pointer p-0.5 flex-shrink-0",
+                          "transition-colors cursor-pointer p-0.5 flex-shrink-0 hover:scale-110 active:scale-95 transition-transform",
                           getMilestoneColor(milestone)
                         )}
+                        onClick={() => onUpdate(milestone.id, {
+                          completed: !milestone.completed,
+                          completedAt: !milestone.completed ? new Date().toISOString() : undefined,
+                        })}
                       >
                         {milestone.completed ? (
                           <svg 
@@ -242,16 +246,17 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                     <TooltipContent side="bottom" className="text-xs">
                       <p className="font-medium">{milestone.title}</p>
                       {milestone.dueDate && (
-                        <p className={isOverdue(milestone) ? "text-red-500" : "text-muted-foreground"}>
+                        <p className={isOverdue(milestone) ? "text-destructive" : "text-muted-foreground"}>
                           Due: {format(new Date(milestone.dueDate), 'MMM d, yyyy')}
                           {isOverdue(milestone) && " (Overdue)"}
                         </p>
                       )}
                       {milestone.completed && milestone.completedAt && (
-                        <p className="text-emerald-600">
+                        <p className="text-primary">
                           Completed: {format(new Date(milestone.completedAt), 'MMM d, yyyy')}
                         </p>
                       )}
+                      <p className="text-muted-foreground/70 mt-0.5">Click to {milestone.completed ? 'uncheck' : 'complete'}</p>
                       {!milestone.completed && (
                         <p className={isOverdue(milestone) ? "text-red-500" : "text-muted-foreground"}>
                           {isOverdue(milestone) ? "Overdue" : "Pending"}
