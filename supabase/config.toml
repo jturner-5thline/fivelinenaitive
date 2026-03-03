@@ -176,3 +176,9 @@ verify_jwt = false
 
 [functions.deal-diligence-ai]
 verify_jwt = false
+
+[functions.claap-webhook]
+verify_jwt = false
+
+[functions.claap-analyze-meeting]
+verify_jwt = false
