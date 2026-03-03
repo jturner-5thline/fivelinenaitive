@@ -401,8 +401,8 @@ export default function Tasks() {
       <Helmet><title>Tasks | 5thLine</title></Helmet>
       <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-6 py-4 border-b min-w-0 gap-4 flex-nowrap">
+          <div className="flex items-center gap-3 min-w-0 overflow-hidden">
             <h1 className="text-xl font-semibold">
               {viewMode === 'focus' ? '🎯 My Focus' : ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
@@ -437,7 +437,7 @@ export default function Tasks() {
             onDismiss={() => dismissHint('tasks-views')}
             side="bottom"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0 flex-nowrap">
               <Tabs value={viewMode} onValueChange={v => setViewMode(v as ViewMode)}>
                 <TabsList className="h-8">
                   <TabsTrigger value="focus" className="text-xs gap-1 px-2 h-7">
