@@ -2591,14 +2591,14 @@ export default function DealDetail() {
                     onDismiss={() => dismissHint('deal-tabs')}
                     side="bottom"
                   >
-                    <TabsList className="inline-flex h-9 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink scrollbar-none gap-0" style={{ scrollbarWidth: 'none' }}>
-                    <TabsTrigger value="deal-space" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">
+                    <TabsList className="inline-flex h-8 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink scrollbar-none gap-0" style={{ scrollbarWidth: 'none' }}>
+                    <TabsTrigger value="deal-space" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       <Sparkles className="h-3.5 w-3.5" />
                       Deal Space
                       <BetaBadge featureKey="page_deal_space" />
                     </TabsTrigger>
-                    <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">Info</TabsTrigger>
-                    <TabsTrigger value="lenders" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">
+                    <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Info</TabsTrigger>
+                    <TabsTrigger value="lenders" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Lenders
                       {deal.lenders && deal.lenders.length > 0 && (
                         <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
@@ -2606,7 +2606,7 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="deal-management" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">
+                    <TabsTrigger value="deal-management" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Management
                       {infoRequestActionCount > 0 && (
                         <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
@@ -2614,8 +2614,8 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="deal-writeup" className="whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">Write Up</TabsTrigger>
-                    <TabsTrigger value="data-room" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">
+                    <TabsTrigger value="deal-writeup" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Write Up</TabsTrigger>
+                    <TabsTrigger value="data-room" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Data Room
                       {attachments.length > 0 && (
                         <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
@@ -2623,7 +2623,7 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="communication" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">
+                    <TabsTrigger value="communication" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       <MessageSquare className="h-3.5 w-3.5" />
                       Comms
                     </TabsTrigger>
@@ -2633,7 +2633,7 @@ export default function DealDetail() {
                     <CreateTaskButton dealId={id!} dealName={deal?.company} />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="relative overflow-hidden h-9 w-9 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]" title="Status Report">
+                        <Button variant="outline" size="icon" className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]" title="Status Report">
                           <FileText className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -2653,7 +2653,7 @@ export default function DealDetail() {
                     </DropdownMenu>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="relative overflow-hidden h-9 w-9 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]" title="Export">
+                        <Button variant="outline" size="icon" className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]" title="Export">
                           <Download className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
