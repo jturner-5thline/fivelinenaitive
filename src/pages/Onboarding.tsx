@@ -195,18 +195,6 @@ export default function Onboarding() {
 
   const watchedValues = form.watch();
 
-  // Show join request UI if needed (after all hooks)
-  if (showJoinRequest && matchingCompanies && matchingCompanies.length > 0 && userDomain) {
-    return (
-      <CompanyJoinRequestModal
-        companies={matchingCompanies}
-        userDomain={userDomain}
-        onRequestSent={handleJoinRequestSent}
-        onCancel={() => setShowJoinRequest(false)}
-      />
-    );
-  }
-
   const { completedCount, totalCount, progress, fieldStatus } = useMemo(() => {
     const allFields = [...requiredFields, ...optionalFields];
     const status: Record<string, boolean> = {};
@@ -227,11 +215,53 @@ export default function Onboarding() {
     };
   }, [watchedValues]);
 
+  // Show join request UI if needed (after all hooks)
+  if (showJoinRequest && matchingCompanies && matchingCompanies.length > 0 && userDomain) {
+    return (
+      <CompanyJoinRequestModal
+        companies={matchingCompanies}
+        userDomain={userDomain}
+        onRequestSent={handleJoinRequestSent}
+        onCancel={() => setShowJoinRequest(false)}
+      />
+    );
+  }
+
   const onSubmit = async (data: OnboardingForm) => {
     if (!user) return;
 
     setIsSubmitting(true);
     try {
+      // Auto-create company if user has no company membership
+      if (hasCompany === false && userDomain) {
+        // Create company with the user's domain
+        const { data: newCompany, error: companyError } = await supabase
+          .from('companies')
+          .insert({
+            name: data.company_name,
+            primary_domain: userDomain,
+            domains: [userDomain],
+            website_url: data.company_url || null,
+            employee_size: data.company_size || null,
+          })
+          .select('id')
+          .single();
+
+        if (companyError) {
+          console.error('Error creating company:', companyError);
+          // Don't throw - company creation is optional, continue with onboarding
+        } else if (newCompany) {
+          // Add user as admin of the new company
+          await supabase
+            .from('company_members')
+            .insert({
+              company_id: newCompany.id,
+              user_id: user.id,
+              role: 'owner',
+            });
+        }
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
