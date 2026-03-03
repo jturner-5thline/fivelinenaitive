@@ -464,7 +464,7 @@ export default function DealDetail() {
   const isEffectivelyExpanded = sidebarState === 'expanded' || isHovering;
   const highlightStale = searchParams.get('highlight') === 'stale';
   const deleteAction = searchParams.get('action') === 'delete';
-  const initialTab = searchParams.get('tab') as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails' | null;
+  const initialTab = searchParams.get('tab') as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading } = useMasterLenders();
   const { stages: configuredStages, substages: configuredSubstages, passReasons } = useLenderStages();
@@ -628,13 +628,13 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails'>(initialTab || 'deal-info');
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>(initialTab || 'deal-info');
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
   const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   
   // Track tab direction for swipe animation
-  const DEAL_TABS = ['deal-info', 'lenders', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'emails'] as const;
+  const DEAL_TABS = ['deal-info', 'lenders', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'communication'] as const;
   
   const handleTabChange = useCallback((newTab: typeof dealInfoTab) => {
     const prevIndex = DEAL_TABS.indexOf(prevTabRef.current);
@@ -2582,7 +2582,7 @@ export default function DealDetail() {
             {/* Main Content */}
             <div className="flex flex-col gap-6 min-w-0 w-full">
               {/* Tab Navigation */}
-              <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails')}>
+              <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}>
                 <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden flex-nowrap">
                   <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
                   <HintTooltip
@@ -2623,13 +2623,9 @@ export default function DealDetail() {
                       </Badge>
                     )}
                   </TabsTrigger>
-                  <TabsTrigger value="emails" className="gap-2">
-                    <Mail className="h-4 w-4" />
-                    Emails
-                  </TabsTrigger>
-                  <TabsTrigger value="meetings" className="gap-2">
-                    <Video className="h-4 w-4" />
-                    Meetings
+                   <TabsTrigger value="communication" className="gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Communication
                   </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
@@ -4412,12 +4408,25 @@ export default function DealDetail() {
                   }} />
                 </TabsContent>
 
-                <TabsContent value="emails" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`emails-${tabDirection}`}>
-                  <DealEmailsTab dealId={id!} />
-                </TabsContent>
-
-                <TabsContent value="meetings" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`meetings-${tabDirection}`}>
-                  <ClaapMeetingsTab dealId={id!} />
+                <TabsContent value="communication" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`communication-${tabDirection}`}>
+                  <Tabs defaultValue="emails" className="w-full">
+                    <TabsList className="mb-4">
+                      <TabsTrigger value="emails" className="gap-2">
+                        <Mail className="h-4 w-4" />
+                        Emails
+                      </TabsTrigger>
+                      <TabsTrigger value="meetings" className="gap-2">
+                        <Video className="h-4 w-4" />
+                        Meetings
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="emails">
+                      <DealEmailsTab dealId={id!} />
+                    </TabsContent>
+                    <TabsContent value="meetings">
+                      <ClaapMeetingsTab dealId={id!} />
+                    </TabsContent>
+                  </Tabs>
                 </TabsContent>
 
               </Tabs>
