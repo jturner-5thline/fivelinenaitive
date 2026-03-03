@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TrendingUp, Briefcase, FileSearch, DollarSign } from 'lucide-react';
+import { Briefcase, FileSearch } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Deal } from '@/types/deal';
@@ -78,8 +78,7 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
   const statItems = [
     {
       label: 'Active Deals',
-      value: stats.activeDeals.toString(),
-      subtitle: formatCurrencyValue(stats.activeDealValue),
+      value: `${stats.activeDeals} Deals – ${formatCurrencyValue(stats.activeDealValue)}`,
       icon: Briefcase,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
@@ -88,19 +87,10 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
     },
     {
       label: 'Deals in Diligence',
-      value: stats.dealsInDiligence.toString(),
+      value: `${stats.dealsInDiligence} Deals – ${formatCurrencyValue(stats.dollarsInDiligence)}`,
       icon: FileSearch,
       color: 'text-success',
       bgColor: 'bg-success/10',
-      clickable: false,
-      clickType: null,
-    },
-    {
-      label: 'Dollars in Diligence',
-      value: formatCurrencyValue(stats.dollarsInDiligence),
-      icon: DollarSign,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
       clickable: false,
       clickType: null,
     },
@@ -136,7 +126,7 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {statItems.map((stat) => (
           <Card 
             key={stat.label}
@@ -147,12 +137,9 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
               <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${stat.bgColor}`}>
                 <stat.icon className={`h-6 w-6 ${stat.color}`} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
-                {'subtitle' in stat && stat.subtitle && (
-                  <p className="text-sm text-muted-foreground">{stat.subtitle}</p>
-                )}
+                <p className="text-lg font-semibold text-foreground truncate">{stat.value}</p>
               </div>
             </CardContent>
           </Card>
