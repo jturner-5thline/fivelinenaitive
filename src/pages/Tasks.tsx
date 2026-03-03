@@ -1,4 +1,5 @@
 import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect } from 'react';
+import { ClaapRoutingTasksBadge } from '@/components/integrations/claap/ClaapRoutingTasksBadge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
@@ -457,6 +458,7 @@ export default function Tasks() {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
+              <ClaapRoutingTasksBadge />
             </div>
           </HintTooltip>
         </div>

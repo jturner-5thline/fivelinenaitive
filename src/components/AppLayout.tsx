@@ -155,11 +155,6 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         <AppSidebar />
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
-      {isTasksPage && (
-        <div className="fixed top-3 right-3 z-50">
-          <ClaapRoutingTasksBadge />
-        </div>
-      )}
       <FeedbackWidget />
       <TaskAssignmentBanner />
       <PlatformTour />
