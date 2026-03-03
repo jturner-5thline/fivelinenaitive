@@ -86,8 +86,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create in-app notifications for admins
-    // (Using notifications table if it exists, otherwise just log)
+    // Create in-app notifications for each admin/owner
+    for (const admin of admins) {
+      await supabaseAdmin.from("notification_instances").insert({
+        trigger_key: "company_join_request",
+        recipient_user_id: admin.user_id,
+        channel_type: "in_app",
+        status: "sent",
+        title: `New join request for ${companyName}`,
+        body: `${user_name || user_email} has requested to join ${companyName}.`,
+        actor_user_id: user_id,
+        context: { company_id, user_email, note: note || null },
+        sent_at: new Date().toISOString(),
+      });
+    }
+
     console.log(
       `Join request notification sent to ${adminProfiles.length} admin(s) for company ${companyName}`
     );
