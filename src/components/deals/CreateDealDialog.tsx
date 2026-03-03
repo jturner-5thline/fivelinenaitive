@@ -63,6 +63,8 @@ export interface CreateDealInitialValues {
   dealTypes?: string[];
   /** If provided, called after deal is created successfully (instead of navigating) */
   onCreated?: (dealId: string) => void;
+  /** If provided, shows a Dismiss button in the footer */
+  onDismiss?: () => void;
 }
 
 interface CreateDealDialogProps {
@@ -525,7 +527,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 </Collapsible>
               )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex items-center justify-between sm:justify-between">
+              {initialValues?.onDismiss ? (
+                <Button type="button" variant="ghost" size="sm" onClick={initialValues.onDismiss} className="text-muted-foreground">
+                  Dismiss task
+                </Button>
+              ) : <div />}
               <Button type="submit" variant="gradient" disabled={isCreating}>
                 {isCreating ? 'Creating...' : 'Create Deal'}
               </Button>
