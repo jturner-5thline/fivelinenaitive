@@ -25,7 +25,7 @@ import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
 import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSettings';
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
 import { useCompany } from '@/hooks/useCompany';
-
+import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 const SETTINGS_SECTIONS = [
   {
     id: 'account',
@@ -130,14 +130,21 @@ const TABS = [
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels'] },
 ];
 
-function LinkCard({ to, title, description }: { to: string; title: string; description: string }) {
+function LinkCard({ to, title, description, badge }: { to: string; title: string; description: string; badge?: number }) {
   return (
     <Link
       to={to}
       className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors border"
     >
       <div>
-        <p className="font-medium">{title}</p>
+        <p className="font-medium flex items-center gap-2">
+          {title}
+          {badge != null && badge > 0 && (
+            <span className="h-5 min-w-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold flex items-center justify-center">
+              {badge}
+            </span>
+          )}
+        </p>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
       <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -149,6 +156,7 @@ export default function Settings() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('general');
   const { isAdmin } = useCompany();
+  const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
 
   const visibleSections = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -251,7 +259,7 @@ export default function Settings() {
                     <LinkCard to="/account" title="Account" description="Your personal profile, security, and notification preferences" />
                   )}
                   {isVisible('company') && (
-                    <LinkCard to="/company" title="Company" description="Company profile, team members, and roles" />
+                    <LinkCard to="/company" title="Company" description="Company profile, team members, and roles" badge={pendingJoinCount} />
                   )}
                   {isVisible('preferences') && (
                     <LinkCard to="/preferences" title="Preferences" description="Theme, notifications, and regional settings" />
