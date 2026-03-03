@@ -2,15 +2,18 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsApproved } from "@/hooks/useUserApproval";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, LogOut, RefreshCw } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function PendingApproval() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { data: isApproved, refetch, isLoading } = useIsApproved();
+  const [isSending, setIsSending] = useState(false);
 
   // Redirect if approved
   useEffect(() => {
@@ -31,8 +34,23 @@ export default function PendingApproval() {
     navigate("/login", { replace: true });
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    setIsSending(true);
+    try {
+      // Re-send notification to admins
+      await supabase.functions.invoke("notify-admin-approval", {
+        body: {
+          user_id: user?.id,
+          user_email: user?.email,
+          user_name: user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email,
+        },
+      });
+      toast.success("Admins have been notified again");
+    } catch (e) {
+      console.error("Error resending notification:", e);
+    }
     refetch();
+    setIsSending(false);
   };
 
   if (isLoading) {
@@ -76,9 +94,10 @@ export default function PendingApproval() {
               <Button 
                 variant="outline" 
                 onClick={handleRefresh}
+                disabled={isSending}
                 className="w-full"
               >
-                <RefreshCw className="w-4 h-4 mr-2" />
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSending ? 'animate-spin' : ''}`} />
                 Check Approval Status
               </Button>
               

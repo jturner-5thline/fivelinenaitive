@@ -3,18 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyJoinRequests } from "@/hooks/useCompanyJoinRequests";
 import { useIsApproved } from "@/hooks/useUserApproval";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, LogOut, RefreshCw, Building2, CheckCircle, XCircle } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 export default function PendingCompanyApproval() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { data: isApproved, refetch: refetchApproval } = useIsApproved();
   const { data: joinRequests, refetch: refetchRequests, isLoading } = useMyJoinRequests();
+  const [isSending, setIsSending] = useState(false);
 
   // Redirect if approved
   useEffect(() => {
@@ -35,9 +38,33 @@ export default function PendingCompanyApproval() {
     navigate("/login", { replace: true });
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    setIsSending(true);
+    try {
+      // Re-send notifications for all pending join requests
+      const pendingReqs = joinRequests?.filter((r: any) => r.status === "pending") || [];
+      await Promise.all(
+        pendingReqs.map((request: any) =>
+          supabase.functions.invoke("notify-company-join-request", {
+            body: {
+              company_id: request.company_id,
+              user_id: user?.id,
+              user_email: user?.email,
+              user_name: user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email,
+              note: request.note,
+            },
+          }).catch(console.error)
+        )
+      );
+      if (pendingReqs.length > 0) {
+        toast.success("Company admins have been notified again");
+      }
+    } catch (e) {
+      console.error("Error resending notification:", e);
+    }
     refetchApproval();
     refetchRequests();
+    setIsSending(false);
   };
 
   const pendingRequests = joinRequests?.filter((r: any) => r.status === "pending") || [];
@@ -126,8 +153,8 @@ export default function PendingCompanyApproval() {
             </p>
 
             <div className="flex flex-col gap-3">
-              <Button variant="outline" onClick={handleRefresh} className="w-full">
-                <RefreshCw className="w-4 h-4 mr-2" />
+              <Button variant="outline" onClick={handleRefresh} disabled={isSending} className="w-full">
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSending ? 'animate-spin' : ''}`} />
                 Check Status
               </Button>
               <Button variant="ghost" onClick={handleSignOut} className="w-full">
