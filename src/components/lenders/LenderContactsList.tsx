@@ -161,17 +161,13 @@ function EditableField({
   const label = field === 'title' ? 'Role' : 'Geography';
 
   return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground group/field">
+    <div
+      className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
+      onClick={() => { setEditValue(value || ''); setEditing(true); }}
+    >
       {icon}
-      <span>{value || <span className="italic text-xs">No {label.toLowerCase()}</span>}</span>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-5 w-5 opacity-0 group-hover/field:opacity-100 transition-opacity"
-        onClick={() => { setEditValue(value || ''); setEditing(true); }}
-      >
-        <Pencil className="h-3 w-3" />
-      </Button>
+      <span className="flex-1">{value || <span className="italic text-xs">No {label.toLowerCase()}</span>}</span>
+      <Pencil className="h-3 w-3 shrink-0 opacity-60" />
     </div>
   );
 }
