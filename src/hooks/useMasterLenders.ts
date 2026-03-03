@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -147,6 +147,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const backgroundLoadIdRef = useRef(0);
 
   const fetchPage = useCallback(
     async (pageIndex: number, withCount = false, query = '') => {
@@ -227,8 +228,14 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       setPage(0);
       setTotalCount(null);
 
+      // Cancel any in-flight background load from a previous fetch
+      const loadId = ++backgroundLoadIdRef.current;
+
       const { data: initialData, error: initialError, count } = await fetchPage(0, true, searchQuery);
       if (initialError) throw initialError;
+
+      // If another fetchLenders was triggered while we were awaiting, bail out
+      if (loadId !== backgroundLoadIdRef.current) return;
 
       const firstPage = initialData ?? [];
       setLenders(firstPage);
@@ -253,6 +260,9 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
           let keepGoing = true;
 
           while (keepGoing) {
+            // Check if this background load has been superseded
+            if (loadId !== backgroundLoadIdRef.current) return;
+
             const from = offset;
             const to = from + backgroundPageSize - 1;
 
@@ -267,6 +277,9 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
               break;
             }
 
+            // Check again after await
+            if (loadId !== backgroundLoadIdRef.current) return;
+
             const batch = (data as MasterLender[] | null) ?? [];
             if (batch.length > 0) {
               remainingLenders.push(...batch);
@@ -276,6 +289,9 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
               keepGoing = false;
             }
           }
+
+          // Final check before updating state
+          if (loadId !== backgroundLoadIdRef.current) return;
 
           if (remainingLenders.length > 0) {
             setLenders((prev) => {
