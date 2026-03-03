@@ -1,4 +1,5 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video } from "lucide-react";
+import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useTheme } from "next-themes";
 import naitiveIconLight from "@/assets/naitive-icon-light.png";
@@ -65,6 +66,8 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminRole();
   const { hasPageAccess, isPageBeta, isLoading: isAccessLoading } = usePageAccessFlags();
+  const { data: routingTasks = [] } = useClaapRoutingTasks();
+  const meetingTaskCount = routingTasks.length;
   const currentPath = location.pathname;
   // Show expanded content if either actually expanded or hovering while collapsed
   const showExpanded = state === "expanded" || (state === "collapsed" && isHovering);
@@ -125,7 +128,14 @@ export function AppSidebar() {
                       className="hover:bg-sidebar-accent/50"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
-                      <item.icon className={item.iconClassName || "h-4 w-4"} />
+                      <div className="relative">
+                        <item.icon className={item.iconClassName || "h-4 w-4"} />
+                        {item.url === "/tasks" && meetingTaskCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                            {meetingTaskCount}
+                          </span>
+                        )}
+                      </div>
                       {showExpanded && (
                         <span className="flex items-center gap-1.5">
                           {item.title}
