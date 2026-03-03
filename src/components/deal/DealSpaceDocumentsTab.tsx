@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { 
   Upload, File, Trash2, Download, Loader2, FileText, 
-  Eye, Zap, ChevronRight, Table2, Presentation, X, Sparkles
+  Eye, Zap, ChevronRight, Table2, Presentation, X, Sparkles,
+  ScanSearch, AlertTriangle, CheckCircle2, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,7 +20,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useDealSpaceDocuments, DealSpaceDocument } from '@/hooks/useDealSpaceDocuments';
+import { useDealDocumentExtraction, DocumentExtraction } from '@/hooks/useDealDocumentExtraction';
 import { DealSpaceDocumentPreview } from './DealSpaceDocumentPreview';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -61,6 +69,7 @@ const getFileIcon = (contentType: string | null, name: string) => {
 
 export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
   const { documents, isLoading, isUploading, uploadDocument, deleteDocument, getDownloadUrl } = useDealSpaceDocuments(dealId);
+  const { isExtracting, extractingDocId, result: extractionResult, extractDocument, clearResult } = useDealDocumentExtraction(dealId);
   
   const [isDragging, setIsDragging] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<DealSpaceDocument | null>(null);
@@ -70,6 +79,7 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
   const [showSummary, setShowSummary] = useState(false);
   const [duplicateFile, setDuplicateFile] = useState<{ file: File; existingDoc: DealSpaceDocument } | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [showExtraction, setShowExtraction] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -338,6 +348,24 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          title="Extract structured data"
+                          disabled={isExtracting}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const res = await extractDocument(doc.id);
+                            if (res) setShowExtraction(true);
+                          }}
+                        >
+                          {extractingDocId === doc.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <ScanSearch className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDownload(doc);
@@ -410,6 +438,209 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Document Extraction Results Dialog */}
+      <Dialog open={showExtraction && !!extractionResult} onOpenChange={(open) => { if (!open) { setShowExtraction(false); clearResult(); } }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ScanSearch className="h-5 w-5" />
+              Document Extraction Results
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1">
+            {extractionResult?.extraction && (
+              <ExtractionResultsView extraction={extractionResult.extraction} />
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </>
+  );
+}
+
+// ─── Extraction Results Viewer ──────────────────────────────────────
+
+function ExtractionResultsView({ extraction }: { extraction: DocumentExtraction }) {
+  const meta = extraction.document_metadata;
+  const company = extraction.company_profile;
+  const financials = extraction.financials?.periods || [];
+  const riskFlags = extraction.risk_flags || [];
+  const loanAgreements = extraction.contracts?.loan_agreements || [];
+  const customerAgreements = extraction.contracts?.customer_agreements || [];
+  const capEntries = extraction.cap_table?.entries || [];
+  const qa = extraction.qa_support;
+
+  const fmt = (v: number | null | undefined) => v != null ? `$${v.toLocaleString()}` : '—';
+  const pct = (v: number | null | undefined) => v != null ? `${v}%` : '—';
+
+  return (
+    <div className="space-y-5 pr-4 pb-4">
+      {/* Document Metadata */}
+      {meta && (
+        <section>
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <FileText className="h-4 w-4" /> Document Info
+          </h3>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            {meta.document_type && <><span className="text-muted-foreground">Type</span><span className="capitalize">{meta.document_type.replace(/_/g, ' ')}</span></>}
+            {meta.company_name && <><span className="text-muted-foreground">Company</span><span>{meta.company_name}</span></>}
+            {meta.reporting_period && <><span className="text-muted-foreground">Period</span><span>{meta.reporting_period}</span></>}
+            {meta.currency && <><span className="text-muted-foreground">Currency</span><span>{meta.currency}</span></>}
+          </div>
+        </section>
+      )}
+
+      {/* Company Profile */}
+      {company && (company.industry || company.business_description) && (
+        <section>
+          <h3 className="text-sm font-semibold mb-2">Company Profile</h3>
+          <div className="text-sm space-y-1">
+            {company.industry && <p><span className="text-muted-foreground">Industry:</span> {company.industry}</p>}
+            {company.hq_location && <p><span className="text-muted-foreground">HQ:</span> {company.hq_location}</p>}
+            {company.founded_year && <p><span className="text-muted-foreground">Founded:</span> {company.founded_year}</p>}
+            {company.business_description && <p className="text-muted-foreground text-xs mt-1">{company.business_description}</p>}
+          </div>
+        </section>
+      )}
+
+      {/* Financial Periods */}
+      {financials.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold mb-2">Financial Periods</h3>
+          {financials.map((p, i) => (
+            <div key={i} className="bg-muted/50 rounded-md p-3 mb-2">
+              <p className="text-xs font-medium mb-1">{p.label || `Period ${i + 1}`}</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                {p.revenue != null && <><span className="text-muted-foreground">Revenue</span><span>{fmt(p.revenue)}</span></>}
+                {p.arr != null && <><span className="text-muted-foreground">ARR</span><span>{fmt(p.arr)}</span></>}
+                {p.mrr != null && <><span className="text-muted-foreground">MRR</span><span>{fmt(p.mrr)}</span></>}
+                {p.gross_margin_percent != null && <><span className="text-muted-foreground">Gross Margin</span><span>{pct(p.gross_margin_percent)}</span></>}
+                {p.ebitda != null && <><span className="text-muted-foreground">EBITDA</span><span>{fmt(p.ebitda)}</span></>}
+                {p.ebitda_margin_percent != null && <><span className="text-muted-foreground">EBITDA Margin</span><span>{pct(p.ebitda_margin_percent)}</span></>}
+                {p.net_income != null && <><span className="text-muted-foreground">Net Income</span><span>{fmt(p.net_income)}</span></>}
+                {p.total_assets != null && <><span className="text-muted-foreground">Total Assets</span><span>{fmt(p.total_assets)}</span></>}
+                {p.total_liabilities != null && <><span className="text-muted-foreground">Total Liabilities</span><span>{fmt(p.total_liabilities)}</span></>}
+                {p.total_equity != null && <><span className="text-muted-foreground">Total Equity</span><span>{fmt(p.total_equity)}</span></>}
+              </div>
+              {p.opex && (p.opex.sales_and_marketing != null || p.opex.research_and_development != null || p.opex.general_and_administrative != null) && (
+                <div className="mt-1.5 pt-1.5 border-t border-border">
+                  <p className="text-xs text-muted-foreground font-medium mb-0.5">OPEX</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                    {p.opex.sales_and_marketing != null && <><span className="text-muted-foreground">S&M</span><span>{fmt(p.opex.sales_and_marketing)}</span></>}
+                    {p.opex.research_and_development != null && <><span className="text-muted-foreground">R&D</span><span>{fmt(p.opex.research_and_development)}</span></>}
+                    {p.opex.general_and_administrative != null && <><span className="text-muted-foreground">G&A</span><span>{fmt(p.opex.general_and_administrative)}</span></>}
+                    {p.opex.other_opex != null && <><span className="text-muted-foreground">Other</span><span>{fmt(p.opex.other_opex)}</span></>}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* Loan Agreements */}
+      {loanAgreements.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold mb-2">Loan Agreements</h3>
+          {loanAgreements.map((la, i) => (
+            <div key={i} className="bg-muted/50 rounded-md p-3 mb-2 text-xs space-y-0.5">
+              {la.lender_name && <p><span className="text-muted-foreground">Lender:</span> {la.lender_name}</p>}
+              {la.facility_type && <p><span className="text-muted-foreground">Facility:</span> {la.facility_type}</p>}
+              {la.commitment_amount != null && <p><span className="text-muted-foreground">Amount:</span> {fmt(la.commitment_amount)}</p>}
+              {la.interest_rate && <p><span className="text-muted-foreground">Rate:</span> {la.interest_rate}</p>}
+              {la.maturity_date && <p><span className="text-muted-foreground">Maturity:</span> {la.maturity_date}</p>}
+              {la.financial_covenants && <p><span className="text-muted-foreground">Covenants:</span> {la.financial_covenants}</p>}
+              {la.security_or_collateral && <p><span className="text-muted-foreground">Collateral:</span> {la.security_or_collateral}</p>}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* Customer Agreements */}
+      {customerAgreements.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold mb-2">Customer Agreements</h3>
+          {customerAgreements.map((ca, i) => (
+            <div key={i} className="bg-muted/50 rounded-md p-3 mb-2 text-xs space-y-0.5">
+              {ca.customer_name && <p><span className="text-muted-foreground">Customer:</span> {ca.customer_name}</p>}
+              {ca.contract_value != null && <p><span className="text-muted-foreground">Value:</span> {fmt(ca.contract_value)}</p>}
+              {ca.contract_term && <p><span className="text-muted-foreground">Term:</span> {ca.contract_term}</p>}
+              {ca.renewal_terms && <p><span className="text-muted-foreground">Renewal:</span> {ca.renewal_terms}</p>}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* Cap Table */}
+      {capEntries.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold mb-2">Cap Table</h3>
+          <div className="bg-muted/50 rounded-md p-3 text-xs space-y-1">
+            {capEntries.map((e, i) => (
+              <div key={i} className="flex justify-between">
+                <span>{e.holder_name} {e.class_or_series ? `(${e.class_or_series})` : ''}</span>
+                <span className="text-muted-foreground">{e.ownership_percent != null ? `${e.ownership_percent}%` : '—'}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Risk Flags */}
+      {riskFlags.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" /> Risk Flags ({riskFlags.length})
+          </h3>
+          <div className="space-y-2">
+            {riskFlags.map((rf, i) => (
+              <div key={i} className={cn(
+                "rounded-md p-3 text-xs border-l-2",
+                rf.severity === 'high' ? 'border-l-destructive bg-destructive/5' :
+                rf.severity === 'medium' ? 'border-l-orange-500 bg-orange-500/5' :
+                'border-l-muted-foreground bg-muted/50'
+              )}>
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant={rf.severity === 'high' ? 'destructive' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                    {rf.severity}
+                  </Badge>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">{rf.category}</Badge>
+                </div>
+                <p>{rf.description}</p>
+                {rf.source_reference?.text_snippet && (
+                  <p className="text-muted-foreground mt-1 italic">
+                    "{rf.source_reference.text_snippet}"{rf.source_reference.page ? ` — p.${rf.source_reference.page}` : ''}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* QA Summary */}
+      {qa?.key_points_summary && (
+        <section>
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <Info className="h-4 w-4" /> Key Points
+          </h3>
+          <p className="text-xs text-muted-foreground">{qa.key_points_summary}</p>
+        </section>
+      )}
+
+      {/* Processing Notes */}
+      {(extraction.meta?.processing_notes || extraction.meta?.uncertainty_notes) && (
+        <section className="border-t border-border pt-3">
+          <h3 className="text-xs font-medium text-muted-foreground mb-1">Processing Notes</h3>
+          {extraction.meta.processing_notes && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{extraction.meta.processing_notes}</p>}
+          {extraction.meta.uncertainty_notes && (
+            <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+              <span className="font-medium">Uncertainties:</span> {extraction.meta.uncertainty_notes}
+            </p>
+          )}
+        </section>
+      )}
+    </div>
   );
 }
