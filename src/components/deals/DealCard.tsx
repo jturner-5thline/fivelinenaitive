@@ -147,7 +147,11 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
   const timeAgoData = getTimeAgoData(deal.updatedAt);
 
+  const isClosedOrArchived = deal.status === 'archived' || deal.stage === 'closed-lost';
+
   const notificationCount = useMemo(() => {
+    // Suppress all notifications for archived or closed-lost deals
+    if (isClosedOrArchived) return 0;
     let count = flexNotificationCount;
     // Count stale lenders
     deal.lenders?.forEach(lender => {
@@ -161,7 +165,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
       if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
     });
     return count;
-  }, [deal.lenders, deal.milestones, preferences.staleDealsDays, flexNotificationCount]);
+  }, [deal.lenders, deal.milestones, deal.status, deal.stage, preferences.staleDealsDays, flexNotificationCount, isClosedOrArchived]);
 
   return (
     <>

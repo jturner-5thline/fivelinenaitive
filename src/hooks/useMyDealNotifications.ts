@@ -26,7 +26,7 @@ export function useMyDealNotifications() {
       // Find deals where current user is manager or analyst
       const { data: deals, error: dealsError } = await supabase
         .from('deals')
-        .select('id')
+        .select('id, status, stage')
         .or(`manager.eq.${displayName},analyst.eq.${displayName}`);
 
       if (dealsError) {
@@ -41,7 +41,16 @@ export function useMyDealNotifications() {
         return;
       }
 
-      const dealIds = deals.map(d => d.id);
+      // Exclude archived and closed-lost deals from notification counts
+      const activeDeals = (deals || []).filter(
+        (d: any) => d.status !== 'archived' && d.stage !== 'closed-lost'
+      );
+      if (activeDeals.length === 0) {
+        setCount(0);
+        setIsLoading(false);
+        return;
+      }
+      const dealIds = activeDeals.map((d: any) => d.id);
 
       // Count pending/read flex info notifications for those deals
       const { count: notifCount, error: notifError } = await supabase
