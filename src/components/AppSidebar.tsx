@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, UserPen, SlidersHorizontal } from "lucide-react";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useTheme } from "next-themes";
@@ -207,9 +207,17 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="right" align="end" className="w-56">
+                <DropdownMenuItem onClick={() => navigate("/preferences?section=profile")}>
+                  <UserPen className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/account")}>
                   <User className="mr-2 h-4 w-4" />
                   Account
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/preferences")}>
+                  <SlidersHorizontal className="mr-2 h-4 w-4" />
+                  Preferences
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/settings")}>
                   <Settings className="mr-2 h-4 w-4" />
