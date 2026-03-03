@@ -26,7 +26,7 @@ export default function Homepage() {
         />
       </Helmet>
 
-      <div className="min-h-screen bg-muted/30 dark:bg-[hsl(230,25%,5%)]">
+      <div className="dark min-h-screen bg-[hsl(230,25%,5%)]" style={{ colorScheme: 'dark' }}>
         <HomepageHeader />
         
         <HomepageHero />
