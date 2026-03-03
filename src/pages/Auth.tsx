@@ -443,10 +443,15 @@ const Auth = () => {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      placeholder="you@company.com"
                       required
-                      className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40"
+                      className={`bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 ${email && isBlockedEmailDomain(email) ? 'border-red-500/60 focus:border-red-500/80' : ''}`}
                     />
+                    {email && isBlockedEmailDomain(email) && (
+                      <p className="text-sm text-red-400 mt-1">
+                        Personal email addresses are not allowed. Please use your professional work email (e.g. you@company.com).
+                      </p>
+                    )}
                   </div>
                   
                   {mode !== "forgot" && (
