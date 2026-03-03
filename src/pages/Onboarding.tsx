@@ -29,6 +29,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { extractDomain, useFindCompaniesByDomain } from '@/hooks/useCompanyJoinRequests';
+import { CompanyJoinRequestModal } from '@/components/onboarding/CompanyJoinRequestModal';
 
 const fireConfetti = () => {
   const duration = 3000;
@@ -104,6 +106,35 @@ export default function Onboarding() {
   const { user } = useAuth();
   const { refreshProfile } = useProfile();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showJoinRequest, setShowJoinRequest] = useState(false);
+
+  // Domain matching
+  const userDomain = user?.email ? extractDomain(user.email) : null;
+  const { data: matchingCompanies, isLoading: companiesLoading } = useFindCompaniesByDomain(userDomain);
+
+  // Check if user already has a company membership
+  const [hasCompany, setHasCompany] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('company_members')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => setHasCompany(!!data));
+  }, [user]);
+
+  // If matching companies exist and user has no company, show join request
+  useEffect(() => {
+    if (hasCompany === false && matchingCompanies && matchingCompanies.length > 0 && !companiesLoading) {
+      setShowJoinRequest(true);
+    }
+  }, [matchingCompanies, hasCompany, companiesLoading]);
+
+  // If user sent a join request, redirect to pending page
+  const handleJoinRequestSent = () => {
+    navigate('/pending-company-approval', { replace: true });
+  };
 
   const form = useForm<OnboardingForm>({
     resolver: zodResolver(onboardingSchema),
@@ -122,7 +153,6 @@ export default function Onboarding() {
   // Pre-fill from waitlist data (sessionStorage or database lookup)
   useEffect(() => {
     const prefillFromWaitlist = async () => {
-      // First check sessionStorage (set during auth flow from waitlist page)
       const waitlistName = sessionStorage.getItem('waitlist_name');
       const waitlistCompany = sessionStorage.getItem('waitlist_company');
 
@@ -130,32 +160,25 @@ export default function Onboarding() {
         if (!form.getValues('display_name')) {
           form.setValue('display_name', waitlistName, { shouldValidate: true });
         }
-        // Clean up
         sessionStorage.removeItem('waitlist_name');
         sessionStorage.removeItem('waitlist_company');
         return;
       }
 
-      // Fallback: look up waitlist entry by user email
       if (!user?.email) return;
-      
       try {
         const { data } = await supabase
           .from('waitlist')
           .select('name, company')
           .eq('email', user.email)
           .maybeSingle();
-
-        if (data) {
-          if (data.name && !form.getValues('display_name')) {
-            form.setValue('display_name', data.name, { shouldValidate: true });
-          }
+        if (data?.name && !form.getValues('display_name')) {
+          form.setValue('display_name', data.name, { shouldValidate: true });
         }
       } catch (err) {
         console.error('Error fetching waitlist data for pre-fill:', err);
       }
     };
-
     prefillFromWaitlist();
   }, [user?.email, form]);
 
@@ -171,6 +194,18 @@ export default function Onboarding() {
   }, [user, form]);
 
   const watchedValues = form.watch();
+
+  // Show join request UI if needed (after all hooks)
+  if (showJoinRequest && matchingCompanies && matchingCompanies.length > 0 && userDomain) {
+    return (
+      <CompanyJoinRequestModal
+        companies={matchingCompanies}
+        userDomain={userDomain}
+        onRequestSent={handleJoinRequestSent}
+        onCancel={() => setShowJoinRequest(false)}
+      />
+    );
+  }
 
   const { completedCount, totalCount, progress, fieldStatus } = useMemo(() => {
     const allFields = [...requiredFields, ...optionalFields];
