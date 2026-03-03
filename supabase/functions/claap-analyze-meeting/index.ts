@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 ${truncatedTranscript}
 ---
 
-Extract meeting insights AND any deal-relevant information (financing amounts, deal status, referral sources, contact roles) using the provided tool.`;
+Extract meeting insights AND any deal-relevant information (financing amounts, deal status, referral sources, contact roles) using the provided tool. For the deal_narrative field, summarize the business, business model, what they are looking for, and any key financial information discussed.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -127,6 +127,10 @@ Extract meeting insights AND any deal-relevant information (financing amounts, d
                   referral_source_email: {
                     type: "string",
                     description: "If a referral source email is mentioned, extract it. Return empty string if not mentioned.",
+                  },
+                  deal_narrative: {
+                    type: "string",
+                    description: "Based on the call transcript, summarize the business, business model, what they are looking for, and any key financial information. Write 2-4 paragraphs in a professional tone suitable for a deal memo. Return empty string if not enough context.",
                   },
                   participant_roles: {
                     type: "array",
@@ -192,6 +196,7 @@ Extract meeting insights AND any deal-relevant information (financing amounts, d
       suggested_deal_status?: string;
       referral_source_name?: string;
       referral_source_email?: string;
+      deal_narrative?: string;
       participant_roles?: Array<{ name: string; role: string; email?: string }>;
     };
 
@@ -227,7 +232,8 @@ Extract meeting insights AND any deal-relevant information (financing amounts, d
       insights.suggested_deal_amount ||
       insights.suggested_deal_status ||
       insights.referral_source_name ||
-      insights.referral_source_email;
+      insights.referral_source_email ||
+      insights.deal_narrative;
 
     if (hasDealData) {
       const { data: dealTasks } = await supabaseAdmin
@@ -244,6 +250,7 @@ Extract meeting insights AND any deal-relevant information (financing amounts, d
             ...existingData,
             suggested_amount: insights.suggested_deal_amount || existingData.suggested_amount || "",
             suggested_status: insights.suggested_deal_status || existingData.suggested_status || "",
+            deal_narrative: insights.deal_narrative || existingData.deal_narrative || "",
             referral_name: insights.referral_source_name || existingData.referral_name || "",
             referral_email: insights.referral_source_email || existingData.referral_email || "",
           };
