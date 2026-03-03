@@ -128,7 +128,7 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
           <span className="truncate max-w-[200px] text-foreground font-semibold">
             {deal.company}
           </span>
-          {notificationCount > 0 && (
+          {notificationCount > 0 && deal.status !== 'archived' && deal.stage !== 'closed-lost' && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
