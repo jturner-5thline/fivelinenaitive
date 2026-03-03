@@ -212,9 +212,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       if (newDeal) {
         // Auto-populate default checklist based on deal type
         if (selectedDealTypes.length > 0 && user && company?.id) {
+          // Try each deal type for contains-match; first match wins
           for (const dealType of selectedDealTypes) {
-            const dealTypeId = dealType.toLowerCase().replace(/\s+/g, '-');
-            await populateDefaultChecklist(newDeal.id, dealTypeId, company.id, user.id);
+            const count = await populateDefaultChecklist(newDeal.id, dealType, company.id, user.id);
+            if (count > 0) break; // First match wins
           }
         }
         toast.success(`Deal "${dealName}" created successfully!`);
