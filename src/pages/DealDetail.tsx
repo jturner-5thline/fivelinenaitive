@@ -2183,7 +2183,7 @@ export default function DealDetail() {
         <GlobalSaveBar isAnySaving={isAnySaving} />
         <DealsHeader />
 
-        <main className="container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8">
+        <main className="container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden">
           {/* Back button, alerts, and undo - side by side */}
           <div className="flex items-center gap-3 mb-1 flex-wrap">
             <Button variant="ghost" size="sm" className="gap-2 shrink-0" asChild>
@@ -2580,10 +2580,10 @@ export default function DealDetail() {
           {/* Main Content Grid */}
           <div className="grid gap-6 min-w-0 overflow-hidden">
             {/* Main Content */}
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6 min-w-0 w-full">
               {/* Tab Navigation */}
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails')}>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden">
                   <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
                   <HintTooltip
                     hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
