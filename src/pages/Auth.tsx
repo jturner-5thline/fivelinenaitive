@@ -241,7 +241,11 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}${redirectUrl}`,
+          redirectTo: `${window.location.origin}/deals`,
+          queryParams: {
+            hd: "*", // Restrict to Google Workspace accounts (blocks personal Gmail)
+            prompt: "select_account",
+          },
         },
       });
       if (error) {
