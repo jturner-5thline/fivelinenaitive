@@ -43,6 +43,40 @@ function renderTemplate(template: string, context: Record<string, unknown>): str
   });
 }
 
+async function resolveUserIdByDisplayName(
+  supabase: ReturnType<typeof createClient>,
+  displayName: string | null | undefined,
+  companyId?: string | null
+): Promise<string | null> {
+  if (!displayName || typeof displayName !== "string" || !displayName.trim()) return null;
+  const name = displayName.trim();
+
+  // Try exact match on display_name within the same company
+  let query = supabase
+    .from("profiles")
+    .select("user_id")
+    .ilike("display_name", name)
+    .limit(1);
+
+  if (companyId) {
+    // Prefer members of the same company
+    const { data: members } = await supabase
+      .from("company_members")
+      .select("user_id, profiles!inner(display_name)")
+      .eq("company_id", companyId);
+
+    if (members) {
+      const match = members.find(
+        (m: any) => m.profiles?.display_name?.toLowerCase() === name.toLowerCase()
+      );
+      if (match) return match.user_id;
+    }
+  }
+
+  const { data } = await query;
+  return data?.[0]?.user_id || null;
+}
+
 async function resolveRecipients(
   supabase: ReturnType<typeof createClient>,
   rule: NotificationRule,
@@ -55,6 +89,42 @@ async function resolveRecipients(
   if (rule.default_recipients.user_ids) {
     for (const uid of rule.default_recipients.user_ids) {
       recipientSet.add(uid);
+    }
+  }
+
+  // If we have a deal_id but no resolved owner/manager IDs, look them up from the deal record
+  const dealId = context.deal_id as string | undefined;
+  if (dealId && (!context.deal_owner_id || !context.deal_manager_ids)) {
+    const { data: deal } = await supabase
+      .from("deals")
+      .select("user_id, manager, analyst, deal_owner, company_id")
+      .eq("id", dealId)
+      .maybeSingle();
+
+    if (deal) {
+      const companyId = deal.company_id || (context.company_id as string | undefined);
+
+      // Resolve deal_owner (text name) to user ID, fallback to user_id (creator)
+      if (!context.deal_owner_id) {
+        const resolvedOwner = await resolveUserIdByDisplayName(supabase, deal.deal_owner, companyId);
+        context.deal_owner_id = resolvedOwner || deal.user_id;
+      }
+
+      // Resolve manager (text name) to user ID
+      if (!context.deal_manager_ids) {
+        const resolvedManager = await resolveUserIdByDisplayName(supabase, deal.manager, companyId);
+        if (resolvedManager) {
+          context.deal_manager_ids = [resolvedManager];
+        }
+      }
+
+      // Resolve analyst (text name) to user ID
+      if (!context.analyst_ids) {
+        const resolvedAnalyst = await resolveUserIdByDisplayName(supabase, deal.analyst, companyId);
+        if (resolvedAnalyst) {
+          context.analyst_ids = [resolvedAnalyst];
+        }
+      }
     }
   }
 
@@ -78,8 +148,10 @@ async function resolveRecipients(
         case "ASSIGNEE":
           if (context.assignee_id) recipientSet.add(String(context.assignee_id));
           break;
+        case "TAGGED_USER":
+          if (context.tagged_user_id) recipientSet.add(String(context.tagged_user_id));
+          break;
         case "ADMIN": {
-          // Get all admins from user_roles
           const { data: admins } = await supabase
             .from("user_roles")
             .select("user_id")
