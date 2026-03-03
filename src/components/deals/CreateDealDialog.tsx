@@ -47,13 +47,31 @@ import { usePipelineContext } from '@/contexts/PipelineContext';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { addDays, format } from 'date-fns';
 
+export interface CreateDealInitialValues {
+  dealName?: string;
+  dealAmount?: string;
+  contactName?: string;
+  contactInfo?: string;
+  dealStatusNote?: string;
+  referralName?: string;
+  referralEmail?: string;
+  dealManager?: string;
+  dealOwner?: string;
+  dealStage?: string;
+  pipelineId?: string;
+  dealTypes?: string[];
+  /** If provided, called after deal is created successfully (instead of navigating) */
+  onCreated?: (dealId: string) => void;
+}
+
 interface CreateDealDialogProps {
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  initialValues?: CreateDealInitialValues;
 }
 
-export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }: CreateDealDialogProps) {
+export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, initialValues }: CreateDealDialogProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { createDeal } = useDealsContext();
@@ -72,18 +90,18 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
   const [internalOpen, setInternalOpen] = useState(false);
   const [confirmBlankOpen, setConfirmBlankOpen] = useState(false);
   const [blankFields, setBlankFields] = useState<string[]>([]);
-  const [dealName, setDealName] = useState('');
-  const [dealAmount, setDealAmount] = useState('');
-  const [selectedDealTypes, setSelectedDealTypes] = useState<string[]>([]);
-  const [selectedPipelineId, setSelectedPipelineId] = useState(activePipelineId || '');
-  const [dealStage, setDealStage] = useState(defaultStageId || '');
-  const [dealManager, setDealManager] = useState('');
-  const [dealOwner, setDealOwner] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [contactInfo, setContactInfo] = useState('');
-  const [dealStatusNote, setDealStatusNote] = useState('');
-  const [referralName, setReferralName] = useState('');
-  const [referralEmail, setReferralEmail] = useState('');
+  const [dealName, setDealName] = useState(initialValues?.dealName || '');
+  const [dealAmount, setDealAmount] = useState(initialValues?.dealAmount || '');
+  const [selectedDealTypes, setSelectedDealTypes] = useState<string[]>(initialValues?.dealTypes || []);
+  const [selectedPipelineId, setSelectedPipelineId] = useState(initialValues?.pipelineId || activePipelineId || '');
+  const [dealStage, setDealStage] = useState(initialValues?.dealStage || defaultStageId || '');
+  const [dealManager, setDealManager] = useState(initialValues?.dealManager || '');
+  const [dealOwner, setDealOwner] = useState(initialValues?.dealOwner || '');
+  const [contactName, setContactName] = useState(initialValues?.contactName || '');
+  const [contactInfo, setContactInfo] = useState(initialValues?.contactInfo || '');
+  const [dealStatusNote, setDealStatusNote] = useState(initialValues?.dealStatusNote || '');
+  const [referralName, setReferralName] = useState(initialValues?.referralName || '');
+  const [referralEmail, setReferralEmail] = useState(initialValues?.referralEmail || '');
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
 
@@ -198,7 +216,11 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
         setOpen(false);
         setConfirmBlankOpen(false);
         resetForm();
-        navigate(`/deal/${newDeal.id}`);
+        if (initialValues?.onCreated) {
+          initialValues.onCreated(newDeal.id);
+        } else {
+          navigate(`/deal/${newDeal.id}`);
+        }
       }
     } catch (error) {
       toast.error('Failed to create deal');

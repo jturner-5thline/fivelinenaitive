@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     // Truncate transcript to avoid token limits (keep first ~15k chars)
     const truncatedTranscript = meeting.transcript.slice(0, 15000);
 
-    const systemPrompt = `You are an expert meeting analyst for a commercial lending / deal management platform. Analyze the meeting transcript and extract structured insights. Be concise and actionable.`;
+    const systemPrompt = `You are an expert meeting analyst for a commercial lending / deal management platform called 5th Line Financing. Analyze the meeting transcript and extract structured insights including deal-relevant data. Be concise and actionable.`;
 
     const userPrompt = `Analyze this meeting transcript titled "${meeting.title || "Untitled Meeting"}":
 
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 ${truncatedTranscript}
 ---
 
-Extract the following using the provided tool.`;
+Extract meeting insights AND any deal-relevant information (financing amounts, deal status, referral sources, contact roles) using the provided tool.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -83,7 +83,7 @@ Extract the following using the provided tool.`;
             type: "function",
             function: {
               name: "extract_meeting_insights",
-              description: "Extract structured insights from a meeting transcript",
+              description: "Extract structured insights and deal data from a meeting transcript",
               parameters: {
                 type: "object",
                 properties: {
@@ -110,6 +110,35 @@ Extract the following using the provided tool.`;
                     type: "string",
                     enum: ["positive", "neutral", "negative"],
                     description: "Overall meeting sentiment based on tone and outcomes",
+                  },
+                  // Deal-relevant extraction fields
+                  suggested_deal_amount: {
+                    type: "string",
+                    description: "If a financing amount, deal size, or loan amount is mentioned, extract the numeric value as a string (e.g. '2000000'). Return empty string if not mentioned.",
+                  },
+                  suggested_deal_status: {
+                    type: "string",
+                    description: "A brief 1-sentence status note for the deal based on the meeting discussion (e.g. 'Initial discovery call, client exploring $2M ABL facility'). Return empty string if not applicable.",
+                  },
+                  referral_source_name: {
+                    type: "string",
+                    description: "If someone referred this client or a referral source is mentioned, extract their name. Return empty string if not mentioned.",
+                  },
+                  referral_source_email: {
+                    type: "string",
+                    description: "If a referral source email is mentioned, extract it. Return empty string if not mentioned.",
+                  },
+                  participant_roles: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        role: { type: "string", description: "Their role/title if mentioned (e.g. 'CFO', 'CEO', 'VP Finance')" },
+                        email: { type: "string" },
+                      },
+                    },
+                    description: "Participant roles/titles extracted from the conversation context (max 10)",
                   },
                 },
                 required: ["ai_summary", "key_decisions", "next_steps", "topics", "sentiment"],
@@ -159,6 +188,11 @@ Extract the following using the provided tool.`;
       next_steps: string[];
       topics: string[];
       sentiment: string;
+      suggested_deal_amount?: string;
+      suggested_deal_status?: string;
+      referral_source_name?: string;
+      referral_source_email?: string;
+      participant_roles?: Array<{ name: string; role: string; email?: string }>;
     };
 
     try {
@@ -186,6 +220,73 @@ Extract the following using the provided tool.`;
     if (updateError) {
       console.error("Failed to update meeting with insights:", updateError);
       throw updateError;
+    }
+
+    // Enrich any pending create_deal task for this meeting with extracted deal data
+    const hasDealData =
+      insights.suggested_deal_amount ||
+      insights.suggested_deal_status ||
+      insights.referral_source_name ||
+      insights.referral_source_email;
+
+    if (hasDealData) {
+      const { data: dealTasks } = await supabaseAdmin
+        .from("claap_routing_tasks")
+        .select("id, prefilled_data")
+        .eq("meeting_id", meeting_id)
+        .eq("task_type", "create_deal")
+        .eq("status", "pending");
+
+      if (dealTasks && dealTasks.length > 0) {
+        for (const task of dealTasks) {
+          const existingData = (task.prefilled_data || {}) as Record<string, unknown>;
+          const enriched = {
+            ...existingData,
+            suggested_amount: insights.suggested_deal_amount || existingData.suggested_amount || "",
+            suggested_status: insights.suggested_deal_status || existingData.suggested_status || "",
+            referral_name: insights.referral_source_name || existingData.referral_name || "",
+            referral_email: insights.referral_source_email || existingData.referral_email || "",
+          };
+
+          await supabaseAdmin
+            .from("claap_routing_tasks")
+            .update({ prefilled_data: enriched })
+            .eq("id", task.id);
+        }
+        console.info(`Enriched ${dealTasks.length} create_deal task(s) with AI-extracted data`);
+      }
+    }
+
+    // Enrich contact confirmation tasks with participant roles
+    if (insights.participant_roles && insights.participant_roles.length > 0) {
+      const { data: contactTasks } = await supabaseAdmin
+        .from("claap_routing_tasks")
+        .select("id, prefilled_data")
+        .eq("meeting_id", meeting_id)
+        .eq("task_type", "confirm_contact")
+        .eq("status", "pending");
+
+      if (contactTasks && contactTasks.length > 0) {
+        for (const task of contactTasks) {
+          const existingData = (task.prefilled_data || {}) as Record<string, unknown>;
+          const participants = (existingData.participants || []) as Array<Record<string, unknown>>;
+
+          // Enrich participants with roles from AI
+          const enrichedParticipants = participants.map((p) => {
+            const roleMatch = insights.participant_roles?.find(
+              (r) =>
+                r.email?.toLowerCase() === (p.email as string)?.toLowerCase() ||
+                r.name?.toLowerCase() === (p.name as string)?.toLowerCase()
+            );
+            return roleMatch ? { ...p, role: roleMatch.role } : p;
+          });
+
+          await supabaseAdmin
+            .from("claap_routing_tasks")
+            .update({ prefilled_data: { ...existingData, participants: enrichedParticipants } })
+            .eq("id", task.id);
+        }
+      }
     }
 
     return new Response(
