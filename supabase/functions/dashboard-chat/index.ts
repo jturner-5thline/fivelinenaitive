@@ -301,6 +301,22 @@ const tools = [
       },
     },
   },
+  // ─── Lender-Deal lookup tool ───────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "lookup_deals_for_lender",
+      description: "Look up all deals associated with a specific lender. Use this when a user asks 'What deals have I submitted to X?' or 'Where is X a lender?' Supports partial, case-insensitive name matching.",
+      parameters: {
+        type: "object",
+        properties: {
+          lender_name: { type: "string", description: "Lender name or partial name to search for (e.g., 'LAGO', 'Alignment Credit')" },
+        },
+        required: ["lender_name"],
+        additionalProperties: false,
+      },
+    },
+  },
   // ─── Memory tools ─────────────────────────────────────────────────
   {
     type: "function",
@@ -405,6 +421,84 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
           contact: l.contact_name, email: l.email,
         })),
       };
+    }
+
+    case "lookup_deals_for_lender": {
+      const searchName = (args.lender_name || '').trim().toLowerCase();
+      if (!searchName) return { success: false, error: "Lender name is required" };
+
+      // Find all deal_lenders matching this name (case-insensitive, partial match)
+      const allLenders = ctx.lenders || [];
+      const matched = allLenders.filter((l: any) => {
+        const name = (l.name || '').toLowerCase();
+        return name.includes(searchName) || searchName.includes(name);
+      });
+
+      if (matched.length === 0) {
+        // Try broader search across all company deals
+        const { data: broadSearch } = await supabase
+          .from("deal_lenders")
+          .select("id, name, stage, substage, tracking_status, quote_amount, quote_rate, quote_term, notes, pass_reason, deal_id, created_at, updated_at, deals(id, company, stage, status, value, industry)")
+          .eq("deals.company_id", companyId)
+          .ilike("name", `%${searchName}%`)
+          .limit(30);
+
+        if (!broadSearch || broadSearch.length === 0) {
+          console.log(`[lookup_deals_for_lender] No match for "${args.lender_name}" in company ${companyId}`);
+          return { success: true, message: `No deals found with a lender matching "${args.lender_name}".`, results: [], query: args.lender_name };
+        }
+
+        // Deduplicate by lender name
+        const lenderNames = [...new Set(broadSearch.map((l: any) => l.name))];
+        const results = lenderNames.map(lName => {
+          const lenderDeals = broadSearch.filter((l: any) => l.name === lName);
+          return {
+            lender_name: lName,
+            deal_count: lenderDeals.length,
+            deals: lenderDeals.map((l: any) => ({
+              deal_name: l.deals?.company || 'Unknown',
+              deal_id: l.deal_id,
+              deal_stage: l.deals?.stage || 'Unknown',
+              deal_status: l.deals?.status || 'Unknown',
+              deal_value: l.deals?.value ? `$${(l.deals.value / 1e6).toFixed(1)}M` : null,
+              lender_stage: l.stage,
+              lender_tracking: l.tracking_status,
+              quote_amount: l.quote_amount ? `$${(l.quote_amount / 1e6).toFixed(1)}M` : null,
+              quote_rate: l.quote_rate ? `${l.quote_rate}%` : null,
+              pass_reason: l.pass_reason || null,
+              last_updated: l.updated_at,
+              notes_preview: l.notes ? l.notes.slice(0, 100) : null,
+            })),
+          };
+        });
+
+        console.log(`[lookup_deals_for_lender] Query: "${args.lender_name}" → ${results.length} lender(s), ${broadSearch.length} deal(s)`);
+        return { success: true, message: `Found ${broadSearch.length} deal(s) across ${lenderNames.length} lender(s) matching "${args.lender_name}".`, results, query: args.lender_name };
+      }
+
+      // Group matched lenders by name
+      const lenderNames = [...new Set(matched.map((l: any) => l.name))];
+      const results = lenderNames.map((lName: string) => {
+        const lenderDeals = matched.filter((l: any) => l.name === lName);
+        return {
+          lender_name: lName,
+          deal_count: lenderDeals.length,
+          deals: lenderDeals.map((l: any) => ({
+            deal_name: l.deals?.company || 'Unknown',
+            deal_id: l.deal_id,
+            lender_stage: l.stage,
+            lender_tracking: l.tracking_status,
+            quote_amount: l.quote_amount ? `$${(l.quote_amount / 1e6).toFixed(1)}M` : null,
+            quote_rate: l.quote_rate ? `${l.quote_rate}%` : null,
+            pass_reason: l.pass_reason || null,
+            last_updated: l.updated_at,
+            notes_preview: l.notes ? l.notes.slice(0, 100) : null,
+          })),
+        };
+      });
+
+      console.log(`[lookup_deals_for_lender] Query: "${args.lender_name}" → ${results.length} lender(s), ${matched.length} deal(s)`);
+      return { success: true, message: `Found ${matched.length} deal(s) across ${lenderNames.length} lender(s) matching "${args.lender_name}".`, results, query: args.lender_name };
     }
 
     case "run_research": {
