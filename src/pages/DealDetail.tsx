@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
@@ -92,6 +92,7 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 import { DataRoomV2 } from '@/components/deal/DataRoomV2';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
+import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
 import { DealUpdatesDropdown } from '@/components/deal/DealUpdatesDropdown';
 import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
@@ -2626,6 +2627,10 @@ export default function DealDetail() {
                     <Mail className="h-4 w-4" />
                     Emails
                   </TabsTrigger>
+                  <TabsTrigger value="meetings" className="gap-2">
+                    <Video className="h-4 w-4" />
+                    Meetings
+                  </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
                   <div className="flex items-center gap-2 ml-auto">
@@ -4409,6 +4414,10 @@ export default function DealDetail() {
 
                 <TabsContent value="emails" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`emails-${tabDirection}`}>
                   <DealEmailsTab dealId={id!} />
+                </TabsContent>
+
+                <TabsContent value="meetings" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`meetings-${tabDirection}`}>
+                  <ClaapMeetingsTab dealId={id!} />
                 </TabsContent>
 
               </Tabs>

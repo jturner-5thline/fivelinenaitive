@@ -450,6 +450,9 @@ export default function Integrations() {
         {is5thLine && (
           <TabsContent value="claap">
             <ClaapIntegration />
+            <div className="mt-6">
+              <ClaapSettingsPage />
+            </div>
           </TabsContent>
         )}
 
