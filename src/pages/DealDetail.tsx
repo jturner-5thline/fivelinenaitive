@@ -2205,6 +2205,19 @@ export default function DealDetail() {
             />
 
             <div className="flex items-center gap-2 flex-wrap ml-auto">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete or archive deal</TooltipContent>
+              </Tooltip>
               {viewModified && (
                 <Button
                   variant="outline"
@@ -2680,19 +2693,6 @@ export default function DealDetail() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => setIsDeleteDialogOpen(true)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Delete or archive deal</TooltipContent>
-                    </Tooltip>
                   </div>
                 </div>
 
