@@ -1,5 +1,6 @@
 import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, UserPen, SlidersHorizontal } from "lucide-react";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
+import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useTheme } from "next-themes";
 import naitiveIconLight from "@/assets/naitive-icon-light.png";
@@ -68,6 +69,7 @@ export function AppSidebar() {
   const { hasPageAccess, isPageBeta, isLoading: isAccessLoading } = usePageAccessFlags();
   const { data: routingTasks = [] } = useClaapRoutingTasks();
   const meetingTaskCount = routingTasks.length;
+  const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
   const currentPath = location.pathname;
   // Show expanded content if either actually expanded or hovering while collapsed
   const showExpanded = state === "expanded" || (state === "collapsed" && isHovering);
@@ -184,7 +186,14 @@ export function AppSidebar() {
                   className="hover:bg-sidebar-accent/50"
                   activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                 >
-                  <item.icon className={'iconClassName' in item ? (item as any).iconClassName : "h-4 w-4"} />
+                  <div className="relative">
+                    <item.icon className={'iconClassName' in item ? (item as any).iconClassName : "h-4 w-4"} />
+                    {item.url === "/settings" && pendingJoinCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                        {pendingJoinCount}
+                      </span>
+                    )}
+                  </div>
                   {showExpanded && <span>{item.title}</span>}
                 </NavLink>
               </SidebarMenuButton>
