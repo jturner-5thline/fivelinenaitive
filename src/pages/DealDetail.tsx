@@ -2591,41 +2591,41 @@ export default function DealDetail() {
                     onDismiss={() => dismissHint('deal-tabs')}
                     side="bottom"
                   >
-                    <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-                    <TabsTrigger value="deal-space" className="gap-2 whitespace-nowrap flex-shrink-0">
-                      <Sparkles className="h-4 w-4" />
+                    <TabsList className="inline-flex h-9 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink scrollbar-none gap-0" style={{ scrollbarWidth: 'none' }}>
+                    <TabsTrigger value="deal-space" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">
+                      <Sparkles className="h-3.5 w-3.5" />
                       Deal Space
                       <BetaBadge featureKey="page_deal_space" />
                     </TabsTrigger>
-                    <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0">Deal Information</TabsTrigger>
-                    <TabsTrigger value="lenders" className="gap-2 whitespace-nowrap flex-shrink-0">
+                    <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">Info</TabsTrigger>
+                    <TabsTrigger value="lenders" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">
                       Lenders
                       {deal.lenders && deal.lenders.length > 0 && (
-                        <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+                        <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
                           {deal.lenders.length}
                         </Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="deal-management" className="gap-2 whitespace-nowrap flex-shrink-0">
-                      Deal Management
+                    <TabsTrigger value="deal-management" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">
+                      Management
                       {infoRequestActionCount > 0 && (
-                        <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                        <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
                           {infoRequestActionCount}
                         </Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="deal-writeup" className="whitespace-nowrap flex-shrink-0">Deal Write Up</TabsTrigger>
-                    <TabsTrigger value="data-room" className="gap-2 whitespace-nowrap flex-shrink-0">
+                    <TabsTrigger value="deal-writeup" className="whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">Write Up</TabsTrigger>
+                    <TabsTrigger value="data-room" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">
                       Data Room
                       {attachments.length > 0 && (
-                        <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+                        <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
                           {attachments.length}
                         </Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="communication" className="gap-2 whitespace-nowrap flex-shrink-0">
-                      <MessageSquare className="h-4 w-4" />
-                      Communication
+                    <TabsTrigger value="communication" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 text-xs">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Comms
                     </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
