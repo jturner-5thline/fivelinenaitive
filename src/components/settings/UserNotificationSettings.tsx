@@ -4,8 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
-import { Bell, Mail, MessageSquare, Smartphone, Zap, RotateCcw, Loader2 } from 'lucide-react';
+import { Bell, Mail, MessageSquare, Smartphone, Zap, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNotificationRules, type NotificationRule } from '@/hooks/useNotificationRules';
 import {
@@ -15,6 +14,10 @@ import {
   type UserNotificationPreference,
 } from '@/hooks/useUserNotificationPreferences';
 import { cn } from '@/lib/utils';
+import {
+  NotificationTriggerConfig,
+  type TriggerCustomConfig,
+} from './NotificationTriggerConfig';
 
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   in_app: <Bell className="h-3.5 w-3.5" />,
@@ -69,7 +72,6 @@ export function UserNotificationSettings() {
 
   const enabledRules = (rules || []).filter((r) => r.is_enabled);
 
-  // Group by category
   const grouped = enabledRules.reduce<Record<string, NotificationRule[]>>((acc, rule) => {
     const cat = rule.category;
     if (!acc[cat]) acc[cat] = [];
@@ -109,6 +111,20 @@ export function UserNotificationSettings() {
     }
   };
 
+  const handleConfigChange = async (triggerKey: string, config: TriggerCustomConfig) => {
+    try {
+      const existing = prefsMap[triggerKey];
+      await upsertPref.mutateAsync({
+        trigger_key: triggerKey,
+        is_enabled: existing?.is_enabled ?? true,
+        channel_overrides: existing?.channel_overrides || {},
+        custom_config: config as unknown as Record<string, unknown>,
+      });
+    } catch {
+      toast.error('Failed to update configuration');
+    }
+  };
+
   const handleReset = async (triggerKey: string) => {
     try {
       await resetPref.mutateAsync(triggerKey);
@@ -120,18 +136,23 @@ export function UserNotificationSettings() {
 
   const isUserEnabled = (triggerKey: string): boolean => {
     const pref = prefsMap[triggerKey];
-    return pref?.is_enabled ?? true; // default to enabled
+    return pref?.is_enabled ?? true;
   };
 
   const isChannelEnabled = (triggerKey: string, channelType: string, ruleChannelEnabled: boolean): boolean => {
-    if (!ruleChannelEnabled) return false; // admin disabled this channel
+    if (!ruleChannelEnabled) return false;
     const pref = prefsMap[triggerKey];
     const override = pref?.channel_overrides?.[channelType];
-    return override?.is_enabled ?? true; // default to enabled if no override
+    return override?.is_enabled ?? true;
   };
 
   const hasOverride = (triggerKey: string): boolean => {
     return !!prefsMap[triggerKey];
+  };
+
+  const getCustomConfig = (triggerKey: string): TriggerCustomConfig | null => {
+    const pref = prefsMap[triggerKey];
+    return (pref?.custom_recipients as unknown as TriggerCustomConfig) || null;
   };
 
   return (
@@ -153,6 +174,7 @@ export function UserNotificationSettings() {
                 const enabled = isUserEnabled(rule.trigger_key);
                 const hasCustom = hasOverride(rule.trigger_key);
                 const enabledChannels = rule.channels.filter((ch) => ch.is_enabled);
+                const hasExtraConfig = !!(rule.metadata as Record<string, unknown>)?.config_type;
 
                 return (
                   <div key={rule.id} className={cn("py-4 space-y-3", !enabled && "opacity-60")}>
@@ -208,6 +230,16 @@ export function UserNotificationSettings() {
                           );
                         })}
                       </div>
+                    )}
+
+                    {enabled && hasExtraConfig && (
+                      <NotificationTriggerConfig
+                        triggerKey={rule.trigger_key}
+                        metadata={rule.metadata as Record<string, unknown>}
+                        currentConfig={getCustomConfig(rule.trigger_key)}
+                        onConfigChange={(config) => handleConfigChange(rule.trigger_key, config)}
+                        disabled={upsertPref.isPending}
+                      />
                     )}
                   </div>
                 );

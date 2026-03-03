@@ -45,6 +45,7 @@ export function useUpsertUserNotificationPreference() {
       trigger_key: string;
       is_enabled?: boolean;
       channel_overrides?: Record<string, ChannelOverride>;
+      custom_config?: Record<string, unknown>;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
@@ -56,6 +57,7 @@ export function useUpsertUserNotificationPreference() {
             trigger_key: params.trigger_key,
             is_enabled: params.is_enabled ?? true,
             channel_overrides: (params.channel_overrides ?? {}) as any,
+            custom_recipients: (params.custom_config ?? null) as any,
           },
           { onConflict: 'user_id,trigger_key' }
         );
