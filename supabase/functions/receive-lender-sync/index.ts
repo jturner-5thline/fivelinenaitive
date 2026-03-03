@@ -216,6 +216,24 @@ serve(async (req) => {
             .eq("status", "pending")
             .single();
 
+          // Also check if there's a recently rejected request (within 24h) to prevent re-creation loops
+          if (!existingRequest) {
+            const { data: recentlyRejected } = await supabase
+              .from("lender_sync_requests")
+              .select("id")
+              .eq("existing_lender_id", existingLender.id)
+              .eq("status", "rejected")
+              .gte("processed_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+              .limit(1)
+              .maybeSingle();
+
+            if (recentlyRejected) {
+              console.log(`Skipping sync for ${incoming.name} — rejected within last 24h`);
+              results.no_changes++;
+              continue;
+            }
+          }
+
           if (existingRequest) {
             // Update the existing request with new data
             const { error: updateError } = await supabase
