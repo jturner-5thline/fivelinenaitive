@@ -2597,7 +2597,7 @@ export default function DealDetail() {
                       Deal Space
                       <BetaBadge featureKey="page_deal_space" />
                     </TabsTrigger>
-                    <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Info</TabsTrigger>
+                    <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Deal Info</TabsTrigger>
                     <TabsTrigger value="lenders" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Lenders
                       {deal.lenders && deal.lenders.length > 0 && (
@@ -2623,8 +2623,7 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="communication" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
-                      <MessageSquare className="h-3.5 w-3.5" />
+                    <TabsTrigger value="communication" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Comms
                     </TabsTrigger>
                   </TabsList>
