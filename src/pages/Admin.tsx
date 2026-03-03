@@ -37,11 +37,13 @@ import { NotificationRulesPanel } from "@/components/admin/NotificationRulesPane
 import { DealsHeader } from "@/components/deals/DealsHeader";
 import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecommendationsPanel";
 import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
+import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequestsPanel";
 import { FeedbackWidgetToggle } from "@/components/admin/FeedbackWidgetToggle";
 
 // Sub-page configurations
 const usersSubPages = [
   { id: "pending-approvals", label: "Pending Approvals", icon: UserCheck },
+  { id: "join-requests", label: "Join Requests", icon: Building2 },
   { id: "users", label: "Users", icon: Users },
   { id: "companies", label: "Companies", icon: Building2 },
   { id: "external", label: "External", icon: Cloud },
@@ -147,6 +149,8 @@ const Admin = () => {
     switch (subPageId) {
       case "pending-approvals":
         return <PendingApprovalsPanel />;
+      case "join-requests":
+        return <CompanyJoinRequestsPanel />;
       case "users":
         return (
           <Card>

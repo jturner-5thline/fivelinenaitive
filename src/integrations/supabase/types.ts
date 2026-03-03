@@ -1089,11 +1089,13 @@ export type Database = {
           country: string | null
           created_at: string
           description: string | null
+          domains: string[] | null
           employee_size: string | null
           id: string
           industry: string | null
           logo_url: string | null
           name: string
+          primary_domain: string | null
           state: string | null
           suspended_at: string | null
           suspended_reason: string | null
@@ -1108,11 +1110,13 @@ export type Database = {
           country?: string | null
           created_at?: string
           description?: string | null
+          domains?: string[] | null
           employee_size?: string | null
           id?: string
           industry?: string | null
           logo_url?: string | null
           name: string
+          primary_domain?: string | null
           state?: string | null
           suspended_at?: string | null
           suspended_reason?: string | null
@@ -1127,11 +1131,13 @@ export type Database = {
           country?: string | null
           created_at?: string
           description?: string | null
+          domains?: string[] | null
           employee_size?: string | null
           id?: string
           industry?: string | null
           logo_url?: string | null
           name?: string
+          primary_domain?: string | null
           state?: string | null
           suspended_at?: string | null
           suspended_reason?: string | null
@@ -1186,6 +1192,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "company_invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_join_requests: {
+        Row: {
+          company_id: string
+          created_at: string
+          decided_by_user_id: string | null
+          decision_at: string | null
+          id: string
+          note: string | null
+          rejection_note: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          decided_by_user_id?: string | null
+          decision_at?: string | null
+          id?: string
+          note?: string | null
+          rejection_note?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          decided_by_user_id?: string | null
+          decision_at?: string | null
+          id?: string
+          note?: string | null
+          rejection_note?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_join_requests_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -9569,6 +9622,13 @@ export type Database = {
         Args: { _reason?: string; _suspend: boolean; _user_id: string }
         Returns: undefined
       }
+      approve_join_request: {
+        Args: {
+          _request_id: string
+          _role?: Database["public"]["Enums"]["company_role"]
+        }
+        Returns: undefined
+      }
       calculate_next_schedule: {
         Args: { cron_expression: string; timezone?: string }
         Returns: string
@@ -9579,6 +9639,32 @@ export type Database = {
       }
       can_delete_lenders: { Args: { _user_id: string }; Returns: boolean }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      find_companies_by_domain: {
+        Args: { _domain: string }
+        Returns: {
+          id: string
+          logo_url: string
+          member_count: number
+          name: string
+          primary_domain: string
+        }[]
+      }
+      get_company_join_requests: {
+        Args: { _company_id: string; _status?: string }
+        Returns: {
+          created_at: string
+          decided_by_name: string
+          decision_at: string
+          id: string
+          note: string
+          rejection_note: string
+          status: string
+          user_avatar_url: string
+          user_display_name: string
+          user_email: string
+          user_id: string
+        }[]
+      }
       get_lender_deal_stats: {
         Args: { _company_id: string; _limit?: number }
         Returns: {
@@ -9640,6 +9726,10 @@ export type Database = {
           _target_type: string
         }
         Returns: string
+      }
+      reject_join_request: {
+        Args: { _rejection_note?: string; _request_id: string }
+        Returns: undefined
       }
       search_lenders_keyword: {
         Args: { _limit?: number; _offset?: number; _search_query: string }
