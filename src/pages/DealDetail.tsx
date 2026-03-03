@@ -2592,41 +2592,41 @@ export default function DealDetail() {
                     side="bottom"
                   >
                     <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-                    <TabsTrigger value="deal-space" className="gap-2">
+                    <TabsTrigger value="deal-space" className="gap-2 whitespace-nowrap flex-shrink-0">
                       <Sparkles className="h-4 w-4" />
                       Deal Space
                       <BetaBadge featureKey="page_deal_space" />
                     </TabsTrigger>
-                    <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
-                  <TabsTrigger value="lenders" className="gap-2">
-                    Lenders
-                    {deal.lenders && deal.lenders.length > 0 && (
-                      <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
-                        {deal.lenders.length}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="deal-management" className="gap-2">
-                    Deal Management
-                    {infoRequestActionCount > 0 && (
-                      <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
-                        {infoRequestActionCount}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="deal-writeup">Deal Write Up</TabsTrigger>
-                  <TabsTrigger value="data-room" className="gap-2">
-                    Data Room
-                    {attachments.length > 0 && (
-                      <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
-                        {attachments.length}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                   <TabsTrigger value="communication" className="gap-2">
-                    <MessageSquare className="h-4 w-4" />
-                    Communication
-                  </TabsTrigger>
+                    <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0">Deal Information</TabsTrigger>
+                    <TabsTrigger value="lenders" className="gap-2 whitespace-nowrap flex-shrink-0">
+                      Lenders
+                      {deal.lenders && deal.lenders.length > 0 && (
+                        <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+                          {deal.lenders.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="deal-management" className="gap-2 whitespace-nowrap flex-shrink-0">
+                      Deal Management
+                      {infoRequestActionCount > 0 && (
+                        <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                          {infoRequestActionCount}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="deal-writeup" className="whitespace-nowrap flex-shrink-0">Deal Write Up</TabsTrigger>
+                    <TabsTrigger value="data-room" className="gap-2 whitespace-nowrap flex-shrink-0">
+                      Data Room
+                      {attachments.length > 0 && (
+                        <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+                          {attachments.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="communication" className="gap-2 whitespace-nowrap flex-shrink-0">
+                      <MessageSquare className="h-4 w-4" />
+                      Communication
+                    </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
                    <div className="flex items-center gap-2 ml-auto flex-shrink-0">
