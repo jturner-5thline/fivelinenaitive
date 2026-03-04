@@ -106,6 +106,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [narrative, setNarrative] = useState(initialValues?.narrative || '');
   const [referralName, setReferralName] = useState(initialValues?.referralName || '');
   const [referralEmail, setReferralEmail] = useState(initialValues?.referralEmail || '');
+  const [sourcedVia, setSourcedVia] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
 
@@ -201,6 +202,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         stage: dealStage,
         dealTypes: selectedDealTypes.length > 0 ? selectedDealTypes : undefined,
         engagementType: 'guided',
+        sourcedVia: sourcedVia && sourcedVia !== '__none__' ? sourcedVia : undefined,
         pipelineId: selectedPipelineId || activePipelineId || undefined,
         referredBy: referralName.trim() ? {
           id: '',
@@ -249,6 +251,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     setNarrative('');
     setReferralName('');
     setReferralEmail('');
+    setSourcedVia('');
     setBlankFields([]);
   };
 
@@ -373,28 +376,58 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 </div>
               </div>
 
-              {/* Pipeline (conditional) */}
-              {pipelines.length > 1 && (
+              {/* Pipeline + Sourced Via */}
+              <div className={`grid gap-3 ${pipelines.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                {pipelines.length > 1 && (
+                  <div className="grid gap-1.5">
+                    <Label>Pipeline</Label>
+                    <Select value={selectedPipelineId} onValueChange={(val) => {
+                      setSelectedPipelineId(val);
+                      const pipeline = pipelines.find(p => p.id === val);
+                      if (pipeline?.stages?.length && !pipeline.stages.find(s => s.id === dealStage)) {
+                        setDealStage(pipeline.stages[0]?.id || '');
+                      }
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select pipeline" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pipelines.map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="grid gap-1.5">
-                  <Label>Pipeline</Label>
-                  <Select value={selectedPipelineId} onValueChange={(val) => {
-                    setSelectedPipelineId(val);
-                    const pipeline = pipelines.find(p => p.id === val);
-                    if (pipeline?.stages?.length && !pipeline.stages.find(s => s.id === dealStage)) {
-                      setDealStage(pipeline.stages[0]?.id || '');
-                    }
-                  }}>
+                  <Label>Sourced Via</Label>
+                  <Select value={sourcedVia} onValueChange={setSourcedVia}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select pipeline" />
+                      <SelectValue placeholder="Select source" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {pipelines.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    <SelectContent side="bottom" align="start">
+                      <SelectItem value="__none__">None</SelectItem>
+                      {[
+                        'Email Campaign',
+                        'LinkedIn Campaign',
+                        'Inbound',
+                        'Paid',
+                        'Outsourced Sales Group',
+                        'Internal',
+                        'Event',
+                        'Channel Partner',
+                        'Referral - Bank',
+                        'Referral - Lender',
+                        'Referral - Service Provider',
+                        'Referral - Client',
+                        'Referral - Personal Connection',
+                      ].map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              </div>
 
               {/* Row 3: Deal Manager + Deal Owner */}
               <div className="grid grid-cols-2 gap-3">
