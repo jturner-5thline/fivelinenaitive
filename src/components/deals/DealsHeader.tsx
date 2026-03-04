@@ -26,64 +26,65 @@ export function DealsHeader() {
             <Logo className="h-[85px]" />
           </Link>
           <DemoModeBadge />
-          <nav className="hidden items-center gap-1 md:flex">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className={location.pathname === '/deals' 
-                ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
-                : "text-muted-foreground"
-              } 
-              asChild
-            >
-              <Link to="/deals">Deals</Link>
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className={location.pathname === '/lenders' 
-                ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
-                : "text-muted-foreground"
-              } 
-              asChild
-            >
-              <Link to="/lenders">Lenders</Link>
-            </Button>
-            <HintTooltip
-              hint="View charts, metrics, and performance insights for your deals."
-              visible={isHintVisible('analytics-nav')}
-              onDismiss={() => dismissHint('analytics-nav')}
-              side="bottom"
-              align="center"
-              showDelay={1500}
-            >
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className={location.pathname === '/analytics' 
-                  ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
-                  : "text-muted-foreground"
-                } 
-                asChild
-              >
-                <Link to="/analytics">Analytics</Link>
-              </Button>
-            </HintTooltip>
-            {user?.email !== 'demo@5thline.co' && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className={location.pathname === '/reports' 
-                  ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
-                  : "text-muted-foreground"
-                } 
-                asChild
-              >
-                <Link to="/reports">Reports</Link>
-              </Button>
-            )}
-          </nav>
         </div>
+
+        <nav className="hidden items-center gap-1 md:flex">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={location.pathname === '/deals' 
+              ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
+              : "text-muted-foreground"
+            } 
+            asChild
+          >
+            <Link to="/deals">Deals</Link>
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={location.pathname === '/lenders' 
+              ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
+              : "text-muted-foreground"
+            } 
+            asChild
+          >
+            <Link to="/lenders">Lenders</Link>
+          </Button>
+          <HintTooltip
+            hint="View charts, metrics, and performance insights for your deals."
+            visible={isHintVisible('analytics-nav')}
+            onDismiss={() => dismissHint('analytics-nav')}
+            side="bottom"
+            align="center"
+            showDelay={1500}
+          >
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={location.pathname === '/analytics' 
+                ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
+                : "text-muted-foreground"
+              } 
+              asChild
+            >
+              <Link to="/analytics">Analytics</Link>
+            </Button>
+          </HintTooltip>
+          {user?.email !== 'demo@5thline.co' && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={location.pathname === '/reports' 
+                ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
+                : "text-muted-foreground"
+              } 
+              asChild
+            >
+              <Link to="/reports">Reports</Link>
+            </Button>
+          )}
+        </nav>
         <div className="flex items-center gap-1 sm:gap-2">
           <div className="shrink-0">
             <GlobalSearchAI />
