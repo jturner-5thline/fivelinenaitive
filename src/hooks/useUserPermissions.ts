@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface UserPermissionState {
   dashboard: boolean;
@@ -56,53 +58,41 @@ export const PERMISSIONS_UPDATED_EVENT = 'user_permissions_updated';
 
 export function useUserPermissions() {
   const { user } = useAuth();
-  const [permissions, setPermissions] = useState<UserPermissionState>(DEFAULT_PERMISSIONS);
+  const queryClient = useQueryClient();
 
-  const loadPermissions = useCallback(() => {
-    if (!user?.id) {
-      setPermissions(DEFAULT_PERMISSIONS);
-      return;
-    }
-    
-    try {
-      const stored = localStorage.getItem('user_page_permissions');
-      if (!stored) {
-        setPermissions(DEFAULT_PERMISSIONS);
-        return;
-      }
+  const { data: dbPermissions } = useQuery({
+    queryKey: ['user-permissions', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('user_permissions')
+        .select('permissions')
+        .eq('user_id', user.id)
+        .maybeSingle();
       
-      const allPermissions = JSON.parse(stored) as Record<string, UserPermissionState>;
-      setPermissions(allPermissions[user.id] || DEFAULT_PERMISSIONS);
-    } catch {
-      setPermissions(DEFAULT_PERMISSIONS);
-    }
-  }, [user?.id]);
-
-  // Load permissions on mount and when user changes
-  useEffect(() => {
-    loadPermissions();
-  }, [loadPermissions]);
-
-  // Listen for permission updates (from admin panel or other tabs)
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'user_page_permissions') {
-        loadPermissions();
+      if (error) {
+        console.error('Error loading permissions:', error);
+        return null;
       }
+      return data?.permissions as unknown as UserPermissionState | null;
+    },
+    enabled: !!user?.id,
+    staleTime: 60_000,
+  });
+
+  const permissions: UserPermissionState = dbPermissions
+    ? { ...DEFAULT_PERMISSIONS, ...dbPermissions }
+    : DEFAULT_PERMISSIONS;
+
+  // Listen for permission updates to refetch
+  useEffect(() => {
+    const handleUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['user-permissions', user?.id] });
     };
 
-    const handleCustomEvent = () => {
-      loadPermissions();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener(PERMISSIONS_UPDATED_EVENT, handleCustomEvent);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener(PERMISSIONS_UPDATED_EVENT, handleCustomEvent);
-    };
-  }, [loadPermissions]);
+    window.addEventListener(PERMISSIONS_UPDATED_EVENT, handleUpdate);
+    return () => window.removeEventListener(PERMISSIONS_UPDATED_EVENT, handleUpdate);
+  }, [queryClient, user?.id]);
 
   return {
     permissions,
