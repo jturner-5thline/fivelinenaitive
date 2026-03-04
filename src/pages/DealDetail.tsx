@@ -3164,7 +3164,7 @@ export default function DealDetail() {
                                     <span className="text-muted-foreground text-sm">Sourced Via</span>
                                     <Select value={deal.sourcedVia || ''} onValueChange={(value: string) => updateDeal('sourcedVia', value === '__none__' ? '' : value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select source..." /></SelectTrigger>
-                                      <SelectContent>
+                                      <SelectContent side="bottom" align="start">
                                         <SelectItem value="__none__">None</SelectItem>
                                         {[
                                           'Email Campaign',
