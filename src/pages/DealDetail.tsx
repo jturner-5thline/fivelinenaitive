@@ -3158,6 +3158,35 @@ export default function DealDetail() {
                                     </Select>
                                   </div>
                                 );
+                              case 'sourcedVia':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Sourced Via</span>
+                                    <Select value={deal.sourcedVia || ''} onValueChange={(value: string) => updateDeal('sourcedVia', value === '__none__' ? '' : value)}>
+                                      <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select source..." /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="__none__">None</SelectItem>
+                                        {[
+                                          'Email Campaign',
+                                          'LinkedIn Campaign',
+                                          'Inbound',
+                                          'Paid',
+                                          'Outsourced Sales Group',
+                                          'Internal',
+                                          'Event',
+                                          'Channel Partner',
+                                          'Referral - Bank',
+                                          'Referral - Lender',
+                                          'Referral - Service Provider',
+                                          'Referral - Client',
+                                          'Referral - Personal Connection',
+                                        ].map((option) => (
+                                          <SelectItem key={option} value={option}>{option}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                );
                               case 'hoursAndFees':
                                 return (
                                   <div key={fieldId}>

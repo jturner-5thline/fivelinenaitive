@@ -15,6 +15,7 @@ export type DealInfoFieldId =
   | 'clientContact'
   | 'referralSource'
   | 'analyst'
+  | 'sourcedVia'
   | 'hoursAndFees';
 
 export interface DealInfoFieldConfig {
@@ -37,6 +38,7 @@ export const DEAL_INFO_FIELD_DEFINITIONS: DealInfoFieldConfig[] = [
   { id: 'clientContact', label: 'Client Contact', section: 'main', column: 'right', canHide: true },
   { id: 'referralSource', label: 'Referral Source', section: 'main', column: 'right', canHide: true },
   { id: 'analyst', label: 'Analyst', section: 'main', column: 'right', canHide: true },
+  { id: 'sourcedVia', label: 'Sourced Via', section: 'main', column: 'right', canHide: true },
   { id: 'hoursAndFees', label: 'Hours & Fees', section: 'hours-fees', column: 'full', canHide: true },
 ];
 

@@ -1,0 +1,1 @@
+ALTER TABLE public.deals ADD COLUMN sourced_via TEXT NULL;
