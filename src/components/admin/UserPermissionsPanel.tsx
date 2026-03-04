@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -142,22 +143,13 @@ const CAPABILITY_SECTIONS: SectionConfig[] = [
 
 const PERMISSIONS_UPDATED_EVENT = 'user_permissions_updated';
 
-const getStoredPermissions = (): Record<string, UserPermissionState> => {
-  const stored = localStorage.getItem('user_page_permissions');
-  return stored ? JSON.parse(stored) : {};
-};
-
-const saveStoredPermissions = (permissions: Record<string, UserPermissionState>) => {
-  localStorage.setItem('user_page_permissions', JSON.stringify(permissions));
-  // Dispatch custom event to notify other components (like AISearchWidget)
-  window.dispatchEvent(new CustomEvent(PERMISSIONS_UPDATED_EVENT));
-};
-
 export function UserPermissionsPanel() {
   const [searchQuery, setSearchQuery] = useState('');
   const [userPermissions, setUserPermissions] = useState<Record<string, UserPermissionState>>({});
   const [expandedUsers, setExpandedUsers] = useState<string[]>([]);
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
+  const { company } = useCompany();
+  const queryClient = useQueryClient();
 
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ['all-users-for-permissions'],
@@ -172,21 +164,61 @@ export function UserPermissionsPanel() {
     },
   });
 
+  // Load permissions from DB
+  const { data: dbPermissions } = useQuery({
+    queryKey: ['all-user-permissions', company?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_permissions')
+        .select('user_id, permissions')
+        .eq('company_id', company!.id);
+      
+      if (error) throw error;
+      const permMap: Record<string, UserPermissionState> = {};
+      data?.forEach((row: any) => {
+        permMap[row.user_id] = row.permissions as unknown as UserPermissionState;
+      });
+      return permMap;
+    },
+    enabled: !!company?.id,
+  });
+
   useEffect(() => {
-    const stored = getStoredPermissions();
-    setUserPermissions(stored);
-  }, []);
+    if (dbPermissions) {
+      setUserPermissions(dbPermissions);
+    }
+  }, [dbPermissions]);
 
   const getUserPermissions = (userId: string): UserPermissionState => {
     return userPermissions[userId] || DEFAULT_PERMISSIONS;
   };
+
+  const savePermissionToDb = useCallback(async (userId: string, permissions: UserPermissionState) => {
+    if (!company?.id) return;
+    const { error } = await supabase
+      .from('user_permissions')
+      .upsert({
+        user_id: userId,
+        company_id: company.id,
+        permissions: permissions as any,
+        updated_by: (await supabase.auth.getUser()).data.user?.id,
+      }, { onConflict: 'user_id,company_id' });
+    
+    if (error) {
+      console.error('Error saving permissions:', error);
+      toast.error('Failed to save permission');
+    }
+    // Notify other components
+    window.dispatchEvent(new CustomEvent(PERMISSIONS_UPDATED_EVENT));
+    queryClient.invalidateQueries({ queryKey: ['user-permissions'] });
+  }, [company?.id, queryClient]);
 
   const updatePermission = (userId: string, key: keyof UserPermissionState, value: boolean) => {
     const currentPerms = getUserPermissions(userId);
     const newPerms = { ...currentPerms, [key]: value };
     const allPerms = { ...userPermissions, [userId]: newPerms };
     setUserPermissions(allPerms);
-    saveStoredPermissions(allPerms);
+    savePermissionToDb(userId, newPerms);
     toast.success('Permission updated');
   };
 
@@ -197,7 +229,7 @@ export function UserPermissionsPanel() {
     }, {} as UserPermissionState);
     const allPerms = { ...userPermissions, [userId]: newPerms };
     setUserPermissions(allPerms);
-    saveStoredPermissions(allPerms);
+    savePermissionToDb(userId, newPerms);
     toast.success(enabled ? 'All permissions enabled' : 'All permissions disabled');
   };
 
@@ -206,10 +238,11 @@ export function UserPermissionsPanel() {
     const allPerms = { ...userPermissions };
     users.forEach(user => {
       const currentPerms = getUserPermissions(user.user_id);
-      allPerms[user.user_id] = { ...currentPerms, [key]: enabled };
+      const newPerms = { ...currentPerms, [key]: enabled };
+      allPerms[user.user_id] = newPerms;
+      savePermissionToDb(user.user_id, newPerms);
     });
     setUserPermissions(allPerms);
-    saveStoredPermissions(allPerms);
     toast.success(enabled ? 'Enabled for all users' : 'Disabled for all users');
   };
 
