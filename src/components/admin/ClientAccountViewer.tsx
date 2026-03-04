@@ -11,8 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, Pencil, ExternalLink, Shield, MonitorPlay, LogOut } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Eye, Pencil, ExternalLink, Shield, MonitorPlay, LogOut, Settings, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
+import { CompanyConfigOverview } from './CompanyConfigOverview';
 
 interface AuditLogEntry {
   id: string;
@@ -244,116 +246,143 @@ export function ClientAccountViewer() {
         </CardContent>
       </Card>
 
-      {/* Support Activity Log */}
+      {/* Tabbed content: Config Overview + Activity Log */}
       {targetCompanyId && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Support Activity Log</CardTitle>
-                <CardDescription>All support actions for this client account</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Select value={eventFilter} onValueChange={(v) => setEventFilter(v as EventFilter)}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All events</SelectItem>
-                    <SelectItem value="edits">Edits only</SelectItem>
-                    <SelectItem value="views">Views only</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="24h">Last 24 hours</SelectItem>
-                    <SelectItem value="7d">Last 7 days</SelectItem>
-                    <SelectItem value="30d">Last 30 days</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {logsLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : filteredLogs.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                No support activity found for the selected filters.
-              </p>
-            ) : (
-              <div className="overflow-auto max-h-[500px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Support User</TableHead>
-                      <TableHead>Event</TableHead>
-                      <TableHead>Resource</TableHead>
-                      <TableHead className="w-[80px]" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLogs.map(log => {
-                      const profile = profilesMap?.[log.support_user_id];
-                      const route = getResourceRoute(log.resource_type, log.resource_id);
-                      const isWrite = isWriteAction(log.action);
+        <Tabs defaultValue="config" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="config" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Configuration
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Activity Log
+            </TabsTrigger>
+          </TabsList>
 
-                      return (
-                        <TableRow key={log.id}>
-                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                            {format(new Date(log.created_at), 'MMM d, HH:mm:ss')}
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">{profile?.display_name ?? 'Unknown'}</div>
-                            <div className="text-xs text-muted-foreground">{profile?.email ?? ''}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={isWrite ? 'destructive' : 'secondary'} className="text-xs">
-                                {isWrite ? <Pencil className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                                {isWrite ? 'Edit' : 'View'}
-                              </Badge>
-                              <span className="text-sm">{formatEvent(log.action, log.resource_type)}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm capitalize">{log.resource_type.replace(/_/g, ' ')}</span>
-                            {log.resource_id && (
-                              <span className="text-xs text-muted-foreground ml-1">
-                                ({log.resource_id.slice(0, 8)}…)
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {route && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewResource(log.resource_type, log.resource_id)}
-                                disabled={!activeSession}
-                                title={activeSession ? 'View in client context' : 'Start a session first'}
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </TableCell>
+          <TabsContent value="config">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Company Configuration</CardTitle>
+                <CardDescription>All settings, integrations, members, preferences, and custom metrics</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CompanyConfigOverview companyId={targetCompanyId} editable={!!activeSession} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="activity">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Support Activity Log</CardTitle>
+                    <CardDescription>All support actions for this client account</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={eventFilter} onValueChange={(v) => setEventFilter(v as EventFilter)}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All events</SelectItem>
+                        <SelectItem value="edits">Edits only</SelectItem>
+                        <SelectItem value="views">Views only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="24h">Last 24 hours</SelectItem>
+                        <SelectItem value="7d">Last 7 days</SelectItem>
+                        <SelectItem value="30d">Last 30 days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {logsLoading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-10 w-full" />
+                    ))}
+                  </div>
+                ) : filteredLogs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    No support activity found for the selected filters.
+                  </p>
+                ) : (
+                  <div className="overflow-auto max-h-[500px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Support User</TableHead>
+                          <TableHead>Event</TableHead>
+                          <TableHead>Resource</TableHead>
+                          <TableHead className="w-[80px]" />
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredLogs.map(log => {
+                          const profile = profilesMap?.[log.support_user_id];
+                          const route = getResourceRoute(log.resource_type, log.resource_id);
+                          const isWrite = isWriteAction(log.action);
+
+                          return (
+                            <TableRow key={log.id}>
+                              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                {format(new Date(log.created_at), 'MMM d, HH:mm:ss')}
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">{profile?.display_name ?? 'Unknown'}</div>
+                                <div className="text-xs text-muted-foreground">{profile?.email ?? ''}</div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={isWrite ? 'destructive' : 'secondary'} className="text-xs">
+                                    {isWrite ? <Pencil className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                                    {isWrite ? 'Edit' : 'View'}
+                                  </Badge>
+                                  <span className="text-sm">{formatEvent(log.action, log.resource_type)}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm capitalize">{log.resource_type.replace(/_/g, ' ')}</span>
+                                {log.resource_id && (
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    ({log.resource_id.slice(0, 8)}…)
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {route && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleViewResource(log.resource_type, log.resource_id)}
+                                    disabled={!activeSession}
+                                    title={activeSession ? 'View in client context' : 'Start a session first'}
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );
