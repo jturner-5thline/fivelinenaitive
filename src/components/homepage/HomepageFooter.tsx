@@ -5,7 +5,7 @@ const footerLinks = {
   product: [
     { label: "Features", href: "#" },
     { label: "Security", href: "#" },
-    { label: "Integrations", href: "#" },
+    
   ],
   legal: [
     { label: "Privacy Policy", href: "/privacy" },
