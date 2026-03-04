@@ -6,16 +6,7 @@ export const HomepageHeader = () => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
       <div className="container mx-auto px-6 h-16 flex items-center justify-between">
         {/* Nav links */}
-        <div className="flex items-center gap-6">
-          <nav className="flex items-center gap-6">
-            <a href="#product" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
-              Product
-            </a>
-            <a href="#features" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
-              Features
-            </a>
-          </nav>
-        </div>
+        <div />
 
         {/* CTA */}
         <div className="flex items-center gap-3">
