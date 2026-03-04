@@ -32,6 +32,8 @@ interface LenderSuggestionsContentProps {
   existingLenderNames: string[];
   onAddLender: (lenderName: string) => void;
   onAddMultipleLenders?: (lenderNames: string[]) => void;
+  onNavigateToCriteria?: () => void;
+  onClose?: () => void;
 }
 
 export function LenderSuggestionsContent({
@@ -39,6 +41,8 @@ export function LenderSuggestionsContent({
   existingLenderNames,
   onAddLender,
   onAddMultipleLenders,
+  onNavigateToCriteria,
+  onClose,
 }: LenderSuggestionsContentProps) {
   const { lenders: masterLenders, loading, updateLender } = useMasterLenders();
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +52,7 @@ export function LenderSuggestionsContent({
   const [tierFilters, setTierFilters] = useState<Set<string>>(new Set());
   const [showLearningWarnings, setShowLearningWarnings] = useState(true);
   const [detailLender, setDetailLender] = useState<MasterLender | null>(null);
+  const [otherSectionExpanded, setOtherSectionExpanded] = useState(false);
 
   const detailLenderInfo = useMemo(() => {
     if (!detailLender) return null;
@@ -118,8 +123,9 @@ export function LenderSuggestionsContent({
       filtered = filtered.filter(m => m.lender.lender_type === lenderTypeFilter);
     }
     
+    // Fix #4: Use threshold of 75 instead of 25
     if (showOnlyHighScore) {
-      filtered = filtered.filter(m => m.score >= 25);
+      filtered = filtered.filter(m => m.score >= 75);
     }
     
     if (tierFilters.size > 0) {
@@ -131,7 +137,6 @@ export function LenderSuggestionsContent({
         return tierFilters.has('?');
       });
     }
-    // When no tier filters selected, show all lenders (no tier filtering)
     
     return filtered;
   }, [matches, searchQuery, lenderTypeFilter, showOnlyHighScore, tierFilters]);
@@ -156,7 +161,6 @@ export function LenderSuggestionsContent({
       }
     });
     
-    // Sort each tier by score descending
     t1.sort((a, b) => b.score - a.score);
     t2.sort((a, b) => b.score - a.score);
     t3.sort((a, b) => b.score - a.score);
@@ -174,7 +178,6 @@ export function LenderSuggestionsContent({
     return cols;
   }, [groupedByTier]);
 
-  // When only 1 tier column, render lenders as a flat grid (3 across) instead of a single tier column
   const singleTierFlat = visibleTierColumns.length === 1;
 
   const gridColsClass = useMemo(() => {
@@ -184,7 +187,8 @@ export function LenderSuggestionsContent({
     return 'grid-cols-1 md:grid-cols-3';
   }, [visibleTierColumns]);
   
-  const totalMatches = groupedByTier.t1.length + groupedByTier.t2.length + groupedByTier.t3.length + groupedByTier.other.length;
+  // Fix #7: Use filteredMatches.length for the count
+  const totalMatches = filteredMatches.length;
 
   const handleToggleLender = (lenderId: string) => {
     setSelectedLenders(prev => {
@@ -198,8 +202,15 @@ export function LenderSuggestionsContent({
     });
   };
 
+  // Fix #11: Only select visible/expanded lenders
   const handleSelectAll = () => {
-    const allIds = filteredMatches
+    const selectableLenders = [
+      ...groupedByTier.t1,
+      ...groupedByTier.t2,
+      ...groupedByTier.t3,
+      ...(otherSectionExpanded ? groupedByTier.other : []),
+    ];
+    const allIds = selectableLenders
       .filter(m => !existingNamesSet.has(m.lender.name.toLowerCase().trim()))
       .map(m => m.lender.id);
     setSelectedLenders(new Set(allIds));
@@ -221,6 +232,12 @@ export function LenderSuggestionsContent({
     }
     setSelectedLenders(new Set());
   };
+
+  // Fix #6: Handle clicking the "Complete Criteria" button to navigate
+  const handleNavigateToCriteria = () => {
+    if (onClose) onClose();
+    if (onNavigateToCriteria) onNavigateToCriteria();
+  };
   
   const isReady = !loading && masterLenders.length > 0 && matches.length > 0;
   
@@ -235,7 +252,6 @@ export function LenderSuggestionsContent({
     );
   }
   
-  // Format deal size for display (abbreviated: $10MM)
   const formatDealSize = (value: number | undefined, capitalAsk: string | undefined): string | null => {
     if (capitalAsk) return capitalAsk;
     if (!value) return null;
@@ -250,6 +266,14 @@ export function LenderSuggestionsContent({
   };
 
   const dealSizeDisplay = formatDealSize(criteria.dealValue, criteria.capitalAsk);
+
+  // Count selectable lenders for Select All label
+  const selectableCount = [
+    ...groupedByTier.t1,
+    ...groupedByTier.t2,
+    ...groupedByTier.t3,
+    ...(otherSectionExpanded ? groupedByTier.other : []),
+  ].filter(m => !existingNamesSet.has(m.lender.name.toLowerCase().trim())).length;
 
   return (
     <div className="flex flex-col h-full py-4">
@@ -386,10 +410,10 @@ export function LenderSuggestionsContent({
             onClick={handleSelectAll}
           >
             <CheckSquare className="h-3 w-3 mr-1" />
-            Select All ({totalMatches})
+            Select All ({selectableCount})
           </Button>
           <div className="h-4 w-px bg-border" />
-          {(['T1', 'T2', 'T3', '?'] as const).map((tier) => (
+          {(['T1', 'T2', 'T3'] as const).map((tier) => (
             <Button
               key={tier}
               variant={tierFilters.has(tier) ? 'default' : 'outline'}
@@ -406,11 +430,39 @@ export function LenderSuggestionsContent({
                   return next;
                 });
               }}
-              title={tier === '?' ? 'Show untiered lenders' : `Filter by ${tier}`}
+              title={`Filter by ${tier}`}
             >
               {tier}
             </Button>
           ))}
+          {/* Fix #8: Tooltip on ? button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={tierFilters.has('?') ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs px-2.5"
+                  onClick={() => {
+                    setTierFilters(prev => {
+                      const next = new Set(prev);
+                      if (next.has('?')) {
+                        next.delete('?');
+                      } else {
+                        next.add('?');
+                      }
+                      return next;
+                    });
+                  }}
+                >
+                  ?
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Show lenders with no tier assigned</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )}
       
@@ -467,8 +519,12 @@ export function LenderSuggestionsContent({
         {/* Other/Untiered lenders shown below grid if any */}
         {groupedByTier.other.length > 0 && (
           <div className="mt-4 pb-4">
-            <Collapsible>
-              <CollapsibleTrigger className="flex items-center justify-between w-full mb-2 group">
+            <Collapsible open={otherSectionExpanded} onOpenChange={setOtherSectionExpanded}>
+              {/* Fix #10: stopPropagation on CollapsibleTrigger */}
+              <CollapsibleTrigger 
+                className="flex items-center justify-between w-full mb-2 group"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center gap-2">
                   <Info className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Other / Untiered</span>
@@ -528,7 +584,6 @@ export function LenderSuggestionsContent({
           const success = await updateLender(lenderId, updates);
           if (success) {
             toast.success(`${updates.name} updated`);
-            // Update the detail view with new data
             const updated = masterLenders.find(l => l.id === lenderId);
             if (updated) setDetailLender({ ...updated, ...updates } as MasterLender);
           }
@@ -557,7 +612,6 @@ function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onA
   
   return (
     <div className="flex flex-col h-full">
-      {/* Tier Header */}
       <div className={cn("rounded-t-lg px-3 py-2 flex items-center justify-between", colorClass)}>
         <div className="flex items-center gap-2">
           <span className="font-semibold text-sm">{label}</span>
@@ -567,7 +621,6 @@ function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onA
         </div>
       </div>
       
-      {/* Lender Cards */}
       <div className="flex-1 border border-t-0 rounded-b-lg bg-muted/20 p-2 space-y-2 min-h-[200px] max-h-[400px] overflow-y-auto">
         {matches.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-xs">
@@ -635,25 +688,25 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
           Added
         </div>
       )}
-      {/* Criteria match badge - top right */}
-      {criteriaMatch && criteriaMatch.total > 0 && (
+      {/* Fix #5: Criteria match badge - show only evaluated criteria, hide if specifiedCount is 0 */}
+      {criteriaMatch && criteriaMatch.specifiedCount > 0 && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className={cn(
                 "absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                criteriaMatch.passed === criteriaMatch.total
+                criteriaMatch.passed === criteriaMatch.specifiedCount
                   ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
-                  : criteriaMatch.passed >= criteriaMatch.total * 0.6
+                  : criteriaMatch.passed >= criteriaMatch.specifiedCount * 0.6
                   ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400"
                   : "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400"
               )}>
                 <CheckCircle2 className="h-3 w-3" />
-                {criteriaMatch.passed}/{criteriaMatch.total}
+                {criteriaMatch.passed}/{criteriaMatch.specifiedCount}
               </div>
             </TooltipTrigger>
             <TooltipContent side="left" className="text-xs">
-              <p className="font-medium mb-1">Criteria Match: {criteriaMatch.passed}/{criteriaMatch.total}</p>
+              <p className="font-medium mb-1">{criteriaMatch.passed}/{criteriaMatch.specifiedCount} evaluated criteria matched</p>
               {criteriaMatch.passedFilters.map(f => (
                 <div key={f} className="flex items-center gap-1 text-emerald-600">
                   <CheckCircle2 className="h-3 w-3" /> {f.replace('_', ' ')}
@@ -669,6 +722,7 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
         </TooltipProvider>
       )}
       <div className={cn("flex items-start gap-2", isAlreadyAdded && "mt-4")}>
+        {/* Fix #9: Always render Checkbox for non-added lenders */}
         {!isAlreadyAdded && (
           <Checkbox
             checked={isSelected}
@@ -682,21 +736,18 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
             <span className={cn("font-medium truncate", compact ? "text-xs" : "text-sm")}>
               {lender.name}
             </span>
-            {/* Score indicator */}
             <Badge 
               variant={score >= 50 ? "default" : score >= 25 ? "secondary" : "outline"} 
               className="text-[9px] py-0 px-1 shrink-0"
             >
               {score}
             </Badge>
-            {/* Learning warning badge */}
             {showLearningWarnings && learningWarnings && learningWarnings.length > 0 && (
               <LenderWarningBadge warnings={learningWarnings} showDetails size="sm" />
             )}
           </div>
           
           
-          {/* Contact Info - only show if not compact */}
           {!compact && (lender.contact_name || lender.email) && (
             <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
               {lender.contact_name && <span className="truncate">{lender.contact_name}</span>}
@@ -708,7 +759,6 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
           )}
         </div>
         
-        {/* Add Button - hidden for already added lenders */}
         {!isAlreadyAdded && (
           <Button
             variant="ghost"

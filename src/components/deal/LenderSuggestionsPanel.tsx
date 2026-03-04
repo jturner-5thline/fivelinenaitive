@@ -52,6 +52,7 @@ interface LenderSuggestionsPanelProps {
   existingLenderNames: string[];
   onAddLender: (lenderName: string) => void;
   onAddMultipleLenders?: (lenderNames: string[]) => void;
+  onNavigateToCriteria?: () => void;
 }
 
 export function LenderSuggestionsPanel({
@@ -60,6 +61,7 @@ export function LenderSuggestionsPanel({
   existingLenderNames,
   onAddLender,
   onAddMultipleLenders,
+  onNavigateToCriteria,
 }: LenderSuggestionsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -234,6 +236,8 @@ export function LenderSuggestionsPanel({
               existingLenderNames={existingLenderNames}
               onAddLender={handleAddLender}
               onAddMultipleLenders={handleAddMultipleLenders}
+              onClose={() => setIsOpen(false)}
+              onNavigateToCriteria={onNavigateToCriteria}
             />
           )}
         </div>
@@ -385,6 +389,7 @@ export function LenderSuggestionsFAB({
               existingLenderNames={existingLenderNames}
               onAddLender={onAddLender}
               onAddMultipleLenders={handleAddMultipleLenders}
+              onClose={() => setIsOpen(false)}
             />
           )}
         </div>

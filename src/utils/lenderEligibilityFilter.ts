@@ -16,8 +16,8 @@ export interface DealFilterInput {
   industry?: string | null;
   /** Optional sub-industry. */
   subIndustry?: string | null;
-  /** Whether the deal is sponsor-backed. */
-  isSponsorBacked?: boolean;
+  /** Whether the deal is sponsor-backed. undefined/null means not specified. */
+  isSponsorBacked?: boolean | null;
 }
 
 export type FilterName =
@@ -45,6 +45,8 @@ export interface CriteriaMatchResult {
   passed: number;
   /** Total number of criteria that were evaluated (non-skipped). */
   total: number;
+  /** Number of criteria that had actual values specified on the deal. */
+  specifiedCount: number;
   /** Which filters passed. */
   passedFilters: FilterName[];
   /** Which filters failed. */
@@ -233,6 +235,9 @@ const FILTER_PIPELINE: Array<{
   {
     name: 'SPONSORSHIP',
     test: (deal, lender) => {
+      // Fix #3: skip when isSponsorBacked is not specified (null/undefined)
+      if (deal.isSponsorBacked == null) return true;
+
       const { required, allowed } = parseLenderSponsorship(lender.sponsorship);
 
       // If lender requires sponsorship, deal must be sponsor-backed
@@ -250,19 +255,6 @@ const FILTER_PIPELINE: Array<{
 
 /**
  * Strict eligibility filter for lender matching.
- *
- * Applies five hard-gate filters in order:
- *   1. Deal Size
- *   2. Deal Type
- *   3. Cash-Burn OK
- *   4. Industry
- *   5. Sponsorship
- *
- * Returns only lenders that pass ALL filters. No scoring or ranking.
- *
- * @param deal   - The deal criteria to filter against.
- * @param lenders - The full list of lender objects.
- * @param debug  - When true, populate the `excluded` array with failure reasons.
  */
 export function filterEligibleLenders(
   deal: DealFilterInput,
@@ -278,7 +270,6 @@ export function filterEligibleLenders(
     for (const filter of FILTER_PIPELINE) {
       if (!filter.test(deal, lender)) {
         failedFilters.push(filter.name);
-        // In non-debug mode, short-circuit on first failure for performance
         if (!debug) break;
       }
     }
@@ -300,8 +291,8 @@ export function filterEligibleLenders(
 // ─── Criteria match counter ───────────────────────────────────────────────────
 
 /**
- * Count how many of the 5 criteria a lender matches for a given deal.
- * Always reports out of 5 total criteria. Unspecified criteria count as passed.
+ * Count how many of the specified criteria a lender matches for a given deal.
+ * Fix #1: Unspecified criteria are SKIPPED (not counted as passed or failed).
  */
 export function countCriteriaMatches(
   deal: DealFilterInput,
@@ -309,11 +300,18 @@ export function countCriteriaMatches(
 ): CriteriaMatchResult {
   const passedFilters: FilterName[] = [];
   const failedFilters: FilterName[] = [];
+  let specifiedCount = 0;
 
   for (const filter of FILTER_PIPELINE) {
     const isSpecified = isCriterionSpecified(filter.name, deal);
     
-    if (!isSpecified || filter.test(deal, lender)) {
+    if (!isSpecified) {
+      // Skip unspecified criteria entirely
+      continue;
+    }
+
+    specifiedCount++;
+    if (filter.test(deal, lender)) {
       passedFilters.push(filter.name);
     } else {
       failedFilters.push(filter.name);
@@ -322,7 +320,8 @@ export function countCriteriaMatches(
 
   return {
     passed: passedFilters.length,
-    total: FILTER_PIPELINE.length,
+    total: passedFilters.length + failedFilters.length,
+    specifiedCount,
     passedFilters,
     failedFilters,
   };
@@ -339,11 +338,12 @@ function isCriterionSpecified(name: FilterName, deal: DealFilterInput): boolean 
       return allTypes.length > 0;
     }
     case 'CASH_BURN':
-      return !!deal.isCashBurn;
+      return deal.isCashBurn === true;
     case 'INDUSTRY':
       return !!deal.industry;
     case 'SPONSORSHIP':
-      return !!deal.isSponsorBacked || deal.isSponsorBacked === false;
+      // Fix #3: only specified when explicitly set (not null/undefined)
+      return deal.isSponsorBacked != null;
     default:
       return false;
   }
@@ -352,10 +352,7 @@ function isCriterionSpecified(name: FilterName, deal: DealFilterInput): boolean 
 // ─── Adapter for DealCriteria ─────────────────────────────────────────────────
 
 /**
- * Convert the existing DealCriteria shape (from useLenderMatching) into
- * the DealFilterInput shape used by filterEligibleLenders.
- *
- * This allows seamless integration without changing existing call sites.
+ * Convert the existing DealCriteria shape into the DealFilterInput shape.
  */
 export function dealCriteriaToFilterInput(
   criteria: {
@@ -372,8 +369,8 @@ export function dealCriteriaToFilterInput(
     ? parseCapitalAskFn(criteria.capitalAsk) ?? criteria.dealValue ?? null
     : criteria.dealValue ?? null;
 
-  // Determine if deal is sponsor-backed from string
-  let isSponsorBacked = false;
+  // Fix #3: When sponsorship is not specified, set isSponsorBacked to undefined (not false)
+  let isSponsorBacked: boolean | undefined = undefined;
   if (criteria.sponsorship) {
     const n = normalize(criteria.sponsorship);
     isSponsorBacked =

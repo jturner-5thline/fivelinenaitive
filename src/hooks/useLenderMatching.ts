@@ -36,7 +36,6 @@ function matchesIndustry(dealIndustry: string | undefined, lenderIndustries: str
   
   const normalizedDealIndustry = normalizeString(dealIndustry);
   
-  // Check for "Agnostic" which means they accept all industries
   if (lenderIndustries.some(i => normalizeString(i) === 'agnostic')) {
     return true;
   }
@@ -49,7 +48,6 @@ function matchesIndustry(dealIndustry: string | undefined, lenderIndustries: str
   });
 }
 
-// Check if deal industry is in lender's avoid list
 function isIndustriesAvoided(dealIndustry: string | undefined, avoidIndustries: string[] | null): boolean {
   if (!dealIndustry || !avoidIndustries || avoidIndustries.length === 0) return false;
   
@@ -62,7 +60,6 @@ function isIndustriesAvoided(dealIndustry: string | undefined, avoidIndustries: 
   });
 }
 
-// Check if deal value falls within lender's deal size range
 function matchesDealSize(dealValue: number | undefined, minDeal: number | null, maxDeal: number | null): { matches: boolean; belowMin: boolean; aboveMax: boolean } {
   if (!dealValue) return { matches: false, belowMin: false, aboveMax: false };
   
@@ -77,7 +74,6 @@ function matchesDealSize(dealValue: number | undefined, minDeal: number | null, 
   };
 }
 
-// Check deal type matching (loan types)
 function matchesLoanType(dealTypes: string[] | undefined, lenderLoanTypes: string[] | null): boolean {
   if (!dealTypes || dealTypes.length === 0 || !lenderLoanTypes || lenderLoanTypes.length === 0) {
     return false;
@@ -93,9 +89,6 @@ function matchesLoanType(dealTypes: string[] | undefined, lenderLoanTypes: strin
   );
 }
 
-// Check cash burn match
-// - Lender cash_burn "Yes" → accepts both cash-burning and profitable companies
-// - Lender cash_burn "No" → only accepts profitable companies (dealCashBurnOk = false)
 function matchesCashBurn(dealCashBurnOk: boolean | undefined, lenderCashBurn: string | null): { matches: boolean; warning: boolean } {
   if (dealCashBurnOk === undefined) return { matches: false, warning: false };
   if (!lenderCashBurn) return { matches: false, warning: false };
@@ -104,37 +97,29 @@ function matchesCashBurn(dealCashBurnOk: boolean | undefined, lenderCashBurn: st
   const lenderAcceptsCashBurn = normalized.includes('yes') || normalized.includes('ok') || normalized === 'y';
   
   if (lenderAcceptsCashBurn) {
-    // Lender accepts cash burn → matches regardless of company profitability
     return { matches: true, warning: false };
   }
   
-  // Lender does NOT accept cash burn
   if (dealCashBurnOk === true) {
-    // Company is cash-burning but lender doesn't accept it → mismatch
     return { matches: false, warning: true };
   }
   
-  // Company is profitable and lender doesn't accept cash burn → that's fine
   return { matches: true, warning: false };
 }
 
-// Check sponsorship match
 function matchesSponsorship(dealSponsorship: string | undefined, lenderSponsorship: string | null): { matches: boolean; warning: boolean } {
   if (!dealSponsorship || !lenderSponsorship) return { matches: false, warning: false };
   
   const normalizedDeal = normalizeString(dealSponsorship);
   const normalizedLender = normalizeString(lenderSponsorship);
   
-  // Lender accepts both
   if (normalizedLender.includes('both') || normalizedLender.includes('either') || normalizedLender.includes('agnostic')) {
     return { matches: true, warning: false };
   }
   
-  // Check for sponsored deal
   const dealIsSponsored = normalizedDeal.includes('sponsor') && !normalizedDeal.includes('non');
   const dealIsNonSponsored = normalizedDeal.includes('non-sponsor') || normalizedDeal.includes('non sponsor') || normalizedDeal === 'non-sponsored';
   
-  // Check lender preferences
   const lenderWantsSponsored = normalizedLender.includes('sponsor') && !normalizedLender.includes('non');
   const lenderWantsNonSponsored = normalizedLender.includes('non-sponsor') || normalizedLender.includes('non sponsor');
   const lenderPrefersBoth = normalizedLender.includes('both') || normalizedLender.includes('either');
@@ -151,7 +136,6 @@ function matchesSponsorship(dealSponsorship: string | undefined, lenderSponsorsh
     return { matches: true, warning: false };
   }
   
-  // Mismatch case
   if ((dealIsSponsored && lenderWantsNonSponsored) || (dealIsNonSponsored && lenderWantsSponsored)) {
     return { matches: false, warning: true };
   }
@@ -159,14 +143,12 @@ function matchesSponsorship(dealSponsorship: string | undefined, lenderSponsorsh
   return { matches: false, warning: false };
 }
 
-// Check geography match
 function matchesGeography(dealGeo: string | undefined, lenderGeo: string | null): boolean {
   if (!dealGeo || !lenderGeo) return false;
   
   const normalizedDeal = normalizeString(dealGeo);
   const normalizedLender = normalizeString(lenderGeo);
   
-  // Check for US/global coverage
   if (normalizedLender.includes('us') || normalizedLender.includes('united states') || 
       normalizedLender.includes('global') || normalizedLender.includes('nationwide')) {
     return true;
@@ -175,19 +157,16 @@ function matchesGeography(dealGeo: string | undefined, lenderGeo: string | null)
   return normalizedLender.includes(normalizedDeal) || normalizedDeal.includes(normalizedLender);
 }
 
-// Check B2B/B2C match
 function matchesB2bB2c(dealB2bB2c: string | undefined, lenderB2bB2c: string | null): { matches: boolean; partial: boolean } {
   if (!dealB2bB2c || !lenderB2bB2c) return { matches: false, partial: false };
   
   const normalizedDeal = normalizeString(dealB2bB2c);
   const normalizedLender = normalizeString(lenderB2bB2c);
   
-  // Lender supports both
   if (normalizedLender.includes('both') || (normalizedLender.includes('b2b') && normalizedLender.includes('b2c'))) {
     return { matches: true, partial: false };
   }
   
-  // Exact match
   if (normalizedLender.includes(normalizedDeal) || normalizedDeal.includes(normalizedLender)) {
     return { matches: true, partial: false };
   }
@@ -195,7 +174,6 @@ function matchesB2bB2c(dealB2bB2c: string | undefined, lenderB2bB2c: string | nu
   return { matches: false, partial: false };
 }
 
-// Parse capital ask to numeric value
 function parseCapitalAsk(capitalAsk: string | undefined): number | null {
   if (!capitalAsk) return null;
   
@@ -215,19 +193,17 @@ function parseCapitalAsk(capitalAsk: string | undefined): number | null {
   return isNaN(num) ? null : num;
 }
 
-// Scoring weights based on priority order (user-specified priority)
-// 1. Deal Size, 2. Deal Type, 3. Cash-burn OK, 4. Industry, 5. Sponsorship
 const WEIGHTS = {
-  DEAL_SIZE: 50,        // Priority 1: Deal size range (highest)
-  LOAN_TYPE: 40,        // Priority 2: Deal Type (Growth Capital vs ABL)
-  CASH_BURN: 30,        // Priority 3: Cash-burn OK
-  INDUSTRY: 25,         // Priority 4: Industry
-  SPONSORSHIP: 20,      // Priority 5: Sponsorship
-  GEOGRAPHY: 10,        // Secondary: Geography
-  B2B_B2C: 8,           // Secondary: B2B vs B2C
-  COMPANY_REQ: 5,       // Secondary: Company requirements
-  CONTACT_INFO: 3,      // Bonus: Contact info
-  ONE_PAGER: 2,         // Bonus: One-pager available
+  DEAL_SIZE: 50,
+  LOAN_TYPE: 40,
+  CASH_BURN: 30,
+  INDUSTRY: 25,
+  SPONSORSHIP: 20,
+  GEOGRAPHY: 10,
+  B2B_B2C: 8,
+  COMPANY_REQ: 5,
+  CONTACT_INFO: 3,
+  ONE_PAGER: 2,
 };
 
 const PENALTIES = {
@@ -248,7 +224,6 @@ export function calculateLenderMatch(
   const learningWarnings: LenderPassPattern[] = [];
   let score = 0;
   
-  // PRIORITY 1: Deal size match (highest weight)
   const capitalValue = parseCapitalAsk(criteria.capitalAsk) || criteria.dealValue;
   if (capitalValue) {
     const dealSizeResult = matchesDealSize(capitalValue, lender.min_deal, lender.max_deal);
@@ -270,11 +245,9 @@ export function calculateLenderMatch(
       }
     }
   } else if (lender.min_deal || lender.max_deal) {
-    // Partial credit for having deal range defined
     score += 5;
   }
   
-  // PRIORITY 2: Deal Type (Growth Capital vs ABL)
   if (criteria.dealTypes && criteria.dealTypes.length > 0) {
     const isGrowthCapital = criteria.dealTypes.some(dt => 
       normalizeString(dt).includes('growth capital') || 
@@ -282,16 +255,14 @@ export function calculateLenderMatch(
     );
     
     if (isGrowthCapital) {
-      // For Growth Capital deals, lender MUST offer Growth Capital
       const lenderOffersGrowthCapital = lender.loan_types?.some(lt => 
         normalizeString(lt).includes('growth capital') || 
         normalizeString(lt) === 'growth'
       );
       
       if (!lenderOffersGrowthCapital) {
-        // Exclude lenders who don't offer Growth Capital
         warnings.push('Does not offer Growth Capital');
-        score += -200; // Very heavy penalty to effectively exclude
+        score += -200;
       } else {
         matchReasons.push('Offers Growth Capital');
         score += WEIGHTS.LOAN_TYPE;
@@ -304,7 +275,6 @@ export function calculateLenderMatch(
     score += 3;
   }
   
-  // Refinancing exclusion: if deal includes "Refinancing", exclude lenders who "don't like it"
   if (criteria.dealTypes && criteria.dealTypes.length > 0) {
     const dealIncludesRefinancing = criteria.dealTypes.some(dt =>
       normalizeString(dt).includes('refinanc')
@@ -313,12 +283,11 @@ export function calculateLenderMatch(
       const refinancingNorm = normalizeString(lender.refinancing);
       if (refinancingNorm.includes("don't like") || refinancingNorm.includes('dont like') || refinancingNorm.includes('do not like')) {
         warnings.push('Does not like refinancing');
-        score += -200; // Heavy penalty to exclude
+        score += -200;
       }
     }
   }
 
-  // PRIORITY 3: Cash-burn OK
   if (criteria.cashBurnOk !== undefined) {
     const cashBurnResult = matchesCashBurn(criteria.cashBurnOk, lender.cash_burn);
     if (cashBurnResult.matches) {
@@ -330,10 +299,8 @@ export function calculateLenderMatch(
     }
   }
   
-  // PRIORITY 4: Industry match
   if (criteria.industry) {
     if (isIndustriesAvoided(criteria.industry, lender.industries_to_avoid)) {
-      // Hard exclude — lender explicitly avoids this industry
       return null;
     } else if (matchesIndustry(criteria.industry, lender.industries)) {
       matchReasons.push(`${criteria.industry} industry`);
@@ -344,7 +311,6 @@ export function calculateLenderMatch(
     }
   }
   
-  // PRIORITY 5: Sponsorship match
   if (criteria.sponsorship) {
     const sponsorshipResult = matchesSponsorship(criteria.sponsorship, lender.sponsorship);
     if (sponsorshipResult.matches) {
@@ -356,7 +322,6 @@ export function calculateLenderMatch(
     }
   }
   
-  // SECONDARY: Geography match
   if (criteria.geo) {
     if (matchesGeography(criteria.geo, lender.geo)) {
       matchReasons.push('Geographic coverage');
@@ -364,7 +329,6 @@ export function calculateLenderMatch(
     }
   }
   
-  // SECONDARY: B2B vs B2C match
   if (criteria.b2bB2c) {
     const b2bResult = matchesB2bB2c(criteria.b2bB2c, lender.b2b_b2c);
     if (b2bResult.matches) {
@@ -373,12 +337,10 @@ export function calculateLenderMatch(
     }
   }
   
-  // PRIORITY 7: Company requirements (text match)
   if (criteria.companyRequirements && lender.company_requirements) {
     const dealReqs = normalizeString(criteria.companyRequirements);
     const lenderReqs = normalizeString(lender.company_requirements);
     
-    // Simple keyword matching
     const keywords = dealReqs.split(/\s+/).filter(w => w.length > 3);
     const matchedKeywords = keywords.filter(kw => lenderReqs.includes(kw));
     
@@ -388,22 +350,18 @@ export function calculateLenderMatch(
     }
   }
   
-  // Bonus: Has contact information
   if (lender.email && lender.contact_name) {
     score += WEIGHTS.CONTACT_INFO;
   }
   
-  // Bonus: Has one-pager
   if (lender.lender_one_pager_url) {
     score += WEIGHTS.ONE_PAGER;
   }
   
-  // Bonus: Active lender
   if (lender.active === true) {
     score += 5;
   }
   
-  // Apply learning-based adjustments
   if (learningPatterns && learningPatterns.length > 0) {
     const lenderPatterns = learningPatterns.filter(p => 
       (p.master_lender_id && p.master_lender_id === lender.id) ||
@@ -411,7 +369,6 @@ export function calculateLenderMatch(
     );
     
     for (const pattern of lenderPatterns) {
-      // Check if pattern is relevant to current deal
       let isRelevant = false;
       
       if (pattern.pattern_type === 'excluded_industry' && criteria.industry) {
@@ -420,21 +377,18 @@ export function calculateLenderMatch(
         isRelevant = pattern.pattern_value.toLowerCase().includes(criteria.geo.toLowerCase()) ||
                      criteria.geo.toLowerCase().includes(pattern.pattern_value.toLowerCase());
       } else if (pattern.pattern_type === 'deal_size_range' && capitalValue) {
-        // If lender has passed on similar deal sizes before
         const patternValue = parseFloat(pattern.pattern_value);
         if (!isNaN(patternValue)) {
           const difference = Math.abs(capitalValue - patternValue);
-          const threshold = capitalValue * 0.3; // 30% range
+          const threshold = capitalValue * 0.3;
           isRelevant = difference <= threshold;
         }
       } else if (pattern.occurrence_count >= 2) {
-        // General pattern with enough occurrences
         isRelevant = true;
       }
       
       if (isRelevant) {
         learningWarnings.push(pattern);
-        // Apply penalty based on confidence
         const penalty = Math.round(-15 * pattern.confidence_score);
         score += penalty;
       }
@@ -488,19 +442,25 @@ export function useLenderMatching(
   const matches = useMemo(() => {
     if (!masterLenders.length) return [];
     
-    // Include all lenders (don't exclude already-added ones; they'll be marked in the UI)
-    const nameFilteredLenders = masterLenders;
+    // Fix #2: Actually filter out lenders whose names match excludeNames
+    const excludeNamesSet = new Set(excludeNames.map(n => n.toLowerCase().trim()));
+    const nameFilteredLenders = excludeNamesSet.size > 0
+      ? masterLenders.filter(l => !excludeNamesSet.has(l.name.toLowerCase().trim()))
+      : masterLenders;
     
-    // Apply criteria matching: include lenders with at least 3/5 criteria matched
+    // Apply criteria matching
     const filterInput = dealCriteriaToFilterInput(criteria, parseCapitalAsk);
     
-    // Score each lender by criteria match count (min 3/5 to be included)
+    // Fix #1: Use specifiedCount for the pre-filter gate
     const criteriaScored = nameFilteredLenders
       .map(lender => ({
         lender,
         criteriaMatch: countCriteriaMatches(filterInput, lender),
       }))
-      .filter(({ criteriaMatch }) => criteriaMatch.passed >= 3);
+      .filter(({ criteriaMatch }) => {
+        const gate = Math.min(3, criteriaMatch.specifiedCount);
+        return criteriaMatch.passed >= gate;
+      });
     
     // Calculate match scores with learning data
     const scoredLenders = criteriaScored
