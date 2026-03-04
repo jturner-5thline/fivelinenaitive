@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react';
 import { useGmail } from '@/hooks/useGmail';
@@ -67,12 +67,6 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-primary" />
-              Email Inbox
-            </DialogTitle>
-          </DialogHeader>
           <div className="flex flex-col items-center justify-center gap-4 py-8 text-center">
             <div className="p-4 rounded-full bg-primary/10">
               <Mail className="h-8 w-8 text-primary" />
@@ -94,7 +88,11 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[1400px] h-[85vh] p-0 flex flex-col overflow-hidden">
+      {/* Fix #1: backdrop overlay with fade-in */}
+      <DialogContent
+        className="max-w-[95vw] w-[1400px] h-[85vh] p-0 flex flex-col overflow-hidden"
+        overlayClassName="bg-black/50 transition-opacity duration-200"
+      >
         <div className="flex-1 min-h-0 overflow-hidden">
           <DealEmailsTab
             dealId=""
