@@ -12,7 +12,7 @@ import {
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
-  ShieldCheck, Cog, Lightbulb, UserCheck, Bell
+  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -39,6 +39,7 @@ import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecomm
 import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
 import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequestsPanel";
 import { FeedbackWidgetToggle } from "@/components/admin/FeedbackWidgetToggle";
+import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -76,7 +77,11 @@ const productEnhancementSubPages = [
   { id: "feedback", label: "Feedback", icon: MessageSquare },
 ];
 
-type TabCategory = "users" | "access" | "data-security" | "settings" | "product-enhancement";
+const supportSubPages = [
+  { id: "client-viewer", label: "Client Account Viewer", icon: MonitorPlay },
+];
+
+type TabCategory = "users" | "access" | "data-security" | "settings" | "product-enhancement" | "support";
 
 const Admin = () => {
   const { isAdmin, isLoading: roleLoading } = useAdminRole();
@@ -89,6 +94,7 @@ const Admin = () => {
     "data-security": "data",
     settings: "settings",
     "product-enhancement": "enhancement",
+    support: "client-viewer",
   });
 
   const handleSubPageChange = (category: TabCategory, subPageId: string) => {
@@ -107,6 +113,8 @@ const Admin = () => {
         return settingsSubPages;
       case "product-enhancement":
         return productEnhancementSubPages;
+      case "support":
+        return supportSubPages;
     }
   };
 
@@ -374,6 +382,8 @@ const Admin = () => {
         );
       case "enhancement":
         return <UXRecommendationsPanel />;
+      case "client-viewer":
+        return <ClientAccountViewer />;
       default:
         return null;
     }
@@ -454,6 +464,7 @@ const Admin = () => {
             <TabWithDropdown category="data-security" label="Data & Security" icon={ShieldCheck} />
             <TabWithDropdown category="settings" label="Settings" icon={Cog} />
             <TabWithDropdown category="product-enhancement" label="Product Enhancement" icon={Lightbulb} />
+            <TabWithDropdown category="support" label="Support" icon={MonitorPlay} />
           </div>
 
           <TabsContent value="users">
@@ -474,6 +485,10 @@ const Admin = () => {
 
           <TabsContent value="product-enhancement">
             {renderSubPageContent(activeSubPage["product-enhancement"])}
+          </TabsContent>
+
+          <TabsContent value="support">
+            {renderSubPageContent(activeSubPage.support)}
           </TabsContent>
         </Tabs>
       </div>

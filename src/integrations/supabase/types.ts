@@ -7626,6 +7626,79 @@ export type Database = {
         }
         Relationships: []
       }
+      support_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          resource_id: string | null
+          resource_type: string
+          support_user_id: string
+          target_company_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          resource_id?: string | null
+          resource_type: string
+          support_user_id: string
+          target_company_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          resource_id?: string | null
+          resource_type?: string
+          support_user_id?: string
+          target_company_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_audit_logs_target_company_id_fkey"
+            columns: ["target_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_sessions: {
+        Row: {
+          ended_at: string | null
+          id: string
+          started_at: string
+          support_user_id: string
+          target_company_id: string
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          support_user_id: string
+          target_company_id: string
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          support_user_id?: string
+          target_company_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_sessions_target_company_id_fkey"
+            columns: ["target_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_announcements: {
         Row: {
           created_at: string
@@ -9998,7 +10071,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "support_admin"
       claap_meeting_status:
         | "pending_review"
         | "routed"
@@ -10167,7 +10240,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "support_admin"],
       claap_meeting_status: [
         "pending_review",
         "routed",
