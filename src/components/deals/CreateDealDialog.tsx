@@ -171,6 +171,11 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       return;
     }
 
+    if (!sourcedVia || sourcedVia === '__none__') {
+      toast.error('Please select a source for this deal');
+      return;
+    }
+
     const blank = getBlankOptionalFields();
     if (blank.length > 0) {
       setBlankFields(blank);
@@ -400,7 +405,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   </div>
                 )}
                 <div className="grid gap-1.5">
-                  <Label>Sourced Via</Label>
+                  <Label>Sourced Via <span className="text-destructive">*</span></Label>
                   <Select value={sourcedVia} onValueChange={setSourcedVia}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select source" />
