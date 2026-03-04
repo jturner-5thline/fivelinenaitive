@@ -99,7 +99,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   return (
     <div
       className={cn(
-        'group relative rounded-r-lg cursor-pointer transition-all duration-150 mx-0 mr-3 mb-2 border-l-[3px]',
+        'group relative rounded-r-lg cursor-pointer transition-all duration-150 mx-0 mr-2 mb-2 border-l-[3px] overflow-hidden',
         isSelected
           ? 'bg-primary/10 border-l-primary shadow-[inset_0_0_12px_-4px_hsl(var(--primary)/0.3)] border-t border-r border-b border-t-primary/20 border-r-primary/20 border-b-primary/20'
           : 'bg-card/40 border-l-transparent border border-border/40 hover:border-l-primary/50 hover:bg-primary/5 hover:border-border/60 rounded-lg',
