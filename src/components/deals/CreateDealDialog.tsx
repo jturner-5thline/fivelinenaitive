@@ -517,27 +517,46 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 />
               </div>
 
-              {/* Row 6: Referral Source Name + Email */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="referralName">Referral Source Name</Label>
-                  <Input
-                    id="referralName"
-                    value={referralName}
-                    onChange={(e) => setReferralName(e.target.value)}
-                    placeholder="e.g., John Smith"
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="referralEmail">Referral Source Email</Label>
-                  <Input
-                    id="referralEmail"
-                    type="email"
-                    value={referralEmail}
-                    onChange={(e) => setReferralEmail(e.target.value)}
-                    placeholder="e.g., john@example.com"
-                  />
-                </div>
+              {/* Row 6: Referral Source (popover) */}
+              <div className="grid gap-1.5">
+                <Label>Referral Source</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-between font-normal"
+                      type="button"
+                    >
+                      <span className={referralName.trim() ? 'text-foreground' : 'text-muted-foreground'}>
+                        {referralName.trim()
+                          ? `${referralName}${referralEmail.trim() ? ` · ${referralEmail}` : ''}`
+                          : 'Add referral source...'}
+                      </span>
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-3 space-y-3" align="start" side="bottom">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="referralName" className="text-xs">Name</Label>
+                      <Input
+                        id="referralName"
+                        value={referralName}
+                        onChange={(e) => setReferralName(e.target.value)}
+                        placeholder="e.g., John Smith"
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="referralEmail" className="text-xs">Email</Label>
+                      <Input
+                        id="referralEmail"
+                        type="email"
+                        value={referralEmail}
+                        onChange={(e) => setReferralEmail(e.target.value)}
+                        placeholder="e.g., john@example.com"
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
               {sortedMilestones.length > 0 && (
                 <Collapsible open={showMilestonesPreview} onOpenChange={setShowMilestonesPreview}>
