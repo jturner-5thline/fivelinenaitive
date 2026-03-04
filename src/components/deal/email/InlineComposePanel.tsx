@@ -1,0 +1,261 @@
+import { useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Send,
+  Paperclip,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Trash2,
+  ArrowLeft,
+  Bold,
+  Italic,
+  Link,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { MockEmail } from './mockEmailData';
+import { usePreSendChecks } from './usePreSendChecks';
+import { PreSendAlertDialog } from './PreSendAlertDialog';
+
+interface InlineComposePanelProps {
+  onSend: (email: Omit<MockEmail, 'id' | 'threadId'>) => void | Promise<void>;
+  onClose: () => void;
+  replyTo?: { subject: string; to_email: string; to_name: string; threadId: string } | null;
+}
+
+export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePanelProps) {
+  const [to, setTo] = useState(replyTo?.to_email || '');
+  const [cc, setCc] = useState('');
+  const [bcc, setBcc] = useState('');
+  const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject}` : '');
+  const [body, setBody] = useState('');
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const subjectInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
+
+  const resetForm = () => {
+    setTo(replyTo?.to_email || '');
+    setCc('');
+    setBcc('');
+    setSubject(replyTo ? `Re: ${replyTo.subject}` : '');
+    setBody('');
+    setShowCcBcc(false);
+    setAttachments([]);
+  };
+
+  const executeSend = async () => {
+    clearPreSendAlert();
+    if (!to.trim()) { toast.error('Please add a recipient'); return; }
+    setIsSending(true);
+
+    const recipientName = to.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    await onSend({
+      subject,
+      from_name: 'You',
+      from_email: 'jturner@5thline.co',
+      to_name: recipientName,
+      to_email: to.trim(),
+      snippet: body.substring(0, 120),
+      body_preview: body,
+      received_at: new Date().toISOString(),
+      is_read: true,
+      is_starred: false,
+      folder: 'sent',
+      labels: ['Sent'],
+      has_attachments: attachments.length > 0,
+      is_linked_to_deal: false,
+      is_follow_up: false,
+      needs_response: false,
+      category: 'deal',
+    });
+
+    setIsSending(false);
+    resetForm();
+    onClose();
+  };
+
+  const handleSend = () => {
+    if (!to.trim()) { toast.error('Please add a recipient'); return; }
+    const passed = runChecks({ subject, body, attachments });
+    if (passed) executeSend();
+  };
+
+  const handleAddAttachment = () => {
+    const fakeNames = ['proposal.pdf', 'financials.xlsx', 'term_sheet.docx', 'deck.pptx', 'summary.pdf'];
+    const randomName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+    if (!attachments.includes(randomName)) {
+      setAttachments(prev => [...prev, randomName]);
+      toast.info(`Attached: ${randomName}`);
+    }
+  };
+
+  // Fix #11: formatting helpers
+  const insertFormatting = (prefix: string, suffix: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = body.slice(start, end);
+    const newBody = body.slice(0, start) + prefix + selected + suffix + body.slice(end);
+    setBody(newBody);
+    setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(start + prefix.length, end + prefix.length);
+    }, 0);
+  };
+
+  const handleBold = () => insertFormatting('**', '**');
+  const handleItalic = () => insertFormatting('*', '*');
+  const handleLink = () => {
+    const url = prompt('Enter URL:');
+    if (url) insertFormatting('[', `](${url})`);
+  };
+
+  const handleDiscard = () => {
+    resetForm();
+    onClose();
+    toast.info('Draft discarded');
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header with back arrow */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/60">
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onClose}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm font-semibold">{replyTo ? 'Reply' : 'New Message'}</span>
+      </div>
+
+      <div className="flex-1 flex flex-col overflow-auto">
+        <div className="px-5 py-3 space-y-3">
+          {/* To field */}
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground w-10 shrink-0">To</Label>
+            <Input
+              value={to}
+              onChange={e => setTo(e.target.value)}
+              placeholder="recipient@example.com"
+              className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground h-7 px-2 shrink-0"
+              onClick={() => setShowCcBcc(!showCcBcc)}
+            >
+              Cc/Bcc
+              {showCcBcc ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+            </Button>
+          </div>
+
+          {showCcBcc && (
+            <>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground w-10 shrink-0">Cc</Label>
+                <Input value={cc} onChange={e => setCc(e.target.value)} placeholder="cc@example.com" className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground w-10 shrink-0">Bcc</Label>
+                <Input value={bcc} onChange={e => setBcc(e.target.value)} placeholder="bcc@example.com" className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
+              </div>
+            </>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground w-10 shrink-0">Subj</Label>
+            <Input
+              ref={subjectInputRef}
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              placeholder="Subject"
+              className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent font-medium"
+            />
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Fix #11: Formatting toolbar */}
+        <div className="flex items-center gap-1 px-5 h-7 border-b border-border">
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBold}>
+            <Bold className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleItalic}>
+            <Italic className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleLink}>
+            <Link className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-3 flex-1">
+          <Textarea
+            ref={textareaRef}
+            value={body}
+            onChange={e => setBody(e.target.value)}
+            placeholder="Write your message..."
+            className="min-h-[200px] h-full border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent"
+          />
+        </div>
+
+        {/* Attachments */}
+        {attachments.length > 0 && (
+          <div className="px-5 pb-2">
+            <div className="flex flex-wrap gap-2">
+              {attachments.map(name => (
+                <Badge key={name} variant="secondary" className="text-xs gap-1.5 pr-1 py-1">
+                  <Paperclip className="h-3 w-3" />
+                  {name}
+                  <button onClick={() => setAttachments(prev => prev.filter(a => a !== name))} className="ml-0.5 rounded-full hover:bg-muted p-0.5">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* Footer actions */}
+      <div className="flex items-center gap-2 px-5 py-3 shrink-0">
+        <Button onClick={handleSend} disabled={isSending} size="sm" className="gap-1.5">
+          {isSending ? (
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" />Sending...</>
+          ) : (
+            <><Send className="h-3.5 w-3.5" />Send</>
+          )}
+        </Button>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={handleAddAttachment}>
+          <Paperclip className="h-3.5 w-3.5" />Attach
+        </Button>
+        <div className="flex-1" />
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={handleDiscard}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <PreSendAlertDialog
+        alert={preSendAlert}
+        onClose={clearPreSendAlert}
+        onSendAnyway={executeSend}
+        onAddAttachment={() => { clearPreSendAlert(); handleAddAttachment(); }}
+        onAddSubject={() => { clearPreSendAlert(); subjectInputRef.current?.focus(); }}
+      />
+    </div>
+  );
+}

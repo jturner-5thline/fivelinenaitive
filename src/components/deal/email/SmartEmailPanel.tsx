@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Sparkles,
-  PenLine,
+  Pencil,
   FileText,
   Link2,
   Clock,
@@ -28,6 +28,9 @@ import {
   Shield,
   DollarSign,
   Scale,
+  AlignLeft,
+  Table2,
+  Radio,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -43,6 +46,7 @@ interface SmartEmailPanelProps {
 
 export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }: SmartEmailPanelProps) {
   const { execute, loading, results, clearResult } = useSmartEmail({ dealId });
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     actions: true,
     advanced: false,
@@ -61,92 +65,68 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleDraftReply = async () => {
-    setExpandedSections(prev => ({ ...prev, draft: true }));
-    await execute('draft_reply', thread.latestEmail, {
-      subject: thread.subject,
-      emails: thread.emails,
-    });
-  };
-
-  const handleAutoDraft = async () => {
-    setExpandedSections(prev => ({ ...prev, auto_draft: true }));
-    await execute('auto_draft', thread.latestEmail, {
-      subject: thread.subject,
-      emails: thread.emails,
-    });
-  };
-
-  const handleSummarize = async () => {
-    setExpandedSections(prev => ({ ...prev, summary: true }));
-    await execute('summarize_thread', null, {
-      subject: thread.subject,
-      emails: thread.emails,
-    });
-  };
-
-  const handleExtractData = async () => {
-    setExpandedSections(prev => ({ ...prev, extracted: true }));
-    await execute('extract_data', thread.latestEmail, {
-      subject: thread.subject,
-    });
-  };
-
-  const handleDetectSignals = async () => {
-    setExpandedSections(prev => ({ ...prev, signals: true }));
-    await execute('detect_signals', thread.latestEmail, {
-      subject: thread.subject,
-    });
-  };
-
-  const handleFollowUp = async () => {
-    setExpandedSections(prev => ({ ...prev, followup: true }));
-    await execute('follow_up_check', null, {
-      subject: thread.subject,
-      emails: thread.emails,
-      latestEmail: thread.latestEmail,
-    });
-  };
-
-  const handleEmailToActivity = async () => {
-    setExpandedSections(prev => ({ ...prev, activity: true }));
-    const result = await execute('email_to_activity', null, {
-      subject: thread.subject,
-      emails: thread.emails,
-    });
-    if (result?.summary) {
-      toast.success('Activity logged to deal timeline');
+  const executeWithLoading = async (action: string, handler: () => Promise<any>) => {
+    setLoadingAction(action);
+    try {
+      await handler();
+    } catch (err: any) {
+      toast.error(`Failed to ${action.replace(/_/g, ' ')}`);
+    } finally {
+      setLoadingAction(null);
     }
   };
 
-  const handleParseTermSheet = async () => {
+  const handleDraftReply = () => executeWithLoading('draft_reply', async () => {
+    setExpandedSections(prev => ({ ...prev, draft: true }));
+    await execute('draft_reply', thread.latestEmail, { subject: thread.subject, emails: thread.emails });
+  });
+
+  const handleAutoDraft = () => executeWithLoading('auto_draft', async () => {
+    setExpandedSections(prev => ({ ...prev, auto_draft: true }));
+    await execute('auto_draft', thread.latestEmail, { subject: thread.subject, emails: thread.emails });
+  });
+
+  const handleSummarize = () => executeWithLoading('summarize_thread', async () => {
+    setExpandedSections(prev => ({ ...prev, summary: true }));
+    await execute('summarize_thread', null, { subject: thread.subject, emails: thread.emails });
+  });
+
+  const handleExtractData = () => executeWithLoading('extract_data', async () => {
+    setExpandedSections(prev => ({ ...prev, extracted: true }));
+    await execute('extract_data', thread.latestEmail, { subject: thread.subject });
+  });
+
+  const handleDetectSignals = () => executeWithLoading('detect_signals', async () => {
+    setExpandedSections(prev => ({ ...prev, signals: true }));
+    await execute('detect_signals', thread.latestEmail, { subject: thread.subject });
+  });
+
+  const handleLogActivity = () => executeWithLoading('email_to_activity', async () => {
+    setExpandedSections(prev => ({ ...prev, activity: true }));
+    const result = await execute('email_to_activity', null, { subject: thread.subject, emails: thread.emails });
+    if (result?.summary) toast.success('Activity logged to deal timeline');
+  });
+
+  const handleFollowUp = () => executeWithLoading('follow_up_check', async () => {
+    setExpandedSections(prev => ({ ...prev, followup: true }));
+    await execute('follow_up_check', null, { subject: thread.subject, emails: thread.emails, latestEmail: thread.latestEmail });
+  });
+
+  const handleParseTermSheet = () => executeWithLoading('parse_term_sheet', async () => {
     setExpandedSections(prev => ({ ...prev, term_sheet: true }));
-    await execute('parse_term_sheet', thread.latestEmail, {
-      subject: thread.subject,
-      emails: thread.emails,
-    });
-  };
+    await execute('parse_term_sheet', thread.latestEmail, { subject: thread.subject, emails: thread.emails });
+  });
 
-  const handleFollowUpSequence = async () => {
+  const handleFollowUpSequence = () => executeWithLoading('follow_up_sequence', async () => {
     setExpandedSections(prev => ({ ...prev, follow_sequence: true }));
-    await execute('follow_up_sequence', null, {
-      subject: thread.subject,
-      emails: thread.emails,
-      latestEmail: thread.latestEmail,
-    });
-  };
-
-  const handleCopyDraft = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
-  };
+    await execute('follow_up_sequence', null, { subject: thread.subject, emails: thread.emails, latestEmail: thread.latestEmail });
+  });
 
   const handleEmailToNote = () => {
     const noteTitle = `Email: ${thread.subject}`;
     const noteContent = thread.emails
       .map(e => `**${e.from_name}** (${new Date(e.received_at).toLocaleDateString()}):\n\n${e.body_preview}`)
       .join('\n\n---\n\n');
-    
     if (onCreateNote) {
       onCreateNote(noteTitle, noteContent);
     } else {
@@ -154,6 +134,13 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
       toast.success('Email thread copied — paste into a Deal Space note');
     }
   };
+
+  const handleCopyDraft = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
+
+  const anyLoading = loadingAction !== null;
 
   const draftResult = results.draft_reply;
   const autoDraftResult = results.auto_draft;
@@ -164,6 +151,15 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
   const activityResult = results.email_to_activity;
   const termSheetResult = results.parse_term_sheet;
   const followSequenceResult = results.follow_up_sequence;
+
+  const quickActions = [
+    { key: 'draft_reply', icon: Pencil, label: 'Draft Reply', desc: 'AI-generated response', onClick: handleDraftReply, highlight: false },
+    { key: 'auto_draft', icon: Zap, label: 'Auto-Draft', desc: 'Quick smart response', onClick: handleAutoDraft, highlight: thread.needsResponse },
+    { key: 'summarize_thread', icon: AlignLeft, label: 'Summarize', desc: 'Thread overview & action items', onClick: handleSummarize, highlight: false },
+    { key: 'email_to_activity', icon: ClipboardList, label: 'Log Activity', desc: 'Save to deal timeline', onClick: handleLogActivity, highlight: false },
+    { key: 'extract_data', icon: Table2, label: 'Extract Data', desc: 'Pull terms & amounts', onClick: handleExtractData, highlight: false },
+    { key: 'detect_signals', icon: Radio, label: 'Detect Signals', desc: 'Risk flags & opportunities', onClick: handleDetectSignals, highlight: false },
+  ];
 
   return (
     <div className="flex flex-col bg-popover overflow-y-auto overflow-x-hidden max-h-[70vh]">
@@ -176,90 +172,79 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
 
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-2">
-          
-          {/* Quick Actions Grid */}
+
           <CollapsibleSection
             title="Quick Actions"
             icon={Zap}
             expanded={expandedSections.actions}
             onToggle={() => toggleSection('actions')}
           >
-            <div className="grid grid-cols-2 gap-1.5">
-              <SmartButton
-                icon={PenLine}
-                label="Draft Reply"
-                loading={loading.draft_reply}
-                onClick={handleDraftReply}
-              />
-              <SmartButton
-                icon={Send}
-                label="Auto-Draft"
-                loading={loading.auto_draft}
-                onClick={handleAutoDraft}
-                highlight={thread.needsResponse}
-              />
-              <SmartButton
-                icon={FileText}
-                label="Summarize"
-                loading={loading.summarize_thread}
-                onClick={handleSummarize}
-              />
-              <SmartButton
-                icon={ClipboardList}
-                label="Log Activity"
-                loading={loading.email_to_activity}
-                onClick={handleEmailToActivity}
-              />
-              <SmartButton
-                icon={BarChart3}
-                label="Extract Data"
-                loading={loading.extract_data}
-                onClick={handleExtractData}
-              />
-              <SmartButton
-                icon={TrendingUp}
-                label="Detect Signals"
-                loading={loading.detect_signals}
-                onClick={handleDetectSignals}
-              />
+            <div className="space-y-0.5">
+              {quickActions.map(action => (
+                <button
+                  key={action.key}
+                  onClick={action.onClick}
+                  disabled={anyLoading}
+                  className={cn(
+                    'w-full flex items-center gap-3 h-9 px-3 rounded-md text-left transition-colors',
+                    'hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed',
+                    action.highlight && 'bg-primary/5 text-primary'
+                  )}
+                >
+                  {loadingAction === action.key ? (
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                  ) : (
+                    <action.icon className="h-4 w-4 shrink-0" />
+                  )}
+                  <span className="text-xs font-medium flex-1">{action.label}</span>
+                  <span className="text-[10px] text-muted-foreground hidden sm:inline">{action.desc}</span>
+                </button>
+              ))}
             </div>
           </CollapsibleSection>
 
-          {/* Advanced Actions */}
           <CollapsibleSection
             title="Advanced"
             icon={Shield}
             expanded={expandedSections.advanced}
             onToggle={() => toggleSection('advanced')}
           >
-            <div className="grid grid-cols-2 gap-1.5">
-              <SmartButton
-                icon={FileSpreadsheet}
-                label="Parse Terms"
-                loading={loading.parse_term_sheet}
+            <div className="space-y-0.5">
+              <button
                 onClick={handleParseTermSheet}
-              />
-              <SmartButton
-                icon={CalendarClock}
-                label="Follow-Up Plan"
-                loading={loading.follow_up_sequence}
+                disabled={anyLoading}
+                className="w-full flex items-center gap-3 h-9 px-3 rounded-md text-left transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingAction === 'parse_term_sheet' ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <FileSpreadsheet className="h-4 w-4 shrink-0" />}
+                <span className="text-xs font-medium flex-1">Parse Terms</span>
+              </button>
+              <button
                 onClick={handleFollowUpSequence}
-              />
-              <SmartButton
-                icon={Clock}
-                label="Follow-up Check"
-                loading={loading.follow_up_check}
+                disabled={anyLoading}
+                className="w-full flex items-center gap-3 h-9 px-3 rounded-md text-left transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingAction === 'follow_up_sequence' ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <CalendarClock className="h-4 w-4 shrink-0" />}
+                <span className="text-xs font-medium flex-1">Follow-Up Plan</span>
+              </button>
+              <button
                 onClick={handleFollowUp}
-              />
-              <SmartButton
-                icon={StickyNote}
-                label="Save as Note"
+                disabled={anyLoading}
+                className="w-full flex items-center gap-3 h-9 px-3 rounded-md text-left transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingAction === 'follow_up_check' ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <Clock className="h-4 w-4 shrink-0" />}
+                <span className="text-xs font-medium flex-1">Follow-up Check</span>
+              </button>
+              <button
                 onClick={handleEmailToNote}
-              />
+                disabled={anyLoading}
+                className="w-full flex items-center gap-3 h-9 px-3 rounded-md text-left transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <StickyNote className="h-4 w-4 shrink-0" />
+                <span className="text-xs font-medium flex-1">Save as Note</span>
+              </button>
             </div>
           </CollapsibleSection>
 
-          {/* Auto-Draft Result */}
           {autoDraftResult && (
             <CollapsibleSection
               title="Auto-Draft Response"
@@ -273,16 +258,11 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
                   <Sparkles className="h-3 w-3 text-primary" />
                   <span className="text-[10px] font-medium text-primary">AI-Generated Response</span>
                 </div>
-                <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/90">
-                  {autoDraftResult}
-                </p>
+                <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/90">{autoDraftResult}</p>
                 <div className="flex gap-1.5 mt-3">
                   <Button variant="default" size="sm" className="h-7 text-[11px] gap-1" onClick={() => {
-                    if (onInsertDraft) {
-                      onInsertDraft(autoDraftResult);
-                    } else {
-                      handleCopyDraft(autoDraftResult);
-                    }
+                    if (onInsertDraft) onInsertDraft(autoDraftResult);
+                    else handleCopyDraft(autoDraftResult);
                   }}>
                     <Send className="h-3 w-3" /> {onInsertDraft ? 'Use Draft' : 'Copy'}
                   </Button>
@@ -294,19 +274,16 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
             </CollapsibleSection>
           )}
 
-          {/* Draft Reply Result */}
           {draftResult && (
             <CollapsibleSection
               title="AI Draft Reply"
-              icon={PenLine}
+              icon={Pencil}
               expanded={expandedSections.draft}
               onToggle={() => toggleSection('draft')}
               onClear={() => clearResult('draft_reply')}
             >
               <div className="rounded-lg border bg-card/60 p-3">
-                <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/90">
-                  {draftResult}
-                </p>
+                <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/90">{draftResult}</p>
                 <div className="flex gap-1.5 mt-3">
                   <Button variant="secondary" size="sm" className="h-7 text-[11px] gap-1" onClick={() => handleCopyDraft(draftResult)}>
                     <Copy className="h-3 w-3" /> Copy
@@ -319,7 +296,6 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
             </CollapsibleSection>
           )}
 
-          {/* Activity Log Result */}
           {activityResult && (
             <CollapsibleSection
               title="Activity Logged"
@@ -343,8 +319,7 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
                   <ul className="space-y-1">
                     {activityResult.key_details.map((detail: string, i: number) => (
                       <li key={i} className="text-[11px] text-foreground/70 flex gap-1.5">
-                        <span className="text-emerald-400 shrink-0">•</span>
-                        {detail}
+                        <span className="text-emerald-400 shrink-0">•</span>{detail}
                       </li>
                     ))}
                   </ul>
@@ -360,7 +335,6 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
             </CollapsibleSection>
           )}
 
-          {/* Term Sheet Parse Result */}
           {termSheetResult?.deal_terms && (
             <CollapsibleSection
               title="Parsed Term Sheet"
@@ -370,54 +344,34 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
               onClear={() => clearResult('parse_term_sheet')}
             >
               <div className="space-y-2">
-                {/* Key Terms Table */}
                 <div className="rounded-lg border bg-card/60 overflow-hidden">
                   <div className="px-2.5 py-1.5 border-b bg-muted/30">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Key Terms</span>
                   </div>
                   <table className="w-full">
                     <tbody>
-                      {termSheetResult.deal_terms.facility_type && (
-                        <TermRow label="Facility Type" value={termSheetResult.deal_terms.facility_type} />
-                      )}
-                      {termSheetResult.deal_terms.amount && (
-                        <TermRow label="Amount" value={termSheetResult.deal_terms.amount} icon={DollarSign} />
-                      )}
-                      {termSheetResult.deal_terms.rate && (
-                        <TermRow label="Rate" value={termSheetResult.deal_terms.rate} />
-                      )}
-                      {termSheetResult.deal_terms.spread && (
-                        <TermRow label="Spread" value={termSheetResult.deal_terms.spread} />
-                      )}
-                      {termSheetResult.deal_terms.tenor && (
-                        <TermRow label="Tenor" value={termSheetResult.deal_terms.tenor} />
-                      )}
-                      {termSheetResult.deal_terms.amortization && (
-                        <TermRow label="Amortization" value={termSheetResult.deal_terms.amortization} />
-                      )}
-                      {termSheetResult.deal_terms.collateral && (
-                        <TermRow label="Collateral" value={termSheetResult.deal_terms.collateral} />
-                      )}
+                      {termSheetResult.deal_terms.facility_type && <TermRow label="Facility Type" value={termSheetResult.deal_terms.facility_type} />}
+                      {termSheetResult.deal_terms.amount && <TermRow label="Amount" value={termSheetResult.deal_terms.amount} icon={DollarSign} />}
+                      {termSheetResult.deal_terms.rate && <TermRow label="Rate" value={termSheetResult.deal_terms.rate} />}
+                      {termSheetResult.deal_terms.spread && <TermRow label="Spread" value={termSheetResult.deal_terms.spread} />}
+                      {termSheetResult.deal_terms.tenor && <TermRow label="Tenor" value={termSheetResult.deal_terms.tenor} />}
+                      {termSheetResult.deal_terms.amortization && <TermRow label="Amortization" value={termSheetResult.deal_terms.amortization} />}
+                      {termSheetResult.deal_terms.collateral && <TermRow label="Collateral" value={termSheetResult.deal_terms.collateral} />}
                     </tbody>
                   </table>
                 </div>
-
-                {/* Covenants */}
                 {termSheetResult.deal_terms.covenants?.length > 0 && (
                   <div className="rounded-lg border bg-card/60 p-2.5">
                     <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">COVENANTS</p>
                     <ul className="space-y-1">
                       {termSheetResult.deal_terms.covenants.map((c: string, i: number) => (
                         <li key={i} className="text-[11px] text-foreground/80 flex gap-1.5">
-                          <Scale className="h-3 w-3 text-primary shrink-0 mt-0.5" />
-                          {c}
+                          <Scale className="h-3 w-3 text-primary shrink-0 mt-0.5" />{c}
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
-
-                {/* Fees */}
                 {termSheetResult.deal_terms.fees?.length > 0 && (
                   <div className="rounded-lg border bg-card/60 overflow-hidden">
                     <div className="px-2.5 py-1.5 border-b bg-muted/30">
@@ -432,38 +386,30 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
                     </table>
                   </div>
                 )}
-
-                {/* Risk Flags */}
                 {termSheetResult.risk_flags?.length > 0 && (
                   <div className="rounded-lg border bg-destructive/5 border-destructive/20 p-2.5">
                     <p className="text-[10px] font-semibold text-destructive mb-1.5">⚠️ RISK FLAGS</p>
                     <ul className="space-y-1">
                       {termSheetResult.risk_flags.map((flag: string, i: number) => (
                         <li key={i} className="text-[11px] text-foreground/80 flex gap-1.5">
-                          <AlertTriangle className="h-3 w-3 text-destructive shrink-0 mt-0.5" />
-                          {flag}
+                          <AlertTriangle className="h-3 w-3 text-destructive shrink-0 mt-0.5" />{flag}
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
-
-                {/* Negotiation Points */}
                 {termSheetResult.negotiation_points?.length > 0 && (
                   <div className="rounded-lg border bg-amber-500/5 border-amber-500/20 p-2.5">
                     <p className="text-[10px] font-semibold text-amber-400 mb-1.5">💡 NEGOTIATION POINTS</p>
                     <ul className="space-y-1">
                       {termSheetResult.negotiation_points.map((point: string, i: number) => (
                         <li key={i} className="text-[11px] text-foreground/80 flex gap-1.5">
-                          <span className="text-amber-400 shrink-0">→</span>
-                          {point}
+                          <span className="text-amber-400 shrink-0">→</span>{point}
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
-
-                {/* Comparison Notes */}
                 {termSheetResult.comparison_notes && (
                   <div className="rounded-lg border bg-primary/5 border-primary/20 p-2.5">
                     <p className="text-[10px] font-semibold text-primary mb-1">📊 MARKET COMPARISON</p>
@@ -474,7 +420,6 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
             </CollapsibleSection>
           )}
 
-          {/* Follow-Up Sequence Result */}
           {followSequenceResult && (
             <CollapsibleSection
               title="Follow-Up Plan"
@@ -484,7 +429,6 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
               onClear={() => clearResult('follow_up_sequence')}
             >
               <div className="space-y-2">
-                {/* Status Header */}
                 <div className={cn(
                   'rounded-lg border p-2.5',
                   followSequenceResult.status === 'stale' ? 'bg-destructive/5 border-destructive/20' :
@@ -501,17 +445,13 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
                       {followSequenceResult.status?.replace(/_/g, ' ')}
                     </Badge>
                     {followSequenceResult.days_silent != null && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {followSequenceResult.days_silent}d silent
-                      </span>
+                      <span className="text-[10px] text-muted-foreground">{followSequenceResult.days_silent}d silent</span>
                     )}
                   </div>
                   {followSequenceResult.context_notes && (
                     <p className="text-[11px] text-foreground/70 mt-1.5">{followSequenceResult.context_notes}</p>
                   )}
                 </div>
-
-                {/* Sequence Steps */}
                 {followSequenceResult.recommended_sequence?.length > 0 && (
                   <div className="space-y-1.5">
                     {followSequenceResult.recommended_sequence.map((step: any, i: number) => (
@@ -534,12 +474,7 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
                         {step.draft && (
                           <div className="ml-7">
                             <p className="text-[11px] text-foreground/80 italic leading-relaxed">{step.draft}</p>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 text-[10px] gap-1 mt-1 px-2"
-                              onClick={() => handleCopyDraft(step.draft)}
-                            >
+                            <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 mt-1 px-2" onClick={() => handleCopyDraft(step.draft)}>
                               <Copy className="h-2.5 w-2.5" /> Copy
                             </Button>
                           </div>
@@ -548,8 +483,6 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
                     ))}
                   </div>
                 )}
-
-                {/* Escalation Trigger */}
                 {followSequenceResult.escalation_trigger && (
                   <div className="rounded-lg border bg-destructive/5 border-destructive/20 p-2.5">
                     <p className="text-[10px] font-semibold text-destructive mb-1">Escalation Trigger</p>
@@ -560,7 +493,6 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
             </CollapsibleSection>
           )}
 
-          {/* Thread Summary Result */}
           {summaryResult && (
             <CollapsibleSection
               title="Thread Summary"
@@ -582,8 +514,7 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
                     <ul className="space-y-1">
                       {summaryResult.action_items.map((item: string, i: number) => (
                         <li key={i} className="text-xs text-foreground/80 flex gap-1.5">
-                          <span className="text-amber-400 shrink-0">•</span>
-                          {item}
+                          <span className="text-amber-400 shrink-0">•</span>{item}
                         </li>
                       ))}
                     </ul>
@@ -595,8 +526,7 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
                     <ul className="space-y-1">
                       {summaryResult.next_steps.map((item: string, i: number) => (
                         <li key={i} className="text-xs text-foreground/80 flex gap-1.5">
-                          <span className="text-primary shrink-0">→</span>
-                          {item}
+                          <span className="text-primary shrink-0">→</span>{item}
                         </li>
                       ))}
                     </ul>
@@ -606,7 +536,6 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
             </CollapsibleSection>
           )}
 
-          {/* Signal Detection Result */}
           {signalResult?.signals?.length > 0 && (
             <CollapsibleSection
               title="Detected Signals"
@@ -617,23 +546,16 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
             >
               <div className="space-y-1.5">
                 {signalResult.signals.map((signal: any, i: number) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      'rounded-lg border p-2.5',
-                      signal.urgency === 'high' ? 'bg-destructive/5 border-destructive/20' :
-                      signal.type === 'positive_signal' ? 'bg-emerald-500/5 border-emerald-500/20' :
-                      'bg-card/60 border-border/50'
-                    )}
-                  >
+                  <div key={i} className={cn(
+                    'rounded-lg border p-2.5',
+                    signal.urgency === 'high' ? 'bg-destructive/5 border-destructive/20' :
+                    signal.type === 'positive_signal' ? 'bg-emerald-500/5 border-emerald-500/20' :
+                    'bg-card/60 border-border/50'
+                  )}>
                     <div className="flex items-center gap-1.5 mb-1">
-                      {signal.type === 'risk_flag' ? (
-                        <AlertTriangle className="h-3 w-3 text-destructive" />
-                      ) : signal.type === 'positive_signal' ? (
-                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                      ) : (
-                        <Zap className="h-3 w-3 text-primary" />
-                      )}
+                      {signal.type === 'risk_flag' ? <AlertTriangle className="h-3 w-3 text-destructive" /> :
+                       signal.type === 'positive_signal' ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> :
+                       <Zap className="h-3 w-3 text-primary" />}
                       <Badge variant="outline" className={cn(
                         'text-[9px] h-4',
                         signal.urgency === 'high' ? 'border-destructive/30 text-destructive' :
@@ -642,21 +564,16 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
                       )}>
                         {signal.urgency}
                       </Badge>
-                      {signal.lender_name && (
-                        <span className="text-[10px] text-muted-foreground truncate">{signal.lender_name}</span>
-                      )}
+                      {signal.lender_name && <span className="text-[10px] text-muted-foreground truncate">{signal.lender_name}</span>}
                     </div>
                     <p className="text-xs text-foreground/80">{signal.description}</p>
-                    {signal.suggested_action && (
-                      <p className="text-[11px] text-primary mt-1">→ {signal.suggested_action}</p>
-                    )}
+                    {signal.suggested_action && <p className="text-[11px] text-primary mt-1">→ {signal.suggested_action}</p>}
                   </div>
                 ))}
               </div>
             </CollapsibleSection>
           )}
 
-          {/* Data Extraction Result */}
           {extractResult?.terms?.length > 0 && (
             <CollapsibleSection
               title="Extracted Data"
@@ -701,7 +618,6 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
             </CollapsibleSection>
           )}
 
-          {/* Follow-Up Check Result */}
           {followUpResult && (
             <CollapsibleSection
               title="Follow-up Status"
@@ -712,9 +628,9 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
             >
               <div className={cn(
                 'rounded-lg border p-3',
-                followUpResult.needs_follow_up 
-                  ? followUpResult.urgency === 'high' 
-                    ? 'bg-destructive/5 border-destructive/20' 
+                followUpResult.needs_follow_up
+                  ? followUpResult.urgency === 'high'
+                    ? 'bg-destructive/5 border-destructive/20'
                     : 'bg-amber-500/5 border-amber-500/20'
                   : 'bg-emerald-500/5 border-emerald-500/20'
               )}>
@@ -743,7 +659,6 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote, onInsertDraft }:
             </CollapsibleSection>
           )}
 
-          {/* Deal Context Badge */}
           <div className="rounded-lg border bg-muted/20 p-3 mt-2">
             <div className="flex items-center gap-2 mb-1">
               <Link2 className="h-3.5 w-3.5 text-primary" />
@@ -812,48 +727,9 @@ function CollapsibleSection({
             <TooltipContent side="left" className="text-xs">Clear</TooltipContent>
           </Tooltip>
         )}
-        {expanded ? (
-          <ChevronDown className="h-3 w-3 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-3 w-3 text-muted-foreground" />
-        )}
+        {expanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
       </button>
       {expanded && <div className="px-3 pb-3 pt-1">{children}</div>}
     </div>
-  );
-}
-
-// ─── Smart Action Button ───
-function SmartButton({
-  icon: Icon,
-  label,
-  loading,
-  onClick,
-  highlight,
-}: {
-  icon: any;
-  label: string;
-  loading?: boolean;
-  onClick: () => void;
-  highlight?: boolean;
-}) {
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      className={cn(
-        'h-9 text-[11px] gap-1.5 justify-start px-2.5 font-normal',
-        highlight && 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'
-      )}
-      onClick={onClick}
-      disabled={loading}
-    >
-      {loading ? (
-        <Loader2 className="h-3 w-3 animate-spin shrink-0" />
-      ) : (
-        <Icon className="h-3 w-3 shrink-0" />
-      )}
-      {label}
-    </Button>
   );
 }

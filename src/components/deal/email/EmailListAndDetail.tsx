@@ -27,6 +27,9 @@ import {
   FileText,
   ChevronsUpDown,
   MoreHorizontal,
+  Bold,
+  Italic,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
@@ -67,7 +70,7 @@ function AiSummaryStrip({ email }: { email: MockEmail }) {
   );
 }
 
-// ─── Avatar ──────────────────────────────────────────────────
+// ─── Avatar (Fix #4: minimum contrast) ──────────────────────
 function EmailAvatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
   const colorClass = getAvatarColor(name);
   const sizeClass = size === 'sm' ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-xs';
@@ -443,7 +446,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   const handleReply = useCallback(() => {
     if (popOutDraft) return;
-    // If there's a saved draft, resume it
     const saved = loadDraft();
     if (saved) {
       setInlineDraft(saved);
@@ -489,13 +491,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   }, [getReplyTarget]);
 
   // ─── Thread collapse/expand state ────────────────────────────
-  const VISIBLE_RECENT = 3; // Number of recent messages shown by default
+  const VISIBLE_RECENT = 3;
   const totalMessages = thread.emails.length;
   const shouldAutoCollapse = totalMessages > 5;
   const [olderExpanded, setOlderExpanded] = useState(false);
   const [userExpandedMessages, setUserExpandedMessages] = useState<Set<string>>(new Set());
 
-  // Reset collapse state when thread changes
   useEffect(() => {
     setOlderExpanded(false);
     setUserExpandedMessages(new Set());
@@ -507,7 +508,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   const handleExpandAll = () => {
     setOlderExpanded(true);
-    // Mark all messages as user-expanded
     const allIds = new Set(thread.emails.map(e => e.id));
     setUserExpandedMessages(allIds);
   };
@@ -539,7 +539,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       <div className="flex h-full relative overflow-hidden">
         {/* Main thread view */}
         <div className="flex flex-col flex-1 min-w-0">
-          {/* Sticky header toolbar */}
+          {/* Fix #7: Sticky header toolbar — consolidated, no separate message count/sender header */}
           <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/60 backdrop-blur-sm sticky top-0 z-10 shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-8 w-8">
               <ChevronLeft className="h-4 w-4" />
@@ -547,9 +547,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold truncate">{thread.subject}</h3>
-              <p className="text-[11px] text-muted-foreground">
-                {thread.emails.length} message{thread.emails.length !== 1 ? 's' : ''} · {thread.participants.join(', ') || 'You'}
-              </p>
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
@@ -578,7 +575,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
                     <Forward className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Forward</span>
                     <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">F</kbd>
                   </Button>
                 </TooltipTrigger>
@@ -593,17 +589,16 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
               </Tooltip>
+              {/* Fix #3: "Link Deal" with icon-only + tooltip, shrink-0 */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant={thread.isLinked ? 'secondary' : 'outline'}
-                    size="sm"
-                    className="h-8 gap-1.5 text-xs"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
                     onClick={() => onToggleLink(thread.latestEmail)}
                   >
                     {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                    <span className="hidden sm:inline">{thread.isLinked ? 'Unlink' : 'Link'}</span>
-                    <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">L</kbd>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">{thread.isLinked ? 'Unlink from deal (L)' : 'Link to deal (L)'}</TooltipContent>
@@ -638,7 +633,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 </div>
               )}
 
-              {/* Newest messages — always visible */}
+              {/* Messages */}
               {thread.emails.slice(0, shouldAutoCollapse && !olderExpanded ? VISIBLE_RECENT : undefined).map((email, idx) => (
                 <ThreadMessage
                   key={email.id}
@@ -660,7 +655,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 <CollapsedMessagesBar count={hiddenCount} onExpand={() => setOlderExpanded(true)} />
               )}
 
-              {/* Older messages — shown when expanded */}
+              {/* Older messages */}
               {olderExpanded && shouldAutoCollapse && thread.emails.slice(VISIBLE_RECENT).map((email) => (
                 <ThreadMessage
                   key={email.id}
@@ -692,7 +687,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 </div>
               )}
 
-              {/* Reply prompt at bottom of thread when no composer is open */}
+              {/* Reply prompt at bottom */}
               {!replyTo && !popOutDraft && !showResumeBanner && (
                 <div className="mx-4 mb-3">
                   <button
@@ -725,7 +720,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         </div>
       </div>
 
-      {/* Pop-out composer - rendered as portal at fixed position */}
+      {/* Pop-out composer */}
       {popOutDraft && (
         <PopOutComposer
           draft={popOutDraft}

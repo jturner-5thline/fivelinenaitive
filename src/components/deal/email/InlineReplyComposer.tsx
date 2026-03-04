@@ -30,6 +30,9 @@ import {
   Check,
   AlertCircle,
   Cloud,
+  Bold,
+  Italic,
+  Link,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -91,7 +94,6 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
   const [expanded, setExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus textarea on mount
   useEffect(() => {
     setTimeout(() => textareaRef.current?.focus(), 100);
   }, []);
@@ -102,7 +104,6 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
     toName: replyTo.to_name,
   }), [to, cc, bcc, subject, body, attachments, replyTo]);
 
-  // Notify parent of draft changes for autosave
   useEffect(() => {
     onDraftChange?.(getCurrentDraft());
   }, [to, cc, bcc, subject, body, attachments]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -166,7 +167,6 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
       const end = ta.selectionEnd;
       const newBody = body.slice(0, start) + text + body.slice(end);
       setBody(newBody);
-      // Restore cursor after insertion
       setTimeout(() => {
         ta.focus();
         ta.setSelectionRange(start + text.length, start + text.length);
@@ -175,6 +175,28 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
       setBody(prev => prev + text);
     }
   }, [body]);
+
+  // Fix #11: formatting helpers
+  const insertFormatting = (prefix: string, suffix: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = body.slice(start, end);
+    const newBody = body.slice(0, start) + prefix + selected + suffix + body.slice(end);
+    setBody(newBody);
+    setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(start + prefix.length, end + prefix.length);
+    }, 0);
+  };
+
+  const handleBold = () => insertFormatting('**', '**');
+  const handleItalic = () => insertFormatting('*', '*');
+  const handleLink = () => {
+    const url = prompt('Enter URL:');
+    if (url) insertFormatting('[', `](${url})`);
+  };
 
   const defaultTokenContext: TokenContext = tokenContext || {
     recipientName: replyTo.to_name,
@@ -240,13 +262,14 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
           Reply to {replyTo.to_name}
         </span>
         <DraftStatusIndicator status={saveStatus} />
+        {/* Fix #15: Tooltips on expand/pop-out icons */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setExpanded(!expanded)}>
               {expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">{expanded ? 'Collapse' : 'Expand'}</TooltipContent>
+          <TooltipContent side="top" className="text-xs">{expanded ? 'Collapse composer' : 'Expand composer'}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -254,7 +277,7 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
               <Maximize2 className="h-3 w-3 rotate-90" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">Pop out</TooltipContent>
+          <TooltipContent side="top" className="text-xs">Pop out to window</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -313,6 +336,19 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
         )}
       </div>
 
+      {/* Fix #11: Formatting toolbar */}
+      <div className="flex items-center gap-1 px-4 h-7 border-b border-border">
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBold}>
+          <Bold className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleItalic}>
+          <Italic className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleLink}>
+          <Link className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
       {/* Body */}
       <div className="px-4 flex-1 min-h-0">
         <Textarea
@@ -359,7 +395,8 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
           <Paperclip className="h-3 w-3" />Attach
         </Button>
         <SnippetPicker onInsert={handleInsertSnippet} tokenContext={defaultTokenContext} />
-        <span className="text-[10px] text-muted-foreground ml-1">⌘↵ to send</span>
+        {/* Fix #12: kbd badge for shortcut hint */}
+        <kbd className="text-[10px] bg-muted border border-border rounded px-1 py-0.5 text-muted-foreground ml-1">⌘↵</kbd>
         <div className="flex-1" />
         {discardButton}
       </div>
