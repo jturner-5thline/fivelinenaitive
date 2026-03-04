@@ -189,12 +189,12 @@ export function LenderSuggestionsPanel({
                       size="sm"
                       onClick={handleOpenSurvey}
                       className={hasMissingCriteria 
-                        ? "gap-1.5 animate-[pulse_5s_cubic-bezier(0.4,0,0.6,1)_infinite]" 
+                        ? "gap-1.5 border-l-4 border-l-red-400" 
                         : "gap-1.5 bg-primary/90 hover:bg-primary"
                       }
                     >
                       {hasMissingCriteria ? (
-                        <AlertCircle className="h-3.5 w-3.5" />
+                        <AlertCircle className="h-3.5 w-3.5 animate-bounce [animation-iteration-count:3] [animation-duration:0.4s]" />
                       ) : (
                         <ClipboardList className="h-3.5 w-3.5" />
                       )}
@@ -342,12 +342,12 @@ export function LenderSuggestionsFAB({
                       size="sm"
                       onClick={() => setShowSurvey(true)}
                       className={hasMissingCriteriaFAB 
-                        ? "gap-1.5 animate-[pulse_5s_cubic-bezier(0.4,0,0.6,1)_infinite]" 
+                        ? "gap-1.5 border-l-4 border-l-red-400" 
                         : "gap-1.5 bg-primary/90 hover:bg-primary"
                       }
                     >
                       {hasMissingCriteriaFAB ? (
-                        <AlertCircle className="h-3.5 w-3.5" />
+                        <AlertCircle className="h-3.5 w-3.5 animate-bounce [animation-iteration-count:3] [animation-duration:0.4s]" />
                       ) : (
                         <ClipboardList className="h-3.5 w-3.5" />
                       )}
