@@ -444,9 +444,10 @@ export function useLenderMatching(
     
     // Fix #2: Actually filter out lenders whose names match excludeNames
     const excludeNamesSet = new Set(excludeNames.map(n => n.toLowerCase().trim()));
-    const nameFilteredLenders = excludeNamesSet.size > 0
-      ? masterLenders.filter(l => !excludeNamesSet.has(l.name.toLowerCase().trim()))
-      : masterLenders;
+    // Filter out inactive lenders and excluded names
+    const nameFilteredLenders = masterLenders
+      .filter(l => l.active !== false)
+      .filter(l => excludeNamesSet.size === 0 || !excludeNamesSet.has(l.name.toLowerCase().trim()));
     
     // Apply criteria matching
     const filterInput = dealCriteriaToFilterInput(criteria, parseCapitalAsk);
