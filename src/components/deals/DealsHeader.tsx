@@ -85,7 +85,7 @@ export function DealsHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
-          <div className="w-36 sm:w-52">
+          <div className="shrink-0">
             <GlobalSearchAI />
           </div>
           {!location.pathname.startsWith('/deal/') && (

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { 
   Search, Briefcase, Users, FileText, Settings, Lightbulb, BarChart3,
@@ -63,10 +64,21 @@ export function GlobalSearchAI() {
   const [query, setQuery] = useState("");
   const [isAISearching, setIsAISearching] = useState(false);
   const [aiResult, setAIResult] = useState<AISearchResult | null>(null);
+  const [shouldPulse, setShouldPulse] = useState(false);
   const navigate = useNavigate();
   const { deals } = useDealsContext();
   const { lenders } = useLenders();
   const { user } = useAuth();
+
+  // One-time glow pulse on first session load
+  useEffect(() => {
+    if (!sessionStorage.getItem('search-pulse-shown')) {
+      setShouldPulse(true);
+      sessionStorage.setItem('search-pulse-shown', '1');
+      const timer = setTimeout(() => setShouldPulse(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Keyboard shortcut
   useEffect(() => {
@@ -200,14 +212,18 @@ export function GlobalSearchAI() {
     <>
       <Button
         variant="outline"
-        className="relative h-8 w-full justify-start rounded-md bg-muted/50 text-xs font-normal text-muted-foreground shadow-none sm:pr-12"
+        className={cn(
+          "relative h-8 w-[260px] sm:w-[280px] justify-start rounded-md bg-muted/50 text-xs font-normal text-muted-foreground shadow-none sm:pr-12",
+          "border border-primary/40 hover:border-primary focus-visible:border-primary",
+          shouldPulse && "animate-glow-pulse"
+        )}
         onClick={() => setOpen(true)}
       >
         <Sparkles className="mr-1.5 h-3.5 w-3.5 text-primary" />
-        <span className="hidden sm:inline-flex">Search...</span>
+        <span className="hidden sm:inline-flex">Search deals, lenders...</span>
         <span className="inline-flex sm:hidden">Search</span>
-        <kbd className="pointer-events-none absolute right-[0.3rem] top-[0.3rem] hidden h-4 select-none items-center gap-1 rounded border bg-muted px-1 font-mono text-[9px] font-medium opacity-100 sm:flex">
-          <span className="text-[9px]">⌘</span>K
+        <kbd className="pointer-events-none absolute right-[0.3rem] top-[0.3rem] hidden h-5 select-none items-center gap-1 rounded border border-border/50 bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground/80 sm:flex">
+          <span className="text-[10px]">⌘</span>K
         </kbd>
       </Button>
 
