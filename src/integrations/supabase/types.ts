@@ -3496,6 +3496,7 @@ export type Database = {
           pre_signing_hours: number | null
           referred_by: string | null
           retainer_fee: number | null
+          sourced_via: string | null
           stage: string
           status: string
           success_fee_percent: number | null
@@ -3532,6 +3533,7 @@ export type Database = {
           pre_signing_hours?: number | null
           referred_by?: string | null
           retainer_fee?: number | null
+          sourced_via?: string | null
           stage?: string
           status?: string
           success_fee_percent?: number | null
@@ -3568,6 +3570,7 @@ export type Database = {
           pre_signing_hours?: number | null
           referred_by?: string | null
           retainer_fee?: number | null
+          sourced_via?: string | null
           stage?: string
           status?: string
           success_fee_percent?: number | null

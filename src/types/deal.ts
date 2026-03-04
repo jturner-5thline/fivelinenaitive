@@ -98,6 +98,7 @@ export interface Deal {
   migratedFromPersonal?: boolean;
   pipelineId?: string;
   closingDate?: string | null;
+  sourcedVia?: string;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {

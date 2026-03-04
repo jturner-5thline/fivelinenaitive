@@ -306,6 +306,7 @@ export function useDealsDatabase() {
       contactInfo: dbDeal.contact_info || undefined,
       companyUrl: (dbDeal as any).company_url || undefined,
       businessModel: (dbDeal as any).business_model || undefined,
+      sourcedVia: (dbDeal as any).sourced_via || undefined,
       createdAt: dbDeal.created_at,
       updatedAt: dbDeal.updated_at,
       lenders: dealLenders,
@@ -608,6 +609,7 @@ export function useDealsDatabase() {
       if (updates.businessModel !== undefined) dbUpdates.business_model = updates.businessModel;
       if (updates.closingDate !== undefined) dbUpdates.closing_date = updates.closingDate;
       if (updates.pipelineId !== undefined) dbUpdates.pipeline_id = updates.pipelineId;
+      if (updates.sourcedVia !== undefined) dbUpdates.sourced_via = updates.sourcedVia;
 
       const { error } = await supabase
         .from('deals')
