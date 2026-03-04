@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown, History, Clock, MessageSquare as MessageSquareIcon } from 'lucide-react';
+import { CopyableText } from '@/components/ui/CopyableText';
 import { LenderNotesPopover, LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
 import {
   Dialog,
@@ -1416,17 +1417,13 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 {lender.contact.email && (
                                   <div className="flex items-center gap-3">
                                     <Mail className="h-4 w-4 text-muted-foreground" />
-                                    <a href={`mailto:${lender.contact.email}`} className="text-primary hover:underline">
-                                      {lender.contact.email}
-                                    </a>
+                                    <CopyableText text={lender.contact.email} href={`mailto:${lender.contact.email}`} className="text-primary hover:underline" iconSize="h-3.5 w-3.5" />
                                   </div>
                                 )}
                                 {lender.contact.phone && (
                                   <div className="flex items-center gap-3">
                                     <Phone className="h-4 w-4 text-muted-foreground" />
-                                    <a href={`tel:${lender.contact.phone}`} className="hover:underline">
-                                      {lender.contact.phone}
-                                    </a>
+                                    <CopyableText text={lender.contact.phone} href={`tel:${lender.contact.phone}`} className="hover:underline" iconSize="h-3.5 w-3.5" />
                                   </div>
                                 )}
                                 {!lender.contact.name && !lender.contact.email && !lender.contact.phone && additionalContacts.length === 0 && (
