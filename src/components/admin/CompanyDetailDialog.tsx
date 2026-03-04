@@ -11,9 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Building2, Users, Activity, TrendingUp, Ban, CheckCircle,
-  DollarSign, Briefcase, Clock, AlertTriangle, Trash2, Archive, ArchiveRestore
+  DollarSign, Briefcase, Clock, AlertTriangle, Trash2, Archive, ArchiveRestore, Settings
 } from "lucide-react";
 import { useCompanyMembers, useCompanyStats, useCompanyActivity, useToggleCompanySuspension, useDeleteCompany, useToggleCompanyArchive } from "@/hooks/useAdminData";
+import { CompanyConfigOverview } from "./CompanyConfigOverview";
 
 interface Company {
   id: string;
@@ -158,7 +159,7 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
         )}
 
         <Tabs defaultValue="stats" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="stats" className="gap-2">
               <TrendingUp className="h-4 w-4" />
               Stats
@@ -166,6 +167,10 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
             <TabsTrigger value="members" className="gap-2">
               <Users className="h-4 w-4" />
               Members
+            </TabsTrigger>
+            <TabsTrigger value="config" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Config
             </TabsTrigger>
             <TabsTrigger value="activity" className="gap-2">
               <Activity className="h-4 w-4" />
@@ -264,6 +269,10 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="config" className="m-0">
+              <CompanyConfigOverview companyId={company.id} editable />
             </TabsContent>
 
             <TabsContent value="activity" className="m-0">
