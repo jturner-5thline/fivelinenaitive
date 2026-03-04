@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { User, Mail, Building2, DollarSign, Briefcase, Clock, Calendar, ExternalLink } from 'lucide-react';
+import { CopyableText } from '@/components/ui/CopyableText';
 import {
   Dialog,
   DialogContent,
@@ -116,12 +117,7 @@ export function InfoRequestDetailDialog({ request, open, onOpenChange }: InfoReq
                   {email && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Mail className="h-3.5 w-3.5" />
-                      <a 
-                        href={`mailto:${email}`} 
-                        className="hover:underline truncate"
-                      >
-                        {email}
-                      </a>
+                      <CopyableText text={email} href={`mailto:${email}`} className="hover:underline" />
                     </div>
                   )}
                   {profile?.first_name && profile?.last_name && request.requester_name && 

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
 import { ChevronDown, ChevronUp, Plus, Search, Building2, Mail, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, Loader2 } from 'lucide-react';
+import { CopyableText } from '@/components/ui/CopyableText';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -364,9 +365,7 @@ function LenderMatchCard({ match, onAdd, badgeVariant }: LenderMatchCardProps) {
               {lender.contact_name && <span>{lender.contact_name}</span>}
               {lender.contact_name && lender.email && <span>·</span>}
               {lender.email && (
-                <a href={`mailto:${lender.email}`} className="hover:text-primary truncate">
-                  {lender.email}
-                </a>
+                <CopyableText text={lender.email} href={`mailto:${lender.email}`} className="hover:text-primary" />
               )}
             </div>
           )}

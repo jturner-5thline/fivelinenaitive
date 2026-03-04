@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { User, Mail, Phone, Briefcase, Trash2, Star, MapPin, Pencil, Check, ChevronsUpDown, X } from 'lucide-react';
+import { CopyableText } from '@/components/ui/CopyableText';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -227,17 +228,13 @@ export function LenderContactsList({ contacts, onDelete, onUpdate, isEditMode }:
               {contact.email && (
                 <div className="flex items-center gap-2 text-sm">
                   <Mail className="h-3 w-3 text-muted-foreground" />
-                  <a href={`mailto:${contact.email}`} className="text-primary hover:underline truncate">
-                    {contact.email}
-                  </a>
+                  <CopyableText text={contact.email} href={`mailto:${contact.email}`} className="text-primary hover:underline" />
                 </div>
               )}
               {contact.phone && (
                 <div className="flex items-center gap-2 text-sm">
                   <Phone className="h-3 w-3 text-muted-foreground" />
-                  <a href={`tel:${contact.phone}`} className="hover:underline">
-                    {contact.phone}
-                  </a>
+                  <CopyableText text={contact.phone} href={`tel:${contact.phone}`} className="hover:underline" />
                 </div>
               )}
               <EditableField

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
 import { ChevronDown, Plus, Search, Building2, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, CheckSquare, Brain, Ban, Loader2 } from 'lucide-react';
+import { CopyableText } from '@/components/ui/CopyableText';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -701,9 +702,7 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
               {lender.contact_name && <span className="truncate">{lender.contact_name}</span>}
               {lender.contact_name && lender.email && <span>·</span>}
               {lender.email && (
-                <a href={`mailto:${lender.email}`} className="hover:text-primary truncate">
-                  {lender.email}
-                </a>
+                <CopyableText text={lender.email} href={`mailto:${lender.email}`} className="hover:text-primary" />
               )}
             </div>
           )}
