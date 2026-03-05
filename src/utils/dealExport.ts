@@ -4,6 +4,12 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, Width
 import { saveAs } from 'file-saver';
 import { Deal, DealStatus, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 
+// Helper to resolve tracking status label with fallback
+const getTrackingStatusLabel = (trackingStatus: string, trackingStatusConfig?: Record<string, { label: string; color: string }>) => {
+  if (trackingStatusConfig?.[trackingStatus]) return trackingStatusConfig[trackingStatus].label;
+  return LENDER_TRACKING_STATUS_CONFIG[trackingStatus as keyof typeof LENDER_TRACKING_STATUS_CONFIG]?.label || trackingStatus;
+};
+
 const formatCurrency = (value: number) => {
   if (value >= 1000000) {
     return `$${(value / 1000000).toFixed(1)}MM`;

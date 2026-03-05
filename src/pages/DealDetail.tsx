@@ -34,7 +34,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useProfile } from '@/hooks/useProfile';
-import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
 import { useLenderStages, STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
@@ -168,11 +168,13 @@ import { Label } from '@/components/ui/label';
 function EditableLenderDealTile({ 
   dealInfo, 
   configuredStages, 
-  updateLenderInDb 
+  updateLenderInDb,
+  trackingStatusConfig,
 }: { 
   dealInfo: { dealId: string; dealName: string; company: string; lenderInfo?: DealLender };
   configuredStages: { id: string; label: string; group: string }[];
   updateLenderInDb: (lenderId: string, updates: Partial<DealLender>) => Promise<void>;
+  trackingStatusConfig: Record<string, { label: string; color: string }>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editStage, setEditStage] = useState(dealInfo.lenderInfo?.stage || '');
@@ -265,7 +267,7 @@ function EditableLenderDealTile({
               {configuredStages.find(s => s.id === dealInfo.lenderInfo!.stage)?.label || dealInfo.lenderInfo.stage}
             </Badge>
             <Badge variant="secondary" className="text-xs">
-              {LENDER_TRACKING_STATUS_CONFIG[dealInfo.lenderInfo.trackingStatus].label}
+              {trackingStatusConfig[dealInfo.lenderInfo.trackingStatus]?.label || dealInfo.lenderInfo.trackingStatus}
             </Badge>
             <button
               className="p-1 rounded hover:bg-background/80 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
@@ -467,7 +469,7 @@ export default function DealDetail() {
   const initialTab = searchParams.get('tab') as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading } = useMasterLenders();
-  const { stages: configuredStages, substages: configuredSubstages, passReasons } = useLenderStages();
+  const { stages: configuredStages, substages: configuredSubstages, passReasons, getTrackingStatusConfig } = useLenderStages();
   const { dealTypes: availableDealTypes } = useDealTypes();
   const { stages: dealStages, getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
@@ -4682,6 +4684,7 @@ export default function DealDetail() {
                           dealInfo={dealInfo}
                           configuredStages={configuredStages}
                           updateLenderInDb={updateLenderInDb}
+                          trackingStatusConfig={getTrackingStatusConfig()}
                         />
                       ))}
                     </div>

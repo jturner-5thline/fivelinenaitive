@@ -4,7 +4,7 @@ import { LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, rectIntersection } from '@dnd-kit/core';
 import { DealLender } from '@/types/deal';
 import { OutstandingItem } from '@/hooks/useOutstandingItems';
-import { STAGE_GROUPS, StageGroup, PassReasonOption } from '@/contexts/LenderStagesContext';
+import { STAGE_GROUPS, StageGroup, PassReasonOption, TrackingStatusOption } from '@/contexts/LenderStagesContext';
 import { cn } from '@/lib/utils';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import {
