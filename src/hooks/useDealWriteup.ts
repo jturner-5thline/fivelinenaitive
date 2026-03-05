@@ -125,6 +125,7 @@ export function useDealWriteup(dealId: string | undefined) {
         publish_as_anonymous: data.publishAsAnonymous,
         team: data.team as unknown as Json,
         visible_metrics: data.visibleMetrics as unknown as Json,
+        disclaimer: data.disclaimer || null,
       };
 
       if (writeup) {
@@ -240,6 +241,7 @@ export function useDealWriteup(dealId: string | undefined) {
       publishAsAnonymous: row.publish_as_anonymous || false,
       team,
       visibleMetrics: ((row as any).visible_metrics as VisibleMetrics) || { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true },
+      disclaimer: (row as any).disclaimer || '',
     };
   }, []);
 

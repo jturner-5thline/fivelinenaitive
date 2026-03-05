@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
-import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, AlertTriangle } from 'lucide-react';
+import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, AlertTriangle, FileWarning } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -111,6 +112,7 @@ export interface DealWriteUpData {
   publishAsAnonymous: boolean;
   team: TeamMember[];
   visibleMetrics: VisibleMetrics;
+  disclaimer: string;
 }
 
 export interface VisibleMetrics {
@@ -155,6 +157,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   publishAsAnonymous: false,
   team: [],
   visibleMetrics: { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true },
+  disclaimer: '',
 });
 
 interface DealWriteUpProps {
@@ -271,6 +274,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [showUnpublishDialog, setShowUnpublishDialog] = useState(false);
   const [showEmptyFieldsWarning, setShowEmptyFieldsWarning] = useState(false);
+  const [showDisclaimerDialog, setShowDisclaimerDialog] = useState(false);
   const publishTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingPublishToastIdRef = useRef<string | number | null>(null);
@@ -1049,6 +1053,22 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <TooltipContent>Generate a structured lender-ready memo from all deal data</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDisclaimerDialog(true)}
+                      className="gap-2"
+                    >
+                      <FileWarning className="h-4 w-4" />
+                      Disclaimer
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Add or edit a disclaimer for this deal write-up</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {autoFilledFields.size > 0 && (
                 <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20">
                   <Sparkles className="h-3 w-3" />
@@ -1555,6 +1575,29 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               className="gap-2"
             >
               Copy Memo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disclaimer Dialog */}
+      <Dialog open={showDisclaimerDialog} onOpenChange={setShowDisclaimerDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Disclaimer</DialogTitle>
+            <DialogDescription>
+              Add a disclaimer or legal notice for this deal write-up.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={data.disclaimer}
+            onChange={(e) => updateField('disclaimer', e.target.value)}
+            placeholder="Enter disclaimer text..."
+            className="min-h-[150px]"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDisclaimerDialog(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
