@@ -139,10 +139,10 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                 "flex items-center gap-2 flex-1 px-3 py-2.5 -mx-3 rounded-lg",
                 "cursor-pointer transition-all duration-200",
                 "border border-transparent",
-                "hover:bg-white/[0.08] hover:border-border/40 hover:shadow-[0_0_16px_rgba(126,184,247,0.1)]",
+                "hover:bg-white/[0.08] hover:shadow-[0_0_16px_rgba(126,184,247,0.1)]",
                 "active:scale-[0.99]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                !isExpanded && "bg-white/[0.04] border-border/20"
+                !isExpanded && "bg-white/[0.04]"
               )}
               aria-expanded={isExpanded}
             >
