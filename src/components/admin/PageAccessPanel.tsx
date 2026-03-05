@@ -155,6 +155,12 @@ const pageConfigs: PageConfig[] = [
     description: "Master lender directory and management",
     icon: <Building2 className="h-5 w-5" />
   },
+  { 
+    featureKey: "lender_matching", 
+    label: "Lender Matching", 
+    description: "AI-powered lender suggestions and matching algorithm in deal detail",
+    icon: <Sparkles className="h-5 w-5" />
+  },
 ];
 
 const statusConfig: Record<
