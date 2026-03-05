@@ -1,9 +1,8 @@
-import { KeyboardEvent, RefObject, useState, useCallback } from 'react';
+import { KeyboardEvent, RefObject, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { type Task } from '@/hooks/useTasks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -30,20 +29,20 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import confetti from 'canvas-confetti';
-import { addDays, isToday, isTomorrow, isThisWeek, isPast, format, startOfDay, nextMonday } from 'date-fns';
+import { addDays, isToday, isTomorrow, isThisWeek, isPast, format, startOfDay, nextMonday, differenceInDays } from 'date-fns';
 
-const PRIORITY_CONFIG: Record<string, { label: string; className: string }> = {
-  urgent: { label: 'Urgent', className: 'bg-destructive/10 text-destructive border-destructive/20' },
-  high: { label: 'High', className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' },
-  medium: { label: 'Medium', className: 'bg-primary/10 text-primary border-primary/20' },
-  low: { label: 'Low', className: 'bg-muted text-muted-foreground border-border' },
+const STATUS_COLORS: Record<string, { label: string; bg: string; dot: string }> = {
+  not_started: { label: 'Not Started', bg: '#6b7280', dot: '#6b7280' },
+  in_progress: { label: 'In Progress', bg: '#3b7eff', dot: '#3b7eff' },
+  blocked: { label: 'Blocked', bg: '#ff4d4d', dot: '#ff4d4d' },
+  complete: { label: 'Complete', bg: '#22c55e', dot: '#22c55e' },
 };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  not_started: { label: 'Not Started', color: 'bg-muted-foreground/20' },
-  in_progress: { label: 'In Progress', color: 'bg-primary' },
-  blocked: { label: 'Blocked', color: 'bg-destructive' },
-  complete: { label: 'Complete', color: 'bg-emerald-500' },
+const PRIORITY_PILL: Record<string, { label: string; bg: string }> = {
+  urgent: { label: 'Urgent', bg: '#ff4d4d' },
+  high: { label: 'High', bg: '#ff4d4d' },
+  medium: { label: 'Medium', bg: '#f59e0b' },
+  low: { label: 'Low', bg: '#6b7280' },
 };
 
 export type GroupBy = 'status' | 'time' | 'priority' | 'focus';
@@ -73,7 +72,6 @@ interface TaskListViewProps {
 }
 
 function getTimeGroups(tasks: Task[]) {
-  const today = startOfDay(new Date());
   const groups = [
     { key: 'overdue', label: '🔴 Overdue', tasks: [] as Task[] },
     { key: 'today', label: '📌 Today', tasks: [] as Task[] },
@@ -82,17 +80,9 @@ function getTimeGroups(tasks: Task[]) {
     { key: 'upcoming', label: 'Upcoming', tasks: [] as Task[] },
     { key: 'no_date', label: 'No Due Date', tasks: [] as Task[] },
   ];
-
   tasks.forEach(t => {
-    if (t.status === 'complete') {
-      // completed tasks go to upcoming by default
-      groups[4].tasks.push(t);
-      return;
-    }
-    if (!t.due_date) {
-      groups[5].tasks.push(t);
-      return;
-    }
+    if (t.status === 'complete') { groups[4].tasks.push(t); return; }
+    if (!t.due_date) { groups[5].tasks.push(t); return; }
     const d = new Date(t.due_date + 'T00:00:00');
     if (isPast(d) && !isToday(d)) groups[0].tasks.push(t);
     else if (isToday(d)) groups[1].tasks.push(t);
@@ -100,7 +90,6 @@ function getTimeGroups(tasks: Task[]) {
     else if (isThisWeek(d, { weekStartsOn: 1 })) groups[3].tasks.push(t);
     else groups[4].tasks.push(t);
   });
-
   return groups.filter(g => g.tasks.length > 0);
 }
 
@@ -108,7 +97,7 @@ function getPriorityGroups(tasks: Task[]) {
   const order = ['urgent', 'high', 'medium', 'low'];
   return order.map(key => ({
     key,
-    label: PRIORITY_CONFIG[key]?.label || key,
+    label: PRIORITY_PILL[key]?.label || key,
     tasks: tasks.filter(t => t.priority === key),
   })).filter(g => g.tasks.length > 0);
 }
@@ -117,40 +106,29 @@ function getFocusGroups(tasks: Task[]) {
   const today = startOfDay(new Date());
   const weekOut = addDays(today, 7);
   const groups = [
-    { key: 'overdue', label: '🔴 Overdue', tasks: [] as Task[], indicatorClass: 'bg-destructive' },
-    { key: 'due_today', label: '🟠 Due Today', tasks: [] as Task[], indicatorClass: 'bg-orange-500' },
-    { key: 'due_this_week', label: '🔵 Due This Week', tasks: [] as Task[], indicatorClass: 'bg-primary' },
-    { key: 'high_priority_not_started', label: '🟣 High Priority — Not Started', tasks: [] as Task[], indicatorClass: 'bg-purple-500' },
+    { key: 'overdue', label: '🔴 Overdue', tasks: [] as Task[] },
+    { key: 'due_today', label: '🟠 Due Today', tasks: [] as Task[] },
+    { key: 'due_this_week', label: '🔵 Due This Week', tasks: [] as Task[] },
+    { key: 'high_priority_not_started', label: '🟣 High Priority — Not Started', tasks: [] as Task[] },
   ];
-
   tasks.forEach(t => {
     if (t.status === 'complete') return;
-    const assigned: Set<string> = new Set();
-
+    const assigned = new Set<string>();
     if (t.due_date) {
       const d = new Date(t.due_date + 'T00:00:00');
       if (isPast(d) && !isToday(d)) { groups[0].tasks.push(t); assigned.add('overdue'); }
       else if (isToday(d)) { groups[1].tasks.push(t); assigned.add('due_today'); }
       else if (d > today && d <= weekOut) { groups[2].tasks.push(t); assigned.add('due_this_week'); }
     }
-
     if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started' && !assigned.has('overdue') && !assigned.has('due_today')) {
       groups[3].tasks.push(t);
     }
   });
-
-  // Always return all sections, even empty
   return groups;
 }
 
 function fireCelebration() {
-  confetti({
-    particleCount: 60,
-    spread: 55,
-    origin: { y: 0.7 },
-    colors: ['#10b981', '#059669', '#34d399'],
-    disableForReducedMotion: true,
-  });
+  confetti({ particleCount: 60, spread: 55, origin: { y: 0.7 }, colors: ['#10b981', '#059669', '#34d399'], disableForReducedMotion: true });
 }
 
 export function TaskListView({
@@ -172,93 +150,58 @@ export function TaskListView({
   const toggleSection = (key: string) => {
     setCollapsedSections(prev => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   };
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setDragActiveId(event.active.id as string);
-  };
-
+  const handleDragStart = (event: DragStartEvent) => setDragActiveId(event.active.id as string);
   const handleDragEnd = (event: DragEndEvent) => {
     setDragActiveId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-
-    // Find tasks and swap positions
     const activeTask = tasks.find(t => t.id === active.id);
     const overTask = tasks.find(t => t.id === over.id);
     if (!activeTask || !overTask) return;
-
-    // If dragged to different status section, update status
-    if (activeTask.status !== overTask.status) {
-      onUpdateTask(activeTask.id, { status: overTask.status } as any);
-    }
-
-    // Update position
+    if (activeTask.status !== overTask.status) onUpdateTask(activeTask.id, { status: overTask.status } as any);
     onUpdateTask(activeTask.id, { position: overTask.position } as any);
   };
 
   const handleCompleteWithCelebration = useCallback((taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'complete' ? 'not_started' : 'complete';
     onUpdateTask(taskId, { status: newStatus } as any);
-    if (newStatus === 'complete') {
-      fireCelebration();
-    }
+    if (newStatus === 'complete') fireCelebration();
   }, [onUpdateTask]);
 
   if (isLoading) {
-    return (
-      <div className="p-4 space-y-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full" />
-        ))}
-      </div>
-    );
+    return <div className="p-4 space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>;
   }
+
+  // Build overdue section
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const overdueTasks = tasks.filter(t =>
+    t.due_date && t.due_date < todayStr && t.status !== 'complete'
+  );
 
   // Build groups based on groupBy mode
   let groups: { key: string; label: string; tasks: Task[] }[];
-  if (groupBy === 'focus') {
-    groups = getFocusGroups(tasks);
-  } else if (groupBy === 'time') {
-    groups = getTimeGroups(tasks);
-  } else if (groupBy === 'priority') {
-    groups = getPriorityGroups(tasks);
-  } else {
-    groups = statusGroups.map(g => ({
-      key: g.key,
-      label: g.label,
-      tasks: tasks.filter(t => t.status === g.key),
-    }));
-  }
+  if (groupBy === 'focus') groups = getFocusGroups(tasks);
+  else if (groupBy === 'time') groups = getTimeGroups(tasks);
+  else if (groupBy === 'priority') groups = getPriorityGroups(tasks);
+  else groups = statusGroups.map(g => ({ key: g.key, label: g.label, tasks: tasks.filter(t => t.status === g.key) }));
 
   const allTaskIds = tasks.map(t => t.id);
   const draggedTask = dragActiveId ? tasks.find(t => t.id === dragActiveId) : null;
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="divide-y">
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div>
         {/* Column header */}
-        <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground bg-muted/30 sticky top-0 z-10">
+        <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_140px_100px_100px_40px] gap-2 items-center px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10"
+          style={{ backgroundColor: '#1a1f2e', color: '#8b92a5', borderBottom: '1px solid #2a2f3e' }}>
           <div />
-          <div
-            className="cursor-pointer"
-            onClick={onSelectAll}
-            title="Select all (Ctrl+A)"
-          >
-            <Checkbox
-              checked={selectedTaskIds && selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length}
-              onCheckedChange={() => onSelectAll?.()}
-              className="h-3.5 w-3.5"
-            />
+          <div className="cursor-pointer" onClick={onSelectAll} title="Select all (Ctrl+A)">
+            <Checkbox checked={selectedTaskIds && selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length} onCheckedChange={() => onSelectAll?.()} className="h-3.5 w-3.5" />
           </div>
           <div className="w-5" />
           <div />
@@ -271,103 +214,101 @@ export function TaskListView({
           <div />
         </div>
 
+        {/* Pinned Overdue section */}
+        {overdueTasks.length > 0 && groupBy === 'status' && (
+          <OverdueSection
+            tasks={overdueTasks}
+            todayStr={todayStr}
+            selectedTaskId={selectedTaskId}
+            selectedTaskIds={selectedTaskIds}
+            focusedTaskIndex={focusedTaskIndex}
+            allTasks={tasks}
+            onSelectTask={onSelectTask}
+            onUpdateTask={onUpdateTask}
+            onDeleteTask={onDeleteTask}
+            onToggleComplete={handleCompleteWithCelebration}
+            onToggleSelect={onToggleSelect}
+            onToggleStar={onToggleStar}
+          />
+        )}
+
         <SortableContext items={allTaskIds} strategy={verticalListSortingStrategy}>
           {groups.map(group => {
             const isCollapsed = collapsedSections.has(group.key);
+            const statusConf = STATUS_COLORS[group.key];
+            const accentColor = statusConf?.dot || '#8b92a5';
 
             return (
               <div key={group.key}>
                 {/* Section header */}
                 <button
                   onClick={() => toggleSection(group.key)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-4 py-2 hover:bg-muted/40 transition-colors text-left",
-                    groupBy === 'status' && group.key === 'blocked' && 'bg-[rgba(239,68,68,0.07)]'
-                  )}
+                  className="w-full flex items-center gap-2.5 px-4 h-11 transition-colors text-left"
+                  style={{
+                    borderLeft: `3px solid ${accentColor}`,
+                    backgroundColor: `${accentColor}0d`,
+                  }}
                 >
                   {isCollapsed ? (
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <ChevronRight className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
                   ) : (
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    <ChevronDown className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
                   )}
-                  {groupBy === 'status' && (
-                    <div className={cn('h-2 w-2 rounded-full', STATUS_CONFIG[group.key]?.color)} />
-                  )}
-                  <span className="text-xs font-semibold">{group.label}</span>
-                  <span className="text-[10px] text-muted-foreground ml-1">({group.tasks.length})</span>
+                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: accentColor }} />
+                  <span className="text-xs font-bold" style={{ color: 'white' }}>{group.label}</span>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: `${accentColor}25`, color: accentColor }}>
+                    {group.tasks.length}
+                  </span>
                   {group.key === 'complete' && (
-                    <span className="text-[10px] text-muted-foreground ml-2 hover:text-foreground transition-colors">
+                    <span className="text-[10px] ml-2" style={{ color: '#8b92a5' }}>
                       {isCollapsed ? 'Show completed' : 'Hide completed'}
                     </span>
                   )}
                 </button>
 
                 {!isCollapsed && (
-                  <div className="mx-3 mb-3 mt-1 rounded-lg border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] relative overflow-hidden before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)]">
-                    <div className="relative z-10">
-                      {group.tasks.map((task, taskIndex) => {
-                        // Calculate global index for focus tracking
-                        const globalIndex = tasks.indexOf(task);
-                        return (
-                          <SortableTaskRow
-                            key={task.id}
-                            task={task}
-                            isSelected={selectedTaskId === task.id}
-                            isMultiSelected={selectedTaskIds?.has(task.id) || false}
-                            isFocused={focusedTaskIndex === globalIndex}
-                            onSelect={() => onSelectTask(task.id)}
-                            onUpdate={(updates) => onUpdateTask(task.id, updates)}
-                            onDelete={() => onDeleteTask(task.id)}
-                            onToggleComplete={() => handleCompleteWithCelebration(task.id, task.status)}
-                            onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
-                            onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
-                            showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
-                          />
-                        );
-                      })}
+                  <div>
+                    {group.tasks.map(task => {
+                      const globalIndex = tasks.indexOf(task);
+                      return (
+                        <SortableTaskRow
+                          key={task.id}
+                          task={task}
+                          todayStr={todayStr}
+                          isSelected={selectedTaskId === task.id}
+                          isMultiSelected={selectedTaskIds?.has(task.id) || false}
+                          isFocused={focusedTaskIndex === globalIndex}
+                          onSelect={() => onSelectTask(task.id)}
+                          onUpdate={(updates) => onUpdateTask(task.id, updates)}
+                          onDelete={() => onDeleteTask(task.id)}
+                          onToggleComplete={() => handleCompleteWithCelebration(task.id, task.status)}
+                          onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
+                          onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
+                          showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
+                        />
+                      );
+                    })}
 
-                      {/* Inline add for first section */}
-                      {group === groups[0] && (
-                        <>
-                          {isCreating ? (
-                            <>
-                              <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
-                                <div />
-                                <div />
-                                <div className="w-5" />
-                                <div />
-                                <Input
-                                  ref={newTaskRef as any}
-                                  value={newTaskTitle}
-                                  onChange={e => onNewTaskChange(e.target.value)}
-                                  onKeyDown={onNewTaskKeyDown}
-                                  placeholder="Task name... (Enter to create, Esc to cancel)"
-                                  className="h-7 text-sm border-primary"
-                                  autoFocus
-                                />
-                                <div />
-                                <div />
-                                <div />
-                                <div />
-                                <div />
-                                <div />
-                              </div>
-                              {taskNameWarning && (
-                                <p className="text-destructive text-[11px] px-4 py-1">{taskNameWarning}</p>
-                              )}
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => onNewTaskChange('')}
-                              className="w-full flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                              Add task
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
+                    {/* Inline add for first section */}
+                    {group === groups[0] && (
+                      <>
+                        {isCreating ? (
+                          <>
+                            <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_140px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
+                              <div /><div /><div className="w-5" /><div />
+                              <Input ref={newTaskRef as any} value={newTaskTitle} onChange={e => onNewTaskChange(e.target.value)} onKeyDown={onNewTaskKeyDown}
+                                placeholder="Task name... (Enter to create, Esc to cancel)" className="h-7 text-sm border-[#3b7eff] bg-[#13181f] text-white" autoFocus />
+                              <div /><div /><div /><div /><div /><div />
+                            </div>
+                            {taskNameWarning && <p className="text-[11px] px-4 py-1" style={{ color: '#ff4d4d' }}>{taskNameWarning}</p>}
+                          </>
+                        ) : (
+                          <button onClick={() => onNewTaskChange('')} className="w-full flex items-center gap-2 px-4 py-2 text-xs transition-colors" style={{ color: '#8b92a5' }}>
+                            <Plus className="h-3.5 w-3.5" /> Add task
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -377,18 +318,18 @@ export function TaskListView({
 
         {tasks.length === 0 && !isLoading && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-              <Plus className="h-5 w-5 text-muted-foreground" />
+            <div className="h-12 w-12 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: '#1a1f2e' }}>
+              <Plus className="h-5 w-5" style={{ color: '#8b92a5' }} />
             </div>
-            <p className="text-sm font-medium">No tasks yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Click "Add Task" to get started</p>
+            <p className="text-sm font-medium" style={{ color: 'white' }}>No tasks yet</p>
+            <p className="text-xs mt-1" style={{ color: '#8b92a5' }}>Click "Add Task" to get started</p>
           </div>
         )}
       </div>
 
       <DragOverlay>
         {draggedTask && (
-          <div className="bg-card border rounded-md shadow-lg px-4 py-2 text-sm opacity-90">
+          <div className="rounded-lg shadow-lg px-4 py-2 text-sm opacity-90" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e', color: 'white' }}>
             {draggedTask.title}
           </div>
         )}
@@ -397,78 +338,115 @@ export function TaskListView({
   );
 }
 
-// Quick date shortcuts component
-function QuickDatePicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
-  const today = format(new Date(), 'yyyy-MM-dd');
+// Pinned Overdue Section
+function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar }: {
+  tasks: Task[];
+  todayStr: string;
+  selectedTaskId: string | null;
+  selectedTaskIds?: Set<string>;
+  focusedTaskIndex?: number;
+  allTasks: Task[];
+  onSelectTask: (id: string) => void;
+  onUpdateTask: (id: string, updates: Partial<Task>) => void;
+  onDeleteTask: (id: string) => void;
+  onToggleComplete: (id: string, status: string) => void;
+  onToggleSelect?: (id: string) => void;
+  onToggleStar?: (id: string, current: boolean) => void;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div>
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full flex items-center gap-2.5 px-4 h-11 transition-colors text-left"
+        style={{
+          borderLeft: '3px solid #ff4d4d',
+          backgroundColor: 'rgba(255,77,77,0.05)',
+        }}
+      >
+        {collapsed ? <ChevronRight className="h-3.5 w-3.5" style={{ color: '#ff4d4d' }} /> : <ChevronDown className="h-3.5 w-3.5" style={{ color: '#ff4d4d' }} />}
+        <AlertTriangle className="h-3.5 w-3.5" style={{ color: '#ff4d4d' }} />
+        <span className="text-xs font-bold" style={{ color: '#ff4d4d' }}>Overdue</span>
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(255,77,77,0.2)', color: '#ff4d4d' }}>
+          {tasks.length}
+        </span>
+      </button>
+      {!collapsed && tasks.map(task => {
+        const globalIndex = allTasks.indexOf(task);
+        return (
+          <SortableTaskRow
+            key={`overdue-${task.id}`}
+            task={task}
+            todayStr={todayStr}
+            isSelected={selectedTaskId === task.id}
+            isMultiSelected={selectedTaskIds?.has(task.id) || false}
+            isFocused={focusedTaskIndex === globalIndex}
+            onSelect={() => onSelectTask(task.id)}
+            onUpdate={(updates) => onUpdateTask(task.id, updates)}
+            onDelete={() => onDeleteTask(task.id)}
+            onToggleComplete={() => onToggleComplete(task.id, task.status)}
+            onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
+            onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
+            showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// Quick date shortcuts
+function QuickDatePicker({ value, onChange, todayStr }: { value: string | null; onChange: (v: string | null) => void; todayStr: string }) {
   const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
   const nextMon = format(nextMonday(new Date()), 'yyyy-MM-dd');
+
+  const getRelativeLabel = () => {
+    if (!value) return null;
+    if (value < todayStr) {
+      const days = differenceInDays(new Date(todayStr), new Date(value + 'T00:00:00'));
+      return { text: `${days}d overdue`, color: '#ff4d4d', bold: true };
+    }
+    if (value === todayStr) return { text: 'Due today', color: '#f59e0b', bold: true };
+    const days = differenceInDays(new Date(value + 'T00:00:00'), new Date(todayStr));
+    return { text: `Due in ${days}d`, color: '#8b92a5', bold: false };
+  };
+
+  const rel = getRelativeLabel();
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1 text-xs hover:bg-muted/40 rounded px-1.5 py-0.5 transition-colors">
-          {value ? (() => {
-            const isOverdue = value < today;
-            const daysOverdue = isOverdue ? Math.ceil((new Date(today).getTime() - new Date(value + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24)) : 0;
-            const isSevere = daysOverdue >= 4;
-            const isCritical = daysOverdue >= 8;
-            return (
-              <span className={cn(
-                isOverdue
-                  ? isSevere
-                    ? 'text-[#DC2626] font-bold'
-                    : 'text-[#EF4444] font-medium'
-                  : 'text-muted-foreground'
-              )}>
-                {isCritical && <AlertTriangle className="h-3 w-3 inline mr-0.5 -mt-0.5" />}
-                {format(new Date(value + 'T00:00:00'), 'MMM d')}
-              </span>
-            );
-          })() : (
-            <span className="text-muted-foreground/40">No date</span>
+        <button className="flex items-center gap-1 text-xs hover:bg-[#1e2433] rounded px-1.5 py-0.5 transition-colors">
+          {rel ? (
+            <span style={{ color: rel.color, fontWeight: rel.bold ? 600 : 400 }}>
+              {rel.text}
+            </span>
+          ) : (
+            <span style={{ color: '#8b92a5' }}>No date</span>
           )}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-1" align="start">
         <div className="space-y-0.5">
-          <button
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors"
-            onClick={() => onChange(today)}
-          >
+          <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors" onClick={() => onChange(todayStr)}>
             <Sun className="h-3 w-3 text-orange-500" /> Today
           </button>
-          <button
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors"
-            onClick={() => onChange(tomorrow)}
-          >
+          <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors" onClick={() => onChange(tomorrow)}>
             <Sunrise className="h-3 w-3 text-amber-500" /> Tomorrow
           </button>
-          <button
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors"
-            onClick={() => onChange(format(addDays(new Date(), 7), 'yyyy-MM-dd'))}
-          >
+          <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors" onClick={() => onChange(format(addDays(new Date(), 7), 'yyyy-MM-dd'))}>
             <CalendarIcon className="h-3 w-3 text-primary" /> +1 Week
           </button>
-          <button
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors"
-            onClick={() => onChange(nextMon)}
-          >
+          <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors" onClick={() => onChange(nextMon)}>
             <ArrowRight className="h-3 w-3 text-primary" /> Next Monday
           </button>
           <div className="border-t my-1" />
-          <Input
-            type="date"
-            value={value || ''}
-            onChange={e => onChange(e.target.value || null)}
-            className="h-7 text-xs"
-          />
+          <Input type="date" value={value || ''} onChange={e => onChange(e.target.value || null)} className="h-7 text-xs" />
           {value && (
             <>
               <div className="border-t my-1" />
-              <button
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted text-destructive transition-colors"
-                onClick={() => onChange(null)}
-              >
+              <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted text-destructive transition-colors" onClick={() => onChange(null)}>
                 Remove date
               </button>
             </>
@@ -479,29 +457,10 @@ function QuickDatePicker({ value, onChange }: { value: string | null; onChange: 
   );
 }
 
-// Inline priority picker
-function InlinePriorityPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const conf = PRIORITY_CONFIG[value] || PRIORITY_CONFIG.medium;
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-5 text-[10px] border-none bg-transparent px-0 w-[80px] focus:ring-0 [&>svg]:opacity-0 [&>svg]:group-hover:opacity-100 [&>svg]:transition-opacity">
-        <Badge variant="outline" className={cn('text-[10px] h-5 px-1.5', conf.className)}>
-          {conf.label}
-        </Badge>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="urgent" className="text-xs">🔴 Urgent</SelectItem>
-        <SelectItem value="high" className="text-xs">🟠 High</SelectItem>
-        <SelectItem value="medium" className="text-xs">🔵 Medium</SelectItem>
-        <SelectItem value="low" className="text-xs">⚪ Low</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-}
-
-// Sortable task row with drag handle and inline editing
-function SortableTaskRow({ task, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox }: {
+// Sortable task row
+function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox }: {
   task: Task;
+  todayStr: string;
   isSelected: boolean;
   isMultiSelected: boolean;
   isFocused?: boolean;
@@ -513,110 +472,82 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, isFocused, onSelec
   onToggleStar?: () => void;
   showSelectCheckbox?: boolean;
 }) {
-  const {
-    attributes, listeners, setNodeRef, transform, transition, isDragging,
-  } = useSortable({ id: task.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.3 : 1,
-  };
-
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 };
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
-
   const isComplete = task.status === 'complete';
 
   const handleSaveTitle = () => {
-    if (titleValue.trim() && titleValue !== task.title) {
-      onUpdate({ title: titleValue.trim() } as any);
-    }
+    if (titleValue.trim() && titleValue !== task.title) onUpdate({ title: titleValue.trim() } as any);
     setEditingTitle(false);
   };
+
+  const priorityPill = PRIORITY_PILL[task.priority] || PRIORITY_PILL.medium;
+  const statusConf = STATUS_COLORS[task.status] || STATUS_COLORS.not_started;
+
+  // Blocker note (stored as any since it's a new column)
+  const blockerNote = (task as any).blocker_note;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        'grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5 hover:bg-muted/30 cursor-pointer transition-colors group',
-        isSelected && 'bg-primary/5 border-r-2 border-r-primary',
-        isMultiSelected && 'bg-primary/10',
-        isFocused && 'ring-1 ring-inset ring-primary/40 bg-primary/5',
+        'grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_140px_100px_100px_40px] gap-2 items-center px-4 cursor-pointer transition-colors group',
+        isSelected && 'bg-[#3b7eff]/10',
+        isMultiSelected && 'bg-[#3b7eff]/5',
+        isFocused && 'ring-1 ring-inset ring-[#3b7eff]/40',
         isDragging && 'z-50',
       )}
+      style={{ ...style, minHeight: 56, borderBottom: '1px solid #2a2f3e' }}
       onClick={onSelect}
+      onMouseEnter={(e) => { if (!isDragging) (e.currentTarget as HTMLElement).style.backgroundColor = '#1e2433'; }}
+      onMouseLeave={(e) => { if (!isSelected && !isMultiSelected) (e.currentTarget as HTMLElement).style.backgroundColor = ''; }}
     >
       {/* Drag handle */}
-      <div
-        className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
-        onClick={e => e.stopPropagation()}
-      >
-        <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
+        <GripVertical className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
       </div>
 
-      {/* Multi-select checkbox */}
-      <div
-        className={cn('transition-opacity', showSelectCheckbox ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
-        onClick={e => e.stopPropagation()}
-      >
-        <Checkbox
-          checked={isMultiSelected}
-          onCheckedChange={() => onToggleSelect?.()}
-          className="h-4 w-4"
-        />
+      {/* Multi-select */}
+      <div className={cn('transition-opacity', showSelectCheckbox ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')} onClick={e => e.stopPropagation()}>
+        <Checkbox checked={isMultiSelected} onCheckedChange={() => onToggleSelect?.()} className="h-4 w-4" />
       </div>
 
       {/* Complete checkbox */}
-      <Checkbox
-        checked={isComplete}
-        onCheckedChange={() => onToggleComplete()}
-        onClick={e => e.stopPropagation()}
-        className={cn('h-4 w-4 rounded-full transition-all', isComplete && 'bg-emerald-500 border-emerald-500')}
-      />
+      <Checkbox checked={isComplete} onCheckedChange={() => onToggleComplete()} onClick={e => e.stopPropagation()}
+        className={cn('h-4 w-4 rounded-full transition-all', isComplete && 'bg-[#22c55e] border-[#22c55e]')} />
 
       {/* Star */}
       <div onClick={e => e.stopPropagation()}>
-        <button
-          className={cn(
-            'transition-colors',
-            task.is_starred ? 'text-amber-500' : 'text-transparent group-hover:text-muted-foreground/40 hover:!text-amber-500'
-          )}
-          onClick={() => onToggleStar?.()}
-          title="Star task (s)"
-        >
+        <button className={cn('transition-colors', task.is_starred ? 'text-amber-500' : 'text-transparent group-hover:text-[#8b92a5]/40 hover:!text-amber-500')} onClick={() => onToggleStar?.()} title="Star task">
           <Star className={cn('h-3.5 w-3.5', task.is_starred && 'fill-amber-500')} />
         </button>
       </div>
 
-      {/* Title - inline editable */}
+      {/* Title */}
       <div className="min-w-0" onClick={e => e.stopPropagation()}>
         {editingTitle ? (
-          <Input
-            value={titleValue}
-            onChange={e => setTitleValue(e.target.value)}
-            onBlur={handleSaveTitle}
-            onKeyDown={e => {
-              if (e.key === 'Enter') handleSaveTitle();
-              if (e.key === 'Escape') { setTitleValue(task.title); setEditingTitle(false); }
-            }}
-            className="h-7 text-sm"
-            autoFocus
-          />
+          <Input value={titleValue} onChange={e => setTitleValue(e.target.value)} onBlur={handleSaveTitle}
+            onKeyDown={e => { if (e.key === 'Enter') handleSaveTitle(); if (e.key === 'Escape') { setTitleValue(task.title); setEditingTitle(false); } }}
+            className="h-7 text-sm bg-[#13181f] text-white" autoFocus />
         ) : (
-          <span
-            className={cn(
-              'text-sm truncate block cursor-text hover:bg-muted/40 rounded px-1 -mx-1 py-0.5 transition-colors',
-              isComplete && 'line-through text-muted-foreground'
+          <div>
+            <span
+              className={cn('text-[15px] font-semibold truncate block cursor-text hover:bg-[#1e2433] rounded px-1 -mx-1 py-0.5 transition-colors', isComplete && 'line-through')}
+              style={{ color: isComplete ? '#8b92a5' : 'white' }}
+              onDoubleClick={() => { setTitleValue(task.title); setEditingTitle(true); }}
+              onClick={onSelect}
+            >
+              {task.title}
+            </span>
+            {task.status === 'blocked' && blockerNote && (
+              <span className="text-[11px] italic block px-1 -mx-1 mt-0.5" style={{ color: '#ff4d4d' }}>
+                {blockerNote}
+              </span>
             )}
-            onDoubleClick={() => { setTitleValue(task.title); setEditingTitle(true); }}
-            onClick={onSelect}
-          >
-            {task.title}
-          </span>
+          </div>
         )}
       </div>
 
@@ -625,64 +556,60 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, isFocused, onSelec
         {task.assignee_profile ? (
           <>
             <Avatar className="h-5 w-5">
-              {task.assignee_profile.avatar_url && (
-                <AvatarImage src={task.assignee_profile.avatar_url} />
-              )}
-              <AvatarFallback className="text-[8px]">
+              {task.assignee_profile.avatar_url && <AvatarImage src={task.assignee_profile.avatar_url} />}
+              <AvatarFallback className="text-[8px]" style={{ backgroundColor: '#3b7eff', color: 'white' }}>
                 {task.assignee_profile.display_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-[11px] text-muted-foreground truncate">
+            <span className="text-[11px] truncate" style={{ color: '#8b92a5' }}>
               {task.assignee_profile.display_name?.split(' ')[0]}
             </span>
           </>
         ) : (
-          <span className="text-[11px] text-muted-foreground/40">—</span>
+          <span className="text-[11px]" style={{ color: '#8b92a5' }}>—</span>
         )}
       </div>
 
       {/* Deal */}
       <div className="min-w-0" onClick={e => e.stopPropagation()}>
         {task.deal_id && task.deal ? (
-          <Link
-            to={`/deal/${task.deal_id}`}
-            className="text-[11px] text-primary hover:underline truncate block"
-            onClick={e => e.stopPropagation()}
-          >
+          <Link to={`/deal/${task.deal_id}`} className="text-[11px] hover:underline truncate block" style={{ color: '#3b7eff' }} onClick={e => e.stopPropagation()}>
             {task.deal.company}
           </Link>
         ) : (
-          <span className="text-[11px] text-muted-foreground/40">—</span>
+          <span className="text-[11px]" style={{ color: '#8b92a5' }}>—</span>
         )}
       </div>
 
-      {/* Due date - quick picker */}
+      {/* Due date - relative */}
       <div onClick={e => e.stopPropagation()}>
-        <QuickDatePicker
-          value={task.due_date}
-          onChange={v => onUpdate({ due_date: v } as any)}
-        />
+        <QuickDatePicker value={task.due_date} onChange={v => onUpdate({ due_date: v } as any)} todayStr={todayStr} />
       </div>
 
-      {/* Priority - inline picker */}
+      {/* Priority pill */}
       <div onClick={e => e.stopPropagation()}>
-        <InlinePriorityPicker
-          value={task.priority}
-          onChange={v => onUpdate({ priority: v } as any)}
-        />
+        <Select value={task.priority} onValueChange={v => onUpdate({ priority: v } as any)}>
+          <SelectTrigger className="h-6 text-[10px] border-none bg-transparent px-0 w-[80px] focus:ring-0 [&>svg]:opacity-0 [&>svg]:group-hover:opacity-100">
+            <span className="px-3 py-1 rounded-full text-[10px] font-medium" style={{ backgroundColor: priorityPill.bg, color: 'white' }}>
+              {priorityPill.label}
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="urgent" className="text-xs">Urgent</SelectItem>
+            <SelectItem value="high" className="text-xs">High</SelectItem>
+            <SelectItem value="medium" className="text-xs">Medium</SelectItem>
+            <SelectItem value="low" className="text-xs">Low</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Status */}
+      {/* Status pill */}
       <div onClick={e => e.stopPropagation()}>
-        <Select
-          value={task.status}
-          onValueChange={v => {
-            onUpdate({ status: v } as any);
-            if (v === 'complete') fireCelebration();
-          }}
-        >
-          <SelectTrigger className="h-6 text-[10px] border-none bg-transparent px-1 w-[90px] [&>svg]:opacity-0 [&>svg]:group-hover:opacity-100 [&>svg]:transition-opacity">
-            <SelectValue />
+        <Select value={task.status} onValueChange={v => { onUpdate({ status: v } as any); if (v === 'complete') fireCelebration(); }}>
+          <SelectTrigger className="h-6 text-[10px] border-none bg-transparent px-0 w-[90px] [&>svg]:opacity-0 [&>svg]:group-hover:opacity-100">
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-medium" style={{ backgroundColor: `${statusConf.bg}25`, color: statusConf.bg }}>
+              {statusConf.label}
+            </span>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="not_started" className="text-xs">Not Started</SelectItem>
@@ -697,14 +624,11 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, isFocused, onSelec
       <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6">
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-3.5 w-3.5" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onDelete} className="text-destructive text-xs">
-              <Trash2 className="h-3 w-3 mr-2" />
-              Delete task
+              <Trash2 className="h-3 w-3 mr-2" /> Delete task
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

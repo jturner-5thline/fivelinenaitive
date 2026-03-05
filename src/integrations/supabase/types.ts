@@ -8331,6 +8331,7 @@ export type Database = {
           archived_at: string | null
           assigned_by: string
           assigned_to: string
+          blocker_note: string | null
           company_id: string | null
           completed_at: string | null
           completed_by: string | null
@@ -8361,6 +8362,7 @@ export type Database = {
           archived_at?: string | null
           assigned_by: string
           assigned_to: string
+          blocker_note?: string | null
           company_id?: string | null
           completed_at?: string | null
           completed_by?: string | null
@@ -8391,6 +8393,7 @@ export type Database = {
           archived_at?: string | null
           assigned_by?: string
           assigned_to?: string
+          blocker_note?: string | null
           company_id?: string | null
           completed_at?: string | null
           completed_by?: string | null

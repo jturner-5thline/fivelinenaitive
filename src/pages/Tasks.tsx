@@ -9,6 +9,8 @@ import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
 import { TaskReportingView } from '@/components/tasks/TaskReportingView';
 import { TaskBulkActionBar } from '@/components/tasks/TaskBulkActionBar';
+import { TaskKPICards } from '@/components/tasks/TaskKPICards';
+import { TaskFocusMode } from '@/components/tasks/TaskFocusMode';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { useTaskSavedViews, type TaskSavedView } from '@/hooks/useTaskSavedViews';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -18,7 +20,6 @@ import { Button } from '@/components/ui/button';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -34,17 +35,19 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Sheet, SheetContent,
+} from '@/components/ui/sheet';
+import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
-  SlidersHorizontal, Group, Trash2, BarChart3, Bell,
-  Bookmark, BookmarkPlus, Download, FileDown, Star, MoreVertical,
-  Zap, Tag, ClipboardList, GripVertical, Users, Briefcase, AlertTriangle,
+  SlidersHorizontal, Group, Trash2, BarChart3,
+  Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
+  Tag, ClipboardList, Users, Briefcase, AlertTriangle,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { isToday, isPast, addDays, startOfDay, format } from 'date-fns';
+import { isToday, isPast, addDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   DndContext, closestCenter, DragOverlay, PointerSensor, TouchSensor,
@@ -80,13 +83,12 @@ export default function Tasks() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [showSaveViewDialog, setShowSaveViewDialog] = useState(false);
   const [newViewName, setNewViewName] = useState('');
-  const [newLabelName, setNewLabelName] = useState('');
-  const [newLabelColor, setNewLabelColor] = useState('#6366f1');
   const newTaskRef = useRef<HTMLInputElement>(null);
   const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
   const [filterDealIds, setFilterDealIds] = useState<Set<string>>(new Set());
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showFocusMode, setShowFocusMode] = useState(false);
 
   // Fetch label assignments for all tasks for filtering
   const { data: allLabelAssignments = [] } = useQuery({
@@ -126,18 +128,14 @@ export default function Tasks() {
   // Focus view: today's tasks + overdue + high priority
   const focusTasks = tasks.filter(t => {
     if (t.status === 'complete') return false;
-    // Overdue
     if (t.due_date && isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00'))) return true;
-    // Due today
     if (t.due_date && isToday(new Date(t.due_date + 'T00:00:00'))) return true;
-    // Due this week (next 7 days)
     if (t.due_date) {
       const d = new Date(t.due_date + 'T00:00:00');
       const todayDate = startOfDay(new Date());
       const weekOut = addDays(todayDate, 7);
       if (d > todayDate && d <= weekOut) return true;
     }
-    // High/Urgent priority not started
     if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started') return true;
     return false;
   });
@@ -156,10 +154,8 @@ export default function Tasks() {
       return true;
     })
     .sort((a, b) => {
-      // Starred tasks always first
       if (a.is_starred && !b.is_starred) return -1;
       if (!a.is_starred && b.is_starred) return 1;
-
       switch (sortBy) {
         case 'due_date':
           if (!a.due_date && !b.due_date) return 0;
@@ -243,34 +239,26 @@ export default function Tasks() {
     });
   }, [selectedTaskIds, deleteTask]);
 
-  // Undo-aware single task complete
   const handleCompleteWithUndo = useCallback((taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'complete' ? 'not_started' : 'complete';
     updateTask.mutate({ id: taskId, status: newStatus } as any);
     if (newStatus === 'complete') {
       toast.success('Task completed! 🎉', {
-        action: {
-          label: 'Undo',
-          onClick: () => updateTask.mutate({ id: taskId, status: currentStatus } as any),
-        },
+        action: { label: 'Undo', onClick: () => updateTask.mutate({ id: taskId, status: currentStatus } as any) },
         duration: 5000,
       });
     }
   }, [updateTask]);
 
-  // Undo-aware single task delete
   const handleDeleteWithUndo = useCallback((taskId: string) => {
-    // We can't truly undo a delete, but we can archive instead
     deleteTask.mutate(taskId);
     toast.success('Task deleted');
   }, [deleteTask]);
 
-  // Toggle star
   const handleToggleStar = useCallback((taskId: string, currentlyStarred: boolean) => {
     updateTask.mutate({ id: taskId, is_starred: !currentlyStarred } as any);
   }, [updateTask]);
 
-  // Select all visible tasks
   const handleSelectAll = useCallback(() => {
     if (selectedTaskIds.size === filtered.length) {
       setSelectedTaskIds(new Set());
@@ -282,10 +270,9 @@ export default function Tasks() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      // Don't handle shortcuts when typing in inputs
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
-      if (selectedTaskId) return; // Don't interfere with detail drawer
+      if (selectedTaskId) return;
 
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
@@ -353,12 +340,8 @@ export default function Tasks() {
   const handleExportCSV = () => {
     const headers = ['Title', 'Status', 'Priority', 'Due Date', 'Assignee', 'Created'];
     const rows = filtered.map(t => [
-      t.title,
-      t.status,
-      t.priority,
-      t.due_date || '',
-      t.assignee_profile?.display_name || '',
-      t.created_at.split('T')[0],
+      t.title, t.status, t.priority, t.due_date || '',
+      t.assignee_profile?.display_name || '', t.created_at.split('T')[0],
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -369,12 +352,6 @@ export default function Tasks() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Tasks exported');
-  };
-
-  const handleCreateLabel = () => {
-    if (!newLabelName.trim()) return;
-    createLabel.mutate({ name: newLabelName.trim(), color: newLabelColor });
-    setNewLabelName('');
   };
 
   const [customSections, setCustomSections] = useState<{ key: string; label: string }[]>([]);
@@ -397,80 +374,104 @@ export default function Tasks() {
     setCustomSections(prev => prev.filter(s => s.key !== key));
   };
 
+  // Overdue count for badge
+  const overdueCount = useMemo(() => {
+    return tasks.filter(t =>
+      t.due_date && t.status !== 'complete' &&
+      isPast(new Date(t.due_date + 'T23:59:59')) &&
+      !isToday(new Date(t.due_date + 'T00:00:00'))
+    ).length;
+  }, [tasks]);
+
+  // Focus mode
+  if (showFocusMode) {
+    return (
+      <TaskFocusMode
+        tasks={filtered}
+        onExit={() => setShowFocusMode(false)}
+        onUpdate={(id, updates) => updateTask.mutate({ id, ...updates })}
+      />
+    );
+  }
+
+  const viewTabs = [
+    { key: 'list', label: 'List', icon: ListTodo },
+    { key: 'board', label: 'Board', icon: LayoutGrid },
+    { key: 'calendar', label: 'Calendar', icon: Calendar },
+    { key: 'reporting', label: 'Reports', icon: BarChart3 },
+  ] as const;
+
   return (
     <>
       <Helmet><title>Tasks | 5thLine</title></Helmet>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full" style={{ backgroundColor: '#0d1117' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b min-w-0 gap-4 flex-nowrap">
+        <div className="flex items-center justify-between px-6 py-4 border-b min-w-0 gap-4 flex-nowrap" style={{ borderColor: '#2a2f3e' }}>
           <div className="flex items-center gap-3 min-w-0 overflow-hidden">
-            <h1 className="text-xl font-semibold">
-              {viewMode === 'focus' ? '🎯 My Focus' : ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
+            <h1 className="text-xl font-semibold" style={{ color: 'white' }}>
+              {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm" style={{ color: '#8b92a5' }}>
               {filtered.length} task{filtered.length !== 1 ? 's' : ''}
             </span>
-            {(() => {
-              const visibleOverdue = filtered.filter(t => !t.due_date ? false : (isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00')) && t.status !== 'complete')).length;
-              const visibleDueToday = filtered.filter(t => !t.due_date ? false : (isToday(new Date(t.due_date + 'T00:00:00')) && t.status !== 'complete')).length;
-              return (visibleOverdue > 0 || visibleDueToday > 0) ? (
-                <div className="flex items-center gap-2">
-                  {visibleOverdue > 0 && (
-                    <span className="text-sm text-destructive/80 flex items-center gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
-                      </svg>
-                      {visibleOverdue} overdue
-                    </span>
-                  )}
-                  {visibleDueToday > 0 && (
-                    <span className="text-sm text-muted-foreground">
-                      {visibleDueToday} due today
-                    </span>
-                  )}
-                </div>
-              ) : null;
-            })()}
+            {overdueCount > 0 && (
+              <span
+                className="text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1"
+                style={{ backgroundColor: '#ff4d4d', color: 'white' }}
+              >
+                <AlertTriangle className="h-3 w-3" />
+                {overdueCount} overdue
+              </span>
+            )}
           </div>
-          <HintTooltip
-            hint="Switch between Focus, List, Board, Calendar, and Reports to view your tasks the way you prefer."
-            visible={isHintVisible('tasks-views')}
-            onDismiss={() => dismissHint('tasks-views')}
-            side="bottom"
-          >
-            <div className="flex items-center gap-2 flex-shrink-0 flex-nowrap">
-              <Tabs value={viewMode} onValueChange={v => setViewMode(v as ViewMode)}>
-                <TabsList className="h-8">
-                  <TabsTrigger value="focus" className="text-xs gap-1 px-2 h-7">
-                    <Star className="h-3.5 w-3.5" /> Focus
-                  </TabsTrigger>
-                  <TabsTrigger value="list" className="text-xs gap-1 px-2 h-7">
-                    <ListTodo className="h-3.5 w-3.5" /> List
-                  </TabsTrigger>
-                  <TabsTrigger value="board" className="text-xs gap-1 px-2 h-7">
-                    <LayoutGrid className="h-3.5 w-3.5" /> Board
-                  </TabsTrigger>
-                  <TabsTrigger value="calendar" className="text-xs gap-1 px-2 h-7">
-                    <Calendar className="h-3.5 w-3.5" /> Calendar
-                  </TabsTrigger>
-                  <TabsTrigger value="reporting" className="text-xs gap-1 px-2 h-7">
-                    <BarChart3 className="h-3.5 w-3.5" /> Reports
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <ClaapRoutingTasksBadge />
+          <div className="flex items-center gap-2 flex-shrink-0 flex-nowrap">
+            {/* View tabs as pills */}
+            <div className="flex items-center rounded-lg p-0.5" style={{ backgroundColor: '#1a1f2e' }}>
+              {viewTabs.map(tab => {
+                const Icon = tab.icon;
+                const isActive = viewMode === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setViewMode(tab.key as ViewMode)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all',
+                      isActive ? 'shadow-sm' : ''
+                    )}
+                    style={{
+                      backgroundColor: isActive ? '#3b7eff' : 'transparent',
+                      color: isActive ? 'white' : '#8b92a5',
+                    }}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
-          </HintTooltip>
+            <Button
+              size="sm"
+              className="h-8 text-xs gap-1.5 rounded-lg font-semibold"
+              style={{ backgroundColor: '#3b7eff', color: 'white' }}
+              onClick={() => setShowFocusMode(true)}
+            >
+              <Star className="h-3.5 w-3.5" /> Focus
+            </Button>
+            <ClaapRoutingTasksBadge />
+          </div>
         </div>
 
+        {/* KPI Cards */}
+        <TaskKPICards tasks={tasks} />
+
         {/* Toolbar */}
-        <div className="flex items-center gap-2 px-6 py-2 border-b bg-muted/20">
+        <div className="flex items-center gap-2 px-6 py-2 border-b" style={{ borderColor: '#2a2f3e', backgroundColor: 'rgba(26,31,46,0.5)' }}>
           <div className="relative flex-1 max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks..." className="h-8 text-xs pl-8" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks..." className="h-8 text-xs pl-8 border-[#2a2f3e] bg-[#13181f] text-white placeholder:text-[#8b92a5]" />
           </div>
           <Select value={ownerFilter} onValueChange={v => setOwnerFilter(v as TaskOwnerFilter)}>
-            <SelectTrigger className="h-8 w-[130px] text-xs">
+            <SelectTrigger className="h-8 w-[130px] text-xs border-[#2a2f3e] bg-[#13181f] text-[#8b92a5]">
               <Users className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -480,7 +481,7 @@ export default function Tasks() {
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
-            <SelectTrigger className="h-8 w-[140px] text-xs">
+            <SelectTrigger className="h-8 w-[140px] text-xs border-[#2a2f3e] bg-[#13181f] text-[#8b92a5]">
               <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -497,7 +498,7 @@ export default function Tasks() {
           {uniqueDeals.length > 0 && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant={filterDealIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-8 text-xs gap-1.5">
+                <Button variant={filterDealIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-8 text-xs gap-1.5 border-[#2a2f3e]">
                   <Briefcase className="h-3 w-3" />
                   {filterDealIds.size > 0
                     ? `Deal: ${uniqueDeals.filter(([id]) => filterDealIds.has(id)).map(([, name]) => name).join(', ')}`
@@ -507,27 +508,21 @@ export default function Tasks() {
               <PopoverContent className="w-[220px] p-1 max-h-[260px] overflow-auto" align="start">
                 {filterDealIds.size > 0 && (
                   <>
-                    <button
-                      className="w-full text-left px-2 py-1.5 text-xs text-destructive rounded hover:bg-muted"
-                      onClick={() => setFilterDealIds(new Set())}
-                    >
+                    <button className="w-full text-left px-2 py-1.5 text-xs text-destructive rounded hover:bg-muted" onClick={() => setFilterDealIds(new Set())}>
                       Clear filter
                     </button>
                     <div className="border-t my-1" />
                   </>
                 )}
                 {uniqueDeals.map(([id, name]) => (
-                  <button
-                    key={id}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                  <button key={id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
                     onClick={() => {
                       setFilterDealIds(prev => {
                         const next = new Set(prev);
                         if (next.has(id)) next.delete(id); else next.add(id);
                         return next;
                       });
-                    }}
-                  >
+                    }}>
                     <Checkbox checked={filterDealIds.has(id)} className="h-3.5 w-3.5" />
                     <span className="truncate">{name}</span>
                   </button>
@@ -540,7 +535,7 @@ export default function Tasks() {
           {labels.length > 0 && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant={filterLabelIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-8 text-xs gap-1.5">
+                <Button variant={filterLabelIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-8 text-xs gap-1.5 border-[#2a2f3e]">
                   <Tag className="h-3 w-3" />
                   {filterLabelIds.size > 0
                     ? `Labels: ${labels.filter(l => filterLabelIds.has(l.id)).map(l => l.name).join(', ')}`
@@ -550,27 +545,21 @@ export default function Tasks() {
               <PopoverContent className="w-[200px] p-1 max-h-[260px] overflow-auto" align="start">
                 {filterLabelIds.size > 0 && (
                   <>
-                    <button
-                      className="w-full text-left px-2 py-1.5 text-xs text-destructive rounded hover:bg-muted"
-                      onClick={() => setFilterLabelIds(new Set())}
-                    >
+                    <button className="w-full text-left px-2 py-1.5 text-xs text-destructive rounded hover:bg-muted" onClick={() => setFilterLabelIds(new Set())}>
                       Clear filter
                     </button>
                     <div className="border-t my-1" />
                   </>
                 )}
                 {labels.map(l => (
-                  <button
-                    key={l.id}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                  <button key={l.id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
                     onClick={() => {
                       setFilterLabelIds(prev => {
                         const next = new Set(prev);
                         if (next.has(l.id)) next.delete(l.id); else next.add(l.id);
                         return next;
                       });
-                    }}
-                  >
+                    }}>
                     <Checkbox checked={filterLabelIds.has(l.id)} className="h-3.5 w-3.5" />
                     <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: l.color }} />
                     <span className="truncate">{l.name}</span>
@@ -581,7 +570,7 @@ export default function Tasks() {
           )}
 
           <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
-            <SelectTrigger className="h-8 w-[130px] text-xs">
+            <SelectTrigger className="h-8 w-[130px] text-xs border-[#2a2f3e] bg-[#13181f] text-[#8b92a5]">
               <SlidersHorizontal className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -593,7 +582,7 @@ export default function Tasks() {
             </SelectContent>
           </Select>
           <Select value={groupBy} onValueChange={v => setGroupBy(v as GroupBy)}>
-            <SelectTrigger className="h-8 w-[130px] text-xs">
+            <SelectTrigger className="h-8 w-[130px] text-xs border-[#2a2f3e] bg-[#13181f] text-[#8b92a5]">
               <Group className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -605,11 +594,10 @@ export default function Tasks() {
 
           <div className="flex-1" />
 
-          {/* Saved Views */}
           {savedViews.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1 border-[#2a2f3e]">
                   <Bookmark className="h-3 w-3" /> Views
                 </Button>
               </DropdownMenuTrigger>
@@ -627,7 +615,6 @@ export default function Tasks() {
             </DropdownMenu>
           )}
 
-          {/* Bulk actions */}
           {selectedTaskIds.size > 0 && (
             <TaskBulkActionBar
               count={selectedTaskIds.size}
@@ -638,10 +625,9 @@ export default function Tasks() {
             />
           )}
 
-          {/* More menu: Save view, Export, Templates, Labels */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-[#2a2f3e]">
                 <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -662,45 +648,30 @@ export default function Tasks() {
               {templates.length === 0 && (
                 <DropdownMenuItem disabled className="text-xs text-muted-foreground">No templates yet</DropdownMenuItem>
               )}
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Labels</DropdownMenuLabel>
-              {labels.map(l => (
-                <DropdownMenuItem key={l.id} className="text-xs gap-2">
-                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: l.color }} />
-                  {l.name}
-                </DropdownMenuItem>
-              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
           <HintTooltip
-            hint="Click here to create a new task. You can assign it to a deal, set a due date, and add details."
+            hint="Click here to create a new task."
             visible={isHintVisible('tasks-add')}
             onDismiss={() => dismissHint('tasks-add')}
             side="bottom"
           >
             <Button
               size="sm"
-              className="h-8 text-xs gap-1.5"
+              className="h-8 text-xs gap-1.5 rounded-lg font-semibold"
+              style={{ backgroundColor: '#3b7eff', color: 'white' }}
               onClick={() => { setIsCreating(true); setTaskNameWarning(''); setTaskNameConfirmed(false); setTimeout(() => newTaskRef.current?.focus(), 50); }}
             >
               <Plus className="h-3.5 w-3.5" />
               Add Task
-              <span className="text-muted-foreground/60 text-[10px] ml-0.5">(N)</span>
             </Button>
           </HintTooltip>
         </div>
 
         {/* Main content */}
-        <div className="flex flex-1 overflow-hidden">
-          <div
-            className="overflow-auto"
-            style={{
-              flex: selectedTask ? '1 1 0%' : '1 1 100%',
-              transition: 'flex 200ms ease',
-              minWidth: 0,
-            }}
-          >
+        <div className="flex-1 overflow-hidden">
+          <div className="overflow-auto h-full">
             {(viewMode === 'list' || viewMode === 'focus') && (
               <TaskListView
                 tasks={filtered}
@@ -751,16 +722,21 @@ export default function Tasks() {
               <TaskReportingView tasks={tasks} />
             )}
           </div>
-
-          {selectedTask && (
-            <TaskDetailDrawer
-              task={selectedTask}
-              onClose={() => setSelectedTaskId(null)}
-              onUpdate={(updates) => updateTask.mutate({ id: selectedTask.id, ...updates })}
-              onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTaskId(null); }}
-            />
-          )}
         </div>
+
+        {/* Task Detail Sheet (slide-out drawer) */}
+        <Sheet open={!!selectedTask} onOpenChange={(open) => { if (!open) setSelectedTaskId(null); }}>
+          <SheetContent side="right" className="w-[480px] sm:max-w-[480px] p-0 border-l" style={{ backgroundColor: '#13181f', borderColor: '#2a2f3e' }}>
+            {selectedTask && (
+              <TaskDetailDrawer
+                task={selectedTask}
+                onClose={() => setSelectedTaskId(null)}
+                onUpdate={(updates) => updateTask.mutate({ id: selectedTask.id, ...updates })}
+                onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTaskId(null); }}
+              />
+            )}
+          </SheetContent>
+        </Sheet>
 
         {/* Save View Dialog */}
         <Dialog open={showSaveViewDialog} onOpenChange={setShowSaveViewDialog}>
@@ -769,14 +745,7 @@ export default function Tasks() {
               <DialogTitle className="text-sm">Save Current View</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
-              <Input
-                value={newViewName}
-                onChange={e => setNewViewName(e.target.value)}
-                placeholder="View name..."
-                className="text-sm"
-                onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }}
-                autoFocus
-              />
+              <Input value={newViewName} onChange={e => setNewViewName(e.target.value)} placeholder="View name..." className="text-sm" onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }} autoFocus />
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>Will save: {viewMode} view, {filterStatus} filter, {sortBy} sort, {groupBy} group</p>
               </div>
@@ -788,20 +757,16 @@ export default function Tasks() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete confirmation dialog */}
+        {/* Delete confirmation */}
         <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete {selectedTaskIds.size} task{selectedTaskIds.size !== 1 ? 's' : ''}?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This cannot be undone.
-              </AlertDialogDescription>
+              <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Delete
-              </AlertDialogAction>
+              <AlertDialogAction onClick={confirmBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -827,11 +792,18 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
   const sectionInputRef = useRef<HTMLInputElement>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const priorityColors: Record<string, string> = {
-    urgent: 'border-l-destructive',
-    high: 'border-l-orange-500',
-    medium: 'border-l-primary',
-    low: 'border-l-muted-foreground/30',
+  const STATUS_COLORS: Record<string, string> = {
+    not_started: '#6b7280',
+    in_progress: '#3b7eff',
+    blocked: '#ff4d4d',
+    complete: '#22c55e',
+  };
+
+  const PRIORITY_PILL: Record<string, { label: string; bg: string }> = {
+    urgent: { label: 'Urgent', bg: '#ff4d4d' },
+    high: { label: 'High', bg: '#ff4d4d' },
+    medium: { label: 'Medium', bg: '#f59e0b' },
+    low: { label: 'Low', bg: '#6b7280' },
   };
 
   const sensors = useSensors(
@@ -839,81 +811,44 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   );
 
-  // Group tasks by status, sorted by position
   const tasksByStatus = useMemo(() => {
     const map: Record<string, Task[]> = {};
     for (const group of statusGroups) {
-      map[group.key] = tasks
-        .filter(t => t.status === group.key)
-        .sort((a, b) => a.position - b.position);
+      map[group.key] = tasks.filter(t => t.status === group.key).sort((a, b) => a.position - b.position);
     }
     return map;
   }, [tasks, statusGroups]);
 
   const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    // Handled in dragEnd
-  };
+  const handleDragStart = (event: DragStartEvent) => setActiveId(event.active.id as string);
+  const handleDragOver = (event: DragOverEvent) => {};
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
     if (!over || !active) return;
-
     const activeTaskId = active.id as string;
     const task = tasks.find(t => t.id === activeTaskId);
     if (!task) return;
-
     const overId = over.id as string;
-
-    // Determine target column: if dropped on a column droppable or on another task
     let targetStatus: string;
     let overTask: Task | undefined;
-
-    // Check if over is a column ID
     const isColumn = statusGroups.some(g => g.key === overId);
-    if (isColumn) {
-      targetStatus = overId;
-    } else {
-      overTask = tasks.find(t => t.id === overId);
-      targetStatus = overTask?.status || task.status;
-    }
-
+    if (isColumn) { targetStatus = overId; } else { overTask = tasks.find(t => t.id === overId); targetStatus = overTask?.status || task.status; }
     const sourceStatus = task.status;
     const targetTasks = tasksByStatus[targetStatus] || [];
-
     if (sourceStatus === targetStatus) {
-      // Reorder within the same column
       if (!overTask || activeTaskId === overId) return;
       const oldIndex = targetTasks.findIndex(t => t.id === activeTaskId);
       const newIndex = targetTasks.findIndex(t => t.id === overId);
       if (oldIndex === -1 || newIndex === -1) return;
       const reordered = arrayMove(targetTasks, oldIndex, newIndex);
-      reordered.forEach((t, i) => {
-        if (t.position !== i) {
-          onUpdateTask(t.id, { position: i });
-        }
-      });
+      reordered.forEach((t, i) => { if (t.position !== i) onUpdateTask(t.id, { position: i }); });
     } else {
-      // Move to different column
-      let newPosition = 0;
-      if (overTask) {
-        const overIndex = targetTasks.findIndex(t => t.id === overId);
-        newPosition = overIndex >= 0 ? overIndex : targetTasks.length;
-      } else {
-        newPosition = targetTasks.length;
-      }
-      // Shift positions of tasks below in target column
-      targetTasks.forEach((t, i) => {
-        if (i >= newPosition) {
-          onUpdateTask(t.id, { position: i + 1 });
-        }
-      });
+      let newPosition = overTask ? targetTasks.findIndex(t => t.id === overId) : targetTasks.length;
+      if (newPosition < 0) newPosition = targetTasks.length;
+      targetTasks.forEach((t, i) => { if (i >= newPosition) onUpdateTask(t.id, { position: i + 1 }); });
       onUpdateTask(activeTaskId, { status: targetStatus, position: newPosition });
     }
   };
@@ -925,53 +860,42 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
     setIsAddingSection(false);
   };
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
       <div className="flex gap-4 p-4 overflow-x-auto h-full">
-        {statusGroups.map(group => (
-          <BoardColumn
-            key={group.key}
-            groupKey={group.key}
-            label={group.label}
-            tasks={tasksByStatus[group.key] || []}
-            priorityColors={priorityColors}
-            selectedTaskId={selectedTaskId}
-            onSelectTask={onSelectTask}
-            onCreateTask={onCreateTask}
-            isCustom={customSectionKeys.includes(group.key)}
-            onRemove={() => onRemoveSection(group.key)}
-          />
-        ))}
-        {/* Add Section column */}
+        {statusGroups.map(group => {
+          const groupTasks = tasksByStatus[group.key] || [];
+          return (
+            <BoardColumn
+              key={group.key}
+              groupKey={group.key}
+              label={group.label}
+              tasks={groupTasks}
+              statusColor={STATUS_COLORS[group.key] || '#6b7280'}
+              priorityPill={PRIORITY_PILL}
+              todayStr={todayStr}
+              selectedTaskId={selectedTaskId}
+              onSelectTask={onSelectTask}
+              onCreateTask={onCreateTask}
+              isCustom={customSectionKeys.includes(group.key)}
+              onRemove={() => onRemoveSection(group.key)}
+            />
+          );
+        })}
         {isAddingSection ? (
-          <div className="flex flex-col min-w-[280px] w-[280px] bg-muted/30 rounded-lg">
-            <div className="px-3 py-2.5 border-b">
-              <Input
-                ref={sectionInputRef}
-                value={newSectionName}
-                onChange={e => setNewSectionName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') { e.preventDefault(); handleAddSection(); }
-                  if (e.key === 'Escape') { setIsAddingSection(false); setNewSectionName(''); }
-                }}
-                onBlur={handleAddSection}
-                placeholder="Section name..."
-                className="h-8 text-sm"
-                autoFocus
-              />
+          <div className="flex flex-col min-w-[280px] w-[280px] rounded-xl" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+            <div className="px-3 py-2.5 border-b" style={{ borderColor: '#2a2f3e' }}>
+              <Input ref={sectionInputRef} value={newSectionName} onChange={e => setNewSectionName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSection(); } if (e.key === 'Escape') { setIsAddingSection(false); setNewSectionName(''); } }}
+                onBlur={handleAddSection} placeholder="Section name..." className="h-8 text-sm" autoFocus />
             </div>
           </div>
         ) : (
-          <button
-            onClick={() => { setIsAddingSection(true); setNewSectionName(''); }}
-            className="flex flex-col items-center justify-center min-w-[280px] w-[280px] rounded-lg border border-dashed border-border/50 hover:border-border hover:bg-muted/20 transition-colors gap-2 text-muted-foreground hover:text-foreground"
-          >
+          <button onClick={() => { setIsAddingSection(true); setNewSectionName(''); }}
+            className="flex flex-col items-center justify-center min-w-[280px] w-[280px] rounded-xl border border-dashed transition-colors gap-2"
+            style={{ borderColor: '#2a2f3e', color: '#8b92a5' }}>
             <Plus className="h-5 w-5" />
             <span className="text-sm">Add Section</span>
           </button>
@@ -979,8 +903,8 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
       </div>
       <DragOverlay>
         {activeTask ? (
-          <div className={`rounded-md border bg-card p-3 shadow-lg border-l-[3px] opacity-90 w-[260px] ${priorityColors[activeTask.priority] || ''}`}>
-            <p className="text-sm font-medium">{activeTask.title}</p>
+          <div className="rounded-xl p-4 shadow-lg w-[260px]" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+            <p className="text-sm font-semibold" style={{ color: 'white' }}>{activeTask.title}</p>
           </div>
         ) : null}
       </DragOverlay>
@@ -988,89 +912,80 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
   );
 }
 
-function SortableTaskCard({ task, priorityColors, selectedTaskId, onSelectTask }: {
+function SortableBoardCard({ task, priorityPill, todayStr, selectedTaskId, onSelectTask }: {
   task: Task;
-  priorityColors: Record<string, string>;
+  priorityPill: Record<string, { label: string; bg: string }>;
+  todayStr: string;
   selectedTaskId: string | null;
   onSelectTask: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
-
-  const priorityLabels: Record<string, { label: string; cls: string }> = {
-    urgent: { label: 'Urgent', cls: 'bg-destructive/15 text-destructive border-destructive/30' },
-    high: { label: 'High', cls: 'bg-orange-500/15 text-orange-600 border-orange-500/30' },
-    medium: { label: 'Medium', cls: 'bg-primary/15 text-primary border-primary/30' },
-    low: { label: 'Low', cls: 'bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20' },
-  };
-
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
   const isOverdue = task.due_date && task.due_date < todayStr && task.status !== 'complete';
   const daysOverdue = isOverdue ? Math.ceil((new Date(todayStr).getTime() - new Date(task.due_date + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24)) : 0;
-  const pStyle = priorityLabels[task.priority] || priorityLabels.medium;
+  const isDueToday = task.due_date === todayStr && task.status !== 'complete';
+  const pill = priorityPill[task.priority] || priorityPill.medium;
+
+  const getRelativeDate = () => {
+    if (!task.due_date) return null;
+    if (isOverdue) return { text: `${daysOverdue}d overdue`, color: '#ff4d4d' };
+    if (isDueToday) return { text: 'Due today', color: '#f59e0b' };
+    const daysUntil = Math.ceil((new Date(task.due_date + 'T00:00:00').getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24));
+    return { text: `Due in ${daysUntil}d`, color: '#8b92a5' };
+  };
+
+  const relDate = getRelativeDate();
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`rounded-xl p-3 cursor-pointer transition-all duration-200 backdrop-blur-xl border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(222,30%,21%)_0%,hsl(230,25%,17%)_50%,hsl(238,22%,14%)_100%)] hover:shadow-[inset_0_1px_2px_hsl(272,100%,85%,0.2),inset_0_-1px_1px_hsl(0,0%,0%,0.25),0_0_20px_hsl(272,100%,70%,0.18),0_10px_40px_hsl(0,0%,0%,0.6)] hover:-translate-y-0.5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)] relative overflow-hidden border-l-[3px] ${priorityColors[task.priority] || ''} ${
-        selectedTaskId === task.id ? 'ring-1 ring-primary' : ''
-      }`}
+    <div ref={setNodeRef}
+      style={{ ...style, backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}
+      className={cn('rounded-xl p-4 cursor-pointer transition-all', selectedTaskId === task.id && 'ring-1 ring-[#3b7eff]')}
       onClick={() => onSelectTask(task.id)}
+      {...attributes} {...listeners}
     >
-      <div className="flex items-start gap-1.5">
-        <div
-          {...attributes}
-          {...listeners}
-          className="mt-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground shrink-0"
-          onClick={e => e.stopPropagation()}
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className={`text-sm font-medium ${task.status === 'complete' ? 'line-through text-muted-foreground' : ''}`}>
-            {task.title}
-          </p>
-          {task.deal?.company && (
-            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{task.deal.company}</p>
+      {/* Top row: title + priority */}
+      <div className="flex items-start justify-between gap-2">
+        <p className={cn('text-[15px] font-semibold flex-1', task.status === 'complete' && 'line-through')} style={{ color: 'white' }}>
+          {task.title}
+        </p>
+        <span className="text-[10px] px-3 py-1 rounded-full shrink-0 font-medium" style={{ backgroundColor: pill.bg, color: 'white' }}>
+          {pill.label}
+        </span>
+      </div>
+      {/* Middle: deal */}
+      {task.deal?.company && (
+        <p className="text-xs mt-2 truncate" style={{ color: '#3b7eff' }}>{task.deal.company}</p>
+      )}
+      {/* Bottom: avatar + date */}
+      <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center gap-1.5">
+          {task.assignee_profile && (
+            <>
+              <div className="h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold" style={{ backgroundColor: '#3b7eff', color: 'white' }}>
+                {task.assignee_profile.display_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+              </div>
+              <span className="text-[11px]" style={{ color: '#8b92a5' }}>
+                {task.assignee_profile.display_name?.split(' ')[0]}
+              </span>
+            </>
           )}
-          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-            <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${pStyle.cls}`}>
-              {pStyle.label}
-            </span>
-            {task.due_date && (
-              <span className={cn(
-                'text-[10px]',
-                isOverdue
-                  ? daysOverdue >= 4 ? 'text-destructive font-bold' : 'text-destructive font-medium'
-                  : 'text-muted-foreground'
-              )}>
-                {daysOverdue >= 8 && <AlertTriangle className="h-2.5 w-2.5 inline mr-0.5 -mt-0.5" />}
-                {format(new Date(task.due_date + 'T00:00:00'), 'MMM d')}
-              </span>
-            )}
-            {task.assignee_profile && (
-              <span className="text-[10px] text-muted-foreground ml-auto truncate max-w-[80px]">
-                {task.assignee_profile.display_name}
-              </span>
-            )}
-          </div>
         </div>
+        {relDate && (
+          <span className="text-[11px] font-medium" style={{ color: relDate.color }}>{relDate.text}</span>
+        )}
       </div>
     </div>
   );
 }
 
-function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selectedTaskId, onSelectTask, onCreateTask, isCustom, onRemove }: {
+function BoardColumn({ groupKey, label, tasks: groupTasks, statusColor, priorityPill, todayStr, selectedTaskId, onSelectTask, onCreateTask, isCustom, onRemove }: {
   groupKey: string;
   label: string;
   tasks: Task[];
-  priorityColors: Record<string, string>;
+  statusColor: string;
+  priorityPill: Record<string, { label: string; bg: string }>;
+  todayStr: string;
   selectedTaskId: string | null;
   onSelectTask: (id: string) => void;
   onCreateTask: (title: string, status: string) => void;
@@ -1080,79 +995,45 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selec
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-
   const { setNodeRef, isOver } = useDroppable({ id: groupKey });
-
   const taskIds = useMemo(() => groupTasks.map(t => t.id), [groupTasks]);
 
-  const startAdding = () => {
-    setIsAdding(true);
-    setNewTitle('');
-    setTimeout(() => inputRef.current?.focus(), 50);
-  };
-
-  const handleSubmit = () => {
-    if (!newTitle.trim()) { setIsAdding(false); return; }
-    onCreateTask(newTitle.trim(), groupKey);
-    setNewTitle('');
-    setTimeout(() => inputRef.current?.focus(), 50);
-  };
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); }
-    if (e.key === 'Escape') { setIsAdding(false); setNewTitle(''); }
-  };
+  const startAdding = () => { setIsAdding(true); setNewTitle(''); setTimeout(() => inputRef.current?.focus(), 50); };
+  const handleSubmit = () => { if (!newTitle.trim()) { setIsAdding(false); return; } onCreateTask(newTitle.trim(), groupKey); setNewTitle(''); setTimeout(() => inputRef.current?.focus(), 50); };
+  const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } if (e.key === 'Escape') { setIsAdding(false); setNewTitle(''); } };
 
   return (
-    <div className={`flex flex-col min-w-[280px] w-[280px] bg-muted/30 rounded-lg transition-colors ${isOver ? 'bg-primary/5 ring-1 ring-primary/20' : ''}`}>
-      <div className="flex items-center justify-between px-3 py-2.5 border-b">
+    <div className={cn('flex flex-col min-w-[280px] w-[280px] rounded-xl transition-colors', isOver && 'ring-1 ring-[#3b7eff]/30')}
+      style={{ backgroundColor: '#0d1117', border: '1px solid #2a2f3e' }}>
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2a2f3e' }}>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{label}</span>
-          <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">
+          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
+          <span className="text-sm font-semibold" style={{ color: 'white' }}>{label}</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: statusColor + '20', color: statusColor }}>
             {groupTasks.length}
           </span>
         </div>
         <div className="flex items-center gap-1">
           {isCustom && onRemove && (
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={onRemove}>
-              <Trash2 className="h-3 w-3" />
-            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onRemove}><Trash2 className="h-3 w-3" style={{ color: '#8b92a5' }} /></Button>
           )}
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={startAdding}>
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={startAdding}><Plus className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} /></Button>
         </div>
       </div>
-      <div ref={setNodeRef} className="flex-1 overflow-auto p-2 space-y-2 min-h-[60px]">
+      <div ref={setNodeRef} className="flex-1 overflow-auto p-3 space-y-2 min-h-[60px]">
         {isAdding && (
-          <div className="rounded-md border bg-card p-2">
-            <Input
-              ref={inputRef}
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onBlur={handleSubmit}
-              placeholder="Task name..."
-              className="h-7 text-sm border-0 shadow-none focus-visible:ring-0 px-1"
-            />
+          <div className="rounded-xl p-3" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+            <Input ref={inputRef} value={newTitle} onChange={e => setNewTitle(e.target.value)} onKeyDown={handleKeyDown} onBlur={handleSubmit}
+              placeholder="Task name..." className="h-7 text-sm border-0 shadow-none focus-visible:ring-0 px-1 bg-transparent text-white" />
           </div>
         )}
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {groupTasks.map(task => (
-            <SortableTaskCard
-              key={task.id}
-              task={task}
-              priorityColors={priorityColors}
-              selectedTaskId={selectedTaskId}
-              onSelectTask={onSelectTask}
-            />
+            <SortableBoardCard key={task.id} task={task} priorityPill={priorityPill} todayStr={todayStr} selectedTaskId={selectedTaskId} onSelectTask={onSelectTask} />
           ))}
         </SortableContext>
         {!isAdding && (
-          <button
-            onClick={startAdding}
-            className="w-full flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 px-2 rounded hover:bg-muted/50 transition-colors"
-          >
+          <button onClick={startAdding} className="w-full flex items-center gap-1.5 text-xs py-1.5 px-2 rounded transition-colors" style={{ color: '#8b92a5' }}>
             <Plus className="h-3 w-3" /> Add task
           </button>
         )}
