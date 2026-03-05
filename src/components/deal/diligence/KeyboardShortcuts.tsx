@@ -12,8 +12,6 @@ interface Shortcut {
 
 const SHORTCUTS: Shortcut[] = [
   { keys: ['⌘', 'K'], label: 'Command palette', category: 'Navigation' },
-  { keys: ['⌘', '1'], label: 'Ingest view', category: 'Navigation' },
-  { keys: ['⌘', '2'], label: 'Dashboard', category: 'Navigation' },
   { keys: ['⌘', 'E'], label: 'Run extraction', category: 'Actions' },
   { keys: ['⌘', 'A'], label: 'Toggle audit mode', category: 'Actions' },
   { keys: ['⌘', 'P'], label: 'Export PDF', category: 'Export' },
@@ -37,10 +35,6 @@ export function useKeyboardShortcuts({ onSwitchMode, onExtract, onToggleAudit, o
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
 
       switch (e.key) {
-        case '1': e.preventDefault(); onSwitchMode('ingestion'); break;
-        case '2': e.preventDefault(); onSwitchMode('split'); break;
-        case '3': e.preventDefault(); onSwitchMode('dashboard'); break;
-        case '4': e.preventDefault(); onSwitchMode('report'); break;
         case 'e': e.preventDefault(); onExtract(); break;
         case 'a': e.preventDefault(); onToggleAudit(); break;
         case 'p': e.preventDefault(); onExportPDF?.(); break;

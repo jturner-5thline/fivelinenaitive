@@ -1,13 +1,12 @@
-import { Upload, BarChart3, FileText, Sparkles } from 'lucide-react';
+import { Upload, BarChart3, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface DiligenceEmptyStateProps {
-  mode: 'ingestion' | 'split' | 'dashboard' | 'report';
+  mode: 'ingestion' | 'dashboard';
   hasFiles: boolean;
   hasMetrics: boolean;
   onUpload?: () => void;
-  onSwitchMode?: (mode: string) => void;
   className?: string;
 }
 
@@ -17,7 +16,7 @@ const STEPS = [
   { id: 3, label: 'Analyze & report', icon: BarChart3, description: 'Dashboard, scenarios, covenants, and IC-ready reports' },
 ];
 
-export function DiligenceEmptyState({ mode, hasFiles, hasMetrics, onUpload, onSwitchMode, className }: DiligenceEmptyStateProps) {
+export function DiligenceEmptyState({ mode, hasFiles, hasMetrics, onUpload, className }: DiligenceEmptyStateProps) {
   if (mode === 'ingestion' && !hasFiles) {
     return (
       <div className={cn("flex flex-col items-center justify-center py-16 px-6 text-center", className)}>
@@ -56,44 +55,16 @@ export function DiligenceEmptyState({ mode, hasFiles, hasMetrics, onUpload, onSw
     );
   }
 
-  if ((mode === 'dashboard' || mode === 'split') && !hasMetrics) {
+  if (mode === 'dashboard' && !hasMetrics) {
     return (
       <div className={cn("flex flex-col items-center justify-center py-12 px-6 text-center rounded-xl border border-dashed border-border/40", className)}>
         <div className="h-12 w-12 rounded-xl bg-muted/30 flex items-center justify-center mb-4">
           <BarChart3 className="h-6 w-6 text-muted-foreground" />
         </div>
         <h4 className="text-sm font-semibold mb-1">No metrics extracted yet</h4>
-        <p className="text-xs text-muted-foreground max-w-sm mb-4">
+        <p className="text-xs text-muted-foreground max-w-sm">
           Upload financial files and run extraction to populate your dashboard with key metrics, variance analysis, and covenant monitoring.
         </p>
-        {onSwitchMode && (
-          <Button variant="outline" size="sm" onClick={() => onSwitchMode('ingestion')} className="text-xs gap-1.5">
-            <Upload className="h-3.5 w-3.5" />
-            Go to Ingest
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  if (mode === 'report' && !hasMetrics && !hasFiles) {
-    return (
-      <div className={cn("flex flex-col items-center justify-center py-12 px-6 text-center rounded-xl border border-dashed border-border/40", className)}>
-        <div className="h-12 w-12 rounded-xl bg-muted/30 flex items-center justify-center mb-4">
-          <FileText className="h-6 w-6 text-muted-foreground" />
-        </div>
-        <h4 className="text-sm font-semibold mb-1">Ready to build your memo</h4>
-        <p className="text-xs text-muted-foreground max-w-sm mb-4">
-          You can start writing manually, or upload financial data first to let the AI auto-fill sections with deal-specific analysis.
-        </p>
-        <div className="flex gap-2">
-          {onSwitchMode && (
-            <Button variant="outline" size="sm" onClick={() => onSwitchMode('ingestion')} className="text-xs gap-1.5">
-              <Upload className="h-3.5 w-3.5" />
-              Upload Data First
-            </Button>
-          )}
-        </div>
       </div>
     );
   }
