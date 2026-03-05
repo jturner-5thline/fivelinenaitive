@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, ChevronRight, GripVertical } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { DealMilestone, MilestoneStatus, MILESTONE_STATUS_CONFIG } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
@@ -54,7 +54,7 @@ interface DealMilestonesProps {
 
 export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorder }: DealMilestonesProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState<Date | undefined>();
@@ -132,27 +132,34 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
   return (
     <div className="pt-0">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2 mb-1">
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="h-auto p-0 hover:bg-transparent gap-2">
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <button
+              className={cn(
+                "flex items-center gap-2 flex-1 px-3 py-2 -mx-3 rounded-lg",
+                "cursor-pointer transition-all duration-200",
+                "hover:bg-white/[0.07] hover:shadow-[0_0_12px_rgba(126,184,247,0.08)]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               )}
+              aria-expanded={isExpanded}
+            >
+              <ChevronRight className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                isExpanded && "rotate-90"
+              )} />
               <span className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Deal Milestones</span>
               {milestones.length > 0 && (
-                <span className="text-xs text-muted-foreground">
-                  ({completedCount}/{totalCount})
-                </span>
+                <Badge variant="outline" className="ml-1 text-[10px] px-1.5 py-0 h-5 font-semibold">
+                  {completedCount}/{totalCount}
+                </Badge>
               )}
-            </Button>
+            </button>
           </CollapsibleTrigger>
           {isExpanded && !isAdding && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-xs gap-1"
+              className="h-7 text-xs gap-1 shrink-0"
               onClick={() => setIsAdding(true)}
             >
               <Plus className="h-3 w-3" />
