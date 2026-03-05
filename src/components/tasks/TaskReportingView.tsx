@@ -1,14 +1,11 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { type Task } from '@/hooks/useTasks';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle2, Clock, AlertTriangle, TrendingUp, BarChart3, Users,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { isPast, isToday, differenceInDays, format, startOfWeek, endOfWeek, eachDayOfInterval, subDays } from 'date-fns';
+import { isPast, isToday, differenceInDays, format, eachDayOfInterval, subDays } from 'date-fns';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, PieChart, Pie, Tooltip } from 'recharts';
 
 interface TaskReportingViewProps {
   tasks: Task[];
@@ -26,32 +23,10 @@ export function TaskReportingView({ tasks }: TaskReportingViewProps) {
       t.due_date && t.status !== 'complete' && isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00'))
     );
 
-    const dueToday = tasks.filter(t =>
-      t.due_date && t.status !== 'complete' && isToday(new Date(t.due_date + 'T00:00:00'))
-    );
-
-    const dueSoon = tasks.filter(t => {
-      if (!t.due_date || t.status === 'complete') return false;
-      const d = new Date(t.due_date + 'T00:00:00');
-      const diff = differenceInDays(d, new Date());
-      return diff > 0 && diff <= 7;
-    });
-
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    // Priority breakdown
-    const byPriority = {
-      urgent: tasks.filter(t => t.priority === 'urgent' && t.status !== 'complete').length,
-      high: tasks.filter(t => t.priority === 'high' && t.status !== 'complete').length,
-      medium: tasks.filter(t => t.priority === 'medium' && t.status !== 'complete').length,
-      low: tasks.filter(t => t.priority === 'low' && t.status !== 'complete').length,
-    };
-
     // Last 7 days completion trend
-    const last7Days = eachDayOfInterval({
-      start: subDays(new Date(), 6),
-      end: new Date(),
-    });
+    const last7Days = eachDayOfInterval({ start: subDays(new Date(), 6), end: new Date() });
     const completionTrend = last7Days.map(day => ({
       day: format(day, 'EEE'),
       date: format(day, 'MMM d'),
@@ -60,251 +35,105 @@ export function TaskReportingView({ tasks }: TaskReportingViewProps) {
       ).length,
     }));
 
-    // Deal breakdown
-    const dealMap = new Map<string | null, { dealName: string; dealId: string | null; total: number; open: number; overdue: number; completed: number }>();
+    // Avg days to complete by priority
+    const priorities = ['high', 'medium', 'low'];
+    const avgByPriority = priorities.map(p => {
+      const completedOfPriority = tasks.filter(t => t.priority === p && t.status === 'complete' && t.completed_at && t.created_at);
+      const avgDays = completedOfPriority.length > 0
+        ? completedOfPriority.reduce((sum, t) => sum + differenceInDays(new Date(t.completed_at!), new Date(t.created_at)), 0) / completedOfPriority.length
+        : 0;
+      return { priority: p.charAt(0).toUpperCase() + p.slice(1), avgDays: Math.round(avgDays * 10) / 10, count: completedOfPriority.length };
+    });
+
+    // Overdue rate by owner
+    const ownerMap = new Map<string, { name: string; total: number; overdue: number }>();
     tasks.forEach(t => {
-      const dId = t.deal_id || null;
-      const dName = t.deal?.company || '— No Deal';
-      if (!dealMap.has(dId)) dealMap.set(dId, { dealName: dName, dealId: dId, total: 0, open: 0, overdue: 0, completed: 0 });
-      const row = dealMap.get(dId)!;
+      const name = t.assignee_profile?.display_name || 'Unassigned';
+      const id = t.assigned_to || 'unassigned';
+      if (!ownerMap.has(id)) ownerMap.set(id, { name, total: 0, overdue: 0 });
+      const row = ownerMap.get(id)!;
       row.total++;
-      if (t.status === 'complete') row.completed++;
-      else {
-        row.open++;
-        if (t.due_date && isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00'))) {
-          row.overdue++;
-        }
+      if (t.due_date && t.status !== 'complete' && isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00'))) {
+        row.overdue++;
       }
     });
-    const dealBreakdown = Array.from(dealMap.values()).sort((a, b) => b.open - a.open);
+    const overdueByOwner = Array.from(ownerMap.values())
+      .map(o => ({ ...o, rate: o.total > 0 ? Math.round((o.overdue / o.total) * 100) : 0 }))
+      .sort((a, b) => b.rate - a.rate);
 
-    return {
-      total, completed, inProgress, blocked, notStarted,
-      overdue, dueToday, dueSoon, completionRate, byPriority, completionTrend, dealBreakdown,
-    };
+    return { total, completed, inProgress, blocked, notStarted, overdue, completionRate, completionTrend, avgByPriority, overdueByOwner };
   }, [tasks]);
+
+  const PRIORITY_COLORS: Record<string, string> = { High: '#ff4d4d', Medium: '#f59e0b', Low: '#6b7280' };
 
   return (
     <div className="p-6 space-y-6 overflow-auto">
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-1">
-              <BarChart3 className="h-4 w-4 text-primary" />
-              <span className="text-xs font-medium text-muted-foreground">Total Tasks</span>
-            </div>
-            <p className="text-2xl font-bold">{stats.total}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-1">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              <span className="text-xs font-medium text-muted-foreground">Completed</span>
-            </div>
-            <p className="text-2xl font-bold">{stats.completed}</p>
-            <p className="text-[10px] text-muted-foreground">{stats.completionRate}% completion rate</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              <span className="text-xs font-medium text-muted-foreground">Overdue</span>
-            </div>
-            <p className="text-2xl font-bold text-destructive">{stats.overdue.length}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Clock className="h-4 w-4 text-amber-500" />
-              <span className="text-xs font-medium text-muted-foreground">Due Today</span>
-            </div>
-            <p className="text-2xl font-bold">{stats.dueToday.length}</p>
-          </CardContent>
-        </Card>
+      {/* Widget 1: Tasks Completed This Week */}
+      <div className="rounded-xl p-5" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="h-4 w-4" style={{ color: '#3b7eff' }} />
+          <h3 className="text-sm font-semibold" style={{ color: 'white' }}>Tasks Completed This Week</h3>
+        </div>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={stats.completionTrend}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
+            <XAxis dataKey="day" tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#2a2f3e' }} />
+            <YAxis tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#2a2f3e' }} allowDecimals={false} />
+            <Tooltip contentStyle={{ backgroundColor: '#1a1f2e', border: '1px solid #2a2f3e', borderRadius: 8, color: 'white', fontSize: 12 }} />
+            <Bar dataKey="completed" fill="#3b7eff" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Completion Progress */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Completion Progress</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Progress value={stats.completionRate} className="h-2" />
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-muted-foreground/20" />
-                <span className="text-xs text-muted-foreground">Not Started ({stats.notStarted})</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-primary" />
-                <span className="text-xs text-muted-foreground">In Progress ({stats.inProgress})</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-destructive" />
-                <span className="text-xs text-muted-foreground">Blocked ({stats.blocked})</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                <span className="text-xs text-muted-foreground">Complete ({stats.completed})</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Widget 2: Avg Days to Complete by Priority */}
+        <div className="rounded-xl p-5" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="h-4 w-4" style={{ color: '#3b7eff' }} />
+            <h3 className="text-sm font-semibold" style={{ color: 'white' }}>Avg Days to Complete by Priority</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={stats.avgByPriority} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
+              <XAxis type="number" tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#2a2f3e' }} />
+              <YAxis dataKey="priority" type="category" tick={{ fill: '#8b92a5', fontSize: 11 }} axisLine={{ stroke: '#2a2f3e' }} width={60} />
+              <Tooltip contentStyle={{ backgroundColor: '#1a1f2e', border: '1px solid #2a2f3e', borderRadius: 8, color: 'white', fontSize: 12 }} />
+              <Bar dataKey="avgDays" radius={[0, 4, 4, 0]}>
+                {stats.avgByPriority.map((entry, i) => (
+                  <Cell key={i} fill={PRIORITY_COLORS[entry.priority] || '#6b7280'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
-        {/* Priority Breakdown */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Open by Priority</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {Object.entries(stats.byPriority).map(([key, count]) => (
-              <div key={key} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={cn(
-                    'text-[10px] h-5',
-                    key === 'urgent' && 'bg-destructive/10 text-destructive border-destructive/20',
-                    key === 'high' && 'bg-orange-500/10 text-orange-600 border-orange-500/20',
-                    key === 'medium' && 'bg-primary/10 text-primary border-primary/20',
-                    key === 'low' && 'bg-muted text-muted-foreground border-border',
-                  )}>
-                    {key.charAt(0).toUpperCase() + key.slice(1)}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 bg-muted rounded-full w-[100px]">
-                    <div
-                      className={cn(
-                        'h-full rounded-full',
-                        key === 'urgent' && 'bg-destructive',
-                        key === 'high' && 'bg-orange-500',
-                        key === 'medium' && 'bg-primary',
-                        key === 'low' && 'bg-muted-foreground/40',
-                      )}
-                      style={{ width: `${stats.total > 0 ? (count / stats.total) * 100 : 0}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium w-6 text-right">{count}</span>
-                </div>
+        {/* Widget 3: Overdue Rate by Owner */}
+        <div className="rounded-xl p-5" style={{ backgroundColor: '#13181f', border: '1px solid #2a2f3e' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="h-4 w-4" style={{ color: '#ff4d4d' }} />
+            <h3 className="text-sm font-semibold" style={{ color: 'white' }}>Overdue Rate by Owner</h3>
+          </div>
+          <div className="space-y-2 max-h-[200px] overflow-auto">
+            <div className="grid grid-cols-[1fr_60px_60px_60px] gap-2 text-[10px] font-medium uppercase tracking-wide" style={{ color: '#8b92a5' }}>
+              <span>Owner</span>
+              <span className="text-center">Total</span>
+              <span className="text-center">Overdue</span>
+              <span className="text-center">Rate</span>
+            </div>
+            {stats.overdueByOwner.map((row, i) => (
+              <div key={i} className="grid grid-cols-[1fr_60px_60px_60px] gap-2 text-xs items-center py-1" style={{ borderBottom: '1px solid #2a2f3e' }}>
+                <span className="truncate" style={{ color: 'white' }}>{row.name}</span>
+                <span className="text-center" style={{ color: '#8b92a5' }}>{row.total}</span>
+                <span className="text-center font-medium" style={{ color: row.overdue > 0 ? '#ff4d4d' : '#8b92a5' }}>{row.overdue}</span>
+                <span className="text-center font-medium" style={{ color: row.rate > 20 ? '#ff4d4d' : row.rate > 0 ? '#f59e0b' : '#22c55e' }}>{row.rate}%</span>
               </div>
             ))}
-          </CardContent>
-        </Card>
-
-        {/* 7-Day Trend */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-1.5">
-              <TrendingUp className="h-3.5 w-3.5" />
-              7-Day Completion Trend
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end gap-1 h-[80px]">
-              {stats.completionTrend.map((d, i) => {
-                const maxVal = Math.max(...stats.completionTrend.map(x => x.completed), 1);
-                const height = (d.completed / maxVal) * 100;
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-medium">{d.completed || ''}</span>
-                    <div
-                      className={cn(
-                        'w-full rounded-t transition-all',
-                        d.completed > 0 ? 'bg-emerald-500' : 'bg-muted',
-                      )}
-                      style={{ height: `${Math.max(height, 4)}%` }}
-                    />
-                    <span className="text-[9px] text-muted-foreground">{d.day}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Overdue Tasks */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-              Overdue Tasks ({stats.overdue.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.overdue.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">🎉 No overdue tasks!</p>
-            ) : (
-              <div className="space-y-1.5 max-h-[150px] overflow-auto">
-                {stats.overdue.map(task => (
-                  <div key={task.id} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="truncate">{task.title}</span>
-                    <span className="text-destructive shrink-0">
-                      {differenceInDays(new Date(), new Date(task.due_date! + 'T00:00:00'))}d overdue
-                    </span>
-                  </div>
-                ))}
-              </div>
+            {stats.overdueByOwner.length === 0 && (
+              <p className="text-xs text-center py-4" style={{ color: '#8b92a5' }}>No data</p>
             )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tasks by Deal */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-1.5">
-            Tasks by Deal
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left px-3 py-2 font-medium">Deal Name</th>
-                  <th className="text-center px-3 py-2 font-medium">Total</th>
-                  <th className="text-center px-3 py-2 font-medium">Open</th>
-                  <th className="text-center px-3 py-2 font-medium">Overdue</th>
-                  <th className="text-center px-3 py-2 font-medium">Completed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.dealBreakdown.map(row => (
-                  <tr key={row.dealId || 'no-deal'} className="border-b last:border-b-0 hover:bg-muted/20">
-                    <td className="px-3 py-2">
-                      {row.dealId ? (
-                        <Link to={`/deal/${row.dealId}`} className="text-primary hover:underline">
-                          {row.dealName}
-                        </Link>
-                      ) : (
-                        <span className="text-muted-foreground">— No Deal</span>
-                      )}
-                    </td>
-                    <td className="text-center px-3 py-2">{row.total}</td>
-                    <td className="text-center px-3 py-2">{row.open}</td>
-                    <td className="text-center px-3 py-2">
-                      {row.overdue > 0 ? (
-                        <span className="text-destructive font-medium">{row.overdue}</span>
-                      ) : '0'}
-                    </td>
-                    <td className="text-center px-3 py-2">{row.completed}</td>
-                  </tr>
-                ))}
-                {stats.dealBreakdown.length === 0 && (
-                  <tr><td colSpan={5} className="text-center text-muted-foreground py-4">No tasks with deals</td></tr>
-                )}
-              </tbody>
-            </table>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

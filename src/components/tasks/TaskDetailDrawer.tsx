@@ -14,7 +14,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -28,24 +27,15 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import {
   X, Calendar, Flag, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
   Tag, Link2, Timer, Paperclip, Download, FileText, Users,
-  Star, Repeat, Eye, EyeOff, ExternalLink,
+  Star, Repeat, Eye, EyeOff, ExternalLink, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
 import confetti from 'canvas-confetti';
-
-const PRIORITY_CONFIG: Record<string, { label: string; className: string }> = {
-  urgent: { label: 'Urgent', className: 'bg-destructive/10 text-destructive' },
-  high: { label: 'High', className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
-  medium: { label: 'Medium', className: 'bg-primary/10 text-primary' },
-  low: { label: 'Low', className: 'bg-muted text-muted-foreground' },
-};
+import { toast } from 'sonner';
 
 interface TaskDetailDrawerProps {
   task: Task;
@@ -56,13 +46,7 @@ interface TaskDetailDrawerProps {
 }
 
 function fireCelebration() {
-  confetti({
-    particleCount: 60,
-    spread: 55,
-    origin: { y: 0.7 },
-    colors: ['#10b981', '#059669', '#34d399'],
-    disableForReducedMotion: true,
-  });
+  confetti({ particleCount: 60, spread: 55, origin: { y: 0.7 }, colors: ['#10b981', '#059669', '#34d399'], disableForReducedMotion: true });
 }
 
 function formatFileSize(bytes: number) {
@@ -77,6 +61,20 @@ function formatMinutes(mins: number) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+const STATUS_COLORS: Record<string, { label: string; bg: string }> = {
+  not_started: { label: 'Not Started', bg: '#6b7280' },
+  in_progress: { label: 'In Progress', bg: '#3b7eff' },
+  blocked: { label: 'Blocked', bg: '#ff4d4d' },
+  complete: { label: 'Complete', bg: '#22c55e' },
+};
+
+const PRIORITY_PILL: Record<string, { label: string; bg: string }> = {
+  urgent: { label: 'Urgent', bg: '#ff4d4d' },
+  high: { label: 'High', bg: '#ff4d4d' },
+  medium: { label: 'Medium', bg: '#f59e0b' },
+  low: { label: 'Low', bg: '#6b7280' },
+};
+
 export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage = false }: TaskDetailDrawerProps) {
   const navigate = useNavigate();
   const [editingTitle, setEditingTitle] = useState(false);
@@ -88,6 +86,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const [timeMinutes, setTimeMinutes] = useState('');
   const [timeDescription, setTimeDescription] = useState('');
   const [showTimeInput, setShowTimeInput] = useState(false);
+  const [blockerNote, setBlockerNote] = useState((task as any).blocker_note || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { comments, addComment } = useTaskComments(task.id);
@@ -104,16 +103,13 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const createMentions = useCreateMentions();
 
   const handleSaveTitle = () => {
-    if (titleValue.trim() && titleValue !== task.title) {
-      onUpdate({ title: titleValue.trim() } as any);
-    }
+    if (titleValue.trim() && titleValue !== task.title) onUpdate({ title: titleValue.trim() } as any);
     setEditingTitle(false);
   };
 
   const handleSaveDesc = () => {
     if (descValue !== (task.description || '')) {
       onUpdate({ description: descValue } as any);
-      // Create mentions from description
       createMentions.mutate({ taskId: task.id, text: descValue, source: 'description' });
     }
   };
@@ -121,7 +117,6 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const handleAddComment = () => {
     if (!commentText.trim()) return;
     addComment.mutate(commentText.trim());
-    // Create mentions from comment
     createMentions.mutate({ taskId: task.id, text: commentText.trim(), source: 'comment' });
     setCommentText('');
   };
@@ -158,61 +153,62 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
     if (newStatus === 'complete') fireCelebration();
   };
 
-  const isComplete = task.status === 'complete';
+  const handleStatusChange = (v: string) => {
+    if (v === 'blocked' && !blockerNote.trim()) {
+      toast.error('Please add a blocker note before setting status to Blocked');
+      return;
+    }
+    onUpdate({ status: v } as any);
+    if (v === 'complete') fireCelebration();
+  };
 
+  const handleSaveBlockerNote = () => {
+    onUpdate({ blocker_note: blockerNote.trim() || null } as any);
+  };
+
+  const isComplete = task.status === 'complete';
   const today = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-  const nextMon = format(nextMonday(new Date()), 'yyyy-MM-dd');
 
   const assignedLabels = labels.filter(l => assignedLabelIds.includes(l.id));
   const availableDeps = allTasks.filter(t => t.id !== task.id && !blockedBy.some(d => d.depends_on_task_id === t.id));
 
+  const statusConf = STATUS_COLORS[task.status] || STATUS_COLORS.not_started;
+  const priorityConf = PRIORITY_PILL[task.priority] || PRIORITY_PILL.medium;
+
   return (
-    <div className={cn(
-      "border-l bg-background flex flex-col h-full shrink-0",
-      fullPage ? "w-full border-l-0" : "w-[380px]"
-    )}>
+    <div className={cn('flex flex-col h-full shrink-0', fullPage ? 'w-full' : 'w-full')}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b">
+      <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid #2a2f3e' }}>
         <div className="flex items-center gap-2">
-          <Checkbox
-            checked={isComplete}
-            onCheckedChange={handleToggleComplete}
-            className={cn('h-4 w-4 rounded-full', isComplete && 'bg-emerald-500 border-emerald-500')}
-          />
-          <span className="text-xs text-muted-foreground capitalize">{task.task_type}</span>
+          <Checkbox checked={isComplete} onCheckedChange={handleToggleComplete}
+            className={cn('h-4 w-4 rounded-full', isComplete && 'bg-[#22c55e] border-[#22c55e]')} />
+          <span className="text-xs capitalize" style={{ color: '#8b92a5' }}>{task.task_type}</span>
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/tasks/${task.id}`)} title="Open full page">
-            <ExternalLink className="h-3.5 w-3.5" />
+            <ExternalLink className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete}>
-            <Trash2 className="h-3.5 w-3.5" />
+          <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-[#ff4d4d]" onClick={onDelete}>
+            <Trash2 className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" style={{ color: '#8b92a5' }} />
           </Button>
         </div>
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
+        <div className="p-5 space-y-4">
           {/* Title */}
           {editingTitle ? (
-            <Input
-              value={titleValue}
-              onChange={e => setTitleValue(e.target.value)}
-              onBlur={handleSaveTitle}
+            <Input value={titleValue} onChange={e => setTitleValue(e.target.value)} onBlur={handleSaveTitle}
               onKeyDown={e => { if (e.key === 'Enter') handleSaveTitle(); if (e.key === 'Escape') { setTitleValue(task.title); setEditingTitle(false); } }}
-              className="text-lg font-semibold"
-              autoFocus
-            />
+              className="text-lg font-semibold bg-[#0d1117] text-white border-[#2a2f3e]" autoFocus />
           ) : (
             <h2
-              className={cn(
-                'text-lg font-semibold cursor-text hover:bg-muted/40 rounded px-1 -mx-1 py-0.5 transition-colors',
-                isComplete && 'line-through text-muted-foreground'
-              )}
+              className={cn('text-lg font-semibold cursor-text hover:bg-[#1e2433] rounded px-1 -mx-1 py-0.5 transition-colors', isComplete && 'line-through')}
+              style={{ color: isComplete ? '#8b92a5' : 'white' }}
               onClick={() => { setTitleValue(task.title); setEditingTitle(true); }}
             >
               {task.title}
@@ -220,25 +216,85 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           )}
 
           {/* Meta fields */}
-          <div className="space-y-2.5">
-            {/* Assignee - now with team picker */}
+          <div className="space-y-3">
+            {/* Status */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
+                <CheckSquare className="h-3 w-3" /> Status
+              </div>
+              <Select value={task.status} onValueChange={handleStatusChange}>
+                <SelectTrigger className="h-7 w-[140px] text-xs border-none bg-transparent px-0">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-medium" style={{ backgroundColor: `${statusConf.bg}25`, color: statusConf.bg }}>
+                    {statusConf.label}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="not_started" className="text-xs">Not Started</SelectItem>
+                  <SelectItem value="in_progress" className="text-xs">In Progress</SelectItem>
+                  <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
+                  <SelectItem value="complete" className="text-xs">Complete</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Blocker Note - shown when blocked or editing */}
+            {(task.status === 'blocked' || blockerNote) && (
+              <div className="flex items-start gap-3">
+                <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0 mt-1" style={{ color: '#ff4d4d' }}>
+                  <AlertTriangle className="h-3 w-3" /> Blocker
+                </div>
+                <div className="flex-1 space-y-1">
+                  <Input
+                    value={blockerNote}
+                    onChange={e => setBlockerNote(e.target.value)}
+                    onBlur={handleSaveBlockerNote}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveBlockerNote(); }}
+                    placeholder="What's blocking this task?..."
+                    className="h-7 text-xs bg-[#0d1117] text-white"
+                    style={{ borderColor: '#ff4d4d' }}
+                  />
+                  {task.status === 'blocked' && !blockerNote.trim() && (
+                    <p className="text-[10px]" style={{ color: '#ff4d4d' }}>Required: Add a note explaining what's blocking this task</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Priority */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
+                <Flag className="h-3 w-3" /> Priority
+              </div>
+              <Select value={task.priority} onValueChange={v => onUpdate({ priority: v } as any)}>
+                <SelectTrigger className="h-7 w-[120px] text-xs border-none bg-transparent px-0">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-medium" style={{ backgroundColor: priorityConf.bg, color: 'white' }}>
+                    {priorityConf.label}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low" className="text-xs">Low</SelectItem>
+                  <SelectItem value="medium" className="text-xs">Medium</SelectItem>
+                  <SelectItem value="high" className="text-xs">High</SelectItem>
+                  <SelectItem value="urgent" className="text-xs">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Assignee */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <User className="h-3 w-3" /> Assignee
               </div>
-              <Select
-                value={task.assigned_to}
-                onValueChange={v => onUpdate({ assigned_to: v } as any)}
-              >
+              <Select value={task.assigned_to} onValueChange={v => onUpdate({ assigned_to: v } as any)}>
                 <SelectTrigger className="h-7 text-xs border-none bg-transparent px-1 w-auto min-w-[120px]">
                   <div className="flex items-center gap-1.5">
                     <Avatar className="h-5 w-5">
                       <AvatarImage src={task.assignee_profile?.avatar_url || undefined} />
-                      <AvatarFallback className="text-[9px] bg-primary text-primary-foreground">
+                      <AvatarFallback className="text-[9px]" style={{ backgroundColor: '#3b7eff', color: 'white' }}>
                         {task.assignee_profile?.display_name?.slice(0, 2).toUpperCase() || '??'}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-xs">{task.assignee_profile?.display_name || 'Unassigned'}</span>
+                    <span className="text-xs" style={{ color: 'white' }}>{task.assignee_profile?.display_name || 'Unassigned'}</span>
                   </div>
                 </SelectTrigger>
                 <SelectContent>
@@ -257,127 +313,42 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               </Select>
             </div>
 
-            {/* Due date with quick shortcuts */}
+            {/* Due date */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <Calendar className="h-3 w-3" /> Due date
               </div>
               <div className="flex items-center gap-1 flex-wrap">
-                <Input
-                  type="date"
-                  value={task.due_date || ''}
-                  onChange={e => onUpdate({ due_date: e.target.value || null } as any)}
-                  className="h-7 text-xs w-[130px]"
-                />
+                <Input type="date" value={task.due_date || ''} onChange={e => onUpdate({ due_date: e.target.value || null } as any)}
+                  className="h-7 text-xs w-[130px] bg-[#0d1117] text-white border-[#2a2f3e]" />
                 <div className="flex gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 rounded-full"
-                    onClick={() => onUpdate({ due_date: today } as any)}
-                  >
-                    Today
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 rounded-full"
-                    onClick={() => onUpdate({ due_date: tomorrow } as any)}
-                  >
-                    Tomorrow
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 rounded-full"
-                    onClick={() => onUpdate({ due_date: format(addDays(new Date(), 7), 'yyyy-MM-dd') } as any)}
-                  >
-                    +1 Week
-                  </Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: today } as any)}>Today</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: tomorrow } as any)}>Tomorrow</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: format(addDays(new Date(), 7), 'yyyy-MM-dd') } as any)}>+1 Week</Button>
                 </div>
               </div>
             </div>
-
-            {/* Priority */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
-                <Flag className="h-3 w-3" /> Priority
-              </div>
-              <Select value={task.priority} onValueChange={v => onUpdate({ priority: v } as any)}>
-                <SelectTrigger className="h-7 w-[100px] text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low" className="text-xs">Low</SelectItem>
-                  <SelectItem value="medium" className="text-xs">Medium</SelectItem>
-                  <SelectItem value="high" className="text-xs">High</SelectItem>
-                  <SelectItem value="urgent" className="text-xs">Urgent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
-                <CheckSquare className="h-3 w-3" /> Status
-              </div>
-              <Select value={task.status} onValueChange={v => {
-                onUpdate({ status: v } as any);
-                if (v === 'complete') fireCelebration();
-              }}>
-                <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="not_started" className="text-xs">Not Started</SelectItem>
-                  <SelectItem value="in_progress" className="text-xs">In Progress</SelectItem>
-                  <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
-                  <SelectItem value="complete" className="text-xs">Complete</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Completed on */}
-            {isComplete && task.completed_at && (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
-                  <CheckSquare className="h-3 w-3" /> Completed
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  Completed on {format(new Date(task.completed_at), 'MMM d, yyyy')}
-                </span>
-              </div>
-            )}
 
             {/* Labels */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <Tag className="h-3 w-3" /> Labels
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 {assignedLabels.map(l => (
-                  <Badge
-                    key={l.id}
-                    variant="outline"
-                    className="text-[10px] h-5 px-1.5 gap-1 cursor-pointer hover:line-through"
-                    style={{ borderColor: l.color, color: l.color }}
-                    onClick={() => toggleLabel.mutate(l.id)}
-                  >
+                  <Badge key={l.id} variant="outline" className="text-[10px] h-5 px-1.5 gap-1 cursor-pointer hover:line-through"
+                    style={{ borderColor: l.color, color: l.color }} onClick={() => toggleLabel.mutate(l.id)}>
                     {l.name}
                   </Badge>
                 ))}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
-                      <Plus className="h-3 w-3" />
-                    </Button>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0"><Plus className="h-3 w-3" style={{ color: '#8b92a5' }} /></Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[180px] p-1" align="start">
-                    {labels.length === 0 && (
-                      <p className="text-[11px] text-muted-foreground p-2">No labels yet</p>
-                    )}
+                    {labels.length === 0 && <p className="text-[11px] text-muted-foreground p-2">No labels yet</p>}
                     {labels.map(l => (
-                      <button
-                        key={l.id}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
-                        onClick={() => toggleLabel.mutate(l.id)}
-                      >
+                      <button key={l.id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted" onClick={() => toggleLabel.mutate(l.id)}>
                         <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: l.color }} />
                         {l.name}
                         {assignedLabelIds.includes(l.id) && <span className="ml-auto text-primary">✓</span>}
@@ -390,15 +361,10 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
 
             {/* Starred */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <Star className="h-3 w-3" /> Starred
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn('h-7 text-xs gap-1.5', task.is_starred && 'text-amber-500')}
-                onClick={() => onUpdate({ is_starred: !task.is_starred } as any)}
-              >
+              <Button variant="ghost" size="sm" className={cn('h-7 text-xs gap-1.5', task.is_starred && 'text-amber-500')} onClick={() => onUpdate({ is_starred: !task.is_starred } as any)}>
                 <Star className={cn('h-3.5 w-3.5', task.is_starred && 'fill-amber-500 text-amber-500')} />
                 {task.is_starred ? 'Starred' : 'Star this task'}
               </Button>
@@ -406,14 +372,11 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
 
             {/* Recurrence */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <Repeat className="h-3 w-3" /> Repeat
               </div>
-              <Select
-                value={task.recurrence_rule || 'none'}
-                onValueChange={v => onUpdate({ recurrence_rule: v === 'none' ? null : v } as any)}
-              >
-                <SelectTrigger className="h-7 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+              <Select value={task.recurrence_rule || 'none'} onValueChange={v => onUpdate({ recurrence_rule: v === 'none' ? null : v } as any)}>
+                <SelectTrigger className="h-7 w-[130px] text-xs border-[#2a2f3e] bg-[#0d1117] text-white"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none" className="text-xs">No repeat</SelectItem>
                   <SelectItem value="daily" className="text-xs">Daily</SelectItem>
@@ -425,57 +388,33 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               </Select>
             </div>
 
-            {/* Recurrence end date */}
-            {task.recurrence_rule && task.recurrence_rule !== 'none' && (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
-                  <Calendar className="h-3 w-3" /> End date
-                </div>
-                <Input
-                  type="date"
-                  value={(task as any).recurrence_end_date || ''}
-                  onChange={e => onUpdate({ recurrence_end_date: e.target.value || null } as any)}
-                  className="h-7 text-xs w-[130px]"
-                  placeholder="No end date"
-                />
-              </div>
-            )}
-
             {/* Watchers */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <Eye className="h-3 w-3" /> Watchers
               </div>
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn('h-7 text-xs gap-1.5', isWatching && 'text-primary')}
-                  onClick={() => toggleWatch.mutate()}
-                >
+                <Button variant="ghost" size="sm" className={cn('h-7 text-xs gap-1.5', isWatching && 'text-[#3b7eff]')} onClick={() => toggleWatch.mutate()}>
                   {isWatching ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                   {isWatching ? 'Unwatch' : 'Watch'}
                 </Button>
-                {watchers.length > 0 && (
-                  <span className="text-[10px] text-muted-foreground">{watchers.length} watching</span>
-                )}
+                {watchers.length > 0 && <span className="text-[10px]" style={{ color: '#8b92a5' }}>{watchers.length} watching</span>}
               </div>
             </div>
 
+            {/* Time */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <Timer className="h-3 w-3" /> Time
               </div>
               <div className="flex items-center gap-1.5">
                 {totalMinutes > 0 ? (
-                  <Badge variant="blue" className="text-[10px] h-5 px-1.5 font-normal">{formatMinutes(totalMinutes)} logged</Badge>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: '#3b7eff25', color: '#3b7eff' }}>{formatMinutes(totalMinutes)} logged</span>
                 ) : (
-                  <span className="text-xs text-muted-foreground">No time logged</span>
+                  <span className="text-xs" style={{ color: '#8b92a5' }}>No time logged</span>
                 )}
               </div>
-              <Button variant="ghost" size="sm" className="h-5 text-[10px] ml-auto" onClick={() => setShowTimeInput(!showTimeInput)}>
-                + Log
-              </Button>
+              <Button variant="ghost" size="sm" className="h-5 text-[10px] ml-auto" style={{ color: '#8b92a5' }} onClick={() => setShowTimeInput(!showTimeInput)}>+ Log</Button>
             </div>
 
             {/* Deal link */}
@@ -484,25 +423,23 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             {/* Dependencies */}
             {(blockedBy.length > 0 || blocking.length > 0) && (
               <div className="flex items-start gap-3">
-                <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0 mt-0.5">
+                <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0 mt-0.5" style={{ color: '#8b92a5' }}>
                   <Link2 className="h-3 w-3" /> Depends
                 </div>
                 <div className="space-y-1 text-xs">
                   {blockedBy.map(d => {
                     const depTask = allTasks.find(t => t.id === d.depends_on_task_id);
                     return (
-                      <div key={d.id} className="flex items-center gap-1 text-destructive/80">
+                      <div key={d.id} className="flex items-center gap-1" style={{ color: '#ff4d4d' }}>
                         <span>Blocked by: {depTask?.title || 'Unknown'}</span>
-                        <button className="text-muted-foreground hover:text-destructive" onClick={() => removeDependency.mutate(d.id)}>
-                          <X className="h-3 w-3" />
-                        </button>
+                        <button onClick={() => removeDependency.mutate(d.id)}><X className="h-3 w-3" style={{ color: '#8b92a5' }} /></button>
                       </div>
                     );
                   })}
                   {blocking.map(d => {
                     const depTask = allTasks.find(t => t.id === d.task_id);
                     return (
-                      <div key={d.id} className="flex items-center gap-1 text-amber-600">
+                      <div key={d.id} className="flex items-center gap-1" style={{ color: '#f59e0b' }}>
                         <span>Blocking: {depTask?.title || 'Unknown'}</span>
                       </div>
                     );
@@ -512,38 +449,23 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             )}
           </div>
 
-          {/* Time logging form */}
+          {/* Time logging */}
           {showTimeInput && (
             <>
-              <Separator />
+              <Separator style={{ backgroundColor: '#2a2f3e' }} />
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Log Time</label>
+                <label className="text-xs font-medium" style={{ color: '#8b92a5' }}>Log Time</label>
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={timeMinutes}
-                    onChange={e => setTimeMinutes(e.target.value)}
-                    placeholder="Minutes"
-                    className="h-7 text-xs w-20"
-                    min={1}
-                  />
-                  <Input
-                    value={timeDescription}
-                    onChange={e => setTimeDescription(e.target.value)}
-                    placeholder="What did you work on?"
-                    className="h-7 text-xs flex-1"
-                    onKeyDown={e => { if (e.key === 'Enter') handleLogTime(); }}
-                  />
-                  <Button size="sm" className="h-7 text-xs" onClick={handleLogTime}>Log</Button>
+                  <Input type="number" value={timeMinutes} onChange={e => setTimeMinutes(e.target.value)} placeholder="Minutes" className="h-7 text-xs w-20 bg-[#0d1117] text-white border-[#2a2f3e]" min={1} />
+                  <Input value={timeDescription} onChange={e => setTimeDescription(e.target.value)} placeholder="What did you work on?" className="h-7 text-xs flex-1 bg-[#0d1117] text-white border-[#2a2f3e]" onKeyDown={e => { if (e.key === 'Enter') handleLogTime(); }} />
+                  <Button size="sm" className="h-7 text-xs" style={{ backgroundColor: '#3b7eff' }} onClick={handleLogTime}>Log</Button>
                 </div>
                 {timeEntries.length > 0 && (
                   <div className="space-y-1 mt-1">
                     {timeEntries.slice(0, 5).map(e => (
-                      <div key={e.id} className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <div key={e.id} className="flex items-center justify-between text-[11px]" style={{ color: '#8b92a5' }}>
                         <span>{formatMinutes(e.duration_minutes)} — {e.description || 'No description'}</span>
-                        <button onClick={() => deleteEntry.mutate(e.id)} className="hover:text-destructive">
-                          <X className="h-3 w-3" />
-                        </button>
+                        <button onClick={() => deleteEntry.mutate(e.id)} className="hover:text-[#ff4d4d]"><X className="h-3 w-3" /></button>
                       </div>
                     ))}
                   </div>
@@ -552,161 +474,114 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             </>
           )}
 
-          <Separator />
+          <Separator style={{ backgroundColor: '#2a2f3e' }} />
 
           {/* Description */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Description</label>
-            <MentionTextarea
-              value={descValue}
-              onChange={setDescValue}
-              placeholder="Add a description... (use @name to mention)"
-              className="min-h-[80px]"
-              minRows={3}
-            />
+            <label className="text-xs font-medium mb-1.5 block" style={{ color: '#8b92a5' }}>Description</label>
+            <MentionTextarea value={descValue} onChange={setDescValue} placeholder="Add a description..." className="min-h-[80px]" minRows={3} />
             <div className="flex justify-end mt-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 text-[10px]"
-                onClick={handleSaveDesc}
-                disabled={descValue === (task.description || '')}
-              >
-                Save
-              </Button>
+              <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={handleSaveDesc} disabled={descValue === (task.description || '')} style={{ color: '#8b92a5' }}>Save</Button>
             </div>
           </div>
 
-          <Separator />
+          <Separator style={{ backgroundColor: '#2a2f3e' }} />
 
           {/* Subtasks */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">Subtasks</span>
-                {subtasks.length > 0 && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {subtasks.filter(s => s.status === 'complete').length}/{subtasks.length}
-                  </span>
-                )}
+                <span className="text-xs font-medium" style={{ color: '#8b92a5' }}>Subtasks</span>
+                {subtasks.length > 0 && <span className="text-[10px]" style={{ color: '#8b92a5' }}>{subtasks.filter(s => s.status === 'complete').length}/{subtasks.length}</span>}
               </div>
-              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => setShowSubtaskInput(true)}>
+              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" style={{ color: '#8b92a5' }} onClick={() => setShowSubtaskInput(true)}>
                 <Plus className="h-3 w-3" /> Add
               </Button>
             </div>
             {subtasks.length > 0 && (
-              <div className="h-1 bg-muted rounded-full mb-2 overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 rounded-full transition-all"
-                  style={{ width: `${(subtasks.filter(s => s.status === 'complete').length / subtasks.length) * 100}%` }}
-                />
+              <div className="h-1 rounded-full mb-2 overflow-hidden" style={{ backgroundColor: '#2a2f3e' }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${(subtasks.filter(s => s.status === 'complete').length / subtasks.length) * 100}%`, backgroundColor: '#22c55e' }} />
               </div>
             )}
             {subtasks.map(sub => (
               <div key={sub.id} className="flex items-center gap-2 py-1 group">
                 <Checkbox checked={sub.status === 'complete'} className="h-3.5 w-3.5 rounded-full" />
-                <span className={cn('text-xs flex-1', sub.status === 'complete' && 'line-through text-muted-foreground')}>
+                <span className={cn('text-xs flex-1', sub.status === 'complete' && 'line-through')} style={{ color: sub.status === 'complete' ? '#8b92a5' : 'white' }}>
                   {sub.title}
                 </span>
-                {sub.due_date && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {format(new Date(sub.due_date + 'T00:00:00'), 'MMM d')}
-                  </span>
-                )}
+                {sub.due_date && <span className="text-[10px]" style={{ color: '#8b92a5' }}>{format(new Date(sub.due_date + 'T00:00:00'), 'MMM d')}</span>}
               </div>
             ))}
             {showSubtaskInput && (
               <div className="flex items-center gap-1.5 mt-1">
-                <Input
-                  value={newSubtaskTitle}
-                  onChange={e => setNewSubtaskTitle(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') handleAddSubtask();
-                    if (e.key === 'Escape') { setShowSubtaskInput(false); setNewSubtaskTitle(''); }
-                  }}
-                  placeholder="Subtask name..."
-                  className="h-7 text-xs flex-1"
-                  autoFocus
-                />
+                <Input value={newSubtaskTitle} onChange={e => setNewSubtaskTitle(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddSubtask(); if (e.key === 'Escape') { setShowSubtaskInput(false); setNewSubtaskTitle(''); } }}
+                  placeholder="Subtask name..." className="h-7 text-xs flex-1 bg-[#0d1117] text-white border-[#2a2f3e]" autoFocus />
               </div>
             )}
-            {subtasks.length === 0 && !showSubtaskInput && (
-              <p className="text-[11px] text-muted-foreground/50">No subtasks</p>
-            )}
+            {subtasks.length === 0 && !showSubtaskInput && <p className="text-[11px]" style={{ color: '#8b92a5' }}>No subtasks</p>}
           </div>
 
-          <Separator />
+          <Separator style={{ backgroundColor: '#2a2f3e' }} />
 
           {/* Attachments */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <span className="text-xs font-medium flex items-center gap-1.5" style={{ color: '#8b92a5' }}>
                 <Paperclip className="h-3 w-3" /> Attachments ({attachments.length})
               </span>
-              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => fileInputRef.current?.click()}>
+              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" style={{ color: '#8b92a5' }} onClick={() => fileInputRef.current?.click()}>
                 <Plus className="h-3 w-3" /> Upload
               </Button>
               <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
             </div>
             {attachments.map(a => (
               <div key={a.id} className="flex items-center gap-2 py-1 group text-xs">
-                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="truncate flex-1">{a.file_name}</span>
-                <span className="text-[10px] text-muted-foreground">{formatFileSize(a.file_size)}</span>
+                <FileText className="h-3.5 w-3.5 shrink-0" style={{ color: '#8b92a5' }} />
+                <span className="truncate flex-1" style={{ color: 'white' }}>{a.file_name}</span>
+                <span className="text-[10px]" style={{ color: '#8b92a5' }}>{formatFileSize(a.file_size)}</span>
                 <button onClick={() => handleDownload(a.file_path, a.file_name)} className="opacity-0 group-hover:opacity-100">
-                  <Download className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                  <Download className="h-3 w-3" style={{ color: '#3b7eff' }} />
                 </button>
                 <button onClick={() => deleteAttachment.mutate(a)} className="opacity-0 group-hover:opacity-100">
-                  <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                  <X className="h-3 w-3" style={{ color: '#ff4d4d' }} />
                 </button>
               </div>
             ))}
-            {attachments.length === 0 && (
-              <p className="text-[11px] text-muted-foreground/50">No files attached</p>
-            )}
+            {attachments.length === 0 && <p className="text-[11px]" style={{ color: '#8b92a5' }}>No files attached</p>}
           </div>
 
-          <Separator />
+          <Separator style={{ backgroundColor: '#2a2f3e' }} />
 
-          {/* Dependencies - add new */}
+          {/* Dependencies */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <span className="text-xs font-medium flex items-center gap-1.5" style={{ color: '#8b92a5' }}>
                 <Link2 className="h-3 w-3" /> Dependencies
               </span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs gap-1">
-                    <Plus className="h-3 w-3" /> Add
-                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" style={{ color: '#8b92a5' }}><Plus className="h-3 w-3" /> Add</Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[240px] p-1 max-h-[200px] overflow-auto" align="end">
-                  <p className="text-[10px] text-muted-foreground px-2 py-1">Blocked by...</p>
+                  <p className="text-[10px] px-2 py-1" style={{ color: '#8b92a5' }}>Blocked by...</p>
                   {availableDeps.map(t => (
-                    <button
-                      key={t.id}
-                      className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted truncate"
-                      onClick={() => addDependency.mutate(t.id)}
-                    >
+                    <button key={t.id} className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted truncate" onClick={() => addDependency.mutate(t.id)}>
                       {t.title}
                     </button>
                   ))}
-                  {availableDeps.length === 0 && (
-                    <p className="text-[11px] text-muted-foreground p-2">No tasks available</p>
-                  )}
+                  {availableDeps.length === 0 && <p className="text-[11px] p-2" style={{ color: '#8b92a5' }}>No tasks available</p>}
                 </PopoverContent>
               </Popover>
             </div>
-            {blockedBy.length === 0 && blocking.length === 0 && (
-              <p className="text-[11px] text-muted-foreground/50">No dependencies</p>
-            )}
+            {blockedBy.length === 0 && blocking.length === 0 && <p className="text-[11px]" style={{ color: '#8b92a5' }}>No dependencies</p>}
           </div>
 
-          <Separator />
+          <Separator style={{ backgroundColor: '#2a2f3e' }} />
 
-          {/* Comments & Activity tabs */}
+          {/* Comments & Activity */}
           <Tabs defaultValue="comments">
-            <TabsList className="h-8 w-full">
+            <TabsList className="h-8 w-full" style={{ backgroundColor: '#1a1f2e' }}>
               <TabsTrigger value="comments" className="text-xs gap-1 flex-1">
                 <MessageSquare className="h-3 w-3" /> Comments ({comments.length})
               </TabsTrigger>
@@ -714,60 +589,43 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                 <Activity className="h-3 w-3" /> Activity ({activity.length})
               </TabsTrigger>
             </TabsList>
-
             <TabsContent value="comments" className="mt-3 space-y-3">
               {comments.map(c => (
                 <div key={c.id} className="flex gap-2">
                   <Avatar className="h-6 w-6 shrink-0">
-                    <AvatarFallback className="text-[9px] bg-muted">
+                    <AvatarFallback className="text-[9px]" style={{ backgroundColor: '#3b7eff', color: 'white' }}>
                       {c.author_id.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium">Comment</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
-                      </span>
-                      {c.is_edited && <span className="text-[9px] text-muted-foreground">(edited)</span>}
+                      <span className="text-xs font-medium" style={{ color: 'white' }}>Comment</span>
+                      <span className="text-[10px]" style={{ color: '#8b92a5' }}>{formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
+                      {c.is_edited && <span className="text-[9px]" style={{ color: '#8b92a5' }}>(edited)</span>}
                     </div>
                     <MentionText text={c.body} className="text-xs mt-0.5" />
                   </div>
                 </div>
               ))}
               <div className="flex gap-2">
-                <MentionTextarea
-                  value={commentText}
-                  onChange={setCommentText}
-                  onSubmit={handleAddComment}
-                  placeholder="Write a comment... (type @ to mention)"
-                  className="min-h-[60px]"
-                  minRows={2}
-                />
+                <MentionTextarea value={commentText} onChange={setCommentText} onSubmit={handleAddComment} placeholder="Write a comment..." className="min-h-[60px]" minRows={2} />
               </div>
               {commentText.trim() && (
                 <div className="flex justify-end">
-                  <Button size="sm" className="h-7 text-xs" onClick={handleAddComment}>Post</Button>
+                  <Button size="sm" className="h-7 text-xs" style={{ backgroundColor: '#3b7eff' }} onClick={handleAddComment}>Post</Button>
                 </div>
               )}
             </TabsContent>
-
             <TabsContent value="activity" className="mt-3 space-y-2">
-              {activity.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">No activity yet</p>
-              )}
+              {activity.length === 0 && <p className="text-xs text-center py-4" style={{ color: '#8b92a5' }}>No activity yet</p>}
               {activity.map(a => (
                 <div key={a.id} className="flex items-start gap-2 py-1">
-                  <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
-                    <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+                  <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: '#1a1f2e' }}>
+                    <Clock className="h-2.5 w-2.5" style={{ color: '#8b92a5' }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs">
-                      <span className="font-medium">{a.event_type.replace(/_/g, ' ')}</span>
-                    </p>
-                    <span className="text-[10px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
-                    </span>
+                    <p className="text-xs"><span className="font-medium" style={{ color: 'white' }}>{a.event_type.replace(/_/g, ' ')}</span></p>
+                    <span className="text-[10px]" style={{ color: '#8b92a5' }}>{formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}</span>
                   </div>
                 </div>
               ))}
@@ -782,11 +640,11 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
 // Deal link sub-component
 function DealLinkField({ dealId }: { dealId: string }) {
   const { data: deal } = useQuery({
-    queryKey: ['deal-name', dealId],
+    queryKey: ['deal-detail-link', dealId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('id, company')
+        .select('id, company, stage')
         .eq('id', dealId)
         .single();
       if (error) return null;
@@ -797,22 +655,19 @@ function DealLinkField({ dealId }: { dealId: string }) {
   if (!deal) return null;
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
-        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-        </svg>
-        Deal
+    <div className="flex items-start gap-3">
+      <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0 mt-1" style={{ color: '#8b92a5' }}>
+        <Link2 className="h-3 w-3" /> Deal
       </div>
-      <Link
-        to={`/deal/${deal.id}`}
-        className="text-xs text-primary hover:underline flex items-center gap-1"
-        onClick={e => e.stopPropagation()}
-      >
-        <Link2 className="h-3 w-3" />
-        {deal.company}
-      </Link>
+      <div className="rounded-lg p-2.5 flex-1" style={{ backgroundColor: '#0d1117', border: '1px solid #2a2f3e' }}>
+        <Link to={`/deal/${deal.id}`} className="text-xs font-medium hover:underline" style={{ color: '#3b7eff' }}>
+          {deal.company}
+        </Link>
+        <div className="flex items-center gap-3 mt-1">
+          {deal.stage && <span className="text-[10px]" style={{ color: '#8b92a5' }}>Stage: {deal.stage}</span>}
+          {deal.loan_amount && <span className="text-[10px]" style={{ color: '#8b92a5' }}>${Number(deal.loan_amount).toLocaleString()}</span>}
+        </div>
+      </div>
     </div>
   );
 }
