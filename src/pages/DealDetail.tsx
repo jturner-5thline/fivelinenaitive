@@ -56,6 +56,7 @@ import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItem
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
+import { useFeatureAccess } from '@/hooks/useFeatureFlags';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
 import { LenderDirectoryDialog } from '@/components/deal/LenderDirectoryDialog';
 import { RequestedItemsSummary } from '@/components/deal/RequestedItemsSummary';
@@ -475,6 +476,7 @@ export default function DealDetail() {
   const dynamicStageConfig = getStageConfig();
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const { pipelines } = usePipelineContext();
+  const { hasAccess: hasLenderMatchingAccess } = useFeatureAccess('lender_matching');
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading } = useDealsContext();
   const { activities: activityLogs, logActivity, isLoading: isLoadingActivities } = useActivityLog(id);
@@ -3594,20 +3596,22 @@ export default function DealDetail() {
                           </PopoverContent>
                         </Popover>
                       )}
-                          <LenderSuggestionsPanel
-                            dealId={id}
-                            criteria={{
-                              industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
-                              dealValue: deal.value || undefined,
-                              capitalAsk: dealWriteUpData.capitalAsk || undefined,
-                              dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
-                              geo: dealWriteUpData.location || undefined,
-                              cashBurnOk: savedMatchingCriteria.cashBurnOk,
-                              sponsorship: savedMatchingCriteria.sponsorship,
-                            }}
-                            existingLenderNames={deal.lenders?.map(l => l.name) || []}
-                            onAddLender={addLender}
-                          />
+                          {hasLenderMatchingAccess && (
+                            <LenderSuggestionsPanel
+                              dealId={id}
+                              criteria={{
+                                industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
+                                dealValue: deal.value || undefined,
+                                capitalAsk: dealWriteUpData.capitalAsk || undefined,
+                                dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
+                                geo: dealWriteUpData.location || undefined,
+                                cashBurnOk: savedMatchingCriteria.cashBurnOk,
+                                sponsorship: savedMatchingCriteria.sponsorship,
+                              }}
+                              existingLenderNames={deal.lenders?.map(l => l.name) || []}
+                              onAddLender={addLender}
+                            />
+                          )}
                           <Select value={lenderSort} onValueChange={(v) => setLenderSort(v as 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest')}>
                             <SelectTrigger className="h-8 w-[200px] text-xs">
                               <ArrowDownUp className="h-3.5 w-3.5 mr-1.5 shrink-0" />
