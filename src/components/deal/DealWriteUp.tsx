@@ -536,6 +536,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
       linkedin: m.linkedin || undefined,
     })),
     visibleMetrics: data.visibleMetrics,
+    disclaimer: data.disclaimer || undefined,
   });
 
   const cancelPendingPublish = () => {
