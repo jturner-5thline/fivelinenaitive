@@ -359,14 +359,20 @@ serve(async (req) => {
         .order("position", { ascending: true });
 
       // Fetch company-level disclaimer from company_settings
-      let companyDisclaimer: string | undefined;
+      let companyDisclaimer: string | null = null;
       if (deal.company_id) {
-        const { data: settings } = await supabase
+        const { data: settings, error: settingsError } = await supabase
           .from("company_settings")
           .select("disclaimer")
           .eq("company_id", deal.company_id)
           .maybeSingle();
-        companyDisclaimer = (settings as any)?.disclaimer || undefined;
+        if (settingsError) {
+          console.error("Error fetching company disclaimer:", settingsError);
+        }
+        companyDisclaimer = (settings as any)?.disclaimer || null;
+        console.log(`Company disclaimer for company_id ${deal.company_id}: "${companyDisclaimer}"`);
+      } else {
+        console.log("No company_id on deal, skipping disclaimer fetch");
       }
 
       // Prepare the payload for FLEx API (publish) - include deal id
@@ -403,7 +409,7 @@ serve(async (req) => {
         is_published: !writeUpData!.publishAsAnonymous,
         team: writeUpData!.team && writeUpData!.team.length > 0 ? writeUpData!.team : undefined,
         visible_metrics: writeUpData!.visibleMetrics || undefined,
-        disclaimer: companyDisclaimer,
+        disclaimer: companyDisclaimer || null,
         deal_manager_name: deal.manager || undefined,
         managing_company: ((deal as any).companies?.name || '').toLowerCase().includes('5th line') ? '5th Line' : ((deal as any).companies?.name || undefined),
       };
