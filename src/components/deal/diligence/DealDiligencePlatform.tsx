@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  Upload, LayoutDashboard, Shield, ShieldCheck,
-  ChevronDown, Check, Loader2, FileSpreadsheet, Keyboard
+  Shield, ShieldCheck,
+  ChevronDown, Loader2, FileSpreadsheet, Keyboard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem,
@@ -45,10 +45,6 @@ interface DealDiligencePlatformProps {
   };
 }
 
-const LAYOUT_MODES: { mode: LayoutMode; label: string; icon: React.ReactNode }[] = [
-  { mode: 'ingestion', label: 'Ingest', icon: <Upload className="h-3.5 w-3.5" /> },
-  { mode: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-3.5 w-3.5" /> },
-];
 
 const DEMO_STATEMENTS: DetectedStatement[] = [];
 const DEMO_METRICS: FinancialMetric[] = [];
@@ -66,7 +62,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
 
   const { parsedModel, isLoading: isParsing, parseExcelFromUrl, clearModel } = useExcelModelParser();
 
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>('ingestion');
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('ingestion'); // kept for keyboard shortcut compat
   const [auditMode, setAuditMode] = useState(false);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
@@ -144,7 +140,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
         if (data.issues) setIssues(data.issues);
         const newEntries = createExtractionAuditEntries(data.statements || [], data.metrics || [], dealData?.company || 'System');
         setAuditLog(prev => [...newEntries, ...prev]);
-        if (data.statements?.length > 0 || data.metrics?.length > 0) setLayoutMode('dashboard');
+        
       }
     } catch (err) {
       console.error('Extraction error:', err);
@@ -207,21 +203,6 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
       {/* Toolbar */}
       <div className="flex items-center justify-between px-1 py-2">
         <div className="flex items-center gap-1">
-          {LAYOUT_MODES.map(lm => (
-            <Button
-              key={lm.mode}
-              variant={layoutMode === lm.mode ? "secondary" : "ghost"}
-              size="sm"
-              className={cn("h-7 text-xs gap-1.5", layoutMode === lm.mode && "bg-primary/10 text-primary")}
-              onClick={() => setLayoutMode(lm.mode)}
-            >
-              {lm.icon}
-              {lm.label}
-            </Button>
-          ))}
-
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
@@ -303,32 +284,20 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
       {/* Shortcut cheat sheet overlay */}
       <ShortcutCheatSheet open={showCheatSheet} onClose={() => setShowCheatSheet(false)} />
 
-      {/* Content Area */}
-      <div className="min-h-[600px]">
-        {layoutMode === 'ingestion' && (
-          <>
-            {!hasFiles ? (
-              <DiligenceEmptyState mode="ingestion" hasFiles={false} hasMetrics={false} onUpload={handleEmptyUpload} />
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <IngestionPanel
-                    files={files} isUploading={isUploading} onUpload={handleUpload}
-                    onRemoveFile={handleRemoveFile} onSelectFile={handleSelectFile} selectedFileId={selectedFileId}
-                  />
-                </div>
-                <div>
-                  <AnalysisChat
-                    dealId={dealId} messages={messages} onMessagesChange={setMessages}
-                    contextSummary={contextSummary} className="h-[600px] rounded-xl border border-border/30"
-                  />
-                </div>
-              </div>
-            )}
-          </>
+      {/* Unified Content Area */}
+      <div className="space-y-6">
+        {/* Ingest Section */}
+        {!hasFiles ? (
+          <DiligenceEmptyState mode="ingestion" hasFiles={false} hasMetrics={false} onUpload={handleEmptyUpload} />
+        ) : (
+          <IngestionPanel
+            files={files} isUploading={isUploading} onUpload={handleUpload}
+            onRemoveFile={handleRemoveFile} onSelectFile={handleSelectFile} selectedFileId={selectedFileId}
+          />
         )}
 
-        {layoutMode === 'dashboard' && (
+        {/* Dashboard Section */}
+        {hasFiles && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
             <div className="space-y-4">
               {hasMetrics ? (
@@ -346,7 +315,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
                   {auditMode && auditLog.length > 0 && <AuditLogPanel entries={auditLog} className="mt-4" />}
                 </>
               ) : (
-                <DiligenceEmptyState mode="dashboard" hasFiles={hasFiles} hasMetrics={false} onSwitchMode={(m) => setLayoutMode(m as LayoutMode)} />
+                <DiligenceEmptyState mode="dashboard" hasFiles={hasFiles} hasMetrics={false} />
               )}
             </div>
             <div className="space-y-4">
