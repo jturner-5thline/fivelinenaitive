@@ -13,6 +13,12 @@ export const STAGE_GROUPS: { id: StageGroup; label: string; color: string }[] = 
   { id: 'passed', label: 'Passed', color: 'bg-red-500' },
 ];
 
+export interface TrackingStatusOption {
+  id: string;
+  label: string;
+  color: string;
+}
+
 export interface StageOption {
   id: string;
   label: string;
@@ -47,6 +53,12 @@ interface LenderStagesContextType {
   updatePassReason: (id: string, reason: Omit<PassReasonOption, 'id'>) => void;
   deletePassReason: (id: string) => void;
   reorderPassReasons: (reasons: PassReasonOption[]) => void;
+  trackingStatuses: TrackingStatusOption[];
+  addTrackingStatus: (status: Omit<TrackingStatusOption, 'id'>) => void;
+  updateTrackingStatus: (id: string, status: Partial<Omit<TrackingStatusOption, 'id'>>) => void;
+  deleteTrackingStatus: (id: string) => void;
+  reorderTrackingStatuses: (statuses: TrackingStatusOption[]) => void;
+  getTrackingStatusConfig: () => Record<string, { label: string; color: string }>;
   getStagesByGroup: (group: StageGroup) => StageOption[];
   isLoading: boolean;
   isSaving: boolean;
@@ -90,12 +102,20 @@ const defaultPassReasons: PassReasonOption[] = [
   { id: 'other', label: 'Other' },
 ];
 
+const defaultTrackingStatuses: TrackingStatusOption[] = [
+  { id: 'active', label: 'Active', color: 'bg-green-500' },
+  { id: 'on-hold', label: 'On Hold', color: 'bg-yellow-500' },
+  { id: 'on-deck', label: 'On Deck', color: 'bg-blue-500' },
+  { id: 'passed', label: 'Passed', color: 'bg-muted' },
+];
+
 export function LenderStagesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { company } = useCompany();
   const [stages, setStages] = useState<StageOption[]>(defaultStages);
   const [substages, setSubstages] = useState<SubstageOption[]>(defaultSubstages);
   const [passReasons, setPassReasons] = useState<PassReasonOption[]>(defaultPassReasons);
+  const [trackingStatuses, setTrackingStatuses] = useState<TrackingStatusOption[]>(defaultTrackingStatuses);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [configId, setConfigId] = useState<string | null>(null);
@@ -179,12 +199,16 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
           if (dbPassReasons && Array.isArray(dbPassReasons) && dbPassReasons.length > 0) {
             setPassReasons(dbPassReasons);
           }
+          const dbTrackingStatuses = (data as any).tracking_statuses as unknown as TrackingStatusOption[];
+          if (dbTrackingStatuses && Array.isArray(dbTrackingStatuses) && dbTrackingStatuses.length > 0) {
+            setTrackingStatuses(dbTrackingStatuses);
+          }
           setConfigId(data.id);
         } else {
           // No config in database - try to migrate from localStorage
           const migratedFromLocal = loadFromLocalStorage();
           if (migratedFromLocal) {
-            await saveToDatabase(stages, substages, passReasons);
+            await saveToDatabase(stages, substages, passReasons, trackingStatuses);
           }
         }
       } catch (err) {
@@ -242,27 +266,28 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
   const saveToDatabase = useCallback(async (
     newStages: StageOption[],
     newSubstages: SubstageOption[],
-    newPassReasons: PassReasonOption[]
+    newPassReasons: PassReasonOption[],
+    newTrackingStatuses?: TrackingStatusOption[]
   ) => {
     if (!user) return;
 
     setIsSaving(true);
     try {
+      const statusesToSave = newTrackingStatuses || trackingStatuses;
       if (configId) {
-        // Update existing config (shared across company)
         const { error } = await supabase
           .from('lender_stage_configs')
           .update({
             stages: newStages as unknown as Json,
             substages: newSubstages as unknown as Json,
             pass_reasons: newPassReasons as unknown as Json,
+            tracking_statuses: statusesToSave as unknown as Json,
             updated_at: new Date().toISOString(),
-          })
+          } as any)
           .eq('id', configId);
 
         if (error) throw error;
       } else {
-        // Insert new config - company-level if user belongs to a company
         const { data, error } = await supabase
           .from('lender_stage_configs')
           .insert({
@@ -271,7 +296,8 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
             stages: newStages as unknown as Json,
             substages: newSubstages as unknown as Json,
             pass_reasons: newPassReasons as unknown as Json,
-          })
+            tracking_statuses: statusesToSave as unknown as Json,
+          } as any)
           .select('id')
           .single();
 
@@ -279,20 +305,18 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
         if (data) setConfigId(data.id);
       }
 
-      // Clear localStorage after successful save to database
       localStorage.removeItem('lenderStages');
       localStorage.removeItem('lenderSubstages');
       localStorage.removeItem('lenderPassReasons');
     } catch (error) {
       console.error('Error saving lender stage config:', error);
-      // Fall back to localStorage if database save fails
       localStorage.setItem('lenderStages', JSON.stringify(newStages));
       localStorage.setItem('lenderSubstages', JSON.stringify(newSubstages));
       localStorage.setItem('lenderPassReasons', JSON.stringify(newPassReasons));
     } finally {
       setIsSaving(false);
     }
-  }, [user, company?.id, configId]);
+  }, [user, company?.id, configId, trackingStatuses]);
 
   const saveStages = useCallback((newStages: StageOption[]) => {
     setStages(newStages);
@@ -363,6 +387,36 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
     savePassReasons(newReasons);
   };
 
+  const saveTrackingStatuses = useCallback((newStatuses: TrackingStatusOption[]) => {
+    setTrackingStatuses(newStatuses);
+    saveToDatabase(stages, substages, passReasons, newStatuses);
+  }, [stages, substages, passReasons, saveToDatabase]);
+
+  const addTrackingStatus = (status: Omit<TrackingStatusOption, 'id'>) => {
+    const id = status.label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    saveTrackingStatuses([...trackingStatuses, { id, ...status }]);
+  };
+
+  const updateTrackingStatus = (id: string, status: Partial<Omit<TrackingStatusOption, 'id'>>) => {
+    saveTrackingStatuses(trackingStatuses.map(s => s.id === id ? { ...s, ...status } : s));
+  };
+
+  const deleteTrackingStatus = (id: string) => {
+    saveTrackingStatuses(trackingStatuses.filter(s => s.id !== id));
+  };
+
+  const reorderTrackingStatuses = (newStatuses: TrackingStatusOption[]) => {
+    saveTrackingStatuses(newStatuses);
+  };
+
+  const getTrackingStatusConfig = useCallback(() => {
+    const config: Record<string, { label: string; color: string }> = {};
+    trackingStatuses.forEach(s => {
+      config[s.id] = { label: s.label, color: s.color };
+    });
+    return config;
+  }, [trackingStatuses]);
+
   const getStagesByGroup = (group: StageGroup) => {
     return stages.filter(s => s.group === group);
   };
@@ -384,6 +438,12 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
       updatePassReason,
       deletePassReason,
       reorderPassReasons,
+      trackingStatuses,
+      addTrackingStatus,
+      updateTrackingStatus,
+      deleteTrackingStatus,
+      reorderTrackingStatuses,
+      getTrackingStatusConfig,
       getStagesByGroup,
       isLoading,
       isSaving,

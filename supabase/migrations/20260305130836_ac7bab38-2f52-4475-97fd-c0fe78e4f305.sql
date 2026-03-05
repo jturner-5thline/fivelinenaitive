@@ -1,0 +1,1 @@
+ALTER TABLE public.lender_stage_configs ADD COLUMN IF NOT EXISTS tracking_statuses jsonb DEFAULT '[{"id":"active","label":"Active","color":"bg-green-500"},{"id":"on-hold","label":"On Hold","color":"bg-yellow-500"},{"id":"on-deck","label":"On Deck","color":"bg-blue-500"},{"id":"passed","label":"Passed","color":"bg-muted"}]'::jsonb;

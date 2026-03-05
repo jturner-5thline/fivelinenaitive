@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LenderStagesSettings } from '@/components/settings/LenderStagesSettings';
 import { LenderSubstagesSettings } from '@/components/settings/LenderSubstagesSettings';
 import { PassReasonsSettings } from '@/components/settings/PassReasonsSettings';
+import { TrackingStatusSettings } from '@/components/settings/TrackingStatusSettings';
 import { DealTypesSettings } from '@/components/settings/DealTypesSettings';
 import { DealStagesSettings } from '@/components/settings/DealStagesSettings';
 import { DefaultMilestonesSettings } from '@/components/settings/DefaultMilestonesSettings';
@@ -287,6 +288,7 @@ export default function Settings() {
                   {isVisible('lender-stages') && <LenderStagesSettings isAdmin={isAdmin} />}
                   {isVisible('lender-milestones') && <LenderSubstagesSettings isAdmin={isAdmin} />}
                   {isVisible('pass-reasons') && <PassReasonsSettings isAdmin={isAdmin} />}
+                  {isVisible('lender-stages') && <TrackingStatusSettings isAdmin={isAdmin} />}
                   {isVisible('lender-matching') && <LenderMatchingSettings />}
                 </TabsContent>
 
