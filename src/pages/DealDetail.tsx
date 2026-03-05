@@ -37,7 +37,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
-import { useLenderStages, STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
+import { useLenderStages, StageGroup } from '@/contexts/LenderStagesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -469,7 +469,7 @@ export default function DealDetail() {
   const initialTab = searchParams.get('tab') as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading } = useMasterLenders();
-  const { stages: configuredStages, substages: configuredSubstages, passReasons, getTrackingStatusConfig } = useLenderStages();
+  const { stages: configuredStages, substages: configuredSubstages, passReasons, getTrackingStatusConfig, stageGroups } = useLenderStages();
   const { dealTypes: availableDealTypes } = useDealTypes();
   const { stages: dealStages, getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
@@ -3511,7 +3511,7 @@ export default function DealDetail() {
                               >
                                 All
                               </button>
-                              {STAGE_GROUPS.map((group) => {
+                              {stageGroups.map((group) => {
                                 const groupStages = configuredStages.filter(s => s.group === group.id);
                                 const count = deal.lenders?.filter(l => {
                                   const stage = configuredStages.find(s => s.id === l.stage);
@@ -4066,7 +4066,7 @@ export default function DealDetail() {
                           </DndContext>
                         ) : (
                           // Grouped list when a specific group is selected
-                          STAGE_GROUPS
+                          stageGroups
                             .filter(group => lenderGroupFilters.has(group.id))
                             .map(group => {
                               const groupLenders = filteredSortedLenders.filter(l => {
@@ -4937,6 +4937,7 @@ export default function DealDetail() {
               lenders={deal.lenders}
               dealId={deal.id}
               configuredStages={configuredStages}
+              stageGroups={stageGroups}
               passReasons={passReasons}
               onUpdateLenderGroup={updateLenderGroup}
               onEditPassReasons={(lenderId) => {

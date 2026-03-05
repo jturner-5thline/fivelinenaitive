@@ -12,7 +12,7 @@ export type LenderStage = string;
 
 export type LenderSubstage = string;
 
-export type LenderTrackingStatus = 'active' | 'on-hold' | 'on-deck' | 'passed';
+export type LenderTrackingStatus = string;
 
 export interface LenderNoteHistory {
   id?: string;

@@ -1,17 +1,20 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { Json } from '@/integrations/supabase/types';
 
-export type StageGroup = 'active' | 'on-deck' | 'passed' | 'on-hold';
+export type StageGroup = string;
 
-export const STAGE_GROUPS: { id: StageGroup; label: string; color: string }[] = [
+export const DEFAULT_STAGE_GROUPS: { id: StageGroup; label: string; color: string }[] = [
   { id: 'on-hold', label: 'On Hold', color: 'bg-yellow-500' },
   { id: 'on-deck', label: 'On Deck', color: 'bg-blue-500' },
   { id: 'active', label: 'Active', color: 'bg-green-500' },
   { id: 'passed', label: 'Passed', color: 'bg-red-500' },
 ];
+
+/** @deprecated Use `useLenderStages().stageGroups` instead for dynamic tracking statuses */
+export const STAGE_GROUPS = DEFAULT_STAGE_GROUPS;
 
 export interface TrackingStatusOption {
   id: string;
@@ -59,6 +62,7 @@ interface LenderStagesContextType {
   deleteTrackingStatus: (id: string) => void;
   reorderTrackingStatuses: (statuses: TrackingStatusOption[]) => void;
   getTrackingStatusConfig: () => Record<string, { label: string; color: string }>;
+  stageGroups: { id: StageGroup; label: string; color: string }[];
   getStagesByGroup: (group: StageGroup) => StageOption[];
   isLoading: boolean;
   isSaving: boolean;
@@ -417,6 +421,11 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
     return config;
   }, [trackingStatuses]);
 
+  // Derive stageGroups dynamically from trackingStatuses
+  const stageGroups = useMemo(() => {
+    return trackingStatuses.map(s => ({ id: s.id, label: s.label, color: s.color }));
+  }, [trackingStatuses]);
+
   const getStagesByGroup = (group: StageGroup) => {
     return stages.filter(s => s.group === group);
   };
@@ -444,6 +453,7 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
       deleteTrackingStatus,
       reorderTrackingStatuses,
       getTrackingStatusConfig,
+      stageGroups,
       getStagesByGroup,
       isLoading,
       isSaving,

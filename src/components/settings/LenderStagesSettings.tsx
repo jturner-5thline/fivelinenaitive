@@ -50,18 +50,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { useLenderStages, StageOption, StageGroup, STAGE_GROUPS } from '@/contexts/LenderStagesContext';
+import { useLenderStages, StageOption, StageGroup } from '@/contexts/LenderStagesContext';
 
 interface SortableStageItemProps {
   stage: StageOption;
   index: number;
+  stageGroups: { id: StageGroup; label: string; color: string }[];
   onEdit: (stage: StageOption) => void;
   onDelete: (stage: StageOption) => void;
   onGroupChange: (stageId: string, group: StageGroup) => void;
   isAdmin: boolean;
 }
 
-function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange, isAdmin }: SortableStageItemProps) {
+function SortableStageItem({ stage, index, stageGroups, onEdit, onDelete, onGroupChange, isAdmin }: SortableStageItemProps) {
   const {
     attributes,
     listeners,
@@ -76,7 +77,7 @@ function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange, isAd
     transition,
   };
 
-  const groupConfig = STAGE_GROUPS.find(g => g.id === stage.group);
+  const groupConfig = stageGroups.find(g => g.id === stage.group);
 
   return (
     <div
@@ -114,7 +115,7 @@ function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange, isAd
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STAGE_GROUPS.map((group) => (
+            {stageGroups.map((group) => (
               <SelectItem key={group.id} value={group.id}>
                 <div className="flex items-center gap-2">
                   <span className={`h-2 w-2 rounded-full ${group.color}`} />
@@ -171,7 +172,7 @@ interface LenderStagesSettingsProps {
 }
 
 export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsProps) {
-  const { stages: contextStages, addStage, updateStage, deleteStage, reorderStages, getStagesByGroup, isSaving: contextSaving } = useLenderStages();
+  const { stages: contextStages, addStage, updateStage, deleteStage, reorderStages, getStagesByGroup, stageGroups, isSaving: contextSaving } = useLenderStages();
   
   // Local state for pending changes
   const [localStages, setLocalStages] = useState<StageOption[]>(contextStages);
@@ -355,7 +356,7 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
               <SaveBar />
               
               <div className="flex flex-wrap gap-2 mb-4">
-                {STAGE_GROUPS.map((group) => {
+                {stageGroups.map((group) => {
                   const count = localStages.filter(s => s.group === group.id).length;
                   return (
                     <Badge key={group.id} variant="secondary" className="gap-1.5">
@@ -377,6 +378,7 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
                         key={stage.id}
                         stage={stage}
                         index={index}
+                        stageGroups={stageGroups}
                         onEdit={openEditDialog}
                         onDelete={handleDelete}
                         onGroupChange={handleGroupChange}
@@ -421,7 +423,7 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {STAGE_GROUPS.map((group) => (
+                  {stageGroups.map((group) => (
                     <SelectItem key={group.id} value={group.id}>
                       <div className="flex items-center gap-2">
                         <span className={`h-2 w-2 rounded-full ${group.color}`} />
