@@ -296,6 +296,21 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     
     return () => { supabase.removeChannel(channel); };
   }, [dealId]);
+
+  // Fetch company-level disclaimer
+  const [companyDisclaimer, setCompanyDisclaimer] = useState('');
+  useEffect(() => {
+    (async () => {
+      const { data: dealRow } = await supabase.from('deals').select('company_id').eq('id', dealId).single();
+      if (!dealRow?.company_id) return;
+      const { data: settings } = await supabase
+        .from('company_settings')
+        .select('disclaimer')
+        .eq('company_id', dealRow.company_id)
+        .maybeSingle();
+      setCompanyDisclaimer((settings as any)?.disclaimer || '');
+    })();
+  }, [dealId]);
   
   // Auto-fill from Deal Space
   const { isExtracting, extractedFields, extractWriteUpData, clearExtractedFields } = useDealSpaceAutoFill(dealId);
@@ -1400,6 +1415,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         owners={owners}
         totalEquityRaised={totalEquityRaised}
         dealManager={dealManager}
+        disclaimer={companyDisclaimer}
       />
 
       {/* Unpublish from FLEx Confirmation Dialog */}

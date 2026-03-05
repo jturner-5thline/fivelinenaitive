@@ -57,6 +57,7 @@ interface WriteUpPreviewDialogProps {
   owners: Array<{ owner_name: string; ownership_percentage: number; owner_url?: string | null }>;
   totalEquityRaised: string;
   dealManager?: string;
+  disclaimer?: string;
 }
 
 /* ── Helpers ── */
@@ -141,7 +142,7 @@ const SectionDivider: React.FC<{ title: string }> = ({ title }) => (
 );
 
 /* ── Main component ── */
-export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEquityRaised, dealManager }: WriteUpPreviewDialogProps) {
+export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEquityRaised, dealManager, disclaimer }: WriteUpPreviewDialogProps) {
   const dealTypeLabels = dealTypeIdsToLabels(data.dealTypes);
   const filteredTeam = (data.team || []).filter(m => m.name.trim());
   const filteredKeyItems = (data.keyItems || []).filter(i => i.title?.trim());
@@ -774,6 +775,22 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                   ))}
                 </div>
               </Card>
+            )}
+
+            {/* ── Disclaimer ── */}
+            {disclaimer && disclaimer.trim() && (
+              <div data-pdf-section style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${T.cardBorder}` }}>
+                <p style={{
+                  fontSize: 11,
+                  lineHeight: 1.6,
+                  color: T.mutedFg,
+                  fontFamily: T.font,
+                  fontStyle: 'italic',
+                  whiteSpace: 'pre-wrap',
+                }}>
+                  {disclaimer}
+                </p>
+              </div>
             )}
 
           </div>
