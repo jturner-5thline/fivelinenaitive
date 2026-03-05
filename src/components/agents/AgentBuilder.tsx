@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Bot, 
   Settings, 
@@ -23,12 +24,23 @@ import {
   Sparkles,
   Puzzle,
   HelpCircle,
+  RefreshCw,
+  Loader2,
+  CheckSquare,
+  FileText,
+  Mail,
+  StickyNote,
+  GitBranch,
+  Sliders,
+  Info,
 } from 'lucide-react';
 import type { Agent, CreateAgentData } from '@/hooks/useAgents';
 import { AgentToolsBuilder, type AgentTool } from './AgentToolsBuilder';
 import { AgentConfigWizard } from './AgentConfigWizard';
 import { FeatureWalkthrough } from '@/components/help/FeatureWalkthrough';
 import { featureGuides } from '@/data/featureWalkthroughs';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AgentBuilderProps {
   initialData?: Agent;
@@ -111,6 +123,9 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
   const [isShared, setIsShared] = useState(initialData?.is_shared ?? false);
   const [isPublic, setIsPublic] = useState(initialData?.is_public ?? false);
 
+  // Regeneration state
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
   // Help walkthrough
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [showWizard, setShowWizard] = useState(!initialData); // Show wizard for new agents
@@ -142,10 +157,37 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
     setPersonality(template.personality);
   };
 
+  // Regenerate system prompt via AI
+  const handleRegeneratePrompt = async () => {
+    if (!name && !description) {
+      toast.error('Add a name or description first to regenerate the prompt');
+      return;
+    }
+    setIsRegenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-agent-config', {
+        body: {
+          objective: description || name,
+          dataSources: { deals: canAccessDeals, lenders: canAccessLenders, activities: canAccessActivities, milestones: canAccessMilestones },
+          goal: 'Help the user be more productive and make better decisions',
+          mode: 'full',
+        },
+      });
+      if (error) throw error;
+      if (data?.system_prompt) {
+        setSystemPrompt(data.system_prompt);
+        toast.success('System prompt regenerated');
+      }
+    } catch {
+      toast.error('Failed to regenerate prompt');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   // Sync tools to permissions
   const handleToolsChange = (newTools: AgentTool[]) => {
     setTools(newTools);
-    // Update permissions based on tools
     setCanAccessDeals(newTools.some(t => t.type === 'deals' && t.enabled));
     setCanAccessLenders(newTools.some(t => t.type === 'lenders' && t.enabled));
     setCanAccessActivities(newTools.some(t => t.type === 'activities' && t.enabled));
@@ -368,7 +410,30 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="system-prompt">System Prompt *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="system-prompt">System Prompt *</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRegeneratePrompt}
+                          disabled={isRegenerating}
+                          className="gap-1.5 text-xs"
+                        >
+                          {isRegenerating ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          )}
+                          Regenerate
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Regenerate system prompt using AI based on agent name and data sources</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <Textarea
                   id="system-prompt"
                   value={systemPrompt}
@@ -376,9 +441,10 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
                   placeholder="You are an expert assistant that helps users with..."
                   className="min-h-[200px] font-mono text-sm"
                 />
-                <p className="text-xs text-muted-foreground">
-                  This is the core instruction that defines your agent's behavior and expertise
-                </p>
+                <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                  <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>This is the most important field. A great system prompt makes your agent intelligent and specific.</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -387,10 +453,8 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
         <TabsContent value="permissions" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Data Access</CardTitle>
-              <CardDescription>
-                Choose what information your agent can access
-              </CardDescription>
+              <CardTitle>Core Data</CardTitle>
+              <CardDescription>Primary data sources for your agent</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-4">
@@ -449,6 +513,38 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
                   <Switch checked={canSearchWeb} onCheckedChange={setCanSearchWeb} disabled />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Extended Data</CardTitle>
+              <CardDescription>Additional data sources for deeper analysis</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[
+                { icon: CheckSquare, label: 'Tasks & Checklists', desc: 'Access open and completed tasks assigned to deals' },
+                { icon: FileText, label: 'Documents & Files', desc: 'Know which documents have been uploaded and which are missing' },
+                { icon: Users, label: 'Contacts & Sponsors', desc: 'Access borrower, sponsor, and guarantor information' },
+                { icon: Mail, label: 'Emails & Communications', desc: 'Access email thread history and last outreach date' },
+                { icon: StickyNote, label: 'Deal Notes', desc: 'Access freeform notes logged by team members' },
+                { icon: GitBranch, label: 'Pipeline Stage History', desc: 'Access how long each deal has been in each stage' },
+                { icon: Sliders, label: 'Custom Deal Fields', desc: 'Access custom fields like LTV, DSCR, loan type' },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{item.label}</p>
+                        <p className="text-sm text-muted-foreground">{item.desc}</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs">Coming soon</Badge>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
 
