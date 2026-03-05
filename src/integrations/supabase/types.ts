@@ -3347,6 +3347,7 @@ export type Database = {
           deal_id: string
           deal_type: string | null
           description: string | null
+          disclaimer: string | null
           existing_debt_details: string | null
           financial_comments: Json | null
           financial_data_as_of: string | null
@@ -3389,6 +3390,7 @@ export type Database = {
           deal_id: string
           deal_type?: string | null
           description?: string | null
+          disclaimer?: string | null
           existing_debt_details?: string | null
           financial_comments?: Json | null
           financial_data_as_of?: string | null
@@ -3431,6 +3433,7 @@ export type Database = {
           deal_id?: string
           deal_type?: string | null
           description?: string | null
+          disclaimer?: string | null
           existing_debt_details?: string | null
           financial_comments?: Json | null
           financial_data_as_of?: string | null
