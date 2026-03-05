@@ -1,37 +1,66 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Trash2 } from 'lucide-react';
+import { Send, Loader2, Trash2, ArrowRight } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useAgentChat } from '@/hooks/useAgentChat';
 import { useDeals } from '@/hooks/useDeals';
 import type { Agent } from '@/hooks/useAgents';
 import { formatDistanceToNow } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
 
 interface AgentTestChatProps {
   agent: Agent;
   onClose: () => void;
 }
 
-const SUGGESTED_PROMPTS = [
-  "What should I focus on for this deal?",
+const DEFAULT_PROMPTS = [
+  "Scan my full pipeline for issues",
+  "Which deals need immediate attention?",
   "Analyze the current pipeline status",
-  "Suggest next steps for closing",
   "What are the key risks to consider?",
 ];
+
+function getDealContextPrompts(dealName: string) {
+  return [
+    `What should I focus on for ${dealName}?`,
+    `Analyze the current status of ${dealName}`,
+    `Suggest next steps for ${dealName}`,
+    `What are the key risks for ${dealName}?`,
+  ];
+}
 
 export function AgentTestChat({ agent, onClose }: AgentTestChatProps) {
   const { deals } = useDeals();
   const [selectedDealId, setSelectedDealId] = useState<string | undefined>();
+  const [prevDealId, setPrevDealId] = useState<string | undefined>();
+  const [contextBanner, setContextBanner] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const { messages, sendMessage, clearMessages, isLoading } = useAgentChat(agent);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedDeal = deals?.find(d => d.id === selectedDealId);
+
+  // Dynamic prompts based on deal context
+  const suggestedPrompts = useMemo(() => {
+    if (selectedDeal) return getDealContextPrompts(selectedDeal.company);
+    return DEFAULT_PROMPTS;
+  }, [selectedDeal]);
+
+  // Context change detection
+  useEffect(() => {
+    if (prevDealId && selectedDealId && prevDealId !== selectedDealId && messages.length > 0) {
+      const newDeal = deals?.find(d => d.id === selectedDealId);
+      if (newDeal) {
+        setContextBanner(newDeal.company);
+      }
+    }
+    setPrevDealId(selectedDealId);
+  }, [selectedDealId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -41,9 +70,11 @@ export function AgentTestChat({ agent, onClose }: AgentTestChatProps) {
     inputRef.current?.focus();
   }, []);
 
-  const handleSend = () => {
-    if (!inputValue.trim() || isLoading) return;
+  const handleSend = (overrideContent?: string) => {
+    const content = overrideContent || inputValue;
+    if (!content.trim() || isLoading) return;
     
+    setContextBanner(null);
     const dealContext = selectedDeal ? {
       id: selectedDeal.id,
       company: selectedDeal.company,
@@ -52,8 +83,16 @@ export function AgentTestChat({ agent, onClose }: AgentTestChatProps) {
       status: selectedDeal.status,
     } : undefined;
 
-    sendMessage(inputValue, dealContext);
-    setInputValue('');
+    sendMessage(content, dealContext);
+    if (!overrideContent) setInputValue('');
+  };
+
+  const handleRerunWithContext = () => {
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    if (lastUserMsg) {
+      handleSend(lastUserMsg.content);
+    }
+    setContextBanner(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -61,40 +100,6 @@ export function AgentTestChat({ agent, onClose }: AgentTestChatProps) {
       e.preventDefault();
       handleSend();
     }
-  };
-
-  const formatContent = (content: string) => {
-    const lines = content.split('\n');
-    return lines.map((line, i) => {
-      // Handle bullet points
-      if (line.trim().startsWith('- ') || line.trim().startsWith('• ')) {
-        return (
-          <li key={i} className="ml-4">
-            {line.replace(/^[\s]*[-•]\s*/, '')}
-          </li>
-        );
-      }
-      // Handle numbered lists
-      if (/^\d+\.\s/.test(line.trim())) {
-        return (
-          <li key={i} className="ml-4 list-decimal">
-            {line.replace(/^\d+\.\s*/, '')}
-          </li>
-        );
-      }
-      // Handle bold text
-      const parts = line.split(/\*\*(.*?)\*\*/g);
-      if (parts.length > 1) {
-        return (
-          <p key={i}>
-            {parts.map((part, j) => 
-              j % 2 === 1 ? <strong key={j}>{part}</strong> : part
-            )}
-          </p>
-        );
-      }
-      return line ? <p key={i}>{line}</p> : <br key={i} />;
-    });
   };
 
   return (
@@ -142,6 +147,18 @@ export function AgentTestChat({ agent, onClose }: AgentTestChatProps) {
         </div>
       )}
 
+      {/* Context Change Banner */}
+      {contextBanner && (
+        <div className="mx-4 mt-2 p-3 rounded-lg border border-primary/30 bg-primary/5 flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Context changed to <span className="font-semibold text-foreground">{contextBanner}</span>. Responses will now use this deal's data.
+          </p>
+          <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={handleRerunWithContext}>
+            Re-run last question <ArrowRight className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
@@ -157,7 +174,7 @@ export function AgentTestChat({ agent, onClose }: AgentTestChatProps) {
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 pt-2">
-                {SUGGESTED_PROMPTS.map((prompt) => (
+                {suggestedPrompts.map((prompt) => (
                   <Button
                     key={prompt}
                     variant="outline"
@@ -191,8 +208,12 @@ export function AgentTestChat({ agent, onClose }: AgentTestChatProps) {
                       : 'bg-muted'
                   }`}
                 >
-                  <div className="text-sm space-y-1">
-                    {message.role === 'assistant' ? formatContent(message.content) : message.content}
+                  <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                    {message.role === 'assistant' ? (
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    ) : (
+                      message.content
+                    )}
                   </div>
                   <p className="text-xs opacity-60 mt-2">
                     {formatDistanceToNow(message.timestamp, { addSuffix: true })}
@@ -232,7 +253,7 @@ export function AgentTestChat({ agent, onClose }: AgentTestChatProps) {
             disabled={isLoading}
             className="flex-1"
           />
-          <Button onClick={handleSend} disabled={!inputValue.trim() || isLoading}>
+          <Button onClick={() => handleSend()} disabled={!inputValue.trim() || isLoading}>
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

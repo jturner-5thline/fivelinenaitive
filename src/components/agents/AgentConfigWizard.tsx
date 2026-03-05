@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Wand2,
   Target,
@@ -13,19 +15,41 @@ import {
   ChevronRight,
   ChevronLeft,
   Loader2,
+  MessageCircle,
+  PlusCircle,
+  ArrowRightCircle,
+  Clock,
+  Timer,
+  Calendar,
+  CheckSquare,
+  FileText,
+  Users,
+  Mail,
+  StickyNote,
+  GitBranch,
+  Sliders,
+  Bell,
+  Send,
+  ListTodo,
+  Zap,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface WizardAnswers {
   objective: string;
-  dataAccess: {
-    deals: boolean;
-    lenders: boolean;
-    activities: boolean;
-    milestones: boolean;
-  };
+  dataAccess: Record<string, boolean>;
   goal: string;
+  triggers: Record<string, boolean>;
+  triggerConfig: {
+    inactivityDays: number;
+    scheduleFrequency: string;
+    scheduleTime: string;
+    scheduleSendTo: string[];
+  };
+  actions: Record<string, boolean>;
 }
 
 interface AgentConfigWizardProps {
@@ -50,11 +74,39 @@ const OBJECTIVE_SUGGESTIONS = [
   { label: 'Automate tasks', value: 'I want to automate repetitive tasks and notifications' },
 ];
 
-const DATA_OPTIONS = [
-  { id: 'deals', label: 'Deal Data', description: 'Access deal details, values, stages, and notes' },
-  { id: 'lenders', label: 'Lender Data', description: 'Access lender information, quotes, and status' },
-  { id: 'activities', label: 'Activity Logs', description: 'Access recent activities and history' },
-  { id: 'milestones', label: 'Milestones', description: 'Access milestone tracking and due dates' },
+const CORE_DATA_OPTIONS = [
+  { id: 'deals', label: 'Deal Data', description: 'Access deal details, values, stages, and notes', icon: Database },
+  { id: 'lenders', label: 'Lender Data', description: 'Access lender information, quotes, and status', icon: Users },
+  { id: 'activities', label: 'Activity Logs', description: 'Access recent activities and history', icon: GitBranch },
+  { id: 'milestones', label: 'Milestones', description: 'Access milestone tracking and due dates', icon: Target },
+];
+
+const EXTENDED_DATA_OPTIONS = [
+  { id: 'tasks', label: 'Tasks & Checklists', description: 'Access open and completed tasks assigned to deals', icon: CheckSquare },
+  { id: 'documents', label: 'Documents & Files', description: 'Know which documents have been uploaded and which are missing', icon: FileText },
+  { id: 'contacts', label: 'Contacts & Sponsors', description: 'Access borrower, sponsor, and guarantor information', icon: Users },
+  { id: 'emails', label: 'Emails & Communications', description: 'Access email thread history and last outreach date', icon: Mail },
+  { id: 'notes', label: 'Deal Notes', description: 'Access freeform notes logged by team members', icon: StickyNote },
+  { id: 'stageHistory', label: 'Pipeline Stage History', description: 'Access how long each deal has been in each stage', icon: GitBranch },
+  { id: 'customFields', label: 'Custom Deal Fields', description: 'Access custom fields like LTV, DSCR, loan type, property type', icon: Sliders },
+];
+
+const TRIGGER_OPTIONS = [
+  { id: 'on_demand', label: 'On Demand', description: 'Chat only — run when you open the agent', icon: MessageCircle },
+  { id: 'deal_created', label: 'Deal Created', description: 'Trigger when a new deal is added', icon: PlusCircle },
+  { id: 'deal_stage_change', label: 'Deal Stage Changes', description: 'Trigger when a deal moves stages', icon: ArrowRightCircle },
+  { id: 'milestone_overdue', label: 'Milestone Overdue', description: 'Trigger when a milestone passes its due date', icon: Clock },
+  { id: 'no_activity', label: 'No Activity for X Days', description: 'Trigger when a deal has no activity', icon: Timer, hasConfig: true },
+  { id: 'scheduled', label: 'Scheduled', description: 'Run on a recurring schedule', icon: Calendar, hasConfig: true },
+];
+
+const ACTION_OPTIONS = [
+  { id: 'chat_only', label: 'Chat Only', description: 'Results available when you open the agent chat', icon: MessageCircle },
+  { id: 'create_task', label: 'Create a Task', description: 'Auto-create a task with the agent\'s findings', icon: ListTodo },
+  { id: 'log_note', label: 'Log a Note', description: 'Log agent output as a note on the relevant deal', icon: StickyNote },
+  { id: 'email_digest', label: 'Send Email Digest', description: 'Email results to deal owner or specified address', icon: Mail },
+  { id: 'slack_message', label: 'Send Slack Message', description: 'Post to a connected Slack channel', icon: Send },
+  { id: 'notification', label: 'In-App Notification', description: 'Trigger a notification badge for the assigned user', icon: Bell },
 ];
 
 const GOAL_SUGGESTIONS = [
@@ -68,6 +120,7 @@ const GOAL_SUGGESTIONS = [
 export function AgentConfigWizard({ onComplete, onCancel }: AgentConfigWizardProps) {
   const [step, setStep] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedName, setGeneratedName] = useState('');
   const [answers, setAnswers] = useState<WizardAnswers>({
     objective: '',
     dataAccess: {
@@ -75,14 +128,31 @@ export function AgentConfigWizard({ onComplete, onCancel }: AgentConfigWizardPro
       lenders: true,
       activities: false,
       milestones: false,
+      tasks: false,
+      documents: false,
+      contacts: false,
+      emails: false,
+      notes: false,
+      stageHistory: false,
+      customFields: false,
     },
     goal: '',
+    triggers: { on_demand: true },
+    triggerConfig: {
+      inactivityDays: 7,
+      scheduleFrequency: 'daily',
+      scheduleTime: '09:00',
+      scheduleSendTo: ['notification'],
+    },
+    actions: { chat_only: true },
   });
 
   const steps = [
     { title: 'Objective', icon: Target, description: 'What do you want your agent to do?' },
     { title: 'Data Access', icon: Database, description: 'What information should it use?' },
     { title: 'Goal', icon: Sparkles, description: 'What outcome are you hoping for?' },
+    { title: 'Triggers', icon: Zap, description: 'When should this run?' },
+    { title: 'Actions', icon: Bell, description: 'What should happen with results?' },
   ];
 
   const progress = ((step + 1) / steps.length) * 100;
@@ -92,11 +162,29 @@ export function AgentConfigWizard({ onComplete, onCancel }: AgentConfigWizardPro
       case 0: return answers.objective.trim().length > 10;
       case 1: return Object.values(answers.dataAccess).some(v => v);
       case 2: return answers.goal.trim().length > 10;
+      case 3: return Object.values(answers.triggers).some(v => v);
+      case 4: return Object.values(answers.actions).some(v => v);
       default: return false;
     }
   };
 
-  const handleNext = () => {
+  const generateNameFromObjective = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-agent-config', {
+        body: { objective: answers.objective, mode: 'name' },
+      });
+      if (error) throw error;
+      if (data?.name) setGeneratedName(data.name);
+    } catch {
+      // Silently fail — we'll use fallback naming
+    }
+  };
+
+  const handleNext = async () => {
+    if (step === 0 && !generatedName) {
+      // Fire-and-forget name generation when leaving step 1
+      generateNameFromObjective();
+    }
     if (step < steps.length - 1) {
       setStep(step + 1);
     } else {
@@ -105,84 +193,76 @@ export function AgentConfigWizard({ onComplete, onCancel }: AgentConfigWizardPro
   };
 
   const handleBack = () => {
-    if (step > 0) {
-      setStep(step - 1);
-    }
+    if (step > 0) setStep(step - 1);
   };
 
   const generateAgent = async () => {
     setIsGenerating(true);
-    
-    // Generate agent configuration based on answers
-    await new Promise(resolve => setTimeout(resolve, 800)); // Brief delay for UX
-    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-agent-config', {
+        body: {
+          objective: answers.objective,
+          dataSources: answers.dataAccess,
+          goal: answers.goal,
+          mode: 'full',
+        },
+      });
+
+      if (error) throw error;
+
+      onComplete({
+        name: data?.name || generatedName || 'Custom Agent',
+        description: data?.description || answers.objective.substring(0, 100),
+        systemPrompt: data?.system_prompt || buildFallbackPrompt(),
+        personality: data?.personality || 'professional',
+        canAccessDeals: !!answers.dataAccess.deals,
+        canAccessLenders: !!answers.dataAccess.lenders,
+        canAccessActivities: !!answers.dataAccess.activities,
+        canAccessMilestones: !!answers.dataAccess.milestones,
+      });
+    } catch {
+      // Fallback to local generation
+      toast.info('Using local generation');
+      onComplete({
+        name: generatedName || 'Custom Agent',
+        description: answers.objective.substring(0, 100),
+        systemPrompt: buildFallbackPrompt(),
+        personality: 'professional',
+        canAccessDeals: !!answers.dataAccess.deals,
+        canAccessLenders: !!answers.dataAccess.lenders,
+        canAccessActivities: !!answers.dataAccess.activities,
+        canAccessMilestones: !!answers.dataAccess.milestones,
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const buildFallbackPrompt = () => {
     const { objective, dataAccess, goal } = answers;
-    
-    // Determine personality based on goal
-    let personality = 'professional';
-    if (goal.toLowerCase().includes('time') || goal.toLowerCase().includes('automat')) {
-      personality = 'direct';
-    } else if (goal.toLowerCase().includes('decision') || goal.toLowerCase().includes('analy')) {
-      personality = 'analytical';
-    } else if (goal.toLowerCase().includes('organize')) {
-      personality = 'friendly';
-    }
-    
-    // Generate name based on objective
-    let name = 'Custom Assistant';
-    if (objective.toLowerCase().includes('analyze') || objective.toLowerCase().includes('evaluat')) {
-      name = 'Deal Analyzer';
-    } else if (objective.toLowerCase().includes('lender') || objective.toLowerCase().includes('match')) {
-      name = 'Lender Matcher';
-    } else if (objective.toLowerCase().includes('track') || objective.toLowerCase().includes('progress')) {
-      name = 'Progress Tracker';
-    } else if (objective.toLowerCase().includes('report') || objective.toLowerCase().includes('insight')) {
-      name = 'Insights Generator';
-    } else if (objective.toLowerCase().includes('automat')) {
-      name = 'Task Automator';
-    }
-    
-    // Build system prompt
-    const dataAccessList = [];
-    if (dataAccess.deals) dataAccessList.push('deal information (values, stages, notes)');
-    if (dataAccess.lenders) dataAccessList.push('lender data (quotes, status, interactions)');
-    if (dataAccess.activities) dataAccessList.push('activity logs and history');
-    if (dataAccess.milestones) dataAccessList.push('milestones and due dates');
-    
-    const systemPrompt = `You are ${name}, an AI assistant specialized in commercial lending.
+    const sources = Object.entries(dataAccess).filter(([_, v]) => v).map(([k]) => k).join(', ');
+    return `You are an AI assistant for commercial lending.\n\n**Objective:** ${objective}\n**Goal:** ${goal}\n**Data Access:** ${sources}\n\nProvide actionable, specific recommendations based on the data available to you.`;
+  };
 
-**Your Objective:**
-${objective}
+  const toggleDataAccess = (id: string) => {
+    setAnswers(prev => ({
+      ...prev,
+      dataAccess: { ...prev.dataAccess, [id]: !prev.dataAccess[id] },
+    }));
+  };
 
-**Your Goal:**
-${goal}
+  const toggleTrigger = (id: string) => {
+    setAnswers(prev => ({
+      ...prev,
+      triggers: { ...prev.triggers, [id]: !prev.triggers[id] },
+    }));
+  };
 
-**Data Access:**
-You have access to: ${dataAccessList.join(', ')}.
-
-**Guidelines:**
-- Always provide actionable, specific recommendations
-- Use the data available to support your insights
-- Be proactive in identifying opportunities and risks
-- Keep responses concise but comprehensive
-- Focus on helping the user achieve their goal
-
-When analyzing deals or providing recommendations, consider all available context and provide clear reasoning for your suggestions.`;
-
-    const description = `${objective.substring(0, 100)}${objective.length > 100 ? '...' : ''}`;
-
-    onComplete({
-      name,
-      description,
-      systemPrompt,
-      personality,
-      canAccessDeals: dataAccess.deals,
-      canAccessLenders: dataAccess.lenders,
-      canAccessActivities: dataAccess.activities,
-      canAccessMilestones: dataAccess.milestones,
-    });
-    
-    setIsGenerating(false);
+  const toggleAction = (id: string) => {
+    setAnswers(prev => ({
+      ...prev,
+      actions: { ...prev.actions, [id]: !prev.actions[id] },
+    }));
   };
 
   const renderStep = () => {
@@ -200,69 +280,87 @@ When analyzing deals or providing recommendations, consider all available contex
                 className="min-h-[120px]"
               />
             </div>
-            
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Or choose a suggestion:</p>
               <div className="flex flex-wrap gap-2">
-                {OBJECTIVE_SUGGESTIONS.map((suggestion) => (
+                {OBJECTIVE_SUGGESTIONS.map((s) => (
                   <Badge
-                    key={suggestion.label}
-                    variant={answers.objective === suggestion.value ? 'default' : 'outline'}
+                    key={s.label}
+                    variant={answers.objective === s.value ? 'default' : 'outline'}
                     className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => setAnswers({ ...answers, objective: suggestion.value })}
+                    onClick={() => setAnswers({ ...answers, objective: s.value })}
                   >
-                    {suggestion.label}
+                    {s.label}
                   </Badge>
                 ))}
               </div>
             </div>
           </div>
         );
-      
+
       case 1:
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Select what data your agent should have access to:
-            </p>
+          <div className="space-y-5">
+            <div className="space-y-1">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Core Data</h4>
+            </div>
             <div className="grid gap-3">
-              {DATA_OPTIONS.map((option) => (
-                <div
-                  key={option.id}
-                  className={cn(
-                    "flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-colors",
-                    answers.dataAccess[option.id as keyof typeof answers.dataAccess]
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted/50"
-                  )}
-                  onClick={() => setAnswers({
-                    ...answers,
-                    dataAccess: {
-                      ...answers.dataAccess,
-                      [option.id]: !answers.dataAccess[option.id as keyof typeof answers.dataAccess],
-                    },
-                  })}
-                >
-                  <Checkbox
-                    checked={answers.dataAccess[option.id as keyof typeof answers.dataAccess]}
-                    onCheckedChange={(checked) => setAnswers({
-                      ...answers,
-                      dataAccess: {
-                        ...answers.dataAccess,
-                        [option.id]: !!checked,
-                      },
-                    })}
-                  />
-                  <div className="space-y-1">
-                    <p className="font-medium text-sm">{option.label}</p>
-                    <p className="text-xs text-muted-foreground">{option.description}</p>
+              {CORE_DATA_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const checked = !!answers.dataAccess[opt.id];
+                return (
+                  <div
+                    key={opt.id}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border p-3 cursor-pointer transition-colors",
+                      checked ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                    )}
+                    onClick={() => toggleDataAccess(opt.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium text-sm">{opt.label}</p>
+                        <p className="text-xs text-muted-foreground">{opt.description}</p>
+                      </div>
+                    </div>
+                    <Switch checked={checked} onCheckedChange={() => toggleDataAccess(opt.id)} />
                   </div>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+
+            <div className="space-y-1 pt-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Extended Data</h4>
+            </div>
+            <div className="grid gap-3">
+              {EXTENDED_DATA_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const checked = !!answers.dataAccess[opt.id];
+                return (
+                  <div
+                    key={opt.id}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border p-3 cursor-pointer transition-colors",
+                      checked ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                    )}
+                    onClick={() => toggleDataAccess(opt.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium text-sm">{opt.label}</p>
+                        <p className="text-xs text-muted-foreground">{opt.description}</p>
+                      </div>
+                    </div>
+                    <Switch checked={checked} onCheckedChange={() => toggleDataAccess(opt.id)} />
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
-      
+
       case 2:
         return (
           <div className="space-y-4">
@@ -276,25 +374,166 @@ When analyzing deals or providing recommendations, consider all available contex
                 className="min-h-[120px]"
               />
             </div>
-            
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Or choose a goal:</p>
               <div className="flex flex-wrap gap-2">
-                {GOAL_SUGGESTIONS.map((suggestion) => (
+                {GOAL_SUGGESTIONS.map((s) => (
                   <Badge
-                    key={suggestion.label}
-                    variant={answers.goal === suggestion.value ? 'default' : 'outline'}
+                    key={s.label}
+                    variant={answers.goal === s.value ? 'default' : 'outline'}
                     className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => setAnswers({ ...answers, goal: suggestion.value })}
+                    onClick={() => setAnswers({ ...answers, goal: s.value })}
                   >
-                    {suggestion.label}
+                    {s.label}
                   </Badge>
                 ))}
               </div>
             </div>
           </div>
         );
-      
+
+      case 3:
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Select one or more triggers for your agent:</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {TRIGGER_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const checked = !!answers.triggers[opt.id];
+                return (
+                  <div
+                    key={opt.id}
+                    className={cn(
+                      "flex flex-col gap-2 rounded-lg border p-4 cursor-pointer transition-colors",
+                      checked ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                    )}
+                    onClick={() => toggleTrigger(opt.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", checked ? "bg-primary/20" : "bg-muted")}>
+                          <Icon className={cn("h-4 w-4", checked ? "text-primary" : "text-muted-foreground")} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{opt.label}</p>
+                          <p className="text-xs text-muted-foreground">{opt.description}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sub-configs */}
+                    {checked && opt.id === 'no_activity' && (
+                      <div className="flex items-center gap-2 pl-10 pt-1" onClick={(e) => e.stopPropagation()}>
+                        <Label className="text-xs">Days:</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={90}
+                          value={answers.triggerConfig.inactivityDays}
+                          onChange={(e) => setAnswers(prev => ({
+                            ...prev,
+                            triggerConfig: { ...prev.triggerConfig, inactivityDays: parseInt(e.target.value) || 7 },
+                          }))}
+                          className="w-20 h-7 text-xs"
+                        />
+                      </div>
+                    )}
+                    {checked && opt.id === 'scheduled' && (
+                      <div className="space-y-2 pl-10 pt-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={answers.triggerConfig.scheduleFrequency}
+                            onValueChange={(v) => setAnswers(prev => ({
+                              ...prev,
+                              triggerConfig: { ...prev.triggerConfig, scheduleFrequency: v },
+                            }))}
+                          >
+                            <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="daily">Daily</SelectItem>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="time"
+                            value={answers.triggerConfig.scheduleTime}
+                            onChange={(e) => setAnswers(prev => ({
+                              ...prev,
+                              triggerConfig: { ...prev.triggerConfig, scheduleTime: e.target.value },
+                            }))}
+                            className="w-28 h-7 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Send results to:</Label>
+                          <div className="flex gap-2 flex-wrap">
+                            {['In-app notification', 'Email digest', 'Slack message'].map((opt) => {
+                              const key = opt.toLowerCase().replace(/\s/g, '_');
+                              const isSelected = answers.triggerConfig.scheduleSendTo.includes(key);
+                              return (
+                                <Badge
+                                  key={key}
+                                  variant={isSelected ? 'default' : 'outline'}
+                                  className="cursor-pointer text-xs"
+                                  onClick={() => {
+                                    setAnswers(prev => ({
+                                      ...prev,
+                                      triggerConfig: {
+                                        ...prev.triggerConfig,
+                                        scheduleSendTo: isSelected
+                                          ? prev.triggerConfig.scheduleSendTo.filter(s => s !== key)
+                                          : [...prev.triggerConfig.scheduleSendTo, key],
+                                      },
+                                    }));
+                                  }}
+                                >
+                                  {opt}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Select what should happen when your agent produces results:</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {ACTION_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const checked = !!answers.actions[opt.id];
+                return (
+                  <div
+                    key={opt.id}
+                    className={cn(
+                      "flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-colors",
+                      checked ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                    )}
+                    onClick={() => toggleAction(opt.id)}
+                  >
+                    <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", checked ? "bg-primary/20" : "bg-muted")}>
+                      <Icon className={cn("h-4 w-4", checked ? "text-primary" : "text-muted-foreground")} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{opt.label}</p>
+                      <p className="text-xs text-muted-foreground">{opt.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -313,7 +552,7 @@ When analyzing deals or providing recommendations, consider all available contex
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-6">
         {/* Progress */}
         <div className="space-y-2">
@@ -325,7 +564,7 @@ When analyzing deals or providing recommendations, consider all available contex
         </div>
 
         {/* Step indicators */}
-        <div className="flex items-center justify-center gap-6">
+        <div className="flex items-center justify-center gap-4">
           {steps.map((s, index) => {
             const Icon = s.icon;
             return (
@@ -339,23 +578,19 @@ When analyzing deals or providing recommendations, consider all available contex
                 <div
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
-                    index === step
-                      ? "bg-primary text-primary-foreground"
-                      : index < step
-                      ? "bg-primary/20"
-                      : "bg-muted"
+                    index === step ? "bg-primary text-primary-foreground" : index < step ? "bg-primary/20" : "bg-muted"
                   )}
                 >
                   <Icon className="h-4 w-4" />
                 </div>
-                <span className="text-xs font-medium">{s.title}</span>
+                <span className="text-[10px] font-medium hidden sm:block">{s.title}</span>
               </div>
             );
           })}
         </div>
 
         {/* Current step content */}
-        <div className="min-h-[280px]">
+        <div className="min-h-[280px] max-h-[50vh] overflow-y-auto">
           <div className="mb-4">
             <h3 className="font-medium">{steps[step].title}</h3>
             <p className="text-sm text-muted-foreground">{steps[step].description}</p>
@@ -373,7 +608,7 @@ When analyzing deals or providing recommendations, consider all available contex
               </>
             )}
           </Button>
-          
+
           <Button onClick={handleNext} disabled={!canProceed() || isGenerating}>
             {isGenerating ? (
               <>
