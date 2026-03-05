@@ -122,7 +122,7 @@ export function AgentSuggestionsPanel({ onCreateAgent }: AgentSuggestionsPanelPr
               </p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[500px]">
+            <ScrollArea className="h-[400px]">
               <div className="space-y-3">
                 {suggestions.map((suggestion) => (
                   <SuggestionCard
