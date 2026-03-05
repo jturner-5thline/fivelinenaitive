@@ -4,7 +4,7 @@ import { LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, rectIntersection } from '@dnd-kit/core';
 import { DealLender } from '@/types/deal';
 import { OutstandingItem } from '@/hooks/useOutstandingItems';
-import { STAGE_GROUPS, StageGroup, PassReasonOption, TrackingStatusOption } from '@/contexts/LenderStagesContext';
+import { StageGroup, PassReasonOption, TrackingStatusOption } from '@/contexts/LenderStagesContext';
 import { cn } from '@/lib/utils';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import {
@@ -33,6 +33,7 @@ interface LendersKanbanProps {
   lenders: DealLender[];
   dealId?: string;
   configuredStages: { id: string; label: string; group: StageGroup }[];
+  stageGroups: { id: StageGroup; label: string; color: string }[];
   passReasons: PassReasonOption[];
   onUpdateLenderGroup: (lenderId: string, newGroup: StageGroup, passReason?: string) => void;
   onEditPassReasons?: (lenderId: string) => void;
@@ -323,6 +324,7 @@ export function LendersKanban({
   lenders,
   dealId,
   configuredStages,
+  stageGroups,
   passReasons,
   onUpdateLenderGroup,
   onEditPassReasons,
@@ -371,7 +373,7 @@ export function LendersKanban({
 
     if (over && active.id !== over.id) {
       const targetGroup = over.id as StageGroup;
-      if (STAGE_GROUPS.some(g => g.id === targetGroup)) {
+      if (stageGroups.some(g => g.id === targetGroup)) {
         if (targetGroup === 'passed') {
           setPendingPassChange({ lenderId: active.id as string });
           setSelectedPassReasons([]);
@@ -408,7 +410,7 @@ export function LendersKanban({
   };
 
   const isStageGroup = (value: unknown): value is StageGroup =>
-    value === 'active' || value === 'on-deck' || value === 'passed' || value === 'on-hold';
+    typeof value === 'string' && stageGroups.some(g => g.id === value);
 
   const getLendersByGroup = (groupId: StageGroup) => {
     return lenders.filter((lender) => {
@@ -430,8 +432,8 @@ export function LendersKanban({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-4 gap-4 overflow-hidden py-2">
-          {STAGE_GROUPS.map((group) => (
+        <div className={`grid gap-4 overflow-hidden py-2`} style={{ gridTemplateColumns: `repeat(${stageGroups.length}, minmax(0, 1fr))` }}>
+          {stageGroups.map((group) => (
             <DroppableColumn
               key={group.id}
               group={group}

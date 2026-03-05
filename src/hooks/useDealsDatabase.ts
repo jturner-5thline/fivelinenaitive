@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Deal, DealLender, DealStatus, DealStage, EngagementType, ExclusivityType, Referrer, LenderNoteHistory } from '@/types/deal';
+import { Deal, DealLender, DealStatus, DealStage, EngagementType, ExclusivityType, Referrer, LenderNoteHistory, LenderTrackingStatus } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 import { addDays } from 'date-fns';
@@ -249,7 +249,7 @@ export function useDealsDatabase() {
         status: 'in-review' as const,
         stage: l.stage,
         substage: l.substage || undefined,
-        trackingStatus: (l.tracking_status || 'active') as 'active' | 'on-hold' | 'on-deck' | 'passed',
+        trackingStatus: (l.tracking_status || 'active') as LenderTrackingStatus,
         notes: l.notes || undefined,
         passReason: l.pass_reason || undefined,
         updatedAt: l.updated_at,
