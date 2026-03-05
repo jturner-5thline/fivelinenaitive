@@ -136,22 +136,36 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
           <CollapsibleTrigger asChild>
             <button
               className={cn(
-                "flex items-center gap-2 flex-1 px-3 py-2 -mx-3 rounded-lg",
+                "flex items-center gap-2 flex-1 px-3 py-2.5 -mx-3 rounded-lg",
                 "cursor-pointer transition-all duration-200",
-                "hover:bg-white/[0.07] hover:shadow-[0_0_12px_rgba(126,184,247,0.08)]",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                "border border-transparent",
+                "hover:bg-white/[0.08] hover:border-border/40 hover:shadow-[0_0_16px_rgba(126,184,247,0.1)]",
+                "active:scale-[0.99]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                !isExpanded && "bg-white/[0.04] border-border/20"
               )}
               aria-expanded={isExpanded}
             >
-              <ChevronRight className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                isExpanded && "rotate-90"
-              )} />
+              <div className={cn(
+                "flex items-center justify-center h-6 w-6 rounded-md transition-all duration-200",
+                "bg-primary/10 text-primary",
+                !isExpanded && "bg-primary/20"
+              )}>
+                <ChevronRight className={cn(
+                  "h-3.5 w-3.5 transition-transform duration-200",
+                  isExpanded && "rotate-90"
+                )} />
+              </div>
               <span className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Deal Milestones</span>
               {milestones.length > 0 && (
-                <Badge variant="outline" className="ml-1 text-[10px] px-1.5 py-0 h-5 font-semibold">
+                <Badge variant="outline" className="ml-1 text-[10px] px-1.5 py-0 h-5 font-semibold border-primary/30 text-primary">
                   {completedCount}/{totalCount}
                 </Badge>
+              )}
+              {!isExpanded && (
+                <span className="ml-auto text-[11px] text-muted-foreground/60 italic">
+                  Click to expand
+                </span>
               )}
             </button>
           </CollapsibleTrigger>
