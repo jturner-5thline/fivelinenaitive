@@ -49,7 +49,80 @@ function makeEdge(id: string, source: string, sourceHandle: string, target: stri
   };
 }
 
+// nAItive-specific patterns
+const NAITIVE_TEMPLATES: CanvasTemplate[] = [
+  {
+    id: 'daily-health-check',
+    name: 'Daily Health Check',
+    description: 'Scheduled pipeline scan that queries deals, checks for stale activity, and sends a Slack alert.',
+    icon: '🛡️',
+    nodes: [
+      makeNode('schedule', 'trigger/schedule', 0, 100, { cron: '0 7 * * *', timezone: 'America/New_York' }),
+      makeNode('deals', 'tool/db_query', 300, 0, { table: 'deals', natural_query: 'Find all active deals with no activity in 7+ days', limit: 50 }),
+      makeNode('milestones', 'tool/db_query', 300, 200, { table: 'deal_milestones', natural_query: 'Find all overdue milestones', limit: 50 }),
+      makeNode('analyzer', 'agent/llm_worker', 600, 100, {
+        model: 'google/gemini-2.5-flash',
+        system_prompt: 'Analyze stale deals and overdue milestones. Produce a structured pipeline health report with CRITICAL, HIGH, and MEDIUM priority sections.',
+      }),
+      makeNode('slack', 'tool/slack', 900, 0, { channel: '#deal-alerts' }),
+      makeNode('notify', 'ui/notification', 900, 200, { channel: 'in_app', priority: 'urgent' }),
+    ],
+    edges: [
+      makeEdge('e1', 'schedule', 'context', 'deals', 'filter'),
+      makeEdge('e2', 'schedule', 'context', 'milestones', 'filter'),
+      makeEdge('e3', 'deals', 'results', 'analyzer', 'context'),
+      makeEdge('e4', 'milestones', 'results', 'analyzer', 'context'),
+      makeEdge('e5', 'analyzer', 'response', 'slack', 'message'),
+      makeEdge('e6', 'analyzer', 'response', 'notify', 'message'),
+    ],
+  },
+  {
+    id: 'new-deal-workflow',
+    name: 'New Deal Intake',
+    description: 'Auto-screen new deals for completeness and create tasks for missing fields.',
+    icon: '📋',
+    nodes: [
+      makeNode('trigger', 'trigger/webhook', 0, 100, { method: 'POST', path: '/deal-created' }),
+      makeNode('dealData', 'tool/db_query', 300, 100, { table: 'deals', natural_query: 'Get the newly created deal with all fields', limit: 1 }),
+      makeNode('screener', 'agent/llm_worker', 600, 100, {
+        model: 'google/gemini-2.5-flash',
+        system_prompt: 'Evaluate new deal data completeness. Check for missing: loan amount, property type, borrower name, LTV, asset class. Produce a completeness score and list missing required fields.',
+      }),
+      makeNode('output', 'output/response', 900, 100, { status_code: 'success' }),
+    ],
+    edges: [
+      makeEdge('e1', 'trigger', 'payload', 'dealData', 'filter'),
+      makeEdge('e2', 'dealData', 'results', 'screener', 'context'),
+      makeEdge('e3', 'screener', 'response', 'output', 'message'),
+    ],
+  },
+  {
+    id: 'lender-followup-chain',
+    name: 'Lender Follow-Up Chain',
+    description: 'Check lender communication status and draft follow-up emails for silent lenders.',
+    icon: '📞',
+    nodes: [
+      makeNode('trigger', 'trigger/manual', 0, 100, { sample_input: '{"deal_id": "xxx"}' }),
+      makeNode('lenders', 'tool/db_query', 300, 0, { table: 'deal_lenders', natural_query: 'Get all lenders for this deal with their stages and last contact dates', limit: 20 }),
+      makeNode('activity', 'tool/db_query', 300, 200, { table: 'activity_logs', natural_query: 'Get recent lender communication activity for this deal', limit: 50 }),
+      makeNode('coach', 'agent/llm_worker', 600, 100, {
+        model: 'google/gemini-2.5-pro',
+        system_prompt: 'Analyze lender engagement. For each lender, determine: status (Active/At Risk/Silent based on days since contact), and draft a professional follow-up email for At Risk and Silent lenders.',
+      }),
+      makeNode('email', 'tool/email', 900, 100, { subject: 'Follow-up' }),
+    ],
+    edges: [
+      makeEdge('e1', 'trigger', 'input', 'lenders', 'filter'),
+      makeEdge('e2', 'trigger', 'input', 'activity', 'filter'),
+      makeEdge('e3', 'lenders', 'results', 'coach', 'context'),
+      makeEdge('e4', 'activity', 'results', 'coach', 'context'),
+      makeEdge('e5', 'coach', 'response', 'email', 'body'),
+    ],
+  },
+];
+
 export const CANVAS_TEMPLATES: CanvasTemplate[] = [
+  ...NAITIVE_TEMPLATES,
   {
     id: 'research-summarize',
     name: 'Research & Summarize',
