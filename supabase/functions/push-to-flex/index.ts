@@ -46,7 +46,6 @@ interface WriteUpData {
   publishAsAnonymous: boolean;
   team?: Array<{ name: string; title: string; linkedin?: string }>;
   visibleMetrics?: { yoy_growth: boolean; this_year_revenue: boolean; last_year_revenue: boolean; gross_margins: boolean };
-  disclaimer?: string;
 }
 
 interface DataRoomFile {
@@ -359,9 +358,20 @@ serve(async (req) => {
         .eq("deal_id", dealId)
         .order("position", { ascending: true });
 
+      // Fetch company-level disclaimer from company_settings
+      let companyDisclaimer: string | undefined;
+      if (deal.company_id) {
+        const { data: settings } = await supabase
+          .from("company_settings")
+          .select("disclaimer")
+          .eq("company_id", deal.company_id)
+          .maybeSingle();
+        companyDisclaimer = (settings as any)?.disclaimer || undefined;
+      }
+
       // Prepare the payload for FLEx API (publish) - include deal id
       const flexDeal = {
-        id: dealId, // Original Naitive deal UUID
+        id: dealId,
         company_name: writeUpData!.companyName,
         company_url: writeUpData!.companyUrl || undefined,
         linkedin_url: writeUpData!.linkedinUrl || undefined,
@@ -393,7 +403,7 @@ serve(async (req) => {
         is_published: !writeUpData!.publishAsAnonymous,
         team: writeUpData!.team && writeUpData!.team.length > 0 ? writeUpData!.team : undefined,
         visible_metrics: writeUpData!.visibleMetrics || undefined,
-        disclaimer: writeUpData!.disclaimer || undefined,
+        disclaimer: companyDisclaimer,
         deal_manager_name: deal.manager || undefined,
         managing_company: ((deal as any).companies?.name || '').toLowerCase().includes('5th line') ? '5th Line' : ((deal as any).companies?.name || undefined),
       };
