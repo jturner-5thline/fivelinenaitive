@@ -665,7 +665,7 @@ function DealLinkField({ dealId }: { dealId: string }) {
         </Link>
         <div className="flex items-center gap-3 mt-1">
           {deal.stage && <span className="text-[10px]" style={{ color: '#8b92a5' }}>Stage: {deal.stage}</span>}
-          {deal.loan_amount && <span className="text-[10px]" style={{ color: '#8b92a5' }}>${Number(deal.loan_amount).toLocaleString()}</span>}
+          
         </div>
       </div>
     </div>
