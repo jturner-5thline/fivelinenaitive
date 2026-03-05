@@ -13,9 +13,7 @@ interface Shortcut {
 const SHORTCUTS: Shortcut[] = [
   { keys: ['⌘', 'K'], label: 'Command palette', category: 'Navigation' },
   { keys: ['⌘', '1'], label: 'Ingest view', category: 'Navigation' },
-  { keys: ['⌘', '2'], label: 'Split view', category: 'Navigation' },
-  { keys: ['⌘', '3'], label: 'Dashboard', category: 'Navigation' },
-  { keys: ['⌘', '4'], label: 'Report', category: 'Navigation' },
+  { keys: ['⌘', '2'], label: 'Dashboard', category: 'Navigation' },
   { keys: ['⌘', 'E'], label: 'Run extraction', category: 'Actions' },
   { keys: ['⌘', 'A'], label: 'Toggle audit mode', category: 'Actions' },
   { keys: ['⌘', 'P'], label: 'Export PDF', category: 'Export' },

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  Upload, LayoutDashboard, Columns2, FileText, Shield, ShieldCheck,
+  Upload, LayoutDashboard, Shield, ShieldCheck,
   ChevronDown, Check, Loader2, FileSpreadsheet, Keyboard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
 import { useExcelModelParser } from '@/hooks/useExcelModelParser';
 import { supabase } from '@/integrations/supabase/client';
 import { IngestionPanel } from './IngestionPanel';
-import { ExtractionView } from './ExtractionView';
+
 import { AnalysisChat } from './AnalysisChat';
 import { AnalyticsDashboard } from './dashboard/AnalyticsDashboard';
 import { SourceTracePanel, SourceTraceData } from './audit/SourceTracePanel';
@@ -26,7 +26,6 @@ import { CovenantMonitor } from './covenants/CovenantMonitor';
 import { ScenarioAnalysis } from './covenants/ScenarioAnalysis';
 import { DataValidationPanel } from './validation/DataValidationPanel';
 import { TimeSeriesVariancePanel } from './timeseries/TimeSeriesVariancePanel';
-import { ReportEditor } from './report/ReportEditor';
 import { DataRoomIntegration } from './dataroom/DataRoomIntegration';
 import { ComparableBenchmarking } from './benchmarking/ComparableBenchmarking';
 import { DiligenceEmptyState } from './DiligenceEmptyState';
@@ -48,9 +47,7 @@ interface DealDiligencePlatformProps {
 
 const LAYOUT_MODES: { mode: LayoutMode; label: string; icon: React.ReactNode }[] = [
   { mode: 'ingestion', label: 'Ingest', icon: <Upload className="h-3.5 w-3.5" /> },
-  { mode: 'split', label: 'Split View', icon: <Columns2 className="h-3.5 w-3.5" /> },
   { mode: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-3.5 w-3.5" /> },
-  { mode: 'report', label: 'Report', icon: <FileText className="h-3.5 w-3.5" /> },
 ];
 
 const DEMO_STATEMENTS: DetectedStatement[] = [];
@@ -147,7 +144,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
         if (data.issues) setIssues(data.issues);
         const newEntries = createExtractionAuditEntries(data.statements || [], data.metrics || [], dealData?.company || 'System');
         setAuditLog(prev => [...newEntries, ...prev]);
-        if (data.statements?.length > 0 || data.metrics?.length > 0) setLayoutMode('split');
+        if (data.statements?.length > 0 || data.metrics?.length > 0) setLayoutMode('dashboard');
       }
     } catch (err) {
       console.error('Extraction error:', err);
@@ -172,7 +169,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
       const { data } = await supabase.storage.from('deal-space').createSignedUrl(file.storagePath, 3600);
       if (data) {
         await parseExcelFromUrl(data.signedUrl, file.name);
-        setLayoutMode('split');
+        setLayoutMode('dashboard');
       }
     }
   }, [files, parseExcelFromUrl]);
@@ -331,37 +328,6 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
           </>
         )}
 
-        {layoutMode === 'split' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
-            <div>
-              <IngestionPanel
-                files={files} isUploading={isUploading} onUpload={handleUpload}
-                onRemoveFile={handleRemoveFile} onSelectFile={handleSelectFile} selectedFileId={selectedFileId} className="mb-4"
-              />
-              {hasMetrics || statements.length > 0 ? (
-                <>
-                  <ExtractionView
-                    statements={statements} metrics={metrics} issues={issues} auditMode={auditMode}
-                    files={files.map(f => ({ id: f.id, name: f.name }))} onTraceClick={(trace) => setActiveTrace(trace)}
-                  />
-                  <DataValidationPanel statements={statements} metrics={metrics} issues={issues} className="mt-4" />
-                  <TimeSeriesVariancePanel statements={statements} className="mt-4" />
-                  {auditMode && auditLog.length > 0 && <AuditLogPanel entries={auditLog} className="mt-4" />}
-                </>
-              ) : (
-                <DiligenceEmptyState mode="split" hasFiles={hasFiles} hasMetrics={false} onSwitchMode={(m) => setLayoutMode(m as LayoutMode)} />
-              )}
-            </div>
-            <div className="space-y-4">
-              {activeTrace && auditMode && <SourceTracePanel trace={activeTrace} onClose={() => setActiveTrace(null)} />}
-              <AnalysisChat
-                dealId={dealId} messages={messages} onMessagesChange={setMessages}
-                contextSummary={contextSummary} className="h-[700px] rounded-xl border border-border/30 sticky top-4"
-              />
-            </div>
-          </div>
-        )}
-
         {layoutMode === 'dashboard' && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
             <div className="space-y-4">
@@ -391,13 +357,6 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
               />
             </div>
           </div>
-        )}
-
-        {layoutMode === 'report' && (
-          <ReportEditor
-            dealId={dealId} dealName={dealData?.company} dealStage={dealData?.stage}
-            dealValue={dealData?.value} metrics={metrics} statements={statements}
-          />
         )}
       </div>
     </div>
