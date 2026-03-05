@@ -492,7 +492,6 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
   return (
     <div
       ref={setNodeRef}
-      style={style}
       className={cn(
         'grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_140px_100px_100px_40px] gap-2 items-center px-4 cursor-pointer transition-colors group',
         isSelected && 'bg-[#3b7eff]/10',
