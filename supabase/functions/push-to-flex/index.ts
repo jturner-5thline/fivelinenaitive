@@ -46,6 +46,7 @@ interface WriteUpData {
   publishAsAnonymous: boolean;
   team?: Array<{ name: string; title: string; linkedin?: string }>;
   visibleMetrics?: { yoy_growth: boolean; this_year_revenue: boolean; last_year_revenue: boolean; gross_margins: boolean };
+  disclaimer?: string;
 }
 
 interface DataRoomFile {
@@ -392,6 +393,7 @@ serve(async (req) => {
         is_published: !writeUpData!.publishAsAnonymous,
         team: writeUpData!.team && writeUpData!.team.length > 0 ? writeUpData!.team : undefined,
         visible_metrics: writeUpData!.visibleMetrics || undefined,
+        disclaimer: writeUpData!.disclaimer || undefined,
         deal_manager_name: deal.manager || undefined,
         managing_company: ((deal as any).companies?.name || '').toLowerCase().includes('5th line') ? '5th Line' : ((deal as any).companies?.name || undefined),
       };
