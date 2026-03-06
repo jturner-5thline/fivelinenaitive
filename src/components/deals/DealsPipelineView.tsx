@@ -41,6 +41,7 @@ interface DealsPipelineViewProps {
 interface DraggableDealCardProps {
   deal: Deal;
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: any;
@@ -48,7 +49,7 @@ interface DraggableDealCardProps {
   isDragging?: boolean;
 }
 
-function DraggableDealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount, isDragging }: DraggableDealCardProps) {
+function DraggableDealCard({ deal, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount, isDragging }: DraggableDealCardProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: deal.id,
     data: { deal },
