@@ -141,6 +141,8 @@ export function TaskListView({
 }: TaskListViewProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['complete']));
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
+  const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
+  const collaboratorsMap = useTaskCollaboratorsBatch(taskIds);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
