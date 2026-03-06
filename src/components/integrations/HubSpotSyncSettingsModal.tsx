@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { HubSpotDealSync } from './hubspot/HubSpotDealSync';
+import { HubSpotMappingOverview } from './hubspot/HubSpotMappingOverview';
 import { useState } from 'react';
 
 interface HubSpotSyncSettingsModalProps {
@@ -67,6 +68,11 @@ export function HubSpotSyncSettingsModal({ open, onClose }: HubSpotSyncSettingsM
                 </div>
               </RadioGroup>
             </div>
+
+            <Separator />
+
+            {/* Object Mapping Configuration */}
+            <HubSpotMappingOverview />
 
             <Separator />
 
