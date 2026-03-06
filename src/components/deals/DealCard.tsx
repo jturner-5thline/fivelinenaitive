@@ -239,7 +239,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
         )}
 
         {/* ═══ CARD BODY ═══ */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 flex flex-col flex-1 gap-4">
 
           {/* ── TOP ROW: Name + Value (left) | Status + Stage pills (right) ── */}
           <div className="flex items-start justify-between gap-4 min-w-0">
