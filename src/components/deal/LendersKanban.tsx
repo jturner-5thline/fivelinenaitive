@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Clock, MessageSquare, Search, RefreshCw, Settings2, ListChecks, CheckSquare, Briefcase, User, AlertTriangle } from 'lucide-react';
 import { LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, rectIntersection } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
 import { DealLender } from '@/types/deal';
 import { OutstandingItem } from '@/hooks/useOutstandingItems';
 import { StageGroup, PassReasonOption, TrackingStatusOption } from '@/contexts/LenderStagesContext';
@@ -455,7 +455,7 @@ export function LendersKanban({
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={rectIntersection}
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
