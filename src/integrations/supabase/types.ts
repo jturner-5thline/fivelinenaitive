@@ -7773,6 +7773,44 @@ export type Database = {
         }
         Relationships: []
       }
+      subtask_checklist_items: {
+        Row: {
+          created_at: string
+          id: string
+          is_completed: boolean
+          label: string
+          position: number
+          subtask_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          label: string
+          position?: number
+          subtask_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          label?: string
+          position?: number
+          subtask_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtask_checklist_items_subtask_id_fkey"
+            columns: ["subtask_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_audit_logs: {
         Row: {
           action: string
