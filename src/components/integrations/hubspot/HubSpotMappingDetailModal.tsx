@@ -274,7 +274,7 @@ export function HubSpotMappingDetailModal({ configId, open, onClose }: HubSpotMa
                     </TableRow>
                   </TableHeader>
                 </Table>
-                <ScrollArea className="max-h-[320px]">
+                <div className="max-h-[320px] overflow-y-auto">
                   <Table>
                     <TableBody>
                       {localMappings.map((mapping, idx) => {
@@ -352,7 +352,7 @@ export function HubSpotMappingDetailModal({ configId, open, onClose }: HubSpotMa
                       )}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
               </div>
             </div>
 
