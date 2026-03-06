@@ -332,6 +332,11 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
           {settings ? (
             <div className="space-y-4">
               <ConfigBlock
+                label="Disclaimer"
+                data={settings.disclaimer}
+                onEdit={editable ? (v) => handleUpdateDisclaimerText(v) : undefined}
+              />
+              <ConfigBlock
                 label="Deal Stages"
                 data={settings.deal_stages}
                 onEdit={editable ? (v) => handleUpdateSettings('deal_stages', v) : undefined}
@@ -382,7 +387,14 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
               />
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground italic">No company settings configured</p>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground italic">No company settings configured</p>
+              {editable && (
+                <Button size="sm" variant="outline" className="gap-1" onClick={handleInitializeSettings}>
+                  <Plus className="h-3 w-3" /> Initialize Settings
+                </Button>
+              )}
+            </div>
           )}
         </SectionCollapsible>
 
@@ -412,17 +424,40 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span>Claap</span>
-              <Badge variant={claapConfig?.is_active ? 'default' : 'secondary'} className="text-xs">
-                {claapConfig ? (claapConfig.is_active ? 'Active' : 'Inactive') : 'Not configured'}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant={claapConfig?.is_active ? 'default' : 'secondary'} className="text-xs">
+                  {claapConfig ? (claapConfig.is_active ? 'Active' : 'Inactive') : 'Not configured'}
+                </Badge>
+                {editable && (
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={handleToggleClaap}>
+                    {claapConfig?.is_active ? 'Disable' : 'Enable'}
+                  </Button>
+                )}
+              </div>
             </div>
             {claapConfig && (
-              <ConfigBlock label="Claap Config" data={{
-                internal_domains: claapConfig.internal_domains,
-                min_duration_seconds: claapConfig.min_duration_seconds,
-                task_expiry_days: claapConfig.task_expiry_days,
-                excluded_title_patterns: claapConfig.excluded_title_patterns,
-              }} />
+              <div className="space-y-2">
+                <ConfigBlock
+                  label="Internal Domains"
+                  data={claapConfig.internal_domains}
+                  onEdit={editable ? (v) => handleUpdateClaapConfig('internal_domains', v) : undefined}
+                />
+                <ConfigBlock
+                  label="Min Duration (seconds)"
+                  data={claapConfig.min_duration_seconds}
+                  onEdit={editable ? (v) => handleUpdateClaapConfig('min_duration_seconds', v) : undefined}
+                />
+                <ConfigBlock
+                  label="Task Expiry (days)"
+                  data={claapConfig.task_expiry_days}
+                  onEdit={editable ? (v) => handleUpdateClaapConfig('task_expiry_days', v) : undefined}
+                />
+                <ConfigBlock
+                  label="Excluded Title Patterns"
+                  data={claapConfig.excluded_title_patterns}
+                  onEdit={editable ? (v) => handleUpdateClaapConfig('excluded_title_patterns', v) : undefined}
+                />
+              </div>
             )}
             <div className="flex items-center justify-between text-sm">
               <span>QuickBooks</span>
@@ -470,9 +505,37 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
             <div className="space-y-2">
               {(customMetrics as any[]).map((m) => (
                 <div key={m.id} className="text-sm border rounded-md p-2">
-                  <div className="font-medium">{m.name}</div>
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">{m.name}</div>
+                    {editable && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteMetric(m.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                   {m.description && <p className="text-xs text-muted-foreground">{m.description}</p>}
-                  <ConfigBlock label="Formula" data={m.formula} />
+                  <ConfigBlock
+                    label="Formula"
+                    data={m.formula}
+                    onEdit={editable ? async (v) => {
+                      try {
+                        const parsed = JSON.parse(v);
+                        const { error } = await (supabase.from('custom_metrics') as any)
+                          .update({ formula: parsed })
+                          .eq('id', m.id);
+                        if (error) throw error;
+                        queryClient.invalidateQueries({ queryKey: ['company-config-metrics', companyId] });
+                        toast.success('Formula updated');
+                      } catch (err: any) {
+                        toast.error(err.message || 'Failed to update formula');
+                      }
+                    } : undefined}
+                  />
                 </div>
               ))}
             </div>
