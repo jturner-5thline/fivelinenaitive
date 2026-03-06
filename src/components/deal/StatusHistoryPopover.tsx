@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { History, Trash2 } from 'lucide-react';
+import { htmlToPlainText } from '@/lib/htmlToPlainText';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -51,7 +52,7 @@ export function StatusHistoryPopover({ statusNotes, onDeleteNote }: StatusHistor
                 className="text-sm p-3 bg-muted/50 rounded-lg group relative"
               >
                 <p className="text-muted-foreground pr-6 break-words whitespace-pre-wrap overflow-hidden text-xs">
-                  {item.note.replace(/<[^>]*>/g, '')}
+                  {htmlToPlainText(item.note)}
                 </p>
                 <p className="text-xs text-muted-foreground/70 mt-1">
                   {format(new Date(item.created_at), 'MMM d, yyyy')} at {format(new Date(item.created_at), 'h:mm a')}
