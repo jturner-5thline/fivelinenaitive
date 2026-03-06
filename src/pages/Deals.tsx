@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { Helmet } from 'react-helmet-async';
 import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -63,6 +64,16 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function Dashboard() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
+
+  // Deal size confirmation — match stage labels (case-insensitive) for 5th Line only
+  const DEAL_SIZE_CONFIRM_STAGE_LABELS = ['proposal issued', 'terms issued', 'in diligence', 'in due diligence'];
+  const [sizeConfirm, setSizeConfirm] = useState<{
+    dealId: string;
+    dealName: string;
+    currentValue: number;
+    newStage: string;
+    newStageLabel: string;
+  } | null>(null);
 
   const [groupBy, setGroupBy] = useState<string | null>('status');
   const [showMilestones, setShowMilestones] = useState(false);
@@ -156,9 +167,13 @@ export default function Dashboard() {
     }
   };
 
-  const handleStageChange = async (dealId: string, newStage: string) => {
+  const executeStageChange = useCallback(async (dealId: string, newStage: string, valueOverride?: number) => {
     try {
-      await updateDeal(dealId, { stage: newStage });
+      const updates: Record<string, any> = { stage: newStage };
+      if (valueOverride !== undefined) {
+        updates.value = valueOverride;
+      }
+      await updateDeal(dealId, updates);
       toast({ 
         title: "Deal stage updated", 
         description: "The deal has been moved to a new stage." 
@@ -169,6 +184,39 @@ export default function Dashboard() {
         description: "Please try again.",
         variant: "destructive"
       });
+    }
+  }, [updateDeal, toast]);
+
+  const handleStageChange = async (dealId: string, newStage: string) => {
+    // For 5th Line users, prompt deal size confirmation on specific stages
+    if (is5thLine) {
+      // Normalize stage ID to label-like format for matching
+      const normalizedStage = newStage.replace(/[-_]/g, ' ').toLowerCase();
+      const matchesConfirmStage = DEAL_SIZE_CONFIRM_STAGE_LABELS.some(
+        s => normalizedStage.includes(s)
+      );
+
+      if (matchesConfirmStage) {
+        const deal = allDeals.find(d => d.id === dealId);
+        if (deal) {
+          setSizeConfirm({
+            dealId,
+            dealName: deal.company || deal.name || 'This deal',
+            currentValue: deal.value || 0,
+            newStage,
+            newStageLabel: newStage.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          });
+          return;
+        }
+      }
+    }
+    await executeStageChange(dealId, newStage);
+  };
+
+  const handleSizeConfirm = (updatedValue: number) => {
+    if (sizeConfirm) {
+      executeStageChange(sizeConfirm.dealId, sizeConfirm.newStage, updatedValue);
+      setSizeConfirm(null);
     }
   };
 
@@ -523,6 +571,7 @@ export default function Dashboard() {
                 <DealsList 
                   deals={deals} 
                   onStatusChange={updateDealStatus} 
+                  onStageChange={handleStageChange}
                   onMarkReviewed={handleMarkReviewed} 
                   onToggleFlag={handleToggleFlag} 
                   groupBy={groupBy}
@@ -561,6 +610,18 @@ export default function Dashboard() {
 
         {/* Floating AI Assistant */}
         <FloatingDealsAssistant />
+
+        {/* Deal Size Confirmation Dialog (5th Line only) */}
+        {sizeConfirm && (
+          <DealSizeConfirmDialog
+            open={!!sizeConfirm}
+            dealName={sizeConfirm.dealName}
+            currentValue={sizeConfirm.currentValue}
+            newStage={sizeConfirm.newStageLabel}
+            onConfirm={handleSizeConfirm}
+            onCancel={() => setSizeConfirm(null)}
+          />
+        )}
       </div>
     </>
   );

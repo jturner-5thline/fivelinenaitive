@@ -41,6 +41,7 @@ interface DealsPipelineViewProps {
 interface DraggableDealCardProps {
   deal: Deal;
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: any;
@@ -48,7 +49,7 @@ interface DraggableDealCardProps {
   isDragging?: boolean;
 }
 
-function DraggableDealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount, isDragging }: DraggableDealCardProps) {
+function DraggableDealCard({ deal, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount, isDragging }: DraggableDealCardProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: deal.id,
     data: { deal },
@@ -70,6 +71,7 @@ function DraggableDealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag,
       <DealCard
         deal={deal}
         onStatusChange={onStatusChange}
+        onStageChange={onStageChange}
         onMarkReviewed={onMarkReviewed}
         onToggleFlag={onToggleFlag}
         flexEngagement={flexEngagement}
@@ -86,6 +88,7 @@ interface DroppableStageColumnProps {
   stageColor: string;
   deals: Deal[];
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagementScores?: Map<string, any>;
@@ -101,6 +104,7 @@ function DroppableStageColumn({
   stageColor,
   deals,
   onStatusChange,
+  onStageChange,
   onMarkReviewed,
   onToggleFlag,
   flexEngagementScores,
@@ -153,6 +157,7 @@ function DroppableStageColumn({
                 key={deal.id}
                 deal={deal}
                 onStatusChange={onStatusChange}
+                onStageChange={onStageChange}
                 onMarkReviewed={onMarkReviewed}
                 onToggleFlag={onToggleFlag}
                 flexEngagement={flexEngagementScores?.get(deal.id)}
@@ -305,6 +310,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
                 stageColor={stage.color}
                 deals={stageDeals}
                 onStatusChange={onStatusChange}
+                onStageChange={onStageChange}
                 onMarkReviewed={onMarkReviewed}
                 onToggleFlag={onToggleFlag}
                 flexEngagementScores={flexEngagementScores}

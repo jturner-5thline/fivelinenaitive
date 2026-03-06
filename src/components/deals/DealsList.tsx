@@ -33,6 +33,7 @@ import { DealsBulkActionBar } from './DealsBulkActionBar';
 interface DealsListProps {
   deals: Deal[];
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   groupBy?: string | null;
@@ -70,7 +71,7 @@ function SortableTableHead({ id }: { id: DealListColumnId }) {
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid' }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid' }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set());
@@ -195,6 +196,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                     key={deal.id}
                     deal={deal}
                     onStatusChange={onStatusChange}
+                    onStageChange={onStageChange}
                     onMarkReviewed={onMarkReviewed}
                     onToggleFlag={onToggleFlag}
                     flexEngagement={flexEngagementScores?.get(deal.id)}
@@ -236,6 +238,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                 <DealCard 
                   deal={deal} 
                   onStatusChange={onStatusChange} 
+                  onStageChange={onStageChange}
                   onMarkReviewed={onMarkReviewed} 
                   onToggleFlag={onToggleFlag} 
                   flexEngagement={flexEngagementScores?.get(deal.id)}
@@ -248,6 +251,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
               key={deal.id} 
               deal={deal} 
               onStatusChange={onStatusChange} 
+              onStageChange={onStageChange}
               onMarkReviewed={onMarkReviewed} 
               onToggleFlag={onToggleFlag} 
               flexEngagement={flexEngagementScores?.get(deal.id)}
@@ -359,6 +363,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                           <DealCard 
                             deal={deal} 
                             onStatusChange={onStatusChange} 
+                            onStageChange={onStageChange}
                             onMarkReviewed={onMarkReviewed} 
                             onToggleFlag={onToggleFlag} 
                             flexEngagement={flexEngagementScores?.get(deal.id)}
@@ -374,6 +379,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                       key={deal.id} 
                       deal={deal} 
                       onStatusChange={onStatusChange} 
+                      onStageChange={onStageChange}
                       onMarkReviewed={onMarkReviewed} 
                       onToggleFlag={onToggleFlag} 
                       flexEngagement={flexEngagementScores?.get(deal.id)}
