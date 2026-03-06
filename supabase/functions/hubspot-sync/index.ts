@@ -995,7 +995,7 @@ Deno.serve(async (req) => {
             validActions: [
               'test', 'getAnalyticsSummary',
               'getContacts', 'getContact', 'createContact', 'updateContact', 'searchContacts',
-              'getDeals', 'getDeal', 'createDeal', 'updateDeal', 'searchDeals', 'getPipelines',
+              'getDeals', 'getAllDeals', 'syncDeals', 'getDeal', 'createDeal', 'updateDeal', 'searchDeals', 'getPipelines',
               'getCompanies', 'getCompany', 'createCompany', 'updateCompany', 'searchCompanies',
               'getNotes', 'logActivity',
               'getCalls', 'getCall', 'createCall',
