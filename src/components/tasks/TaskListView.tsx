@@ -576,7 +576,26 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         )}
       </div>
 
-      {/* Deal */}
+      {/* Collaborators */}
+      <div className="flex items-center" onClick={e => e.stopPropagation()}>
+        {collaborators && collaborators.length > 0 ? (
+          <div className="flex items-center -space-x-1.5">
+            {collaborators.slice(0, 3).map(c => (
+              <Avatar key={c.user_id} className="h-4 w-4 ring-1 ring-[#13181f]">
+                {c.avatar_url && <AvatarImage src={c.avatar_url} />}
+                <AvatarFallback className="text-[6px]" style={{ backgroundColor: '#6b7280', color: 'white' }}>
+                  {c.display_name?.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ))}
+            {collaborators.length > 3 && (
+              <span className="text-[9px] ml-1" style={{ color: '#8b92a5' }}>+{collaborators.length - 3}</span>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+
       <div className="min-w-0" onClick={e => e.stopPropagation()}>
         {task.deal_id && task.deal ? (
           <Link to={`/deal/${task.deal_id}`} className="text-[11px] hover:underline truncate block" style={{ color: '#3b7eff' }} onClick={e => e.stopPropagation()}>
