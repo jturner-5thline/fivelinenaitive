@@ -381,7 +381,13 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       >
         <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {widgets.map((widget) => (
+            {hasActiveDealWidget && (
+              <ActiveDealVolumeWidget
+                deals={deals}
+                onOpenBreakdown={() => setVolumePopupOpen(true)}
+              />
+            )}
+            {regularWidgets.map((widget) => (
               <WidgetCard
                 key={widget.id}
                 widget={widget}
