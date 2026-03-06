@@ -5252,6 +5252,138 @@ export type Database = {
         }
         Relationships: []
       }
+      hubspot_field_mappings: {
+        Row: {
+          created_at: string
+          external_field_name: string
+          external_object: string
+          id: string
+          integration_config_id: string
+          is_required: boolean
+          native_field_name: string
+          native_object: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          external_field_name: string
+          external_object?: string
+          id?: string
+          integration_config_id: string
+          is_required?: boolean
+          native_field_name: string
+          native_object?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          external_field_name?: string
+          external_object?: string
+          id?: string
+          integration_config_id?: string
+          is_required?: boolean
+          native_field_name?: string
+          native_object?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hubspot_field_mappings_integration_config_id_fkey"
+            columns: ["integration_config_id"]
+            isOneToOne: false
+            referencedRelation: "hubspot_integration_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hubspot_integration_configs: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          direction: string
+          id: string
+          last_sync_at: string | null
+          record_behavior: string
+          status: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          last_sync_at?: string | null
+          record_behavior?: string
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          last_sync_at?: string | null
+          record_behavior?: string
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hubspot_integration_configs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hubspot_sync_runs: {
+        Row: {
+          error_count: number
+          error_summary: Json | null
+          finished_at: string | null
+          id: string
+          integration_config_id: string
+          records_processed: number
+          started_at: string
+          status: string
+        }
+        Insert: {
+          error_count?: number
+          error_summary?: Json | null
+          finished_at?: string | null
+          id?: string
+          integration_config_id: string
+          records_processed?: number
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          error_count?: number
+          error_summary?: Json | null
+          finished_at?: string | null
+          id?: string
+          integration_config_id?: string
+          records_processed?: number
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hubspot_sync_runs_integration_config_id_fkey"
+            columns: ["integration_config_id"]
+            isOneToOne: false
+            referencedRelation: "hubspot_integration_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insights_history: {
         Row: {
           active_deals: number | null
