@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { differenceInDays } from 'date-fns';
 import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
 export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status' | 'stage' | 'flexEngagement';
@@ -24,6 +25,7 @@ export interface DealFilters {
 export function useDeals() {
   const { deals, updateDealStatus: updateStatus, isLoading } = useDealsContext();
   const { preferences } = usePreferences();
+  const { stages } = useDealStages();
   const [filters, setFilters] = useState<DealFilters>({
     search: '',
     stage: [],
@@ -126,16 +128,20 @@ export function useDeals() {
         case 'status':
           comparison = statusOrder[a.status] - statusOrder[b.status];
           break;
-        case 'stage':
-          comparison = (a.stage || '').localeCompare(b.stage || '');
+        case 'stage': {
+          const stageOrder = new Map(stages.map((s, i) => [s.id, i]));
+          const aIdx = stageOrder.get(a.stage) ?? 999;
+          const bIdx = stageOrder.get(b.stage) ?? 999;
+          comparison = aIdx - bIdx;
           break;
+        }
       }
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
     return result;
-  }, [deals, filters, sortField, sortDirection]);
+  }, [deals, filters, sortField, sortDirection, stages]);
 
   const updateDealStatus = (dealId: string, newStatus: DealStatus) => {
     updateStatus(dealId, newStatus);
