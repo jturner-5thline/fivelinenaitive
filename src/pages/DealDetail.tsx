@@ -98,7 +98,7 @@ import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
 import { DealUpdatesDropdown } from '@/components/deal/DealUpdatesDropdown';
 import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
 import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
-import { useLenderScoreConfig } from '@/hooks/useLenderScoreConfig';
+import { useLenderScoreConfig, getScoreStyles } from '@/hooks/useLenderScoreConfig';
 import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
@@ -3676,7 +3676,7 @@ export default function DealDetail() {
                                       <div className="grid grid-cols-[160px_160px_140px_auto_1fr] items-center gap-3">
                                   <div className="flex items-center gap-1 group/lender -ml-1">
                                     {scoreConfig.enabled && lender.score != null && (
-                                      <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0 ${lender.score === 1 ? 'border-destructive/30 text-destructive' : lender.score === 2 ? 'border-yellow-500/30 text-yellow-500' : 'border-blue-500/30 text-blue-500'}`}>
+                                      <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0" style={getScoreStyles(lender.score, scoreConfig).badge}>
                                         {lender.score}
                                       </Badge>
                                     )}
@@ -4079,7 +4079,7 @@ export default function DealDetail() {
                                         <div className="grid grid-cols-[160px_160px_140px_1fr] items-center gap-3">
                                           <div className="flex items-center gap-1 group/lender -ml-1">
                                             {scoreConfig.enabled && lender.score != null && (
-                                              <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0 ${lender.score === 1 ? 'border-destructive/30 text-destructive' : lender.score === 2 ? 'border-yellow-500/30 text-yellow-500' : 'border-blue-500/30 text-blue-500'}`}>
+                                              <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0" style={getScoreStyles(lender.score, scoreConfig).badge}>
                                                 {lender.score}
                                               </Badge>
                                             )}
@@ -4976,6 +4976,7 @@ export default function DealDetail() {
                 setIsLendersKanbanOpen(false);
               }}
               showScore={scoreConfig.enabled}
+              scoreConfig={scoreConfig}
             />
           )}
         </DialogContent>
