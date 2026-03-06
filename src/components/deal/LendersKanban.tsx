@@ -148,6 +148,16 @@ function DraggableLenderTile({
       {/* Lender name + contact */}
       <div className="pr-8 mb-2">
         <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+          {showScore !== false && lender.score != null && (
+            <span className={cn(
+              "inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 ring-1",
+              lender.score === 1 && "bg-red-500/20 text-red-400 ring-red-500/40",
+              lender.score === 2 && "bg-amber-500/20 text-amber-400 ring-amber-500/40",
+              lender.score === 3 && "bg-blue-500/20 text-blue-400 ring-blue-500/40",
+            )}>
+              {lender.score}
+            </span>
+          )}
           {lender.name}
           <LenderFlagIndicator lenderName={lender.name} />
         </p>
@@ -159,7 +169,7 @@ function DraggableLenderTile({
         )}
       </div>
 
-      {/* Stage pill + score + time */}
+      {/* Stage pill + time */}
       <div className="flex flex-wrap items-center gap-1.5 mb-2">
         <Badge
           variant="secondary"
@@ -173,11 +183,6 @@ function DraggableLenderTile({
         >
           {stageLabel}
         </Badge>
-        {showScore !== false && lender.score != null && (
-          <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0.5 ${lender.score === 1 ? 'border-destructive/30 text-destructive' : lender.score === 2 ? 'border-yellow-500/30 text-yellow-500' : 'border-blue-500/30 text-blue-500'}`}>
-            {lender.score}
-          </Badge>
-        )}
         {timeAgo && (
           <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
             <Clock className="h-2.5 w-2.5" />
