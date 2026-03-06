@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, Settings2, PieChartIcon, BarChart3, TrendingUp, Download, Image, FileText } from 'lucide-react';
+import { ActiveDealVolumeWidget } from './ActiveDealVolumeWidget';
+import { ActiveDealVolumePopup } from './ActiveDealVolumePopup';
 import {
   DndContext,
   closestCenter,
@@ -62,6 +64,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const { formatCurrencyValue } = usePreferences();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [isEditMode, setIsEditMode] = useState(false);
+  const [volumePopupOpen, setVolumePopupOpen] = useState(false);
 
   useEffect(() => {
     const handler = () => setIsEditMode(prev => !prev);
@@ -76,6 +79,17 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartGroupBy, setChartGroupBy] = useState<'stage' | 'status' | 'manager'>('stage');
   const [chartFilterFn, setChartFilterFn] = useState<((d: Deal) => boolean) | null>(null);
   const [chartViewType, setChartViewType] = useState<'pie' | 'bar' | 'line'>('pie');
+
+  // Determine if we have an active-deals or active-deal-volume widget to show the combined widget
+  const hasActiveDealWidget = useMemo(() => 
+    widgets.some(w => w.metric === 'active-deals' || w.metric === 'active-deal-volume'),
+    [widgets]
+  );
+  // Filter out active-deals and active-deal-volume from the regular widget list when showing the combined widget
+  const regularWidgets = useMemo(() => 
+    widgets.filter(w => w.metric !== 'active-deals' && w.metric !== 'active-deal-volume'),
+    [widgets]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -367,7 +381,13 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       >
         <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {widgets.map((widget) => (
+            {hasActiveDealWidget && (
+              <ActiveDealVolumeWidget
+                deals={deals}
+                onOpenBreakdown={() => setVolumePopupOpen(true)}
+              />
+            )}
+            {regularWidgets.map((widget) => (
               <WidgetCard
                 key={widget.id}
                 widget={widget}
@@ -553,6 +573,12 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ActiveDealVolumePopup
+        open={volumePopupOpen}
+        onOpenChange={setVolumePopupOpen}
+        deals={deals}
+      />
     </div>
   );
 }
