@@ -198,21 +198,117 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
   });
 
   const handleUpdateSettings = async (field: string, rawValue: string) => {
-    if (!settings) return;
     try {
-      const parsed = JSON.parse(rawValue);
-      const { error } = await supabase
-        .from('company_settings')
-        .update({ [field]: parsed as Json })
-        .eq('company_id', companyId);
-
-      if (error) throw error;
+      if (!settings) {
+        // Create settings first
+        const parsed = JSON.parse(rawValue);
+        const { error } = await supabase
+          .from('company_settings')
+          .insert({ company_id: companyId, [field]: parsed as Json });
+        if (error) throw error;
+      } else {
+        const parsed = JSON.parse(rawValue);
+        const { error } = await supabase
+          .from('company_settings')
+          .update({ [field]: parsed as Json })
+          .eq('company_id', companyId);
+        if (error) throw error;
+      }
 
       logAction?.('update_config', 'settings', companyId, { field });
       queryClient.invalidateQueries({ queryKey: ['company-config-settings', companyId] });
       toast.success(`Updated ${field.replace(/_/g, ' ')}`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to update');
+    }
+  };
+
+  const handleUpdateDisclaimerText = async (value: string) => {
+    try {
+      if (!settings) {
+        const { error } = await supabase
+          .from('company_settings')
+          .insert({ company_id: companyId, disclaimer: value });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('company_settings')
+          .update({ disclaimer: value })
+          .eq('company_id', companyId);
+        if (error) throw error;
+      }
+      queryClient.invalidateQueries({ queryKey: ['company-config-settings', companyId] });
+      toast.success('Disclaimer updated');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update disclaimer');
+    }
+  };
+
+  const handleInitializeSettings = async () => {
+    try {
+      const { error } = await supabase
+        .from('company_settings')
+        .insert({ company_id: companyId });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['company-config-settings', companyId] });
+      toast.success('Company settings initialized');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to initialize');
+    }
+  };
+
+  const handleDeleteMetric = async (metricId: string) => {
+    try {
+      const { error } = await (supabase.from('custom_metrics') as any).delete().eq('id', metricId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['company-config-metrics', companyId] });
+      toast.success('Metric deleted');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete metric');
+    }
+  };
+
+  const handleUpdateClaapConfig = async (field: string, rawValue: string) => {
+    if (!claapConfig) return;
+    try {
+      const parsed = JSON.parse(rawValue);
+      const { error } = await supabase
+        .from('claap_integration_config')
+        .update({ [field]: parsed })
+        .eq('company_id', companyId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['company-config-claap', companyId] });
+      toast.success(`Updated Claap ${field.replace(/_/g, ' ')}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update');
+    }
+  };
+
+  const handleToggleClaap = async () => {
+    if (!claapConfig) {
+      // Create config
+      try {
+        const { error } = await supabase
+          .from('claap_integration_config')
+          .insert({ company_id: companyId, is_active: true });
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ['company-config-claap', companyId] });
+        toast.success('Claap integration enabled');
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to enable');
+      }
+    } else {
+      try {
+        const { error } = await supabase
+          .from('claap_integration_config')
+          .update({ is_active: !claapConfig.is_active })
+          .eq('company_id', companyId);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ['company-config-claap', companyId] });
+        toast.success(claapConfig.is_active ? 'Claap disabled' : 'Claap enabled');
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to toggle');
+      }
     }
   };
 
