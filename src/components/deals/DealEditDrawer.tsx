@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Archive, Trash2, ExternalLink, ArrowRightLeft } from 'lucide-react';
+import { X, Archive, Trash2, ExternalLink, ArrowRightLeft, Plus, Loader2 } from 'lucide-react';
+import { useStatusNotes } from '@/hooks/useStatusNotes';
+import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
 import { Deal, DealStatus, DealStage, EngagementType, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, ExclusivityType } from '@/types/deal';
@@ -66,6 +68,10 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     }
   }, [isOpen]);
 
+  const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingNotes } = useStatusNotes(deal.id);
+  const [newStatusNote, setNewStatusNote] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
+
   const [formData, setFormData] = useState({
     company: deal.company,
     value: deal.value,
@@ -78,8 +84,18 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
     preSigningHours: deal.preSigningHours || 0,
     postSigningHours: deal.postSigningHours || 0,
-    notes: deal.notes || '',
   });
+
+  const handleAddStatusNote = async () => {
+    if (!newStatusNote.trim()) return;
+    setIsAddingNote(true);
+    try {
+      await addStatusNote(newStatusNote.trim());
+      setNewStatusNote('');
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -97,7 +113,6 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
         preSigningHours: deal.preSigningHours || 0,
         postSigningHours: deal.postSigningHours || 0,
-        notes: deal.notes || '',
       });
     }
   }, [deal, isOpen]);
@@ -117,7 +132,6 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         dealOwner: formData.dealOwner || undefined,
         preSigningHours: formData.preSigningHours,
         postSigningHours: formData.postSigningHours,
-        notes: formData.notes,
       };
       
       // Update deal without modifying referredBy (handled separately if needed)
@@ -239,17 +253,52 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
               </Select>
             </div>
 
-            {/* Status Note */}
+            {/* Status Notes */}
             <div className="space-y-2">
-              <Label htmlFor="statusNote">Status Note</Label>
-              <Textarea
-                id="statusNote"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Add a status note..."
-                rows={3}
-                className="resize-none"
-              />
+              <Label>Status Notes</Label>
+              <div className="flex items-start gap-2">
+                <Textarea
+                  id="statusNote"
+                  value={newStatusNote}
+                  onChange={(e) => setNewStatusNote(e.target.value)}
+                  placeholder="Add a status note..."
+                  rows={2}
+                  className="resize-none flex-1"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="shrink-0 self-end h-9 w-9"
+                  onClick={handleAddStatusNote}
+                  disabled={!newStatusNote.trim() || isAddingNote}
+                >
+                  {isAddingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                </Button>
+              </div>
+              {statusNotes.length > 0 && (
+                <div className="space-y-1.5 max-h-[150px] overflow-y-auto">
+                  {statusNotes.map((sn) => (
+                    <div key={sn.id} className="group flex items-start gap-2 text-xs p-2 rounded bg-muted/40 border border-border/50">
+                      <span className="flex-1 text-muted-foreground break-words">
+                        {sn.note}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/60 shrink-0">
+                        {format(new Date(sn.created_at), 'MMM d')}
+                      </span>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-destructive hover:text-destructive"
+                        onClick={() => deleteStatusNote(sn.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Stage */}
