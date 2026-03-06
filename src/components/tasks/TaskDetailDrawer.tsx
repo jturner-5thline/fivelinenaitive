@@ -1,10 +1,7 @@
 import { useState, useRef } from 'react';
 import { type Task, useTaskComments, useTaskActivity, useSubtasks } from '@/hooks/useTasks';
-import { useTaskLabels, useTaskLabelAssignments } from '@/hooks/useTaskLabels';
 import { useTaskDependencies } from '@/hooks/useTaskDependencies';
-import { useTaskTimeEntries } from '@/hooks/useTaskTimeEntries';
 import { useTaskAttachments } from '@/hooks/useTaskAttachments';
-import { useTaskWatchers } from '@/hooks/useTaskWatchers';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useMyTasks } from '@/hooks/useTasks';
 import { useCreateMentions } from '@/hooks/useTaskMentions';
@@ -29,8 +26,8 @@ import {
 import {
   X, Calendar, Flag, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
-  Tag, Link2, Timer, Paperclip, Download, FileText, Users,
-  Star, Repeat, Eye, EyeOff, ExternalLink, AlertTriangle,
+  Link2, Paperclip, Download, FileText,
+  Repeat, ExternalLink, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
@@ -83,21 +80,14 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const [commentText, setCommentText] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
-  const [timeMinutes, setTimeMinutes] = useState('');
-  const [timeDescription, setTimeDescription] = useState('');
-  const [showTimeInput, setShowTimeInput] = useState(false);
   const [blockerNote, setBlockerNote] = useState((task as any).blocker_note || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { comments, addComment } = useTaskComments(task.id);
   const { activity } = useTaskActivity(task.id);
   const { subtasks, createSubtask } = useSubtasks(task.id);
-  const { labels } = useTaskLabels();
-  const { assignedLabelIds, toggleLabel } = useTaskLabelAssignments(task.id);
   const { blockedBy, blocking, addDependency, removeDependency } = useTaskDependencies(task.id);
-  const { entries: timeEntries, totalMinutes, logTime, deleteEntry } = useTaskTimeEntries(task.id);
   const { attachments, uploadAttachment, deleteAttachment, getDownloadUrl } = useTaskAttachments(task.id);
-  const { watchers, isWatching, toggleWatch } = useTaskWatchers(task.id);
   const members = useTeamMembers();
   const { tasks: allTasks } = useMyTasks();
   const createMentions = useCreateMentions();
