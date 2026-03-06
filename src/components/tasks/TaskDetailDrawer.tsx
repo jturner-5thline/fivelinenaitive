@@ -302,7 +302,58 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               </Select>
             </div>
 
-            {/* Due date */}
+            {/* Collaborators */}
+            <div className="flex items-start gap-3">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0 mt-1" style={{ color: '#8b92a5' }}>
+                <Users className="h-3 w-3" /> Collaborators
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-1 flex-wrap">
+                  {collaborators.map(c => (
+                    <div key={c.user_id} className="flex items-center gap-1 px-1.5 py-0.5 rounded-full group/collab" style={{ backgroundColor: '#1a1f2e', border: '1px solid #2a2f3e' }}>
+                      <Avatar className="h-4 w-4">
+                        <AvatarImage src={c.profile?.avatar_url || undefined} />
+                        <AvatarFallback className="text-[7px]" style={{ backgroundColor: '#3b7eff', color: 'white' }}>
+                          {c.profile?.display_name?.slice(0, 2).toUpperCase() || '??'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-[10px]" style={{ color: 'white' }}>{c.profile?.display_name?.split(' ')[0] || 'User'}</span>
+                      <button onClick={() => removeCollaborator.mutate(c.user_id)} className="opacity-0 group-hover/collab:opacity-100 transition-opacity">
+                        <X className="h-2.5 w-2.5" style={{ color: '#8b92a5' }} />
+                      </button>
+                    </div>
+                  ))}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" style={{ border: '1px dashed #2a2f3e' }}>
+                        <Plus className="h-3 w-3" style={{ color: '#8b92a5' }} />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[200px] p-1 max-h-[200px] overflow-auto" align="start">
+                      <p className="text-[10px] px-2 py-1" style={{ color: '#8b92a5' }}>Add collaborator</p>
+                      {members
+                        .filter(m => m.id !== task.assigned_to && !collaborators.some(c => c.user_id === m.id))
+                        .map(m => (
+                          <button key={m.id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors" onClick={() => addCollaborator.mutate(m.id)}>
+                            <Avatar className="h-4 w-4">
+                              <AvatarImage src={m.avatar_url || undefined} />
+                              <AvatarFallback className="text-[7px]">{m.display_name?.slice(0, 2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            {m.display_name}
+                          </button>
+                        ))}
+                      {members.filter(m => m.id !== task.assigned_to && !collaborators.some(c => c.user_id === m.id)).length === 0 && (
+                        <p className="text-[10px] p-2" style={{ color: '#8b92a5' }}>All team members added</p>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {collaborators.length === 0 && (
+                  <p className="text-[10px] mt-0.5" style={{ color: '#8b92a5' }}>No collaborators</p>
+                )}
+              </div>
+            </div>
+
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <Calendar className="h-3 w-3" /> Due date
