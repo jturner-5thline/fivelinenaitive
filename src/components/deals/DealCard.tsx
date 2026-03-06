@@ -321,7 +321,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
               dealId={deal.id}
               stage={deal.stage}
               pipelineId={deal.pipelineId}
-              onStageChange={(id, newStage) => updateDeal(id, { stage: newStage })}
+              onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
               className="text-white"
             />
           )}
