@@ -65,8 +65,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
 
-  // Deal size confirmation state (5th Line only)
-  const DEAL_SIZE_CONFIRM_STAGES = ['proposal_issued', 'terms_issued', 'in_diligence'];
+  // Deal size confirmation — match stage labels (case-insensitive) for 5th Line only
+  const DEAL_SIZE_CONFIRM_STAGE_LABELS = ['proposal issued', 'terms issued', 'in diligence', 'in due diligence'];
   const [sizeConfirm, setSizeConfirm] = useState<{
     dealId: string;
     dealName: string;
