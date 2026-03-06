@@ -26,7 +26,7 @@ export function useSubtaskChecklist(subtaskId: string | null) {
         .eq('subtask_id', subtaskId)
         .order('position', { ascending: true });
       if (error) throw error;
-      return (data || []) as ChecklistItem[];
+      return (data || []) as unknown as ChecklistItem[];
     },
   });
 
