@@ -117,14 +117,6 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
     setNewSubtaskTitle('');
   };
 
-  const handleLogTime = () => {
-    const mins = parseInt(timeMinutes);
-    if (!mins || mins <= 0) return;
-    logTime.mutate({ duration_minutes: mins, description: timeDescription || undefined });
-    setTimeMinutes('');
-    setTimeDescription('');
-    setShowTimeInput(false);
-  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -160,7 +152,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const today = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
 
-  const assignedLabels = labels.filter(l => assignedLabelIds.includes(l.id));
+  
   const availableDeps = allTasks.filter(t => t.id !== task.id && !blockedBy.some(d => d.depends_on_task_id === t.id));
 
   const statusConf = STATUS_COLORS[task.status] || STATUS_COLORS.not_started;
@@ -319,93 +311,6 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               </div>
             </div>
 
-            {/* Labels */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
-                <Tag className="h-3 w-3" /> Labels
-              </div>
-              <div className="flex items-center gap-1 flex-wrap">
-                {assignedLabels.map(l => (
-                  <Badge key={l.id} variant="outline" className="text-[10px] h-5 px-1.5 gap-1 cursor-pointer hover:line-through"
-                    style={{ borderColor: l.color, color: l.color }} onClick={() => toggleLabel.mutate(l.id)}>
-                    {l.name}
-                  </Badge>
-                ))}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0"><Plus className="h-3 w-3" style={{ color: '#8b92a5' }} /></Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[180px] p-1" align="start">
-                    {labels.length === 0 && <p className="text-[11px] text-muted-foreground p-2">No labels yet</p>}
-                    {labels.map(l => (
-                      <button key={l.id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted" onClick={() => toggleLabel.mutate(l.id)}>
-                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: l.color }} />
-                        {l.name}
-                        {assignedLabelIds.includes(l.id) && <span className="ml-auto text-primary">✓</span>}
-                      </button>
-                    ))}
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            {/* Starred */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
-                <Star className="h-3 w-3" /> Starred
-              </div>
-              <Button variant="ghost" size="sm" className={cn('h-7 text-xs gap-1.5', task.is_starred && 'text-amber-500')} onClick={() => onUpdate({ is_starred: !task.is_starred } as any)}>
-                <Star className={cn('h-3.5 w-3.5', task.is_starred && 'fill-amber-500 text-amber-500')} />
-                {task.is_starred ? 'Starred' : 'Star this task'}
-              </Button>
-            </div>
-
-            {/* Recurrence */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
-                <Repeat className="h-3 w-3" /> Repeat
-              </div>
-              <Select value={task.recurrence_rule || 'none'} onValueChange={v => onUpdate({ recurrence_rule: v === 'none' ? null : v } as any)}>
-                <SelectTrigger className="h-7 w-[130px] text-xs border-[#2a2f3e] bg-[#0d1117] text-white"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none" className="text-xs">No repeat</SelectItem>
-                  <SelectItem value="daily" className="text-xs">Daily</SelectItem>
-                  <SelectItem value="weekly" className="text-xs">Weekly</SelectItem>
-                  <SelectItem value="biweekly" className="text-xs">Bi-weekly</SelectItem>
-                  <SelectItem value="monthly" className="text-xs">Monthly</SelectItem>
-                  <SelectItem value="quarterly" className="text-xs">Quarterly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Watchers */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
-                <Eye className="h-3 w-3" /> Watchers
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Button variant="ghost" size="sm" className={cn('h-7 text-xs gap-1.5', isWatching && 'text-[#3b7eff]')} onClick={() => toggleWatch.mutate()}>
-                  {isWatching ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                  {isWatching ? 'Unwatch' : 'Watch'}
-                </Button>
-                {watchers.length > 0 && <span className="text-[10px]" style={{ color: '#8b92a5' }}>{watchers.length} watching</span>}
-              </div>
-            </div>
-
-            {/* Time */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
-                <Timer className="h-3 w-3" /> Time
-              </div>
-              <div className="flex items-center gap-1.5">
-                {totalMinutes > 0 ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: '#3b7eff25', color: '#3b7eff' }}>{formatMinutes(totalMinutes)} logged</span>
-                ) : (
-                  <span className="text-xs" style={{ color: '#8b92a5' }}>No time logged</span>
-                )}
-              </div>
-              <Button variant="ghost" size="sm" className="h-5 text-[10px] ml-auto" style={{ color: '#8b92a5' }} onClick={() => setShowTimeInput(!showTimeInput)}>+ Log</Button>
-            </div>
 
             {/* Deal link */}
             {task.deal_id && <DealLinkField dealId={task.deal_id} />}
@@ -439,30 +344,6 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             )}
           </div>
 
-          {/* Time logging */}
-          {showTimeInput && (
-            <>
-              <Separator style={{ backgroundColor: '#2a2f3e' }} />
-              <div className="space-y-2">
-                <label className="text-xs font-medium" style={{ color: '#8b92a5' }}>Log Time</label>
-                <div className="flex items-center gap-2">
-                  <Input type="number" value={timeMinutes} onChange={e => setTimeMinutes(e.target.value)} placeholder="Minutes" className="h-7 text-xs w-20 bg-[#0d1117] text-white border-[#2a2f3e]" min={1} />
-                  <Input value={timeDescription} onChange={e => setTimeDescription(e.target.value)} placeholder="What did you work on?" className="h-7 text-xs flex-1 bg-[#0d1117] text-white border-[#2a2f3e]" onKeyDown={e => { if (e.key === 'Enter') handleLogTime(); }} />
-                  <Button size="sm" className="h-7 text-xs" style={{ backgroundColor: '#3b7eff' }} onClick={handleLogTime}>Log</Button>
-                </div>
-                {timeEntries.length > 0 && (
-                  <div className="space-y-1 mt-1">
-                    {timeEntries.slice(0, 5).map(e => (
-                      <div key={e.id} className="flex items-center justify-between text-[11px]" style={{ color: '#8b92a5' }}>
-                        <span>{formatMinutes(e.duration_minutes)} — {e.description || 'No description'}</span>
-                        <button onClick={() => deleteEntry.mutate(e.id)} className="hover:text-[#ff4d4d]"><X className="h-3 w-3" /></button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
 
           <Separator style={{ backgroundColor: '#2a2f3e' }} />
 
