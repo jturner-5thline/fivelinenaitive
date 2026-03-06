@@ -310,6 +310,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
                 stageColor={stage.color}
                 deals={stageDeals}
                 onStatusChange={onStatusChange}
+                onStageChange={onStageChange}
                 onMarkReviewed={onMarkReviewed}
                 onToggleFlag={onToggleFlag}
                 flexEngagementScores={flexEngagementScores}
