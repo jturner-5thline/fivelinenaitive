@@ -268,33 +268,41 @@ export function useHubSpotSyncRuns(configId: string | undefined) {
   const triggerSync = useMutation({
     mutationFn: async () => {
       if (!configId) throw new Error("No config ID");
-      // Stub: create a fake sync run
-      const { data, error } = await supabase
-        .from("hubspot_sync_runs" as any)
-        .insert({
-          integration_config_id: configId,
-          status: "success",
-          records_processed: Math.floor(Math.random() * 50) + 5,
-          error_count: 0,
-          started_at: new Date().toISOString(),
-          finished_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-      if (error) throw error;
       
-      // Update last_sync_at on config
-      await supabase
-        .from("hubspot_integration_configs" as any)
-        .update({ last_sync_at: new Date().toISOString() })
-        .eq("id", configId);
-        
+      // Call the edge function to actually sync deals from HubSpot
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Get user's company_id
+      const { data: membership } = await supabase
+        .from("company_members")
+        .select("company_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      const { data, error } = await supabase.functions.invoke("hubspot-sync", {
+        body: {
+          action: "syncDeals",
+          userId: user.id,
+          companyId: membership?.company_id || null,
+          configId,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["hubspot-sync-runs", configId] });
       queryClient.invalidateQueries({ queryKey: ["hubspot-integration-configs"] });
-      toast.success("Sync completed successfully");
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      const msg = data?.created !== undefined 
+        ? `Sync complete: ${data.created} created, ${data.updated} updated` + (data.errors > 0 ? `, ${data.errors} errors` : '')
+        : "Sync completed successfully";
+      toast.success(msg);
     },
     onError: (error) => {
       toast.error("Sync failed: " + error.message);
