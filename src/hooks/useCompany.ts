@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminCompanyOverride } from '@/contexts/AdminCompanyOverrideContext';
 import { toast } from 'sonner';
 
 export type CompanyRole = 'owner' | 'admin' | 'member';
@@ -127,22 +128,24 @@ async function fetchCompanyData(userId: string, userEmail?: string | null) {
 
 export function useCompany() {
   const { user } = useAuth();
+  const adminOverride = useAdminCompanyOverride();
   const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['company', user?.id],
     queryFn: () => fetchCompanyData(user!.id, user!.email),
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutes - prevents refetches across components
+    enabled: !!user && !adminOverride,
+    staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
 
-  const company = data?.company ?? null;
-  const members = data?.members ?? [];
-  const userRole = data?.userRole ?? null;
-  const isAdmin = userRole === 'owner' || userRole === 'admin';
-  const isOwner = userRole === 'owner';
+  // If admin override is active, use the override company
+  const company = adminOverride?.company ?? data?.company ?? null;
+  const members = adminOverride ? [] : (data?.members ?? []);
+  const userRole = adminOverride ? 'admin' as CompanyRole : (data?.userRole ?? null);
+  const isAdmin = adminOverride ? true : (userRole === 'owner' || userRole === 'admin');
+  const isOwner = adminOverride ? true : (userRole === 'owner');
 
   const refetch = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['company', user?.id] });
