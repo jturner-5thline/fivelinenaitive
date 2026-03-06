@@ -4976,6 +4976,7 @@ export default function DealDetail() {
                 setSelectedLenderName(lender.name);
                 setIsLendersKanbanOpen(false);
               }}
+              showScore={scoreConfig.enabled}
             />
           )}
         </DialogContent>
