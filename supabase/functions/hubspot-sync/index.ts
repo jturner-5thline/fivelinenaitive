@@ -597,6 +597,11 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
         dealData.company = props.dealname || `HubSpot Deal ${hubspotDealId}`;
       }
 
+      // Log first deal for debugging
+      if (created === 0 && updated === 0 && errors.length === 0) {
+        console.log('Sample deal data being inserted:', JSON.stringify(dealData));
+      }
+
       // Check if deal already exists by hubspot_deal_id
       const { data: existing } = await supabase
         .from('deals')
@@ -614,7 +619,10 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
           .update(updateData)
           .eq('id', existing.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error(`Insert/update error for deal ${hubspotDealId}:`, JSON.stringify(error));
+          throw new Error(error.message || JSON.stringify(error));
+        }
         updated++;
       } else {
         // Insert new deal
@@ -622,11 +630,14 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
           .from('deals')
           .insert(dealData);
 
-        if (error) throw error;
+        if (error) {
+          console.error(`Insert error for deal ${hubspotDealId}:`, JSON.stringify(error));
+          throw new Error(error.message || JSON.stringify(error));
+        }
         created++;
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = e instanceof Error ? e.message : JSON.stringify(e);
       errors.push(`Deal ${hsDeal.id}: ${msg}`);
       console.error(`Error syncing deal ${hsDeal.id}:`, msg);
     }
