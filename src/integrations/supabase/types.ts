@@ -3492,6 +3492,7 @@ export type Database = {
           engagement_type: string | null
           exclusivity: string | null
           flag_notes: string | null
+          hubspot_deal_id: string | null
           id: string
           is_flagged: boolean
           manager: string | null
@@ -3529,6 +3530,7 @@ export type Database = {
           engagement_type?: string | null
           exclusivity?: string | null
           flag_notes?: string | null
+          hubspot_deal_id?: string | null
           id?: string
           is_flagged?: boolean
           manager?: string | null
@@ -3566,6 +3568,7 @@ export type Database = {
           engagement_type?: string | null
           exclusivity?: string | null
           flag_notes?: string | null
+          hubspot_deal_id?: string | null
           id?: string
           is_flagged?: boolean
           manager?: string | null

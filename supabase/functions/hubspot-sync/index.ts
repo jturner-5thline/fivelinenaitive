@@ -502,6 +502,167 @@ async function testConnection(): Promise<any> {
   return { success: true, accountInfo };
 }
 
+// ===== SYNC DEALS TO DATABASE =====
+
+async function syncDealsToDatabase(userId: string, companyId: string | null, configId: string): Promise<any> {
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // 1. Fetch field mappings for this config
+  const { data: mappings } = await supabase
+    .from('hubspot_field_mappings')
+    .select('*')
+    .eq('integration_config_id', configId);
+
+  // Build mapping: hubspot_field -> native_field
+  const fieldMap: Record<string, string> = {};
+  if (mappings && mappings.length > 0) {
+    for (const m of mappings) {
+      fieldMap[m.external_field_name] = m.native_field_name;
+    }
+  } else {
+    // Default mappings if none configured
+    fieldMap['dealname'] = 'company';
+    fieldMap['amount'] = 'value';
+    fieldMap['dealstage'] = 'stage';
+    fieldMap['closedate'] = 'closing_date';
+    fieldMap['description'] = 'narrative';
+    fieldMap['hubspot_owner_id'] = 'deal_owner';
+    fieldMap['deal_manager'] = 'manager';
+  }
+
+  // 2. Fetch all HubSpot deals
+  const allDeals = await getAllDeals();
+  const hubspotDeals = allDeals.results || [];
+
+  console.log(`Processing ${hubspotDeals.length} HubSpot deals with ${Object.keys(fieldMap).length} field mappings`);
+
+  // 3. Get HubSpot pipelines for stage label resolution
+  let stageLabels: Record<string, string> = {};
+  try {
+    const pipelines = await getDealPipelines();
+    for (const pipeline of (pipelines.results || [])) {
+      for (const stage of (pipeline.stages || [])) {
+        stageLabels[stage.id] = stage.label;
+      }
+    }
+  } catch (e) {
+    console.log('Could not fetch pipeline stages for label resolution');
+  }
+
+  let created = 0;
+  let updated = 0;
+  let errors: string[] = [];
+
+  for (const hsDeal of hubspotDeals) {
+    try {
+      const props = hsDeal.properties || {};
+      const hubspotDealId = hsDeal.id;
+
+      // Map HubSpot fields to native fields
+      const dealData: Record<string, any> = {
+        hubspot_deal_id: hubspotDealId,
+        user_id: userId,
+        status: 'on-track',
+      };
+
+      if (companyId) {
+        dealData.company_id = companyId;
+      }
+
+      for (const [hsField, nativeField] of Object.entries(fieldMap)) {
+        let val = props[hsField];
+        if (val === undefined || val === null || val === '') continue;
+
+        // Special handling for certain fields
+        if (nativeField === 'value') {
+          val = parseFloat(val) || 0;
+        } else if (nativeField === 'stage') {
+          // Try to resolve stage label, fallback to raw value
+          val = stageLabels[val] || val;
+        } else if (nativeField === 'closing_date') {
+          // HubSpot sends ISO date, extract just the date part
+          val = val.split('T')[0];
+        } else if (nativeField === 'pre_signing_hours' || nativeField === 'post_signing_hours') {
+          val = parseFloat(val) || 0;
+        }
+
+        dealData[nativeField] = val;
+      }
+
+      // Ensure required field 'company' has a value
+      if (!dealData.company) {
+        dealData.company = props.dealname || `HubSpot Deal ${hubspotDealId}`;
+      }
+
+      // Check if deal already exists by hubspot_deal_id
+      const { data: existing } = await supabase
+        .from('deals')
+        .select('id')
+        .eq('hubspot_deal_id', hubspotDealId)
+        .maybeSingle();
+
+      if (existing) {
+        // Update existing deal (remove fields that shouldn't be updated)
+        const { hubspot_deal_id: _hid, user_id: _uid, company_id: _cid, ...updateData } = dealData;
+        updateData.updated_at = new Date().toISOString();
+
+        const { error } = await supabase
+          .from('deals')
+          .update(updateData)
+          .eq('id', existing.id);
+
+        if (error) throw error;
+        updated++;
+      } else {
+        // Insert new deal
+        const { error } = await supabase
+          .from('deals')
+          .insert(dealData);
+
+        if (error) throw error;
+        created++;
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`Deal ${hsDeal.id}: ${msg}`);
+      console.error(`Error syncing deal ${hsDeal.id}:`, msg);
+    }
+  }
+
+  // 4. Record sync run
+  const syncResult = {
+    integration_config_id: configId,
+    status: errors.length === 0 ? 'success' : (created + updated > 0 ? 'success' : 'failure'),
+    records_processed: created + updated,
+    error_count: errors.length,
+    error_summary: errors.length > 0 ? { errors: errors.slice(0, 20) } : null,
+    started_at: new Date().toISOString(),
+    finished_at: new Date().toISOString(),
+  };
+
+  await supabase.from('hubspot_sync_runs').insert(syncResult);
+
+  // Update last_sync_at on config
+  await supabase
+    .from('hubspot_integration_configs')
+    .update({ last_sync_at: new Date().toISOString() })
+    .eq('id', configId);
+
+  console.log(`Sync complete: ${created} created, ${updated} updated, ${errors.length} errors`);
+
+  return {
+    success: true,
+    created,
+    updated,
+    errors: errors.length,
+    total: hubspotDeals.length,
+    errorDetails: errors.slice(0, 10),
+  };
+}
+
 // ===== ANALYTICS SUMMARY =====
 
 async function getAnalyticsSummary(): Promise<any> {
@@ -598,6 +759,9 @@ Deno.serve(async (req) => {
         break;
       case 'getAllDeals':
         result = await getAllDeals();
+        break;
+      case 'syncDeals':
+        result = await syncDealsToDatabase(params.userId, params.companyId, params.configId);
         break;
       case 'getDeal':
         result = await getDeal(params.dealId);
@@ -831,7 +995,7 @@ Deno.serve(async (req) => {
             validActions: [
               'test', 'getAnalyticsSummary',
               'getContacts', 'getContact', 'createContact', 'updateContact', 'searchContacts',
-              'getDeals', 'getDeal', 'createDeal', 'updateDeal', 'searchDeals', 'getPipelines',
+              'getDeals', 'getAllDeals', 'syncDeals', 'getDeal', 'createDeal', 'updateDeal', 'searchDeals', 'getPipelines',
               'getCompanies', 'getCompany', 'createCompany', 'updateCompany', 'searchCompanies',
               'getNotes', 'logActivity',
               'getCalls', 'getCall', 'createCall',
