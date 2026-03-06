@@ -4,7 +4,7 @@ import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
-export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status' | 'flexEngagement';
+export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status' | 'stage' | 'flexEngagement';
 export type SortDirection = 'asc' | 'desc';
 
 export interface DealFilters {
@@ -125,6 +125,9 @@ export function useDeals() {
           break;
         case 'status':
           comparison = statusOrder[a.status] - statusOrder[b.status];
+          break;
+        case 'stage':
+          comparison = (a.stage || '').localeCompare(b.stage || '');
           break;
       }
 

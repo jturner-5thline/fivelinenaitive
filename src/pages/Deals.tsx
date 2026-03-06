@@ -404,6 +404,9 @@ export default function Dashboard() {
                     <DropdownMenuItem onClick={() => toggleSort('status')} className={sortField === 'status' ? 'bg-accent' : ''}>
                       Status {sortField === 'status' && (sortDirection === 'desc' ? '↓' : '↑')}
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('stage')} className={sortField === 'stage' ? 'bg-accent' : ''}>
+                      Stage {sortField === 'stage' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toggleSort('flexEngagement')} className={`gap-2 ${sortField === 'flexEngagement' ? 'bg-accent' : ''}`}>
                       <Flame className="h-3.5 w-3.5 text-orange-500" />
                       FLEx Engagement {sortField === 'flexEngagement' && (sortDirection === 'desc' ? '↓' : '↑')}
