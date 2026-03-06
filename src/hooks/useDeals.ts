@@ -25,7 +25,7 @@ export interface DealFilters {
 export function useDeals() {
   const { deals, updateDealStatus: updateStatus, isLoading } = useDealsContext();
   const { preferences } = usePreferences();
-  const [filters, setFilters] = useState<DealFilters>({
+  const { stages } = useDealStages();
     search: '',
     stage: [],
     status: [],
