@@ -320,6 +320,7 @@ function DroppableColumn({
               onEditPassReasons={onEditPassReasons ? () => onEditPassReasons(lender.id) : undefined}
               metrics={lenderMetrics?.[lender.name.toLowerCase().trim()]}
               onClick={onCardClick ? () => onCardClick(lender) : undefined}
+              showScore={showScore}
             />
           ))}
         </div>
@@ -341,6 +342,7 @@ export function LendersKanban({
   onRetry,
   lenderMetrics,
   onCardClick,
+  showScore,
 }: LendersKanbanProps) {
   const [activeLender, setActiveLender] = useState<DealLender | null>(null);
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
