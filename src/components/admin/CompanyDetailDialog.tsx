@@ -8,12 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Building2, Users, Activity, TrendingUp, Ban, CheckCircle,
-  DollarSign, Briefcase, Clock, AlertTriangle, Trash2, Archive, ArchiveRestore, Settings
+  DollarSign, Briefcase, Clock, AlertTriangle, Trash2, Archive, ArchiveRestore, Settings,
+  UserPlus, UserMinus
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useCompanyMembers, useCompanyStats, useCompanyActivity, useToggleCompanySuspension, useDeleteCompany, useToggleCompanyArchive } from "@/hooks/useAdminData";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { CompanyConfigOverview } from "./CompanyConfigOverview";
 
 interface Company {
