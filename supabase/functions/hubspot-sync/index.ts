@@ -760,6 +760,9 @@ Deno.serve(async (req) => {
       case 'getAllDeals':
         result = await getAllDeals();
         break;
+      case 'syncDeals':
+        result = await syncDealsToDatabase(params.userId, params.companyId, params.configId);
+        break;
       case 'getDeal':
         result = await getDeal(params.dealId);
         break;
