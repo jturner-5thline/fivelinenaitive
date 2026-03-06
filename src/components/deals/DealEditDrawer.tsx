@@ -269,7 +269,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                 <Textarea
                   id="statusNote"
                   value={newStatusNote}
-                  onChange={(e) => setNewStatusNote(e.target.value)}
+                  onChange={(e) => { setNewStatusNote(e.target.value); setHasUserEdited(true); }}
                   placeholder="Add a status note..."
                   rows={2}
                   className="resize-none flex-1"
