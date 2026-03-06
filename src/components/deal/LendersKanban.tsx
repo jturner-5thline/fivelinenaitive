@@ -5,6 +5,8 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, us
 import { DealLender } from '@/types/deal';
 import { OutstandingItem } from '@/hooks/useOutstandingItems';
 import { StageGroup, PassReasonOption, TrackingStatusOption } from '@/contexts/LenderStagesContext';
+import { getScoreStyles, type LenderScoreConfig, DEFAULT_SCORE_LEVELS } from '@/hooks/useLenderScoreConfig';
+import { StageGroup, PassReasonOption, TrackingStatusOption } from '@/contexts/LenderStagesContext';
 import { cn } from '@/lib/utils';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import {
@@ -45,6 +47,7 @@ interface LendersKanbanProps {
   /** Callback when a lender card is clicked for detail view */
   onCardClick?: (lender: DealLender) => void;
   showScore?: boolean;
+  scoreConfig?: LenderScoreConfig;
 }
 
 // Helper to get relative time string
