@@ -273,82 +273,86 @@ export function HubSpotMappingDetailModal({ configId, open, onClose }: HubSpotMa
                       <TableHead className="text-xs w-[40px]" />
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {localMappings.map((mapping, idx) => {
-                      const hsField = HUBSPOT_DEAL_FIELDS.find(f => f.name === mapping.external_field_name);
-                      const isMapped = !!mapping.native_field_name;
-                      return (
-                        <TableRow key={mapping.external_field_name}>
-                          <TableCell className="text-sm">
-                            <div className="flex items-center gap-2">
-                              {hsField?.label || mapping.external_field_name}
-                              {mapping.is_required && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                  Required
+                </Table>
+                <ScrollArea className="max-h-[320px]">
+                  <Table>
+                    <TableBody>
+                      {localMappings.map((mapping, idx) => {
+                        const hsField = HUBSPOT_DEAL_FIELDS.find(f => f.name === mapping.external_field_name);
+                        const isMapped = !!mapping.native_field_name;
+                        return (
+                          <TableRow key={mapping.external_field_name}>
+                            <TableCell className="text-sm">
+                              <div className="flex items-center gap-2">
+                                {hsField?.label || mapping.external_field_name}
+                                {mapping.is_required && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                    Required
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground w-[40px]">→</TableCell>
+                            <TableCell>
+                              <Select
+                                value={mapping.native_field_name || undefined}
+                                onValueChange={(v) => updateMapping(idx, v)}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Select field..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {NATIVE_DEAL_FIELDS.map(nf => (
+                                    <SelectItem
+                                      key={nf.name}
+                                      value={nf.name}
+                                      disabled={mappedNativeFields.has(nf.name) && mapping.native_field_name !== nf.name}
+                                      className="text-xs"
+                                    >
+                                      {nf.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="w-[80px]">
+                              {isMapped ? (
+                                <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px]">
+                                  <CheckCircle2 className="h-3 w-3 mr-0.5" />
+                                  Mapped
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-yellow-500 border-yellow-500/20 text-[10px]">
+                                  <AlertTriangle className="h-3 w-3 mr-0.5" />
+                                  Unmapped
                                 </Badge>
                               )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center text-muted-foreground">→</TableCell>
-                          <TableCell>
-                            <Select
-                              value={mapping.native_field_name || undefined}
-                              onValueChange={(v) => updateMapping(idx, v)}
-                            >
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue placeholder="Select field..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {NATIVE_DEAL_FIELDS.map(nf => (
-                                  <SelectItem
-                                    key={nf.name}
-                                    value={nf.name}
-                                    disabled={mappedNativeFields.has(nf.name) && mapping.native_field_name !== nf.name}
-                                    className="text-xs"
-                                  >
-                                    {nf.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            {isMapped ? (
-                              <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px]">
-                                <CheckCircle2 className="h-3 w-3 mr-0.5" />
-                                Mapped
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-yellow-500 border-yellow-500/20 text-[10px]">
-                                <AlertTriangle className="h-3 w-3 mr-0.5" />
-                                Unmapped
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {!mapping.is_required && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => removeMapping(idx)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                              </Button>
-                            )}
+                            </TableCell>
+                            <TableCell className="w-[40px]">
+                              {!mapping.is_required && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => removeMapping(idx)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {localMappings.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            No field mappings configured. Add fields using the dropdown above.
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                    {localMappings.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          No field mappings configured. Add fields using the dropdown above.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
               </div>
             </div>
 
