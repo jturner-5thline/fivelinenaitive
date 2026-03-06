@@ -196,6 +196,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                     key={deal.id}
                     deal={deal}
                     onStatusChange={onStatusChange}
+                    onStageChange={onStageChange}
                     onMarkReviewed={onMarkReviewed}
                     onToggleFlag={onToggleFlag}
                     flexEngagement={flexEngagementScores?.get(deal.id)}
