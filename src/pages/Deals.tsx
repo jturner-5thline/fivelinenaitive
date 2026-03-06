@@ -190,11 +190,10 @@ export default function Dashboard() {
   const handleStageChange = async (dealId: string, newStage: string) => {
     // For 5th Line users, prompt deal size confirmation on specific stages
     if (is5thLine) {
-      // Resolve stage label: try STAGE_CONFIG first, then use the ID formatted as label
-      const stageEntry = STAGE_CONFIG[newStage as keyof typeof STAGE_CONFIG];
-      const stageLabel = stageEntry?.label || newStage.replace(/[-_]/g, ' ');
+      // Normalize stage ID to label-like format for matching
+      const normalizedStage = newStage.replace(/[-_]/g, ' ').toLowerCase();
       const matchesConfirmStage = DEAL_SIZE_CONFIRM_STAGE_LABELS.some(
-        s => stageLabel.toLowerCase().includes(s)
+        s => normalizedStage.includes(s)
       );
 
       if (matchesConfirmStage) {
