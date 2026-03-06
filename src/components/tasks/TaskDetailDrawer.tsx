@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { type Task, useTaskComments, useTaskActivity, useSubtasks } from '@/hooks/useTasks';
 import { useTaskDependencies } from '@/hooks/useTaskDependencies';
 import { useTaskAttachments } from '@/hooks/useTaskAttachments';
+import { useTaskCollaborators } from '@/hooks/useTaskCollaborators';
 import { SubtaskInlineEditor } from '@/components/tasks/SubtaskInlineEditor';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useMyTasks } from '@/hooks/useTasks';
@@ -27,7 +28,7 @@ import {
 import {
   X, Calendar, Flag, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
-  Link2, Paperclip, Download, FileText,
+  Link2, Paperclip, Download, FileText, Users,
   Repeat, ExternalLink, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -93,6 +94,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const { subtasks, createSubtask, updateSubtask, deleteSubtask } = useSubtasks(task.id);
   const { blockedBy, blocking, addDependency, removeDependency } = useTaskDependencies(task.id);
   const { attachments, uploadAttachment, deleteAttachment, getDownloadUrl } = useTaskAttachments(task.id);
+  const { collaborators, addCollaborator, removeCollaborator } = useTaskCollaborators(task.id);
   const members = useTeamMembers();
   const { tasks: allTasks } = useMyTasks();
   const createMentions = useCreateMentions();
