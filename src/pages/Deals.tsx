@@ -167,9 +167,13 @@ export default function Dashboard() {
     }
   };
 
-  const handleStageChange = async (dealId: string, newStage: string) => {
+  const executeStageChange = useCallback(async (dealId: string, newStage: string, valueOverride?: number) => {
     try {
-      await updateDeal(dealId, { stage: newStage });
+      const updates: Record<string, any> = { stage: newStage };
+      if (valueOverride !== undefined) {
+        updates.value = valueOverride;
+      }
+      await updateDeal(dealId, updates);
       toast({ 
         title: "Deal stage updated", 
         description: "The deal has been moved to a new stage." 
@@ -180,6 +184,33 @@ export default function Dashboard() {
         description: "Please try again.",
         variant: "destructive"
       });
+    }
+  }, [updateDeal, toast]);
+
+  const handleStageChange = async (dealId: string, newStage: string) => {
+    // For 5th Line users, prompt deal size confirmation on specific stages
+    if (is5thLine && DEAL_SIZE_CONFIRM_STAGES.includes(newStage)) {
+      const deal = allDeals.find(d => d.id === dealId);
+      if (deal) {
+        // Get a human-readable stage label
+        const stageLabel = newStage.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        setSizeConfirm({
+          dealId,
+          dealName: deal.company || deal.name || 'This deal',
+          currentValue: deal.value || 0,
+          newStage,
+          newStageLabel: stageLabel,
+        });
+        return;
+      }
+    }
+    await executeStageChange(dealId, newStage);
+  };
+
+  const handleSizeConfirm = (updatedValue: number) => {
+    if (sizeConfirm) {
+      executeStageChange(sizeConfirm.dealId, sizeConfirm.newStage, updatedValue);
+      setSizeConfirm(null);
     }
   };
 
