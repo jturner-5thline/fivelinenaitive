@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Settings, Users, Newspaper, BarChart3, Plug, ChevronDown, ChevronRight,
   Save, RotateCcw, Pencil, Trash2, Plus,
@@ -16,6 +17,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
+import { AdminCompanyOverrideProvider } from '@/contexts/AdminCompanyOverrideContext';
+import type { Company } from '@/hooks/useCompany';
+import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
+import { DealStagesSettings } from '@/components/settings/DealStagesSettings';
+import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
+import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
+import { DefaultChecklistSettings } from '@/components/settings/DefaultChecklistSettings';
 
 interface CompanyConfigOverviewProps {
   companyId: string;
