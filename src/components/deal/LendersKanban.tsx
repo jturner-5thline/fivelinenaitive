@@ -76,7 +76,6 @@ function DraggableLenderTile({
   metrics,
   onClick,
   showScore,
-  showScore,
   scoreConfig,
 }: {
   lender: DealLender;
