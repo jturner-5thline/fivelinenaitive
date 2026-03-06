@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { type Task, useTaskComments, useTaskActivity, useSubtasks } from '@/hooks/useTasks';
 import { useTaskDependencies } from '@/hooks/useTaskDependencies';
 import { useTaskAttachments } from '@/hooks/useTaskAttachments';
+import { SubtaskInlineEditor } from '@/components/tasks/SubtaskInlineEditor';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useMyTasks } from '@/hooks/useTasks';
 import { useCreateMentions } from '@/hooks/useTaskMentions';
@@ -369,15 +370,23 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                 <div className="h-full rounded-full transition-all" style={{ width: `${(subtasks.filter(s => s.status === 'complete').length / subtasks.length) * 100}%`, backgroundColor: '#22c55e' }} />
               </div>
             )}
-            {subtasks.map(sub => (
-              <div key={sub.id} className="flex items-center gap-2 py-1 group">
-                <Checkbox checked={sub.status === 'complete'} className="h-3.5 w-3.5 rounded-full" />
-                <span className={cn('text-xs flex-1', sub.status === 'complete' && 'line-through')} style={{ color: sub.status === 'complete' ? '#8b92a5' : 'white' }}>
-                  {sub.title}
-                </span>
-                {sub.due_date && <span className="text-[10px]" style={{ color: '#8b92a5' }}>{format(new Date(sub.due_date + 'T00:00:00'), 'MMM d')}</span>}
-              </div>
-            ))}
+            <div className="space-y-0.5">
+              {subtasks.map(sub => (
+                <SubtaskInlineEditor
+                  key={sub.id}
+                  subtask={sub}
+                  isExpanded={expandedSubtasks.has(sub.id)}
+                  onToggleExpand={() => toggleSubtaskExpanded(sub.id)}
+                  onUpdate={(subtaskId, updates) => updateSubtask.mutate({ subtaskId, updates })}
+                  onDelete={(subtaskId) => deleteSubtask.mutate(subtaskId)}
+                  onToggleComplete={(subtaskId, currentStatus) => {
+                    const newStatus = currentStatus === 'complete' ? 'not_started' : 'complete';
+                    updateSubtask.mutate({ subtaskId, updates: { status: newStatus, completed_at: newStatus === 'complete' ? new Date().toISOString() : null } });
+                    if (newStatus === 'complete') fireCelebration();
+                  }}
+                />
+              ))}
+            </div>
             {showSubtaskInput && (
               <div className="flex items-center gap-1.5 mt-1">
                 <Input value={newSubtaskTitle} onChange={e => setNewSubtaskTitle(e.target.value)}
