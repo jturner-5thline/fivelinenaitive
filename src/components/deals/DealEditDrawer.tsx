@@ -72,6 +72,14 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingNotes } = useStatusNotes(deal.id);
   const [newStatusNote, setNewStatusNote] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+
+  // Pre-fill with the latest status note text
+  useEffect(() => {
+    if (!hasUserEdited && statusNotes.length > 0) {
+      setNewStatusNote(htmlToPlainText(statusNotes[0].note));
+    }
+  }, [statusNotes, hasUserEdited]);
 
   const [formData, setFormData] = useState({
     company: deal.company,
@@ -93,6 +101,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     try {
       await addStatusNote(newStatusNote.trim());
       setNewStatusNote('');
+      setHasUserEdited(false);
     } finally {
       setIsAddingNote(false);
     }
@@ -261,8 +270,8 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                 <Textarea
                   id="statusNote"
                   value={newStatusNote}
-                  onChange={(e) => setNewStatusNote(e.target.value)}
-                  placeholder={statusNotes.length > 0 ? htmlToPlainText(statusNotes[0].note) : "Add a status note..."}
+                  onChange={(e) => { setNewStatusNote(e.target.value); setHasUserEdited(true); }}
+                  placeholder="Add a status note..."
                   rows={2}
                   className="resize-none flex-1"
                 />
