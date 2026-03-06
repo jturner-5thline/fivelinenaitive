@@ -141,7 +141,7 @@ export function useDeals() {
     });
 
     return result;
-  }, [deals, filters, sortField, sortDirection]);
+  }, [deals, filters, sortField, sortDirection, stages]);
 
   const updateDealStatus = (dealId: string, newStatus: DealStatus) => {
     updateStatus(dealId, newStatus);
