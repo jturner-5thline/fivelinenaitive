@@ -2333,6 +2333,7 @@ export type Database = {
           quote_amount: number | null
           quote_rate: number | null
           quote_term: string | null
+          score: number | null
           stage: string
           substage: string | null
           tracking_status: string | null
@@ -2348,6 +2349,7 @@ export type Database = {
           quote_amount?: number | null
           quote_rate?: number | null
           quote_term?: string | null
+          score?: number | null
           stage?: string
           substage?: string | null
           tracking_status?: string | null
@@ -2363,6 +2365,7 @@ export type Database = {
           quote_amount?: number | null
           quote_rate?: number | null
           quote_term?: string | null
+          score?: number | null
           stage?: string
           substage?: string | null
           tracking_status?: string | null
