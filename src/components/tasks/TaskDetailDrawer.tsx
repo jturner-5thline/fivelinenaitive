@@ -77,11 +77,20 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   const [blockerNote, setBlockerNote] = useState((task as any).blocker_note || '');
+  const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleSubtaskExpanded = useCallback((id: string) => {
+    setExpandedSubtasks(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
 
   const { comments, addComment } = useTaskComments(task.id);
   const { activity } = useTaskActivity(task.id);
-  const { subtasks, createSubtask } = useSubtasks(task.id);
+  const { subtasks, createSubtask, updateSubtask, deleteSubtask } = useSubtasks(task.id);
   const { blockedBy, blocking, addDependency, removeDependency } = useTaskDependencies(task.id);
   const { attachments, uploadAttachment, deleteAttachment, getDownloadUrl } = useTaskAttachments(task.id);
   const members = useTeamMembers();
