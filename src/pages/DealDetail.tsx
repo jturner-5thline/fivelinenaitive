@@ -1673,7 +1673,7 @@ export default function DealDetail() {
       logActivity('lender_stage_change', `${lender.name} stage changed`, {
         lender_name: lender.name,
         from: oldStage?.label || lender.stage,
-        to: targetStage.label,
+        to: targetStage?.label || newGroup,
       });
     }
     
@@ -1682,7 +1682,7 @@ export default function DealDetail() {
       if (!prev) return prev;
       const updatedLenders = prev.lenders?.map(l => 
         l.id === lenderId 
-          ? { ...l, stage: targetStage.id as any, trackingStatus: newGroup, passReason: newGroup === 'passed' ? passReason : undefined, updatedAt: new Date().toISOString() } 
+          ? { ...l, ...(targetStage ? { stage: targetStage.id as any } : {}), trackingStatus: newGroup, passReason: newGroup === 'passed' ? passReason : undefined, updatedAt: new Date().toISOString() } 
           : l
       );
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
