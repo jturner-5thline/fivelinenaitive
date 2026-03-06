@@ -300,11 +300,11 @@ export function TaskListView({
                       <>
                         {isCreating ? (
                           <>
-                            <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_140px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
+                            <div className={`grid ${TASK_GRID_COLS} gap-2 items-center px-4 py-1.5`}>
                               <div /><div /><div className="w-5" /><div />
                               <Input ref={newTaskRef as any} value={newTaskTitle} onChange={e => onNewTaskChange(e.target.value)} onKeyDown={onNewTaskKeyDown}
                                 placeholder="Task name... (Enter to create, Esc to cancel)" className="h-7 text-sm border-[#3b7eff] bg-[#13181f] text-white" autoFocus />
-                              <div /><div /><div /><div /><div /><div />
+                              <div /><div /><div /><div /><div /><div /><div />
                             </div>
                             {taskNameWarning && <p className="text-[11px] px-4 py-1" style={{ color: '#ff4d4d' }}>{taskNameWarning}</p>}
                           </>
@@ -464,7 +464,7 @@ function QuickDatePicker({ value, onChange, todayStr }: { value: string | null; 
 }
 
 // Sortable task row
-function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox }: {
+function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox, collaborators }: {
   task: Task;
   todayStr: string;
   isSelected: boolean;
@@ -477,6 +477,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
   onToggleSelect?: () => void;
   onToggleStar?: () => void;
   showSelectCheckbox?: boolean;
+  collaborators?: { user_id: string; display_name: string; avatar_url: string | null }[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 };
@@ -499,7 +500,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
     <div
       ref={setNodeRef}
       className={cn(
-        'grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_140px_100px_100px_40px] gap-2 items-center px-4 cursor-pointer transition-colors group',
+        `grid ${TASK_GRID_COLS} gap-2 items-center px-4 cursor-pointer transition-colors group`,
         isSelected && 'bg-[#3b7eff]/10',
         isMultiSelected && 'bg-[#3b7eff]/5',
         isFocused && 'ring-1 ring-inset ring-[#3b7eff]/40',
