@@ -11,8 +11,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Textarea } from '@/components/ui/textarea';
 import {
   Settings, Users, Newspaper, BarChart3, Plug, ChevronDown, ChevronRight,
-  Save, RotateCcw, Pencil,
+  Save, RotateCcw, Pencil, Trash2, Plus,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 
