@@ -291,6 +291,7 @@ export function TaskListView({
                           onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
                           onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
                           showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
+                          collaborators={collaboratorsMap.get(task.id)}
                         />
                       );
                     })}
