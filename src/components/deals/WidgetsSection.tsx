@@ -64,6 +64,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const { formatCurrencyValue } = usePreferences();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [isEditMode, setIsEditMode] = useState(false);
+  const [volumePopupOpen, setVolumePopupOpen] = useState(false);
 
   useEffect(() => {
     const handler = () => setIsEditMode(prev => !prev);
@@ -78,6 +79,17 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartGroupBy, setChartGroupBy] = useState<'stage' | 'status' | 'manager'>('stage');
   const [chartFilterFn, setChartFilterFn] = useState<((d: Deal) => boolean) | null>(null);
   const [chartViewType, setChartViewType] = useState<'pie' | 'bar' | 'line'>('pie');
+
+  // Determine if we have an active-deals or active-deal-volume widget to show the combined widget
+  const hasActiveDealWidget = useMemo(() => 
+    widgets.some(w => w.metric === 'active-deals' || w.metric === 'active-deal-volume'),
+    [widgets]
+  );
+  // Filter out active-deals and active-deal-volume from the regular widget list when showing the combined widget
+  const regularWidgets = useMemo(() => 
+    widgets.filter(w => w.metric !== 'active-deals' && w.metric !== 'active-deal-volume'),
+    [widgets]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor),
