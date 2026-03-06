@@ -603,6 +603,18 @@ export default function Dashboard() {
 
         {/* Floating AI Assistant */}
         <FloatingDealsAssistant />
+
+        {/* Deal Size Confirmation Dialog (5th Line only) */}
+        {sizeConfirm && (
+          <DealSizeConfirmDialog
+            open={!!sizeConfirm}
+            dealName={sizeConfirm.dealName}
+            currentValue={sizeConfirm.currentValue}
+            newStage={sizeConfirm.newStageLabel}
+            onConfirm={handleSizeConfirm}
+            onCancel={() => setSizeConfirm(null)}
+          />
+        )}
       </div>
     </>
   );
