@@ -573,6 +573,12 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ActiveDealVolumePopup
+        open={volumePopupOpen}
+        onOpenChange={setVolumePopupOpen}
+        deals={deals}
+      />
     </div>
   );
 }
