@@ -136,6 +136,21 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
   const { logAction } = useSupportSession();
   const queryClient = useQueryClient();
 
+  // Fetch company data for admin override context
+  const { data: companyData } = useQuery({
+    queryKey: ['company-config-company-data', companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', companyId)
+        .single();
+      if (error) throw error;
+      return data as Company;
+    },
+    enabled: !!companyId,
+  });
+
   // 1. Company settings
   const { data: settings, isLoading: settingsLoading } = useQuery({
     queryKey: ['company-config-settings', companyId],
