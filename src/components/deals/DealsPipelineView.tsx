@@ -71,6 +71,7 @@ function DraggableDealCard({ deal, onStatusChange, onStageChange, onMarkReviewed
       <DealCard
         deal={deal}
         onStatusChange={onStatusChange}
+        onStageChange={onStageChange}
         onMarkReviewed={onMarkReviewed}
         onToggleFlag={onToggleFlag}
         flexEngagement={flexEngagement}

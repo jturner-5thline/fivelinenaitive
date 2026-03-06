@@ -38,6 +38,7 @@ import {
 interface DealListRowProps {
   deal: Deal;
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: DealFlexEngagement;
@@ -47,7 +48,7 @@ interface DealListRowProps {
   onToggleSelect?: (dealId: string) => void;
 }
 
-export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0, isSelected, onToggleSelect }: DealListRowProps) {
+export function DealListRow({ deal, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0, isSelected, onToggleSelect }: DealListRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
   const navigate = useNavigate();
