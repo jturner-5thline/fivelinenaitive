@@ -3722,7 +3722,7 @@ export default function DealDetail() {
                                     <div className="flex flex-col min-w-0">
                                       <div className="flex items-center gap-1.5">
                                         {lender.score != null && (
-                                          <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 border-primary/30 text-primary shrink-0">
+                                          <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0 ${lender.score === 1 ? 'border-destructive/30 text-destructive' : lender.score === 2 ? 'border-yellow-500/30 text-yellow-500' : 'border-blue-500/30 text-blue-500'}`}>
                                             {lender.score}
                                           </Badge>
                                         )}
@@ -4153,7 +4153,7 @@ export default function DealDetail() {
                                             <div className="flex flex-col min-w-0">
                                               <div className="flex items-center gap-1.5">
                                                 {lender.score != null && (
-                                                  <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 border-primary/30 text-primary shrink-0">
+                                                  <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0 ${lender.score === 1 ? 'border-destructive/30 text-destructive' : lender.score === 2 ? 'border-yellow-500/30 text-yellow-500' : 'border-blue-500/30 text-blue-500'}`}>
                                                     {lender.score}
                                                   </Badge>
                                                 )}

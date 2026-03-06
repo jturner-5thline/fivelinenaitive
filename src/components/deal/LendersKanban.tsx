@@ -171,7 +171,7 @@ function DraggableLenderTile({
           {stageLabel}
         </Badge>
         {lender.score != null && (
-          <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0.5 border-primary/30 text-primary">
+          <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0.5 ${lender.score === 1 ? 'border-destructive/30 text-destructive' : lender.score === 2 ? 'border-yellow-500/30 text-yellow-500' : 'border-blue-500/30 text-blue-500'}`}>
             {lender.score}
           </Badge>
         )}
