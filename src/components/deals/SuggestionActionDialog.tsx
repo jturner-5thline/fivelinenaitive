@@ -26,6 +26,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useAllMilestones } from '@/hooks/useAllMilestones';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
 import { toast } from '@/hooks/use-toast';
+import { htmlToPlainText } from '@/lib/htmlToPlainText';
 import { DealSuggestion } from '@/hooks/useAllDealsSuggestions';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -299,7 +300,7 @@ export function SuggestionActionDialog({
                       {statusNotes.map((sn) => (
                         <div key={sn.id} className="group flex items-start gap-2 text-xs p-2 rounded bg-muted/40 border border-border/50">
                           <span className="flex-1 text-muted-foreground break-words">
-                            <span className="text-foreground">{sn.note}</span>
+                            <span className="text-foreground">{htmlToPlainText(sn.note)}</span>
                             <span className="block text-[10px] mt-0.5 opacity-60">
                               {format(new Date(sn.created_at), 'MMM d, h:mm a')}
                             </span>
