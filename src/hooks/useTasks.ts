@@ -422,5 +422,27 @@ export function useSubtasks(parentTaskId: string | null) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 
-  return { subtasks, isLoading, createSubtask };
+  const updateSubtask = useMutation({
+    mutationFn: async ({ subtaskId, updates }: { subtaskId: string; updates: Record<string, any> }) => {
+      const { error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', subtaskId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+
+  const deleteSubtask = useMutation({
+    mutationFn: async (subtaskId: string) => {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', subtaskId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+
+  return { subtasks, isLoading, createSubtask, updateSubtask, deleteSubtask };
 }
