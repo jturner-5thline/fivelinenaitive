@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, Settings2, PieChartIcon, BarChart3, TrendingUp, Download, Image, FileText } from 'lucide-react';
 import { ActiveDealVolumeWidget } from './ActiveDealVolumeWidget';
 import { ActiveDealVolumePopup } from './ActiveDealVolumePopup';
+import { PipelineFunnelCard } from './PipelineFunnelCard';
 import {
   DndContext,
   closestCenter,
