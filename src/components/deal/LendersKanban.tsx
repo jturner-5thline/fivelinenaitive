@@ -156,7 +156,7 @@ function DraggableLenderTile({
         )}
       </div>
 
-      {/* Stage pill + time */}
+      {/* Stage pill + score + time */}
       <div className="flex flex-wrap items-center gap-1.5 mb-2">
         <Badge
           variant="secondary"
@@ -170,6 +170,11 @@ function DraggableLenderTile({
         >
           {stageLabel}
         </Badge>
+        {lender.score != null && (
+          <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0.5 border-primary/30 text-primary">
+            {lender.score}
+          </Badge>
+        )}
         {timeAgo && (
           <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
             <Clock className="h-2.5 w-2.5" />
