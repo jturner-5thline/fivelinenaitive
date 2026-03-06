@@ -90,7 +90,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
     if (!editTitle.trim()) return;
     onUpdate(id, {
       title: editTitle.trim(),
-      dueDate: editDate ? editDate.toISOString() : '',
+      dueDate: editDate ? editDate.toISOString() : undefined,
     });
     setEditingId(null);
   };
