@@ -101,6 +101,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     try {
       await addStatusNote(newStatusNote.trim());
       setNewStatusNote('');
+      setHasUserEdited(false);
     } finally {
       setIsAddingNote(false);
     }
