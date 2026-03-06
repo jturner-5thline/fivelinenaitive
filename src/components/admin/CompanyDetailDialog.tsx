@@ -108,6 +108,60 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
     toggleArchive.mutate({ companyId: company.id, archive: false });
   };
 
+  const handleAddMember = async () => {
+    if (!company || !addMemberEmail.trim()) return;
+    setIsAddingMember(true);
+    try {
+      const { error } = await supabase.rpc('admin_add_company_member', {
+        _company_id: company.id,
+        _user_email: addMemberEmail.trim(),
+        _role: addMemberRole,
+      });
+      if (error) throw error;
+      toast.success(`Added ${addMemberEmail.trim()} to ${company.name}`);
+      setAddMemberEmail("");
+      queryClient.invalidateQueries({ queryKey: ['admin-company-members'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add member');
+    } finally {
+      setIsAddingMember(false);
+    }
+  };
+
+  const handleChangeRole = async (userId: string, newRole: string) => {
+    if (!company) return;
+    try {
+      const { error } = await supabase.rpc('admin_update_company_member_role', {
+        _company_id: company.id,
+        _user_id: userId,
+        _new_role: newRole,
+      });
+      if (error) throw error;
+      toast.success('Role updated');
+      queryClient.invalidateQueries({ queryKey: ['admin-company-members'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update role');
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!company) return;
+    setRemovingMemberId(userId);
+    try {
+      const { error } = await supabase.rpc('admin_remove_company_member', {
+        _company_id: company.id,
+        _user_id: userId,
+      });
+      if (error) throw error;
+      toast.success('Member removed');
+      queryClient.invalidateQueries({ queryKey: ['admin-company-members'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove member');
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
