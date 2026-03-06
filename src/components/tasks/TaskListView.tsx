@@ -202,7 +202,7 @@ export function TaskListView({
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div>
         {/* Column header */}
-        <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_140px_100px_100px_40px] gap-2 items-center px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10"
+        <div className={`grid ${TASK_GRID_COLS} gap-2 items-center px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10`}
           style={{ backgroundColor: '#1a1f2e', color: '#8b92a5', borderBottom: '1px solid #2a2f3e' }}>
           <div />
           <div className="cursor-pointer" onClick={onSelectAll} title="Select all (Ctrl+A)">
@@ -212,6 +212,7 @@ export function TaskListView({
           <div />
           <div>Task name</div>
           <div>Owner</div>
+          <div></div>
           <div>Deal</div>
           <div>Due date</div>
           <div>Priority</div>
