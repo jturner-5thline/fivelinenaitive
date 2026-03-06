@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { differenceInDays } from 'date-fns';
 import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
 export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status' | 'stage' | 'flexEngagement';
