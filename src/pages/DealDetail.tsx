@@ -1622,9 +1622,9 @@ export default function DealDetail() {
   }, [deal?.lenders, updateLenderInDb, logActivity, withSavingAsync]);
 
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
-    // Find the first stage in the target group
+    // Find the first stage in the target group (may not exist for groups like 'excluded')
     const targetStage = configuredStages.find(s => s.group === newGroup);
-    if (!targetStage) return;
+    const lender = deal?.lenders?.find(l => l.id === lenderId);
     
     // Get lender info for activity log and undo
     const lender = deal?.lenders?.find(l => l.id === lenderId);
