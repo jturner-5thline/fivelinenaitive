@@ -128,9 +128,13 @@ export function useDeals() {
         case 'status':
           comparison = statusOrder[a.status] - statusOrder[b.status];
           break;
-        case 'stage':
-          comparison = (a.stage || '').localeCompare(b.stage || '');
+        case 'stage': {
+          const stageOrder = new Map(stages.map((s, i) => [s.id, i]));
+          const aIdx = stageOrder.get(a.stage) ?? 999;
+          const bIdx = stageOrder.get(b.stage) ?? 999;
+          comparison = aIdx - bIdx;
           break;
+        }
       }
 
       return sortDirection === 'asc' ? comparison : -comparison;
