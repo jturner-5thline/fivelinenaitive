@@ -189,19 +189,26 @@ export default function Dashboard() {
 
   const handleStageChange = async (dealId: string, newStage: string) => {
     // For 5th Line users, prompt deal size confirmation on specific stages
-    if (is5thLine && DEAL_SIZE_CONFIRM_STAGES.includes(newStage)) {
-      const deal = allDeals.find(d => d.id === dealId);
-      if (deal) {
-        // Get a human-readable stage label
-        const stageLabel = newStage.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        setSizeConfirm({
-          dealId,
-          dealName: deal.company || deal.name || 'This deal',
-          currentValue: deal.value || 0,
-          newStage,
-          newStageLabel: stageLabel,
-        });
-        return;
+    if (is5thLine) {
+      // Resolve stage label: try STAGE_CONFIG first, then use the ID formatted as label
+      const stageEntry = STAGE_CONFIG[newStage as keyof typeof STAGE_CONFIG];
+      const stageLabel = stageEntry?.label || newStage.replace(/[-_]/g, ' ');
+      const matchesConfirmStage = DEAL_SIZE_CONFIRM_STAGE_LABELS.some(
+        s => stageLabel.toLowerCase().includes(s)
+      );
+
+      if (matchesConfirmStage) {
+        const deal = allDeals.find(d => d.id === dealId);
+        if (deal) {
+          setSizeConfirm({
+            dealId,
+            dealName: deal.company || deal.name || 'This deal',
+            currentValue: deal.value || 0,
+            newStage,
+            newStageLabel: stageLabel,
+          });
+          return;
+        }
       }
     }
     await executeStageChange(dealId, newStage);
