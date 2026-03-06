@@ -65,6 +65,16 @@ export default function Dashboard() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
 
+  // Deal size confirmation state (5th Line only)
+  const DEAL_SIZE_CONFIRM_STAGES = ['proposal_issued', 'terms_issued', 'in_diligence'];
+  const [sizeConfirm, setSizeConfirm] = useState<{
+    dealId: string;
+    dealName: string;
+    currentValue: number;
+    newStage: string;
+    newStageLabel: string;
+  } | null>(null);
+
   const [groupBy, setGroupBy] = useState<string | null>('status');
   const [showMilestones, setShowMilestones] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline' | 'timeline'>(() => {
