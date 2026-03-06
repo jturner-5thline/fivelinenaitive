@@ -571,6 +571,7 @@ export default function Dashboard() {
                 <DealsList 
                   deals={deals} 
                   onStatusChange={updateDealStatus} 
+                  onStageChange={handleStageChange}
                   onMarkReviewed={handleMarkReviewed} 
                   onToggleFlag={handleToggleFlag} 
                   groupBy={groupBy}
