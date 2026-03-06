@@ -576,7 +576,9 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                           <span className="font-medium">{milestone.title}</span>
                           <span className="text-muted-foreground flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {format(addDays(new Date(), milestone.daysFromCreation), 'MMM d, yyyy')}
+                            {milestone.daysFromCreation !== null 
+                              ? format(addDays(new Date(), milestone.daysFromCreation), 'MMM d, yyyy')
+                              : 'No date'}
                           </span>
                         </div>
                       ))}

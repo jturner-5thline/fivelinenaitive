@@ -5,7 +5,7 @@ export type MilestoneTimingType = 'from_creation' | 'after_previous';
 export interface DefaultMilestone {
   id: string;
   title: string;
-  daysFromCreation: number;
+  daysFromCreation: number | null;
   timingType: MilestoneTimingType;
   position: number;
 }
