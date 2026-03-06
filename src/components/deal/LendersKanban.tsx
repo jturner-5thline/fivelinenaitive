@@ -152,16 +152,18 @@ function DraggableLenderTile({
       {/* Lender name + contact */}
       <div className="pr-8 mb-2">
         <p className="text-sm font-semibold truncate flex items-center gap-1.5">
-          {showScore !== false && lender.score != null && (
-            <span className={cn(
-              "inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 ring-1",
-              lender.score === 1 && "bg-red-500/20 text-red-400 ring-red-500/40",
-              lender.score === 2 && "bg-amber-500/20 text-amber-400 ring-amber-500/40",
-              lender.score === 3 && "bg-blue-500/20 text-blue-400 ring-blue-500/40",
-            )}>
-              {lender.score}
-            </span>
-          )}
+          {showScore !== false && lender.score != null && (() => {
+            const sc = scoreConfig || { enabled: true, levels: DEFAULT_SCORE_LEVELS };
+            const styles = getScoreStyles(lender.score, sc);
+            return (
+              <span
+                className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0"
+                style={{ ...styles.bg, ...styles.text, ...styles.ring }}
+              >
+                {lender.score}
+              </span>
+            );
+          })()}
           {lender.name}
           <LenderFlagIndicator lenderName={lender.name} />
         </p>
@@ -275,6 +277,7 @@ function DroppableColumn({
   lenderMetrics,
   onCardClick,
   showScore,
+  scoreConfig,
 }: {
   dealId?: string;
   group: { id: StageGroup; label: string; color: string };
@@ -287,6 +290,7 @@ function DroppableColumn({
   lenderMetrics?: Record<string, LenderMetrics>;
   onCardClick?: (lender: DealLender) => void;
   showScore?: boolean;
+  scoreConfig?: LenderScoreConfig;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.id,
@@ -332,6 +336,7 @@ function DroppableColumn({
               metrics={lenderMetrics?.[lender.name.toLowerCase().trim()]}
               onClick={onCardClick ? () => onCardClick(lender) : undefined}
               showScore={showScore}
+              scoreConfig={scoreConfig}
             />
           ))}
         </div>
