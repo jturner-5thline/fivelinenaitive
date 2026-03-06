@@ -72,7 +72,7 @@ export function DisclaimerSettings({ isAdmin }: { isAdmin: boolean }) {
       <CardHeader>
         <div className="flex items-center gap-2">
           <FileWarning className="h-5 w-5 text-muted-foreground" />
-          <CardTitle className="text-base">Deal Write-Up Disclaimer</CardTitle>
+          <CardTitle className="text-lg">Deal Write-Up Disclaimer</CardTitle>
         </div>
         <CardDescription>
           Set a company-wide disclaimer that will be included with all deal write-ups when published to FLEx.

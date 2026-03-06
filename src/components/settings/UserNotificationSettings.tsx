@@ -165,7 +165,7 @@ export function UserNotificationSettings() {
       {Object.entries(grouped).map(([category, catRules]) => (
         <Card key={category}>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">{CATEGORY_LABELS[category] || category}</CardTitle>
+            <CardTitle className="text-lg">{CATEGORY_LABELS[category] || category}</CardTitle>
             <CardDescription>{catRules.length} notification type{catRules.length !== 1 ? 's' : ''}</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">

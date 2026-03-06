@@ -81,7 +81,7 @@ export function LenderScoreSettings({ isAdmin = true }: LenderScoreSettingsProps
                   <Hash className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-base">Lender Score Tags</CardTitle>
+                  <CardTitle className="text-lg">Lender Score Tags</CardTitle>
                   <CardDescription>Toggle the 1/2/3 interest score tags on lender cards and the lender pop-up</CardDescription>
                 </div>
               </div>

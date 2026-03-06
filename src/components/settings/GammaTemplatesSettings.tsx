@@ -91,7 +91,7 @@ export function GammaTemplatesSettings({ isAdmin = true }: GammaTemplatesSetting
                   <Presentation className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-base">Gamma Templates</CardTitle>
+                  <CardTitle className="text-lg">Gamma Templates</CardTitle>
                   <CardDescription>Choose which presentation templates are available in the Gamma tab</CardDescription>
                 </div>
               </div>
