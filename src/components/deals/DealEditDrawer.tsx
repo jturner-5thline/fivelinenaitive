@@ -74,6 +74,12 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [hasUserEdited, setHasUserEdited] = useState(false);
 
+  // Reset state when deal changes or drawer opens
+  useEffect(() => {
+    setHasUserEdited(false);
+    setNewStatusNote('');
+  }, [deal.id, isOpen]);
+
   // Pre-fill with the latest status note text
   useEffect(() => {
     if (!hasUserEdited && statusNotes.length > 0) {
