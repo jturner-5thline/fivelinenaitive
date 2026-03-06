@@ -222,7 +222,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   // If not grouping, show flat grid
   if (!groupBy) {
     return (
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 py-3 pr-2 overflow-visible">
+      <div className="flex flex-col gap-4 py-3 pr-2 overflow-visible">
         {sortedDeals.map((deal, index) => (
           index === 0 ? (
             <HintTooltip
@@ -344,7 +344,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 py-3 pr-2 overflow-visible">
+              <div className="flex flex-col gap-4 py-3 pr-2 overflow-visible">
                 {groupDeals.map((deal, index) => {
                   const isFirstDealOverall = groupIdx === 0 && index === 0;
                   

@@ -19,6 +19,7 @@ import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { FlagNoteDialog } from './FlagNoteDialog';
 import { DealEditDrawer } from './DealEditDrawer';
 import { CreateTaskForMentionDialog, extractMentionsFromHtml, MentionedUser } from './CreateTaskForMentionDialog';
+import { stripHtml } from '@/lib/stripHtml';
 import {
   Tooltip,
   TooltipContent,
@@ -30,6 +31,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
+import { Separator } from '@/components/ui/separator';
 
 interface DealCardProps {
   deal: Deal;
@@ -66,7 +68,6 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const handleStatusEdit = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Pass existing HTML notes directly (MentionTextarea handles HTML)
     setStatusText(deal.notes || '');
     setIsEditingStatus(true);
   };
@@ -77,7 +78,6 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
     const newNotes = isEmpty ? '' : statusText;
     if (newNotes !== (deal.notes || '')) {
       await updateDeal(deal.id, { notes: newNotes || null });
-      // Check for new mentions and prompt task creation
       const oldMentions = extractMentionsFromHtml(deal.notes || '');
       const newMentions = extractMentionsFromHtml(newNotes);
       const oldIds = new Set(oldMentions.map(m => m.id));
@@ -151,37 +151,41 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const isClosedOrArchived = deal.status === 'archived' || deal.stage === 'closed-lost';
 
   const notificationCount = useMemo(() => {
-    // Suppress all notifications for archived or closed-lost deals
     if (isClosedOrArchived) return 0;
     let count = flexNotificationCount;
-    // Count stale lenders
     deal.lenders?.forEach(lender => {
       if (lender.trackingStatus === 'active' && lender.updatedAt) {
         const days = differenceInDays(new Date(), new Date(lender.updatedAt));
         if (days >= preferences.staleDealsDays) count++;
       }
     });
-    // Count overdue milestones
     deal.milestones?.forEach(m => {
       if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
     });
     return count;
   }, [deal.lenders, deal.milestones, deal.status, deal.stage, preferences.staleDealsDays, flexNotificationCount, isClosedOrArchived]);
 
+  const notesPlainText = useMemo(() => {
+    if (!deal.notes || deal.notes === '<p></p>') return '';
+    return stripHtml(deal.notes);
+  }, [deal.notes]);
+
   return (
     <>
-    <Link to={`/deal/${deal.id}`} className="block h-full min-w-0 w-full">
-      <Card className={`group cursor-pointer ${compact ? 'h-auto' : 'h-[280px]'} flex flex-col relative overflow-visible border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] transition-all duration-200 hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(222,30%,21%)_0%,hsl(230,25%,17%)_50%,hsl(238,22%,14%)_100%)] hover:shadow-[inset_0_1px_2px_hsl(272,100%,85%,0.2),inset_0_-1px_1px_hsl(0,0%,0%,0.25),0_0_20px_hsl(272,100%,70%,0.18),0_10px_40px_hsl(0,0%,0%,0.6)] hover:-translate-y-0.5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)] min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0">
+      <Card className={`group cursor-pointer relative overflow-visible border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] transition-all duration-200 hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(222,30%,21%)_0%,hsl(230,25%,17%)_50%,hsl(238,22%,14%)_100%)] hover:shadow-[inset_0_1px_2px_hsl(272,100%,85%,0.2),inset_0_-1px_1px_hsl(0,0%,0%,0.25),0_0_20px_hsl(272,100%,70%,0.18),0_10px_40px_hsl(0,0%,0%,0.6)] hover:-translate-y-0.5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)] min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+
+        {/* Notification badge */}
         {notificationCount > 0 && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="absolute -top-1 -right-1 z-10">
-                    <div className="flex items-center justify-center h-7 min-w-7 px-1.5 rounded-full bg-destructive shadow-lg shadow-destructive/40 ring-2 ring-background animate-pulse">
-                     <Bell className="h-3.5 w-3.5 text-destructive-foreground" />
-                     <span className="text-[11px] font-bold text-destructive-foreground ml-0.5">{notificationCount}</span>
-                   </div>
-                 </div>
+                  <div className="flex items-center justify-center h-7 min-w-7 px-1.5 rounded-full bg-destructive shadow-lg shadow-destructive/40 ring-2 ring-background animate-pulse">
+                    <Bell className="h-3.5 w-3.5 text-destructive-foreground" />
+                    <span className="text-[11px] font-bold text-destructive-foreground ml-0.5">{notificationCount}</span>
+                  </div>
+                </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{notificationCount} item{notificationCount !== 1 ? 's' : ''} need attention</p>
@@ -189,12 +193,14 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </Tooltip>
           </TooltipProvider>
         )}
+
+        {/* Stale indicator */}
         {timeAgoData.isStale && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="absolute top-1 left-1 z-10">
-                   <div className={`flex items-center justify-center h-6 w-6 rounded-full ${timeAgoData.days >= 30 ? 'bg-destructive' : 'bg-warning'} shadow-md`}>
+                <div className="absolute top-2 left-2 z-10">
+                  <div className={`flex items-center justify-center h-6 w-6 rounded-full ${timeAgoData.days >= 30 ? 'bg-destructive' : 'bg-warning'} shadow-md`}>
                     <AlertTriangle className="h-3.5 w-3.5 text-white" />
                   </div>
                 </div>
@@ -205,6 +211,8 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </Tooltip>
           </TooltipProvider>
         )}
+
+        {/* Mark reviewed button */}
         {timeAgoData.isStale && onMarkReviewed && !compact && (
           <TooltipProvider>
             <Tooltip>
@@ -229,249 +237,228 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </Tooltip>
           </TooltipProvider>
         )}
-      <CardHeader className={`space-y-0 ${compact ? 'pb-2 p-3' : 'pb-3'} flex-shrink-0`}>
-        <div className="flex flex-row items-center justify-between gap-1 min-w-0">
-          <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-white leading-tight truncate flex-1 min-w-0`}>{deal.company}</h3>
-          <div className="flex items-center gap-2 shrink min-w-0">
-            {onToggleFlag && (
-              <>
+
+        {/* ═══ CARD BODY ═══ */}
+        <div className="p-6 space-y-4">
+
+          {/* ── TOP ROW: Name + Value (left) | Status + Stage pills (right) ── */}
+          <div className="flex items-start justify-between gap-4 min-w-0">
+            {/* Left: Name + Value */}
+            <div className="flex-1 min-w-0 space-y-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="text-lg font-bold text-foreground leading-tight truncate">{deal.company}</h3>
+                {/* Action buttons inline with name */}
+                {onToggleFlag && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-6 w-6 shrink-0 ${deal.isFlagged ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsFlagDialogOpen(true);
+                      }}
+                    >
+                      <Flag className={`h-3.5 w-3.5 ${deal.isFlagged ? 'fill-current' : ''}`} />
+                    </Button>
+                    <FlagNoteDialog
+                      dealId={deal.id}
+                      dealName={deal.company}
+                      isOpen={isFlagDialogOpen}
+                      onClose={() => setIsFlagDialogOpen(false)}
+                      currentFlagNotes={deal.flagNotes}
+                      isFlagged={deal.isFlagged}
+                      onSave={async (isFlagged, flagNotes) => {
+                        await onToggleFlag(deal.id, isFlagged, flagNotes);
+                      }}
+                    />
+                  </>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsEditDrawerOpen(true);
+                  }}
+                >
+                  <Search className="h-3.5 w-3.5" />
+                </Button>
+                <DealEditDrawer
+                  deal={deal}
+                  isOpen={isEditDrawerOpen}
+                  onClose={() => setIsEditDrawerOpen(false)}
+                  onStatusChange={onStatusChange}
+                />
+              </div>
+              <p className="text-xl font-semibold text-foreground tracking-tight">{formatCurrencyValue(deal.value)}</p>
+            </div>
+
+            {/* Right: Status + Stage pills */}
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <InlineStatusDropdown
+                dealId={deal.id}
+                status={deal.status}
+                onStatusChange={onStatusChange}
+              />
+              {!compact && (
+                <InlineStageDropdown
+                  dealId={deal.id}
+                  stage={deal.stage}
+                  pipelineId={deal.pipelineId}
+                  onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Migrated + FLEx badges row */}
+          {(deal.migratedFromPersonal || (flexEngagement && flexEngagement.level !== "none")) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {deal.migratedFromPersonal && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`h-8 w-8 relative ${deal.isFlagged ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setIsFlagDialogOpen(true);
-                        }}
-                      >
-                        <Flag className={`h-4 w-4 ${deal.isFlagged ? 'fill-current' : ''}`} />
-                        {deal.isFlagged && deal.flagNotes && (
-                          <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
-                        )}
-                      </Button>
+                      <Badge variant="outline" className="text-xs rounded-lg bg-accent/50 text-accent-foreground border-accent gap-1">
+                        <UserPlus className="h-3 w-3" />
+                        Migrated
+                      </Badge>
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      {deal.isFlagged ? (
-                        <div>
-                          <p className="font-medium">Flagged for discussion</p>
-                          {deal.flagNotes && <p className="text-xs mt-1 opacity-90">{deal.flagNotes}</p>}
-                        </div>
-                      ) : (
-                        <p>Flag for discussion</p>
-                      )}
+                    <TooltipContent><p>This deal was migrated from a personal account</p></TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {flexEngagement && flexEngagement.level !== "none" && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs rounded-lg gap-1 ${
+                          flexEngagement.level === "hot" 
+                            ? "bg-red-500/10 text-red-600 border-red-500/20" 
+                            : flexEngagement.level === "warm"
+                            ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                            : "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                        }`}
+                      >
+                        {flexEngagement.level === "hot" ? <Flame className="h-3 w-3" /> : flexEngagement.level === "warm" ? <Thermometer className="h-3 w-3" /> : <Snowflake className="h-3 w-3" />}
+                        {flexEngagement.lenderCount} FLEx
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="text-xs">
+                        <p className="font-medium capitalize">{flexEngagement.level} Lender Interest</p>
+                        <p className="text-muted-foreground">{flexEngagement.lenderCount} lender{flexEngagement.lenderCount !== 1 ? 's' : ''} engaged</p>
+                        {flexEngagement.hasTermSheetRequest && <p className="text-green-500 mt-1">✓ Term sheet requested</p>}
+                        {flexEngagement.hasNdaRequest && <p className="text-green-500">✓ NDA requested</p>}
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <FlagNoteDialog
-                  dealId={deal.id}
-                  dealName={deal.company}
-                  isOpen={isFlagDialogOpen}
-                  onClose={() => setIsFlagDialogOpen(false)}
-                  currentFlagNotes={deal.flagNotes}
-                  isFlagged={deal.isFlagged}
-                  onSave={async (isFlagged, flagNotes) => {
-                    await onToggleFlag(deal.id, isFlagged, flagNotes);
-                  }}
-                />
-              </>
-            )}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsEditDrawerOpen(true);
-                    }}
-                  >
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Edit deal</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <DealEditDrawer
-              deal={deal}
-              isOpen={isEditDrawerOpen}
-              onClose={() => setIsEditDrawerOpen(false)}
-              onStatusChange={onStatusChange}
-            />
-            <span className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-white truncate`}>{formatCurrencyValue(deal.value)}</span>
-          </div>
-        </div>
-        <div className={`flex items-center gap-2 ${compact ? 'mt-2' : 'mt-4'} flex-wrap`}>
-          <InlineStatusDropdown
-            dealId={deal.id}
-            status={deal.status}
-            onStatusChange={onStatusChange}
-            className="text-white"
-          />
+              )}
+            </div>
+          )}
+
+          {/* ── MIDDLE: Notes snippet ── */}
           {!compact && (
-            <InlineStageDropdown
-              dealId={deal.id}
-              stage={deal.stage}
-              pipelineId={deal.pipelineId}
-              onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
-              className="text-white"
-            />
-          )}
-          {deal.migratedFromPersonal && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className="text-xs rounded-lg bg-accent/50 text-accent-foreground border-accent gap-1"
+            <>
+              {isEditingStatus ? (
+                <div className="min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                  <MentionTextarea
+                    value={statusText}
+                    onChange={(html) => setStatusText(html)}
+                    onBlur={handleStatusSave}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        handleStatusSave();
+                      } else if (e.key === 'Escape') {
+                        setIsEditingStatus(false);
+                      }
+                    }}
+                    placeholder="Add a status note..."
+                    mentionUsers={mentionUsers}
+                  />
+                </div>
+              ) : notesPlainText ? (
+                <div className="relative group/status">
+                  <HoverCard openDelay={300}>
+                    <HoverCardTrigger asChild>
+                      <p className="text-sm leading-relaxed line-clamp-2 text-muted-foreground cursor-pointer pr-6">
+                        {notesPlainText}
+                      </p>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80 max-h-60 overflow-y-auto" align="start">
+                      <div 
+                        className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_.mention]:text-primary [&_.mention]:font-medium"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes!, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'], ALLOWED_ATTR: ['class', 'data-type', 'data-id', 'data-label'] }) }}
+                      />
+                    </HoverCardContent>
+                  </HoverCard>
+                  <button
+                    onClick={handleStatusEdit}
+                    className="absolute top-0 right-0 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-muted"
                   >
-                    <UserPlus className="h-3 w-3" />
-                    Migrated
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>This deal was migrated from a personal account</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          {/* FLEx Engagement Indicator */}
-          {flexEngagement && flexEngagement.level !== "none" && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs rounded-lg gap-1 ${
-                      flexEngagement.level === "hot" 
-                        ? "bg-red-500/10 text-red-600 border-red-500/20" 
-                        : flexEngagement.level === "warm"
-                        ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                        : "bg-blue-500/10 text-blue-600 border-blue-500/20"
-                    }`}
+                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative group/status">
+                  <p className="text-sm leading-relaxed line-clamp-2 text-muted-foreground/50 italic pr-6">
+                    No Status
+                  </p>
+                  <button
+                    onClick={handleStatusEdit}
+                    className="absolute top-0 right-0 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-muted"
                   >
-                    {flexEngagement.level === "hot" ? (
-                      <Flame className="h-3 w-3" />
-                    ) : flexEngagement.level === "warm" ? (
-                      <Thermometer className="h-3 w-3" />
-                    ) : (
-                      <Snowflake className="h-3 w-3" />
-                    )}
-                    {flexEngagement.lenderCount} FLEx
+                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── DIVIDER ── */}
+          {!compact && <Separator className="opacity-30" />}
+
+          {/* ── BOTTOM ROW: Manager | Pills | Time ago ── */}
+          {!compact && (
+            <div className="flex items-center gap-4 min-w-0">
+              {/* Left: Manager */}
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground shrink-0">
+                <User className="h-3.5 w-3.5" />
+                <span className="truncate max-w-[100px]">{deal.manager || 'No manager'}</span>
+              </div>
+
+              {/* Center: Pills */}
+              <div className="flex-1 flex items-center gap-2 flex-wrap justify-center min-w-0">
+                <Badge variant="secondary" className="text-xs rounded-lg">
+                  {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
+                </Badge>
+                {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
+                  <Badge variant="outline" className="text-xs rounded-lg bg-primary/10 text-primary border-primary/20">
+                    {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
                   </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <div className="text-xs">
-                    <p className="font-medium capitalize">{flexEngagement.level} Lender Interest</p>
-                    <p className="text-muted-foreground">
-                      {flexEngagement.lenderCount} lender{flexEngagement.lenderCount !== 1 ? 's' : ''} engaged
-                    </p>
-                    {flexEngagement.hasTermSheetRequest && (
-                      <p className="text-green-500 mt-1">✓ Term sheet requested</p>
-                    )}
-                    {flexEngagement.hasNdaRequest && (
-                      <p className="text-green-500">✓ NDA requested</p>
-                    )}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                )}
+                {dealTypeLabels.map((label, index) => (
+                  <Badge key={index} variant="outline" className="text-xs rounded-lg">
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+
+              {/* Right: Time ago */}
+              <div className={`flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 ml-auto ${timeAgoData.highlightClass}`}>
+                <Clock className="h-3 w-3" />
+                <span>{timeAgoData.text}</span>
+              </div>
+            </div>
           )}
         </div>
-        {!compact && isEditingStatus ? (
-          <div className="mt-6 min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-            <MentionTextarea
-              value={statusText}
-              onChange={(html) => setStatusText(html)}
-              onBlur={handleStatusSave}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  handleStatusSave();
-                } else if (e.key === 'Escape') {
-                  setIsEditingStatus(false);
-                }
-              }}
-              placeholder="Add a status note..."
-              mentionUsers={mentionUsers}
-            />
-          </div>
-        ) : !compact && deal.notes && deal.notes !== '<p></p>' ? (
-          <div className="relative group/status mt-6 min-h-[2.5rem]">
-            <HoverCard openDelay={300}>
-              <HoverCardTrigger asChild>
-                <div 
-                  className="text-sm line-clamp-2 text-white/70 prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer pr-6 [&_.mention]:text-primary [&_.mention]:font-medium"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'], ALLOWED_ATTR: ['class', 'data-type', 'data-id', 'data-label'] }) }}
-                />
-              </HoverCardTrigger>
-              <HoverCardContent className="w-80 max-h-60 overflow-y-auto" align="start">
-                <div 
-                  className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_.mention]:text-primary [&_.mention]:font-medium"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'], ALLOWED_ATTR: ['class', 'data-type', 'data-id', 'data-label'] }) }}
-                />
-              </HoverCardContent>
-            </HoverCard>
-            <button
-              onClick={handleStatusEdit}
-              className="absolute top-0 right-0 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-muted"
-            >
-              <Pencil className="h-3 w-3 text-muted-foreground" />
-            </button>
-          </div>
-        ) : !compact ? (
-          <div className="relative group/status mt-4 min-h-[2.5rem]">
-            <p className="text-sm line-clamp-2 text-white/40 italic pr-6">
-              No Status
-            </p>
-            <button
-              onClick={handleStatusEdit}
-              className="absolute top-0 right-0 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-muted"
-            >
-              <Pencil className="h-3 w-3 text-muted-foreground" />
-            </button>
-          </div>
-        ) : null}
-      </CardHeader>
-      {!compact && (
-        <CardContent className="space-y-4 mt-auto flex-shrink-0">
-
-          <div className="flex items-center gap-4 text-sm text-white/70">
-            <div className="flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5" />
-              <span className="truncate">{deal.manager || 'No manager'}</span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
-            <Badge variant="secondary" className="text-xs rounded-lg text-white">
-              {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-            </Badge>
-            {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
-              <Badge variant="outline" className="text-xs rounded-lg bg-primary/10 text-primary border-primary/20">
-                {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
-              </Badge>
-            )}
-            {dealTypeLabels.map((label, index) => (
-              <Badge key={index} variant="outline" className="text-xs rounded-lg text-white">
-                {label}
-              </Badge>
-            ))}
-            <div className={`flex items-center gap-1.5 text-xs text-white/60 ml-auto ${timeAgoData.highlightClass}`}>
-              <Clock className="h-3 w-3" />
-              <span>{timeAgoData.text}</span>
-            </div>
-          </div>
-        </CardContent>
-      )}
-    </Card>
+      </Card>
     </Link>
     <CreateTaskForMentionDialog
       open={isTaskDialogOpen}
