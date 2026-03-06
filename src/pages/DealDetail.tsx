@@ -4581,6 +4581,29 @@ export default function DealDetail() {
                         </Select>
                       </div>
 
+                      {/* Score Selector */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Score</h4>
+                        <Select
+                          value={dealLender.score != null ? String(dealLender.score) : ''}
+                          onValueChange={(value) => {
+                            const scoreVal = value === '' ? null : Number(value);
+                            withSavingAsync(`lender-score-${dealLender.id}`, async () => {
+                              await updateLenderInDb(dealLender.id, { score: scoreVal });
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="No score" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 — Most Interested</SelectItem>
+                            <SelectItem value="2">2 — Moderate Interest</SelectItem>
+                            <SelectItem value="3">3 — Least Interested</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       {/* Lender Notes */}
                       <div>
                         <h4 className="text-sm font-semibold mb-2">Notes</h4>

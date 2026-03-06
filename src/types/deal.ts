@@ -28,6 +28,7 @@ export interface DealLender {
   substage?: LenderSubstage;
   trackingStatus: LenderTrackingStatus;
   passReason?: string;
+  score?: number | null;
   notes?: string;
   notesUpdatedAt?: string;
   notesHistory?: LenderNoteHistory[];

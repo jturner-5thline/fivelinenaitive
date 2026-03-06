@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_lenders ADD COLUMN score smallint DEFAULT NULL;

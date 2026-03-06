@@ -252,6 +252,7 @@ export function useDealsDatabase() {
         trackingStatus: (l.tracking_status || 'active') as LenderTrackingStatus,
         notes: l.notes || undefined,
         passReason: l.pass_reason || undefined,
+        score: (l as any).score ?? null,
         updatedAt: l.updated_at,
         notesHistory: notesHistoryMap[l.id] || [],
       }));
@@ -787,6 +788,7 @@ export function useDealsDatabase() {
       // Handle passReason - use null to clear, or the value to set
       if ('passReason' in updates) dbUpdates.pass_reason = updates.passReason ?? null;
       if (updates.trackingStatus !== undefined) dbUpdates.tracking_status = updates.trackingStatus;
+      if ('score' in updates) dbUpdates.score = updates.score ?? null;
       
       // Always update the updated_at timestamp
       dbUpdates.updated_at = new Date().toISOString();
