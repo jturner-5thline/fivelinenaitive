@@ -32,6 +32,8 @@ import { CSS } from '@dnd-kit/utilities';
 import confetti from 'canvas-confetti';
 import { addDays, isToday, isTomorrow, isThisWeek, isPast, format, startOfDay, nextMonday, differenceInDays } from 'date-fns';
 
+const TASK_GRID_COLS = 'grid-cols-[20px_20px_auto_16px_1fr_100px_60px_100px_140px_100px_100px_40px]';
+
 const STATUS_COLORS: Record<string, { label: string; bg: string; dot: string }> = {
   not_started: { label: 'Not Started', bg: '#6b7280', dot: '#6b7280' },
   in_progress: { label: 'In Progress', bg: '#3b7eff', dot: '#3b7eff' },
