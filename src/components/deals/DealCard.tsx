@@ -424,34 +424,33 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           {/* ── DIVIDER ── */}
           {!compact && <Separator className="opacity-30" />}
 
-          {/* ── BOTTOM ROW: Manager | Pills | Time ago ── */}
+          {/* ── ROW: Engagement + Deal Type pills ── */}
           {!compact && (
-            <div className="flex items-center gap-4 min-w-0">
-              {/* Left: Manager */}
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <Badge variant="secondary" className="text-xs rounded-lg">
+                {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
+              </Badge>
+              {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
+                <Badge variant="outline" className="text-xs rounded-lg bg-primary/10 text-primary border-primary/20">
+                  {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
+                </Badge>
+              )}
+              {dealTypeLabels.map((label, index) => (
+                <Badge key={index} variant="outline" className="text-xs rounded-lg">
+                  {label}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* ── ROW: Manager (left) | Time ago (right) ── */}
+          {!compact && (
+            <div className="flex items-center justify-between gap-4 min-w-0">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground shrink-0">
                 <User className="h-3.5 w-3.5" />
                 <span className="truncate max-w-[100px]">{deal.manager || 'No manager'}</span>
               </div>
-
-              {/* Center: Pills */}
-              <div className="flex-1 flex items-center gap-2 flex-wrap justify-center min-w-0">
-                <Badge variant="secondary" className="text-xs rounded-lg">
-                  {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-                </Badge>
-                {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
-                  <Badge variant="outline" className="text-xs rounded-lg bg-primary/10 text-primary border-primary/20">
-                    {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
-                  </Badge>
-                )}
-                {dealTypeLabels.map((label, index) => (
-                  <Badge key={index} variant="outline" className="text-xs rounded-lg">
-                    {label}
-                  </Badge>
-                ))}
-              </div>
-
-              {/* Right: Time ago */}
-              <div className={`flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 ml-auto ${timeAgoData.highlightClass}`}>
+              <div className={`flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 ${timeAgoData.highlightClass}`}>
                 <Clock className="h-3 w-3" />
                 <span>{timeAgoData.text}</span>
               </div>
