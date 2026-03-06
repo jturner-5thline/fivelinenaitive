@@ -234,7 +234,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
               align="start"
               showDelay={3500}
             >
-              <div>
+              <div className="h-full">
                 <DealCard 
                   deal={deal} 
                   onStatusChange={onStatusChange} 
@@ -359,7 +359,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                         align="start"
                         showDelay={3500}
                       >
-                        <div>
+                        <div className="h-full">
                           <DealCard 
                             deal={deal} 
                             onStatusChange={onStatusChange} 
