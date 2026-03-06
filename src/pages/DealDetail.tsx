@@ -3681,7 +3681,7 @@ export default function DealDetail() {
                                         {lender.score}
                                       </Badge>
                                     )}
-...
+                                    <AlertDialog>
                                     </AlertDialog>
                                     <div className="flex flex-col min-w-0">
                                       <button 
@@ -4067,7 +4067,7 @@ export default function DealDetail() {
                                                 {lender.score}
                                               </Badge>
                                             )}
-...
+                                            <AlertDialog>
                                             </AlertDialog>
                                             <div className="flex flex-col min-w-0">
                                               <button 
