@@ -88,6 +88,7 @@ interface DroppableStageColumnProps {
   stageColor: string;
   deals: Deal[];
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagementScores?: Map<string, any>;
@@ -103,6 +104,7 @@ function DroppableStageColumn({
   stageColor,
   deals,
   onStatusChange,
+  onStageChange,
   onMarkReviewed,
   onToggleFlag,
   flexEngagementScores,
