@@ -1,0 +1,2 @@
+ALTER TABLE public.deal_lenders DROP CONSTRAINT deal_lenders_tracking_status_check;
+ALTER TABLE public.deal_lenders ADD CONSTRAINT deal_lenders_tracking_status_check CHECK (tracking_status = ANY (ARRAY['active'::text, 'on-hold'::text, 'on-deck'::text, 'passed'::text, 'excluded'::text]));
