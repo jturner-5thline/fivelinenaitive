@@ -34,17 +34,31 @@ function ConfigBlock({ label, data, onEdit }: {
   const isEmpty = data === null || data === undefined || (typeof data === 'object' && Object.keys(data as object).length === 0);
 
   const handleStartEdit = () => {
-    setEditValue(JSON.stringify(data, null, 2));
+    const initial = (data === null || data === undefined)
+      ? '{}'
+      : (typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+    setEditValue(initial);
     setEditing(true);
   };
 
   const handleSave = () => {
-    try {
-      JSON.parse(editValue); // validate
-      onEdit?.(editValue);
-      setEditing(false);
-    } catch {
-      toast.error('Invalid JSON');
+    // For string fields (like disclaimer), allow plain text
+    if (onEdit) {
+      try {
+        JSON.parse(editValue); // validate as JSON
+        onEdit(editValue);
+        setEditing(false);
+      } catch {
+        // If it's not valid JSON, pass as quoted string
+        try {
+          const asString = JSON.stringify(editValue);
+          JSON.parse(asString);
+          onEdit(asString);
+          setEditing(false);
+        } catch {
+          toast.error('Invalid JSON');
+        }
+      }
     }
   };
 
@@ -53,8 +67,9 @@ function ConfigBlock({ label, data, onEdit }: {
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
         {onEdit && !editing && (
-          <Button variant="ghost" size="sm" className="h-6 px-2" onClick={handleStartEdit}>
+          <Button variant="ghost" size="sm" className="h-6 px-2 gap-1" onClick={handleStartEdit}>
             <Pencil className="h-3 w-3" />
+            {isEmpty && <span className="text-xs">Add</span>}
           </Button>
         )}
       </div>
@@ -64,6 +79,7 @@ function ConfigBlock({ label, data, onEdit }: {
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             className="font-mono text-xs min-h-[120px]"
+            placeholder="Enter JSON value..."
           />
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
