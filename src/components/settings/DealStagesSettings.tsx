@@ -161,10 +161,11 @@ const parseStagesFromJson = (json: Json | null): DealStageOption[] | null => {
 };
 
 export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) {
+  const adminOverride = useAdminCompanyOverride();
   // Local state for editing
   const [stages, setStages] = useState<DealStageOption[]>(defaultStages);
   const [defaultStageId, setDefaultStageId] = useState<string | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(adminOverride?.companyId ?? null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Track saved state for comparison
@@ -182,25 +183,31 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setIsLoading(false);
-          return;
+        let resolvedCompanyId = adminOverride?.companyId ?? null;
+
+        if (!resolvedCompanyId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            setIsLoading(false);
+            return;
+          }
+
+          const { data: membership } = await supabase
+            .from('company_members')
+            .select('company_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          resolvedCompanyId = membership?.company_id ?? null;
         }
 
-        const { data: membership } = await supabase
-          .from('company_members')
-          .select('company_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (membership?.company_id) {
-          setCompanyId(membership.company_id);
+        if (resolvedCompanyId) {
+          setCompanyId(resolvedCompanyId);
 
           const { data: settings } = await supabase
             .from('company_settings')
             .select('default_deal_stage_id, deal_stages')
-            .eq('company_id', membership.company_id)
+            .eq('company_id', resolvedCompanyId)
             .maybeSingle();
 
           const dbStages = parseStagesFromJson(settings?.deal_stages ?? null);
@@ -222,7 +229,7 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
     };
 
     fetchData();
-  }, []);
+  }, [adminOverride?.companyId]);
 
   // Check if there are unsaved changes
   const hasUnsavedChanges = 
