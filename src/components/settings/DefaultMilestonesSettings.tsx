@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Flag, ChevronDown, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
