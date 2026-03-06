@@ -66,6 +66,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [isEditMode, setIsEditMode] = useState(false);
   const [volumePopupOpen, setVolumePopupOpen] = useState(false);
+  const [volumePopupInitialStage, setVolumePopupInitialStage] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = () => setIsEditMode(prev => !prev);
