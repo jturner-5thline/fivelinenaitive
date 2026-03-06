@@ -148,7 +148,7 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
     if (!company) return;
     setRemovingMemberId(userId);
     try {
-      const { error } = await supabase.rpc('admin_remove_company_member', {
+      const { error } = await supabase.rpc('admin_remove_company_member' as any, {
         _company_id: company.id,
         _user_id: userId,
       });
