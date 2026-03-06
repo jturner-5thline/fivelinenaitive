@@ -262,7 +262,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                   id="statusNote"
                   value={newStatusNote}
                   onChange={(e) => setNewStatusNote(e.target.value)}
-                  placeholder={statusNotes.length > 0 ? htmlToPlainText(statusNotes[0].note) : "Add a status note..."}
+                  placeholder="Add a status note..."
                   rows={2}
                   className="resize-none flex-1"
                 />
