@@ -1,6 +1,7 @@
 import { KeyboardEvent, RefObject, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { type Task } from '@/hooks/useTasks';
+import { useTaskCollaboratorsBatch } from '@/hooks/useTaskCollaborators';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
