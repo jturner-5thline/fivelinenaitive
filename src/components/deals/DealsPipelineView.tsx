@@ -195,7 +195,8 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
     useSensor(KeyboardSensor)
   );
 
-  // Group deals by stage
+  // Group deals by stage with stable sort order (created_at) to prevent
+  // card reordering when non-stage fields are updated
   const dealsByStage = useMemo(() => {
     const grouped = new Map<string, Deal[]>();
 
@@ -209,6 +210,17 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
       const stageDeals = grouped.get(deal.stage) || [];
       stageDeals.push(deal);
       grouped.set(deal.stage, stageDeals);
+    });
+
+    // Sort deals within each stage by created_at (stable) so updates
+    // to non-stage fields don't cause visual reordering
+    grouped.forEach((stageDeals, stageId) => {
+      stageDeals.sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA; // newest first
+      });
+      grouped.set(stageId, stageDeals);
     });
 
     return grouped;
