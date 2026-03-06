@@ -572,9 +572,21 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
         dealData.company_id = companyId;
       }
 
+      // UUID columns that cannot accept non-UUID strings
+      const uuidColumns = new Set(['pipeline_id', 'company_id']);
+
       for (const [hsField, nativeField] of Object.entries(fieldMap)) {
         let val = props[hsField];
         if (val === undefined || val === null || val === '') continue;
+
+        // Skip UUID columns if value is not a valid UUID
+        if (uuidColumns.has(nativeField)) {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(val)) {
+            console.log(`Skipping field ${nativeField}: value "${val}" is not a valid UUID`);
+            continue;
+          }
+        }
 
         // Special handling for certain fields
         if (nativeField === 'value') {
