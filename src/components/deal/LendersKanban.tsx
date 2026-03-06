@@ -265,6 +265,7 @@ function DroppableColumn({
   onEditPassReasons,
   lenderMetrics,
   onCardClick,
+  showScore,
 }: {
   dealId?: string;
   group: { id: StageGroup; label: string; color: string };
@@ -276,6 +277,7 @@ function DroppableColumn({
   onEditPassReasons?: (lenderId: string) => void;
   lenderMetrics?: Record<string, LenderMetrics>;
   onCardClick?: (lender: DealLender) => void;
+  showScore?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.id,
@@ -456,6 +458,7 @@ export function LendersKanban({
               onEditPassReasons={onEditPassReasons}
               lenderMetrics={lenderMetrics}
               onCardClick={onCardClick}
+              showScore={showScore}
             />
           ))}
         </div>
