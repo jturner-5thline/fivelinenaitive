@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Archive, Trash2, ExternalLink, ArrowRightLeft } from 'lucide-react';
+import { X, Archive, Trash2, ExternalLink, ArrowRightLeft, Plus, Loader2 } from 'lucide-react';
+import { useStatusNotes } from '@/hooks/useStatusNotes';
+import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
 import { Deal, DealStatus, DealStage, EngagementType, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, ExclusivityType } from '@/types/deal';
@@ -66,6 +68,10 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     }
   }, [isOpen]);
 
+  const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingNotes } = useStatusNotes(deal.id);
+  const [newStatusNote, setNewStatusNote] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
+
   const [formData, setFormData] = useState({
     company: deal.company,
     value: deal.value,
@@ -78,8 +84,18 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
     preSigningHours: deal.preSigningHours || 0,
     postSigningHours: deal.postSigningHours || 0,
-    notes: deal.notes || '',
   });
+
+  const handleAddStatusNote = async () => {
+    if (!newStatusNote.trim()) return;
+    setIsAddingNote(true);
+    try {
+      await addStatusNote(newStatusNote.trim());
+      setNewStatusNote('');
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
 
   const [isSaving, setIsSaving] = useState(false);
 
