@@ -172,8 +172,8 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
   return (
     <>
-    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0">
-      <Card className={`group cursor-pointer relative overflow-visible border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] transition-all duration-200 hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(222,30%,21%)_0%,hsl(230,25%,17%)_50%,hsl(238,22%,14%)_100%)] hover:shadow-[inset_0_1px_2px_hsl(272,100%,85%,0.2),inset_0_-1px_1px_hsl(0,0%,0%,0.25),0_0_20px_hsl(272,100%,70%,0.18),0_10px_40px_hsl(0,0%,0%,0.6)] hover:-translate-y-0.5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)] min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0 h-full">
+      <Card className={`group cursor-pointer h-full flex flex-col relative overflow-visible border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] transition-all duration-200 hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(222,30%,21%)_0%,hsl(230,25%,17%)_50%,hsl(238,22%,14%)_100%)] hover:shadow-[inset_0_1px_2px_hsl(272,100%,85%,0.2),inset_0_-1px_1px_hsl(0,0%,0%,0.25),0_0_20px_hsl(272,100%,70%,0.18),0_10px_40px_hsl(0,0%,0%,0.6)] hover:-translate-y-0.5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)] min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
         {/* Notification badge */}
         {notificationCount > 0 && (
@@ -239,7 +239,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
         )}
 
         {/* ═══ CARD BODY ═══ */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 flex flex-col flex-1 gap-4">
 
           {/* ── TOP ROW: Name + Value (left) | Status + Stage pills (right) ── */}
           <div className="flex items-start justify-between gap-4 min-w-0">
@@ -422,7 +422,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           )}
 
           {/* ── DIVIDER ── */}
-          {!compact && <Separator className="opacity-30" />}
+          {!compact && <Separator className="opacity-30 mt-auto" />}
 
           {/* ── ROW: Manager (left) | Time ago (right) ── */}
           {!compact && (
