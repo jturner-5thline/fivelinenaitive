@@ -1,0 +1,124 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+export interface TaskCollaborator {
+  id: string;
+  task_id: string;
+  user_id: string;
+  created_at: string;
+  profile?: {
+    display_name: string;
+    avatar_url: string | null;
+    email: string;
+  } | null;
+}
+
+export function useTaskCollaborators(taskId: string | null) {
+  const queryClient = useQueryClient();
+  const key = ['task-collaborators', taskId];
+
+  const { data: collaborators = [], isLoading } = useQuery({
+    queryKey: key,
+    enabled: !!taskId,
+    queryFn: async () => {
+      if (!taskId) return [];
+      const { data, error } = await supabase
+        .from('task_collaborators' as any)
+        .select('*')
+        .eq('task_id', taskId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+
+      const items = (data || []) as unknown as TaskCollaborator[];
+
+      // Fetch profiles for all collaborator user_ids
+      if (items.length > 0) {
+        const userIds = items.map(c => c.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url, email')
+          .in('user_id', userIds);
+        
+        const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+        items.forEach(c => {
+          const p = profileMap.get(c.user_id);
+          c.profile = p ? { display_name: p.display_name || '', avatar_url: p.avatar_url, email: p.email || '' } : null;
+        });
+      }
+
+      return items;
+    },
+  });
+
+  const addCollaborator = useMutation({
+    mutationFn: async (userId: string) => {
+      if (!taskId) throw new Error('No task');
+      const { error } = await supabase
+        .from('task_collaborators' as any)
+        .insert({ task_id: taskId, user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+
+  const removeCollaborator = useMutation({
+    mutationFn: async (userId: string) => {
+      if (!taskId) throw new Error('No task');
+      const { error } = await supabase
+        .from('task_collaborators' as any)
+        .delete()
+        .eq('task_id', taskId)
+        .eq('user_id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+
+  return { collaborators, isLoading, addCollaborator, removeCollaborator };
+}
+
+/**
+ * Lightweight hook to batch-fetch collaborator counts for a list of task IDs.
+ * Returns a Map<taskId, collaborator[]> for rendering indicators in list views.
+ */
+export function useTaskCollaboratorsBatch(taskIds: string[]) {
+  const { data: collaboratorsMap = new Map<string, { user_id: string; display_name: string; avatar_url: string | null }[]>() } = useQuery({
+    queryKey: ['task-collaborators-batch', taskIds.sort().join(',')],
+    enabled: taskIds.length > 0,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('task_collaborators' as any)
+        .select('task_id, user_id')
+        .in('task_id', taskIds);
+      if (error) throw error;
+
+      const items = (data || []) as unknown as { task_id: string; user_id: string }[];
+      if (items.length === 0) return new Map();
+
+      const userIds = [...new Set(items.map(i => i.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', userIds);
+
+      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+
+      const result = new Map<string, { user_id: string; display_name: string; avatar_url: string | null }[]>();
+      items.forEach(item => {
+        const profile = profileMap.get(item.user_id);
+        const entry = {
+          user_id: item.user_id,
+          display_name: profile?.display_name || '',
+          avatar_url: profile?.avatar_url || null,
+        };
+        if (!result.has(item.task_id)) result.set(item.task_id, []);
+        result.get(item.task_id)!.push(entry);
+      });
+
+      return result;
+    },
+  });
+
+  return collaboratorsMap;
+}
