@@ -204,7 +204,7 @@ export default function Dashboard() {
             dealName: deal.company || deal.name || 'This deal',
             currentValue: deal.value || 0,
             newStage,
-            newStageLabel: stageLabel,
+            newStageLabel: newStage.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
           });
           return;
         }
