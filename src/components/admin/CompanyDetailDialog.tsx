@@ -49,7 +49,12 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
   const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
+  const [addMemberEmail, setAddMemberEmail] = useState("");
+  const [addMemberRole, setAddMemberRole] = useState<string>("member");
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
   const { data: members, isLoading: membersLoading } = useCompanyMembers(company?.id || null);
   const { data: stats, isLoading: statsLoading } = useCompanyStats(company?.id || null);
   const { data: activity, isLoading: activityLoading } = useCompanyActivity(company?.id || null);
