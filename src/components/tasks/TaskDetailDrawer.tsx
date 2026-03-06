@@ -52,11 +52,6 @@ function formatFileSize(bytes: number) {
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-function formatMinutes(mins: number) {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
 
 const STATUS_COLORS: Record<string, { label: string; bg: string }> = {
   not_started: { label: 'Not Started', bg: '#6b7280' },
