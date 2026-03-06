@@ -98,6 +98,7 @@ import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
 import { DealUpdatesDropdown } from '@/components/deal/DealUpdatesDropdown';
 import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
 import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
+import { useLenderScoreConfig } from '@/hooks/useLenderScoreConfig';
 import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
@@ -489,6 +490,7 @@ export default function DealDetail() {
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
   const { company, members } = useCompany();
+  const { scoreConfig } = useLenderScoreConfig();
   const teamMembers = useTeamMembers();
   const mentionUsers = useMemo(() => teamMembers, [teamMembers]);
   const [mentionTaskUsers, setMentionTaskUsers] = useState<MentionedUser[]>([]);
@@ -3674,13 +3676,29 @@ export default function DealDetail() {
                                         <div className="flex-1 min-w-0">
                                       <div className="grid grid-cols-[160px_160px_140px_auto_1fr] items-center gap-3">
                                   <div className="flex items-center gap-1 group/lender -ml-1">
-                                    {lender.score != null && (
+                                    {scoreConfig.enabled && lender.score != null && (
                                       <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0 ${lender.score === 1 ? 'border-destructive/30 text-destructive' : lender.score === 2 ? 'border-yellow-500/30 text-yellow-500' : 'border-blue-500/30 text-blue-500'}`}>
                                         {lender.score}
                                       </Badge>
                                     )}
                                     <AlertDialog>
-...
+                                      <AlertDialogTrigger asChild>
+                                        <button className="opacity-0 group-hover/lender:opacity-100 transition-opacity text-muted-foreground hover:text-destructive -ml-0.5 shrink-0">
+                                          <X className="h-3.5 w-3.5" />
+                                        </button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Remove lender</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Are you sure you want to remove {lender.name} from this deal?
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => removeLenderFromDeal(lender.id)}>Remove</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
                                     </AlertDialog>
                                     <div className="flex flex-col min-w-0">
                                       <button 
@@ -4061,13 +4079,29 @@ export default function DealDetail() {
                                       <div key={lender.id} className="rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all">
                                         <div className="grid grid-cols-[160px_160px_140px_1fr] items-center gap-3">
                                           <div className="flex items-center gap-1 group/lender -ml-1">
-                                            {lender.score != null && (
+                                            {scoreConfig.enabled && lender.score != null && (
                                               <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0 ${lender.score === 1 ? 'border-destructive/30 text-destructive' : lender.score === 2 ? 'border-yellow-500/30 text-yellow-500' : 'border-blue-500/30 text-blue-500'}`}>
                                                 {lender.score}
                                               </Badge>
                                             )}
                                             <AlertDialog>
-...
+                                              <AlertDialogTrigger asChild>
+                                                <button className="opacity-0 group-hover/lender:opacity-100 transition-opacity text-muted-foreground hover:text-destructive -ml-0.5 shrink-0">
+                                                  <X className="h-3.5 w-3.5" />
+                                                </button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                  <AlertDialogTitle>Remove lender</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                    Are you sure you want to remove {lender.name} from this deal?
+                                                  </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                  <AlertDialogAction onClick={() => removeLenderFromDeal(lender.id)}>Remove</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                              </AlertDialogContent>
                                             </AlertDialog>
                                             <div className="flex flex-col min-w-0">
                                               <button 
@@ -4507,8 +4541,8 @@ export default function DealDetail() {
                         </Select>
                       </div>
 
-                      {/* Score Selector */}
-                      <div>
+                       {scoreConfig.enabled && (
+                       <div>
                         <h4 className="text-sm font-semibold mb-2">Score</h4>
                         <Select
                           value={dealLender.score != null ? String(dealLender.score) : ''}
@@ -4528,7 +4562,8 @@ export default function DealDetail() {
                             <SelectItem value="3">3 — Least Interested</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
+                       </div>
+                       )}
 
                       {/* Lender Notes */}
                       <div>
@@ -4941,6 +4976,7 @@ export default function DealDetail() {
                 setSelectedLenderName(lender.name);
                 setIsLendersKanbanOpen(false);
               }}
+              showScore={scoreConfig.enabled}
             />
           )}
         </DialogContent>

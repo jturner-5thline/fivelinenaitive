@@ -44,6 +44,7 @@ interface LendersKanbanProps {
   lenderMetrics?: Record<string, LenderMetrics>;
   /** Callback when a lender card is clicked for detail view */
   onCardClick?: (lender: DealLender) => void;
+  showScore?: boolean;
 }
 
 // Helper to get relative time string
@@ -72,6 +73,7 @@ function DraggableLenderTile({
   onEditPassReasons,
   metrics,
   onClick,
+  showScore,
 }: {
   lender: DealLender;
   dealId?: string;
@@ -82,6 +84,7 @@ function DraggableLenderTile({
   onEditPassReasons?: () => void;
   metrics?: LenderMetrics;
   onClick?: () => void;
+  showScore?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lender.id,
@@ -170,7 +173,7 @@ function DraggableLenderTile({
         >
           {stageLabel}
         </Badge>
-        {lender.score != null && (
+        {showScore !== false && lender.score != null && (
           <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0.5 ${lender.score === 1 ? 'border-destructive/30 text-destructive' : lender.score === 2 ? 'border-yellow-500/30 text-yellow-500' : 'border-blue-500/30 text-blue-500'}`}>
             {lender.score}
           </Badge>
@@ -262,6 +265,7 @@ function DroppableColumn({
   onEditPassReasons,
   lenderMetrics,
   onCardClick,
+  showScore,
 }: {
   dealId?: string;
   group: { id: StageGroup; label: string; color: string };
@@ -273,6 +277,7 @@ function DroppableColumn({
   onEditPassReasons?: (lenderId: string) => void;
   lenderMetrics?: Record<string, LenderMetrics>;
   onCardClick?: (lender: DealLender) => void;
+  showScore?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.id,
@@ -317,6 +322,7 @@ function DroppableColumn({
               onEditPassReasons={onEditPassReasons ? () => onEditPassReasons(lender.id) : undefined}
               metrics={lenderMetrics?.[lender.name.toLowerCase().trim()]}
               onClick={onCardClick ? () => onCardClick(lender) : undefined}
+              showScore={showScore}
             />
           ))}
         </div>
@@ -338,6 +344,7 @@ export function LendersKanban({
   onRetry,
   lenderMetrics,
   onCardClick,
+  showScore,
 }: LendersKanbanProps) {
   const [activeLender, setActiveLender] = useState<DealLender | null>(null);
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
@@ -451,6 +458,7 @@ export function LendersKanban({
               onEditPassReasons={onEditPassReasons}
               lenderMetrics={lenderMetrics}
               onCardClick={onCardClick}
+              showScore={showScore}
             />
           ))}
         </div>
