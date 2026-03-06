@@ -359,6 +359,7 @@ export function LendersKanban({
   lenderMetrics,
   onCardClick,
   showScore,
+  scoreConfig,
 }: LendersKanbanProps) {
   const [activeLender, setActiveLender] = useState<DealLender | null>(null);
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
