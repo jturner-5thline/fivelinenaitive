@@ -1622,9 +1622,8 @@ export default function DealDetail() {
   }, [deal?.lenders, updateLenderInDb, logActivity, withSavingAsync]);
 
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
-    // Find the first stage in the target group
+    // Find the first stage in the target group (may not exist for groups like 'excluded')
     const targetStage = configuredStages.find(s => s.group === newGroup);
-    if (!targetStage) return;
     
     // Get lender info for activity log and undo
     const lender = deal?.lenders?.find(l => l.id === lenderId);
@@ -1657,7 +1656,7 @@ export default function DealDetail() {
     withSavingAsync(`lender-stage-${lenderId}`, async () => {
       try {
         await updateLenderInDb(lenderId, { 
-          stage: targetStage.id, 
+          ...(targetStage ? { stage: targetStage.id } : {}),
           trackingStatus: newGroup,
           passReason: newGroup === 'passed' ? (passReason || null) : null,
           ...(autoNote ? { notes: autoNote } : {}),
@@ -1674,7 +1673,7 @@ export default function DealDetail() {
       logActivity('lender_stage_change', `${lender.name} stage changed`, {
         lender_name: lender.name,
         from: oldStage?.label || lender.stage,
-        to: targetStage.label,
+        to: targetStage?.label || newGroup,
       });
     }
     
@@ -1683,7 +1682,7 @@ export default function DealDetail() {
       if (!prev) return prev;
       const updatedLenders = prev.lenders?.map(l => 
         l.id === lenderId 
-          ? { ...l, stage: targetStage.id as any, trackingStatus: newGroup, passReason: newGroup === 'passed' ? passReason : undefined, updatedAt: new Date().toISOString() } 
+          ? { ...l, ...(targetStage ? { stage: targetStage.id as any } : {}), trackingStatus: newGroup, passReason: newGroup === 'passed' ? passReason : undefined, updatedAt: new Date().toISOString() } 
           : l
       );
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
