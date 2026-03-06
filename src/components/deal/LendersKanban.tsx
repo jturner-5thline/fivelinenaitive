@@ -473,6 +473,7 @@ export function LendersKanban({
               lenderMetrics={lenderMetrics}
               onCardClick={onCardClick}
               showScore={showScore}
+              scoreConfig={scoreConfig}
             />
           ))}
         </div>
