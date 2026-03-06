@@ -98,6 +98,7 @@ import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
 import { DealUpdatesDropdown } from '@/components/deal/DealUpdatesDropdown';
 import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
 import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
+import { useLenderScoreConfig } from '@/hooks/useLenderScoreConfig';
 import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';

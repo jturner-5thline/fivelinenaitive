@@ -25,6 +25,7 @@ import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettin
 import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
 import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSettings';
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
+import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
 import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
@@ -282,6 +283,7 @@ export default function Settings() {
                   {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
                   {isVisible('data-room-checklist') && <DefaultChecklistSettings isAdmin={isAdmin} />}
                   {isVisible('gamma-templates') && <GammaTemplatesSettings isAdmin={isAdmin} />}
+                  {isVisible('deal-types') && <LenderScoreSettings isAdmin={isAdmin} />}
                   {isVisible('deal-types') && <DisclaimerSettings isAdmin={isAdmin} />}
                 </TabsContent>
 
