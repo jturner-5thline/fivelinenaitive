@@ -1624,7 +1624,6 @@ export default function DealDetail() {
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
     // Find the first stage in the target group (may not exist for groups like 'excluded')
     const targetStage = configuredStages.find(s => s.group === newGroup);
-    const lender = deal?.lenders?.find(l => l.id === lenderId);
     
     // Get lender info for activity log and undo
     const lender = deal?.lenders?.find(l => l.id === lenderId);
@@ -1657,7 +1656,7 @@ export default function DealDetail() {
     withSavingAsync(`lender-stage-${lenderId}`, async () => {
       try {
         await updateLenderInDb(lenderId, { 
-          stage: targetStage.id, 
+          ...(targetStage ? { stage: targetStage.id } : {}),
           trackingStatus: newGroup,
           passReason: newGroup === 'passed' ? (passReason || null) : null,
           ...(autoNote ? { notes: autoNote } : {}),
