@@ -76,6 +76,8 @@ function DraggableLenderTile({
   metrics,
   onClick,
   showScore,
+  showScore,
+  scoreConfig,
 }: {
   lender: DealLender;
   dealId?: string;
@@ -87,6 +89,7 @@ function DraggableLenderTile({
   metrics?: LenderMetrics;
   onClick?: () => void;
   showScore?: boolean;
+  scoreConfig?: LenderScoreConfig;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lender.id,
