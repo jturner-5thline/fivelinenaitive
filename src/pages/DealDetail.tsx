@@ -3721,17 +3721,17 @@ export default function DealDetail() {
                                     </AlertDialog>
                                     <div className="flex flex-col min-w-0">
                                       <div className="flex items-center gap-1.5">
+                                        {lender.score != null && (
+                                          <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 border-primary/30 text-primary shrink-0">
+                                            {lender.score}
+                                          </Badge>
+                                        )}
                                         <button 
                                           className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
                                           onClick={() => setSelectedLenderName(lender.name)}
                                         >
                                           {lender.name}
                                         </button>
-                                        {lender.score != null && (
-                                          <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 border-primary/30 text-primary shrink-0">
-                                            {lender.score}
-                                          </Badge>
-                                        )}
                                       </div>
                                       {lender.trackingStatus !== 'passed' && (() => {
                                         const timeInfo = getLenderTimeInfo(lender.updatedAt);
@@ -4152,17 +4152,17 @@ export default function DealDetail() {
                                             </AlertDialog>
                                             <div className="flex flex-col min-w-0">
                                               <div className="flex items-center gap-1.5">
+                                                {lender.score != null && (
+                                                  <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 border-primary/30 text-primary shrink-0">
+                                                    {lender.score}
+                                                  </Badge>
+                                                )}
                                                 <button 
                                                   className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
                                                   onClick={() => setSelectedLenderName(lender.name)}
                                                 >
                                                   {lender.name}
                                                 </button>
-                                                {lender.score != null && (
-                                                  <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 border-primary/30 text-primary shrink-0">
-                                                    {lender.score}
-                                                  </Badge>
-                                                )}
                                               </div>
                                               {lender.trackingStatus !== 'passed' && (() => {
                                                 const timeInfo = getLenderTimeInfo(lender.updatedAt);
