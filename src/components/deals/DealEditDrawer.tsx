@@ -72,6 +72,14 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingNotes } = useStatusNotes(deal.id);
   const [newStatusNote, setNewStatusNote] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+
+  // Pre-fill with the latest status note text
+  useEffect(() => {
+    if (!hasUserEdited && statusNotes.length > 0) {
+      setNewStatusNote(htmlToPlainText(statusNotes[0].note));
+    }
+  }, [statusNotes, hasUserEdited]);
 
   const [formData, setFormData] = useState({
     company: deal.company,
