@@ -155,6 +155,7 @@ function DroppableStageColumn({
                 key={deal.id}
                 deal={deal}
                 onStatusChange={onStatusChange}
+                onStageChange={onStageChange}
                 onMarkReviewed={onMarkReviewed}
                 onToggleFlag={onToggleFlag}
                 flexEngagement={flexEngagementScores?.get(deal.id)}
