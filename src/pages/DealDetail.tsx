@@ -3682,6 +3682,23 @@ export default function DealDetail() {
                                       </Badge>
                                     )}
                                     <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <button className="opacity-0 group-hover/lender:opacity-100 transition-opacity text-muted-foreground hover:text-destructive -ml-0.5 shrink-0">
+                                          <X className="h-3.5 w-3.5" />
+                                        </button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Remove lender</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Are you sure you want to remove {lender.name} from this deal?
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => removeLenderFromDeal(lender.id)}>Remove</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
                                     </AlertDialog>
                                     <div className="flex flex-col min-w-0">
                                       <button 
@@ -4068,6 +4085,23 @@ export default function DealDetail() {
                                               </Badge>
                                             )}
                                             <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                <button className="opacity-0 group-hover/lender:opacity-100 transition-opacity text-muted-foreground hover:text-destructive -ml-0.5 shrink-0">
+                                                  <X className="h-3.5 w-3.5" />
+                                                </button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                  <AlertDialogTitle>Remove lender</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                    Are you sure you want to remove {lender.name} from this deal?
+                                                  </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                  <AlertDialogAction onClick={() => removeLenderFromDeal(lender.id)}>Remove</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                              </AlertDialogContent>
                                             </AlertDialog>
                                             <div className="flex flex-col min-w-0">
                                               <button 
