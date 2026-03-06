@@ -39,9 +39,10 @@ interface DealCardProps {
   flexEngagement?: DealFlexEngagement;
   flexNotificationCount?: number;
   compact?: boolean;
+  onStageChange?: (dealId: string, newStage: string) => void;
 }
 
-export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false }: DealCardProps) {
+export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, onStageChange }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
