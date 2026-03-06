@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Flag, ChevronDown, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -70,6 +71,9 @@ function SortableMilestoneItem({ milestone, index, previousMilestone, onEdit, on
   };
 
   const getTimingDescription = () => {
+    if (milestone.daysFromCreation === null) {
+      return 'No due date';
+    }
     if (milestone.timingType === 'after_previous') {
       if (index === 0) {
         return `${milestone.daysFromCreation} days after deal creation (first milestone)`;
@@ -160,7 +164,8 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
-  const [daysFromCreation, setDaysFromCreation] = useState(7);
+  const [daysFromCreation, setDaysFromCreation] = useState<number | null>(7);
+  const [hasDate, setHasDate] = useState(true);
   const [timingType, setTimingType] = useState<MilestoneTimingType>('from_creation');
 
   const sensors = useSensors(
@@ -177,6 +182,7 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
     setEditingId(null);
     setTitle('');
     setDaysFromCreation(7);
+    setHasDate(true);
     setTimingType('from_creation');
     setIsDialogOpen(true);
   };
@@ -187,6 +193,7 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
       setEditingId(id);
       setTitle(milestone.title);
       setDaysFromCreation(milestone.daysFromCreation);
+      setHasDate(milestone.daysFromCreation !== null);
       setTimingType(milestone.timingType || 'from_creation');
       setIsDialogOpen(true);
     }
@@ -198,22 +205,25 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
       return;
     }
 
-    if (daysFromCreation < 0) {
+    const finalDays = hasDate ? (daysFromCreation ?? 0) : null;
+
+    if (hasDate && finalDays !== null && finalDays < 0) {
       toast({ title: 'Error', description: 'Days must be 0 or greater', variant: 'destructive' });
       return;
     }
 
     if (editingId) {
-      updateDefaultMilestone(editingId, { title: title.trim(), daysFromCreation, timingType });
+      updateDefaultMilestone(editingId, { title: title.trim(), daysFromCreation: finalDays, timingType });
       toast({ title: 'Default milestone updated' });
     } else {
-      addDefaultMilestone({ title: title.trim(), daysFromCreation, timingType });
+      addDefaultMilestone({ title: title.trim(), daysFromCreation: finalDays, timingType });
       toast({ title: 'Default milestone added' });
     }
 
     setIsDialogOpen(false);
     setTitle('');
     setDaysFromCreation(7);
+    setHasDate(true);
     setTimingType('from_creation');
     setEditingId(null);
   };
@@ -333,21 +343,40 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
               </RadioGroup>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="daysFromCreation">
-                {timingType === 'from_creation' ? 'Days After Deal Creation' : 'Days After Previous Milestone'} *
-              </Label>
-              <Input
-                id="daysFromCreation"
-                type="number"
-                min={0}
-                value={daysFromCreation}
-                onChange={(e) => setDaysFromCreation(parseInt(e.target.value) || 0)}
-              />
-              <p className="text-xs text-muted-foreground">
-                {timingType === 'from_creation' 
-                  ? 'The due date will be set this many days after the deal is created'
-                  : 'The due date will be set this many days after the previous milestone is marked complete'}
-              </p>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="hasDate"
+                  checked={hasDate}
+                  onCheckedChange={(checked) => setHasDate(checked === true)}
+                />
+                <Label htmlFor="hasDate" className="font-normal cursor-pointer">
+                  Set a due date for this milestone
+                </Label>
+              </div>
+              {hasDate && (
+                <>
+                  <Label htmlFor="daysFromCreation">
+                    {timingType === 'from_creation' ? 'Days After Deal Creation' : 'Days After Previous Milestone'}
+                  </Label>
+                  <Input
+                    id="daysFromCreation"
+                    type="number"
+                    min={0}
+                    value={daysFromCreation ?? 0}
+                    onChange={(e) => setDaysFromCreation(parseInt(e.target.value) || 0)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {timingType === 'from_creation' 
+                      ? 'The due date will be set this many days after the deal is created'
+                      : 'The due date will be set this many days after the previous milestone is marked complete'}
+                  </p>
+                </>
+              )}
+              {!hasDate && (
+                <p className="text-xs text-muted-foreground">
+                  This milestone will be added without a due date
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
