@@ -363,70 +363,89 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
     );
   }
 
+  // Wrap settings components in admin override if company data is available
+  const renderWithOverride = (children: React.ReactNode) => {
+    if (!companyData) return <Skeleton className="h-12 w-full" />;
+    return (
+      <AdminCompanyOverrideProvider company={companyData}>
+        {children}
+      </AdminCompanyOverrideProvider>
+    );
+  };
+
   return (
     <ScrollArea className="max-h-[600px]">
       <div className="space-y-1 pr-4">
-        {/* Company Settings */}
+        {/* Company Settings - Using actual settings UI components */}
         <SectionCollapsible title="Company Settings" icon={Settings} defaultOpen>
-          {!settings && (
-            <p className="text-xs text-muted-foreground italic mb-3">No settings row yet — editing any field will auto-create it.</p>
-          )}
-          <div className="space-y-4">
-            <ConfigBlock
-              label="Disclaimer"
-              data={settings?.disclaimer ?? null}
-              onEdit={editable ? (v) => handleUpdateDisclaimerText(v) : undefined}
-            />
-            <ConfigBlock
-              label="Deal Stages"
-              data={settings?.deal_stages ?? null}
-              onEdit={editable ? (v) => handleUpdateSettings('deal_stages', v) : undefined}
-            />
-            <ConfigBlock
-              label="Deal Info Layout"
-              data={settings?.deal_info_layout ?? null}
-              onEdit={editable ? (v) => handleUpdateSettings('deal_info_layout', v) : undefined}
-            />
-            <ConfigBlock
-              label="Deal Panel Layout"
-              data={settings?.deal_panel_layout ?? null}
-              onEdit={editable ? (v) => handleUpdateSettings('deal_panel_layout', v) : undefined}
-            />
-            <ConfigBlock
-              label="Deals Widgets Config"
-              data={settings?.deals_widgets_config ?? null}
-              onEdit={editable ? (v) => handleUpdateSettings('deals_widgets_config', v) : undefined}
-            />
-            <ConfigBlock
-              label="Deals Special Widgets"
-              data={settings?.deals_special_widgets ?? null}
-              onEdit={editable ? (v) => handleUpdateSettings('deals_special_widgets', v) : undefined}
-            />
-            <ConfigBlock
-              label="Lender Matching Config"
-              data={settings?.lender_matching_config ?? null}
-              onEdit={editable ? (v) => handleUpdateSettings('lender_matching_config', v) : undefined}
-            />
-            <ConfigBlock
-              label="FP&A Dashboard Config"
-              data={settings?.fpa_dashboard_config ?? null}
-              onEdit={editable ? (v) => handleUpdateSettings('fpa_dashboard_config', v) : undefined}
-            />
-            <ConfigBlock
-              label="Data Room Default Checklists"
-              data={settings?.data_room_default_checklists ?? null}
-              onEdit={editable ? (v) => handleUpdateSettings('data_room_default_checklists', v) : undefined}
-            />
-            <ConfigBlock
-              label="Permission Settings"
-              data={settings?.permission_settings ?? null}
-              onEdit={editable ? (v) => handleUpdateSettings('permission_settings', v) : undefined}
-            />
-            <ConfigBlock
-              label="Default Deal Stage ID"
-              data={settings?.default_deal_stage_id ?? null}
-            />
-          </div>
+          <Tabs defaultValue="settings-ui" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="settings-ui" className="text-xs">Settings</TabsTrigger>
+              <TabsTrigger value="advanced-json" className="text-xs">Advanced (JSON)</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="settings-ui" className="space-y-4 m-0">
+              {renderWithOverride(
+                <div className="space-y-4">
+                  <DisclaimerSettings isAdmin={editable} />
+                  <DealStagesSettings isAdmin={editable} />
+                  <LenderScoreSettings isAdmin={editable} />
+                  <GammaTemplatesSettings isAdmin={editable} />
+                  <DefaultChecklistSettings isAdmin={editable} />
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="advanced-json" className="space-y-4 m-0">
+              {!settings && (
+                <p className="text-xs text-muted-foreground italic mb-3">No settings row yet — editing any field will auto-create it.</p>
+              )}
+              <ConfigBlock
+                label="Deal Info Layout"
+                data={settings?.deal_info_layout ?? null}
+                onEdit={editable ? (v) => handleUpdateSettings('deal_info_layout', v) : undefined}
+              />
+              <ConfigBlock
+                label="Deal Panel Layout"
+                data={settings?.deal_panel_layout ?? null}
+                onEdit={editable ? (v) => handleUpdateSettings('deal_panel_layout', v) : undefined}
+              />
+              <ConfigBlock
+                label="Deals Widgets Config"
+                data={settings?.deals_widgets_config ?? null}
+                onEdit={editable ? (v) => handleUpdateSettings('deals_widgets_config', v) : undefined}
+              />
+              <ConfigBlock
+                label="Deals Special Widgets"
+                data={settings?.deals_special_widgets ?? null}
+                onEdit={editable ? (v) => handleUpdateSettings('deals_special_widgets', v) : undefined}
+              />
+              <ConfigBlock
+                label="Lender Matching Config"
+                data={settings?.lender_matching_config ?? null}
+                onEdit={editable ? (v) => handleUpdateSettings('lender_matching_config', v) : undefined}
+              />
+              <ConfigBlock
+                label="FP&A Dashboard Config"
+                data={settings?.fpa_dashboard_config ?? null}
+                onEdit={editable ? (v) => handleUpdateSettings('fpa_dashboard_config', v) : undefined}
+              />
+              <ConfigBlock
+                label="Data Room Default Checklists"
+                data={settings?.data_room_default_checklists ?? null}
+                onEdit={editable ? (v) => handleUpdateSettings('data_room_default_checklists', v) : undefined}
+              />
+              <ConfigBlock
+                label="Permission Settings"
+                data={settings?.permission_settings ?? null}
+                onEdit={editable ? (v) => handleUpdateSettings('permission_settings', v) : undefined}
+              />
+              <ConfigBlock
+                label="Default Deal Stage ID"
+                data={settings?.default_deal_stage_id ?? null}
+              />
+            </TabsContent>
+          </Tabs>
         </SectionCollapsible>
 
         {/* Members */}
