@@ -523,7 +523,7 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
       fieldMap[m.external_field_name] = m.native_field_name;
     }
   } else {
-    // Default mappings if none configured
+    // Default mappings if none configured (exclude pipeline_id - it's UUID)
     fieldMap['dealname'] = 'company';
     fieldMap['amount'] = 'value';
     fieldMap['dealstage'] = 'stage';
@@ -533,11 +533,18 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
     fieldMap['deal_manager'] = 'manager';
   }
 
+  // Remove pipeline_id from mappings - HubSpot pipeline IDs are never valid UUIDs
+  const filteredFieldMap: Record<string, string> = {};
+  for (const [k, v] of Object.entries(fieldMap)) {
+    if (v === 'pipeline_id') continue;
+    filteredFieldMap[k] = v;
+  }
+
   // 2. Fetch all HubSpot deals
   const allDeals = await getAllDeals();
   const hubspotDeals = allDeals.results || [];
 
-  console.log(`Processing ${hubspotDeals.length} HubSpot deals with ${Object.keys(fieldMap).length} field mappings`);
+  console.log(`Processing ${hubspotDeals.length} HubSpot deals with ${Object.keys(filteredFieldMap).length} field mappings`);
 
   // 3. Get HubSpot pipelines for stage label resolution
   let stageLabels: Record<string, string> = {};
@@ -552,110 +559,107 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
     console.log('Could not fetch pipeline stages for label resolution');
   }
 
+  // 4. Get existing hubspot_deal_ids to determine insert vs update
+  const { data: existingDeals } = await supabase
+    .from('deals')
+    .select('id, hubspot_deal_id')
+    .not('hubspot_deal_id', 'is', null);
+
+  const existingMap = new Map<string, string>();
+  for (const d of (existingDeals || [])) {
+    if (d.hubspot_deal_id) existingMap.set(d.hubspot_deal_id, d.id);
+  }
+
+  // UUID columns that cannot accept non-UUID strings
+  const uuidColumns = new Set(['pipeline_id', 'company_id']);
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   let created = 0;
   let updated = 0;
   let errors: string[] = [];
 
-  for (const hsDeal of hubspotDeals) {
-    try {
-      const props = hsDeal.properties || {};
-      const hubspotDealId = hsDeal.id;
+  // 5. Process in batches of 20
+  const BATCH_SIZE = 20;
+  for (let i = 0; i < hubspotDeals.length; i += BATCH_SIZE) {
+    const batch = hubspotDeals.slice(i, i + BATCH_SIZE);
+    const toInsert: Record<string, any>[] = [];
+    const toUpdate: { id: string; data: Record<string, any> }[] = [];
 
-      // Map HubSpot fields to native fields
-      const dealData: Record<string, any> = {
-        hubspot_deal_id: hubspotDealId,
-        user_id: userId,
-        status: 'on-track',
-      };
+    for (const hsDeal of batch) {
+      try {
+        const props = hsDeal.properties || {};
+        const hubspotDealId = String(hsDeal.id);
 
-      if (companyId) {
-        dealData.company_id = companyId;
-      }
+        const dealData: Record<string, any> = {
+          hubspot_deal_id: hubspotDealId,
+          user_id: userId,
+          status: 'on-track',
+        };
 
-      // UUID columns that cannot accept non-UUID strings
-      const uuidColumns = new Set(['pipeline_id', 'company_id']);
+        if (companyId) {
+          dealData.company_id = companyId;
+        }
 
-      for (const [hsField, nativeField] of Object.entries(fieldMap)) {
-        let val = props[hsField];
-        if (val === undefined || val === null || val === '') continue;
+        for (const [hsField, nativeField] of Object.entries(filteredFieldMap)) {
+          let val = props[hsField];
+          if (val === undefined || val === null || val === '') continue;
 
-        // Skip UUID columns if value is not a valid UUID
-        if (uuidColumns.has(nativeField)) {
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          if (!uuidRegex.test(val)) {
-            console.log(`Skipping field ${nativeField}: value "${val}" is not a valid UUID`);
-            continue;
+          if (uuidColumns.has(nativeField) && !uuidRegex.test(val)) continue;
+
+          if (nativeField === 'value') {
+            val = parseFloat(val) || 0;
+          } else if (nativeField === 'stage') {
+            val = stageLabels[val] || val;
+          } else if (nativeField === 'closing_date') {
+            val = val.split('T')[0];
+          } else if (nativeField === 'pre_signing_hours' || nativeField === 'post_signing_hours') {
+            val = parseFloat(val) || 0;
           }
+
+          dealData[nativeField] = val;
         }
 
-        // Special handling for certain fields
-        if (nativeField === 'value') {
-          val = parseFloat(val) || 0;
-        } else if (nativeField === 'stage') {
-          // Try to resolve stage label, fallback to raw value
-          val = stageLabels[val] || val;
-        } else if (nativeField === 'closing_date') {
-          // HubSpot sends ISO date, extract just the date part
-          val = val.split('T')[0];
-        } else if (nativeField === 'pre_signing_hours' || nativeField === 'post_signing_hours') {
-          val = parseFloat(val) || 0;
+        if (!dealData.company) {
+          dealData.company = props.dealname || `HubSpot Deal ${hubspotDealId}`;
         }
 
-        dealData[nativeField] = val;
-      }
-
-      // Ensure required field 'company' has a value
-      if (!dealData.company) {
-        dealData.company = props.dealname || `HubSpot Deal ${hubspotDealId}`;
-      }
-
-      // Log first deal for debugging
-      if (created === 0 && updated === 0 && errors.length === 0) {
-        console.log('Sample deal data being inserted:', JSON.stringify(dealData));
-      }
-
-      // Check if deal already exists by hubspot_deal_id
-      const { data: existing } = await supabase
-        .from('deals')
-        .select('id')
-        .eq('hubspot_deal_id', hubspotDealId)
-        .maybeSingle();
-
-      if (existing) {
-        // Update existing deal (remove fields that shouldn't be updated)
-        const { hubspot_deal_id: _hid, user_id: _uid, company_id: _cid, ...updateData } = dealData;
-        updateData.updated_at = new Date().toISOString();
-
-        const { error } = await supabase
-          .from('deals')
-          .update(updateData)
-          .eq('id', existing.id);
-
-        if (error) {
-          console.error(`Insert/update error for deal ${hubspotDealId}:`, JSON.stringify(error));
-          throw new Error(error.message || JSON.stringify(error));
+        const existingId = existingMap.get(hubspotDealId);
+        if (existingId) {
+          const { hubspot_deal_id: _hid, user_id: _uid, company_id: _cid, ...updateData } = dealData;
+          updateData.updated_at = new Date().toISOString();
+          toUpdate.push({ id: existingId, data: updateData });
+        } else {
+          toInsert.push(dealData);
         }
-        updated++;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : JSON.stringify(e);
+        errors.push(`Deal ${hsDeal.id}: ${msg}`);
+      }
+    }
+
+    // Batch insert
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from('deals').insert(toInsert);
+      if (error) {
+        console.error('Batch insert error:', JSON.stringify(error));
+        errors.push(`Batch insert: ${error.message}`);
       } else {
-        // Insert new deal
-        const { error } = await supabase
-          .from('deals')
-          .insert(dealData);
-
-        if (error) {
-          console.error(`Insert error for deal ${hubspotDealId}:`, JSON.stringify(error));
-          throw new Error(error.message || JSON.stringify(error));
-        }
-        created++;
+        created += toInsert.length;
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : JSON.stringify(e);
-      errors.push(`Deal ${hsDeal.id}: ${msg}`);
-      console.error(`Error syncing deal ${hsDeal.id}:`, msg);
+    }
+
+    // Updates must be done individually (different data per row)
+    for (const item of toUpdate) {
+      const { error } = await supabase.from('deals').update(item.data).eq('id', item.id);
+      if (error) {
+        errors.push(`Update ${item.id}: ${error.message}`);
+      } else {
+        updated++;
+      }
     }
   }
 
-  // 4. Record sync run
+  // 6. Record sync run
   const syncResult = {
     integration_config_id: configId,
     status: errors.length === 0 ? 'success' : (created + updated > 0 ? 'success' : 'failure'),
@@ -668,7 +672,6 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
 
   await supabase.from('hubspot_sync_runs').insert(syncResult);
 
-  // Update last_sync_at on config
   await supabase
     .from('hubspot_integration_configs')
     .update({ last_sync_at: new Date().toISOString() })
