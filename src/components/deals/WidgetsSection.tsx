@@ -589,8 +589,12 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
 
       <ActiveDealVolumePopup
         open={volumePopupOpen}
-        onOpenChange={setVolumePopupOpen}
+        onOpenChange={(open) => {
+          setVolumePopupOpen(open);
+          if (!open) setVolumePopupInitialStage(null);
+        }}
         deals={deals}
+        initialStageId={volumePopupInitialStage}
       />
     </div>
   );
