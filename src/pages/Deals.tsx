@@ -303,7 +303,7 @@ export default function Dashboard() {
                   className="opacity-0"
                   style={{ animation: 'fadeInUp 0.4s ease-out 0.1s forwards' }}
                 >
-                  <WidgetsSection deals={allDeals} />
+                  <WidgetsSection deals={deals} />
                 </div>
               )}
             </div>
