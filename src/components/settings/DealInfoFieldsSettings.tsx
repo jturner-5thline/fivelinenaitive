@@ -128,7 +128,7 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
               <div className="flex items-center gap-3">
                 <LayoutList className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <CardTitle className="text-base">Deal Information Fields</CardTitle>
+                  <CardTitle className="text-lg">Deal Information Fields</CardTitle>
                   <CardDescription>Configure which fields appear on the Deal Information card and their order</CardDescription>
                 </div>
               </div>
