@@ -1,0 +1,1 @@
+UPDATE deals SET status = 'archived', updated_at = now() WHERE company ILIKE 'Urotronic%' OR company ILIKE 'Antheia%' OR company ILIKE '%Restore First Health%'
