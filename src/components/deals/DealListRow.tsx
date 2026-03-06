@@ -184,7 +184,7 @@ export function DealListRow({ deal, onStatusChange, onStageChange, onMarkReviewe
           dealId={deal.id}
           stage={deal.stage}
           pipelineId={deal.pipelineId}
-          onStageChange={(id, newStage) => updateDeal(id, { stage: newStage })}
+          onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
         />
       </TableCell>
     ),
