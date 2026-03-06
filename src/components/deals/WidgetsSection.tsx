@@ -386,7 +386,10 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
             {hasActiveDealWidget && (
               <ActiveDealVolumeWidget
                 deals={deals}
-                onOpenBreakdown={() => setVolumePopupOpen(true)}
+                onOpenBreakdown={() => {
+                  setVolumePopupInitialStage(null);
+                  setVolumePopupOpen(true);
+                }}
               />
             )}
             {regularWidgets.map((widget) => (
@@ -406,6 +409,14 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                 No widgets configured. Click the settings icon to add some.
               </div>
             )}
+            {/* Pipeline Funnel Card */}
+            <PipelineFunnelCard
+              deals={deals}
+              onStageClick={(stageId) => {
+                setVolumePopupInitialStage(stageId);
+                setVolumePopupOpen(true);
+              }}
+            />
           </div>
         </SortableContext>
       </DndContext>
