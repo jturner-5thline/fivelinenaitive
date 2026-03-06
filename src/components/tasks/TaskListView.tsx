@@ -1,6 +1,7 @@
 import { KeyboardEvent, RefObject, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { type Task } from '@/hooks/useTasks';
+import { useTaskCollaboratorsBatch } from '@/hooks/useTaskCollaborators';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,6 +31,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import confetti from 'canvas-confetti';
 import { addDays, isToday, isTomorrow, isThisWeek, isPast, format, startOfDay, nextMonday, differenceInDays } from 'date-fns';
+
+const TASK_GRID_COLS = 'grid-cols-[20px_20px_auto_16px_1fr_100px_60px_100px_140px_100px_100px_40px]';
 
 const STATUS_COLORS: Record<string, { label: string; bg: string; dot: string }> = {
   not_started: { label: 'Not Started', bg: '#6b7280', dot: '#6b7280' },
@@ -140,6 +143,8 @@ export function TaskListView({
 }: TaskListViewProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['complete']));
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
+  const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
+  const collaboratorsMap = useTaskCollaboratorsBatch(taskIds);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -197,7 +202,7 @@ export function TaskListView({
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div>
         {/* Column header */}
-        <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_140px_100px_100px_40px] gap-2 items-center px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10"
+        <div className={`grid ${TASK_GRID_COLS} gap-2 items-center px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10`}
           style={{ backgroundColor: '#1a1f2e', color: '#8b92a5', borderBottom: '1px solid #2a2f3e' }}>
           <div />
           <div className="cursor-pointer" onClick={onSelectAll} title="Select all (Ctrl+A)">
@@ -207,6 +212,7 @@ export function TaskListView({
           <div />
           <div>Task name</div>
           <div>Owner</div>
+          <div></div>
           <div>Deal</div>
           <div>Due date</div>
           <div>Priority</div>
@@ -285,6 +291,7 @@ export function TaskListView({
                           onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
                           onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
                           showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
+                          collaborators={collaboratorsMap.get(task.id)}
                         />
                       );
                     })}
@@ -294,11 +301,11 @@ export function TaskListView({
                       <>
                         {isCreating ? (
                           <>
-                            <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_140px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
+                            <div className={`grid ${TASK_GRID_COLS} gap-2 items-center px-4 py-1.5`}>
                               <div /><div /><div className="w-5" /><div />
                               <Input ref={newTaskRef as any} value={newTaskTitle} onChange={e => onNewTaskChange(e.target.value)} onKeyDown={onNewTaskKeyDown}
                                 placeholder="Task name... (Enter to create, Esc to cancel)" className="h-7 text-sm border-[#3b7eff] bg-[#13181f] text-white" autoFocus />
-                              <div /><div /><div /><div /><div /><div />
+                              <div /><div /><div /><div /><div /><div /><div />
                             </div>
                             {taskNameWarning && <p className="text-[11px] px-4 py-1" style={{ color: '#ff4d4d' }}>{taskNameWarning}</p>}
                           </>
@@ -458,7 +465,7 @@ function QuickDatePicker({ value, onChange, todayStr }: { value: string | null; 
 }
 
 // Sortable task row
-function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox }: {
+function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox, collaborators }: {
   task: Task;
   todayStr: string;
   isSelected: boolean;
@@ -471,6 +478,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
   onToggleSelect?: () => void;
   onToggleStar?: () => void;
   showSelectCheckbox?: boolean;
+  collaborators?: { user_id: string; display_name: string; avatar_url: string | null }[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 };
@@ -493,7 +501,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
     <div
       ref={setNodeRef}
       className={cn(
-        'grid grid-cols-[20px_20px_auto_16px_1fr_100px_100px_140px_100px_100px_40px] gap-2 items-center px-4 cursor-pointer transition-colors group',
+        `grid ${TASK_GRID_COLS} gap-2 items-center px-4 cursor-pointer transition-colors group`,
         isSelected && 'bg-[#3b7eff]/10',
         isMultiSelected && 'bg-[#3b7eff]/5',
         isFocused && 'ring-1 ring-inset ring-[#3b7eff]/40',
@@ -569,7 +577,26 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         )}
       </div>
 
-      {/* Deal */}
+      {/* Collaborators */}
+      <div className="flex items-center" onClick={e => e.stopPropagation()}>
+        {collaborators && collaborators.length > 0 ? (
+          <div className="flex items-center -space-x-1.5">
+            {collaborators.slice(0, 3).map(c => (
+              <Avatar key={c.user_id} className="h-4 w-4 ring-1 ring-[#13181f]">
+                {c.avatar_url && <AvatarImage src={c.avatar_url} />}
+                <AvatarFallback className="text-[6px]" style={{ backgroundColor: '#6b7280', color: 'white' }}>
+                  {c.display_name?.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ))}
+            {collaborators.length > 3 && (
+              <span className="text-[9px] ml-1" style={{ color: '#8b92a5' }}>+{collaborators.length - 3}</span>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+
       <div className="min-w-0" onClick={e => e.stopPropagation()}>
         {task.deal_id && task.deal ? (
           <Link to={`/deal/${task.deal_id}`} className="text-[11px] hover:underline truncate block" style={{ color: '#3b7eff' }} onClick={e => e.stopPropagation()}>
