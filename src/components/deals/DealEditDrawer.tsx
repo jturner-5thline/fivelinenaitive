@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Archive, Trash2, ExternalLink, ArrowRightLeft, Plus, Loader2 } from 'lucide-react';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
+import { htmlToPlainText } from '@/lib/htmlToPlainText';
 import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
@@ -281,7 +282,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                   {statusNotes.map((sn) => (
                     <div key={sn.id} className="group flex items-start gap-2 text-xs p-2 rounded bg-muted/40 border border-border/50">
                       <span className="flex-1 text-muted-foreground break-words">
-                        {sn.note}
+                        {htmlToPlainText(sn.note)}
                       </span>
                       <span className="text-[10px] text-muted-foreground/60 shrink-0">
                         {format(new Date(sn.created_at), 'MMM d')}
