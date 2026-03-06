@@ -8,12 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Building2, Users, Activity, TrendingUp, Ban, CheckCircle,
-  DollarSign, Briefcase, Clock, AlertTriangle, Trash2, Archive, ArchiveRestore, Settings
+  DollarSign, Briefcase, Clock, AlertTriangle, Trash2, Archive, ArchiveRestore, Settings,
+  UserPlus, UserMinus
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useCompanyMembers, useCompanyStats, useCompanyActivity, useToggleCompanySuspension, useDeleteCompany, useToggleCompanyArchive } from "@/hooks/useAdminData";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { CompanyConfigOverview } from "./CompanyConfigOverview";
 
 interface Company {
@@ -43,7 +49,12 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
   const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
+  const [addMemberEmail, setAddMemberEmail] = useState("");
+  const [addMemberRole, setAddMemberRole] = useState<string>("member");
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
   const { data: members, isLoading: membersLoading } = useCompanyMembers(company?.id || null);
   const { data: stats, isLoading: statsLoading } = useCompanyStats(company?.id || null);
   const { data: activity, isLoading: activityLoading } = useCompanyActivity(company?.id || null);
@@ -95,6 +106,60 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
 
   const handleUnarchive = () => {
     toggleArchive.mutate({ companyId: company.id, archive: false });
+  };
+
+  const handleAddMember = async () => {
+    if (!company || !addMemberEmail.trim()) return;
+    setIsAddingMember(true);
+    try {
+      const { error } = await supabase.rpc('admin_add_company_member' as any, {
+        _company_id: company.id,
+        _user_email: addMemberEmail.trim(),
+        _role: addMemberRole,
+      });
+      if (error) throw error;
+      toast.success(`Added ${addMemberEmail.trim()} to ${company.name}`);
+      setAddMemberEmail("");
+      queryClient.invalidateQueries({ queryKey: ['admin-company-members'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add member');
+    } finally {
+      setIsAddingMember(false);
+    }
+  };
+
+  const handleChangeRole = async (userId: string, newRole: string) => {
+    if (!company) return;
+    try {
+      const { error } = await supabase.rpc('admin_update_company_member_role' as any, {
+        _company_id: company.id,
+        _user_id: userId,
+        _new_role: newRole,
+      });
+      if (error) throw error;
+      toast.success('Role updated');
+      queryClient.invalidateQueries({ queryKey: ['admin-company-members'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update role');
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!company) return;
+    setRemovingMemberId(userId);
+    try {
+      const { error } = await supabase.rpc('admin_remove_company_member' as any, {
+        _company_id: company.id,
+        _user_id: userId,
+      });
+      if (error) throw error;
+      toast.success('Member removed');
+      queryClient.invalidateQueries({ queryKey: ['admin-company-members'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove member');
+    } finally {
+      setRemovingMemberId(null);
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -236,7 +301,34 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
               )}
             </TabsContent>
 
-            <TabsContent value="members" className="m-0">
+            <TabsContent value="members" className="m-0 space-y-4">
+              {/* Add member form */}
+              <div className="flex items-end gap-2 p-3 rounded-lg border border-dashed bg-muted/30">
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Add Member by Email</label>
+                  <Input
+                    placeholder="user@company.com"
+                    value={addMemberEmail}
+                    onChange={(e) => setAddMemberEmail(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <Select value={addMemberRole} onValueChange={setAddMemberRole}>
+                  <SelectTrigger className="w-[110px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="owner">Owner</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" className="h-9 gap-1" onClick={handleAddMember} disabled={isAddingMember || !addMemberEmail.trim()}>
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Add
+                </Button>
+              </div>
+
               {membersLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -262,9 +354,30 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
                           <p className="text-sm text-muted-foreground">{member.email}</p>
                         </div>
                       </div>
-                      <Badge variant={member.role === "owner" ? "default" : "secondary"}>
-                        {member.role}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={member.role}
+                          onValueChange={(newRole) => handleChangeRole(member.user_id, newRole)}
+                        >
+                          <SelectTrigger className="w-[100px] h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="member">Member</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="owner">Owner</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleRemoveMember(member.user_id)}
+                          disabled={removingMemberId === member.user_id}
+                        >
+                          <UserMinus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

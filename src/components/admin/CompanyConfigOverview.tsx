@@ -11,8 +11,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Textarea } from '@/components/ui/textarea';
 import {
   Settings, Users, Newspaper, BarChart3, Plug, ChevronDown, ChevronRight,
-  Save, RotateCcw, Pencil,
+  Save, RotateCcw, Pencil, Trash2, Plus,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -197,21 +198,117 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
   });
 
   const handleUpdateSettings = async (field: string, rawValue: string) => {
-    if (!settings) return;
     try {
-      const parsed = JSON.parse(rawValue);
-      const { error } = await supabase
-        .from('company_settings')
-        .update({ [field]: parsed as Json })
-        .eq('company_id', companyId);
-
-      if (error) throw error;
+      if (!settings) {
+        // Create settings first
+        const parsed = JSON.parse(rawValue);
+        const { error } = await supabase
+          .from('company_settings')
+          .insert({ company_id: companyId, [field]: parsed as Json });
+        if (error) throw error;
+      } else {
+        const parsed = JSON.parse(rawValue);
+        const { error } = await supabase
+          .from('company_settings')
+          .update({ [field]: parsed as Json })
+          .eq('company_id', companyId);
+        if (error) throw error;
+      }
 
       logAction?.('update_config', 'settings', companyId, { field });
       queryClient.invalidateQueries({ queryKey: ['company-config-settings', companyId] });
       toast.success(`Updated ${field.replace(/_/g, ' ')}`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to update');
+    }
+  };
+
+  const handleUpdateDisclaimerText = async (value: string) => {
+    try {
+      if (!settings) {
+        const { error } = await supabase
+          .from('company_settings')
+          .insert({ company_id: companyId, disclaimer: value });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('company_settings')
+          .update({ disclaimer: value })
+          .eq('company_id', companyId);
+        if (error) throw error;
+      }
+      queryClient.invalidateQueries({ queryKey: ['company-config-settings', companyId] });
+      toast.success('Disclaimer updated');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update disclaimer');
+    }
+  };
+
+  const handleInitializeSettings = async () => {
+    try {
+      const { error } = await supabase
+        .from('company_settings')
+        .insert({ company_id: companyId });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['company-config-settings', companyId] });
+      toast.success('Company settings initialized');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to initialize');
+    }
+  };
+
+  const handleDeleteMetric = async (metricId: string) => {
+    try {
+      const { error } = await (supabase.from('custom_metrics') as any).delete().eq('id', metricId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['company-config-metrics', companyId] });
+      toast.success('Metric deleted');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete metric');
+    }
+  };
+
+  const handleUpdateClaapConfig = async (field: string, rawValue: string) => {
+    if (!claapConfig) return;
+    try {
+      const parsed = JSON.parse(rawValue);
+      const { error } = await supabase
+        .from('claap_integration_config')
+        .update({ [field]: parsed })
+        .eq('company_id', companyId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['company-config-claap', companyId] });
+      toast.success(`Updated Claap ${field.replace(/_/g, ' ')}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update');
+    }
+  };
+
+  const handleToggleClaap = async () => {
+    if (!claapConfig) {
+      // Create config
+      try {
+        const { error } = await supabase
+          .from('claap_integration_config')
+          .insert({ company_id: companyId, is_active: true });
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ['company-config-claap', companyId] });
+        toast.success('Claap integration enabled');
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to enable');
+      }
+    } else {
+      try {
+        const { error } = await supabase
+          .from('claap_integration_config')
+          .update({ is_active: !claapConfig.is_active })
+          .eq('company_id', companyId);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ['company-config-claap', companyId] });
+        toast.success(claapConfig.is_active ? 'Claap disabled' : 'Claap enabled');
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to toggle');
+      }
     }
   };
 
@@ -234,6 +331,11 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
         <SectionCollapsible title="Company Settings" icon={Settings} defaultOpen>
           {settings ? (
             <div className="space-y-4">
+              <ConfigBlock
+                label="Disclaimer"
+                data={settings.disclaimer}
+                onEdit={editable ? (v) => handleUpdateDisclaimerText(v) : undefined}
+              />
               <ConfigBlock
                 label="Deal Stages"
                 data={settings.deal_stages}
@@ -285,7 +387,14 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
               />
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground italic">No company settings configured</p>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground italic">No company settings configured</p>
+              {editable && (
+                <Button size="sm" variant="outline" className="gap-1" onClick={handleInitializeSettings}>
+                  <Plus className="h-3 w-3" /> Initialize Settings
+                </Button>
+              )}
+            </div>
           )}
         </SectionCollapsible>
 
@@ -315,17 +424,40 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span>Claap</span>
-              <Badge variant={claapConfig?.is_active ? 'default' : 'secondary'} className="text-xs">
-                {claapConfig ? (claapConfig.is_active ? 'Active' : 'Inactive') : 'Not configured'}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant={claapConfig?.is_active ? 'default' : 'secondary'} className="text-xs">
+                  {claapConfig ? (claapConfig.is_active ? 'Active' : 'Inactive') : 'Not configured'}
+                </Badge>
+                {editable && (
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={handleToggleClaap}>
+                    {claapConfig?.is_active ? 'Disable' : 'Enable'}
+                  </Button>
+                )}
+              </div>
             </div>
             {claapConfig && (
-              <ConfigBlock label="Claap Config" data={{
-                internal_domains: claapConfig.internal_domains,
-                min_duration_seconds: claapConfig.min_duration_seconds,
-                task_expiry_days: claapConfig.task_expiry_days,
-                excluded_title_patterns: claapConfig.excluded_title_patterns,
-              }} />
+              <div className="space-y-2">
+                <ConfigBlock
+                  label="Internal Domains"
+                  data={claapConfig.internal_domains}
+                  onEdit={editable ? (v) => handleUpdateClaapConfig('internal_domains', v) : undefined}
+                />
+                <ConfigBlock
+                  label="Min Duration (seconds)"
+                  data={claapConfig.min_duration_seconds}
+                  onEdit={editable ? (v) => handleUpdateClaapConfig('min_duration_seconds', v) : undefined}
+                />
+                <ConfigBlock
+                  label="Task Expiry (days)"
+                  data={claapConfig.task_expiry_days}
+                  onEdit={editable ? (v) => handleUpdateClaapConfig('task_expiry_days', v) : undefined}
+                />
+                <ConfigBlock
+                  label="Excluded Title Patterns"
+                  data={claapConfig.excluded_title_patterns}
+                  onEdit={editable ? (v) => handleUpdateClaapConfig('excluded_title_patterns', v) : undefined}
+                />
+              </div>
             )}
             <div className="flex items-center justify-between text-sm">
               <span>QuickBooks</span>
@@ -373,9 +505,37 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
             <div className="space-y-2">
               {(customMetrics as any[]).map((m) => (
                 <div key={m.id} className="text-sm border rounded-md p-2">
-                  <div className="font-medium">{m.name}</div>
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">{m.name}</div>
+                    {editable && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteMetric(m.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                   {m.description && <p className="text-xs text-muted-foreground">{m.description}</p>}
-                  <ConfigBlock label="Formula" data={m.formula} />
+                  <ConfigBlock
+                    label="Formula"
+                    data={m.formula}
+                    onEdit={editable ? async (v) => {
+                      try {
+                        const parsed = JSON.parse(v);
+                        const { error } = await (supabase.from('custom_metrics') as any)
+                          .update({ formula: parsed })
+                          .eq('id', m.id);
+                        if (error) throw error;
+                        queryClient.invalidateQueries({ queryKey: ['company-config-metrics', companyId] });
+                        toast.success('Formula updated');
+                      } catch (err: any) {
+                        toast.error(err.message || 'Failed to update formula');
+                      }
+                    } : undefined}
+                  />
                 </div>
               ))}
             </div>

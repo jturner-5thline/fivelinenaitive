@@ -9959,6 +9959,14 @@ export type Database = {
       }
     }
     Functions: {
+      admin_add_company_member: {
+        Args: {
+          _company_id: string
+          _role?: Database["public"]["Enums"]["company_role"]
+          _user_email: string
+        }
+        Returns: undefined
+      }
       admin_approve_user: { Args: { _user_id: string }; Returns: undefined }
       admin_archive_company: {
         Args: { _archive: boolean; _company_id: string; _reason?: string }
@@ -10090,6 +10098,10 @@ export type Database = {
           waitlist_count: number
         }[]
       }
+      admin_remove_company_member: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: undefined
+      }
       admin_revoke_approval: { Args: { _user_id: string }; Returns: undefined }
       admin_toggle_company_suspension: {
         Args: { _company_id: string; _reason?: string; _suspend: boolean }
@@ -10097,6 +10109,14 @@ export type Database = {
       }
       admin_toggle_user_suspension: {
         Args: { _reason?: string; _suspend: boolean; _user_id: string }
+        Returns: undefined
+      }
+      admin_update_company_member_role: {
+        Args: {
+          _company_id: string
+          _new_role: Database["public"]["Enums"]["company_role"]
+          _user_id: string
+        }
         Returns: undefined
       }
       approve_join_request: {
