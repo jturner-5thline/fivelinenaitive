@@ -2,7 +2,7 @@ import { createContext, useContext, ReactNode, useMemo } from 'react';
 import { useDealsDatabase } from '@/hooks/useDealsDatabase';
 import { Deal, DealLender, DealStatus, DealStage, EngagementType } from '@/types/deal';
 
-export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status';
+export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status' | 'stage';
 export type SortDirection = 'asc' | 'desc';
 
 export interface DealFilters {
