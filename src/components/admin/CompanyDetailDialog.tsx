@@ -112,7 +112,7 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
     if (!company || !addMemberEmail.trim()) return;
     setIsAddingMember(true);
     try {
-      const { error } = await supabase.rpc('admin_add_company_member', {
+      const { error } = await supabase.rpc('admin_add_company_member' as any, {
         _company_id: company.id,
         _user_email: addMemberEmail.trim(),
         _role: addMemberRole,
@@ -131,7 +131,7 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
   const handleChangeRole = async (userId: string, newRole: string) => {
     if (!company) return;
     try {
-      const { error } = await supabase.rpc('admin_update_company_member_role', {
+      const { error } = await supabase.rpc('admin_update_company_member_role' as any, {
         _company_id: company.id,
         _user_id: userId,
         _new_role: newRole,
