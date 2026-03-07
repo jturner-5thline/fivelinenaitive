@@ -11,6 +11,7 @@ import { useFlexChangedFields } from '@/hooks/useFlexChangedFields';
 import { useDealOwnership } from '@/hooks/useDealOwnership';
 import { useDealSpaceAutoFill, ExtractedWriteUpField } from '@/hooks/useDealSpaceAutoFill';
 import { useDealSpaceMemo, MEMO_SECTIONS } from '@/hooks/useDealSpaceMemo';
+import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -262,6 +263,10 @@ type ViewMode = 'tabs' | 'long';
 
 export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
   const queryClient = useQueryClient();
+  const { hasPageAccess } = usePageAccessFlags();
+  const canPushToFlex = hasPageAccess('flex_push');
+  const canAutoFill = hasPageAccess('autofill_deal_space');
+  const canGenerateMemo = hasPageAccess('generate_ai_memo');
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [isRepublishing, setIsRepublishing] = useState(false);
@@ -969,12 +974,14 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         <div className="flex items-center justify-between gap-4 min-w-0">
           <div className="min-w-0 flex items-center gap-3">
             <CardTitle>Deal Write Up</CardTitle>
+            {canPushToFlex && (
             <Badge 
               variant={isPublishedOnFlex ? 'green' : data.status === 'Closed' ? 'gray' : 'amber'}
               className="shrink-0"
             >
               {isPublishedOnFlex ? 'Published' : data.status === 'Closed' ? 'Closed' : 'Draft'}
             </Badge>
+            )}
             <CardDescription className="hidden sm:block">Create, edit, and manage deal listings</CardDescription>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -986,20 +993,21 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               <Eye className="h-4 w-4 mr-2" />
               Preview
             </Button>
-            <FlexSyncStatusBadge dealId={dealId} />
+            {canPushToFlex && <FlexSyncStatusBadge dealId={dealId} />}
             <AutoSaveIndicator status={autoSaveStatus} />
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6 min-w-0">
         {/* FLEx Sync History */}
-        <FlexSyncHistory dealId={dealId} />
+        {canPushToFlex && <FlexSyncHistory dealId={dealId} />}
         
         {/* Edit Deal Section with Tabs or Long View */}
         <div className="border rounded-lg p-6 space-y-6 min-w-0">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold">Edit Deal</h3>
+              {canAutoFill && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1038,6 +1046,8 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <TooltipContent>Extract data from uploaded Deal Space documents</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              )}
+              {canGenerateMemo && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1064,6 +1074,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <TooltipContent>Generate a structured lender-ready memo from all deal data</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              )}
               {autoFilledFields.size > 0 && (
                 <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20">
                   <Sparkles className="h-3 w-3" />
@@ -1187,7 +1198,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               >
                 {isSaving || autoSaveStatus === 'saving' ? 'Saving...' : 'Save Now'}
               </Button>
-              {isPublishedOnFlex ? (
+              {canPushToFlex && (isPublishedOnFlex ? (
                 <>
                   <Button 
                     variant="default"
@@ -1261,7 +1272,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                     </>
                   )}
                 </Button>
-              )}
+              ))}
             </div>
           </div>
         </div>
