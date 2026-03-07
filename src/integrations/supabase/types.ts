@@ -2245,6 +2245,9 @@ export type Database = {
           deal_id: string
           id: string
           note: string
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
           user_id: string | null
         }
         Insert: {
@@ -2252,6 +2255,9 @@ export type Database = {
           deal_id: string
           id?: string
           note: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
           user_id?: string | null
         }
         Update: {
@@ -2259,6 +2265,9 @@ export type Database = {
           deal_id?: string
           id?: string
           note?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
           user_id?: string | null
         }
         Relationships: [
