@@ -77,9 +77,17 @@ export default function Dashboard() {
     newStageLabel: string;
   } | null>(null);
 
-  const [groupBy, setGroupBy] = useState<string | null>('status');
+  const { views: savedViews, saveView, deleteView, setDefault, getDefaultView } = useDealSavedViews();
+  const defaultView = getDefaultView();
+
+  const [groupBy, setGroupBy] = useState<string | null>(defaultView?.config.groupBy ?? 'status');
   const [showMilestones, setShowMilestones] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline' | 'timeline'>(() => {
+    if (defaultView) {
+      const m = defaultView.config.viewMode;
+      if (m === 'timeline' && !is5thLine) return 'grid';
+      return m;
+    }
     const stored = localStorage.getItem('deals-view-mode');
     if (stored === 'timeline' && !is5thLine) return 'grid';
     return (stored === 'grid' || stored === 'list' || stored === 'pipeline' || stored === 'timeline') ? stored : 'grid';
@@ -109,7 +117,37 @@ export default function Dashboard() {
     updateDealStatus,
     updateFilters,
     toggleSort,
-  } = useDeals();
+    setFilters,
+    setSortField,
+    setSortDirection,
+  } = useDeals(defaultView ? {
+    initialFilters: defaultView.config.filters,
+    initialSortField: defaultView.config.sortField,
+    initialSortDirection: defaultView.config.sortDirection,
+  } : undefined);
+
+  // Check if any filters are active (different from defaults)
+  const hasActiveFilters = JSON.stringify(filters) !== JSON.stringify(DEFAULT_DEAL_FILTERS) 
+    || sortField !== 'updatedAt' || sortDirection !== 'desc';
+
+  const handleSaveView = (name: string) => {
+    const config: DealViewConfig = {
+      filters,
+      sortField,
+      sortDirection,
+      viewMode,
+      groupBy,
+    };
+    saveView(name, config);
+  };
+
+  const handleRestoreView = (view: typeof savedViews[0]) => {
+    setFilters(view.config.filters);
+    setSortField(view.config.sortField);
+    setSortDirection(view.config.sortDirection);
+    setViewMode(view.config.viewMode);
+    setGroupBy(view.config.groupBy);
+  };
 
   // Filter deals by active pipeline (include unassigned deals in the default pipeline)
   const activePipelineIsDefault = activePipelineId && pipelines.find(p => p.id === activePipelineId)?.isDefault;
