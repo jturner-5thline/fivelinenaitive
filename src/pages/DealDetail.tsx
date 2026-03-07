@@ -79,6 +79,7 @@ import { DealPulseDashboard } from '@/components/deal/DealPulseDashboard';
 import { ProactiveAlertBar } from '@/components/deal/ProactiveAlertBar';
 import { DealCommandPalette } from '@/components/deal/DealCommandPalette';
 import { UnifiedTimeline } from '@/components/deal/UnifiedTimeline';
+import { DealFlagLog } from '@/components/deal/DealFlagLog';
 import { DealBenchmarkPanel } from '@/components/deal/DealBenchmarkPanel';
 import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
 import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
@@ -625,7 +626,6 @@ export default function DealDetail() {
         return lenders;
     }
   }, [deal?.lenders, lenderSort, configuredStages]);
-
 
 
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
@@ -3327,6 +3327,9 @@ export default function DealDetail() {
                     </Card>
                   </div>
                   )}
+
+                  {/* Flag Log */}
+                  <DealFlagLog dealId={deal.id} />
 
                 </TabsContent>
 
