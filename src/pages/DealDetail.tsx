@@ -479,6 +479,8 @@ export default function DealDetail() {
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const { pipelines } = usePipelineContext();
   const { hasAccess: hasLenderMatchingAccess } = useFeatureAccess('lender_matching');
+  const { hasPageAccess } = usePageAccessFlags();
+  const hasDealSpaceAccess = hasPageAccess('deal_space');
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading } = useDealsContext();
   const { activities: activityLogs, logActivity, isLoading: isLoadingActivities } = useActivityLog(id);
