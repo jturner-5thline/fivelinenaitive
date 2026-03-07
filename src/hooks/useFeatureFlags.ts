@@ -172,7 +172,7 @@ export const usePageAccessFlags = () => {
       (data ?? []).forEach(row => { map[row.feature_key] = row.is_enabled; });
       return map;
     },
-    enabled: !!user?.id && !is5thLineUser, // 5thLine users bypass company overrides
+    enabled: !!user?.id,
     staleTime: 60_000,
   });
 
@@ -182,8 +182,8 @@ export const usePageAccessFlags = () => {
     // Demo account cannot access finance page
     if (isDemoAccount && pageName === 'finance') return false;
 
-    // Check company-level override first (non-5thLine users only)
-    if (!is5thLineUser && companyOverrides) {
+    // Check company-level override (applies to all users including 5thLine)
+    if (companyOverrides) {
       const featureKey = pageName.startsWith('page_') ? pageName : `page_${pageName}`;
       // Also check non-page feature keys directly (e.g. chat_widget, copilot_widget)
       const overrideKey = featureKey in companyOverrides ? featureKey : pageName;
