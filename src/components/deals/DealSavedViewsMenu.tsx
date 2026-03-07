@@ -43,24 +43,15 @@ export function DealSavedViewsMenu({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 shrink-0">
-                <Bookmark className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Views</span>
-                {views.length > 0 && (
-                  <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[9px]">
-                    {views.length}
-                  </Badge>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Save & restore filter/sort views</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 shrink-0">
+          <Bookmark className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Views</span>
+          {views.length > 0 && (
+            <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[9px]">
+              {views.length}
+            </Badge>
+          )}
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-0" align="end">
         <div className="p-3 border-b space-y-2">
