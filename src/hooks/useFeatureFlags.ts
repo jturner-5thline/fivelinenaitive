@@ -144,24 +144,49 @@ export const usePageAccessFlags = () => {
   
   const isJames = user?.email === 'jturner@5thline.co';
 
-  // Fetch company-level overrides for the current user's company
-  const { data: companyOverrides, isLoading: overridesLoading } = useQuery({
-    queryKey: ['company-feature-overrides-mine', user?.id],
+  // Get user's company ID (or support session target company)
+  const { data: effectiveCompanyId } = useQuery({
+    queryKey: ['effective-company-id', user?.id],
     queryFn: async () => {
-      // Get user's company first
-      const { data: membership } = await supabase
-        .from('company_members')
-        .select('company_id')
-        .eq('user_id', user!.id)
+      if (!user?.id) return null;
+      
+      // Check for active support session first (5thLine admins viewing as client)
+      const { data: session } = await supabase
+        .from('support_sessions')
+        .select('target_company_id')
+        .eq('support_user_id', user.id)
+        .is('ended_at', null)
+        .order('started_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       
-      if (!membership?.company_id) return null;
+      if (session?.target_company_id) return session.target_company_id as string;
       
-      const { data, error } = await supabase
+      // Otherwise get user's own company
+      const { data: membership } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      
+      return (membership?.company_id as string) ?? null;
+    },
+    enabled: !!user?.id,
+    staleTime: 30_000,
+  });
+
+  // Fetch company-level overrides
+  const { data: companyOverrides, isLoading: overridesLoading } = useQuery({
+    queryKey: ['company-feature-overrides-active', effectiveCompanyId],
+    queryFn: async () => {
+      if (!effectiveCompanyId) return null;
+      
+      // Use raw REST to avoid typed client issues with new table
+      const { data, error } = await (supabase as any)
         .from('company_feature_overrides')
         .select('feature_key, is_enabled')
-        .eq('company_id', membership.company_id);
+        .eq('company_id', effectiveCompanyId);
       
       if (error) {
         console.error('Error loading company feature overrides:', error);
@@ -169,11 +194,11 @@ export const usePageAccessFlags = () => {
       }
       
       const map: Record<string, boolean> = {};
-      (data ?? []).forEach(row => { map[row.feature_key] = row.is_enabled; });
+      ((data as any[]) ?? []).forEach((row: any) => { map[row.feature_key] = row.is_enabled; });
       return map;
     },
-    enabled: !!user?.id,
-    staleTime: 60_000,
+    enabled: !!effectiveCompanyId,
+    staleTime: 30_000,
   });
 
   const isLoading = flagsLoading || overridesLoading;
@@ -182,7 +207,7 @@ export const usePageAccessFlags = () => {
     // Demo account cannot access finance page
     if (isDemoAccount && pageName === 'finance') return false;
 
-    // Check company-level override (applies to all users including 5thLine)
+    // Check company-level override (applies to all users including 5thLine in support mode)
     if (companyOverrides) {
       const featureKey = pageName.startsWith('page_') ? pageName : `page_${pageName}`;
       // Also check non-page feature keys directly (e.g. chat_widget, copilot_widget)
