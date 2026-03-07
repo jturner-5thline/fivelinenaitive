@@ -23,6 +23,7 @@ import {
   FileText,
   Database,
   CreditCard,
+  MonitorSmartphone,
 } from "lucide-react";
 
 // Hooks
@@ -32,6 +33,7 @@ import { useGmail } from "@/hooks/useGmail";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { useIntegrations } from "@/hooks/useIntegrations";
 import { useIntegrationInterest } from "@/hooks/useIntegrationInterest";
+import { useMicrosoft } from "@/hooks/useMicrosoft";
 
 // Components
 import { IntegrationCard, ComingSoonCard, type IntegrationStatus } from "@/components/integrations/IntegrationCard";
@@ -89,6 +91,9 @@ export default function Integrations() {
 
   // === Calendar ===
   const calendar = useGoogleCalendar();
+
+  // === Microsoft ===
+  const microsoft = useMicrosoft();
 
   // === Claap/Zapier from integrations table ===
   const { integrations } = useIntegrations();
@@ -151,6 +156,21 @@ export default function Integrations() {
         }
       });
     }
+
+    // Microsoft callback
+    const msCode = searchParams.get("code");
+    const isMicrosoftCallback = searchParams.get("microsoft_callback");
+    if (msCode && isMicrosoftCallback && user) {
+      microsoft.exchangeCode(msCode).then((success) => {
+        searchParams.delete("code");
+        searchParams.delete("microsoft_callback");
+        setSearchParams(searchParams, { replace: true });
+        if (success) {
+          toast.success("Microsoft connected!");
+          microsoft.checkStatus();
+        }
+      });
+    }
   }, [searchParams]);
 
   // HubSpot auto health check
@@ -173,9 +193,16 @@ export default function Integrations() {
   const isGmailConnected = gmail.status?.connected ?? false;
   const isCalendarConnected = calendar.status?.connected ?? false;
   const isClaapConnected = claapIntegration?.status === "connected";
+  const isMicrosoftConnected = microsoft.status?.connected ?? false;
 
   // Zapier is always "available" via the webhook config section
   const isZapierActive = true; // Always show in connected for 5thLine users
+
+  const getMicrosoftStatus = (): IntegrationStatus => {
+    if (!isMicrosoftConnected) return "disconnected";
+    if (microsoft.status?.is_expired) return "requires_reauth";
+    return "connected";
+  };
 
   const getGmailStatus = (): IntegrationStatus => {
     if (!isGmailConnected) return "disconnected";
@@ -317,6 +344,30 @@ export default function Integrations() {
     });
   }
 
+  if (is5thLine && isMicrosoftConnected) {
+    connectedIntegrations.push({
+      key: "microsoft",
+      render: () => (
+        <IntegrationCard
+          name="Microsoft"
+          icon={MonitorSmartphone}
+          description="Teams notifications, Outlook email, calendar, and contacts via Microsoft Graph."
+          status={getMicrosoftStatus()}
+          isConnected
+          statusDetail={microsoft.status?.email || undefined}
+          lastSynced={microsoft.status?.connected_at}
+          onTestConnection={async () => {
+            await microsoft.checkStatus();
+            toast.success("Microsoft connection healthy!");
+          }}
+          onDisconnect={async () => {
+            await microsoft.disconnect();
+          }}
+        />
+      ),
+    });
+  }
+
   if (is5thLine && isClaapConnected) {
     connectedIntegrations.push({
       key: "claap",
@@ -406,6 +457,22 @@ export default function Integrations() {
           status="disconnected"
           isConnected={false}
           onConnect={() => calendar.connect()}
+        />
+      ),
+    });
+  }
+
+  if (is5thLine && !isMicrosoftConnected) {
+    availableIntegrations.push({
+      key: "microsoft",
+      render: () => (
+        <IntegrationCard
+          name="Microsoft"
+          icon={MonitorSmartphone}
+          description="Connect Teams, Outlook email, calendar, and contacts via Microsoft Graph."
+          status="disconnected"
+          isConnected={false}
+          onConnect={() => microsoft.connect()}
         />
       ),
     });
