@@ -158,6 +158,18 @@ const pageConfigs: PageConfig[] = [
     icon: <Building2 className="h-5 w-5" />
   },
   { 
+    featureKey: "page_analytics", 
+    label: "Analytics", 
+    description: "Charts, metrics, and performance insights",
+    icon: <BarChart3 className="h-5 w-5" />
+  },
+  { 
+    featureKey: "page_reports", 
+    label: "Reports", 
+    description: "Custom and scheduled reporting",
+    icon: <FileSignature className="h-5 w-5" />
+  },
+  { 
     featureKey: "lender_matching", 
     label: "Lender Matching", 
     description: "AI-powered lender suggestions and matching algorithm in deal detail",
