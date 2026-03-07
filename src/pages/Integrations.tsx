@@ -344,6 +344,30 @@ export default function Integrations() {
     });
   }
 
+  if (is5thLine && isMicrosoftConnected) {
+    connectedIntegrations.push({
+      key: "microsoft",
+      render: () => (
+        <IntegrationCard
+          name="Microsoft"
+          icon={MonitorSmartphone}
+          description="Teams notifications, Outlook email, calendar, and contacts via Microsoft Graph."
+          status={getMicrosoftStatus()}
+          isConnected
+          statusDetail={microsoft.status?.email || undefined}
+          lastSynced={microsoft.status?.connected_at}
+          onTestConnection={async () => {
+            await microsoft.checkStatus();
+            toast.success("Microsoft connection healthy!");
+          }}
+          onDisconnect={async () => {
+            await microsoft.disconnect();
+          }}
+        />
+      ),
+    });
+  }
+
   if (is5thLine && isClaapConnected) {
     connectedIntegrations.push({
       key: "claap",
