@@ -105,6 +105,19 @@ export default function Dashboard() {
   useEffect(() => {
     localStorage.setItem('deals-view-mode', viewMode);
   }, [viewMode]);
+
+  // Apply default saved view on mount
+  const defaultViewAppliedRef = React.useRef(false);
+  useEffect(() => {
+    if (defaultView && !defaultViewAppliedRef.current) {
+      defaultViewAppliedRef.current = true;
+      setFilters(defaultView.config.filters);
+      setSortField(defaultView.config.sortField);
+      setSortDirection(defaultView.config.sortDirection);
+      setViewMode(defaultView.config.viewMode);
+      setGroupBy(defaultView.config.groupBy);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
