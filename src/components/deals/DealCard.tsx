@@ -420,7 +420,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                   </button>
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* ── DIVIDER ── */}
