@@ -37,7 +37,7 @@ export function DealFlagLog({ dealId }: DealFlagLogProps) {
             return (
               <div
                 key={flag.id}
-                className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${
+                className={`flex items-start gap-3 p-2 rounded-lg border text-sm ${
                   flag.resolved
                     ? 'bg-muted/30 border-border/50'
                     : 'bg-muted/50 border-border'
