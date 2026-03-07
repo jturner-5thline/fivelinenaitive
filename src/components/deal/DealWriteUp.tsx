@@ -1005,6 +1005,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold">Edit Deal</h3>
+              {canAutoFill && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1043,6 +1044,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <TooltipContent>Extract data from uploaded Deal Space documents</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              )}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
