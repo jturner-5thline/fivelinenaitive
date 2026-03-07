@@ -213,7 +213,8 @@ export const usePageAccessFlags = () => {
       // Also check non-page feature keys directly (e.g. chat_widget, copilot_widget)
       const overrideKey = featureKey in companyOverrides ? featureKey : pageName;
       if (overrideKey in companyOverrides) {
-        if (!companyOverrides[overrideKey]) return false;
+        // Company override is the final authority — both enable AND disable
+        return companyOverrides[overrideKey];
       }
     }
     
