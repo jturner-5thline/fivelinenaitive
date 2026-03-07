@@ -23,6 +23,7 @@ import {
   FileText,
   Database,
   CreditCard,
+  MonitorSmartphone,
 } from "lucide-react";
 
 // Hooks
@@ -32,6 +33,7 @@ import { useGmail } from "@/hooks/useGmail";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { useIntegrations } from "@/hooks/useIntegrations";
 import { useIntegrationInterest } from "@/hooks/useIntegrationInterest";
+import { useMicrosoft } from "@/hooks/useMicrosoft";
 
 // Components
 import { IntegrationCard, ComingSoonCard, type IntegrationStatus } from "@/components/integrations/IntegrationCard";
@@ -89,6 +91,9 @@ export default function Integrations() {
 
   // === Calendar ===
   const calendar = useGoogleCalendar();
+
+  // === Microsoft ===
+  const microsoft = useMicrosoft();
 
   // === Claap/Zapier from integrations table ===
   const { integrations } = useIntegrations();
