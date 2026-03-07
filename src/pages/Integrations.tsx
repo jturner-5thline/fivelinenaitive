@@ -462,6 +462,22 @@ export default function Integrations() {
     });
   }
 
+  if (is5thLine && !isMicrosoftConnected) {
+    availableIntegrations.push({
+      key: "microsoft",
+      render: () => (
+        <IntegrationCard
+          name="Microsoft"
+          icon={MonitorSmartphone}
+          description="Connect Teams, Outlook email, calendar, and contacts via Microsoft Graph."
+          status="disconnected"
+          isConnected={false}
+          onConnect={() => microsoft.connect()}
+        />
+      ),
+    });
+  }
+
   if (is5thLine && !isClaapConnected) {
     availableIntegrations.push({
       key: "claap",
