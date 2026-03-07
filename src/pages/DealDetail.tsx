@@ -487,7 +487,7 @@ export default function DealDetail() {
   const { actionRequiredCount: infoRequestActionCount, markAllAsRead: markInfoRequestsAsRead, pendingCount: infoRequestPendingCount } = useFlexInfoNotifications(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
-  const [activeFlagCount, setActiveFlagCount] = useState(deal?.isFlagged ? 1 : 0);
+  const [activeFlagCount, setActiveFlagCount] = useState(0);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
   const { company, members } = useCompany();
@@ -951,9 +951,6 @@ export default function DealDetail() {
   } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(deleteAction);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isFlagPopoverOpen, setIsFlagPopoverOpen] = useState(false);
-  const [isDeleteFlagDialogOpen, setIsDeleteFlagDialogOpen] = useState(false);
-  const [flagDraftNote, setFlagDraftNote] = useState('');
   const [isPushingDataRoom, setIsPushingDataRoom] = useState(false);
   
   // Failed saves tracking for retry functionality
