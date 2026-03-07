@@ -156,6 +156,21 @@ export default function Integrations() {
         }
       });
     }
+
+    // Microsoft callback
+    const msCode = searchParams.get("code");
+    const isMicrosoftCallback = searchParams.get("microsoft_callback");
+    if (msCode && isMicrosoftCallback && user) {
+      microsoft.exchangeCode(msCode).then((success) => {
+        searchParams.delete("code");
+        searchParams.delete("microsoft_callback");
+        setSearchParams(searchParams, { replace: true });
+        if (success) {
+          toast.success("Microsoft connected!");
+          microsoft.checkStatus();
+        }
+      });
+    }
   }, [searchParams]);
 
   // HubSpot auto health check
@@ -178,9 +193,16 @@ export default function Integrations() {
   const isGmailConnected = gmail.status?.connected ?? false;
   const isCalendarConnected = calendar.status?.connected ?? false;
   const isClaapConnected = claapIntegration?.status === "connected";
+  const isMicrosoftConnected = microsoft.status?.connected ?? false;
 
   // Zapier is always "available" via the webhook config section
   const isZapierActive = true; // Always show in connected for 5thLine users
+
+  const getMicrosoftStatus = (): IntegrationStatus => {
+    if (!isMicrosoftConnected) return "disconnected";
+    if (microsoft.status?.is_expired) return "requires_reauth";
+    return "connected";
+  };
 
   const getGmailStatus = (): IntegrationStatus => {
     if (!isGmailConnected) return "disconnected";
