@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import JSZip from 'jszip';
 import { supabase } from '@/integrations/supabase/client';
 import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
+import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
