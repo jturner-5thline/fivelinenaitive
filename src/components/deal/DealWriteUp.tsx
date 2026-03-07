@@ -11,6 +11,7 @@ import { useFlexChangedFields } from '@/hooks/useFlexChangedFields';
 import { useDealOwnership } from '@/hooks/useDealOwnership';
 import { useDealSpaceAutoFill, ExtractedWriteUpField } from '@/hooks/useDealSpaceAutoFill';
 import { useDealSpaceMemo, MEMO_SECTIONS } from '@/hooks/useDealSpaceMemo';
+import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
