@@ -11,11 +11,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { CreateDealDialog } from './CreateDealDialog';
+import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 
 export function DealsHeader() {
   const location = useLocation();
   const { user } = useAuth();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
+  const { hasPageAccess } = usePageAccessFlags();
 
 
   return (
@@ -54,6 +56,7 @@ export function DealsHeader() {
           >
             <Link to="/lenders">Lenders</Link>
           </Button>
+          {hasPageAccess('analytics') && (
           <HintTooltip
             hint="View charts, metrics, and performance insights for your deals."
             visible={isHintVisible('analytics-nav')}
@@ -74,7 +77,8 @@ export function DealsHeader() {
               <Link to="/analytics">Analytics</Link>
             </Button>
           </HintTooltip>
-          {user?.email !== 'demo@5thline.co' && (
+          )}
+          {hasPageAccess('reports') && user?.email !== 'demo@5thline.co' && (
             <Button 
               variant="ghost" 
               size="sm" 
