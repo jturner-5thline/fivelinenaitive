@@ -627,6 +627,10 @@ export default function DealDetail() {
   }, [deal?.lenders, lenderSort, configuredStages]);
 
 
+                  {/* Flag Log */}
+                  <div className="mt-6">
+                    <DealFlagLog dealId={deal.id} />
+                  </div>
 
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [directFetchedLender, setDirectFetchedLender] = useState<import('@/hooks/useMasterLenders').MasterLender | null>(null);
