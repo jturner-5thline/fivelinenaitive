@@ -44,6 +44,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { Deal } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 import { SortableStatWidget } from '@/components/analytics/SortableStatWidget';
+import { FlagsHurdlesAnalytics } from '@/components/insights/FlagsHurdlesAnalytics';
 import { SortableListWidget } from '@/components/analytics/SortableListWidget';
 import { 
   BarChart, 
@@ -1275,6 +1276,11 @@ export default function Analytics() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Flags & Hurdles Analytics */}
+      <div className="mt-8 border-t pt-8">
+        <FlagsHurdlesAnalytics />
+      </div>
     </>
   );
 }
