@@ -2512,11 +2512,13 @@ export default function DealDetail() {
                     side="bottom"
                   >
                     <TabsList className="inline-flex h-8 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink scrollbar-none gap-0" style={{ scrollbarWidth: 'none' }}>
+                    {hasDealSpaceAccess && (
                     <TabsTrigger value="deal-space" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       <Sparkles className="h-3.5 w-3.5" />
                       Deal Space
                       <BetaBadge featureKey="page_deal_space" />
                     </TabsTrigger>
+                    )}
                     <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Deal Info</TabsTrigger>
                     <TabsTrigger value="lenders" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Lenders
@@ -4306,6 +4308,7 @@ export default function DealDetail() {
                   </Card>
                 </TabsContent>
 
+                {hasDealSpaceAccess && (
                 <TabsContent value="deal-space" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-space-${tabDirection}`}>
                   <DealSpaceTab dealId={id!} dealData={{
                     company: deal.company,
@@ -4319,6 +4322,7 @@ export default function DealDetail() {
                     milestones: dbMilestones?.map(m => ({ title: m.title, completed: m.completed })),
                   }} />
                 </TabsContent>
+                )}
 
                 <TabsContent value="communication" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`communication-${tabDirection}`}>
                   <Tabs defaultValue="emails" className="w-full">
