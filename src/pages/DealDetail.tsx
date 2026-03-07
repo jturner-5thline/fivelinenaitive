@@ -56,7 +56,7 @@ import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItem
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
-import { useFeatureAccess } from '@/hooks/useFeatureFlags';
+import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
 import { LenderDirectoryDialog } from '@/components/deal/LenderDirectoryDialog';
 import { RequestedItemsSummary } from '@/components/deal/RequestedItemsSummary';
