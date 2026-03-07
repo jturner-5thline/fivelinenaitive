@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { HealthScoreTrendChart } from "@/components/insights/HealthScoreTrendChart";
+import { FlagsHurdlesAnalytics } from "@/components/insights/FlagsHurdlesAnalytics";
 
 interface PipelineHealth {
   score: number;
@@ -619,6 +620,11 @@ export default function Insights() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Flags & Hurdles Analytics */}
+        <div className="mt-8 border-t pt-8">
+          <FlagsHurdlesAnalytics />
+        </div>
         </div>
       </div>
     </>
