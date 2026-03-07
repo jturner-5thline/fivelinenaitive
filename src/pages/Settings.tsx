@@ -24,6 +24,7 @@ import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettings';
 import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
 import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSettings';
+import { WriteUpFieldsSettings } from '@/components/settings/WriteUpFieldsSettings';
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
 import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
 import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
@@ -69,6 +70,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'deal-info-fields',
     keywords: ['deal', 'information', 'fields', 'card', 'layout', 'order', 'visibility', 'configure'],
+  },
+  {
+    id: 'writeup-fields',
+    keywords: ['write', 'writeup', 'write-up', 'fields', 'configure', 'labels', 'required', 'overview'],
   },
   {
     id: 'deal-stages',
@@ -127,7 +132,7 @@ const SETTINGS_SECTIONS = [
 // Tab definitions with which section IDs belong to each
 const TABS = [
   { id: 'general', label: 'General', sectionIds: ['account', 'company', 'preferences', 'database'] },
-  { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates'] },
+  { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'writeup-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates'] },
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
   { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'zapier'] },
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels'] },
@@ -277,6 +282,7 @@ export default function Settings() {
                   {isVisible('deal-types') && <DealTypesSettings isAdmin={isAdmin} />}
                   {isVisible('pipelines') && <PipelineSettings isAdmin={isAdmin} />}
                   {isVisible('deal-info-fields') && <DealInfoFieldsSettings isAdmin={isAdmin} />}
+                  {isVisible('writeup-fields') && <WriteUpFieldsSettings isAdmin={isAdmin} />}
                   {isVisible('deal-stages') && <DealStagesSettings isAdmin={isAdmin} />}
                   {isVisible('default-milestones') && <DefaultMilestonesSettings isAdmin={isAdmin} />}
                   {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
