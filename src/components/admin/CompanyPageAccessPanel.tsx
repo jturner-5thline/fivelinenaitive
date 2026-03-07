@@ -143,6 +143,8 @@ export function CompanyPageAccessPanel({ companyId, editable = false }: CompanyP
 
       setPendingChanges({});
       queryClient.invalidateQueries({ queryKey: ['company-feature-overrides', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['company-feature-overrides-active', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['effective-company-id'] });
       toast.success('Company page access updated');
     } catch (error) {
       console.error('Error saving overrides:', error);
