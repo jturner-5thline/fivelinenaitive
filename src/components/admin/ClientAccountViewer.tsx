@@ -12,9 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Eye, Pencil, ExternalLink, Shield, MonitorPlay, LogOut, Settings, ClipboardList } from 'lucide-react';
+import { Eye, Pencil, ExternalLink, Shield, MonitorPlay, LogOut, Settings, ClipboardList, Layout } from 'lucide-react';
 import { toast } from 'sonner';
 import { CompanyConfigOverview } from './CompanyConfigOverview';
+import { CompanyPageAccessPanel } from './CompanyPageAccessPanel';
 
 interface AuditLogEntry {
   id: string;
@@ -254,6 +255,10 @@ export function ClientAccountViewer() {
               <Settings className="h-4 w-4" />
               Configuration
             </TabsTrigger>
+            <TabsTrigger value="page-access" className="gap-2">
+              <Layout className="h-4 w-4" />
+              Page Access
+            </TabsTrigger>
             <TabsTrigger value="activity" className="gap-2">
               <ClipboardList className="h-4 w-4" />
               Activity Log
@@ -268,6 +273,18 @@ export function ClientAccountViewer() {
               </CardHeader>
               <CardContent>
                 <CompanyConfigOverview companyId={targetCompanyId} editable={!!activeSession} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="page-access">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Page & Feature Access</CardTitle>
+                <CardDescription>Control which pages and features are available for this company</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CompanyPageAccessPanel companyId={targetCompanyId} editable={!!activeSession} />
               </CardContent>
             </Card>
           </TabsContent>
