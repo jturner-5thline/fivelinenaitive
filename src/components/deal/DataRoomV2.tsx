@@ -42,6 +42,8 @@ interface DataRoomV2Props {
 
 export function DataRoomV2({ dealId }: DataRoomV2Props) {
   const { user } = useAuth();
+  const { hasPageAccess } = usePageAccessFlags();
+  const canPushToFlex = hasPageAccess('flex_push');
 
   // Data sources
   const { items: templateItems, loading: l1, addItem: addTemplateItem, updateItem: updateTemplateItem, deleteItem: deleteTemplateItem } = useDataRoomChecklist();
@@ -450,6 +452,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
             <Upload className="h-3 w-3" />
             Upload
           </Button>
+          {canPushToFlex && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -465,6 +468,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
             </TooltipTrigger>
             <TooltipContent>Push data room files to FLEx</TooltipContent>
           </Tooltip>
+          )}
           <input
             ref={fileInputRef}
             type="file"
