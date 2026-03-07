@@ -424,7 +424,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           )}
 
           {/* ── DIVIDER ── */}
-          {!compact && <Separator className="opacity-30 mt-auto" />}
+          {!compact && <Separator className="opacity-30" />}
 
           {/* ── ROW: Manager (left) | Time ago (right) ── */}
           {!compact && (
