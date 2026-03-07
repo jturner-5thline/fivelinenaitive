@@ -263,6 +263,10 @@ type ViewMode = 'tabs' | 'long';
 
 export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
   const queryClient = useQueryClient();
+  const { hasPageAccess } = usePageAccessFlags();
+  const canPushToFlex = hasPageAccess('flex_push');
+  const canAutoFill = hasPageAccess('autofill_deal_space');
+  const canGenerateMemo = hasPageAccess('generate_ai_memo');
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [isRepublishing, setIsRepublishing] = useState(false);
