@@ -974,12 +974,14 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         <div className="flex items-center justify-between gap-4 min-w-0">
           <div className="min-w-0 flex items-center gap-3">
             <CardTitle>Deal Write Up</CardTitle>
+            {canPushToFlex && (
             <Badge 
               variant={isPublishedOnFlex ? 'green' : data.status === 'Closed' ? 'gray' : 'amber'}
               className="shrink-0"
             >
               {isPublishedOnFlex ? 'Published' : data.status === 'Closed' ? 'Closed' : 'Draft'}
             </Badge>
+            )}
             <CardDescription className="hidden sm:block">Create, edit, and manage deal listings</CardDescription>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -991,14 +993,14 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               <Eye className="h-4 w-4 mr-2" />
               Preview
             </Button>
-            <FlexSyncStatusBadge dealId={dealId} />
+            {canPushToFlex && <FlexSyncStatusBadge dealId={dealId} />}
             <AutoSaveIndicator status={autoSaveStatus} />
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6 min-w-0">
         {/* FLEx Sync History */}
-        <FlexSyncHistory dealId={dealId} />
+        {canPushToFlex && <FlexSyncHistory dealId={dealId} />}
         
         {/* Edit Deal Section with Tabs or Long View */}
         <div className="border rounded-lg p-6 space-y-6 min-w-0">
