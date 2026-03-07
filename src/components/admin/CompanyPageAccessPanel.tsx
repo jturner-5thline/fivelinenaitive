@@ -68,13 +68,13 @@ export function CompanyPageAccessPanel({ companyId, editable = false }: CompanyP
   const { data: overrides, isLoading } = useQuery({
     queryKey: ['company-feature-overrides', companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('company_feature_overrides')
         .select('feature_key, is_enabled')
         .eq('company_id', companyId);
       if (error) throw error;
       const map: Record<string, boolean> = {};
-      (data ?? []).forEach(row => { map[row.feature_key] = row.is_enabled; });
+      ((data as any[]) ?? []).forEach((row: any) => { map[row.feature_key] = row.is_enabled; });
       return map;
     },
     enabled: !!companyId,
@@ -126,7 +126,7 @@ export function CompanyPageAccessPanel({ companyId, editable = false }: CompanyP
       }
 
       if (deletions.length > 0) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('company_feature_overrides')
           .delete()
           .eq('company_id', companyId)
@@ -135,9 +135,9 @@ export function CompanyPageAccessPanel({ companyId, editable = false }: CompanyP
       }
 
       if (upserts.length > 0) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('company_feature_overrides')
-          .upsert(upserts as any, { onConflict: 'company_id,feature_key' });
+          .upsert(upserts, { onConflict: 'company_id,feature_key' });
         if (error) throw error;
       }
 
