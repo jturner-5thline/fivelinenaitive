@@ -22,6 +22,8 @@ import {
   Activity,
   Briefcase,
   Building2,
+  Send,
+  FileSignature,
 } from "lucide-react";
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from "sonner";
@@ -160,6 +162,24 @@ const pageConfigs: PageConfig[] = [
     label: "Lender Matching", 
     description: "AI-powered lender suggestions and matching algorithm in deal detail",
     icon: <Sparkles className="h-5 w-5" />
+  },
+  { 
+    featureKey: "flex_push", 
+    label: "Push to FLEx", 
+    description: "Ability to publish/unpublish deals and data rooms to FLEx",
+    icon: <Send className="h-5 w-5" />
+  },
+  { 
+    featureKey: "autofill_deal_space", 
+    label: "Auto-Fill from Deal Space", 
+    description: "AI extraction of write-up fields from Deal Space documents",
+    icon: <Sparkles className="h-5 w-5" />
+  },
+  { 
+    featureKey: "generate_ai_memo", 
+    label: "Generate AI Memo", 
+    description: "AI-generated lender-ready memo from deal data",
+    icon: <FileSignature className="h-5 w-5" />
   },
 ];
 
