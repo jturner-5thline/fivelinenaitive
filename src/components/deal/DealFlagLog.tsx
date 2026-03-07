@@ -15,7 +15,23 @@ export function DealFlagLog({ dealId }: DealFlagLogProps) {
   const authorIds = flagNotes.map(f => f.user_id).filter(Boolean) as string[];
   const authors = useFlagAuthors(authorIds, true);
 
-  if (isLoading || flagNotes.length === 0) return null;
+  if (isLoading) return null;
+
+  if (flagNotes.length === 0) {
+    return (
+      <Card className="h-full flex flex-col">
+        <CardHeader className="py-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Flag className="h-4 w-4" />
+            Flag Log
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-muted-foreground text-center">No flags yet</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
