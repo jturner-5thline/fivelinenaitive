@@ -72,6 +72,10 @@ const SETTINGS_SECTIONS = [
     keywords: ['deal', 'information', 'fields', 'card', 'layout', 'order', 'visibility', 'configure'],
   },
   {
+    id: 'writeup-fields',
+    keywords: ['write', 'writeup', 'write-up', 'fields', 'configure', 'labels', 'required', 'overview'],
+  },
+  {
     id: 'deal-stages',
     keywords: ['deal', 'stages', 'stage', 'pipeline', 'progression', 'workflow'],
   },
