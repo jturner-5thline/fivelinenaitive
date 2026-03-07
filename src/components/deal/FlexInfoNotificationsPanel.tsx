@@ -85,7 +85,7 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
 
   if (notifications.length === 0) {
     return (
-      <Card className="h-full">
+      <Card className="h-full flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Bell className="h-4 w-4" />
