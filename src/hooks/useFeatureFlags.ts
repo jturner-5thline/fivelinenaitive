@@ -172,7 +172,7 @@ export const usePageAccessFlags = () => {
       (data ?? []).forEach(row => { map[row.feature_key] = row.is_enabled; });
       return map;
     },
-    enabled: !!user?.id && !is5thLineUser, // 5thLine users bypass company overrides
+    enabled: !!user?.id,
     staleTime: 60_000,
   });
 
