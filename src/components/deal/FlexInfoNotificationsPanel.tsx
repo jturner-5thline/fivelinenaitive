@@ -92,8 +92,8 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
             Info Requests
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-4">No info requests yet</p>
+        <CardContent className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-muted-foreground text-center">No info requests yet</p>
         </CardContent>
       </Card>
     );

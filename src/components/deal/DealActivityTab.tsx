@@ -140,7 +140,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
 
   return (
     <div className="w-full overflow-hidden space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_3fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Charts column */}
       <div className="space-y-6 min-w-0 lg:order-2">
       {/* FLEx Engagement Trends Chart */}
@@ -292,7 +292,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
           </Badge>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Popover>
               <PopoverTrigger asChild>
                 <div>
@@ -382,7 +382,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
             />
 
             {/* Write-Up Engagement */}
-            <div className="border-t pt-3 mt-1">
+            <div className="border-t pt-3 mt-1 col-span-2">
               <p className="text-xs font-medium text-muted-foreground mb-3 text-center">Write-Up Activity</p>
             </div>
             <Popover>
