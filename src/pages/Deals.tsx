@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { Helmet } from 'react-helmet-async';
 import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt } from 'lucide-react';
@@ -106,7 +106,6 @@ export default function Dashboard() {
     localStorage.setItem('deals-view-mode', viewMode);
   }, [viewMode]);
   
-  
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
   
   const {
@@ -125,6 +124,19 @@ export default function Dashboard() {
     initialSortField: defaultView.config.sortField,
     initialSortDirection: defaultView.config.sortDirection,
   } : undefined);
+
+  // Apply default saved view on mount (belt-and-suspenders with initial state)
+  const defaultViewAppliedRef = useRef(false);
+  useEffect(() => {
+    if (defaultView && !defaultViewAppliedRef.current) {
+      defaultViewAppliedRef.current = true;
+      setFilters(defaultView.config.filters);
+      setSortField(defaultView.config.sortField);
+      setSortDirection(defaultView.config.sortDirection);
+      setViewMode(defaultView.config.viewMode);
+      setGroupBy(defaultView.config.groupBy);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if any filters are active (different from defaults)
   const hasActiveFilters = JSON.stringify(filters) !== JSON.stringify(DEFAULT_DEAL_FILTERS) 
