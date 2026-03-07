@@ -191,5 +191,8 @@ export function useDeals(options?: UseDealsOptions) {
     updateDealStatus,
     updateFilters,
     toggleSort,
+    setFilters,
+    setSortField,
+    setSortDirection,
   };
 }
