@@ -6288,6 +6288,45 @@ export type Database = {
           },
         ]
       }
+      microsoft_tokens: {
+        Row: {
+          access_token: string
+          connected_at: string | null
+          created_at: string | null
+          display_name: string | null
+          email: string | null
+          expires_at: string
+          id: string
+          refresh_token: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          email?: string | null
+          expires_at: string
+          id?: string
+          refresh_token?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          email?: string | null
+          expires_at?: string
+          id?: string
+          refresh_token?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       news_alerts: {
         Row: {
           created_at: string
