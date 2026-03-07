@@ -367,7 +367,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
           {/* ── MIDDLE: Notes snippet ── */}
           {!compact && (
-            <>
+            <div className="flex-1">
               {isEditingStatus ? (
                 <div className="min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                   <MentionTextarea
@@ -420,11 +420,11 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                   </button>
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* ── DIVIDER ── */}
-          {!compact && <Separator className="opacity-30 mt-auto" />}
+          {!compact && <Separator className="opacity-30" />}
 
           {/* ── ROW: Manager (left) | Time ago (right) ── */}
           {!compact && (
