@@ -1196,7 +1196,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               >
                 {isSaving || autoSaveStatus === 'saving' ? 'Saving...' : 'Save Now'}
               </Button>
-              {isPublishedOnFlex ? (
+              {canPushToFlex && (isPublishedOnFlex ? (
                 <>
                   <Button 
                     variant="default"
@@ -1270,7 +1270,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                     </>
                   )}
                 </Button>
-              )}
+              ))}
             </div>
           </div>
         </div>
