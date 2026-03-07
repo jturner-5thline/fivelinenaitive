@@ -218,6 +218,18 @@ export const usePageAccessFlags = () => {
       // Also check non-page feature keys directly (e.g. chat_widget, copilot_widget)
       const overrideKey = featureKey in companyOverrides ? featureKey : pageName;
       if (overrideKey in companyOverrides) {
+        // For 5thLine users: if the feature is "staging" (5th Line Only), 
+        // allow access even if the company override disables it.
+        // This lets admins access staging features while viewing client accounts.
+        if (is5thLineUser && !companyOverrides[overrideKey]) {
+          const flag = pageFlags.find(f => f.name === `page_${pageName}`);
+          const directFlag = flags?.find(f => f.name === pageName);
+          const effectiveFlag = flag || directFlag;
+          if (effectiveFlag?.status === 'staging' || effectiveFlag?.status === 'james_only') {
+            if (effectiveFlag.status === 'james_only') return isJames;
+            return true; // staging access for 5thLine users
+          }
+        }
         // Company override is the final authority — both enable AND disable
         return companyOverrides[overrideKey];
       }
