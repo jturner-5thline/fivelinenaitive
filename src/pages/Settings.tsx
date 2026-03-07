@@ -282,6 +282,7 @@ export default function Settings() {
                   {isVisible('deal-types') && <DealTypesSettings isAdmin={isAdmin} />}
                   {isVisible('pipelines') && <PipelineSettings isAdmin={isAdmin} />}
                   {isVisible('deal-info-fields') && <DealInfoFieldsSettings isAdmin={isAdmin} />}
+                  {isVisible('writeup-fields') && <WriteUpFieldsSettings isAdmin={isAdmin} />}
                   {isVisible('deal-stages') && <DealStagesSettings isAdmin={isAdmin} />}
                   {isVisible('default-milestones') && <DefaultMilestonesSettings isAdmin={isAdmin} />}
                   {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
