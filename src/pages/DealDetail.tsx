@@ -18,7 +18,7 @@ import { differenceInMinutes, differenceInHours, differenceInDays, differenceInW
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
-import { useFlagNotes } from '@/hooks/useFlagNotes';
+import { FlagNoteDialog } from '@/components/deals/FlagNoteDialog';
 import { useDealAttachments, DealAttachmentCategory, DEAL_ATTACHMENT_CATEGORIES, UploadProgress } from '@/hooks/useDealAttachments';
 import { UploadProgressOverlay } from '@/components/deal/UploadProgressOverlay';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
@@ -486,7 +486,8 @@ export default function DealDetail() {
   useFlexActivityNotifications(id);
   const { actionRequiredCount: infoRequestActionCount, markAllAsRead: markInfoRequestsAsRead, pendingCount: infoRequestPendingCount } = useFlexInfoNotifications(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
-  const { flagNotes, addFlagNote, deleteFlagNote } = useFlagNotes(id || null);
+  const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
+  const [activeFlagCount, setActiveFlagCount] = useState(deal?.isFlagged ? 1 : 0);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
   const { company, members } = useCompany();
@@ -2297,154 +2298,27 @@ export default function DealDetail() {
                     displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                   />
                   <BetaBadge featureKey="page_deal_detail" />
-                  <Popover open={isFlagPopoverOpen} onOpenChange={(open) => {
-                    setIsFlagPopoverOpen(open);
-                    if (open) {
-                      setFlagDraftNote(deal.flagNotes || '');
-                    } else {
-                      setFlagDraftNote('');
-                    }
-                    // Auto-flag when opening the popover
-                    if (open && !deal.isFlagged) {
-                      updateDeal('isFlagged', true);
-                    }
-                  }}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`h-10 w-10 ${deal.isFlagged ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
-                        title={deal.isFlagged ? 'Flagged for discussion' : 'Flag for discussion'}
-                      >
-                        <Flag className={`h-5 w-5 ${deal.isFlagged ? 'fill-current' : ''}`} />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80" align="start">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm font-medium">Flag for Discussion</label>
-                          <div className="flex items-center gap-1">
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                  title="View flag history"
-                                >
-                                  <Clock className="h-3.5 w-3.5" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-72" align="start">
-                                <div className="space-y-2">
-                                  <p className="text-sm font-medium">Flag History</p>
-                                  {flagNotes.length === 0 ? (
-                                    <p className="text-xs text-muted-foreground">No previous flags</p>
-                                  ) : (
-                                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                                      {flagNotes.map((item) => (
-                                        <div key={item.id} className="text-xs p-2 bg-muted/50 rounded group relative">
-                                          <p className="text-muted-foreground pr-5 break-words">{item.note}</p>
-                                          <p className="text-muted-foreground/70 mt-1">
-                                            {format(new Date(item.created_at), 'MMM d, yyyy h:mm a')}
-                                          </p>
-                                          <button
-                                            onClick={() => deleteFlagNote(item.id)}
-                                            className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </button>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="gap-1 h-6 text-xs px-2"
-                              onClick={async () => {
-                                const noteToArchive = (flagDraftNote || deal.flagNotes || '').trim();
-                                if (noteToArchive) {
-                                  await addFlagNote(noteToArchive);
-                                }
-                                updateDeal('isFlagged', false);
-                                updateDeal('flagNotes', '');
-                                setFlagDraftNote('');
-                                setIsFlagPopoverOpen(false);
-                                toast({
-                                  title: "Flag completed",
-                                  description: "The flag has been marked as complete.",
-                                });
-                              }}
-                            >
-                              <Check className="h-2.5 w-2.5" />
-                              Complete
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                              onClick={() => {
-                                setFlagDraftNote(deal.flagNotes || '');
-                                setIsDeleteFlagDialogOpen(true);
-                              }}
-                              title="Delete flag"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                        <FlagNotesInput
-                          value={deal.flagNotes || ''}
-                          onChangeValue={setFlagDraftNote}
-                          onSave={(value) => {
-                            // Save previous note to history before updating
-                            if (deal.flagNotes && deal.flagNotes.trim() && value !== deal.flagNotes) {
-                              addFlagNote(deal.flagNotes);
-                            }
-                            setFlagDraftNote(value);
-                            updateDeal('flagNotes', value);
-                          }}
-                          onClose={() => setIsFlagPopoverOpen(false)}
-                          history={flagNotes}
-                          onDeleteHistoryItem={deleteFlagNote}
-                        />
-                      </div>
-                      
-                      {/* Delete Flag Confirmation Dialog */}
-                      <AlertDialog open={isDeleteFlagDialogOpen} onOpenChange={setIsDeleteFlagDialogOpen}>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete flag?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will remove the flag and all its notes. The note history will be preserved.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={() => {
-                                updateDeal('isFlagged', false);
-                                updateDeal('flagNotes', '');
-                                setIsDeleteFlagDialogOpen(false);
-                                setIsFlagPopoverOpen(false);
-                                toast({
-                                  title: "Flag deleted",
-                                  description: "The flag has been removed.",
-                                });
-                              }}
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </PopoverContent>
-                  </Popover>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-10 w-10 relative ${activeFlagCount > 0 ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
+                    title={activeFlagCount > 0 ? `${activeFlagCount} flag${activeFlagCount > 1 ? 's' : ''} for discussion` : 'Flag for discussion'}
+                    onClick={() => setIsFlagDialogOpen(true)}
+                  >
+                    <Flag className={`h-5 w-5 ${activeFlagCount > 0 ? 'fill-current' : ''}`} />
+                    {activeFlagCount > 1 && (
+                      <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
+                        {activeFlagCount}
+                      </span>
+                    )}
+                  </Button>
+                  <FlagNoteDialog
+                    dealId={deal.id}
+                    dealName={deal.company}
+                    isOpen={isFlagDialogOpen}
+                    onClose={() => setIsFlagDialogOpen(false)}
+                    onFlagCountChange={setActiveFlagCount}
+                  />
                 </div>
                 <InlineEditField
                   value={formatValue(deal.value)}
