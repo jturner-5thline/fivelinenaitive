@@ -1045,6 +1045,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 </Tooltip>
               </TooltipProvider>
               )}
+              {canGenerateMemo && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1071,6 +1072,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <TooltipContent>Generate a structured lender-ready memo from all deal data</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              )}
               {autoFilledFields.size > 0 && (
                 <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20">
                   <Sparkles className="h-3 w-3" />
