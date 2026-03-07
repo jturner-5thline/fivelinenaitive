@@ -367,7 +367,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
           {/* ── MIDDLE: Notes snippet ── */}
           {!compact && (
-            <>
+            <div className="flex-1">
               {isEditingStatus ? (
                 <div className="min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                   <MentionTextarea
