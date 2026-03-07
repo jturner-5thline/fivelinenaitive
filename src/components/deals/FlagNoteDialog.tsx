@@ -119,7 +119,7 @@ export function FlagNoteDialog({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 text-muted-foreground hover:text-green-600"
+                className="h-6 w-6 text-muted-foreground hover:text-primary"
                 onClick={() => handleResolve(flag.id)}
                 title="Resolve flag"
               >
