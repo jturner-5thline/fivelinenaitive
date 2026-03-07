@@ -3328,8 +3328,6 @@ export default function DealDetail() {
                   </div>
                   )}
 
-                  {/* Flag Log */}
-                  <DealFlagLog dealId={deal.id} />
 
                 </TabsContent>
 
@@ -4280,6 +4278,7 @@ export default function DealDetail() {
                       <FlexInfoNotificationsPanel dealId={id} />
                     </div>
                   </div>
+                  <DealFlagLog dealId={deal.id} />
                   <DealActivityTab dealId={id!} />
                 </TabsContent>
 
