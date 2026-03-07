@@ -1576,6 +1576,53 @@ export type Database = {
           },
         ]
       }
+      company_write_up_fields: {
+        Row: {
+          company_id: string
+          created_at: string
+          field_key: string
+          field_type: string
+          id: string
+          is_required: boolean
+          is_visible: boolean
+          label: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          field_key: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          label: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          field_key?: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          label?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_write_up_fields_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_metrics: {
         Row: {
           company_id: string | null
