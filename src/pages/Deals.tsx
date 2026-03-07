@@ -584,6 +584,14 @@ export default function Dashboard() {
                   </svg>
                   <span className="hidden sm:inline">Milestones</span>
                 </Button>
+                <DealSavedViewsMenu
+                  views={savedViews}
+                  onSave={handleSaveView}
+                  onRestore={handleRestoreView}
+                  onDelete={deleteView}
+                  onSetDefault={setDefault}
+                  hasActiveFilters={hasActiveFilters}
+                />
               </div>
             </div>
 
