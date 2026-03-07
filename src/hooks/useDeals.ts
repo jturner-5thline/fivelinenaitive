@@ -22,25 +22,33 @@ export interface DealFilters {
   hasNotificationsOnly: boolean;
 }
 
-export function useDeals() {
+export const DEFAULT_DEAL_FILTERS: DealFilters = {
+  search: '',
+  stage: [],
+  status: [],
+  engagementType: [],
+  dealType: [],
+  manager: [],
+  lender: [],
+  referredBy: [],
+  staleOnly: false,
+  flaggedOnly: false,
+  hasNotificationsOnly: false,
+};
+
+export interface UseDealsOptions {
+  initialFilters?: DealFilters;
+  initialSortField?: SortField;
+  initialSortDirection?: SortDirection;
+}
+
+export function useDeals(options?: UseDealsOptions) {
   const { deals, updateDealStatus: updateStatus, isLoading } = useDealsContext();
   const { preferences } = usePreferences();
   const { stages } = useDealStages();
-  const [filters, setFilters] = useState<DealFilters>({
-    search: '',
-    stage: [],
-    status: [],
-    engagementType: [],
-    dealType: [],
-    manager: [],
-    lender: [],
-    referredBy: [],
-    staleOnly: false,
-    flaggedOnly: false,
-    hasNotificationsOnly: false,
-  });
-  const [sortField, setSortField] = useState<SortField>('updatedAt');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [filters, setFilters] = useState<DealFilters>(options?.initialFilters ?? DEFAULT_DEAL_FILTERS);
+  const [sortField, setSortField] = useState<SortField>(options?.initialSortField ?? 'updatedAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>(options?.initialSortDirection ?? 'desc');
 
   const filteredAndSortedDeals = useMemo(() => {
     let result = [...deals];
