@@ -1,20 +1,29 @@
 import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Clock } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PortfolioRiskAnalysis } from '@/components/analytics/PortfolioRiskAnalysis';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { format, subDays, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, subDays, subMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from 'date-fns';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +51,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useCharts, ChartType, ChartConfig } from '@/contexts/ChartsContext';
 import { useAnalyticsWidgets, WidgetConfig, WidgetDataSource, WIDGET_DATA_SOURCES, LayoutPreset } from '@/contexts/AnalyticsWidgetsContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { Deal } from '@/types/deal';
@@ -64,8 +74,12 @@ import {
   Tooltip, 
   ResponsiveContainer,
   Cell,
+  FunnelChart,
+  Funnel,
+  LabelList,
 } from 'recharts';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface DateRange {
   from: Date | undefined;
