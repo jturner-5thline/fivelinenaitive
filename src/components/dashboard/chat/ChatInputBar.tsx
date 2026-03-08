@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Mic, MicOff } from 'lucide-react';
+import { Send, Loader2, Mic, MicOff, X } from 'lucide-react';
 import { FileAttachmentButton, AttachedFile } from './FileAttachmentButton';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +20,7 @@ interface Props {
   inputValue: string;
   setInputValue: (v: string) => void;
   teamMembers?: TeamMember[];
+  inputRef?: React.RefObject<HTMLTextAreaElement>;
 }
 
 const slashCommands = [
@@ -34,8 +36,9 @@ const slashCommands = [
   { cmd: '/catchup', desc: 'What happened while I was away?', icon: '🔄' },
 ];
 
-export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, teamMembers = [] }: Props) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, teamMembers = [], inputRef: externalRef }: Props) {
+  const internalRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = externalRef || internalRef;
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const [showMentions, setShowMentions] = useState(false);
@@ -109,16 +112,18 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
 
   const toggleVoice = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { toast.error('Speech recognition not supported'); return; }
+    if (!SR) { toast.error('Microphone access denied. Please enable it in your browser settings.'); return; }
     if (isListening && recognitionRef.current) { recognitionRef.current.stop(); setIsListening(false); return; }
     const r = new SR();
     r.continuous = false; r.interimResults = true; r.lang = 'en-US';
     recognitionRef.current = r;
     r.onresult = (e: any) => { setInputValue(Array.from(e.results).map((r: any) => r[0].transcript).join('')); };
     r.onend = () => setIsListening(false);
-    r.onerror = () => { setIsListening(false); toast.error('Voice failed'); };
+    r.onerror = () => { setIsListening(false); toast.error('Microphone access denied. Please enable it in your browser settings.'); };
     r.start(); setIsListening(true);
   }, [isListening, setInputValue]);
+
+  const hasInput = inputValue.trim().length > 0;
 
   return (
     <div className="relative">
@@ -163,42 +168,88 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
         <div className="relative flex-1">
           <Sparkles className="absolute left-3 top-3 h-4 w-4 text-primary" />
           <Textarea
-            ref={textareaRef}
-            placeholder="Ask anything... (/ for commands, @ to mention)"
+            ref={textareaRef as any}
+            placeholder={isListening ? 'Listening...' : 'Ask anything... (/ for commands, @ to mention)'}
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            className="pl-10 pr-3 min-h-[40px] max-h-[120px] resize-none border-0 text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+            className={cn(
+              "pl-10 pr-3 min-h-[40px] max-h-[120px] resize-none border-0 text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent",
+              isListening && "placeholder:text-destructive placeholder:animate-pulse"
+            )}
             disabled={isLoading}
           />
         </div>
         <div className="flex items-center gap-1 pb-1.5">
-          <FileAttachmentButton
-            attachments={attachments}
-            onAttach={(newFiles) => setAttachments(prev => [...prev, ...newFiles])}
-            onRemove={(id) => setAttachments(prev => prev.filter(a => a.id !== id))}
-            disabled={isLoading}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={cn("h-8 w-8 rounded-lg", isListening && "bg-destructive/15 text-destructive")}
-            onClick={toggleVoice}
-            title={isListening ? 'Stop listening' : 'Voice input'}
-          >
-            {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5 text-muted-foreground" />}
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            className="h-8 w-8 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
-            onClick={() => { if (inputValue.trim() && !isLoading) { onSend(inputValue.trim(), attachments.length > 0 ? attachments : undefined); setAttachments([]); } }}
-            disabled={!inputValue.trim() || isLoading}
-          >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
+          {/* Clear button */}
+          {hasInput && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg text-muted-foreground/40 hover:text-muted-foreground/80 transition-all duration-150"
+                  onClick={() => { setInputValue(''); textareaRef.current?.focus(); }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Clear input</TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <FileAttachmentButton
+                  attachments={attachments}
+                  onAttach={(newFiles) => setAttachments(prev => [...prev, ...newFiles])}
+                  onRemove={(id) => setAttachments(prev => prev.filter(a => a.id !== id))}
+                  disabled={isLoading}
+                />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Attach file</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-8 w-8 rounded-lg transition-all duration-150",
+                  isListening
+                    ? "bg-destructive/15 text-destructive animate-pulse"
+                    : "text-muted-foreground hover:text-foreground/90"
+                )}
+                onClick={toggleVoice}
+              >
+                {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{isListening ? 'Stop listening' : 'Voice input'}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="icon"
+                className={cn(
+                  "h-8 w-8 rounded-lg border border-primary/30 transition-all duration-150",
+                  hasInput && !isLoading
+                    ? "bg-primary/20 hover:bg-primary/30 text-primary cursor-pointer opacity-100"
+                    : "bg-primary/10 text-primary/40 cursor-not-allowed opacity-30"
+                )}
+                onClick={() => { if (hasInput && !isLoading) { onSend(inputValue.trim(), attachments.length > 0 ? attachments : undefined); setAttachments([]); } }}
+                disabled={!hasInput || isLoading}
+              >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Send message</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>
