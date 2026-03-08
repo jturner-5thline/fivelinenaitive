@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Building2, Users, Briefcase, Globe, MapPin } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Building2, Users, Briefcase, Globe, MapPin, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,12 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-import { useCrmCompany, useUpdateCrmCompany, useCrmCompanyActivities, useCreateCrmCompanyActivity, useCrmCompanyContacts, useCrmSubsidiaries, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, CRM_COMPANY_TYPES } from '@/hooks/useCrmCompanies';
+import { useCrmCompany, useUpdateCrmCompany, useCrmCompanyActivities, useCreateCrmCompanyActivity, useCrmCompanyContacts, useCrmSubsidiaries, useDeleteCrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, CRM_COMPANY_TYPES } from '@/hooks/useCrmCompanies';
+import { useCrmCompanyDeals, useLinkContactToCompany, useUnlinkContactFromCompany, useLinkDealToCompany, useUnlinkDealFromCompany, useAllDeals } from '@/hooks/useCrmLinks';
+import { useContacts } from '@/hooks/useContacts';
+import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
+import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
+import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -24,8 +29,21 @@ export default function CrmCompanyDetail() {
   const createActivity = useCreateCrmCompanyActivity();
   const { data: contacts = [] } = useCrmCompanyContacts(id);
   const { data: subsidiaries = [] } = useCrmSubsidiaries(id);
+  const { data: companyDeals = [] } = useCrmCompanyDeals(id);
+  const deleteCompany = useDeleteCrmCompany();
+  const { data: allContacts = [] } = useContacts();
+  const { data: allDeals = [] } = useAllDeals();
+  const linkContact = useLinkContactToCompany();
+  const unlinkContact = useUnlinkContactFromCompany();
+  const linkDeal = useLinkDealToCompany();
+  const unlinkDeal = useUnlinkDealFromCompany();
+
   const [newNote, setNewNote] = useState('');
   const [activityFilter, setActivityFilter] = useState('all');
+  const [showLinkContact, setShowLinkContact] = useState(false);
+  const [showCreateContact, setShowCreateContact] = useState(false);
+  const [showLinkDeal, setShowLinkDeal] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
 
   if (isLoading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!company) return <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4"><p className="text-muted-foreground">Company not found</p><Button variant="outline" onClick={() => navigate('/crm-companies')}>Back</Button></div>;
@@ -51,6 +69,18 @@ export default function CrmCompanyDetail() {
     expansion: 'bg-purple-500/10 text-purple-500', churn_risk: 'bg-red-500/10 text-red-500',
   };
 
+  // Contact options (exclude already linked)
+  const linkedContactIds = new Set(contacts.map((c: any) => c.id));
+  const contactOptions: EntityOption[] = allContacts
+    .filter(c => !linkedContactIds.has(c.id))
+    .map(c => ({ id: c.id, label: c.full_name || `${c.first_name} ${c.last_name}`, sublabel: c.email || c.job_title || undefined }));
+
+  // Deal options (exclude already linked)
+  const linkedDealIds = new Set(companyDeals.map((d: any) => d.id));
+  const dealOptions: EntityOption[] = allDeals
+    .filter(d => !linkedDealIds.has(d.id))
+    .map(d => ({ id: d.id, label: d.company, sublabel: `${d.stage} · $${Number(d.value || 0).toLocaleString()}` }));
+
   return (
     <>
       <Helmet><title>{company.name} | nAItive</title></Helmet>
@@ -73,9 +103,7 @@ export default function CrmCompanyDetail() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   {company.domain && <span className="flex items-center gap-1"><Globe className="h-3 w-3" /> {company.domain}</span>}
-                  {(company.hq_city || company.hq_country) && (
-                    <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {[company.hq_city, company.hq_country].filter(Boolean).join(', ')}</span>
-                  )}
+                  {(company.hq_city || company.hq_country) && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {[company.hq_city, company.hq_country].filter(Boolean).join(', ')}</span>}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge className={cn('text-[10px]', lifecycleColors[company.lifecycle_stage] || '')}>{CRM_COMPANY_LIFECYCLES.find(l => l.value === company.lifecycle_stage)?.label}</Badge>
@@ -86,16 +114,15 @@ export default function CrmCompanyDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => navigate('/contacts')}><Users className="h-4 w-4 mr-1" /> Add Contact</Button>
               <Button variant="outline" size="sm" onClick={() => handleLogActivity('call')}><Phone className="h-4 w-4 mr-1" /> Call</Button>
               <Button variant="outline" size="sm" onClick={() => handleLogActivity('meeting')}><Calendar className="h-4 w-4 mr-1" /> Meeting</Button>
               <Button variant="outline" size="sm" onClick={() => handleLogActivity('email')}><Mail className="h-4 w-4 mr-1" /> Email</Button>
+              <Button variant="destructive" size="sm" onClick={() => setShowDelete(true)}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>
             </div>
           </div>
 
           <Separator />
 
-          {/* Three-column layout */}
           <div className="grid grid-cols-12 gap-6">
             {/* Left: Profile */}
             <div className="col-span-3 space-y-4">
@@ -206,6 +233,7 @@ export default function CrmCompanyDetail() {
 
             {/* Right: Related Objects */}
             <div className="col-span-3 space-y-4">
+              {/* Contacts */}
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1.5"><Users className="h-4 w-4" /> Contacts ({contacts.length})</CardTitle></CardHeader>
                 <CardContent>
@@ -214,14 +242,60 @@ export default function CrmCompanyDetail() {
                   ) : (
                     <div className="space-y-2">
                       {contacts.slice(0, 10).map((c: any) => (
-                        <div key={c.id} className="p-2 rounded-md border border-border/50 hover:bg-muted/30 cursor-pointer text-xs" onClick={() => navigate(`/contacts/${c.id}`)}>
-                          <p className="font-medium">{c.full_name || '—'}</p>
-                          <p className="text-muted-foreground">{c.job_title || c.email || '—'}</p>
+                        <div key={c.id} className="p-2 rounded-md border border-border/50 hover:bg-muted/30 text-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="cursor-pointer flex-1" onClick={() => navigate(`/contacts/${c.id}`)}>
+                              <p className="font-medium text-primary hover:underline">{c.full_name || '—'}</p>
+                              <p className="text-muted-foreground">{c.job_title || c.email || '—'}</p>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => unlinkContact.mutate({ contactId: c.id, companyId: company.id })}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
-                  <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => navigate('/contacts')}><Plus className="h-3 w-3 mr-1" /> Add Contact</Button>
+                  <div className="flex gap-1 mt-2">
+                    <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => setShowLinkContact(true)}>
+                      <Plus className="h-3 w-3 mr-1" /> Link Existing
+                    </Button>
+                    <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => setShowCreateContact(true)}>
+                      <Plus className="h-3 w-3 mr-1" /> Create New
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Deals */}
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1.5"><Briefcase className="h-4 w-4" /> Deals ({companyDeals.length})</CardTitle></CardHeader>
+                <CardContent>
+                  {companyDeals.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">No deals linked</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {companyDeals.map((deal: any) => (
+                        <div key={deal.id} className="p-2 rounded-md border border-border/50 hover:bg-muted/30 text-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="cursor-pointer flex-1" onClick={() => navigate(`/deal/${deal.id}`)}>
+                              <p className="font-medium text-primary hover:underline">{deal.company}</p>
+                              <div className="flex items-center justify-between mt-1 text-muted-foreground">
+                                <span>{deal.stage}</span>
+                                <span>${Number(deal.value || 0).toLocaleString()}</span>
+                              </div>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => unlinkDeal.mutate({ dealId: deal.id })}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => setShowLinkDeal(true)}>
+                    <Plus className="h-3 w-3 mr-1" /> Link Deal
+                  </Button>
                 </CardContent>
               </Card>
 
@@ -260,6 +334,54 @@ export default function CrmCompanyDetail() {
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <EntitySearchModal
+        open={showLinkContact}
+        onClose={() => setShowLinkContact(false)}
+        title="Link Contact to Company"
+        placeholder="Search contacts..."
+        options={contactOptions}
+        multiSelect
+        onConfirm={(ids) => {
+          Promise.all(ids.map(contactId => linkContact.mutateAsync({ contactId, companyId: company.id })))
+            .then(() => setShowLinkContact(false));
+        }}
+        confirming={linkContact.isPending}
+      />
+
+      <CreateContactModal
+        open={showCreateContact}
+        onClose={() => setShowCreateContact(false)}
+        defaultCompanyId={company.id}
+      />
+
+      <EntitySearchModal
+        open={showLinkDeal}
+        onClose={() => setShowLinkDeal(false)}
+        title="Link Deal to Company"
+        placeholder="Search deals..."
+        options={dealOptions}
+        multiSelect
+        onConfirm={(ids) => {
+          Promise.all(ids.map(dealId => linkDeal.mutateAsync({ dealId, companyId: company.id })))
+            .then(() => setShowLinkDeal(false));
+        }}
+        confirming={linkDeal.isPending}
+      />
+
+      <DeleteConfirmDialog
+        open={showDelete}
+        onClose={() => setShowDelete(false)}
+        title="Delete Company"
+        description={`Are you sure you want to delete "${company.name}"? Contacts and deals will be unlinked but not deleted.`}
+        isDeleting={deleteCompany.isPending}
+        onConfirm={() => {
+          deleteCompany.mutate(company.id, {
+            onSuccess: () => navigate('/crm-companies'),
+          });
+        }}
+      />
     </>
   );
 }
