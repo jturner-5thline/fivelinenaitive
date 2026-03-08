@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Shield, ShieldCheck,
-  ChevronDown, Loader2, FileSpreadsheet, Keyboard
+  ChevronDown, Loader2, FileSpreadsheet, Keyboard, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,6 @@ import { useExcelModelParser } from '@/hooks/useExcelModelParser';
 import { supabase } from '@/integrations/supabase/client';
 import { IngestionPanel } from './IngestionPanel';
 
-import { AnalysisChat } from './AnalysisChat';
 import { AnalyticsDashboard } from './dashboard/AnalyticsDashboard';
 import { SourceTracePanel, SourceTraceData } from './audit/SourceTracePanel';
 import { AuditLogPanel, AuditLogEntry } from './audit/AuditLogPanel';
@@ -66,12 +65,12 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
   const [auditMode, setAuditMode] = useState(false);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
-  const [messages, setMessages] = useState<AnalysisMessage[]>([]);
   const [files, setFiles] = useState<IngestedFile[]>([]);
   const [statements, setStatements] = useState<DetectedStatement[]>(DEMO_STATEMENTS);
   const [metrics, setMetrics] = useState<FinancialMetric[]>(DEMO_METRICS);
   const [issues, setIssues] = useState<DataIssue[]>(DEMO_ISSUES);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
   const [activeTrace, setActiveTrace] = useState<SourceTraceData | null>(null);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [covenants, setCovenants] = useState<CovenantConfig[]>([]);
@@ -129,10 +128,14 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
 
   const triggerExtraction = useCallback(async (fileId?: string) => {
     setIsExtracting(true);
+    setExtractionError(null);
     try {
       const { data, error } = await supabase.functions.invoke('deal-diligence-ai', {
         body: { dealId, action: 'extract', fileId },
       });
+
+      if (error) throw new Error(error.message || 'Extraction failed');
+      if (data?.error) throw new Error(data.error);
 
       if (!error && data) {
         if (data.statements) setStatements(data.statements);
@@ -140,10 +143,11 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
         if (data.issues) setIssues(data.issues);
         const newEntries = createExtractionAuditEntries(data.statements || [], data.metrics || [], dealData?.company || 'System');
         setAuditLog(prev => [...newEntries, ...prev]);
-        
       }
     } catch (err) {
       console.error('Extraction error:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to extract metrics';
+      setExtractionError(msg);
     } finally {
       setIsExtracting(false);
     }
@@ -176,17 +180,9 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
 
   const handleEmptyUpload = () => fileInputRef.current?.click();
 
-  const contextSummary = [
-    dealData?.company ? `Company: ${dealData.company}` : '',
-    dealData?.value ? `Deal Value: $${(dealData.value / 1000000).toFixed(1)}MM` : '',
-    dealData?.stage ? `Stage: ${dealData.stage}` : '',
-    files.length > 0 ? `Files: ${files.map(f => f.name).join(', ')}` : '',
-    metrics.length > 0 ? `Key Metrics: ${metrics.map(m => `${m.label}: ${m.formatted}`).join('; ')}` : '',
-    statements.length > 0 ? `Detected: ${statements.map(s => s.type).join(', ')}` : '',
-  ].filter(Boolean).join('\n');
-
   const hasFiles = files.length > 0;
   const hasMetrics = metrics.length > 0;
+  const readyFiles = files.filter(f => f.status === 'ready');
 
   return (
     <div className="flex flex-col gap-0 -mx-1">
@@ -272,7 +268,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
             </Tooltip>
           </TooltipProvider>
 
-          {hasFiles && files.filter(f => f.status === 'ready').length > 0 && (
+          {hasFiles && readyFiles.length > 0 && (
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => triggerExtraction()} disabled={isExtracting}>
               {isExtracting ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
               Re-extract
@@ -284,7 +280,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
       {/* Shortcut cheat sheet overlay */}
       <ShortcutCheatSheet open={showCheatSheet} onClose={() => setShowCheatSheet(false)} />
 
-      {/* Unified Content Area */}
+      {/* Unified Content Area — no chat panel */}
       <div className="space-y-6">
         {/* Ingest Section */}
         {!hasFiles ? (
@@ -296,35 +292,71 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
           />
         )}
 
-        {/* Dashboard Section */}
+        {/* Dashboard Section — full width, no chat sidebar */}
         {hasFiles && (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
-            <div className="space-y-4">
-              {hasMetrics ? (
-                <>
-                  <AnalyticsDashboard statements={statements} metrics={metrics} issues={issues} auditMode={auditMode} />
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    <CovenantMonitor covenants={covenants} onCovenantsChange={setCovenants} />
-                    <ScenarioAnalysis metrics={metrics} covenants={covenants} />
-                  </div>
-                  <TimeSeriesVariancePanel statements={statements} className="mt-0" />
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    <ComparableBenchmarking dealId={dealId} dealName={dealData?.company} dealValue={dealData?.value} metrics={metrics} />
-                    <DataRoomIntegration dealId={dealId} issues={issues} statements={statements} />
-                  </div>
-                  {auditMode && auditLog.length > 0 && <AuditLogPanel entries={auditLog} className="mt-4" />}
-                </>
-              ) : (
-                <DiligenceEmptyState mode="dashboard" hasFiles={hasFiles} hasMetrics={false} />
-              )}
-            </div>
-            <div className="space-y-4">
-              {activeTrace && auditMode && <SourceTracePanel trace={activeTrace} onClose={() => setActiveTrace(null)} />}
-              <AnalysisChat
-                dealId={dealId} messages={messages} onMessagesChange={setMessages}
-                contextSummary={contextSummary} className="h-[700px] rounded-xl border border-border/30 sticky top-4"
-              />
-            </div>
+          <div className="space-y-4">
+            {/* Extraction error state */}
+            {extractionError && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+                <Shield className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-destructive">Extraction Failed</p>
+                  <p className="text-xs text-muted-foreground mt-1">{extractionError}</p>
+                </div>
+                <Button variant="outline" size="sm" className="text-xs flex-shrink-0" onClick={() => triggerExtraction()} disabled={isExtracting}>
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            {/* Extract Metrics prompt when files are ready but no metrics */}
+            {!hasMetrics && readyFiles.length > 0 && !isExtracting && !extractionError && (
+              <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-6 flex flex-col items-center text-center gap-3">
+                <Sparkles className="h-8 w-8 text-primary" />
+                <div>
+                  <p className="text-sm font-medium">Ready to extract metrics</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {readyFiles.length} file{readyFiles.length !== 1 ? 's' : ''} ingested. Click below to extract KPIs, ratios, and financial data.
+                  </p>
+                </div>
+                <Button onClick={() => triggerExtraction()} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Extract Metrics
+                </Button>
+              </div>
+            )}
+
+            {/* Extracting state */}
+            {isExtracting && !hasMetrics && (
+              <div className="rounded-xl border border-border/30 p-6 flex flex-col items-center text-center gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div>
+                  <p className="text-sm font-medium">Extracting metrics…</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Parsing {readyFiles.map(f => f.name).join(', ')}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {hasMetrics ? (
+              <>
+                <AnalyticsDashboard statements={statements} metrics={metrics} issues={issues} auditMode={auditMode} />
+                {auditMode && activeTrace && <SourceTracePanel trace={activeTrace} onClose={() => setActiveTrace(null)} />}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <CovenantMonitor covenants={covenants} onCovenantsChange={setCovenants} />
+                  <ScenarioAnalysis metrics={metrics} covenants={covenants} />
+                </div>
+                <TimeSeriesVariancePanel statements={statements} className="mt-0" />
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <ComparableBenchmarking dealId={dealId} dealName={dealData?.company} dealValue={dealData?.value} metrics={metrics} />
+                  <DataRoomIntegration dealId={dealId} issues={issues} statements={statements} />
+                </div>
+                {auditMode && auditLog.length > 0 && <AuditLogPanel entries={auditLog} className="mt-4" />}
+              </>
+            ) : !isExtracting && !extractionError && readyFiles.length === 0 ? (
+              <DiligenceEmptyState mode="dashboard" hasFiles={hasFiles} hasMetrics={false} />
+            ) : null}
           </div>
         )}
       </div>

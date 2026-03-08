@@ -1,11 +1,15 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, Loader2, Bot, User, History, X } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem,
+  DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { useDealSpaceConversations } from '@/hooks/useDealSpaceConversations';
 import { useDealSpaceDocuments } from '@/hooks/useDealSpaceDocuments';
@@ -17,6 +21,15 @@ import ReactMarkdown from 'react-markdown';
 interface DealSpaceAskAITabProps {
   dealId: string;
 }
+
+type DocumentScope = 'all' | 'financial' | 'transcripts' | 'custom';
+
+const SCOPE_LABELS: Record<DocumentScope, string> = {
+  all: 'All Documents',
+  financial: 'Financial Model Only',
+  transcripts: 'Transcripts Only',
+  custom: 'Custom',
+};
 
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents } = useDealSpaceDocuments(dealId);
@@ -35,10 +48,25 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [question, setQuestion] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [scope, setScope] = useState<DocumentScope>('all');
   
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const totalDocuments = documents.length + financials.length;
+
+  // Deduplicate conversations by title — keep only the most recent one per unique title
+  const deduplicatedConversations = useMemo(() => {
+    const seen = new Map<string, typeof conversations[0]>();
+    for (const conv of conversations) {
+      const key = (conv.title || '').trim().toLowerCase();
+      if (!seen.has(key) || new Date(conv.updated_at) > new Date(seen.get(key)!.updated_at)) {
+        seen.set(key, conv);
+      }
+    }
+    return Array.from(seen.values()).sort(
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
+  }, [conversations]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -119,6 +147,32 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {/* Scope filter */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                  <Filter className="h-3.5 w-3.5" />
+                  {SCOPE_LABELS[scope]}
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel className="text-xs">Document Scope</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={scope} onValueChange={(v) => setScope(v as DocumentScope)}>
+                  <DropdownMenuRadioItem value="all" className="text-xs">
+                    All Documents ({totalDocuments})
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="financial" className="text-xs">
+                    Financial Model Only ({financials.length})
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="transcripts" className="text-xs">
+                    Transcripts Only
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {totalDocuments > 0 && (
               <Badge variant="secondary" className="text-xs">
                 {totalDocuments} file{totalDocuments !== 1 ? 's' : ''} indexed
@@ -134,6 +188,21 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
             </Button>
           </div>
         </div>
+        {/* Active scope indicator */}
+        {scope !== 'all' && (
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="outline" className="text-[10px] gap-1 bg-primary/5 border-primary/20 text-primary">
+              <Filter className="h-3 w-3" />
+              Scope: {SCOPE_LABELS[scope]}
+            </Badge>
+            <button
+              onClick={() => setScope('all')}
+              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Reset to All
+            </button>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex-1 flex gap-4 overflow-hidden">
         {/* Conversation History Sidebar */}
@@ -146,7 +215,7 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
               </Button>
             </div>
             <DealSpaceConversationHistory
-              conversations={conversations}
+              conversations={deduplicatedConversations}
               isLoading={isConversationsLoading}
               selectedConversationId={selectedConversationId}
               onSelectConversation={handleSelectConversation}
