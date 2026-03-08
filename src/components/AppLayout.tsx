@@ -161,6 +161,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       <TaskAssignmentBanner />
       <PlatformTour />
       <CopilotToggleButton />
+      <AICopilotPanel />
     </SidebarProvider>
   );
 }
