@@ -758,6 +758,13 @@ export default function Analytics() {
   const { charts, addChart, updateChart, deleteChart, reorderCharts } = useCharts();
   const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, resetToDefaults, presets, savePreset, loadPreset, deletePreset } = useAnalyticsWidgets();
   const { deals } = useDealsContext();
+  const { stages } = useDealStages();
+
+  const stageLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    stages.forEach(s => { map[s.id] = s.label; });
+    return map;
+  }, [stages]);
   
   // Chart dialogs
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
