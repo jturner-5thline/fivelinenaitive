@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Pencil, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { WidgetConfig, WidgetDataSource } from '@/contexts/AnalyticsWidgetsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ interface SortableStatWidgetProps {
   onDelete: (widgetId: string) => void;
   compact?: boolean;
   delta?: number | null;
+  hideDeltas?: boolean;
 }
 
 const getWidgetValue = (dataSource: WidgetDataSource, hoursData: HoursData, formatCurrency: (value: number) => string): string => {
@@ -97,7 +99,7 @@ export const getWidgetDelta = (dataSource: WidgetDataSource, hoursData: HoursDat
   return ((hash % 30) - 10); // range: -10 to +19
 };
 
-export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compact = false, delta }: SortableStatWidgetProps) {
+export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compact = false, delta, hideDeltas = false }: SortableStatWidgetProps) {
   const { formatCurrencyValue } = usePreferences();
   const {
     attributes,
@@ -115,7 +117,7 @@ export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compac
   };
 
   const value = getWidgetValue(widget.dataSource, hoursData, formatCurrencyValue);
-  const effectiveDelta = delta ?? getWidgetDelta(widget.dataSource, hoursData);
+  const effectiveDelta = hideDeltas ? null : (delta ?? getWidgetDelta(widget.dataSource, hoursData));
 
   return (
     <Card 
@@ -164,19 +166,26 @@ export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compac
             {value}
           </p>
           {effectiveDelta !== null && effectiveDelta !== 0 && (
-            <div className={cn(
-              "flex items-center justify-center gap-0.5 mt-1",
-              effectiveDelta > 0 ? "text-emerald-500" : "text-destructive"
-            )}>
-              {effectiveDelta > 0 ? (
-                <TrendingUp className="h-3 w-3" />
-              ) : (
-                <TrendingDown className="h-3 w-3" />
-              )}
-              <span className={cn("font-medium", compact ? "text-[10px]" : "text-xs")}>
-                {effectiveDelta > 0 ? '+' : ''}{effectiveDelta.toFixed(0)}% vs prior
-              </span>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={cn(
+                  "flex items-center justify-center gap-0.5 mt-1 cursor-default",
+                  effectiveDelta > 0 ? "text-emerald-500" : "text-destructive"
+                )}>
+                  {effectiveDelta > 0 ? (
+                    <TrendingUp className="h-3 w-3" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3" />
+                  )}
+                  <span className={cn("font-medium", compact ? "text-[10px]" : "text-xs")}>
+                    {effectiveDelta > 0 ? '+' : ''}{effectiveDelta.toFixed(0)}% vs last month
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Compared to previous month</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </CardContent>
