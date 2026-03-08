@@ -53,13 +53,11 @@ const menuItems = [
   { title: "Finance", url: "/finance", icon: DollarSign, featureKey: "finance" },
   { title: "Email Designer", url: "/email-designer", icon: Mail, featureKey: null },
   { title: "Video Library", url: "/video-library", icon: Video, featureKey: null },
-  { title: "WF Deals", url: "/wf-deals", icon: Briefcase, featureKey: null },
-  { title: "WF Tasks", url: "/wf-tasks", icon: CheckSquare, featureKey: null },
+  { title: "Workflows", url: "/wf", icon: Workflow, featureKey: null },
 ];
 
 const footerItems = [
-  { title: "WF Admin", url: "/wf-admin", icon: SlidersHorizontal, featureKey: null },
-  { title: "Workflows", url: "/workflows", icon: Workflow, featureKey: "workflows" },
+  { title: "Workflows (old)", url: "/workflows", icon: Workflow, featureKey: "workflows" },
   { title: "Integrations", url: "/integrations", icon: Plug, featureKey: "integrations" },
   { title: "Settings", url: "/settings", icon: Settings, featureKey: null }, // Always visible
   { title: "Help", url: "/help", icon: HelpCircle, featureKey: null }, // Always visible

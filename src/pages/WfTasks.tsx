@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Circle, Clock } from "lucide-react";
 import { format } from "date-fns";
 
-export default function WfTasks() {
+export default function WfTasks({ embedded }: { embedded?: boolean }) {
   const { data: tasks = [] } = useWfTasks();
   const updateTask = useUpdateWfTaskStatus();
 
@@ -45,9 +45,9 @@ export default function WfTasks() {
   );
 
   return (
-    <div className="p-6 space-y-6">
-      <Helmet><title>Workflow Tasks | Naitive</title></Helmet>
-      <h1 className="text-2xl font-bold text-foreground">Workflow Tasks</h1>
+    <div className={embedded ? "space-y-6" : "p-6 space-y-6"}>
+      {!embedded && <Helmet><title>Workflow Tasks | Naitive</title></Helmet>}
+      {!embedded && <h1 className="text-2xl font-bold text-foreground">Workflow Tasks</h1>}
 
       <Tabs defaultValue="open">
         <TabsList>

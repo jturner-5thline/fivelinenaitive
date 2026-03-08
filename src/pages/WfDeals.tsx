@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, List, Columns3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export default function WfDeals() {
+export default function WfDeals({ embedded }: { embedded?: boolean }) {
   const { data: deals = [], isLoading } = useWfDeals();
   const createDeal = useCreateWfDeal();
   const [createOpen, setCreateOpen] = useState(false);
@@ -34,10 +34,10 @@ export default function WfDeals() {
   }, {} as Record<string, any[]>);
 
   return (
-    <div className="p-6 space-y-6">
-      <Helmet><title>Workflow Deals | Naitive</title></Helmet>
+    <div className={embedded ? "space-y-6" : "p-6 space-y-6"}>
+      {!embedded && <Helmet><title>Workflow Deals | Naitive</title></Helmet>}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Workflow Deals</h1>
+        {!embedded && <h1 className="text-2xl font-bold text-foreground">Workflow Deals</h1>}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-2" />New Deal</Button>

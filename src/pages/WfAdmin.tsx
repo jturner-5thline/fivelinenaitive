@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Search, Workflow } from "lucide-react";
 
-export default function WfAdmin() {
+export default function WfAdmin({ embedded }: { embedded?: boolean }) {
   const { data: workflows = [], isLoading } = useWfWorkflows();
   const { data: users = [] } = useWfUsers();
   const updateWorkflow = useUpdateWfWorkflow();
@@ -20,14 +20,14 @@ export default function WfAdmin() {
   );
 
   return (
-    <div className="p-6 space-y-6">
-      <Helmet><title>Workflows Admin | Naitive</title></Helmet>
-      <div className="flex items-center justify-between">
+    <div className={embedded ? "space-y-6" : "p-6 space-y-6"}>
+      {!embedded && <Helmet><title>Workflows Admin | Naitive</title></Helmet>}
+      {!embedded && (
         <div>
           <h1 className="text-2xl font-bold text-foreground">Workflows Admin</h1>
           <p className="text-sm text-muted-foreground">Manage workflow owners and toggle active/inactive</p>
         </div>
-      </div>
+      )}
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
