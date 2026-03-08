@@ -711,6 +711,8 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                       const isMappedRow = Object.values(fieldMappings).some(maps =>
                         maps.some(m => m.rowIdx === rowIdx && m.sheet === sheet?.name)
                       );
+                      const rowSuggestion = getSuggestionForRow(rowIdx);
+                      const hasSuggestion = !!rowSuggestion && rowSuggestion.status !== 'rejected';
                       return (
                         <tr key={rowIdx}
                           className={cn(
@@ -719,23 +721,62 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                               ? "bg-primary/10 hover:bg-primary/15"
                               : isMappedRow
                                 ? "bg-emerald-500/5 hover:bg-emerald-500/10"
-                                : rowIdx % 2 === 0
-                                  ? "bg-transparent hover:bg-muted/20"
-                                  : "bg-muted/5 hover:bg-muted/20"
+                                : hasSuggestion
+                                  ? rowSuggestion.category === 'bs'
+                                    ? "bg-violet-500/5 hover:bg-violet-500/10"
+                                    : "bg-blue-500/5 hover:bg-blue-500/10"
+                                  : rowIdx % 2 === 0
+                                    ? "bg-transparent hover:bg-muted/20"
+                                    : "bg-muted/5 hover:bg-muted/20"
                           )}
                           onClick={e => handleRowClick(rowIdx, e)}>
-                          <td className="py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20 bg-muted/10">{rowIdx + 1}</td>
-                          {/* First column: label, left-aligned */}
-                          <td className="py-1 px-2 whitespace-nowrap border-r border-border/10 font-medium">
-                            {row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}
+                          <td className={cn(
+                            "py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
+                            hasSuggestion ? "bg-primary/5" : "bg-muted/10",
+                          )}>
+                            {rowIdx + 1}
                           </td>
-                          {/* Remaining columns: right-aligned with currency formatting for numbers */}
+                          {/* First column: label + suggestion badge */}
+                          <td className="py-1 px-2 whitespace-nowrap border-r border-border/10 font-medium">
+                            <div className="flex items-center gap-1.5">
+                              <span>{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
+                              {hasSuggestion && (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[8px] h-4 px-1.5 shrink-0",
+                                    rowSuggestion.category === 'bs'
+                                      ? "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20"
+                                      : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+                                  )}
+                                >
+                                  <Sparkles className="h-2 w-2 mr-0.5" />
+                                  {rowSuggestion.suggestedField}
+                                  <span className="ml-1 opacity-70">{Math.round(rowSuggestion.confidence * 100)}%</span>
+                                </Badge>
+                              )}
+                              {hasSuggestion && rowSuggestion.status === 'pending' && (
+                                <div className="flex gap-0.5 ml-auto">
+                                  <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-emerald-500 hover:text-emerald-600" onClick={(e) => { e.stopPropagation(); handleAcceptSuggestion(rowIdx); }}>
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); rejectSuggestion(rowIdx); }}>
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                              {hasSuggestion && rowSuggestion.status === 'accepted' && (
+                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 ml-auto" />
+                              )}
+                            </div>
+                          </td>
+                          {/* Remaining columns */}
                           {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
                             const cellVal = row[colIdx + 1];
                             const isNum = isNumericCell(cellVal);
                             return (
                               <td key={colIdx + 1} className={cn(
-                                "py-1 px-2 whitespace-nowrap border-r border-border/5 font-mono tabular-nums",
+                                "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
                                 isNum ? "text-right" : "text-left"
                               )}>
                                 {formatCellValue(cellVal)}
