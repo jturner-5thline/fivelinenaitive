@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { CashFlowManager } from '@/components/cashflow/CashFlowManager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, FileText, Settings2, Shield } from 'lucide-react';
@@ -187,7 +188,7 @@ export function DashboardModule() {
 
       {activeTab === 'balance' && <BalanceCashFlow view="balance" />}
 
-      {activeTab === 'cashflow' && <BalanceCashFlow view="cashflow" />}
+      {activeTab === 'cashflow' && <CashFlowManager />}
 
       {activeTab === 'scenarios' && (
         <div className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
