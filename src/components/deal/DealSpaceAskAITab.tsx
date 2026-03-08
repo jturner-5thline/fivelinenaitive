@@ -34,7 +34,7 @@ const SCOPE_LABELS: Record<DocumentScope, string> = {
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
-  const { messages, sendMessage, clearMessages, isLoading: isAILoading, setMessages } = useDealSpaceAI(dealId);
+  const { messages, sendMessage, clearMessages, isLoading: isAILoading, setMessages, scope, setScope } = useDealSpaceAI(dealId);
   const { 
     conversations, 
     isLoading: isConversationsLoading,
@@ -48,7 +48,7 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [question, setQuestion] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [scope, setScope] = useState<DocumentScope>('all');
+  // scope and setScope come from useDealSpaceAI hook
   
   const chatEndRef = useRef<HTMLDivElement>(null);
 

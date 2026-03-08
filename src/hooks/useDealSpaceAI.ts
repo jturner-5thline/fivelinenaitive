@@ -2,6 +2,8 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+export type DocumentScope = 'all' | 'financial' | 'transcripts' | 'custom';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -13,11 +15,11 @@ export function useDealSpaceAI(dealId: string | undefined) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [scope, setScope] = useState<DocumentScope>('all');
 
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, overrideScope?: DocumentScope) => {
     if (!content.trim() || !dealId) return;
 
-    // Add user message
     const userMessage: Message = {
       role: 'user',
       content: content.trim(),
@@ -27,14 +29,12 @@ export function useDealSpaceAI(dealId: string | undefined) {
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
-    // Cancel any pending request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     abortControllerRef.current = new AbortController();
 
     try {
-      // Build messages for API (without timestamps)
       const apiMessages = [...messages, userMessage].map(m => ({
         role: m.role,
         content: m.content,
@@ -44,6 +44,7 @@ export function useDealSpaceAI(dealId: string | undefined) {
         body: { 
           messages: apiMessages,
           dealId,
+          scope: overrideScope || scope,
         },
       });
 
@@ -55,7 +56,6 @@ export function useDealSpaceAI(dealId: string | undefined) {
         throw new Error(data.error);
       }
 
-      // Add assistant response
       const assistantMessage: Message = {
         role: 'assistant',
         content: data.content,
@@ -76,7 +76,6 @@ export function useDealSpaceAI(dealId: string | undefined) {
         variant: 'destructive',
       });
 
-      // Add error message
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
@@ -85,7 +84,7 @@ export function useDealSpaceAI(dealId: string | undefined) {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, dealId]);
+  }, [messages, dealId, scope]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -97,5 +96,7 @@ export function useDealSpaceAI(dealId: string | undefined) {
     clearMessages,
     isLoading,
     setMessages,
+    scope,
+    setScope,
   };
 }
