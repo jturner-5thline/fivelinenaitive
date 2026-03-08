@@ -662,6 +662,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
 
     return (
       <div className="space-y-4">
+        {renderSettingsSection()}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" className="h-7" onClick={() => setPhase('upload')}>
