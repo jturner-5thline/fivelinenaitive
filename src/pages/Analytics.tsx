@@ -1,6 +1,9 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PortfolioRiskAnalysis } from '@/components/analytics/PortfolioRiskAnalysis';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -751,14 +754,29 @@ export default function Analytics() {
         <DealsHeader />
         
         <main className="container mx-auto px-6 py-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-3xl font-bold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Analytics</h1>
               <p className="text-muted-foreground mt-1">
                 View insights and manage your custom widgets and charts. Drag to reorder.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+          </div>
+
+          <Tabs defaultValue="custom" className="w-full">
+            <TabsList className="mb-6">
+              <TabsTrigger value="custom" className="gap-1.5">
+                <BarChart3 className="h-3.5 w-3.5" />
+                Custom Analytics
+              </TabsTrigger>
+              <TabsTrigger value="portfolio-risk" className="gap-1.5">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Portfolio / Risk
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="custom">
+            <div className="flex flex-wrap items-center gap-2 mb-8">
               <Select value={datePreset} onValueChange={handleDatePreset}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Select period" />
@@ -805,7 +823,6 @@ export default function Analytics() {
                 </Popover>
               )}
             </div>
-          </div>
 
           {/* Widgets Section */}
           <div className="mb-8">
@@ -1018,6 +1035,12 @@ export default function Analytics() {
               </SortableContext>
             </DndContext>
           )}
+            </TabsContent>
+
+            <TabsContent value="portfolio-risk">
+              <PortfolioRiskAnalysis />
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
 
