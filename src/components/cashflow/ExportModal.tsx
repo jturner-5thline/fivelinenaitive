@@ -25,6 +25,9 @@ export const ExportModal = memo(function ExportModal({ open, weeklyData, onClose
   const [customFlag, setCustomFlag] = useState('');
 
   const weeks = Object.entries(weeklyData).sort(([a], [b]) => a.localeCompare(b));
+  const dateRange = weeks.length > 0
+    ? `${new Date(weeks[0][0]).toLocaleDateString()} — ${new Date(weeks[weeks.length - 1][1].week_ending).toLocaleDateString()}`
+    : '';
 
   const generatePDF = useCallback(() => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
@@ -79,9 +82,6 @@ export const ExportModal = memo(function ExportModal({ open, weeklyData, onClose
   }, [title, flags, notes, weeks, dateRange, onArchive, onClose]);
 
   if (!open) return null;
-  const dateRange = weeks.length > 0
-    ? `${new Date(weeks[0][0]).toLocaleDateString()} — ${new Date(weeks[weeks.length - 1][1].week_ending).toLocaleDateString()}`
-    : '';
 
   const addFlag = (flag: ExportFlag) => {
     if (!flags.find(f => f.label === flag.label)) {

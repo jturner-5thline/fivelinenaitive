@@ -188,7 +188,7 @@ export function DashboardModule() {
 
       {activeTab === 'balance' && <BalanceCashFlow view="balance" />}
 
-      {activeTab === 'cashflow' && <BalanceCashFlow view="cashflow" />}
+      {activeTab === 'cashflow' && <CashFlowManager />}
 
       {activeTab === 'scenarios' && (
         <div className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
