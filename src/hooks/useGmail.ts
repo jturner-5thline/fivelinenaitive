@@ -133,7 +133,9 @@ export function useGmail() {
 
     // Demo user always appears connected
     if (isDemo) {
-      setStatus({ connected: true, connected_at: new Date().toISOString() });
+      const demoStatus = { connected: true, connected_at: new Date().toISOString() };
+      setStatus(demoStatus);
+      cachedStatus = demoStatus;
       setIsStatusLoading(false);
       return;
     }
@@ -143,6 +145,7 @@ export function useGmail() {
       
       if (error) throw error;
       setStatus(data);
+      cachedStatus = data;
       setError(null);
     } catch (err: any) {
       console.error('Gmail status error:', err);
