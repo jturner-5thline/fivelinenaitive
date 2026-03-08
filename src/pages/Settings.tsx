@@ -28,6 +28,7 @@ import { WriteUpFieldsSettings } from '@/components/settings/WriteUpFieldsSettin
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
 import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
 import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
+import { DistributionStatsSettings } from '@/components/settings/DistributionStatsSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 const SETTINGS_SECTIONS = [
@@ -127,6 +128,10 @@ const SETTINGS_SECTIONS = [
     id: 'email-labels',
     keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'],
   },
+  {
+    id: 'distribution-stats',
+    keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'],
+  },
 ];
 
 // Tab definitions with which section IDs belong to each
@@ -135,7 +140,7 @@ const TABS = [
   { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'writeup-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates'] },
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
   { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'zapier'] },
-  { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels'] },
+  { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'distribution-stats'] },
 ];
 
 function LinkCard({ to, title, description, badge }: { to: string; title: string; description: string; badge?: number }) {
@@ -319,6 +324,7 @@ export default function Settings() {
                 <TabsContent value="email" className="space-y-4 mt-4">
                   {isVisible('email-snippets') && <EmailSnippetsSettings />}
                   {isVisible('email-labels') && <EmailLabelsSettings />}
+                  {isVisible('distribution-stats') && <DistributionStatsSettings />}
                 </TabsContent>
               </Tabs>
             )}
