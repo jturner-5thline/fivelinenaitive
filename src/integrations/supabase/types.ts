@@ -1623,6 +1623,356 @@ export type Database = {
           },
         ]
       }
+      contact_activities: {
+        Row: {
+          activity_type: string
+          body: string | null
+          contact_id: string
+          created_at: string
+          deal_id: string | null
+          id: string
+          logged_by: string | null
+          metadata: Json | null
+          occurred_at: string
+          source: string | null
+          subject: string | null
+        }
+        Insert: {
+          activity_type: string
+          body?: string | null
+          contact_id: string
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          logged_by?: string | null
+          metadata?: Json | null
+          occurred_at?: string
+          source?: string | null
+          subject?: string | null
+        }
+        Update: {
+          activity_type?: string
+          body?: string | null
+          contact_id?: string
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          logged_by?: string | null
+          metadata?: Json | null
+          occurred_at?: string
+          source?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_activities_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_activities_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_company_associations: {
+        Row: {
+          association_type: string | null
+          company_id: string
+          contact_id: string
+          created_at: string
+          id: string
+          is_primary: boolean | null
+        }
+        Insert: {
+          association_type?: string | null
+          company_id: string
+          contact_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+        }
+        Update: {
+          association_type?: string | null
+          company_id?: string
+          contact_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_company_associations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_company_associations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_deals: {
+        Row: {
+          contact_id: string
+          created_at: string
+          deal_id: string
+          id: string
+          role: string | null
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          role?: string | null
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_deals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_deals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          additional_emails: string[] | null
+          ae_owner_id: string | null
+          behavioral_score: number | null
+          buying_role: Database["public"]["Enums"]["contact_buying_role"] | null
+          campaign: string | null
+          company_id: string | null
+          contact_score: number | null
+          created_at: string
+          created_by: string | null
+          custom_fields: Json | null
+          department: string | null
+          description: string | null
+          email: string | null
+          email_opt_in: boolean | null
+          external_ids: Json | null
+          first_name: string | null
+          fit_score: number | null
+          full_name: string | null
+          hubspot_contact_id: string | null
+          id: string
+          job_title: string | null
+          last_activity_date: string | null
+          last_inbound_activity_date: string | null
+          last_modified_by: string | null
+          last_name: string | null
+          last_outbound_touch_date: string | null
+          lead_source: string | null
+          lead_source_latest: string | null
+          lead_source_original: string | null
+          lifecycle_stage:
+            | Database["public"]["Enums"]["contact_lifecycle_stage"]
+            | null
+          linkedin_url: string | null
+          locale: string | null
+          migrated_from_hubspot: boolean | null
+          next_activity_date: string | null
+          org_company_id: string | null
+          owner_user_id: string | null
+          phone_mobile: string | null
+          phone_opt_in: boolean | null
+          phone_other: string | null
+          phone_work: string | null
+          preferred_channel: string | null
+          primary_company_id: string | null
+          sdr_owner_id: string | null
+          seniority: string | null
+          sms_opt_in: boolean | null
+          source_system: string | null
+          status: Database["public"]["Enums"]["contact_status"] | null
+          synced_with_hubspot: boolean | null
+          tags: string[] | null
+          timezone: string | null
+          updated_at: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          website_url: string | null
+        }
+        Insert: {
+          additional_emails?: string[] | null
+          ae_owner_id?: string | null
+          behavioral_score?: number | null
+          buying_role?:
+            | Database["public"]["Enums"]["contact_buying_role"]
+            | null
+          campaign?: string | null
+          company_id?: string | null
+          contact_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          custom_fields?: Json | null
+          department?: string | null
+          description?: string | null
+          email?: string | null
+          email_opt_in?: boolean | null
+          external_ids?: Json | null
+          first_name?: string | null
+          fit_score?: number | null
+          full_name?: string | null
+          hubspot_contact_id?: string | null
+          id?: string
+          job_title?: string | null
+          last_activity_date?: string | null
+          last_inbound_activity_date?: string | null
+          last_modified_by?: string | null
+          last_name?: string | null
+          last_outbound_touch_date?: string | null
+          lead_source?: string | null
+          lead_source_latest?: string | null
+          lead_source_original?: string | null
+          lifecycle_stage?:
+            | Database["public"]["Enums"]["contact_lifecycle_stage"]
+            | null
+          linkedin_url?: string | null
+          locale?: string | null
+          migrated_from_hubspot?: boolean | null
+          next_activity_date?: string | null
+          org_company_id?: string | null
+          owner_user_id?: string | null
+          phone_mobile?: string | null
+          phone_opt_in?: boolean | null
+          phone_other?: string | null
+          phone_work?: string | null
+          preferred_channel?: string | null
+          primary_company_id?: string | null
+          sdr_owner_id?: string | null
+          seniority?: string | null
+          sms_opt_in?: boolean | null
+          source_system?: string | null
+          status?: Database["public"]["Enums"]["contact_status"] | null
+          synced_with_hubspot?: boolean | null
+          tags?: string[] | null
+          timezone?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          additional_emails?: string[] | null
+          ae_owner_id?: string | null
+          behavioral_score?: number | null
+          buying_role?:
+            | Database["public"]["Enums"]["contact_buying_role"]
+            | null
+          campaign?: string | null
+          company_id?: string | null
+          contact_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          custom_fields?: Json | null
+          department?: string | null
+          description?: string | null
+          email?: string | null
+          email_opt_in?: boolean | null
+          external_ids?: Json | null
+          first_name?: string | null
+          fit_score?: number | null
+          full_name?: string | null
+          hubspot_contact_id?: string | null
+          id?: string
+          job_title?: string | null
+          last_activity_date?: string | null
+          last_inbound_activity_date?: string | null
+          last_modified_by?: string | null
+          last_name?: string | null
+          last_outbound_touch_date?: string | null
+          lead_source?: string | null
+          lead_source_latest?: string | null
+          lead_source_original?: string | null
+          lifecycle_stage?:
+            | Database["public"]["Enums"]["contact_lifecycle_stage"]
+            | null
+          linkedin_url?: string | null
+          locale?: string | null
+          migrated_from_hubspot?: boolean | null
+          next_activity_date?: string | null
+          org_company_id?: string | null
+          owner_user_id?: string | null
+          phone_mobile?: string | null
+          phone_opt_in?: boolean | null
+          phone_other?: string | null
+          phone_work?: string | null
+          preferred_channel?: string | null
+          primary_company_id?: string | null
+          sdr_owner_id?: string | null
+          seniority?: string | null
+          sms_opt_in?: boolean | null
+          source_system?: string | null
+          status?: Database["public"]["Enums"]["contact_status"] | null
+          synced_with_hubspot?: boolean | null
+          tags?: string[] | null
+          timezone?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_primary_company_id_fkey"
+            columns: ["primary_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_metrics: {
         Row: {
           company_id: string | null
@@ -10461,6 +10811,34 @@ export type Database = {
         | "approved"
         | "sent"
       company_role: "owner" | "admin" | "member"
+      contact_buying_role:
+        | "economic_buyer"
+        | "champion"
+        | "influencer"
+        | "user"
+        | "blocker"
+        | "legal"
+        | "finance"
+        | "other"
+      contact_lifecycle_stage:
+        | "subscriber"
+        | "lead"
+        | "mql"
+        | "sql"
+        | "opportunity"
+        | "customer"
+        | "evangelist"
+        | "other"
+      contact_status:
+        | "new"
+        | "working"
+        | "meeting_scheduled"
+        | "no_show"
+        | "no_fit"
+        | "nurture"
+        | "bad_data"
+        | "converted"
+        | "closed"
       data_access_scope: "all" | "team" | "own" | "none"
       feature_status: "disabled" | "staging" | "deployed" | "james_only"
       financial_period_type: "monthly" | "quarterly" | "annual"
@@ -10633,6 +11011,37 @@ export const Constants = {
         "sent",
       ],
       company_role: ["owner", "admin", "member"],
+      contact_buying_role: [
+        "economic_buyer",
+        "champion",
+        "influencer",
+        "user",
+        "blocker",
+        "legal",
+        "finance",
+        "other",
+      ],
+      contact_lifecycle_stage: [
+        "subscriber",
+        "lead",
+        "mql",
+        "sql",
+        "opportunity",
+        "customer",
+        "evangelist",
+        "other",
+      ],
+      contact_status: [
+        "new",
+        "working",
+        "meeting_scheduled",
+        "no_show",
+        "no_fit",
+        "nurture",
+        "bad_data",
+        "converted",
+        "closed",
+      ],
       data_access_scope: ["all", "team", "own", "none"],
       feature_status: ["disabled", "staging", "deployed", "james_only"],
       financial_period_type: ["monthly", "quarterly", "annual"],

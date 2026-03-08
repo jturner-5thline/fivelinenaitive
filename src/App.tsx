@@ -68,6 +68,8 @@ const NewsFeed = lazy(lazyRetry(() => import("./pages/NewsFeed")));
 const Research = lazy(lazyRetry(() => import("./pages/Research")));
 const Agents = lazy(lazyRetry(() => import("./pages/Agents")));
 const Finance = lazy(lazyRetry(() => import("./pages/Finance")));
+const Contacts = lazy(lazyRetry(() => import("./pages/Contacts")));
+const ContactDetail = lazy(lazyRetry(() => import("./pages/ContactDetail")));
 const NotFound = lazy(lazyRetry(() => import("./pages/NotFound")));
 const PrivacyPolicy = lazy(lazyRetry(() => import("./pages/PrivacyPolicy")));
 const TermsOfService = lazy(lazyRetry(() => import("./pages/TermsOfService")));
@@ -160,6 +162,12 @@ const App = () => (
                           } />
                           <Route path="/sales-bd" element={
                             <ProtectedRoute><AppLayout><SalesBD /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/contacts" element={
+                            <ProtectedRoute><AppLayout><Contacts /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/contacts/:id" element={
+                            <ProtectedRoute><AppLayout><ContactDetail /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/hr" element={
                             <ProtectedRoute><AppLayout><HR /></AppLayout></ProtectedRoute>
