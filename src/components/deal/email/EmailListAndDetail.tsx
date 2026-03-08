@@ -158,13 +158,13 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="flex items-start gap-3 px-3 py-4">
+      <div className="flex items-start gap-3 px-3 py-4 min-w-0 overflow-hidden">
         <EmailAvatar
           name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name}
           email={latest.folder === 'sent' ? latest.to_email : latest.from_email}
         />
         
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-hidden">
           {/* Row 1: Sender + timestamp */}
           <div className="flex items-center justify-between gap-2 mb-0.5">
             <div className="flex items-center gap-2 min-w-0">
@@ -190,7 +190,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           </div>
 
           {/* Row 2: Badges */}
-          <div className="flex items-center gap-1.5 mb-0.5">
+          <div className="flex items-center gap-1.5 mb-0.5 overflow-hidden">
             {thread.dealName && (
               <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-primary/10 text-primary border-primary/20">
                 💼 {thread.dealName}
@@ -320,9 +320,9 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
     );
   }
 
-  return (
-    <ScrollArea className="h-full">
-      <div className="pt-2 pb-2">
+   return (
+    <ScrollArea className="h-full w-full">
+      <div className="pt-2 pb-2 overflow-hidden">
         {threads.map((thread) => (
           <ThreadListItem
             key={thread.threadId}
