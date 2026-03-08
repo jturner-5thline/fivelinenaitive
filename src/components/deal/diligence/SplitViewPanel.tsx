@@ -19,8 +19,13 @@ export function SplitViewPanel({ dealId, file, onClose }: SplitViewPanelProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { notes, isLoading: notesLoading, createNote, updateNote, deleteNote, fetchVersions, restoreVersion } = useDealSpaceNotes(dealId);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
+
+  const handleDownloadNote = (note: DealSpaceNote) => {
+    // No-op in split view context
+  };
 
   useEffect(() => {
     if (!file?.storagePath) {
