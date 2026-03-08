@@ -29,6 +29,7 @@ import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSett
 import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
 import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
 import { DistributionStatsSettings } from '@/components/settings/DistributionStatsSettings';
+import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 const SETTINGS_SECTIONS = [
