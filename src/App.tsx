@@ -241,9 +241,6 @@ const App = () => (
                           <Route path="/terms" element={<TermsOfService />} />
                           <Route path="/homepage" element={<Homepage />} />
                           <Route path="/promo" element={<Promo />} />
-                          <Route path="/video-library" element={
-                            <ProtectedRoute><AppLayout><VideoLibrary /></AppLayout></ProtectedRoute>
-                          } />
                           <Route path="/wf" element={
                             <ProtectedRoute><AppLayout><WfHub /></AppLayout></ProtectedRoute>
                           } />
