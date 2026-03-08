@@ -18,6 +18,7 @@ interface CopilotStore {
   openPanel: () => void;
   closePanel: () => void;
   addMessage: (message: CopilotMessage) => void;
+  setMessages: (messages: CopilotMessage[]) => void;
   setProcessing: (processing: boolean) => void;
   clearMessages: () => void;
   setConversationId: (id: string | null) => void;
