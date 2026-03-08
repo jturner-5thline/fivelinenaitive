@@ -558,25 +558,30 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
         <div className="flex-1" />
 
-        {/* Fix #17: keyboard shortcuts help */}
+        {/* Keyboard shortcuts help */}
         <Popover open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <CircleHelp className="h-4 w-4" />
+              <Keyboard className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="end" className="w-48 p-3">
-            <p className="text-xs font-semibold mb-2">Keyboard Shortcuts</p>
-            <div className="space-y-1.5">
+          <PopoverContent side="bottom" align="end" className="w-64 p-3">
+            <p className="text-xs font-semibold mb-3">Keyboard Shortcuts</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
               {[
+                { key: 'J', desc: 'Next email' },
+                { key: 'K', desc: 'Previous email' },
+                { key: 'O', desc: 'Open email' },
                 { key: 'R', desc: 'Reply' },
-                { key: 'F', desc: 'Forward' },
-                { key: 'L', desc: 'Link to deal' },
-                { key: 'Del', desc: 'Archive' },
+                { key: 'E', desc: 'Archive' },
+                { key: 'S', desc: 'Toggle star' },
+                { key: 'C', desc: 'Compose' },
+                { key: 'Esc', desc: 'Back to inbox' },
+                { key: '?', desc: 'This help' },
               ].map(s => (
                 <div key={s.key} className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">{s.desc}</span>
-                  <kbd className="text-[10px] bg-muted border border-border rounded px-1 py-0.5 text-muted-foreground font-mono">{s.key}</kbd>
+                  <kbd className="text-[10px] bg-muted border border-border rounded px-1.5 py-0.5 text-muted-foreground font-mono">{s.key}</kbd>
                 </div>
               ))}
             </div>
