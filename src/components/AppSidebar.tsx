@@ -43,7 +43,7 @@ const menuItems = [
   { title: "Contacts", url: "/contacts", icon: Contact, featureKey: "sales_bd" },
   { title: "Companies", url: "/crm-companies", icon: Building2, featureKey: "sales_bd" },
   { title: "News Feed", url: "/news-feed", icon: Newspaper, featureKey: "newsfeed" },
-  { title: "AI Research", url: "/research", icon: Sparkles, featureKey: "ai_research", iconClassName: "h-[18px] w-[18px]" },
+  
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
   { title: "Metrics", url: "/metrics", icon: BarChart3, featureKey: "metrics" },
   { title: "Insights", url: "/insights", icon: Lightbulb, featureKey: "insights" },

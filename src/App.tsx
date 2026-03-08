@@ -231,9 +231,6 @@ const App = () => (
                           <Route path="/integrations" element={
                             <ProtectedRoute><Integrations /></ProtectedRoute>
                           } />
-                          <Route path="/research" element={
-                            <ProtectedRoute><Research /></ProtectedRoute>
-                          } />
                           <Route path="/agents" element={
                             <ProtectedRoute><Agents /></ProtectedRoute>
                           } />
