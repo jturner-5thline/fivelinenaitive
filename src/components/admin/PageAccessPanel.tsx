@@ -24,6 +24,7 @@ import {
   Building2,
   Send,
   FileSignature,
+  Video,
 } from "lucide-react";
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from "sonner";
@@ -120,6 +121,12 @@ const pageConfigs: PageConfig[] = [
     label: "AI Research", 
     description: "AI-powered research and analysis tools",
     icon: <Sparkles className="h-5 w-5" />
+  },
+  { 
+    featureKey: "page_video_library", 
+    label: "Video Library", 
+    description: "Walkthrough videos and learning resources",
+    icon: <Video className="h-5 w-5" />
   },
   { 
     featureKey: "chat_widget", 
