@@ -1035,6 +1035,12 @@ export default function Analytics() {
               </SortableContext>
             </DndContext>
           )}
+            </TabsContent>
+
+            <TabsContent value="portfolio-risk">
+              <PortfolioRiskAnalysis />
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
 
