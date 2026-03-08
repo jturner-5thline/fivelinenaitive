@@ -1,0 +1,252 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { X, ArrowUp } from 'lucide-react';
+import { useCopilotStore } from '@/stores/copilotStore';
+import naitiveFavicon from '@/assets/naitive-favicon.png';
+
+export function AICopilotPanel() {
+  const { isOpen, closePanel, messages, addMessage } = useCopilotStore();
+  const [input, setInput] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 96) + 'px'; // max ~4 rows
+  }, [input]);
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Escape to close
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) closePanel();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isOpen, closePanel]);
+
+  // Focus textarea when opened
+  useEffect(() => {
+    if (isOpen) setTimeout(() => textareaRef.current?.focus(), 200);
+  }, [isOpen]);
+
+  const handleSend = useCallback(() => {
+    const text = input.trim();
+    if (!text) return;
+
+    addMessage({
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: text,
+      timestamp: new Date(),
+    });
+
+    setInput('');
+
+    // Placeholder assistant reply
+    setTimeout(() => {
+      addMessage({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: "I'm being configured — I'll be able to help soon.",
+        timestamp: new Date(),
+      });
+    }, 400);
+  }, [input, addMessage]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="animate-slide-in-from-right"
+      style={{
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        width: 420,
+        height: '100vh',
+        zIndex: 51,
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'rgba(8, 10, 18, 0.88)',
+        backdropFilter: 'blur(24px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+        borderLeft: '1px solid var(--glass-border)',
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          height: 48,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 16px',
+          borderBottom: '1px solid var(--glass-border)',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src={naitiveFavicon} alt="" style={{ width: 20, height: 20 }} />
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)' }}>
+            nAItive Copilot
+          </span>
+        </div>
+        <button
+          onClick={closePanel}
+          aria-label="Close copilot"
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'hsl(var(--muted-foreground))',
+            padding: 4,
+            borderRadius: 6,
+            display: 'flex',
+            transition: 'color 150ms',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* Context Badge placeholder */}
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }} />
+
+      {/* Messages */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '12px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+        }}
+      >
+        {messages.length === 0 ? (
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'hsl(var(--muted-foreground))',
+              fontSize: 13,
+              textAlign: 'center',
+              padding: '0 24px',
+            }}
+          >
+            Ask me anything about your deals, tasks, or pipeline.
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              style={{
+                display: 'flex',
+                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+              }}
+            >
+              <div
+                style={{
+                  maxWidth: '85%',
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  whiteSpace: 'pre-wrap',
+                  ...(msg.role === 'user'
+                    ? {
+                        background: 'hsl(var(--primary))',
+                        color: 'hsl(var(--primary-foreground))',
+                        borderBottomRightRadius: 4,
+                      }
+                    : {
+                        background: 'var(--glass-surface)',
+                        color: 'var(--foreground)',
+                        border: '1px solid var(--glass-border)',
+                        borderBottomLeftRadius: 4,
+                      }),
+                }}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div style={{ padding: '12px 16px', flexShrink: 0, borderTop: '1px solid var(--glass-border)' }}>
+        <div style={{ position: 'relative' }}>
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask anything..."
+            rows={1}
+            style={{
+              width: '100%',
+              background: 'var(--glass-surface)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 12,
+              padding: '10px 44px 10px 14px',
+              fontSize: 14,
+              color: 'var(--foreground)',
+              resize: 'none',
+              outline: 'none',
+              fontFamily: 'inherit',
+              lineHeight: 1.5,
+              transition: 'border-color 150ms',
+            }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--glass-border-accent)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--glass-border)')}
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim()}
+            aria-label="Send message"
+            style={{
+              position: 'absolute',
+              right: 8,
+              bottom: 8,
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: input.trim() ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+              color: 'white',
+              border: 'none',
+              cursor: input.trim() ? 'pointer' : 'default',
+              opacity: input.trim() ? 1 : 0.5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              transition: 'opacity 150ms',
+            }}
+          >
+            <ArrowUp size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
