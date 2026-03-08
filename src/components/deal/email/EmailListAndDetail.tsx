@@ -190,7 +190,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           </div>
 
           {/* Row 2: Badges */}
-          <div className="flex items-center gap-1.5 mb-0.5">
+          <div className="flex items-center gap-1.5 mb-0.5 overflow-hidden">
             {thread.dealName && (
               <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-primary/10 text-primary border-primary/20">
                 💼 {thread.dealName}
