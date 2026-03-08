@@ -77,6 +77,9 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   const endIdx = Math.min(totalWeeks, effectiveCurrentIndex + weeksFuture);
   const visibleWeeks = sortedWeeks.slice(startIdx, endIdx);
 
+  const [savePlanOpen, setSavePlanOpen] = useState(false);
+  const [planName, setPlanName] = useState('');
+
   const activePlan = activePlanId ? planSnapshots.find(p => p.id === activePlanId) : null;
 
   const renderVariance = (actual: number, plan: number) => {
