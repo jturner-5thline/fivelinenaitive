@@ -103,6 +103,9 @@ export function SplitViewPanel({ dealId, file, onClose }: SplitViewPanelProps) {
                 onCreateNote={handleCreateNote}
                 onDeleteNote={(id) => { if (selectedNoteId === id) setSelectedNoteId(null); deleteNote(id); }}
                 onUpdateNote={updateNote}
+                onDownload={handleDownloadNote}
+                onUpload={() => fileInputRef.current?.click()}
+                fileInputRef={fileInputRef}
               />
             </div>
             {/* Editor */}
@@ -111,6 +114,7 @@ export function SplitViewPanel({ dealId, file, onClose }: SplitViewPanelProps) {
                 <DealSpaceNoteEditor
                   note={selectedNote}
                   onUpdate={updateNote}
+                  onDownload={handleDownloadNote}
                   dealId={dealId}
                   isFullscreen={false}
                   onToggleFullscreen={() => {}}
