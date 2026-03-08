@@ -34,7 +34,7 @@ const SCOPE_LABELS: Record<DocumentScope, string> = {
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
-  const { messages, sendMessage, clearMessages, isLoading: isAILoading, setMessages } = useDealSpaceAI(dealId);
+  const { messages, sendMessage, clearMessages, isLoading: isAILoading, setMessages, scope, setScope } = useDealSpaceAI(dealId);
   const { 
     conversations, 
     isLoading: isConversationsLoading,
