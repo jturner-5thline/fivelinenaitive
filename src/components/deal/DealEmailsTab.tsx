@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Mail,
   MailOpen,
@@ -159,6 +160,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   // Search filters
   const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);
+  // Selection state for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     sender: '',
     dateRange: 'all',
@@ -389,6 +392,83 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const toggleSection = (title: string) => {
     setCollapsedSections(prev => ({ ...prev, [title]: !prev[title] }));
   };
+
+  // ─── Bulk action handlers ───────────────────────────
+  const handleBulkMarkRead = useCallback(() => {
+    setEmails(prev => prev.map(e => {
+      const threads = groupEmailsByThread([e]);
+      if (threads.some(t => selectedIds.has(t.threadId))) return { ...e, is_read: true };
+      return e;
+    }));
+    toast.success(`${selectedIds.size} marked as read`);
+    setSelectedIds(new Set());
+  }, [selectedIds]);
+
+  const handleBulkMarkUnread = useCallback(() => {
+    setEmails(prev => prev.map(e => {
+      const threads = groupEmailsByThread([e]);
+      if (threads.some(t => selectedIds.has(t.threadId))) return { ...e, is_read: false };
+      return e;
+    }));
+    toast.success(`${selectedIds.size} marked as unread`);
+    setSelectedIds(new Set());
+  }, [selectedIds]);
+
+  const handleBulkArchive = useCallback(() => {
+    const idsToArchive = new Set<string>();
+    const allThreads = groupEmailsByThread(emails);
+    allThreads.forEach(t => {
+      if (selectedIds.has(t.threadId)) {
+        t.emails.forEach(e => idsToArchive.add(e.id));
+      }
+    });
+    setEmails(prev => prev.filter(e => !idsToArchive.has(e.id)));
+    toast.success(`${selectedIds.size} archived`);
+    setSelectedIds(new Set());
+  }, [selectedIds, emails]);
+
+  const handleBulkDelete = useCallback(() => {
+    const idsToDelete = new Set<string>();
+    const allThreads = groupEmailsByThread(emails);
+    allThreads.forEach(t => {
+      if (selectedIds.has(t.threadId)) {
+        t.emails.forEach(e => idsToDelete.add(e.id));
+      }
+    });
+    setEmails(prev => prev.filter(e => !idsToDelete.has(e.id)));
+    toast.success(`${selectedIds.size} deleted`);
+    setSelectedIds(new Set());
+  }, [selectedIds, emails]);
+
+  // Single email actions for context menu
+  const handleMarkRead = useCallback((email: MockEmail) => {
+    setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_read: true } : e));
+  }, []);
+
+  const handleMarkUnread = useCallback((email: MockEmail) => {
+    setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_read: false } : e));
+  }, []);
+
+  const handleArchiveEmail = useCallback((email: MockEmail) => {
+    setEmails(prev => prev.filter(e => e.id !== email.id));
+    toast.success('Archived');
+  }, []);
+
+  const handleDeleteEmail = useCallback((email: MockEmail) => {
+    setEmails(prev => prev.filter(e => e.id !== email.id));
+    toast.success('Deleted');
+  }, []);
+
+  // Auto-mark-read when selecting a thread
+  const handleSelectThread = useCallback((thread: EmailThread) => {
+    setSelectedThread(thread);
+    setComposeOpen(false);
+    // Auto mark unread emails in thread as read
+    if (thread.hasUnread) {
+      const unreadIds = new Set(thread.emails.filter(e => !e.is_read).map(e => e.id));
+      setEmails(prev => prev.map(e => unreadIds.has(e.id) ? { ...e, is_read: true } : e));
+    }
+  }, []);
 
   const isSectionOpen = (section: SidebarSection) => {
     if (collapsedSections[section.title] !== undefined) return !collapsedSections[section.title];
@@ -840,8 +920,46 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-background/60',
             (currentThread || composeOpen) ? 'hidden md:flex md:w-[380px]' : 'flex-1 md:w-[380px]'
           )}>
-            {/* Header with title + stat pills */}
+            {/* Header with title + stat pills OR bulk action bar */}
             <div className="border-b">
+              {selectedIds.size > 0 ? (
+                /* ─── Bulk Action Toolbar ─── */
+                <div className="flex items-center gap-2 px-3 py-2 bg-primary/5">
+                  <Checkbox
+                    checked={selectedIds.size === groupEmailsByThread(filteredEmails).length}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        const allIds = new Set(groupEmailsByThread(filteredEmails).map(t => t.threadId));
+                        setSelectedIds(allIds);
+                      } else {
+                        setSelectedIds(new Set());
+                      }
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-xs font-medium text-foreground">
+                    {selectedIds.size} selected
+                  </span>
+                  <Separator orientation="vertical" className="h-4 mx-1" />
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleBulkMarkRead}>
+                    <MailOpen className="h-3 w-3" /> Mark Read
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleBulkMarkUnread}>
+                    <Mail className="h-3 w-3" /> Mark Unread
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleBulkArchive}>
+                    <Archive className="h-3 w-3" /> Archive
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={handleBulkDelete}>
+                    <Trash2 className="h-3 w-3" /> Delete
+                  </Button>
+                  <div className="flex-1" />
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <>
               <div className="flex items-center justify-between px-3 py-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm font-semibold truncate">{activeLabel}</span>
@@ -915,6 +1033,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                   ))}
                 </div>
               )}
+                </>
+              )}
             </div>
 
             {/* Email list */}
@@ -922,9 +1042,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               <EmailList
                 emails={filteredEmails}
                 selectedThread={currentThread}
-                onSelectThread={(thread) => { setSelectedThread(thread); setComposeOpen(false); }}
+                onSelectThread={handleSelectThread}
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                onMarkRead={handleMarkRead}
+                onMarkUnread={handleMarkUnread}
+                onArchive={handleArchiveEmail}
+                onDelete={handleDeleteEmail}
               />
             </div>
           </div>

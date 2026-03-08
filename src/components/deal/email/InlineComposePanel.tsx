@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
 import { usePreSendChecks } from './usePreSendChecks';
 import { PreSendAlertDialog } from './PreSendAlertDialog';
+import { EmailTemplatePicker } from './EmailTemplatePicker';
 
 interface InlineComposePanelProps {
   onSend: (email: Omit<MockEmail, 'id' | 'threadId'>) => void | Promise<void>;
@@ -188,7 +189,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
         <Separator />
 
         {/* Fix #11: Formatting toolbar */}
-        <div className="flex items-center gap-1 px-5 h-7 border-b border-border">
+        <div className="flex items-center gap-1 px-5 h-8 border-b border-border">
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBold}>
             <Bold className="h-3.5 w-3.5" />
           </Button>
@@ -198,6 +199,13 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleLink}>
             <Link className="h-3.5 w-3.5" />
           </Button>
+          <Separator orientation="vertical" className="h-4 mx-1" />
+          <EmailTemplatePicker
+            onInsert={(templateSubject, templateBody) => {
+              if (templateSubject && !subject) setSubject(templateSubject);
+              if (templateBody) setBody(templateBody);
+            }}
+          />
         </div>
 
         {/* Body */}
