@@ -1,7 +1,28 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ArrowUp } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { useCopilotStore } from '@/stores/copilotStore';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
+
+function TypingIndicator() {
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="animate-pulse"
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: 'hsl(var(--muted-foreground))',
+            animationDelay: `${i * 150}ms`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function AICopilotPanel() {
   const { isOpen, closePanel, messages, addMessage } = useCopilotStore();
