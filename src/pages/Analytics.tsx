@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Clock, Download, FileText } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Clock, Download, FileText, Filter, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PortfolioRiskAnalysis } from '@/components/analytics/PortfolioRiskAnalysis';
@@ -60,6 +60,7 @@ import { toast } from '@/hooks/use-toast';
 import { SortableStatWidget } from '@/components/analytics/SortableStatWidget';
 import { FlagsHurdlesAnalytics } from '@/components/insights/FlagsHurdlesAnalytics';
 import { SortableListWidget } from '@/components/analytics/SortableListWidget';
+import { ChartInlineToolbar, ChartLocalConfig } from '@/components/analytics/ChartInlineToolbar';
 import { useNavigate } from 'react-router-dom';
 import { 
   BarChart, 
@@ -155,13 +156,29 @@ const getHoursData = (deals: Deal[]) => {
   };
 };
 
-const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRange, stageLabels?: Record<string, string>) => {
-  const filteredDeals = dateRange?.from && dateRange?.to 
+const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRange, stageLabels?: Record<string, string>, globalFilters?: { manager?: string; status?: string }, localConfig?: ChartLocalConfig) => {
+  let filteredDeals = dateRange?.from && dateRange?.to 
     ? allDeals.filter(deal => {
         const dealDate = new Date(deal.createdAt);
         return isWithinInterval(dealDate, { start: dateRange.from!, end: dateRange.to! });
       })
     : allDeals;
+
+  // Apply global filters
+  if (globalFilters?.manager) {
+    filteredDeals = filteredDeals.filter(d => d.manager === globalFilters.manager);
+  }
+  if (globalFilters?.status) {
+    filteredDeals = filteredDeals.filter(d => d.status === globalFilters.status);
+  }
+
+  // Apply per-widget filters
+  if (localConfig?.filterManager) {
+    filteredDeals = filteredDeals.filter(d => d.manager === localConfig.filterManager);
+  }
+  if (localConfig?.filterStatus) {
+    filteredDeals = filteredDeals.filter(d => d.status === localConfig.filterStatus);
+  }
 
   const resolveStage = (stageId: string) => cleanStageName(stageLabels?.[stageId] || stageId);
 
@@ -456,14 +473,31 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
         .slice(0, 20);
     }
     
-    default:
-      return [
+    default: {
+      let result = [
         { name: 'A', value: 10 },
         { name: 'B', value: 20 },
         { name: 'C', value: 15 },
         { name: 'D', value: 25 },
       ];
+      return result;
+    }
   }
+};
+
+// Post-process chart data with sort/limit from local config
+const applyLocalConfig = (data: any[], localConfig?: ChartLocalConfig) => {
+  if (!localConfig || !data || data.length === 0) return data;
+  let result = [...data];
+  if (localConfig.sortOrder === 'desc') {
+    result.sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+  } else if (localConfig.sortOrder === 'asc') {
+    result.sort((a, b) => (a.value ?? 0) - (b.value ?? 0));
+  }
+  if (localConfig.limit && localConfig.limit > 0) {
+    result = result.slice(0, localConfig.limit);
+  }
+  return result;
 };
 
 // Get deals matching a specific chart segment
@@ -536,8 +570,12 @@ const ChartTypeIcon = ({ type }: { type: ChartType }) => {
 // Clickable chart data sources
 const CLICKABLE_SOURCES = new Set(['deals-by-stage', 'deals-by-status', 'lender-activity', 'deal-value-distribution']);
 
-function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels, onSegmentClick }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean; stageLabels?: Record<string, string>; onSegmentClick?: (segmentName: string) => void }) {
-  const data = getChartData(chart.dataSource, deals, dateRange, stageLabels);
+function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels, onSegmentClick, globalFilters, localConfig }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean; stageLabels?: Record<string, string>; onSegmentClick?: (segmentName: string) => void; globalFilters?: { manager?: string; status?: string }; localConfig?: ChartLocalConfig }) {
+  const rawData = getChartData(chart.dataSource, deals, dateRange, stageLabels, globalFilters, localConfig);
+  const data = applyLocalConfig(rawData, localConfig);
+  const effectiveType = localConfig?.chartType || chart.type;
+  const effectiveColor = localConfig?.primaryColor || chart.color || CHART_COLORS[0];
+  const fillOpacity = (localConfig?.opacity ?? 100) / 100;
   const chartHeight = compact ? 180 : 250;
   const isClickable = CLICKABLE_SOURCES.has(chart.dataSource);
   const navigate = useNavigate();
@@ -700,7 +738,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels, 
     );
   }
   
-  switch (chart.type) {
+  switch (effectiveType) {
     case 'bar':
       return (
         <ResponsiveContainer width="100%" height={chartHeight}>
@@ -726,7 +764,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels, 
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <Tooltip contentStyle={tooltipStyle} />
-            <Line type="monotone" dataKey="value" stroke={CHART_COLORS[0]} strokeWidth={2} dot={{ fill: CHART_COLORS[0] }} />
+            <Line type="monotone" dataKey="value" stroke={effectiveColor} strokeWidth={2} dot={{ fill: effectiveColor }} />
           </RechartsLineChart>
         </ResponsiveContainer>
       );
@@ -767,7 +805,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels, 
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <Tooltip contentStyle={tooltipStyle} />
-            <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.3} />
+            <Area type="monotone" dataKey="value" stroke={effectiveColor} fill={effectiveColor} fillOpacity={0.3 * fillOpacity} />
           </RechartsAreaChart>
         </ResponsiveContainer>
       );
@@ -784,6 +822,9 @@ function SortableChartCard({
   compact = false,
   stageLabels,
   onSegmentClick,
+  globalFilters,
+  managers,
+  statuses,
 }: { 
   chart: ChartConfig;
   deals: Deal[];
@@ -793,7 +834,15 @@ function SortableChartCard({
   compact?: boolean;
   stageLabels?: Record<string, string>;
   onSegmentClick?: (chartDataSource: string, segmentName: string) => void;
+  globalFilters?: { manager?: string; status?: string };
+  managers?: string[];
+  statuses?: string[];
 }) {
+  const [localConfig, setLocalConfig] = useState<ChartLocalConfig>({
+    chartType: chart.type,
+    primaryColor: chart.color,
+  });
+
   const {
     attributes,
     listeners,
@@ -809,40 +858,60 @@ function SortableChartCard({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const activeFilterCount = [localConfig.filterManager, localConfig.filterStatus, localConfig.sortOrder && localConfig.sortOrder !== 'default' ? true : null, localConfig.limit].filter(Boolean).length;
+
   return (
     <Card ref={setNodeRef} style={style} className={cn("group transition-all duration-300", isDragging && "shadow-lg ring-2 ring-primary/20")}>
       <CardHeader className={cn(
-        "flex flex-row items-center justify-between space-y-0 pb-2",
+        "flex flex-col space-y-0 pb-2",
         compact && "py-3"
       )}>
-        <div className="flex items-center gap-2">
-          <button
-            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none opacity-0 group-hover:opacity-100 transition-opacity"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className={cn("h-4 w-4", compact && "h-3 w-3")} />
-          </button>
-          <ChartTypeIcon type={chart.type} />
-          <CardTitle className={cn("text-lg", compact && "text-base")}>{chart.title}</CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none opacity-0 group-hover:opacity-100 transition-opacity"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className={cn("h-4 w-4", compact && "h-3 w-3")} />
+            </button>
+            <CardTitle className={cn("text-lg", compact && "text-base")}>{chart.title}</CardTitle>
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={cn("h-8 w-8", compact && "h-6 w-6")}
+              onClick={() => onEdit(chart)}
+            >
+              <Pencil className={cn("h-4 w-4", compact && "h-3 w-3")} />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={cn("h-8 w-8 text-destructive hover:text-destructive", compact && "h-6 w-6")}
+              onClick={() => onDelete(chart.id)}
+            >
+              <Trash2 className={cn("h-4 w-4", compact && "h-3 w-3")} />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={cn("h-8 w-8", compact && "h-6 w-6")}
-            onClick={() => onEdit(chart)}
-          >
-            <Pencil className={cn("h-4 w-4", compact && "h-3 w-3")} />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={cn("h-8 w-8 text-destructive hover:text-destructive", compact && "h-6 w-6")}
-            onClick={() => onDelete(chart.id)}
-          >
-            <Trash2 className={cn("h-4 w-4", compact && "h-3 w-3")} />
-          </Button>
+        {/* Inline toolbar */}
+        <div className="pt-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <ChartInlineToolbar
+            chartType={chart.type}
+            dataSource={chart.dataSource}
+            localConfig={localConfig}
+            onChange={setLocalConfig}
+            managers={managers}
+            statuses={statuses}
+            compact={compact}
+          />
         </div>
       </CardHeader>
       <CardContent className={compact ? "pt-0 pb-3" : undefined}>
@@ -853,6 +922,8 @@ function SortableChartCard({
           compact={compact}
           stageLabels={stageLabels}
           onSegmentClick={onSegmentClick ? (segmentName) => onSegmentClick(chart.dataSource, segmentName) : undefined}
+          globalFilters={globalFilters}
+          localConfig={localConfig}
         />
       </CardContent>
     </Card>
@@ -888,7 +959,17 @@ export default function Analytics() {
     stages.forEach(s => { map[s.id] = s.label; });
     return map;
   }, [stages]);
-  
+
+  // Global filters
+  const [globalManager, setGlobalManager] = useState<string | undefined>();
+  const [globalStatus, setGlobalStatus] = useState<string | undefined>();
+  const globalFilters = useMemo(() => ({ manager: globalManager, status: globalStatus }), [globalManager, globalStatus]);
+
+  // Extract unique managers and statuses for filter dropdowns
+  const uniqueManagers = useMemo(() => [...new Set(deals.map(d => d.manager).filter(Boolean))].sort(), [deals]);
+  const uniqueStatuses = useMemo(() => [...new Set(deals.map(d => d.status).filter(Boolean))].sort(), [deals]);
+  const hasGlobalFilters = !!globalManager || !!globalStatus;
+
   // Chart dialogs
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
   const [deleteChartDialogOpen, setDeleteChartDialogOpen] = useState(false);
@@ -1247,6 +1328,48 @@ export default function Analytics() {
                 </Popover>
               )}
 
+              {/* Global Filters */}
+              <Select value={globalManager || '__all__'} onValueChange={(v) => setGlobalManager(v === '__all__' ? undefined : v)}>
+                <SelectTrigger className="w-[150px]">
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                    <SelectValue placeholder="Manager" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Managers</SelectItem>
+                  {uniqueManagers.map(m => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={globalStatus || '__all__'} onValueChange={(v) => setGlobalStatus(v === '__all__' ? undefined : v)}>
+                <SelectTrigger className="w-[140px]">
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                    <SelectValue placeholder="Status" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Statuses</SelectItem>
+                  {uniqueStatuses.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {hasGlobalFilters && (
+                <UITooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setGlobalManager(undefined); setGlobalStatus(undefined); }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p className="text-xs">Clear all filters</p></TooltipContent>
+                </UITooltip>
+              )}
+
               <div className="ml-auto flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -1478,6 +1601,9 @@ export default function Analytics() {
                       compact={layoutMode === 'compact'}
                       stageLabels={stageLabels}
                       onSegmentClick={handleSegmentClick}
+                      globalFilters={globalFilters}
+                      managers={uniqueManagers}
+                      statuses={uniqueStatuses}
                     />
                   ))}
                 </div>
