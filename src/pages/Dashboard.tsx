@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Zap, Briefcase, LayoutTemplate } from 'lucide-react';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
@@ -18,6 +18,7 @@ import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
 import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
+import { toast } from 'sonner';
 
 export default function Dashboard() {
   const { profile } = useProfile();
@@ -40,6 +41,9 @@ export default function Dashboard() {
   const [emailOpen, setEmailOpen] = useState(false);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const firstName = profile?.first_name || profile?.display_name?.split(' ')[0] || 'there';
+  // Track recently removed widgets for undo (#13)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
 
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
@@ -54,8 +58,50 @@ export default function Dashboard() {
   }, [activePreset, updatePreset]);
 
   const handleRemoveWidget = useCallback((widgetId: string) => {
+    if (!activePreset) return;
+    // Find the widget and grid item before removing
+    const widget = activePreset.widgets_config.find(w => w.id === widgetId);
+    const gridItem = activePreset.grid_config.find(g => g.i === widgetId);
+    if (!widget || !gridItem) {
+      removeWidgetFromPreset(widgetId);
+      return;
+    }
+
+    // Clear any existing undo timer
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+    }
+
+    // Store for undo
+    setPendingRemoval({ widgetId, widget, gridItem });
+
+    // Remove immediately from UI
     removeWidgetFromPreset(widgetId);
-  }, [removeWidgetFromPreset]);
+
+    // Show undo toast (#13)
+    toast('Widget removed', {
+      description: `"${widget.title}" was removed.`,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          // Re-add the widget
+          if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+          setPendingRemoval(null);
+          // Re-add widget and grid item
+          updatePreset(activePreset.id, {
+            grid_config: [...(activePreset.grid_config.filter(g => g.i !== widgetId)), gridItem],
+            widgets_config: [...(activePreset.widgets_config.filter(w => w.id !== widgetId)), widget],
+          });
+        },
+      },
+      duration: 5000,
+    });
+
+    // Auto-commit after 5 seconds
+    undoTimerRef.current = setTimeout(() => {
+      setPendingRemoval(null);
+    }, 5000);
+  }, [removeWidgetFromPreset, activePreset, updatePreset]);
 
   const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
     if (!activePreset) return;
@@ -94,6 +140,12 @@ export default function Dashboard() {
     createPreset(name, grid, widgets, true);
   }, [createPreset]);
 
+  // Fix #2: Apply template to current dashboard instead of creating new
+  const handleApplyTemplateToCurrentDashboard = useCallback((grid: GridItem[], widgets: WidgetConfig[]) => {
+    if (!activePreset) return;
+    updatePreset(activePreset.id, { grid_config: grid, widgets_config: widgets });
+  }, [activePreset, updatePreset]);
+
   const handleRenamePreset = useCallback((presetId: string, name: string) => {
     updatePreset(presetId, { name });
   }, [updatePreset]);
@@ -122,7 +174,7 @@ export default function Dashboard() {
         <div className="w-full max-w-6xl space-y-4 sm:space-y-6">
           {/* Hero: Greeting + AI Input + Quick Actions */}
           <div className="text-center space-y-2 pt-2">
-            <p className="text-base sm:text-lg text-muted-foreground">{getTimeBasedGreeting()}, {firstName}</p>
+            <p className="text-base sm:text-lg text-muted-foreground">{getTimeBasedGreeting()}, <span className="whitespace-nowrap">{firstName}</span></p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground">What can I do for you?</h1>
             <p className="text-sm text-muted-foreground/50 mt-1">Ask me anything about your deals, pipeline, lenders, or market research</p>
           </div>
@@ -223,7 +275,12 @@ export default function Dashboard() {
               onRename={handleRenamePreset}
             />
             <div className="flex items-center gap-2 shrink-0">
-              <DashboardTemplatesDialog onSelectTemplate={handleCreateFromTemplate} />
+              {/* Fix #2: Templates in this context replace the current dashboard */}
+              <DashboardTemplatesDialog
+                mode="replace"
+                onSelectTemplate={handleCreateFromTemplate}
+                onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
+              />
               {isEditing && activePreset && (
                 <AddWidgetDialog
                   existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
@@ -235,7 +292,7 @@ export default function Dashboard() {
           </div>
 
           {/* Grid */}
-          {activePreset && (
+          {activePreset && activePreset.widgets_config.length > 0 && (
             <DashboardGrid
               gridConfig={activePreset.grid_config}
               widgetsConfig={activePreset.widgets_config}
@@ -252,11 +309,14 @@ export default function Dashboard() {
               <Settings2 className="h-12 w-12 text-muted-foreground/40 mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-1">No widgets yet</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Start with a template or click "Edit" to add widgets manually.
+                Start with a template or click "Start Editing" to add widgets manually.
               </p>
               <div className="flex items-center gap-2">
+                {/* Fix #2: Browse Templates on empty state replaces current dashboard */}
                 <DashboardTemplatesDialog
+                  mode="replace"
                   onSelectTemplate={handleCreateFromTemplate}
+                  onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
                   trigger={
                     <Button variant="default" size="sm">
                       <LayoutTemplate className="h-3.5 w-3.5 mr-1.5" />
@@ -264,6 +324,7 @@ export default function Dashboard() {
                     </Button>
                   }
                 />
+                {/* Fix #3: Start Editing enters edit mode */}
                 <Button
                   variant="outline"
                   size="sm"

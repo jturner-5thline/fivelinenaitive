@@ -18,6 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { WIDGET_REGISTRY, getWidgetsByCategory, WidgetDefinition } from './widgetRegistry';
 import { WidgetConfig } from '@/hooks/useDashboardPresets';
+import { cn } from '@/lib/utils';
 
 interface AddWidgetDialogProps {
   existingWidgetIds: string[];
@@ -45,6 +46,8 @@ export function AddWidgetDialog({ existingWidgetIds, onAddBuiltIn, onAddCustom }
   const [customOverdueOnly, setCustomOverdueOnly] = useState(false);
   const [customDueWithin, setCustomDueWithin] = useState<number | null>(null);
   const [customMaxItems, setCustomMaxItems] = useState(10);
+  // Fix #12: Validation state
+  const [showNameError, setShowNameError] = useState(false);
 
   const categories = getWidgetsByCategory();
 
@@ -52,7 +55,7 @@ export function AddWidgetDialog({ existingWidgetIds, onAddBuiltIn, onAddCustom }
     if (search && !w.label.toLowerCase().includes(search.toLowerCase()) && !w.description.toLowerCase().includes(search.toLowerCase())) {
       return false;
     }
-    return w.type !== 'custom-filter'; // Don't show custom-filter in built-in list
+    return w.type !== 'custom-filter';
   });
 
   const handleAddBuiltIn = (def: WidgetDefinition) => {
@@ -61,7 +64,11 @@ export function AddWidgetDialog({ existingWidgetIds, onAddBuiltIn, onAddCustom }
   };
 
   const handleAddCustom = () => {
-    if (!customTitle.trim()) return;
+    // Fix #12: Show validation error
+    if (!customTitle.trim()) {
+      setShowNameError(true);
+      return;
+    }
     const id = `custom-${Date.now()}`;
     const widget: WidgetConfig = {
       id,
@@ -92,12 +99,24 @@ export function AddWidgetDialog({ existingWidgetIds, onAddBuiltIn, onAddCustom }
     setCustomOverdueOnly(false);
     setCustomDueWithin(null);
     setCustomMaxItems(10);
+    setShowNameError(false);
+  };
+
+  // Fix #10: Reset modal state on open
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen) {
+      // Reset to defaults on every open
+      setTab('built-in');
+      setSearch('');
+      resetCustomForm();
+    }
   };
 
   const isAlreadyAdded = (type: string) => existingWidgetIds.includes(type);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5 text-xs">
           <Plus className="h-3.5 w-3.5" />
@@ -175,10 +194,14 @@ export function AddWidgetDialog({ existingWidgetIds, onAddBuiltIn, onAddCustom }
                 <Label className="text-xs">Widget Name</Label>
                 <Input
                   value={customTitle}
-                  onChange={(e) => setCustomTitle(e.target.value)}
+                  onChange={(e) => { setCustomTitle(e.target.value); if (e.target.value.trim()) setShowNameError(false); }}
                   placeholder="e.g., Deals At Risk, Overdue Tasks..."
-                  className="mt-1"
+                  className={cn("mt-1", showNameError && "border-destructive ring-1 ring-destructive")}
                 />
+                {/* Fix #12: Inline validation error */}
+                {showNameError && (
+                  <p className="text-xs text-destructive mt-1">Widget name is required</p>
+                )}
               </div>
 
               <div>
@@ -263,7 +286,6 @@ export function AddWidgetDialog({ existingWidgetIds, onAddBuiltIn, onAddCustom }
 
               <Button
                 onClick={handleAddCustom}
-                disabled={!customTitle.trim()}
                 className="w-full"
               >
                 <Plus className="h-4 w-4 mr-2" />

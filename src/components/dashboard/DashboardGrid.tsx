@@ -83,9 +83,7 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
       document.removeEventListener('mouseup', onMouseUp);
 
       setResizingId(null);
-      const preview = { w: startW, h: startH };
 
-      // Apply via a timeout so we capture the latest preview
       setTimeout(() => {
         const finalPreview = resizePreviewRef.current;
         if (finalPreview) {
@@ -102,7 +100,6 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
     document.addEventListener('mouseup', onMouseUp);
   }, [isEditing, gridConfig, onLayoutChange]);
 
-  // Keep a ref to the latest resize preview for mouseup handler
   const resizePreviewRef = useRef<{ w: number; h: number } | null>(null);
   resizePreviewRef.current = resizePreview;
 
@@ -116,7 +113,10 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
     .filter(Boolean) as { grid: GridItem; widget: WidgetConfig }[];
 
   return (
-    <div ref={gridRef} className="grid grid-cols-12 gap-4 auto-rows-[60px]">
+    <div ref={gridRef} className={cn(
+      "grid grid-cols-12 gap-4 auto-rows-[60px]",
+      isEditing && "p-2 rounded-xl border-2 border-dashed border-primary/20 bg-primary/[0.02]"
+    )}>
       {orderedWidgets.map(({ grid, widget }, index) => {
         const def = WIDGET_REGISTRY[widget.type];
         if (!def) return null;
@@ -131,7 +131,8 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
             key={widget.id}
             className={cn(
               'relative group min-h-0 overflow-hidden',
-              isEditing && 'ring-1 ring-border/50 rounded-lg',
+              // Fix #14: Clear visual distinction for edit mode - dashed border + tint
+              isEditing && 'ring-1 ring-primary/30 rounded-lg border border-dashed border-primary/20 bg-primary/[0.02]',
               isEditing && dragOverIndex === index && dragIndex !== index && 'ring-2 ring-primary',
               isEditing && dragIndex === index && 'opacity-50',
               isResizing && 'ring-2 ring-primary z-10',
@@ -148,15 +149,16 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
             onDrop={() => handleDrop(index)}
             onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
           >
+            {/* Fix #14 & #17: Edit controls only visible in edit mode, always visible (not just on hover) */}
             {isEditing && (
-              <div className="absolute top-1 right-1 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="h-6 w-6 flex items-center justify-center cursor-grab active:cursor-grabbing bg-background/80 rounded-md">
+              <div className="absolute top-1 right-1 z-10 flex items-center gap-1">
+                <div className="h-6 w-6 flex items-center justify-center cursor-grab active:cursor-grabbing bg-background/80 rounded-md border border-border/30">
                   <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 bg-background/80 hover:bg-destructive/10 hover:text-destructive"
+                  className="h-6 w-6 bg-background/80 hover:bg-destructive/10 hover:text-destructive border border-border/30"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemoveWidget(widget.id);
@@ -170,7 +172,7 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
             {/* Resize handle */}
             {isEditing && (
               <div
-                className="absolute bottom-0 right-0 z-10 w-5 h-5 cursor-se-resize flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute bottom-0 right-0 z-10 w-5 h-5 cursor-se-resize flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
                 onMouseDown={(e) => handleResizeStart(e, grid)}
               >
                 <Maximize2 className="h-3 w-3 text-muted-foreground rotate-90" />
