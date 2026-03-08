@@ -140,7 +140,7 @@ export function ExcelModelSheet({ sheet, onCellChange, readOnly = true }: ExcelM
                         !readOnly && "hover:bg-primary/5 cursor-cell transition-colors duration-150",
                         isEditing && "p-0 ring-1 ring-primary/50 bg-card",
                         isHeader && "bg-secondary/30 font-medium",
-                        isNumeric && "text-right font-mono tabular-nums"
+                        isNumeric && "text-right tabular-nums"
                       )}
                       style={{ minWidth: sheet.colWidths[colIndex] || 100 }}
                       onClick={() => handleCellClick(rowIndex, colIndex)}
