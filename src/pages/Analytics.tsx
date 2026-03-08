@@ -156,13 +156,29 @@ const getHoursData = (deals: Deal[]) => {
   };
 };
 
-const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRange, stageLabels?: Record<string, string>) => {
-  const filteredDeals = dateRange?.from && dateRange?.to 
+const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRange, stageLabels?: Record<string, string>, globalFilters?: { manager?: string; status?: string }, localConfig?: ChartLocalConfig) => {
+  let filteredDeals = dateRange?.from && dateRange?.to 
     ? allDeals.filter(deal => {
         const dealDate = new Date(deal.createdAt);
         return isWithinInterval(dealDate, { start: dateRange.from!, end: dateRange.to! });
       })
     : allDeals;
+
+  // Apply global filters
+  if (globalFilters?.manager) {
+    filteredDeals = filteredDeals.filter(d => d.manager === globalFilters.manager);
+  }
+  if (globalFilters?.status) {
+    filteredDeals = filteredDeals.filter(d => d.status === globalFilters.status);
+  }
+
+  // Apply per-widget filters
+  if (localConfig?.filterManager) {
+    filteredDeals = filteredDeals.filter(d => d.manager === localConfig.filterManager);
+  }
+  if (localConfig?.filterStatus) {
+    filteredDeals = filteredDeals.filter(d => d.status === localConfig.filterStatus);
+  }
 
   const resolveStage = (stageId: string) => cleanStageName(stageLabels?.[stageId] || stageId);
 
