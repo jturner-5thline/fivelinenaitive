@@ -2,10 +2,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DollarSign, FileText, StickyNote, Presentation } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { DealSpaceAskAITab } from './DealSpaceAskAITab';
-import { DealDiligencePlatform } from './diligence/DealDiligencePlatform';
 import { DealSpaceDocumentsTab } from './DealSpaceDocumentsTab';
 import { DealSpaceNotesTab } from './DealSpaceNotesTab';
 import { GammaIntegrationPanel } from './GammaIntegrationPanel';
+import { SaaSModelTab } from './saas-model/SaaSModelTab';
 
 interface DealSpaceTabProps {
   dealId: string;
@@ -57,7 +57,7 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
       </TabsContent>
 
       <TabsContent value="financials">
-        <DealDiligencePlatform dealId={dealId} dealData={dealData ? { company: dealData.company, value: dealData.value, stage: dealData.stage } : undefined} />
+        <SaaSModelTab dealId={dealId} dealData={dealData ? { company: dealData.company, value: dealData.value, stage: dealData.stage } : undefined} />
       </TabsContent>
 
       <TabsContent value="documents">
