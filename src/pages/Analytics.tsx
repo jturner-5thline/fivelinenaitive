@@ -570,8 +570,12 @@ const ChartTypeIcon = ({ type }: { type: ChartType }) => {
 // Clickable chart data sources
 const CLICKABLE_SOURCES = new Set(['deals-by-stage', 'deals-by-status', 'lender-activity', 'deal-value-distribution']);
 
-function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels, onSegmentClick }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean; stageLabels?: Record<string, string>; onSegmentClick?: (segmentName: string) => void }) {
-  const data = getChartData(chart.dataSource, deals, dateRange, stageLabels);
+function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels, onSegmentClick, globalFilters, localConfig }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean; stageLabels?: Record<string, string>; onSegmentClick?: (segmentName: string) => void; globalFilters?: { manager?: string; status?: string }; localConfig?: ChartLocalConfig }) {
+  const rawData = getChartData(chart.dataSource, deals, dateRange, stageLabels, globalFilters, localConfig);
+  const data = applyLocalConfig(rawData, localConfig);
+  const effectiveType = localConfig?.chartType || chart.type;
+  const effectiveColor = localConfig?.primaryColor || chart.color || CHART_COLORS[0];
+  const fillOpacity = (localConfig?.opacity ?? 100) / 100;
   const chartHeight = compact ? 180 : 250;
   const isClickable = CLICKABLE_SOURCES.has(chart.dataSource);
   const navigate = useNavigate();
