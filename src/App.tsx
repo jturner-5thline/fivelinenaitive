@@ -242,6 +242,12 @@ const App = () => (
                           <Route path="/terms" element={<TermsOfService />} />
                           <Route path="/homepage" element={<Homepage />} />
                           <Route path="/promo" element={<Promo />} />
+                          <Route path="/video-library" element={
+                            <ProtectedRoute><AppLayout><VideoLibrary /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/email-designer" element={
+                            <ProtectedRoute><AppLayout><EmailDesigner /></AppLayout></ProtectedRoute>
+                          } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
                         </Routes>
