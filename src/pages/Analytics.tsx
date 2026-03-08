@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Clock, Download, FileText } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Clock, Download, FileText, Filter, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PortfolioRiskAnalysis } from '@/components/analytics/PortfolioRiskAnalysis';
