@@ -450,7 +450,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, []);
 
   const handleArchiveEmail = useCallback((email: MockEmail) => {
-    setEmails(prev => prev.map(e => e.id === email.id ? { ...e, folder: 'archive' as const } : e));
+    setEmails(prev => prev.filter(e => e.id !== email.id));
     toast.success('Archived');
   }, []);
 
