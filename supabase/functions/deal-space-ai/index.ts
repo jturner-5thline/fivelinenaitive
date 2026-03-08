@@ -482,7 +482,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, dealId, action, sectionKey, documentId } = await req.json();
+    const { messages, dealId, action, sectionKey, documentId, scope } = await req.json();
 
     if (action === "summarize") return await handleSummarize(dealId);
     if (action === "extract-writeup") return await handleExtractWriteUp(dealId);
@@ -503,12 +503,59 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const ctx = await buildDealContext(supabase, dealId);
 
+    // ── Scope-aware document filtering ──────────────────────────────
+    const activeScope = scope || 'all';
+    let scopedDocInventory = ctx.docInventory;
+    let scopeInstruction = '';
+
+    if (activeScope === 'financial') {
+      // Only include financial model files from deal_space_financials
+      const { data: financialFiles } = await supabase
+        .from('deal_space_financials')
+        .select('name, content_type, notes, fiscal_year, fiscal_period')
+        .eq('deal_id', dealId);
+
+      const financialNames = (financialFiles || []).map((f: any) => f.name);
+      scopedDocInventory = financialNames.length > 0
+        ? `**Financial Models Only (${financialNames.length}):**\n` + financialNames.map((n: string) => `- ${n}`).join('\n')
+        : 'No financial models ingested yet.';
+
+      scopeInstruction = `
+SCOPE RESTRICTION: The user has selected "Financial Model Only" scope.
+- You MUST only reference data from these financial model files: ${financialNames.join(', ')}
+- Do NOT use data from transcripts, notes, or other non-financial documents.
+- If asked about data not in these files, clearly state it is not available in the selected scope.
+- For EVERY financial figure you cite, include the source: file name, sheet name, and cell/row reference if available.
+`;
+    } else if (activeScope === 'transcripts') {
+      // Only include transcript-like documents
+      const allDocs = [...ctx.dealSpaceDocs, ...ctx.dataRoomDocs];
+      const transcriptDocs = allDocs.filter((d: any) => {
+        const name = (d.name || '').toLowerCase();
+        return name.includes('transcript') || name.includes('call') || name.includes('meeting') ||
+               name.includes('interview') || name.endsWith('.txt') || name.endsWith('.md');
+      });
+
+      scopedDocInventory = transcriptDocs.length > 0
+        ? `**Transcripts Only (${transcriptDocs.length}):**\n` + transcriptDocs.map((d: any) => `- ${d.name}`).join('\n')
+        : 'No transcript documents found.';
+
+      scopeInstruction = `
+SCOPE RESTRICTION: The user has selected "Transcripts Only" scope.
+- You MUST only reference data from transcript/meeting documents.
+- Do NOT use data from financial models, spreadsheets, or other non-transcript documents.
+- If asked about data not in transcripts, clearly state it is not available in the selected scope.
+`;
+    }
+
     const systemPrompt = `You are a senior deal analyst AI assistant with complete knowledge of this deal. Your responses must follow a structured, lender-ready memo format.
 
 ${ctx.fullContext}
 
-**DOCUMENT INVENTORY:**
-${ctx.docInventory}
+**DOCUMENT INVENTORY (Scope: ${activeScope === 'all' ? 'All Documents' : activeScope === 'financial' ? 'Financial Models Only' : activeScope === 'transcripts' ? 'Transcripts Only' : 'Custom'}):**
+${scopedDocInventory}
+
+${scopeInstruction}
 
 Instructions:
 - You have FULL access to all deal information above — not just documents.
@@ -518,6 +565,7 @@ ${getMemoSectionHeadings()}
 
 ${FORMATTING_RULES}
 
+- CRITICAL: For ANY financial figure, metric, or data point you cite, ALWAYS include a source citation in the format: *(Source: [filename] → [sheet/section] → [row/cell if known])*
 - For the "Key Risks & Hurdles" section, ALWAYS break into three sub-headings:
   ### Financial Risks
   ### Lender Sentiment & Market Risks
