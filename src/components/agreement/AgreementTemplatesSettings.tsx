@@ -14,6 +14,22 @@ import { AgreementTemplateEditor } from './AgreementTemplateEditor';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
+function CreateTemplateButton({ name, description, onDone }: { name: string; description: string; onDone: () => void }) {
+  const { createTemplate } = useAgreementTemplates();
+  return (
+    <Button
+      onClick={async () => {
+        if (!name.trim()) { toast.error('Name is required'); return; }
+        await createTemplate(name, description, []);
+        onDone();
+      }}
+      disabled={!name.trim()}
+    >
+      Create
+    </Button>
+  );
+}
+
 export function AgreementTemplatesSettings({ isAdmin }: { isAdmin: boolean }) {
   const { templates, loading, seedDefaultTemplate, updateTemplate, deleteTemplate, duplicateTemplate } = useAgreementTemplates();
   const [editingTemplate, setEditingTemplate] = useState<AgreementTemplate | null>(null);

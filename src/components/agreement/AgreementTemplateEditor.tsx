@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ArrowLeft, Save, Plus, GripVertical, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, GripVertical, Trash2, Loader2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
