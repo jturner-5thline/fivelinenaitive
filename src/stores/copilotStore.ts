@@ -36,6 +36,7 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   openPanel: () => set({ isOpen: true }),
   closePanel: () => set({ isOpen: false }),
   addMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
+  setMessages: (messages) => set({ messages }),
   setProcessing: (processing) => set({ isProcessing: processing }),
   clearMessages: () => set({ messages: [], conversationId: null }),
   setConversationId: (id) => set({ conversationId: id }),
