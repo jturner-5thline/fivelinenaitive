@@ -183,20 +183,45 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
       filteredDeals.forEach(deal => {
         deal.lenders?.forEach(lender => {
           if (lender.trackingStatus === 'passed' && lender.passReason) {
-            passReasonCounts[lender.passReason] = (passReasonCounts[lender.passReason] || 0) + 1;
+            // Split comma-separated reasons into individual entries
+            lender.passReason.split(', ').forEach(reason => {
+              const trimmed = reason.trim();
+              if (trimmed) passReasonCounts[trimmed] = (passReasonCounts[trimmed] || 0) + 1;
+            });
           }
         });
       });
-      if (Object.keys(passReasonCounts).length === 0) {
-        return [
-          { name: 'Deal size too small', value: 5 },
-          { name: 'Industry mismatch', value: 8 },
-          { name: 'Risk profile', value: 4 },
-          { name: 'Timing issues', value: 3 },
-          { name: 'Terms not competitive', value: 6 },
-        ];
-      }
-      return Object.entries(passReasonCounts).map(([name, value]) => ({ name, value }));
+      let passEntries = Object.keys(passReasonCounts).length === 0
+        ? [
+            { name: 'Deal size too small', value: 5 },
+            { name: 'Industry mismatch', value: 8 },
+            { name: 'Risk profile', value: 4 },
+            { name: 'Timing issues', value: 3 },
+            { name: 'Terms not competitive', value: 6 },
+            { name: 'Geographic constraints', value: 2 },
+            { name: 'Leverage too high', value: 3 },
+            { name: 'Sponsor concerns', value: 1 },
+            { name: 'Regulatory issues', value: 1 },
+            { name: 'Collateral shortfall', value: 2 },
+            { name: 'Credit quality', value: 4 },
+            { name: 'Market conditions', value: 1 },
+          ]
+        : Object.entries(passReasonCounts).map(([name, value]) => ({ name, value }));
+      // Sort descending, keep top 8, group rest into "Other"
+      passEntries.sort((a, b) => b.value - a.value);
+      const totalPassCount = passEntries.reduce((s, e) => s + e.value, 0);
+      const threshold = totalPassCount * 0.05;
+      const topReasons: typeof passEntries = [];
+      let otherCount = 0;
+      passEntries.forEach((entry, i) => {
+        if (i < 8 && entry.value >= threshold) {
+          topReasons.push(entry);
+        } else {
+          otherCount += entry.value;
+        }
+      });
+      if (otherCount > 0) topReasons.push({ name: 'Other', value: otherCount });
+      return topReasons;
     
     case 'hours-by-manager':
       const hoursData = getHoursData(allDeals);
@@ -314,6 +339,35 @@ const ChartTypeIcon = ({ type }: { type: ChartType }) => {
 function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean }) {
   const data = getChartData(chart.dataSource, deals, dateRange);
   const chartHeight = compact ? 180 : 250;
+
+  // Force horizontal bar chart for pass reasons (better for categorical data)
+  if (chart.dataSource === 'lender-pass-reasons') {
+    const total = data.reduce((s: number, d: any) => s + d.value, 0);
+    const barHeight = Math.max(chartHeight, data.length * 32 + 40);
+    return (
+      <ResponsiveContainer width="100%" height={barHeight}>
+        <BarChart data={data} layout="vertical" margin={{ left: 10, right: 30 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <YAxis dataKey="name" type="category" width={compact ? 100 : 140} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'hsl(var(--popover))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '8px',
+              color: 'hsl(var(--popover-foreground))',
+            }}
+            formatter={(value: number) => [`${value} (${total > 0 ? ((value / total) * 100).toFixed(0) : 0}%)`, 'Count']}
+          />
+          <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+            {data.map((_: any, index: number) => (
+              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  }
   
   switch (chart.type) {
     case 'bar':
