@@ -40,7 +40,8 @@ export default function Dashboard() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
-  const firstName = profile?.first_name || profile?.display_name?.split(' ')[0] || 'there';
+  // #24: Always compute firstName regardless of sidebar state
+  const firstName = profile?.first_name || (profile?.display_name ? profile.display_name.split(' ')[0] : '') || 'there';
   // Track recently removed widgets for undo (#13)
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
