@@ -1299,6 +1299,12 @@ export default function Analytics() {
       <div className="mt-8 border-t pt-8">
         <FlagsHurdlesAnalytics />
       </div>
+            </TabsContent>
+
+            <TabsContent value="portfolio-risk">
+              <PortfolioRiskAnalysis />
+            </TabsContent>
+          </Tabs>
     </>
   );
 }
