@@ -59,14 +59,26 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   onExport, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
-  const [weeksPast, setWeeksPast] = useState(4);
-  const [weeksFuture, setWeeksFuture] = useState(12);
-  const [savePlanOpen, setSavePlanOpen] = useState(false);
-  const [planName, setPlanName] = useState('');
-
   const sortedWeeks = Object.entries(weeklyData).sort(([a], [b]) => a.localeCompare(b));
   const totalWeeks = sortedWeeks.length;
-  const visibleWeeks = sortedWeeks.slice(0, weeksPast + weeksFuture);
+
+  // Find the index of the current week (closest week_ending >= today)
+  const today = new Date().toISOString().split('T')[0];
+  const currentWeekIndex = sortedWeeks.findIndex(([dateKey, entry]) => {
+    const weekEnding = typeof entry.week_ending === 'string' ? entry.week_ending : dateKey;
+    return weekEnding >= today;
+  });
+  const effectiveCurrentIndex = currentWeekIndex >= 0 ? currentWeekIndex : totalWeeks - 1;
+
+  const [weeksPast, setWeeksPast] = useState(() => Math.min(effectiveCurrentIndex, 4));
+  const [weeksFuture, setWeeksFuture] = useState(() => Math.min(totalWeeks - effectiveCurrentIndex, 12));
+
+  const startIdx = Math.max(0, effectiveCurrentIndex - weeksPast);
+  const endIdx = Math.min(totalWeeks, effectiveCurrentIndex + weeksFuture);
+  const visibleWeeks = sortedWeeks.slice(startIdx, endIdx);
+
+  const [savePlanOpen, setSavePlanOpen] = useState(false);
+  const [planName, setPlanName] = useState('');
 
   const activePlan = activePlanId ? planSnapshots.find(p => p.id === activePlanId) : null;
 
