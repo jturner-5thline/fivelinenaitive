@@ -11110,6 +11110,818 @@ export type Database = {
           },
         ]
       }
+      wf_agreements: {
+        Row: {
+          clauses_json: Json | null
+          created_at: string
+          deal_id: string
+          file_url: string | null
+          id: string
+          org_company_id: string | null
+          signed_at: string | null
+          type: Database["public"]["Enums"]["wf_agreement_type"]
+          updated_at: string
+        }
+        Insert: {
+          clauses_json?: Json | null
+          created_at?: string
+          deal_id: string
+          file_url?: string | null
+          id?: string
+          org_company_id?: string | null
+          signed_at?: string | null
+          type?: Database["public"]["Enums"]["wf_agreement_type"]
+          updated_at?: string
+        }
+        Update: {
+          clauses_json?: Json | null
+          created_at?: string
+          deal_id?: string
+          file_url?: string | null
+          id?: string
+          org_company_id?: string | null
+          signed_at?: string | null
+          type?: Database["public"]["Enums"]["wf_agreement_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_agreements_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "wf_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_agreements_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          firm_name: string | null
+          id: string
+          is_client: boolean
+          is_lender: boolean
+          last_contacted_at: string | null
+          name: string
+          notes: string | null
+          org_company_id: string | null
+          owner_user_id: string | null
+          phone: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          firm_name?: string | null
+          id?: string
+          is_client?: boolean
+          is_lender?: boolean
+          last_contacted_at?: string | null
+          name: string
+          notes?: string | null
+          org_company_id?: string | null
+          owner_user_id?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          firm_name?: string | null
+          id?: string
+          is_client?: boolean
+          is_lender?: boolean
+          last_contacted_at?: string | null
+          name?: string
+          notes?: string | null
+          org_company_id?: string | null
+          owner_user_id?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_contacts_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_contacts_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "wf_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_deals: {
+        Row: {
+          agreement_status: string | null
+          analyst_id: string | null
+          client_email: string | null
+          company_name: string | null
+          created_at: string
+          current_workflow: string | null
+          funding_status: string | null
+          id: string
+          last_client_touch_at: string | null
+          manager_id: string | null
+          name: string
+          ops_id: string | null
+          org_company_id: string | null
+          proposal_status: string | null
+          stage: Database["public"]["Enums"]["wf_deal_stage"]
+          updated_at: string
+        }
+        Insert: {
+          agreement_status?: string | null
+          analyst_id?: string | null
+          client_email?: string | null
+          company_name?: string | null
+          created_at?: string
+          current_workflow?: string | null
+          funding_status?: string | null
+          id?: string
+          last_client_touch_at?: string | null
+          manager_id?: string | null
+          name: string
+          ops_id?: string | null
+          org_company_id?: string | null
+          proposal_status?: string | null
+          stage?: Database["public"]["Enums"]["wf_deal_stage"]
+          updated_at?: string
+        }
+        Update: {
+          agreement_status?: string | null
+          analyst_id?: string | null
+          client_email?: string | null
+          company_name?: string | null
+          created_at?: string
+          current_workflow?: string | null
+          funding_status?: string | null
+          id?: string
+          last_client_touch_at?: string | null
+          manager_id?: string | null
+          name?: string
+          ops_id?: string | null
+          org_company_id?: string | null
+          proposal_status?: string | null
+          stage?: Database["public"]["Enums"]["wf_deal_stage"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_deals_analyst_id_fkey"
+            columns: ["analyst_id"]
+            isOneToOne: false
+            referencedRelation: "wf_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_deals_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "wf_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_deals_ops_id_fkey"
+            columns: ["ops_id"]
+            isOneToOne: false
+            referencedRelation: "wf_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_deals_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_emails_queue: {
+        Row: {
+          body: string | null
+          created_at: string
+          deal_id: string | null
+          id: string
+          last_error: string | null
+          opened_at: string | null
+          org_company_id: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["wf_email_status"]
+          subject: string
+          template_key: string | null
+          to_email: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          last_error?: string | null
+          opened_at?: string | null
+          org_company_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["wf_email_status"]
+          subject: string
+          template_key?: string | null
+          to_email: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          last_error?: string | null
+          opened_at?: string | null
+          org_company_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["wf_email_status"]
+          subject?: string
+          template_key?: string | null
+          to_email?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_emails_queue_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "wf_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_emails_queue_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_invoices: {
+        Row: {
+          amount: number | null
+          created_at: string
+          deal_id: string
+          id: string
+          link_url: string | null
+          org_company_id: string | null
+          paid_at: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["wf_invoice_status"]
+          type: Database["public"]["Enums"]["wf_invoice_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          deal_id: string
+          id?: string
+          link_url?: string | null
+          org_company_id?: string | null
+          paid_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["wf_invoice_status"]
+          type?: Database["public"]["Enums"]["wf_invoice_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          deal_id?: string
+          id?: string
+          link_url?: string | null
+          org_company_id?: string | null
+          paid_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["wf_invoice_status"]
+          type?: Database["public"]["Enums"]["wf_invoice_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_invoices_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "wf_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_invoices_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_lenders: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          org_company_id: string | null
+          primary_contact_id: string | null
+          terms_profile_json: Json | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          org_company_id?: string | null
+          primary_contact_id?: string | null
+          terms_profile_json?: Json | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          org_company_id?: string | null
+          primary_contact_id?: string | null
+          terms_profile_json?: Json | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_lenders_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_lenders_primary_contact_id_fkey"
+            columns: ["primary_contact_id"]
+            isOneToOne: false
+            referencedRelation: "wf_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_meeting_notes: {
+        Row: {
+          ai_summary: string | null
+          calendar_event_id: string | null
+          contact_id: string | null
+          created_at: string
+          deal_id: string | null
+          id: string
+          notes: string | null
+          org_company_id: string | null
+          type: Database["public"]["Enums"]["wf_meeting_type"]
+          updated_at: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          calendar_event_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          notes?: string | null
+          org_company_id?: string | null
+          type?: Database["public"]["Enums"]["wf_meeting_type"]
+          updated_at?: string
+        }
+        Update: {
+          ai_summary?: string | null
+          calendar_event_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          notes?: string | null
+          org_company_id?: string | null
+          type?: Database["public"]["Enums"]["wf_meeting_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_meeting_notes_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "wf_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_meeting_notes_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "wf_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_meeting_notes_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_tasks: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          created_by_id: string | null
+          deal_id: string | null
+          description: string | null
+          due_at: string | null
+          id: string
+          is_recurring: boolean
+          org_company_id: string | null
+          recurrence_rule_json: Json | null
+          status: Database["public"]["Enums"]["wf_task_status"]
+          title: string
+          trigger_source: Database["public"]["Enums"]["wf_trigger_source"]
+          updated_at: string
+          workflow_key: string | null
+          workflow_owner_id: string | null
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          deal_id?: string | null
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          is_recurring?: boolean
+          org_company_id?: string | null
+          recurrence_rule_json?: Json | null
+          status?: Database["public"]["Enums"]["wf_task_status"]
+          title: string
+          trigger_source?: Database["public"]["Enums"]["wf_trigger_source"]
+          updated_at?: string
+          workflow_key?: string | null
+          workflow_owner_id?: string | null
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          deal_id?: string | null
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          is_recurring?: boolean
+          org_company_id?: string | null
+          recurrence_rule_json?: Json | null
+          status?: Database["public"]["Enums"]["wf_task_status"]
+          title?: string
+          trigger_source?: Database["public"]["Enums"]["wf_trigger_source"]
+          updated_at?: string
+          workflow_key?: string | null
+          workflow_owner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "wf_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_tasks_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "wf_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_tasks_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "wf_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_tasks_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_tasks_workflow_owner_id_fkey"
+            columns: ["workflow_owner_id"]
+            isOneToOne: false
+            referencedRelation: "wf_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_term_sheets: {
+        Row: {
+          created_at: string
+          deal_id: string
+          file_url: string | null
+          id: string
+          lender_id: string | null
+          org_company_id: string | null
+          received_at: string | null
+          signed_at: string | null
+          status: Database["public"]["Enums"]["wf_term_sheet_status"]
+          summary_json: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          file_url?: string | null
+          id?: string
+          lender_id?: string | null
+          org_company_id?: string | null
+          received_at?: string | null
+          signed_at?: string | null
+          status?: Database["public"]["Enums"]["wf_term_sheet_status"]
+          summary_json?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          file_url?: string | null
+          id?: string
+          lender_id?: string | null
+          org_company_id?: string | null
+          received_at?: string | null
+          signed_at?: string | null
+          status?: Database["public"]["Enums"]["wf_term_sheet_status"]
+          summary_json?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_term_sheets_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "wf_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_term_sheets_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "wf_lenders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_term_sheets_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_users: {
+        Row: {
+          auth_user_id: string | null
+          company_id: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: Database["public"]["Enums"]["wf_user_role"]
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          role?: Database["public"]["Enums"]["wf_user_role"]
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: Database["public"]["Enums"]["wf_user_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_users_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_workflow_preferences: {
+        Row: {
+          created_at: string
+          default_due_offset_days: number | null
+          enabled: boolean
+          grouped_mode: boolean
+          id: string
+          notify_via_email: boolean
+          org_company_id: string | null
+          stage: Database["public"]["Enums"]["wf_deal_stage"] | null
+          task_type_key: string | null
+          team_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          default_due_offset_days?: number | null
+          enabled?: boolean
+          grouped_mode?: boolean
+          id?: string
+          notify_via_email?: boolean
+          org_company_id?: string | null
+          stage?: Database["public"]["Enums"]["wf_deal_stage"] | null
+          task_type_key?: string | null
+          team_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          default_due_offset_days?: number | null
+          enabled?: boolean
+          grouped_mode?: boolean
+          id?: string
+          notify_via_email?: boolean
+          org_company_id?: string | null
+          stage?: Database["public"]["Enums"]["wf_deal_stage"] | null
+          task_type_key?: string | null
+          team_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_workflow_preferences_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_workflow_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "wf_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_workflows: {
+        Row: {
+          created_at: string
+          default_owner_role: Database["public"]["Enums"]["wf_owner_role"]
+          default_owner_user_id: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          key: string
+          name: string
+          org_company_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_owner_role?: Database["public"]["Enums"]["wf_owner_role"]
+          default_owner_user_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          key: string
+          name: string
+          org_company_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_owner_role?: Database["public"]["Enums"]["wf_owner_role"]
+          default_owner_user_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          name?: string
+          org_company_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_workflows_default_owner_user_id_fkey"
+            columns: ["default_owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "wf_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_workflows_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wf_workflows_log: {
+        Row: {
+          created_at: string
+          deal_id: string | null
+          id: string
+          metadata_json: Json | null
+          org_company_id: string | null
+          owner_user_id: string | null
+          trigger_type: Database["public"]["Enums"]["wf_trigger_type"]
+          workflow_id: string | null
+          workflow_name: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          metadata_json?: Json | null
+          org_company_id?: string | null
+          owner_user_id?: string | null
+          trigger_type: Database["public"]["Enums"]["wf_trigger_type"]
+          workflow_id?: string | null
+          workflow_name: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          metadata_json?: Json | null
+          org_company_id?: string | null
+          owner_user_id?: string | null
+          trigger_type?: Database["public"]["Enums"]["wf_trigger_type"]
+          workflow_id?: string | null
+          workflow_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wf_workflows_log_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "wf_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_workflows_log_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_workflows_log_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "wf_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wf_workflows_log_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "wf_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_runs: {
         Row: {
           completed_at: string | null
@@ -11900,6 +12712,61 @@ export type Database = {
         | "system"
       notification_channel_type: "in_app" | "email" | "slack" | "sms" | "push"
       notification_instance_status: "pending" | "sent" | "failed" | "skipped"
+      wf_agreement_type: "nda" | "engagement" | "amendment" | "other"
+      wf_deal_stage:
+        | "nda_needs_list_sent"
+        | "pre_credit_needs"
+        | "analyst_completes_review"
+        | "not_moving_forward"
+        | "manager_approves_preview"
+        | "initial_lender_review"
+        | "initial_feedback_call"
+        | "prop_in_dev"
+        | "prop_issued"
+        | "agreement_pending"
+        | "final_credit_items"
+        | "client_strategy_review"
+        | "write_up_pending"
+        | "submitted_to_lenders"
+        | "lenders_in_review"
+        | "terms_issued_analysis"
+        | "terms_issued_payment"
+        | "due_diligence_client"
+        | "funded_naitive"
+        | "funded_payment"
+        | "funded_feedback_testimonials"
+        | "funded_lender_review"
+      wf_email_status: "pending" | "sent" | "failed"
+      wf_invoice_status: "draft" | "sent" | "paid"
+      wf_invoice_type: "retainer" | "milestone" | "final"
+      wf_meeting_type:
+        | "sales"
+        | "bd"
+        | "educational"
+        | "kick_off"
+        | "lender_meeting"
+        | "other"
+      wf_owner_role: "manager" | "analyst" | "ops" | "system"
+      wf_task_status: "open" | "in_progress" | "done"
+      wf_term_sheet_status:
+        | "draft"
+        | "received"
+        | "approved"
+        | "signed"
+        | "rejected"
+      wf_trigger_source:
+        | "stage_change"
+        | "calendar"
+        | "email"
+        | "manual"
+        | "external"
+      wf_trigger_type:
+        | "stage_change"
+        | "calendar_event"
+        | "email_event"
+        | "manual"
+        | "external"
+      wf_user_role: "manager" | "analyst" | "ops" | "admin" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -12122,6 +12989,66 @@ export const Constants = {
       ],
       notification_channel_type: ["in_app", "email", "slack", "sms", "push"],
       notification_instance_status: ["pending", "sent", "failed", "skipped"],
+      wf_agreement_type: ["nda", "engagement", "amendment", "other"],
+      wf_deal_stage: [
+        "nda_needs_list_sent",
+        "pre_credit_needs",
+        "analyst_completes_review",
+        "not_moving_forward",
+        "manager_approves_preview",
+        "initial_lender_review",
+        "initial_feedback_call",
+        "prop_in_dev",
+        "prop_issued",
+        "agreement_pending",
+        "final_credit_items",
+        "client_strategy_review",
+        "write_up_pending",
+        "submitted_to_lenders",
+        "lenders_in_review",
+        "terms_issued_analysis",
+        "terms_issued_payment",
+        "due_diligence_client",
+        "funded_naitive",
+        "funded_payment",
+        "funded_feedback_testimonials",
+        "funded_lender_review",
+      ],
+      wf_email_status: ["pending", "sent", "failed"],
+      wf_invoice_status: ["draft", "sent", "paid"],
+      wf_invoice_type: ["retainer", "milestone", "final"],
+      wf_meeting_type: [
+        "sales",
+        "bd",
+        "educational",
+        "kick_off",
+        "lender_meeting",
+        "other",
+      ],
+      wf_owner_role: ["manager", "analyst", "ops", "system"],
+      wf_task_status: ["open", "in_progress", "done"],
+      wf_term_sheet_status: [
+        "draft",
+        "received",
+        "approved",
+        "signed",
+        "rejected",
+      ],
+      wf_trigger_source: [
+        "stage_change",
+        "calendar",
+        "email",
+        "manual",
+        "external",
+      ],
+      wf_trigger_type: [
+        "stage_change",
+        "calendar_event",
+        "email_event",
+        "manual",
+        "external",
+      ],
+      wf_user_role: ["manager", "analyst", "ops", "admin", "other"],
     },
   },
 } as const
