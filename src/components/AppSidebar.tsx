@@ -51,7 +51,7 @@ const menuItems = [
   { title: "HR", url: "/hr", icon: UserCog, featureKey: "hr" },
   { title: "Operations", url: "/operations", icon: Cog, featureKey: "operations" },
   { title: "Finance", url: "/finance", icon: DollarSign, featureKey: "finance" },
-  { title: "Email Designer", url: "/email-designer", icon: Mail, featureKey: null },
+  
   { title: "Video Library", url: "/video-library", icon: Video, featureKey: null },
   { title: "Workflows", url: "/wf", icon: Workflow, featureKey: null },
 ];

@@ -247,9 +247,6 @@ const App = () => (
                           <Route path="/video-library" element={
                             <ProtectedRoute><AppLayout><VideoLibrary /></AppLayout></ProtectedRoute>
                           } />
-                          <Route path="/email-designer" element={
-                            <ProtectedRoute><AppLayout><EmailDesigner /></AppLayout></ProtectedRoute>
-                          } />
                           <Route path="/wf" element={
                             <ProtectedRoute><AppLayout><WfHub /></AppLayout></ProtectedRoute>
                           } />
