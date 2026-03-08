@@ -81,10 +81,8 @@ const Homepage = lazy(lazyRetry(() => import("./pages/Homepage")));
 const Promo = lazy(lazyRetry(() => import("./pages/Promo")));
 const VideoLibrary = lazy(lazyRetry(() => import("./pages/VideoLibrary")));
 const EmailDesigner = lazy(lazyRetry(() => import("./pages/EmailDesigner")));
-const WfDeals = lazy(lazyRetry(() => import("./pages/WfDeals")));
+const WfHub = lazy(lazyRetry(() => import("./pages/WfHub")));
 const WfDealDetail = lazy(lazyRetry(() => import("./pages/WfDealDetail")));
-const WfTasks = lazy(lazyRetry(() => import("./pages/WfTasks")));
-const WfAdmin = lazy(lazyRetry(() => import("./pages/WfAdmin")));
 
 const queryClient = new QueryClient();
 
