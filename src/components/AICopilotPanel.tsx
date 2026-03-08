@@ -176,40 +176,116 @@ export function AICopilotPanel() {
             Ask me anything about your deals, tasks, or pipeline.
           </div>
         ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              style={{
-                display: 'flex',
-                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              }}
-            >
+          <>
+            {messages.map((msg) => (
               <div
+                key={msg.id}
                 style={{
-                  maxWidth: '85%',
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                  whiteSpace: 'pre-wrap',
-                  ...(msg.role === 'user'
-                    ? {
-                        background: 'hsl(var(--primary))',
-                        color: 'hsl(var(--primary-foreground))',
-                        borderBottomRightRadius: 4,
-                      }
-                    : {
-                        background: 'var(--glass-surface)',
-                        color: 'var(--foreground)',
-                        border: '1px solid var(--glass-border)',
-                        borderBottomLeftRadius: 4,
-                      }),
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                  gap: 4,
                 }}
               >
-                {msg.content}
+                {msg.role === 'assistant' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 2 }}>
+                    <img src={naitiveFavicon} alt="" style={{ width: 16, height: 16 }} />
+                    <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>
+                      Copilot
+                    </span>
+                  </div>
+                )}
+                <div
+                  style={{
+                    maxWidth: msg.role === 'user' ? '85%' : '90%',
+                    padding: '10px 14px',
+                    borderRadius: msg.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                    fontSize: 14,
+                    lineHeight: 1.5,
+                    ...(msg.role === 'user'
+                      ? {
+                          background: 'rgba(126,184,247,0.12)',
+                          border: '1px solid rgba(126,184,247,0.22)',
+                          color: 'var(--foreground)',
+                          whiteSpace: 'pre-wrap',
+                        }
+                      : {
+                          background: 'var(--glass-surface)',
+                          color: 'var(--foreground)',
+                          border: '1px solid var(--glass-border)',
+                        }),
+                  }}
+                  className="copilot-message-content"
+                >
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p style={{ margin: '0 0 8px 0' }}>{children}</p>,
+                        strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                        em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
+                        ul: ({ children }) => <ul style={{ margin: '4px 0', paddingLeft: 20 }}>{children}</ul>,
+                        ol: ({ children }) => <ol style={{ margin: '4px 0', paddingLeft: 20 }}>{children}</ol>,
+                        li: ({ children }) => <li style={{ margin: '2px 0' }}>{children}</li>,
+                        code: ({ children, className }) => {
+                          const isBlock = className?.includes('language-');
+                          return isBlock ? (
+                            <pre
+                              style={{
+                                background: 'rgba(0,0,0,0.3)',
+                                padding: '8px 10px',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                overflowX: 'auto',
+                                margin: '6px 0',
+                              }}
+                            >
+                              <code>{children}</code>
+                            </pre>
+                          ) : (
+                            <code
+                              style={{
+                                background: 'rgba(0,0,0,0.25)',
+                                padding: '2px 5px',
+                                borderRadius: 4,
+                                fontSize: 13,
+                                fontFamily: 'monospace',
+                              }}
+                            >
+                              {children}
+                            </code>
+                          );
+                        },
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+            {isProcessing && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 2 }}>
+                  <img src={naitiveFavicon} alt="" style={{ width: 16, height: 16 }} />
+                  <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>
+                    Copilot
+                  </span>
+                </div>
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '12px 12px 12px 2px',
+                    background: 'var(--glass-surface)',
+                    border: '1px solid var(--glass-border)',
+                  }}
+                >
+                  <TypingIndicator />
+                </div>
+              </div>
+            )}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
