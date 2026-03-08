@@ -1,9 +1,8 @@
-import { Search, FileText, Mail, BarChart3, TrendingUp, Shield } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search, FileText, Mail, BarChart3, TrendingUp, Shield, Pencil, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
-  onAction: (prompt: string) => void;
+  onAction: (prompt: string, requiresInput: boolean) => void;
 }
 
 const actions = [
@@ -12,7 +11,7 @@ const actions = [
     label: 'Research',
     description: 'Company or market deep-dive',
     prompt: 'Research ',
-    prefill: true,
+    requiresInput: true,
     color: 'text-blue-400',
   },
   {
@@ -20,7 +19,7 @@ const actions = [
     label: 'Draft Email',
     description: 'Lender outreach or follow-up',
     prompt: 'Draft a lender outreach email for ',
-    prefill: true,
+    requiresInput: true,
     color: 'text-emerald-400',
   },
   {
@@ -28,7 +27,7 @@ const actions = [
     label: 'Deal Memo',
     description: 'Generate lender-ready memo',
     prompt: 'Generate a deal memo for ',
-    prefill: true,
+    requiresInput: true,
     color: 'text-amber-400',
   },
   {
@@ -36,15 +35,15 @@ const actions = [
     label: 'Pipeline Report',
     description: 'Analytics & conversion rates',
     prompt: 'Give me a full pipeline analytics report',
-    prefill: false,
+    requiresInput: false,
     color: 'text-purple-400',
   },
   {
     icon: TrendingUp,
     label: 'Revenue Forecast',
     description: 'Weighted pipeline forecast',
-    prompt: 'What\'s my revenue forecast this quarter?',
-    prefill: false,
+    prompt: "What's my revenue forecast this quarter?",
+    requiresInput: false,
     color: 'text-cyan-400',
   },
   {
@@ -52,7 +51,7 @@ const actions = [
     label: 'Risk Assessment',
     description: 'Deal risk analysis',
     prompt: 'Run a risk assessment for ',
-    prefill: true,
+    requiresInput: true,
     color: 'text-rose-400',
   },
 ];
@@ -63,7 +62,7 @@ export function QuickActionCards({ onAction }: Props) {
       {actions.map((action) => (
         <button
           key={action.label}
-          onClick={() => onAction(action.prompt)}
+          onClick={() => onAction(action.prompt, action.requiresInput)}
           className={cn(
             'flex flex-col items-start gap-1 p-2.5 rounded-lg text-left transition-all duration-200',
             'border border-border/30 bg-muted/10',
@@ -74,6 +73,11 @@ export function QuickActionCards({ onAction }: Props) {
           <div className="flex items-center gap-1.5">
             <action.icon className={cn('h-3.5 w-3.5', action.color)} />
             <span className="text-xs font-medium">{action.label}</span>
+            {action.requiresInput ? (
+              <Pencil className="h-2.5 w-2.5 text-muted-foreground/40" />
+            ) : (
+              <Zap className="h-2.5 w-2.5 text-muted-foreground/40" />
+            )}
           </div>
           <span className="text-[10px] text-muted-foreground leading-tight">
             {action.description}

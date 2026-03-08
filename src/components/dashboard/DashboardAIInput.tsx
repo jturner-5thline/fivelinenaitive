@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, Fragment } from 'react';
 import { History, Maximize2, Minimize2, RotateCcw, Download, Share2 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card } from '@/components/ui/card';
@@ -18,19 +18,38 @@ import { QuickActionCards } from './chat/QuickActionCards';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-chat`;
 
-const suggestions = [
-  "Give me my morning briefing",
-  "What's my pipeline conversion rate?",
-  "Research [company name] for me",
-  "Draft a lender outreach email",
-  "Compare my top 3 deals",
-  "What's my revenue forecast this quarter?",
-  "Find lenders for my biggest deal",
-  "Generate a deal memo for [deal]",
+interface SuggestionConfig {
+  text: string;
+  requiresInput: boolean;
+  /** Text to populate (if different from display text) */
+  populateText?: string;
+}
+
+const suggestions: SuggestionConfig[] = [
+  { text: "Give me my morning briefing", requiresInput: false },
+  { text: "What's my pipeline conversion rate?", requiresInput: false },
+  { text: "Research [company name] for me", requiresInput: true, populateText: "Research [company name] for me" },
+  { text: "Draft a lender outreach email", requiresInput: false },
+  { text: "Compare my top 3 deals", requiresInput: false },
+  { text: "What's my revenue forecast this quarter?", requiresInput: false },
+  { text: "Find lenders for my biggest deal", requiresInput: false },
+  { text: "Generate a deal memo for [deal]", requiresInput: true, populateText: "Generate a deal memo for [deal]" },
 ];
 
 interface DashboardAIInputProps {
   isDrawerMode?: boolean;
+}
+
+/** Render suggestion text with [placeholder] portions styled distinctly */
+function renderSuggestionText(text: string) {
+  const parts = text.split(/(\[[^\]]+\])/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) => {
+    if (part.startsWith('[') && part.endsWith(']')) {
+      return <span key={i} className="text-primary italic">{part}</span>;
+    }
+    return <Fragment key={i}>{part}</Fragment>;
+  });
 }
 
 export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps) {
@@ -48,6 +67,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   const [showHistory, setShowHistory] = useState(false);
   const [teamMembers, setTeamMembers] = useState<{ user_id: string; display_name: string; email: string }[]>([]);
   const autoBriefedRef = useRef(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Load team members for @mentions
   useEffect(() => {
@@ -63,9 +83,26 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     const lastBriefing = sessionStorage.getItem('lastBriefing');
     const today = new Date().toISOString().slice(0, 10);
     if (lastBriefing === today) return;
-    // Don't auto-send, just pre-fill the suggestion
     autoBriefedRef.current = true;
   }, [user, messages.length]);
+
+  /** Populate input and select [placeholder] if present */
+  const populateInput = useCallback((text: string) => {
+    setInputValue(text);
+    // After React renders the new value, select the placeholder
+    setTimeout(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus();
+      const bracketMatch = text.match(/\[([^\]]+)\]/);
+      if (bracketMatch && bracketMatch.index !== undefined) {
+        el.setSelectionRange(bracketMatch.index, bracketMatch.index + bracketMatch[0].length);
+      } else {
+        // Place cursor at end
+        el.setSelectionRange(text.length, text.length);
+      }
+    }, 50);
+  }, []);
 
   const handleSend = useCallback(async (text?: string) => {
     const trimmed = (text || inputValue).trim();
@@ -204,6 +241,27 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
 
   const handleClear = useCallback(() => { startNewChat(); setInputValue(''); }, [startNewChat]);
 
+  /** Handle action from QuickActionCards */
+  const handleQuickAction = useCallback((prompt: string, requiresInput: boolean) => {
+    if (requiresInput) {
+      populateInput(prompt);
+    } else {
+      setInputValue(prompt);
+      handleSend(prompt);
+    }
+  }, [populateInput, handleSend]);
+
+  /** Handle suggestion chip click */
+  const handleSuggestionClick = useCallback((suggestion: SuggestionConfig) => {
+    const textToUse = suggestion.populateText || suggestion.text;
+    if (suggestion.requiresInput) {
+      populateInput(textToUse);
+    } else {
+      setInputValue(textToUse);
+      handleSend(textToUse);
+    }
+  }, [populateInput, handleSend]);
+
   return (
     <div className="relative">
       <Card className={cn(
@@ -211,6 +269,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
         isDrawerMode ? 'border-0 shadow-none h-full flex flex-col' : '',
         !isDrawerMode && expanded ? 'fixed inset-4 z-50 flex flex-col' : !isDrawerMode ? 'p-4' : ''
       )}>
+        {/* Toolbar — always visible when there are messages or expanded */}
         {(messages.length > 0 || expanded) && (
           <div className={cn('flex items-center justify-between gap-2', expanded ? 'p-3 border-b' : 'mb-3')}>
             <div className="flex items-center gap-2">
@@ -247,8 +306,31 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
           )}
 
           <div className={cn('flex-1 flex flex-col min-w-0', expanded ? 'p-4' : '')}>
+            {/* Header section — always visible */}
+            {!showHistory && (
+              <div className="space-y-4 mb-4">
+                <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
+                <QuickActionCards onAction={handleQuickAction} />
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((s, i) => (
+                    <Badge
+                      key={i}
+                      variant="outline"
+                      className="cursor-pointer text-xs px-3 py-1.5 border-[hsl(263,40%,30%,0.5)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.6)_0%,hsl(263,18%,8%,0.7)_100%)] backdrop-blur-md shadow-[inset_0_1px_1px_hsl(263,40%,40%,0.1),0_2px_8px_hsl(0,0%,0%,0.3)] hover:border-[hsl(263,50%,40%,0.6)] hover:bg-[linear-gradient(135deg,hsl(260,25%,14%,0.7)_0%,hsl(263,22%,11%,0.8)_100%)] hover:shadow-[inset_0_1px_1px_hsl(263,50%,50%,0.15),0_4px_16px_hsl(263,40%,20%,0.3)] transition-all duration-300"
+                      onClick={() => handleSuggestionClick(s)}
+                    >
+                      {renderSuggestionText(s.text)}
+                    </Badge>
+                  ))}
+                </div>
+                {/* Subtle divider */}
+                <div className="border-t border-border/10 pt-4" />
+              </div>
+            )}
+
+            {/* AI conversation — renders below the header */}
             {messages.length > 0 && (
-              <div className={expanded ? 'flex-1 min-h-0' : ''}>
+              <div className={cn(expanded ? 'flex-1 min-h-0' : 'mb-4')}>
                 <ChatMessageList
                   messages={messages}
                   isLoading={isLoading}
@@ -260,35 +342,14 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
               </div>
             )}
 
-            {messages.length === 0 && !showHistory && (
-              <div className="mb-3">
-                <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
-                <QuickActionCards onAction={(prompt) => {
-                  setInputValue(prompt);
-                  // If prompt doesn't need prefill (ends without space), send immediately
-                  if (!prompt.endsWith(' ')) handleSend(prompt);
-                }} />
-              <div className="flex flex-wrap gap-2">
-                  {suggestions.map((s, i) => (
-                    <Badge
-                      key={i}
-                      variant="outline"
-                      className="cursor-pointer text-xs px-3 py-1.5 border-[hsl(263,40%,30%,0.5)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.6)_0%,hsl(263,18%,8%,0.7)_100%)] backdrop-blur-md shadow-[inset_0_1px_1px_hsl(263,40%,40%,0.1),0_2px_8px_hsl(0,0%,0%,0.3)] hover:border-[hsl(263,50%,40%,0.6)] hover:bg-[linear-gradient(135deg,hsl(260,25%,14%,0.7)_0%,hsl(263,22%,11%,0.8)_100%)] hover:shadow-[inset_0_1px_1px_hsl(263,50%,50%,0.15),0_4px_16px_hsl(263,40%,20%,0.3)] transition-all duration-300"
-                      onClick={() => { setInputValue(s); handleSend(s); }}
-                    >
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
+            {/* Input bar — always visible */}
             <ChatInputBar
               onSend={handleSend}
               isLoading={isLoading}
               inputValue={inputValue}
               setInputValue={setInputValue}
               teamMembers={teamMembers}
+              inputRef={inputRef}
             />
           </div>
         </div>

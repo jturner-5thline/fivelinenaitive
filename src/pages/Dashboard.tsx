@@ -62,7 +62,6 @@ export default function Dashboard() {
     const sorted = [...activePreset.grid_config].sort((a, b) => (a.y * 12 + a.x) - (b.y * 12 + b.x));
     const [moved] = sorted.splice(fromIndex, 1);
     sorted.splice(toIndex, 0, moved);
-    // Reassign positions
     const updated = sorted.map((item, idx) => ({
       ...item,
       x: (idx % 2) * 6,
@@ -125,6 +124,7 @@ export default function Dashboard() {
           <div className="text-center space-y-2 pt-2">
             <p className="text-base sm:text-lg text-muted-foreground">{getTimeBasedGreeting()}, {firstName}</p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground">What can I do for you?</h1>
+            <p className="text-sm text-muted-foreground/50 mt-1">Ask me anything about your deals, pipeline, lenders, or market research</p>
           </div>
 
           <DashboardAIInput />
@@ -136,19 +136,25 @@ export default function Dashboard() {
             side="bottom"
           >
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setCalendarOpen(true)}>
+            <Card
+              className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+              onClick={() => setCalendarOpen(true)}
+            >
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--primary)/0.2),inset_0_1px_1px_hsl(var(--primary)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-primary/20 before:to-transparent before:rounded-xl">
-                  <CalendarIcon className="relative z-10 h-6 w-6 text-primary" />
+                  <CalendarIcon className="relative z-10 h-7 w-7 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Calendar</span>
               </div>
             </Card>
             <FullCalendarView open={calendarOpen} onOpenChange={setCalendarOpen} />
-            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setEmailOpen(true)}>
+            <Card
+              className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+              onClick={() => setEmailOpen(true)}
+            >
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden shadow-[inset_0_1px_1px_hsl(280,85%,75%,0.35),0_4px_24px_hsl(275,80%,45%,0.4)] before:absolute before:inset-0 before:bg-[linear-gradient(135deg,hsl(280,85%,75%,0.3)_0%,transparent_50%,hsl(275,80%,40%,0.15)_100%)] before:rounded-xl">
-                  <Mail className="relative z-10 h-6 w-6 text-foreground" />
+                  <Mail className="relative z-10 h-7 w-7 text-foreground" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Email</span>
               </div>
@@ -156,10 +162,10 @@ export default function Dashboard() {
             <InboxDialog open={emailOpen} onOpenChange={setEmailOpen} />
             <QuickPromptsDialog
               trigger={
-                <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                <Card className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]">
                   <div className="flex flex-col items-center text-center space-y-3">
                     <div className="relative h-12 w-12 rounded-xl border border-success/30 bg-success/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--success)/0.2),inset_0_1px_1px_hsl(var(--success)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-success/20 before:to-transparent before:rounded-xl">
-                      <Zap className="relative z-10 h-6 w-6 text-success" />
+                      <Zap className="relative z-10 h-7 w-7 text-success" />
                     </div>
                     <span className="text-sm font-medium text-foreground">Quick Prompts</span>
                   </div>
@@ -168,10 +174,10 @@ export default function Dashboard() {
             />
             <CreateDealDialog
               trigger={
-                <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                <Card className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]">
                   <div className="flex flex-col items-center text-center space-y-3">
                     <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--primary)/0.2),inset_0_1px_1px_hsl(var(--primary)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-primary/20 before:to-transparent before:rounded-xl">
-                      <Briefcase className="relative z-10 h-6 w-6 text-primary" />
+                      <Briefcase className="relative z-10 h-7 w-7 text-primary" />
                     </div>
                     <span className="text-sm font-medium text-foreground">Create New Deal</span>
                   </div>
