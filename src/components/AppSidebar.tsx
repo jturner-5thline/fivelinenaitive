@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, UserPen, SlidersHorizontal, Contact, Building2, Mail } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, UserPen, SlidersHorizontal, Contact, Building2 } from "lucide-react";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
@@ -51,7 +51,7 @@ const menuItems = [
   { title: "HR", url: "/hr", icon: UserCog, featureKey: "hr" },
   { title: "Operations", url: "/operations", icon: Cog, featureKey: "operations" },
   { title: "Finance", url: "/finance", icon: DollarSign, featureKey: "finance" },
-  { title: "Email Designer", url: "/email-designer", icon: Mail, featureKey: null },
+  
   { title: "Video Library", url: "/video-library", icon: Video, featureKey: null },
   { title: "Workflows", url: "/wf", icon: Workflow, featureKey: null },
 ];
