@@ -144,19 +144,7 @@ export function AgreementTemplatesSettings({ isAdmin }: { isAdmin: boolean }) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-            <Button
-              onClick={async () => {
-                if (!newName.trim()) { toast.error('Name is required'); return; }
-                const { createTemplate } = await import('./useAgreementTemplates');
-                // We need to use the hook's createTemplate; close dialog and use it
-                setShowCreateDialog(false);
-                setNewName('');
-                setNewDesc('');
-              }}
-              disabled={!newName.trim()}
-            >
-              Create
-            </Button>
+            <CreateTemplateButton name={newName} description={newDesc} onDone={() => { setShowCreateDialog(false); setNewName(''); setNewDesc(''); }} />
           </DialogFooter>
         </DialogContent>
       </Dialog>
