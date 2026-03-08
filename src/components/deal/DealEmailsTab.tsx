@@ -928,12 +928,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             </div>
           </div>
 
-          {/* ─── Right: Reading pane / Compose ─── */}
+          {/* ─── Right: Reading pane / Compose / Command Center ─── */}
           <div className={cn(
-            'flex-1 flex flex-col min-w-0 overflow-hidden w-0',
+            'flex-1 flex flex-col min-w-0 overflow-hidden w-0 bg-background/40',
             !currentThread && !composeOpen ? 'hidden md:flex' : 'flex'
           )}>
-            {/* Fix #10: Inline compose panel */}
             {composeOpen ? (
               <InlineComposePanel
                 onSend={handleComposeSend}
@@ -969,11 +968,127 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 }}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full py-16 text-center">
-                <Mail className="h-12 w-12 text-muted-foreground/15 mb-3" />
-                {/* Fix #17: removed keyboard hints, they're in the ? popover now */}
-                <p className="text-sm text-muted-foreground">Select a conversation to read</p>
-              </div>
+              /* ─── Inbox Command Center ─── */
+              <ScrollArea className="flex-1">
+                <div className="p-6 space-y-6 max-w-2xl mx-auto">
+                  {/* Summary stat cards */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-lg bg-muted/20 border border-border/30 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Total Emails</span>
+                      </div>
+                      <p className="text-2xl font-bold text-foreground">{filteredEmails.length}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/20 border border-border/30 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MailOpen className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Unread</span>
+                      </div>
+                      <p className="text-2xl font-bold text-foreground">{filteredUnread}</p>
+                    </div>
+                    <div className="rounded-lg bg-amber-500/[0.08] border border-amber-500/20 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-400" />
+                        <span className="text-xs text-amber-400/80">Needs Response</span>
+                      </div>
+                      <p className="text-2xl font-bold text-amber-400">{responseCount}</p>
+                    </div>
+                  </div>
+
+                  {/* Priority Response Queue */}
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Priority Response Queue</h3>
+                    {responseQueue.length === 0 ? (
+                      <div className="rounded-lg bg-muted/10 border border-border/20 p-4 text-center">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-400 mx-auto mb-1.5" />
+                        <p className="text-xs text-muted-foreground">All caught up — no responses needed!</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {responseQueue.slice(0, 6).map(email => {
+                          const thread = allThreads.find(t => t.emails.some(e => e.id === email.id));
+                          return (
+                            <button
+                              key={email.id}
+                              onClick={() => {
+                                if (thread) {
+                                  setSelectedThread(thread);
+                                  setComposeOpen(false);
+                                }
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/20 transition-colors text-left group"
+                            >
+                              <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium text-foreground truncate">{email.from_name}</span>
+                                  <span className="text-[10px] text-muted-foreground shrink-0">
+                                    {formatDistanceToNow(new Date(email.received_at), { addSuffix: true })}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground truncate">{email.subject}</p>
+                              </div>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                            </button>
+                          );
+                        })}
+                        {responseQueue.length > 6 && (
+                          <button
+                            onClick={() => { setActiveItemId('needs_response'); setViewFilter('all'); }}
+                            className="w-full text-center text-[11px] text-primary hover:text-primary/80 py-1.5 transition-colors"
+                          >
+                            View all {responseQueue.length} →
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Upcoming Tasks placeholder */}
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Upcoming Tasks & Milestones</h3>
+                    <div className="rounded-lg bg-muted/10 border border-border/20 p-4 text-center">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-400 mx-auto mb-1.5" />
+                      <p className="text-xs text-muted-foreground">No tasks due today ✓</p>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Quick Actions</h3>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
+                      >
+                        <PenSquare className="h-3 w-3" />
+                        Compose Email
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => navigate('/deals')}
+                      >
+                        <Briefcase className="h-3 w-3" />
+                        Go to Pipeline
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => navigate('/integrations')}
+                      >
+                        <Calendar className="h-3 w-3" />
+                        View Calendar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
             )}
           </div>
         </div>
