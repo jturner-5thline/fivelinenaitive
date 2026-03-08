@@ -6302,6 +6302,65 @@ export type Database = {
         }
         Relationships: []
       }
+      help_articles: {
+        Row: {
+          body_html: string
+          category: string
+          company_id: string | null
+          created_at: string | null
+          created_by: string | null
+          helpful_count: number | null
+          id: string
+          search_vector: unknown
+          slug: string
+          status: string
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          view_count: number | null
+        }
+        Insert: {
+          body_html: string
+          category: string
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          helpful_count?: number | null
+          id?: string
+          search_vector?: unknown
+          slug: string
+          status?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          body_html?: string
+          category?: string
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          helpful_count?: number | null
+          id?: string
+          search_vector?: unknown
+          slug?: string
+          status?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_articles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hubspot_field_mappings: {
         Row: {
           created_at: string
@@ -8964,6 +9023,91 @@ export type Database = {
           {
             foreignKeyName: "support_sessions_target_company_id_fkey"
             columns: ["target_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_comments: {
+        Row: {
+          author_id: string | null
+          author_type: string
+          body: string
+          created_at: string | null
+          id: string
+          ticket_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_type: string
+          body: string
+          created_at?: string | null
+          id?: string
+          ticket_id: string
+        }
+        Update: {
+          author_id?: string | null
+          author_type?: string
+          body?: string
+          created_at?: string | null
+          id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          assigned_to_user_id: string | null
+          company_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          priority: string | null
+          requester_user_id: string
+          source: string | null
+          status: string
+          subject: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to_user_id?: string | null
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          priority?: string | null
+          requester_user_id: string
+          source?: string | null
+          status?: string
+          subject: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to_user_id?: string | null
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          priority?: string | null
+          requester_user_id?: string
+          source?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_company_id_fkey"
+            columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
