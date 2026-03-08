@@ -40,6 +40,7 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, featureKey: "dashboard" },
   { title: "Tasks", url: "/tasks", icon: CheckSquare, featureKey: null }, // Always visible
   { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
+  { title: "Contacts", url: "/contacts", icon: Contact, featureKey: "sales_bd" },
   { title: "News Feed", url: "/news-feed", icon: Newspaper, featureKey: "newsfeed" },
   { title: "AI Research", url: "/research", icon: Sparkles, featureKey: "ai_research", iconClassName: "h-[18px] w-[18px]" },
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
