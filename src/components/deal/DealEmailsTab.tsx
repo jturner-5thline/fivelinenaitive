@@ -422,11 +422,105 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const responseCount = filteredEmails.filter(e => e.needs_response).length;
   const filteredUnread = filteredEmails.filter(e => !e.is_read).length;
 
+  // Threads for keyboard navigation
+  const allThreads = useMemo(() => groupEmailsByThread(filteredEmails), [filteredEmails]);
+
+  // Response queue for command center
+  const responseQueue = useMemo(() => {
+    return emails
+      .filter(e => e.needs_response && e.folder === 'inbox')
+      .sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime());
+  }, [emails]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Skip if typing in an input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+
+      switch (e.key) {
+        case 'j': {
+          e.preventDefault();
+          if (allThreads.length === 0) return;
+          const currentIdx = selectedThread ? allThreads.findIndex(t => t.threadId === selectedThread.threadId) : -1;
+          const nextIdx = Math.min(currentIdx + 1, allThreads.length - 1);
+          setSelectedThread(allThreads[nextIdx]);
+          setComposeOpen(false);
+          break;
+        }
+        case 'k': {
+          e.preventDefault();
+          if (allThreads.length === 0) return;
+          const currentIdx = selectedThread ? allThreads.findIndex(t => t.threadId === selectedThread.threadId) : 0;
+          const prevIdx = Math.max(currentIdx - 1, 0);
+          setSelectedThread(allThreads[prevIdx]);
+          setComposeOpen(false);
+          break;
+        }
+        case 'o':
+        case 'Enter': {
+          if (!selectedThread && allThreads.length > 0) {
+            e.preventDefault();
+            setSelectedThread(allThreads[0]);
+            setComposeOpen(false);
+          }
+          break;
+        }
+        case 'r': {
+          if (selectedThread) {
+            e.preventDefault();
+            toast.info('Reply — use R inside the thread view');
+          }
+          break;
+        }
+        case 'e': {
+          if (selectedThread) {
+            e.preventDefault();
+            toast.info('Archive coming soon');
+          }
+          break;
+        }
+        case 's': {
+          if (selectedThread) {
+            e.preventDefault();
+            handleToggleStar(selectedThread.latestEmail);
+          }
+          break;
+        }
+        case 'Escape': {
+          e.preventDefault();
+          setSelectedThread(null);
+          setComposeOpen(false);
+          break;
+        }
+        case 'c': {
+          e.preventDefault();
+          setComposeOpen(true);
+          setComposeReplyTo(null);
+          break;
+        }
+        case '?': {
+          e.preventDefault();
+          setShortcutsOpen(prev => !prev);
+          break;
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [allThreads, selectedThread, handleToggleStar]);
+
   return (
     <Card className="overflow-hidden w-full max-w-full h-full flex flex-col">
       {/* Top toolbar */}
       <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/20">
-        <Button variant="gradient" size="sm" className="gap-1.5 text-xs h-8 px-3" onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}>
+        <Button
+          variant="gradient"
+          size="sm"
+          className="gap-1.5 text-xs h-9 px-5 shadow-[0_0_12px_hsl(var(--primary)/0.3)] hover:scale-[1.02] transition-transform duration-150"
+          onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
+        >
           <PenSquare className="h-3.5 w-3.5" />
           New mail
         </Button>
