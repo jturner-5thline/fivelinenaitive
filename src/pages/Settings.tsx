@@ -128,6 +128,10 @@ const SETTINGS_SECTIONS = [
     id: 'email-labels',
     keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'],
   },
+  {
+    id: 'distribution-stats',
+    keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'],
+  },
 ];
 
 // Tab definitions with which section IDs belong to each
