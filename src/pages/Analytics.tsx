@@ -1601,6 +1601,9 @@ export default function Analytics() {
                       compact={layoutMode === 'compact'}
                       stageLabels={stageLabels}
                       onSegmentClick={handleSegmentClick}
+                      globalFilters={globalFilters}
+                      managers={uniqueManagers}
+                      statuses={uniqueStatuses}
                     />
                   ))}
                 </div>
