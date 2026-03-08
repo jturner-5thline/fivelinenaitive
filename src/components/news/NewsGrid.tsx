@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { formatDistanceToNow, isToday, isThisWeek, isThisMonth } from 'date-fns';
-import { RefreshCw, AlertCircle, Newspaper, Loader2, LayoutGrid, List, Columns, Bookmark, Settings2 } from 'lucide-react';
+import { formatDistanceToNow, subHours, subDays } from 'date-fns';
+import { RefreshCw, AlertCircle, Newspaper, Loader2, LayoutGrid, List, Columns, Bookmark, Bell, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,12 +14,17 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { NewsFilters, type NewsCategory, type DateRange, type ViewLayout } from './NewsFilters';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { NewsFilters, type NewsCategory, type DateRange, type ViewLayout, type NewsTab, type SourceTierFilter, type EntityTypeFilter } from './NewsFilters';
 import { NewsCard } from './NewsCard';
+import { ArticleReadingPane } from './ArticleReadingPane';
 import { TrendingTopics } from './TrendingTopics';
 import { ChannelManager } from './ChannelManager';
 import { AlertsAndDigestPanel } from './AlertsAndDigestPanel';
-import { AiSummaryPanel } from './AiSummaryPanel';
 import { useNews } from '@/hooks/useNews';
 import { useNewsBookmarks } from '@/hooks/useNewsBookmarks';
 import { useNewsReadStatus } from '@/hooks/useNewsReadStatus';
@@ -50,12 +55,14 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
   const [selectedCategory, setSelectedCategory] = useState<NewsCategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<DateRange>('all');
-  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [sourceTierFilter, setSourceTierFilter] = useState<SourceTierFilter>('all');
+  const [entityTypeFilter, setEntityTypeFilter] = useState<EntityTypeFilter>('all');
   const [viewLayout, setViewLayout] = useState<ViewLayout>(() => {
-    return defaultLayout || (localStorage.getItem('news-view-layout') as ViewLayout) || 'grid';
+    return defaultLayout || (localStorage.getItem('news-view-layout') as ViewLayout) || 'list';
   });
-  const [activeTab, setActiveTab] = useState(defaultTab || 'for-you');
-  const [summaryArticle, setSummaryArticle] = useState<NewsItem | null>(null);
+  const [activeTab, setActiveTab] = useState<NewsTab>((defaultTab as NewsTab) || 'for-you');
+  const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
+  const [featuredOpen, setFeaturedOpen] = useState(true);
 
   const setLayout = (layout: ViewLayout) => {
     setViewLayout(layout);
@@ -68,50 +75,86 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
     setIsRefreshing(false);
   };
 
-  // Get active channel for filtering
-  const activeChannel = channels.find(c => c.id === activeChannelId);
-
+  // Date filter
   const filterByDateRange = (items: NewsItem[]) => {
     if (dateRange === 'all') return items;
-    return items.filter(item => {
-      const date = new Date(item.publishedAt);
-      if (dateRange === 'today') return isToday(date);
-      if (dateRange === 'week') return isThisWeek(date);
-      if (dateRange === 'month') return isThisMonth(date);
-      return true;
-    });
+    const now = new Date();
+    let cutoff: Date;
+    switch (dateRange) {
+      case '24h': cutoff = subHours(now, 24); break;
+      case '7d': cutoff = subDays(now, 7); break;
+      case '30d': cutoff = subDays(now, 30); break;
+      case '90d': cutoff = subDays(now, 90); break;
+      default: return items;
+    }
+    return items.filter(item => new Date(item.publishedAt) >= cutoff);
   };
 
-  const filteredNews = useMemo(() => {
-    let items = news;
+  // Category counts
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: news.length };
+    news.forEach(item => {
+      const cat = item.newsCategory || item.category;
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    // watchlist = items matching alerts or pinned sources
+    counts['watchlist'] = news.filter(item => {
+      const text = `${item.title} ${item.summary}`;
+      return getMatchingAlerts(text).length > 0 || isPinned(item.source);
+    }).length;
+    // active-deals count
+    counts['active-deals'] = news.filter(item =>
+      item.newsCategory === 'active-deals' || item.relevanceReason?.toLowerCase().includes('deal')
+    ).length;
+    return counts;
+  }, [news, getMatchingAlerts, isPinned]);
 
-    // Channel-based filtering
-    if (activeChannel) {
-      items = items.filter(item => {
-        const text = `${item.title} ${item.summary} ${item.source}`.toLowerCase();
-        const matchesKeywords = activeChannel.keywords.length === 0 || 
-          activeChannel.keywords.some(k => text.includes(k.toLowerCase()));
-        const matchesSources = activeChannel.sources.length === 0 || 
-          activeChannel.sources.some(s => item.source.toLowerCase().includes(s.toLowerCase()));
-        return matchesKeywords && (activeChannel.sources.length === 0 || matchesSources);
-      });
-    } else {
-      // Category filtering
-      items = items.filter(item => selectedCategory === 'all' || item.category === selectedCategory);
+  // Main filtering
+  const filteredNews = useMemo(() => {
+    let items = [...news];
+
+    // Category
+    if (selectedCategory !== 'all') {
+      if (selectedCategory === 'watchlist') {
+        items = items.filter(item => {
+          const text = `${item.title} ${item.summary}`;
+          return getMatchingAlerts(text).length > 0 || isPinned(item.source) || item.newsCategory === 'watchlist';
+        });
+      } else if (selectedCategory === 'active-deals') {
+        items = items.filter(item =>
+          item.newsCategory === 'active-deals' || item.relevanceReason?.toLowerCase().includes('deal')
+        );
+      } else if (selectedCategory === 'borrowers') {
+        items = items.filter(item =>
+          item.newsCategory === 'borrowers' || item.category === 'clients'
+        );
+      } else {
+        items = items.filter(item => item.newsCategory === selectedCategory || item.category === selectedCategory);
+      }
     }
 
     // Search
-    items = items.filter(item => {
-      return searchQuery === '' ||
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.source.toLowerCase().includes(searchQuery.toLowerCase());
-    });
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(item =>
+        item.title.toLowerCase().includes(q) ||
+        item.summary.toLowerCase().includes(q) ||
+        item.source.toLowerCase().includes(q) ||
+        (item.author?.toLowerCase().includes(q)) ||
+        (item.relevanceReason?.toLowerCase().includes(q))
+      );
+    }
 
     // Date range
     items = filterByDateRange(items);
 
-    // Boost pinned sources to top
+    // Source tier
+    if (sourceTierFilter !== 'all') {
+      const tier = parseInt(sourceTierFilter) as 1 | 2 | 3;
+      items = items.filter(item => (item.sourceTier || 3) === tier);
+    }
+
+    // Sort: pinned first, then by date
     items.sort((a, b) => {
       const aPinned = isPinned(a.source) ? 1 : 0;
       const bPinned = isPinned(b.source) ? 1 : 0;
@@ -120,17 +163,31 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
     });
 
     return items;
-  }, [news, selectedCategory, searchQuery, dateRange, activeChannel, isPinned]);
+  }, [news, selectedCategory, searchQuery, dateRange, sourceTierFilter, entityTypeFilter, getMatchingAlerts, isPinned]);
 
-  // "For You" tab: articles matching alerts, from pinned sources, or deal-related
+  // For You: personalized
   const forYouNews = useMemo(() => {
     return filteredNews.filter(item => {
       const text = `${item.title} ${item.summary}`;
-      const hasAlert = getMatchingAlerts(text).length > 0;
-      const hasPinnedSource = isPinned(item.source);
-      return hasAlert || hasPinnedSource;
+      return getMatchingAlerts(text).length > 0 || isPinned(item.source) || item.relevanceReason;
     });
   }, [filteredNews, getMatchingAlerts, isPinned]);
+
+  // Watchlist alerts
+  const watchlistNews = useMemo(() => {
+    return filteredNews.filter(item => {
+      const text = `${item.title} ${item.summary}`;
+      return getMatchingAlerts(text).length > 0 || item.newsCategory === 'watchlist' || isPinned(item.source);
+    });
+  }, [filteredNews, getMatchingAlerts, isPinned]);
+
+  // Featured top stories (top 3 from tier-1 sources)
+  const featuredStories = useMemo(() => {
+    return news
+      .filter(item => (item.sourceTier || 3) <= 1 && item.imageUrl)
+      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+      .slice(0, 3);
+  }, [news]);
 
   const renderArticleCard = (item: NewsItem, featured = false) => (
     <NewsCard
@@ -145,7 +202,8 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
       onToggleBookmark={() => toggleBookmark(item)}
       onMarkRead={() => markAsRead(item.id)}
       onTogglePin={() => togglePin(item.source)}
-      onSummarize={() => setSummaryArticle(item)}
+      onSummarize={() => setSelectedArticle(item)}
+      onArticleClick={() => setSelectedArticle(item)}
     />
   );
 
@@ -164,19 +222,18 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
 
     if (viewLayout === 'list') {
       return (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {items.map(item => renderArticleCard(item))}
         </div>
       );
     }
 
     // Grid or magazine layout
-    const featuredItem = items[0];
-    const remaining = items.slice(1);
-
-    return (
-      <div className="space-y-6">
-        {viewLayout === 'magazine' && featuredItem && (
+    if (viewLayout === 'magazine') {
+      const featuredItem = items[0];
+      const remaining = items.slice(1);
+      return (
+        <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {renderArticleCard(featuredItem, true)}
             {remaining.slice(0, 2).length > 0 && (
@@ -185,14 +242,16 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
               </div>
             )}
           </div>
-        )}
-
-        <div className={cn(
-          'grid gap-4',
-          viewLayout === 'magazine' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-        )}>
-          {(viewLayout === 'magazine' ? remaining.slice(2) : items).map(item => renderArticleCard(item))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {remaining.slice(2).map(item => renderArticleCard(item))}
+          </div>
         </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {items.map(item => renderArticleCard(item))}
       </div>
     );
   };
@@ -201,9 +260,9 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 rounded-lg w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-40 rounded-lg" />
+        <div className="space-y-2">
+          {[...Array(8)].map((_, i) => (
+            <Skeleton key={i} className="h-10 rounded-md w-full" />
           ))}
         </div>
       </div>
@@ -212,9 +271,14 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
 
   return (
     <div className="space-y-4">
-      {/* AI Summary Panel */}
-      {summaryArticle && (
-        <AiSummaryPanel article={summaryArticle} onClose={() => setSummaryArticle(null)} />
+      {/* Article Reading Pane */}
+      {selectedArticle && (
+        <ArticleReadingPane
+          article={selectedArticle}
+          isBookmarked={isBookmarked(selectedArticle.id)}
+          onToggleBookmark={() => toggleBookmark(selectedArticle)}
+          onClose={() => setSelectedArticle(null)}
+        />
       )}
 
       {/* Filters + Controls */}
@@ -226,9 +290,11 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
           onSearchChange={setSearchQuery}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
-          channels={channels}
-          activeChannelId={activeChannelId}
-          onChannelSelect={setActiveChannelId}
+          sourceTierFilter={sourceTierFilter}
+          onSourceTierChange={setSourceTierFilter}
+          entityTypeFilter={entityTypeFilter}
+          onEntityTypeChange={setEntityTypeFilter}
+          categoryCounts={categoryCounts}
         />
 
         {/* Status bar */}
@@ -243,7 +309,7 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
           </div>
           <div className="flex items-center gap-2">
             {/* Layout Toggle */}
-            <div className="flex items-center border rounded-md">
+            <div className="flex items-center border border-border rounded-md">
               <Button
                 variant={viewLayout === 'magazine' ? 'secondary' : 'ghost'}
                 size="icon"
@@ -294,7 +360,6 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 gap-1.5">
-                  <Settings2 className="h-3.5 w-3.5" />
                   Settings
                 </Button>
               </SheetTrigger>
@@ -329,8 +394,58 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
         </div>
       </div>
 
+      {/* Featured / Top Stories */}
+      {featuredStories.length > 0 && viewLayout === 'list' && (
+        <Collapsible open={featuredOpen} onOpenChange={setFeaturedOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-start">
+              {featuredOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              Top Stories
+              <Badge variant="secondary" className="h-4 px-1 text-[9px]">{featuredStories.length}</Badge>
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              {featuredStories.map(item => (
+                <div
+                  key={item.id}
+                  className="group/feat rounded-lg border border-border overflow-hidden cursor-pointer hover:border-primary/40 transition-all"
+                  onClick={() => setSelectedArticle(item)}
+                >
+                  {item.imageUrl && (
+                    <div className="h-28 overflow-hidden">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover/feat:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  )}
+                  <div className="p-3 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5">{item.source}</Badge>
+                      <span className="text-[10px] text-muted-foreground">
+                        {formatDistanceToNow(new Date(item.publishedAt), { addSuffix: true })}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-medium text-foreground line-clamp-2 group-hover/feat:text-primary transition-colors">
+                      {item.title}
+                    </h4>
+                    {item.whyItMatters && (
+                      <p className="text-[10px] text-muted-foreground italic line-clamp-1">
+                        Why it matters: {item.whyItMatters}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
       {/* Tabbed Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as NewsTab)}>
         <TabsList className="bg-muted/50">
           <TabsTrigger value="for-you" className="gap-1.5">
             For You
@@ -339,6 +454,13 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
             )}
           </TabsTrigger>
           <TabsTrigger value="all">All News</TabsTrigger>
+          <TabsTrigger value="watchlist-alerts" className="gap-1.5">
+            <Bell className="h-3.5 w-3.5" />
+            Watchlist Alerts
+            {watchlistNews.length > 0 && (
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">{watchlistNews.length}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="saved" className="gap-1.5">
             <Bookmark className="h-3.5 w-3.5" />
             Saved
@@ -358,7 +480,12 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
               </p>
             </div>
           ) : (
-            renderArticleGrid(forYouNews)
+            <>
+              <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
+                <span>{forYouNews.length} personalized {forYouNews.length === 1 ? 'article' : 'articles'}</span>
+              </div>
+              {renderArticleGrid(forYouNews)}
+            </>
           )}
         </TabsContent>
 
@@ -367,6 +494,25 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
             <span>{filteredNews.length} {filteredNews.length === 1 ? 'article' : 'articles'}</span>
           </div>
           {renderArticleGrid(filteredNews)}
+        </TabsContent>
+
+        <TabsContent value="watchlist-alerts" className="mt-4">
+          {watchlistNews.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Bell className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-1">No watchlist alerts</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                Add companies, people, or keywords to your watchlist to get alerts when they appear in news.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
+                <span>{watchlistNews.length} {watchlistNews.length === 1 ? 'alert' : 'alerts'}</span>
+              </div>
+              {renderArticleGrid(watchlistNews)}
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="saved" className="mt-4">
