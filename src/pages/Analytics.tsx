@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Clock } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Clock, Download, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PortfolioRiskAnalysis } from '@/components/analytics/PortfolioRiskAnalysis';
@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import {
   Table,
   TableBody,
@@ -59,6 +60,7 @@ import { toast } from '@/hooks/use-toast';
 import { SortableStatWidget } from '@/components/analytics/SortableStatWidget';
 import { FlagsHurdlesAnalytics } from '@/components/insights/FlagsHurdlesAnalytics';
 import { SortableListWidget } from '@/components/analytics/SortableListWidget';
+import { useNavigate } from 'react-router-dom';
 import { 
   BarChart, 
   Bar, 
@@ -80,11 +82,27 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface DateRange {
   from: Date | undefined;
   to: Date | undefined;
 }
+
+// Consistent 6-color palette used across ALL charts
+const CHART_COLORS = [
+  '#9333ea', // purple
+  '#3b82f6', // blue
+  '#10b981', // emerald
+  '#f59e0b', // amber
+  '#ef4444', // red
+  '#06b6d4', // cyan
+];
+
+// Strip numeric IDs from stage names (e.g. "Introductions 1772027306597" → "Introductions")
+const cleanStageName = (name: string): string => {
+  return name.replace(/\s+\d{10,}$/g, '').trim();
+};
 
 // Calculate hours data from deals
 const getHoursData = (deals: Deal[]) => {
@@ -99,7 +117,6 @@ const getHoursData = (deals: Deal[]) => {
     : 0;
   const revenuePerHour = totalHours > 0 ? totalFees / totalHours : 0;
   
-  // Calculate average hours per deal
   const dealsWithHours = deals.filter(d => (d.preSigningHours ?? 0) + (d.postSigningHours ?? 0) > 0);
   const dealsWithHoursCount = dealsWithHours.length;
   const avgHoursPerDeal = dealsWithHoursCount > 0 ? totalHours / dealsWithHoursCount : 0;
@@ -146,19 +163,39 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
       })
     : allDeals;
 
-  const resolveStage = (stageId: string) => stageLabels?.[stageId] || stageId;
+  const resolveStage = (stageId: string) => cleanStageName(stageLabels?.[stageId] || stageId);
 
   switch (dataSource) {
     case 'deals-by-stage': {
       const stageCounts: Record<string, number> = {};
-      // Initialize all configured stages so they all appear even if count is 0
+      // Initialize ALL configured stages so they all appear even if count is 0
       if (stageLabels) {
-        Object.values(stageLabels).forEach(label => { stageCounts[label] = 0; });
+        Object.entries(stageLabels).forEach(([id, label]) => {
+          const cleaned = cleanStageName(label);
+          stageCounts[cleaned] = 0;
+        });
       }
       filteredDeals.forEach(deal => {
         const label = resolveStage(deal.stage);
         stageCounts[label] = (stageCounts[label] || 0) + 1;
       });
+      // Return in the order defined by stageLabels when available
+      if (stageLabels) {
+        const orderedLabels = Object.values(stageLabels).map(cleanStageName);
+        const seen = new Set<string>();
+        const result: { name: string; value: number }[] = [];
+        orderedLabels.forEach(label => {
+          if (!seen.has(label)) {
+            seen.add(label);
+            result.push({ name: label, value: stageCounts[label] || 0 });
+          }
+        });
+        // Add any remaining that weren't in config
+        Object.entries(stageCounts).forEach(([name, value]) => {
+          if (!seen.has(name)) result.push({ name, value });
+        });
+        return result;
+      }
       return Object.entries(stageCounts).map(([name, value]) => ({ name, value }));
     }
     
@@ -172,14 +209,15 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
         { name: 'Jun', value: 25000000 },
       ];
     
-    case 'deals-by-status':
+    case 'deals-by-status': {
       const statusCounts: Record<string, number> = {};
       filteredDeals.forEach(deal => {
         statusCounts[deal.status] = (statusCounts[deal.status] || 0) + 1;
       });
       return Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+    }
     
-    case 'lender-activity':
+    case 'lender-activity': {
       const activityCounts: Record<string, number> = { Active: 0, 'On Deck': 0, Passed: 0, 'On Hold': 0 };
       filteredDeals.forEach(deal => {
         deal.lenders?.forEach(lender => {
@@ -190,18 +228,20 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
         });
       });
       return Object.entries(activityCounts).map(([name, value]) => ({ name, value }));
+    }
     
-    case 'deal-value-distribution':
-      const valueBuckets = { '$0-5M': 0, '$5-10M': 0, '$10-20M': 0, '$20M+': 0 };
+    case 'deal-value-distribution': {
+      const valueBuckets: Record<string, number> = { '$0-5MM': 0, '$5-10MM': 0, '$10-20MM': 0, '$20MM+': 0 };
       filteredDeals.forEach(deal => {
-        if (deal.value < 5000000) valueBuckets['$0-5M']++;
-        else if (deal.value < 10000000) valueBuckets['$5-10M']++;
-        else if (deal.value < 20000000) valueBuckets['$10-20M']++;
-        else valueBuckets['$20M+']++;
+        if (deal.value < 5000000) valueBuckets['$0-5MM']++;
+        else if (deal.value < 10000000) valueBuckets['$5-10MM']++;
+        else if (deal.value < 20000000) valueBuckets['$10-20MM']++;
+        else valueBuckets['$20MM+']++;
       });
       return Object.entries(valueBuckets).map(([name, value]) => ({ name, value }));
+    }
     
-    case 'lender-pass-reasons':
+    case 'lender-pass-reasons': {
       const passReasonCounts: Record<string, number> = {};
       filteredDeals.forEach(deal => {
         deal.lenders?.forEach(lender => {
@@ -235,24 +275,28 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
       const topReasons: typeof passEntries = [];
       let otherCount = 0;
       passEntries.forEach((entry, i) => {
-        if (i < 8 && entry.value >= threshold) {
+        if (i < 8 && entry.value >= threshold && entry.name !== 'Other') {
           topReasons.push(entry);
         } else {
           otherCount += entry.value;
         }
       });
+      // Single merged "Other" bucket
       if (otherCount > 0) topReasons.push({ name: 'Other', value: otherCount });
       return topReasons;
+    }
     
-    case 'hours-by-manager':
+    case 'hours-by-manager': {
       const hoursData = getHoursData(allDeals);
       return hoursData.byManager.map(m => ({ name: m.name, value: m.total }));
+    }
     
-    case 'hours-by-stage':
+    case 'hours-by-stage': {
       const hoursDataByStage = getHoursData(allDeals);
-      return hoursDataByStage.byStage.map(s => ({ name: s.name, value: s.total }));
+      return hoursDataByStage.byStage.map(s => ({ name: cleanStageName(s.name), value: s.total }));
+    }
     
-    case 'fee-breakdown':
+    case 'fee-breakdown': {
       const totalRetainer = filteredDeals.reduce((sum, deal) => sum + (deal.retainerFee ?? 0), 0);
       const totalMilestone = filteredDeals.reduce((sum, deal) => sum + (deal.milestoneFee ?? 0), 0);
       const totalSuccessFee = filteredDeals.reduce((sum, deal) => {
@@ -266,14 +310,12 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
         { name: 'Milestone', value: totalMilestone },
         { name: 'Success Fee', value: totalSuccessFee },
       ].filter(item => item.value > 0);
+    }
     
     case 'revenue-per-hour':
-      const revenueHoursData = getHoursData(filteredDeals);
-      return [
-        { name: 'Revenue/Hour', value: Math.round(revenueHoursData.revenuePerHour) },
-      ];
+      return [{ name: 'Revenue/Hour', value: Math.round(getHoursData(filteredDeals).revenuePerHour) }];
     
-    case 'avg-hours-per-deal':
+    case 'avg-hours-per-deal': {
       const dealsWithHours = filteredDeals.filter(d => (d.preSigningHours ?? 0) + (d.postSigningHours ?? 0) > 0);
       const avgPreSigning = dealsWithHours.length > 0
         ? dealsWithHours.reduce((sum, d) => sum + (d.preSigningHours ?? 0), 0) / dealsWithHours.length
@@ -286,14 +328,16 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
         { name: 'Post-Signing', value: Math.round(avgPostSigning * 10) / 10 },
         { name: 'Total', value: Math.round((avgPreSigning + avgPostSigning) * 10) / 10 },
       ];
+    }
     
-    case 'revenue-per-hour-by-manager':
+    case 'revenue-per-hour-by-manager': {
       const managerRevenueData = getHoursData(filteredDeals);
       return managerRevenueData.byManager
         .filter(m => m.total > 0)
         .map(m => ({ name: m.name, value: Math.round(m.revenuePerHour) }));
+    }
     
-    case 'deals-by-referral-source':
+    case 'deals-by-referral-source': {
       const referralCounts: Record<string, { count: number; value: number }> = {};
       filteredDeals.forEach(deal => {
         const sourceName = deal.referredBy?.name || 'Direct / No Referral';
@@ -306,8 +350,9 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
       return Object.entries(referralCounts)
         .map(([name, data]) => ({ name, value: data.count, dealValue: data.value }))
         .sort((a, b) => b.value - a.value);
+    }
     
-    case 'deal-value-by-referral-source':
+    case 'deal-value-by-referral-source': {
       const referralValues: Record<string, number> = {};
       filteredDeals.forEach(deal => {
         const sourceName = deal.referredBy?.name || 'Direct / No Referral';
@@ -316,39 +361,36 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
       return Object.entries(referralValues)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
+    }
 
     case 'conversion-funnel': {
-      // Build funnel from pipeline stages in order
       const stageOrder = stageLabels ? Object.entries(stageLabels) : [];
       if (stageOrder.length === 0) {
         return [
-          { name: 'Sourcing', value: filteredDeals.length, fill: '#9333ea' },
-          { name: 'Screening', value: Math.round(filteredDeals.length * 0.7), fill: '#6366f1' },
-          { name: 'Due Diligence', value: Math.round(filteredDeals.length * 0.45), fill: '#3b82f6' },
-          { name: 'Terms Issued', value: Math.round(filteredDeals.length * 0.25), fill: '#06b6d4' },
-          { name: 'Closing', value: Math.round(filteredDeals.length * 0.15), fill: '#10b981' },
-          { name: 'Funded', value: Math.round(filteredDeals.length * 0.08), fill: '#22c55e' },
+          { name: 'Sourcing', value: filteredDeals.length, fill: CHART_COLORS[0] },
+          { name: 'Screening', value: Math.round(filteredDeals.length * 0.7), fill: CHART_COLORS[1] },
+          { name: 'Due Diligence', value: Math.round(filteredDeals.length * 0.45), fill: CHART_COLORS[2] },
+          { name: 'Terms Issued', value: Math.round(filteredDeals.length * 0.25), fill: CHART_COLORS[3] },
+          { name: 'Closing', value: Math.round(filteredDeals.length * 0.15), fill: CHART_COLORS[4] },
+          { name: 'Funded', value: Math.round(filteredDeals.length * 0.08), fill: CHART_COLORS[5] },
         ];
       }
-      const funnelColors = ['#9333ea', '#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6'];
       const stageDealCounts: Record<string, number> = {};
       filteredDeals.forEach(d => {
         const label = resolveStage(d.stage);
         stageDealCounts[label] = (stageDealCounts[label] || 0) + 1;
       });
-      // Cumulative: deals AT or PAST a given stage
       let cumulative = filteredDeals.length;
       return stageOrder.map(([_id, label], i) => {
-        const count = stageDealCounts[label] || 0;
-        const result = { name: label, value: cumulative, fill: funnelColors[i % funnelColors.length] };
+        const cleaned = cleanStageName(label);
+        const count = stageDealCounts[cleaned] || 0;
+        const result = { name: cleaned, value: cumulative, fill: CHART_COLORS[i % CHART_COLORS.length] };
         cumulative -= count;
         return result;
       });
     }
 
     case 'deal-velocity': {
-      // Average days deals spend in each stage (mock based on updatedAt vs createdAt)
-      const stageEntries = stageLabels ? Object.entries(stageLabels) : [];
       const stageDays: Record<string, number[]> = {};
       filteredDeals.forEach(d => {
         const label = resolveStage(d.stage);
@@ -373,9 +415,7 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
           }
           lenderStats[lender.name].reviewed++;
           if (lender.trackingStatus === 'passed') lenderStats[lender.name].passed++;
-          // Approximate funded from stage
           if (lender.stage && ['closed-funded', 'term-sheets'].includes(lender.stage)) lenderStats[lender.name].funded++;
-          // Mock response time based on updatedAt
           if (lender.updatedAt) {
             const respDays = differenceInDays(new Date(lender.updatedAt), new Date(deal.createdAt));
             if (respDays > 0) {
@@ -392,7 +432,7 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
           funded: stats.funded,
           passRate: stats.reviewed > 0 ? Math.round((stats.passed / stats.reviewed) * 100) : 0,
           avgResponseDays: stats.responseCount > 0 ? Math.round(stats.totalResponseDays / stats.responseCount) : 0,
-          value: stats.reviewed, // for sorting
+          value: stats.reviewed,
         }))
         .sort((a, b) => b.reviewed - a.reviewed)
         .slice(0, 15);
@@ -404,6 +444,7 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
         .filter(d => d.status !== 'archived')
         .map(d => ({
           name: d.company || d.name,
+          dealId: d.id,
           dealName: d.name,
           stage: resolveStage(d.stage),
           daysInStage: differenceInDays(now, new Date(d.updatedAt)),
@@ -425,6 +466,41 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
   }
 };
 
+// Get deals matching a specific chart segment
+const getDealsForSegment = (dataSource: string, segmentName: string, allDeals: Deal[], dateRange?: DateRange, stageLabels?: Record<string, string>): Deal[] => {
+  const filteredDeals = dateRange?.from && dateRange?.to 
+    ? allDeals.filter(deal => {
+        const dealDate = new Date(deal.createdAt);
+        return isWithinInterval(dealDate, { start: dateRange.from!, end: dateRange.to! });
+      })
+    : allDeals;
+
+  const resolveStage = (stageId: string) => cleanStageName(stageLabels?.[stageId] || stageId);
+
+  switch (dataSource) {
+    case 'deals-by-stage':
+      return filteredDeals.filter(d => resolveStage(d.stage) === segmentName);
+    case 'deals-by-status':
+      return filteredDeals.filter(d => d.status === segmentName);
+    case 'lender-activity':
+      return filteredDeals.filter(d => d.lenders?.some(l => {
+        const statusMap: Record<string, string> = { active: 'Active', 'on-deck': 'On Deck', passed: 'Passed', 'on-hold': 'On Hold' };
+        return statusMap[l.trackingStatus] === segmentName;
+      }));
+    case 'deal-value-distribution': {
+      return filteredDeals.filter(deal => {
+        if (segmentName === '$0-5MM') return deal.value < 5000000;
+        if (segmentName === '$5-10MM') return deal.value >= 5000000 && deal.value < 10000000;
+        if (segmentName === '$10-20MM') return deal.value >= 10000000 && deal.value < 20000000;
+        if (segmentName === '$20MM+') return deal.value >= 20000000;
+        return false;
+      });
+    }
+    default:
+      return [];
+  }
+};
+
 const DATA_SOURCES = [
   { id: 'deals-by-stage', label: 'Deals by Stage' },
   { id: 'monthly-value', label: 'Monthly Deal Value' },
@@ -438,7 +514,7 @@ const DATA_SOURCES = [
   { id: 'stale-deal-alerts', label: 'Stale Deal Alerts' },
   { id: 'hours-by-manager', label: 'Hours by Manager' },
   { id: 'hours-by-stage', label: 'Hours by Stage' },
-  { id: 'fee-breakdown', label: 'Fee Breakdown ($K)' },
+  { id: 'fee-breakdown', label: 'Fee Breakdown' },
   { id: 'revenue-per-hour', label: 'Revenue per Hour ($/hr)' },
   { id: 'avg-hours-per-deal', label: 'Avg Hours per Deal' },
   { id: 'revenue-per-hour-by-manager', label: 'Revenue/Hour by Manager' },
@@ -446,9 +522,7 @@ const DATA_SOURCES = [
   { id: 'deal-value-by-referral-source', label: 'Deal Value by Referral Source' },
 ];
 
-const CHART_COLORS = [
-  '#9333ea', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'
-];
+const fmtCurrency = (v: number) => { const abs = Math.abs(v); const s = v < 0 ? '-' : ''; if (abs >= 1e9) return `${s}$${(abs/1e9).toFixed(1)}B`; if (abs >= 1e6) return `${s}$${(abs/1e6).toFixed(1)}MM`; if (abs >= 1e3) return `${s}$${(abs/1e3).toFixed(1)}K`; return `${s}$${abs.toFixed(0)}`; };
 
 const ChartTypeIcon = ({ type }: { type: ChartType }) => {
   switch (type) {
@@ -459,15 +533,26 @@ const ChartTypeIcon = ({ type }: { type: ChartType }) => {
   }
 };
 
-function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean; stageLabels?: Record<string, string> }) {
+// Clickable chart data sources
+const CLICKABLE_SOURCES = new Set(['deals-by-stage', 'deals-by-status', 'lender-activity', 'deal-value-distribution']);
+
+function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels, onSegmentClick }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean; stageLabels?: Record<string, string>; onSegmentClick?: (segmentName: string) => void }) {
   const data = getChartData(chart.dataSource, deals, dateRange, stageLabels);
   const chartHeight = compact ? 180 : 250;
+  const isClickable = CLICKABLE_SOURCES.has(chart.dataSource);
+  const navigate = useNavigate();
 
   const tooltipStyle = {
     backgroundColor: 'hsl(var(--popover))',
     border: '1px solid hsl(var(--border))',
     borderRadius: '8px',
     color: 'hsl(var(--popover-foreground))',
+  };
+
+  const handleBarClick = (data: any) => {
+    if (isClickable && onSegmentClick && data?.name) {
+      onSegmentClick(data.name);
+    }
   };
 
   // Force horizontal bar chart for pass reasons
@@ -538,7 +623,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }
           <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => [`${value} days`, 'Avg Duration']} />
           <Bar dataKey="value" radius={[0, 4, 4, 0]}>
             {data.map((_: any, index: number) => (
-              <Cell key={index} fill={Number((data[index] as any).value) > 30 ? '#ef4444' : Number((data[index] as any).value) > 14 ? '#f59e0b' : '#22c55e'} />
+              <Cell key={index} fill={Number((data[index] as any).value) > 30 ? '#ef4444' : Number((data[index] as any).value) > 14 ? '#f59e0b' : '#10b981'} />
             ))}
           </Bar>
         </BarChart>
@@ -565,7 +650,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }
             {rows.length === 0 ? (
               <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No lender data</TableCell></TableRow>
             ) : rows.map((row: any) => (
-              <TableRow key={row.name}>
+              <TableRow key={row.name} className="hover:bg-muted/50 transition-colors">
                 <TableCell className="font-medium text-xs truncate max-w-[120px]">{row.name}</TableCell>
                 <TableCell className="text-right text-xs">{row.reviewed}</TableCell>
                 <TableCell className="text-right text-xs">{row.funded}</TableCell>
@@ -584,7 +669,6 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }
   // Stale Deal Alerts — list
   if (chart.dataSource === 'stale-deal-alerts') {
     const staleDeals = data as any[];
-    const formatCurrency = (v: number) => { const abs = Math.abs(v); const s = v < 0 ? '-' : ''; if (abs >= 1e9) return `${s}$${(abs/1e9).toFixed(1)}B`; if (abs >= 1e6) return `${s}$${(abs/1e6).toFixed(1)}MM`; if (abs >= 1e3) return `${s}$${(abs/1e3).toFixed(1)}K`; return `${s}$${abs.toFixed(0)}`; };
     return (
       <ScrollArea className={cn("border rounded-md", compact ? "h-[180px]" : "h-[300px]")}>
         {staleDeals.length === 0 ? (
@@ -592,12 +676,16 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }
         ) : (
           <div className="divide-y divide-border">
             {staleDeals.map((deal: any, i: number) => (
-              <div key={i} className="flex items-center justify-between px-3 py-2.5">
+              <div
+                key={i}
+                className="flex items-center justify-between px-3 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer"
+                onClick={() => navigate(`/deals/${deal.dealId}`)}
+              >
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{deal.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge variant="outline" className="text-[10px]">{deal.stage}</Badge>
-                    <span className="text-[10px] text-muted-foreground">{formatCurrency(deal.value)}</span>
+                    <span className="text-[10px] text-muted-foreground">{fmtCurrency(deal.value)}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 ml-2">
@@ -621,7 +709,11 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <Tooltip contentStyle={tooltipStyle} />
-            <Bar dataKey="value" fill={chart.color} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]} className={isClickable ? 'cursor-pointer' : ''} onClick={handleBarClick}>
+              {data.map((_: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       );
@@ -634,7 +726,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <Tooltip contentStyle={tooltipStyle} />
-            <Line type="monotone" dataKey="value" stroke={chart.color} strokeWidth={2} dot={{ fill: chart.color }} />
+            <Line type="monotone" dataKey="value" stroke={CHART_COLORS[0]} strokeWidth={2} dot={{ fill: CHART_COLORS[0] }} />
           </RechartsLineChart>
         </ResponsiveContainer>
       );
@@ -653,6 +745,10 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }
               dataKey="value"
               label={compact ? undefined : ({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
               labelLine={false}
+              className={isClickable ? 'cursor-pointer' : ''}
+              onClick={(entry: any) => {
+                if (isClickable && onSegmentClick && entry?.name) onSegmentClick(entry.name);
+              }}
             >
               {data.map((_: any, index: number) => (
                 <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -671,7 +767,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <Tooltip contentStyle={tooltipStyle} />
-            <Area type="monotone" dataKey="value" stroke={chart.color} fill={chart.color} fillOpacity={0.3} />
+            <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.3} />
           </RechartsAreaChart>
         </ResponsiveContainer>
       );
@@ -687,6 +783,7 @@ function SortableChartCard({
   onDelete,
   compact = false,
   stageLabels,
+  onSegmentClick,
 }: { 
   chart: ChartConfig;
   deals: Deal[];
@@ -695,6 +792,7 @@ function SortableChartCard({
   onDelete: (chartId: string) => void;
   compact?: boolean;
   stageLabels?: Record<string, string>;
+  onSegmentClick?: (chartDataSource: string, segmentName: string) => void;
 }) {
   const {
     attributes,
@@ -748,10 +846,34 @@ function SortableChartCard({
         </div>
       </CardHeader>
       <CardContent className={compact ? "pt-0 pb-3" : undefined}>
-        <ChartRenderer chart={chart} deals={deals} dateRange={dateRange} compact={compact} stageLabels={stageLabels} />
+        <ChartRenderer
+          chart={chart}
+          deals={deals}
+          dateRange={dateRange}
+          compact={compact}
+          stageLabels={stageLabels}
+          onSegmentClick={onSegmentClick ? (segmentName) => onSegmentClick(chart.dataSource, segmentName) : undefined}
+        />
       </CardContent>
     </Card>
   );
+}
+
+// CSV export helper
+function exportCSV(deals: Deal[], stageLabels: Record<string, string>) {
+  const resolveStage = (stageId: string) => cleanStageName(stageLabels[stageId] || stageId);
+  const header = ['Company', 'Deal Name', 'Stage', 'Status', 'Value', 'Manager', 'Created At'].join(',');
+  const rows = deals.map(d =>
+    [d.company || '', d.name, resolveStage(d.stage), d.status, d.value, d.manager, d.createdAt].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+  );
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `analytics-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function Analytics() {
@@ -759,6 +881,7 @@ export default function Analytics() {
   const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, resetToDefaults, presets, savePreset, loadPreset, deletePreset } = useAnalyticsWidgets();
   const { deals } = useDealsContext();
   const { stages } = useDealStages();
+  const navigate = useNavigate();
 
   const stageLabels = useMemo(() => {
     const map: Record<string, string> = {};
@@ -791,6 +914,11 @@ export default function Analytics() {
     return (saved === 'compact' || saved === 'expanded') ? saved : 'expanded';
   });
 
+  // Segment drill-down drawer
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTitle, setDrawerTitle] = useState('');
+  const [drawerDeals, setDrawerDeals] = useState<Deal[]>([]);
+
   useEffect(() => {
     localStorage.setItem('analytics-layout-mode', layoutMode);
   }, [layoutMode]);
@@ -815,6 +943,8 @@ export default function Analytics() {
   const statWidgets = widgets.filter(w => w.type === 'stat');
   const listWidgets = widgets.filter(w => w.type === 'list');
 
+  const isAllTime = datePreset === 'all';
+
   const handleDatePreset = (preset: string) => {
     setDatePreset(preset);
     const today = new Date();
@@ -838,6 +968,15 @@ export default function Analytics() {
     }
   };
 
+  const handleSegmentClick = (chartDataSource: string, segmentName: string) => {
+    const matchingDeals = getDealsForSegment(chartDataSource, segmentName, deals, dateRange, stageLabels);
+    if (matchingDeals.length > 0) {
+      setDrawerTitle(`${segmentName} — ${matchingDeals.length} deal${matchingDeals.length !== 1 ? 's' : ''}`);
+      setDrawerDeals(matchingDeals);
+      setDrawerOpen(true);
+    }
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -847,7 +986,6 @@ export default function Analytics() {
   // Chart drag handling
   const handleChartDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
     if (over && active.id !== over.id) {
       const oldIndex = charts.findIndex(c => c.id === active.id);
       const newIndex = charts.findIndex(c => c.id === over.id);
@@ -858,7 +996,6 @@ export default function Analytics() {
   // Widget drag handling
   const handleWidgetDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
     if (over && active.id !== over.id) {
       const oldIndex = widgets.findIndex(w => w.id === active.id);
       const newIndex = widgets.findIndex(w => w.id === over.id);
@@ -1025,6 +1162,11 @@ export default function Analytics() {
     setDeletePresetDialogOpen(true);
   };
 
+  const handleExportCSV = () => {
+    exportCSV(deals, stageLabels);
+    toast({ title: 'Export complete', description: 'CSV file has been downloaded.' });
+  };
+
   return (
     <>
       <Helmet>
@@ -1104,6 +1246,23 @@ export default function Analytics() {
                   </PopoverContent>
                 </Popover>
               )}
+
+              <div className="ml-auto flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <Download className="h-4 w-4" />
+                      Export
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleExportCSV}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export as CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
           {/* Widgets Section */}
@@ -1232,6 +1391,7 @@ export default function Analytics() {
                           onEdit={handleOpenWidgetDialog}
                           onDelete={confirmDeleteWidget}
                           compact={layoutMode === 'compact'}
+                          hideDeltas={isAllTime}
                         />
                       ))}
                     </div>
@@ -1262,9 +1422,14 @@ export default function Analytics() {
             )}
           </div>
 
-          {/* Charts Section */}
+          {/* Flags & Hurdles — placed right after KPI cards */}
+          <div className="mb-8">
+            <FlagsHurdlesAnalytics />
+          </div>
+
+          {/* Charts Section — renamed to Pipeline & Performance */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Charts</h2>
+            <h2 className="text-xl font-semibold">Pipeline & Performance</h2>
             <Button variant="gradient" size="sm" onClick={() => handleOpenChartDialog()} className="gap-1">
               <Plus className="h-4 w-4" />
               Add Chart
@@ -1312,6 +1477,7 @@ export default function Analytics() {
                       onDelete={confirmDeleteChart}
                       compact={layoutMode === 'compact'}
                       stageLabels={stageLabels}
+                      onSegmentClick={handleSegmentClick}
                     />
                   ))}
                 </div>
@@ -1326,6 +1492,36 @@ export default function Analytics() {
           </Tabs>
         </main>
       </div>
+
+      {/* Segment Drill-Down Drawer */}
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent className="w-[400px] sm:w-[540px]">
+          <SheetHeader>
+            <SheetTitle>{drawerTitle}</SheetTitle>
+            <SheetDescription>Click a deal to view details</SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="h-[calc(100vh-120px)] mt-4">
+            <div className="divide-y divide-border">
+              {drawerDeals.map((deal) => (
+                <div
+                  key={deal.id}
+                  className="flex items-center justify-between py-3 px-1 hover:bg-muted/50 rounded transition-colors cursor-pointer"
+                  onClick={() => { setDrawerOpen(false); navigate(`/deals/${deal.id}`); }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{deal.company || deal.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Badge variant="outline" className="text-[10px]">{cleanStageName(stageLabels[deal.stage] || deal.stage)}</Badge>
+                      <span className="text-xs text-muted-foreground">{deal.manager}</span>
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold ml-3">{fmtCurrency(deal.value)}</span>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
 
       {/* Add/Edit Chart Dialog */}
       <Dialog open={chartDialogOpen} onOpenChange={(open) => { if (!open) resetChartForm(); setChartDialogOpen(open); }}>
@@ -1376,7 +1572,6 @@ export default function Analytics() {
                   setChartFormData(prev => ({ 
                     ...prev, 
                     dataSource: value,
-                    // Auto-fill title with data source label if title is empty or matches a previous data source label
                     title: !prev.title || DATA_SOURCES.some(s => s.label === prev.title) 
                       ? (source?.label || prev.title) 
                       : prev.title
@@ -1582,11 +1777,6 @@ export default function Analytics() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Flags & Hurdles Analytics */}
-      <div className="mt-8 border-t pt-8">
-        <FlagsHurdlesAnalytics />
-      </div>
     </>
   );
 }

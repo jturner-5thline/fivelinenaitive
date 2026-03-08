@@ -62,6 +62,9 @@ export function SortableListWidget({ widget, hoursData, onEdit, onDelete, compac
   const data = widget.dataSource === 'hours-by-manager' ? hoursData.byManager : hoursData.byStage;
   const isStage = widget.dataSource === 'hours-by-stage';
 
+  // Find max total for proportional bar fills
+  const maxTotal = data.length > 0 ? Math.max(...data.map(d => d.total)) : 1;
+
   return (
     <Card 
       ref={setNodeRef} 
@@ -105,25 +108,35 @@ export function SortableListWidget({ widget, hoursData, onEdit, onDelete, compac
         </div>
       </CardHeader>
       <CardContent className={compact ? "pt-0 pb-3" : undefined}>
-        <div className={cn("space-y-3", compact && "space-y-2")}>
+        <div className={cn("space-y-1", compact && "space-y-0.5")}>
           {data.length > 0 ? (
-            data.map((item) => (
-              <div key={item.name} className={cn(
-                "flex items-center justify-between border-b border-border/50 last:border-0",
-                compact ? "py-1.5 text-sm" : "py-2"
-              )}>
-                <span className={cn("font-medium", isStage && "capitalize", compact && "text-sm")}>
-                  {isStage ? item.name.replace('-', ' ') : item.name}
-                </span>
-                <div className={cn("flex gap-4", compact ? "gap-2 text-xs" : "text-sm")}>
-                  <span className="text-muted-foreground">{item.total.toFixed(1)}h</span>
-                  <span className="text-muted-foreground">{formatCurrencyValue(item.fees)}</span>
-                  <span className="font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
-                    {item.revenuePerHour > 0 ? `$${item.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr` : '-'}
-                  </span>
+            data.map((item) => {
+              const barWidth = maxTotal > 0 ? (item.total / maxTotal) * 100 : 0;
+              return (
+                <div key={item.name} className={cn(
+                  "relative rounded overflow-hidden",
+                  compact ? "py-1.5 px-2 text-sm" : "py-2 px-2"
+                )}>
+                  {/* Inline horizontal bar fill */}
+                  <div
+                    className="absolute inset-y-0 left-0 bg-primary/10 rounded transition-all duration-500"
+                    style={{ width: `${barWidth}%` }}
+                  />
+                  <div className="relative flex items-center justify-between">
+                    <span className={cn("font-medium", isStage && "capitalize", compact && "text-sm")}>
+                      {isStage ? item.name.replace('-', ' ') : item.name}
+                    </span>
+                    <div className={cn("flex gap-4", compact ? "gap-2 text-xs" : "text-sm")}>
+                      <span className="text-muted-foreground">{item.total.toFixed(1)}h</span>
+                      <span className="text-muted-foreground">{formatCurrencyValue(item.fees)}</span>
+                      <span className="font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
+                        {item.revenuePerHour > 0 ? `$${item.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr` : '-'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <p className={cn("text-muted-foreground text-center", compact ? "py-2 text-sm" : "py-4")}>No hours recorded yet</p>
           )}
