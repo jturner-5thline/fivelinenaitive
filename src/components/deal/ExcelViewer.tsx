@@ -239,13 +239,13 @@ export function ExcelViewer({
   const maxCols = Math.max(...currentSheet.data.map(r => r.length), 1);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-card/40 backdrop-blur-md rounded-lg border border-border/50">
       {/* Toolbar */}
-      <div className="flex items-center justify-between p-2 border-b bg-muted/30">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-card/30 backdrop-blur-sm rounded-t-lg">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium truncate max-w-[200px]">{fileName}</span>
+          <span className="text-sm font-medium truncate max-w-[200px] text-foreground">{fileName}</span>
           {hasUnsavedChanges && (
-            <span className="text-xs text-amber-600 dark:text-amber-400">• Unsaved changes</span>
+            <span className="text-xs text-warning">• Unsaved changes</span>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -256,8 +256,9 @@ export function ExcelViewer({
                 size="sm"
                 onClick={handleUndo}
                 disabled={editHistory.length === 0}
+                className="h-7 text-xs"
               >
-                <Undo2 className="h-4 w-4 mr-1" />
+                <Undo2 className="h-3.5 w-3.5 mr-1" />
                 Undo
               </Button>
               {onSave && (
@@ -266,11 +267,12 @@ export function ExcelViewer({
                   size="sm"
                   onClick={handleSave}
                   disabled={!hasUnsavedChanges || isSaving}
+                  className="h-7 text-xs"
                 >
                   {isSaving ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                   ) : (
-                    <Save className="h-4 w-4 mr-1" />
+                    <Save className="h-3.5 w-3.5 mr-1" />
                   )}
                   Save
                 </Button>
@@ -278,8 +280,8 @@ export function ExcelViewer({
             </>
           )}
           {onDownload && (
-            <Button variant="ghost" size="sm" onClick={onDownload}>
-              <Download className="h-4 w-4 mr-1" />
+            <Button variant="ghost" size="sm" onClick={onDownload} className="h-7 text-xs">
+              <Download className="h-3.5 w-3.5 mr-1" />
               Download
             </Button>
           )}
@@ -288,18 +290,21 @@ export function ExcelViewer({
 
       {/* Sheet Tabs */}
       {sheets.length > 1 && (
-        <div className="border-b bg-muted/20 overflow-x-auto">
-          <div className="flex items-center p-1 gap-1 min-w-max">
+        <div className="border-b border-border/30 bg-card/20 overflow-x-auto">
+          <div className="flex items-center px-2 py-1 gap-1 min-w-max">
             {sheets.map((sheet) => (
-              <Button
+              <button
                 key={sheet.name}
-                variant={activeSheet === sheet.name ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-7 px-3 text-xs whitespace-nowrap"
+                className={cn(
+                  "px-3 py-1 text-xs rounded-md transition-all duration-200 whitespace-nowrap",
+                  activeSheet === sheet.name
+                    ? "bg-primary/15 text-primary font-medium border border-primary/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/40"
+                )}
                 onClick={() => setActiveSheet(sheet.name)}
               >
                 {sheet.name}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
@@ -310,15 +315,13 @@ export function ExcelViewer({
         <table className="border-collapse text-sm w-max min-w-full">
           <thead className="sticky top-0 z-10">
             <tr>
-              {/* Row number header */}
-              <th className="sticky left-0 z-20 bg-muted border border-border px-2 py-1 text-center text-xs font-medium text-muted-foreground w-12">
+              <th className="sticky left-0 z-20 bg-secondary/80 backdrop-blur-sm border-b border-r border-border/30 px-2 py-1.5 text-center text-[11px] font-medium text-muted-foreground w-12">
                 
               </th>
-              {/* Column headers */}
               {Array.from({ length: maxCols }).map((_, colIndex) => (
                 <th
                   key={colIndex}
-                  className="bg-muted border border-border px-2 py-1 text-center text-xs font-medium text-muted-foreground"
+                  className="bg-secondary/80 backdrop-blur-sm border-b border-r border-border/30 px-2 py-1.5 text-center text-[11px] font-medium text-muted-foreground"
                   style={{ minWidth: currentSheet.colWidths[colIndex] || 100 }}
                 >
                   {getColumnLabel(colIndex)}
@@ -329,11 +332,9 @@ export function ExcelViewer({
           <tbody>
             {currentSheet.data.map((row, rowIndex) => (
               <tr key={rowIndex} className="group">
-                {/* Row number */}
-                <td className="sticky left-0 z-10 bg-muted border border-border px-2 py-1 text-center text-xs font-medium text-muted-foreground w-12">
+                <td className="sticky left-0 z-10 bg-secondary/60 backdrop-blur-sm border-b border-r border-border/20 px-2 py-1 text-center text-[11px] font-medium text-muted-foreground w-12">
                   {rowIndex + 1}
                 </td>
-                {/* Cells */}
                 {Array.from({ length: maxCols }).map((_, colIndex) => {
                   const cellValue = row[colIndex];
                   const isEditing = editingCell?.row === rowIndex && editingCell?.col === colIndex;
@@ -342,9 +343,9 @@ export function ExcelViewer({
                     <td
                       key={colIndex}
                       className={cn(
-                        "border border-border px-2 py-1 bg-background",
-                        "hover:bg-muted/50 cursor-cell transition-colors",
-                        isEditing && "p-0 bg-background"
+                        "border-b border-r border-border/15 px-2 py-1 bg-transparent text-foreground/90",
+                        "hover:bg-primary/5 cursor-cell transition-colors duration-150",
+                        isEditing && "p-0 ring-1 ring-primary/50 bg-card"
                       )}
                       style={{ minWidth: currentSheet.colWidths[colIndex] || 100 }}
                       onClick={() => handleCellClick(rowIndex, colIndex)}
@@ -356,10 +357,10 @@ export function ExcelViewer({
                           onChange={(e) => setEditValue(e.target.value)}
                           onBlur={handleCellBlur}
                           onKeyDown={handleKeyDown}
-                          className="h-full w-full border-0 rounded-none focus-visible:ring-2 focus-visible:ring-primary text-sm px-2 py-1"
+                          className="h-full w-full border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-primary text-sm px-2 py-1"
                         />
                       ) : (
-                        <span className="block truncate">
+                        <span className="block truncate text-[13px]">
                           {cellValue !== null && cellValue !== undefined ? String(cellValue) : ''}
                         </span>
                       )}
@@ -373,12 +374,12 @@ export function ExcelViewer({
       </div>
 
       {/* Status Bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-t bg-muted/30 text-xs text-muted-foreground">
+      <div className="flex items-center justify-between px-3 py-1.5 border-t border-border/30 bg-card/20 text-[11px] text-muted-foreground rounded-b-lg">
         <span>
           {currentSheet.data.length} rows × {maxCols} columns
         </span>
         {editingCell && (
-          <span>
+          <span className="text-primary/80">
             Editing: {getColumnLabel(editingCell.col)}{editingCell.row + 1}
           </span>
         )}

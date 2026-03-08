@@ -89,7 +89,7 @@ export function ExcelViewerDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[95vw] w-[1400px] h-[85vh] flex flex-col p-0">
+      <DialogContent className="max-w-[95vw] w-[1400px] h-[85vh] flex flex-col p-0 bg-card/60 backdrop-blur-xl border-border/40">
         <DialogHeader className="flex-shrink-0 px-4 py-3 border-b">
           <div className="flex items-center justify-between">
             <DialogTitle className="truncate max-w-[500px] text-base">
