@@ -48,7 +48,10 @@ export default function VideoLibrary() {
     <>
       <Helmet><title>Video Library | Naitive</title></Helmet>
       <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto">
-        <DealsHeader title="Video Library" subtitle="Learn at your own pace with curated video resources" />
+        <div>
+          <h1 className="text-2xl font-semibold">Video Library</h1>
+          <p className="text-sm text-muted-foreground">Learn at your own pace with curated video resources</p>
+        </div>
 
         {/* Progress bar */}
         <Card>
