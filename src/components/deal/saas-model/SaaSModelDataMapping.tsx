@@ -611,6 +611,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   if (phase === 'upload') {
     return (
       <div className="space-y-4">
+        {renderSettingsSection()}
         <Card className="border-border/30 border-dashed">
           <CardContent className="p-12 flex flex-col items-center justify-center text-center"
             onDragOver={e => e.preventDefault()} onDrop={handleDrop}>
