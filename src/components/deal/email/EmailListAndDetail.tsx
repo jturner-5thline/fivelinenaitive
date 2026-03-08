@@ -71,12 +71,47 @@ function AiSummaryStrip({ email }: { email: MockEmail }) {
   );
 }
 
-// ─── Avatar (Fix #4: minimum contrast) ──────────────────────
-function EmailAvatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
-  const colorClass = getAvatarColor(name);
+// ─── Avatar with brand logo / gradient fallback ─────────────
+function hashStringToHue(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % 360;
+}
+
+function EmailAvatar({ name, email, size = 'md' }: { name: string; email?: string; size?: 'sm' | 'md' }) {
+  const [imgError, setImgError] = useState(false);
   const sizeClass = size === 'sm' ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-xs';
+
+  // Extract domain for favicon
+  const domain = email ? email.split('@')[1] : null;
+  const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null;
+
+  // Consistent gradient from email/name hash
+  const hue = hashStringToHue(email || name);
+  const gradientStyle = {
+    background: `linear-gradient(135deg, hsl(${hue}, 60%, 45%), hsl(${hue}, 60%, 30%))`,
+  };
+
+  if (faviconUrl && !imgError) {
+    return (
+      <div className={cn('rounded-full overflow-hidden shrink-0', sizeClass)}>
+        <img
+          src={faviconUrl}
+          alt={name}
+          className="h-full w-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className={cn('rounded-full flex items-center justify-center font-semibold shrink-0', sizeClass, colorClass)}>
+    <div
+      className={cn('rounded-full flex items-center justify-center font-semibold shrink-0 text-white', sizeClass)}
+      style={gradientStyle}
+    >
       {name.charAt(0).toUpperCase()}
     </div>
   );
