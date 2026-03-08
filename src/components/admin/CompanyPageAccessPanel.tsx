@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Send,
   FileSignature,
+  Video,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 

@@ -24,6 +24,7 @@ import {
   Building2,
   Send,
   FileSignature,
+  Video,
 } from "lucide-react";
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from "sonner";
