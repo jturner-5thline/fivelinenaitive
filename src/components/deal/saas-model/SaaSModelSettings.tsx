@@ -17,7 +17,7 @@ interface Props {
 }
 
 export function SaaSModelSettings({ model, updateModel, dealId }: Props) {
-  const [localSettings, setLocalSettings] = useState<SaaSModelSettings>({ ...model.settings });
+  const [localSettings, setLocalSettings] = useState<SaaSModelSettingsType>({ ...model.settings });
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {

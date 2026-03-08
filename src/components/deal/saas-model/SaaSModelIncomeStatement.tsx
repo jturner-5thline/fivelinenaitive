@@ -133,9 +133,9 @@ export function SaaSModelIncomeStatement({ model }: Props) {
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold">Income Statement</h3>
-          <div className="flex gap-1">
-            <Button variant={viewMode === 'monthly' ? 'default' : 'outline'} size="sm" className="h-7 text-xs" onClick={() => setViewMode('monthly')}>Monthly</Button>
-            <Button variant={viewMode === 'annual' ? 'default' : 'outline'} size="sm" className="h-7 text-xs" onClick={() => setViewMode('annual')}>Annual</Button>
+            <div className="flex gap-1">
+              <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => setViewMode('monthly')}>Monthly</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setViewMode('annual')}>Annual</Button>
           </div>
         </div>
         <div className="overflow-x-auto max-h-[70vh]">
