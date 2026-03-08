@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, List, Columns3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export default function WfDeals() {
+export default function WfDeals({ embedded }: { embedded?: boolean }) {
   const { data: deals = [], isLoading } = useWfDeals();
   const createDeal = useCreateWfDeal();
   const [createOpen, setCreateOpen] = useState(false);
