@@ -3,6 +3,7 @@ import { Loader2, FileText, Download, ExternalLink, Table2, Presentation } from 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { DealSpaceDocument } from '@/hooks/useDealSpaceDocuments';
 import { ExcelViewerDialog } from './ExcelViewerDialog';
@@ -36,17 +37,16 @@ export function DealSpaceDocumentPreview({
       setIsLoading(true);
       try {
         const fileName = document.name.toLowerCase();
+        const bucket = document.storage_bucket || 'deal-space';
         
-        // Get signed URL for the file
         const { data, error } = await supabase.storage
-          .from('deal-space')
+          .from(bucket)
           .createSignedUrl(document.file_path, 3600);
 
         if (error) throw error;
         
         setPreviewUrl(data.signedUrl);
 
-        // Determine preview type - Excel files use special viewer
         if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
           setPreviewType('excel');
         } else if (fileName.endsWith('.pdf')) {
@@ -57,7 +57,6 @@ export function DealSpaceDocumentPreview({
           fileName.endsWith('.csv') ||
           fileName.endsWith('.json')
         ) {
-          // Load text content
           const response = await fetch(data.signedUrl);
           const text = await response.text();
           setTextContent(text);
@@ -66,7 +65,6 @@ export function DealSpaceDocumentPreview({
           fileName.endsWith('.docx') || 
           fileName.endsWith('.pptx')
         ) {
-          // For Office documents (non-Excel), use Google Docs Viewer
           setPreviewType('embed');
         } else {
           setPreviewType('unsupported');
@@ -88,7 +86,7 @@ export function DealSpaceDocumentPreview({
   const isExcelFile = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
   const isOfficeDoc = fileName.endsWith('.docx') || fileName.endsWith('.pptx');
 
-  // Use the dedicated Excel viewer for Excel files
+  // Use the dedicated Excel viewer for Excel files — read-only mode
   if (isExcelFile) {
     return (
       <ExcelViewerDialog
@@ -107,6 +105,16 @@ export function DealSpaceDocumentPreview({
     return <FileText className="h-5 w-5 text-blue-500" />;
   };
 
+  const handleOpenInNewTab = () => {
+    if (previewUrl) {
+      if (isOfficeDoc) {
+        window.open(`https://docs.google.com/viewer?url=${encodeURIComponent(previewUrl)}&embedded=true`, '_blank');
+      } else {
+        window.open(previewUrl, '_blank');
+      }
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
@@ -117,6 +125,7 @@ export function DealSpaceDocumentPreview({
               <DialogTitle className="truncate max-w-[400px]">
                 {document.name}
               </DialogTitle>
+              <Badge variant="secondary" className="text-[10px] h-5">Read-only</Badge>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -127,17 +136,14 @@ export function DealSpaceDocumentPreview({
                 <Download className="h-4 w-4 mr-2" />
                 Download
               </Button>
-              {previewUrl && isOfficeDoc && (
+              {previewUrl && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(
-                    `https://docs.google.com/viewer?url=${encodeURIComponent(previewUrl)}&embedded=true`,
-                    '_blank'
-                  )}
+                  onClick={handleOpenInNewTab}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  Open in Google Docs
+                  Open in new tab
                 </Button>
               )}
             </div>
