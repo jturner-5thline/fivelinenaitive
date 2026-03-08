@@ -6,6 +6,7 @@ import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { TaskAssignmentBanner } from "@/components/TaskAssignmentBanner";
 import { PlatformTour } from "@/components/PlatformTour";
 import { ClaapRoutingTasksBadge } from "@/components/integrations/claap/ClaapRoutingTasksBadge";
+import { CopilotToggleButton } from "@/components/CopilotToggleButton";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
@@ -158,6 +159,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       <FeedbackWidget />
       <TaskAssignmentBanner />
       <PlatformTour />
+      <CopilotToggleButton />
     </SidebarProvider>
   );
 }
