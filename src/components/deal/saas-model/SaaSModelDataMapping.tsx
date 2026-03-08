@@ -620,6 +620,27 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
         </p>
       </div>
 
+      {/* AI Suggestions Banner */}
+      {hasSuggestRun && suggestions.length > 0 && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-xs text-primary font-medium">
+              {pendingCount > 0
+                ? `${pendingCount} AI suggestion${pendingCount > 1 ? 's' : ''} pending review`
+                : `${acceptedCount} suggestion${acceptedCount > 1 ? 's' : ''} applied`}
+            </span>
+          </div>
+          {pendingCount > 0 && (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" className="h-6 text-[10px] text-primary" onClick={handleAcceptAll}>
+                <Check className="h-3 w-3 mr-1" /> Accept All
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -628,12 +649,26 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
               <ArrowLeft className="h-3.5 w-3.5 mr-1" /> All Files
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={handleAISuggest}
+            disabled={isSuggestLoading}
+          >
+            {isSuggestLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {isSuggestLoading ? 'Analyzing...' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
+          </Button>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>
             Change file
           </Button>
-          <Button size="sm" className="h-7 text-xs" onClick={handleRecalculate} disabled={mappedCount === 0}>
+          <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
             <RefreshCw className="h-3.5 w-3.5 mr-1" /> Review mapped data
           </Button>
         </div>
