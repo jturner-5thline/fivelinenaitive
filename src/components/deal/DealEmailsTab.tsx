@@ -836,7 +836,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
           {/* ─── Middle: Email list with view tabs ─── */}
           <div className={cn(
-            'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden',
+            'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-background/60',
             (currentThread || composeOpen) ? 'hidden md:flex md:w-[380px]' : 'flex-1 md:w-[380px]'
           )}>
             {/* Header with title + stat pills */}
