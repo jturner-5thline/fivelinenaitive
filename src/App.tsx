@@ -68,6 +68,8 @@ const NewsFeed = lazy(lazyRetry(() => import("./pages/NewsFeed")));
 const Research = lazy(lazyRetry(() => import("./pages/Research")));
 const Agents = lazy(lazyRetry(() => import("./pages/Agents")));
 const Finance = lazy(lazyRetry(() => import("./pages/Finance")));
+const Contacts = lazy(lazyRetry(() => import("./pages/Contacts")));
+const ContactDetail = lazy(lazyRetry(() => import("./pages/ContactDetail")));
 const NotFound = lazy(lazyRetry(() => import("./pages/NotFound")));
 const PrivacyPolicy = lazy(lazyRetry(() => import("./pages/PrivacyPolicy")));
 const TermsOfService = lazy(lazyRetry(() => import("./pages/TermsOfService")));
