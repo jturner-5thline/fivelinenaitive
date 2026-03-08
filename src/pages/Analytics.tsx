@@ -1303,7 +1303,7 @@ export default function Analytics() {
                     : "grid-cols-1 md:grid-cols-2"
                 )}>
                   {charts.map(chart => (
-                    <SortableChartCard
+                     <SortableChartCard
                       key={chart.id}
                       chart={chart}
                       deals={deals}
@@ -1311,6 +1311,7 @@ export default function Analytics() {
                       onEdit={handleOpenChartDialog}
                       onDelete={confirmDeleteChart}
                       compact={layoutMode === 'compact'}
+                      stageLabels={stageLabels}
                     />
                   ))}
                 </div>
