@@ -1,0 +1,203 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+interface RowLabel {
+  rowIdx: number;
+  label: string;
+  sampleValues: (string | number | null)[];
+}
+
+interface MappingSuggestion {
+  rowIdx: number;
+  label: string;
+  suggestedField: string;
+  confidence: number;
+  reason: string;
+  category: "is" | "bs" | "checklist";
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const authHeader = req.headers.get("Authorization");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Verify user
+    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader || "" } },
+    });
+    const { data: { user }, error: authErr } = await anonClient.auth.getUser();
+    if (authErr || !user) throw new Error("Unauthorized");
+
+    const serviceClient = createClient(supabaseUrl, serviceKey);
+
+    const { rows, company_id, deal_id, checklist_items } = await req.json() as {
+      rows: RowLabel[];
+      company_id: string;
+      deal_id?: string;
+      checklist_items?: { id: string; name: string; category: string }[];
+    };
+
+    if (!rows?.length || !company_id) throw new Error("Missing rows or company_id");
+
+    // Fetch historical patterns for this company
+    const { data: patterns } = await serviceClient
+      .from("mapping_patterns")
+      .select("source_label_normalized, mapped_field, action, occurrence_count")
+      .eq("company_id", company_id)
+      .eq("action", "accepted")
+      .order("occurrence_count", { ascending: false })
+      .limit(200);
+
+    const patternContext = (patterns || [])
+      .map((p: any) => `"${p.source_label_normalized}" → "${p.mapped_field}" (used ${p.occurrence_count}x)`)
+      .join("\n");
+
+    // Build the target fields list
+    const financialFields = [
+      "Recurring Revenue", "Non-Recurring Revenue", "Other Revenue",
+      "COGS on Recurring Revenue", "COGS on Non-Recurring Revenue", "COGS - Labor",
+      "Salaries and Benefits", "Sales and Marketing", "Research and Development",
+      "Professional Fees", "General and Administrative",
+      "Interest Expense", "Interest Income", "Depreciation Expense", "Other Expense", "Tax Expense",
+      "Cash and Cash Equivalents", "Marketable Securities", "Accounts Receivable",
+      "Prepaid Expenses", "Inventory", "Other Current Assets",
+      "Property Plant & Equipment", "Fixed Assets", "Capitalized Software",
+      "Intangible Assets", "Other LT Assets",
+      "Accounts Payable", "Credit Cards", "Employee Accruals",
+      "Other Accrued Liabilities", "Short-Term Debt", "Deferred Revenue",
+      "Other Short-Term Liabilities", "Long-Term Debt", "Government Loan",
+      "Shareholder Loan", "Convertible Notes", "Paid in Capital", "Retained Earnings",
+    ];
+
+    const checklistContext = checklist_items?.length
+      ? `\n\nChecklist items available:\n${checklist_items.map(c => `- "${c.name}" (category: ${c.category})`).join("\n")}`
+      : "";
+
+    const rowsText = rows.slice(0, 100).map(r =>
+      `Row ${r.rowIdx}: "${r.label}" | sample values: ${r.sampleValues.slice(0, 5).join(", ")}`
+    ).join("\n");
+
+    const systemPrompt = `You are a financial data mapping expert. Given rows from an Excel spreadsheet, suggest which standard financial field each row maps to.
+
+Available financial fields:
+${financialFields.join(", ")}
+${checklistContext}
+
+${patternContext ? `\nHistorical accepted mappings for this organization (prioritize these patterns):\n${patternContext}` : ""}
+
+Rules:
+- Only suggest mappings you're confident about (>0.5 confidence)
+- Skip header rows, total rows, and blank rows
+- Use the row label and sample values to determine the mapping
+- For rows that are subtotals (e.g. "Total Revenue", "Gross Profit"), do NOT map them
+- Confidence: 0.9+ for exact matches, 0.7-0.9 for strong keyword matches, 0.5-0.7 for contextual inference
+- category: "is" for income statement, "bs" for balance sheet, "checklist" for checklist items`;
+
+    const userPrompt = `Analyze these rows and suggest mappings:\n\n${rowsText}`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "suggest_mappings",
+              description: "Return mapping suggestions for Excel rows to standard financial fields",
+              parameters: {
+                type: "object",
+                properties: {
+                  suggestions: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        rowIdx: { type: "number", description: "The row index from the input" },
+                        label: { type: "string", description: "The row label" },
+                        suggestedField: { type: "string", description: "The standard field name to map to" },
+                        confidence: { type: "number", description: "Confidence score 0-1" },
+                        reason: { type: "string", description: "Brief reason for the suggestion" },
+                        category: { type: "string", enum: ["is", "bs", "checklist"] },
+                      },
+                      required: ["rowIdx", "label", "suggestedField", "confidence", "reason", "category"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["suggestions"],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "suggest_mappings" } },
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const status = aiResponse.status;
+      const body = await aiResponse.text();
+      if (status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      console.error("AI gateway error:", status, body);
+      throw new Error(`AI gateway error: ${status}`);
+    }
+
+    const aiData = await aiResponse.json();
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    let suggestions: MappingSuggestion[] = [];
+
+    if (toolCall?.function?.arguments) {
+      try {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        suggestions = parsed.suggestions || [];
+      } catch {
+        console.error("Failed to parse tool call arguments");
+      }
+    }
+
+    // Filter out low-confidence suggestions
+    suggestions = suggestions.filter(s => s.confidence >= 0.5);
+
+    return new Response(JSON.stringify({ suggestions }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("ai-mapping-suggest error:", e);
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
