@@ -111,7 +111,10 @@ export function DealsHeader() {
             </Button>
           )}
         </nav>
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="shrink-0">
+            <GlobalSearchAI />
+          </div>
           {!location.pathname.startsWith('/deal/') && (
             <Tooltip>
               <TooltipTrigger asChild>
