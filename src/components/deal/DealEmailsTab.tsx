@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Mail,
+  MailOpen,
   Inbox,
   Send,
   FileEdit,
@@ -38,10 +39,14 @@ import {
   ChevronRight,
   CircleHelp,
   ArrowLeft,
+  ArrowRight,
   Filter,
   X,
   Rss,
+  Keyboard,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import {
   MockEmail,
@@ -126,6 +131,7 @@ function isAutoReplyOrNewsletter(email: MockEmail): boolean {
 }
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend }: DealEmailsTabProps) {
+  const navigate = useNavigate();
   const [emails, setEmails] = useState<MockEmail[]>(() => {
     const source = externalEmails || initialMockEmails;
     // Fix #13: suppress needs_response on auto-replies/newsletters
@@ -417,11 +423,105 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const responseCount = filteredEmails.filter(e => e.needs_response).length;
   const filteredUnread = filteredEmails.filter(e => !e.is_read).length;
 
+  // Threads for keyboard navigation
+  const allThreads = useMemo(() => groupEmailsByThread(filteredEmails), [filteredEmails]);
+
+  // Response queue for command center
+  const responseQueue = useMemo(() => {
+    return emails
+      .filter(e => e.needs_response && e.folder === 'inbox')
+      .sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime());
+  }, [emails]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Skip if typing in an input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+
+      switch (e.key) {
+        case 'j': {
+          e.preventDefault();
+          if (allThreads.length === 0) return;
+          const currentIdx = selectedThread ? allThreads.findIndex(t => t.threadId === selectedThread.threadId) : -1;
+          const nextIdx = Math.min(currentIdx + 1, allThreads.length - 1);
+          setSelectedThread(allThreads[nextIdx]);
+          setComposeOpen(false);
+          break;
+        }
+        case 'k': {
+          e.preventDefault();
+          if (allThreads.length === 0) return;
+          const currentIdx = selectedThread ? allThreads.findIndex(t => t.threadId === selectedThread.threadId) : 0;
+          const prevIdx = Math.max(currentIdx - 1, 0);
+          setSelectedThread(allThreads[prevIdx]);
+          setComposeOpen(false);
+          break;
+        }
+        case 'o':
+        case 'Enter': {
+          if (!selectedThread && allThreads.length > 0) {
+            e.preventDefault();
+            setSelectedThread(allThreads[0]);
+            setComposeOpen(false);
+          }
+          break;
+        }
+        case 'r': {
+          if (selectedThread) {
+            e.preventDefault();
+            toast.info('Reply — use R inside the thread view');
+          }
+          break;
+        }
+        case 'e': {
+          if (selectedThread) {
+            e.preventDefault();
+            toast.info('Archive coming soon');
+          }
+          break;
+        }
+        case 's': {
+          if (selectedThread) {
+            e.preventDefault();
+            handleToggleStar(selectedThread.latestEmail);
+          }
+          break;
+        }
+        case 'Escape': {
+          e.preventDefault();
+          setSelectedThread(null);
+          setComposeOpen(false);
+          break;
+        }
+        case 'c': {
+          e.preventDefault();
+          setComposeOpen(true);
+          setComposeReplyTo(null);
+          break;
+        }
+        case '?': {
+          e.preventDefault();
+          setShortcutsOpen(prev => !prev);
+          break;
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [allThreads, selectedThread, handleToggleStar]);
+
   return (
     <Card className="overflow-hidden w-full max-w-full h-full flex flex-col">
       {/* Top toolbar */}
       <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/20">
-        <Button variant="gradient" size="sm" className="gap-1.5 text-xs h-8 px-3" onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}>
+        <Button
+          variant="gradient"
+          size="sm"
+          className="gap-1.5 text-xs h-9 px-5 shadow-[0_0_12px_hsl(var(--primary)/0.3)] hover:scale-[1.02] transition-transform duration-150"
+          onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
+        >
           <PenSquare className="h-3.5 w-3.5" />
           New mail
         </Button>
@@ -459,25 +559,30 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
         <div className="flex-1" />
 
-        {/* Fix #17: keyboard shortcuts help */}
+        {/* Keyboard shortcuts help */}
         <Popover open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <CircleHelp className="h-4 w-4" />
+              <Keyboard className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="end" className="w-48 p-3">
-            <p className="text-xs font-semibold mb-2">Keyboard Shortcuts</p>
-            <div className="space-y-1.5">
+          <PopoverContent side="bottom" align="end" className="w-64 p-3">
+            <p className="text-xs font-semibold mb-3">Keyboard Shortcuts</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
               {[
+                { key: 'J', desc: 'Next email' },
+                { key: 'K', desc: 'Previous email' },
+                { key: 'O', desc: 'Open email' },
                 { key: 'R', desc: 'Reply' },
-                { key: 'F', desc: 'Forward' },
-                { key: 'L', desc: 'Link to deal' },
-                { key: 'Del', desc: 'Archive' },
+                { key: 'E', desc: 'Archive' },
+                { key: 'S', desc: 'Toggle star' },
+                { key: 'C', desc: 'Compose' },
+                { key: 'Esc', desc: 'Back to inbox' },
+                { key: '?', desc: 'This help' },
               ].map(s => (
                 <div key={s.key} className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">{s.desc}</span>
-                  <kbd className="text-[10px] bg-muted border border-border rounded px-1 py-0.5 text-muted-foreground font-mono">{s.key}</kbd>
+                  <kbd className="text-[10px] bg-muted border border-border rounded px-1.5 py-0.5 text-muted-foreground font-mono">{s.key}</kbd>
                 </div>
               ))}
             </div>
@@ -503,7 +608,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="flex h-full overflow-hidden max-w-full">
           {/* ─── Left: Grouped sidebar ─── */}
-          <div className="border-r flex-shrink-0 w-[220px] flex flex-col">
+          <div className="border-r flex-shrink-0 w-[220px] flex flex-col bg-background/80">
             <div className="p-2">
               <div className="relative flex gap-1">
                 <div className="relative flex-1">
@@ -732,7 +837,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
           {/* ─── Middle: Email list with view tabs ─── */}
           <div className={cn(
-            'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden',
+            'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-background/60',
             (currentThread || composeOpen) ? 'hidden md:flex md:w-[380px]' : 'flex-1 md:w-[380px]'
           )}>
             {/* Header with title + stat pills */}
@@ -824,12 +929,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             </div>
           </div>
 
-          {/* ─── Right: Reading pane / Compose ─── */}
+          {/* ─── Right: Reading pane / Compose / Command Center ─── */}
           <div className={cn(
-            'flex-1 flex flex-col min-w-0 overflow-hidden w-0',
+            'flex-1 flex flex-col min-w-0 overflow-hidden w-0 bg-background/40',
             !currentThread && !composeOpen ? 'hidden md:flex' : 'flex'
           )}>
-            {/* Fix #10: Inline compose panel */}
             {composeOpen ? (
               <InlineComposePanel
                 onSend={handleComposeSend}
@@ -865,11 +969,127 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 }}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full py-16 text-center">
-                <Mail className="h-12 w-12 text-muted-foreground/15 mb-3" />
-                {/* Fix #17: removed keyboard hints, they're in the ? popover now */}
-                <p className="text-sm text-muted-foreground">Select a conversation to read</p>
-              </div>
+              /* ─── Inbox Command Center ─── */
+              <ScrollArea className="flex-1">
+                <div className="p-6 space-y-6 max-w-2xl mx-auto">
+                  {/* Summary stat cards */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-lg bg-muted/20 border border-border/30 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Total Emails</span>
+                      </div>
+                      <p className="text-2xl font-bold text-foreground">{filteredEmails.length}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/20 border border-border/30 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MailOpen className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Unread</span>
+                      </div>
+                      <p className="text-2xl font-bold text-foreground">{filteredUnread}</p>
+                    </div>
+                    <div className="rounded-lg bg-amber-500/[0.08] border border-amber-500/20 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-400" />
+                        <span className="text-xs text-amber-400/80">Needs Response</span>
+                      </div>
+                      <p className="text-2xl font-bold text-amber-400">{responseCount}</p>
+                    </div>
+                  </div>
+
+                  {/* Priority Response Queue */}
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Priority Response Queue</h3>
+                    {responseQueue.length === 0 ? (
+                      <div className="rounded-lg bg-muted/10 border border-border/20 p-4 text-center">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-400 mx-auto mb-1.5" />
+                        <p className="text-xs text-muted-foreground">All caught up — no responses needed!</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {responseQueue.slice(0, 6).map(email => {
+                          const thread = allThreads.find(t => t.emails.some(e => e.id === email.id));
+                          return (
+                            <button
+                              key={email.id}
+                              onClick={() => {
+                                if (thread) {
+                                  setSelectedThread(thread);
+                                  setComposeOpen(false);
+                                }
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/20 transition-colors text-left group"
+                            >
+                              <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium text-foreground truncate">{email.from_name}</span>
+                                  <span className="text-[10px] text-muted-foreground shrink-0">
+                                    {formatDistanceToNow(new Date(email.received_at), { addSuffix: true })}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground truncate">{email.subject}</p>
+                              </div>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                            </button>
+                          );
+                        })}
+                        {responseQueue.length > 6 && (
+                          <button
+                            onClick={() => { setActiveItemId('needs_response'); setViewFilter('all'); }}
+                            className="w-full text-center text-[11px] text-primary hover:text-primary/80 py-1.5 transition-colors"
+                          >
+                            View all {responseQueue.length} →
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Upcoming Tasks placeholder */}
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Upcoming Tasks & Milestones</h3>
+                    <div className="rounded-lg bg-muted/10 border border-border/20 p-4 text-center">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-400 mx-auto mb-1.5" />
+                      <p className="text-xs text-muted-foreground">No tasks due today ✓</p>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Quick Actions</h3>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
+                      >
+                        <PenSquare className="h-3 w-3" />
+                        Compose Email
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => navigate('/deals')}
+                      >
+                        <Briefcase className="h-3 w-3" />
+                        Go to Pipeline
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => navigate('/integrations')}
+                      >
+                        <Calendar className="h-3 w-3" />
+                        View Calendar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
             )}
           </div>
         </div>
