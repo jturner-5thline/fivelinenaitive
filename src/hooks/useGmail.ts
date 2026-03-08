@@ -113,12 +113,16 @@ const DEMO_MOCK_EMAILS: GmailMessage[] = [
 
 const isDemoUser = (email?: string) => email === 'demo@5thline.co' || email === 'demo@example.com';
 
+// Module-level cache for stale-while-revalidate pattern
+let cachedMessages: GmailMessage[] = [];
+let cachedStatus: GmailStatus | null = null;
+
 export function useGmail() {
   const { user } = useAuth();
   const isDemo = isDemoUser(user?.email ?? undefined);
-  const [status, setStatus] = useState<GmailStatus>({ connected: false });
-  const [isStatusLoading, setIsStatusLoading] = useState(true);
-  const [messages, setMessages] = useState<GmailMessage[]>([]);
+  const [status, setStatus] = useState<GmailStatus>(() => cachedStatus || { connected: false });
+  const [isStatusLoading, setIsStatusLoading] = useState(!cachedStatus);
+  const [messages, setMessages] = useState<GmailMessage[]>(() => cachedMessages);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
