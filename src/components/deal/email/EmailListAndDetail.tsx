@@ -273,6 +273,27 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   );
 }
 
+// ─── Email List Skeleton ─────────────────────────────────────
+function EmailListSkeleton() {
+  return (
+    <div className="pt-2 pb-2 space-y-1.5 px-2">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="flex items-start gap-3 px-3 py-4 rounded-lg">
+          <div className="h-10 w-10 rounded-full bg-muted/30 animate-pulse shrink-0" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="h-3.5 w-28 bg-muted/30 rounded animate-pulse" />
+              <div className="h-3 w-12 bg-muted/20 rounded animate-pulse" />
+            </div>
+            <div className="h-3.5 w-3/4 bg-muted/25 rounded animate-pulse" />
+            <div className="h-3 w-full bg-muted/15 rounded animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Email List (threaded) ───────────────────────────────────
 interface EmailListProps {
   emails: MockEmail[];
@@ -280,9 +301,14 @@ interface EmailListProps {
   onSelectThread: (thread: EmailThread) => void;
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
+  isLoading?: boolean;
 }
 
-export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar }: EmailListProps) {
+export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading }: EmailListProps) {
+  if (isLoading) {
+    return <EmailListSkeleton />;
+  }
+
   const threads = groupEmailsByThread(emails);
 
   if (threads.length === 0) {

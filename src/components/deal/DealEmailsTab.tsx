@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Mail,
+  MailOpen,
   Inbox,
   Send,
   FileEdit,
@@ -38,10 +39,13 @@ import {
   ChevronRight,
   CircleHelp,
   ArrowLeft,
+  ArrowRight,
   Filter,
   X,
   Rss,
+  Keyboard,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   MockEmail,
