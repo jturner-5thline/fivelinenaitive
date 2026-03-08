@@ -320,9 +320,9 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
     );
   }
 
-  return (
-    <ScrollArea className="h-full">
-      <div className="pt-2 pb-2">
+   return (
+    <ScrollArea className="h-full w-full">
+      <div className="pt-2 pb-2 overflow-hidden">
         {threads.map((thread) => (
           <ThreadListItem
             key={thread.threadId}
