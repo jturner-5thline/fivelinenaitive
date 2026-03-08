@@ -393,6 +393,80 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     setCollapsedSections(prev => ({ ...prev, [title]: !prev[title] }));
   };
 
+  // ─── Bulk action handlers ───────────────────────────
+  const handleBulkMarkRead = useCallback(() => {
+    setEmails(prev => prev.map(e => {
+      const threads = groupEmailsByThread([e]);
+      if (threads.some(t => selectedIds.has(t.threadId))) return { ...e, is_read: true };
+      return e;
+    }));
+    toast.success(`${selectedIds.size} marked as read`);
+    setSelectedIds(new Set());
+  }, [selectedIds]);
+
+  const handleBulkMarkUnread = useCallback(() => {
+    setEmails(prev => prev.map(e => {
+      const threads = groupEmailsByThread([e]);
+      if (threads.some(t => selectedIds.has(t.threadId))) return { ...e, is_read: false };
+      return e;
+    }));
+    toast.success(`${selectedIds.size} marked as unread`);
+    setSelectedIds(new Set());
+  }, [selectedIds]);
+
+  const handleBulkArchive = useCallback(() => {
+    setEmails(prev => prev.map(e => {
+      const threads = groupEmailsByThread([e]);
+      if (threads.some(t => selectedIds.has(t.threadId))) return { ...e, folder: 'archive' as const };
+      return e;
+    }));
+    toast.success(`${selectedIds.size} archived`);
+    setSelectedIds(new Set());
+  }, [selectedIds]);
+
+  const handleBulkDelete = useCallback(() => {
+    const idsToDelete = new Set<string>();
+    const allThreads = groupEmailsByThread(emails);
+    allThreads.forEach(t => {
+      if (selectedIds.has(t.threadId)) {
+        t.emails.forEach(e => idsToDelete.add(e.id));
+      }
+    });
+    setEmails(prev => prev.filter(e => !idsToDelete.has(e.id)));
+    toast.success(`${selectedIds.size} deleted`);
+    setSelectedIds(new Set());
+  }, [selectedIds, emails]);
+
+  // Single email actions for context menu
+  const handleMarkRead = useCallback((email: MockEmail) => {
+    setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_read: true } : e));
+  }, []);
+
+  const handleMarkUnread = useCallback((email: MockEmail) => {
+    setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_read: false } : e));
+  }, []);
+
+  const handleArchiveEmail = useCallback((email: MockEmail) => {
+    setEmails(prev => prev.map(e => e.id === email.id ? { ...e, folder: 'archive' as const } : e));
+    toast.success('Archived');
+  }, []);
+
+  const handleDeleteEmail = useCallback((email: MockEmail) => {
+    setEmails(prev => prev.filter(e => e.id !== email.id));
+    toast.success('Deleted');
+  }, []);
+
+  // Auto-mark-read when selecting a thread
+  const handleSelectThread = useCallback((thread: EmailThread) => {
+    setSelectedThread(thread);
+    setComposeOpen(false);
+    // Auto mark unread emails in thread as read
+    if (thread.hasUnread) {
+      const unreadIds = new Set(thread.emails.filter(e => !e.is_read).map(e => e.id));
+      setEmails(prev => prev.map(e => unreadIds.has(e.id) ? { ...e, is_read: true } : e));
+    }
+  }, []);
+
   const isSectionOpen = (section: SidebarSection) => {
     if (collapsedSections[section.title] !== undefined) return !collapsedSections[section.title];
     return section.defaultOpen ?? false;
