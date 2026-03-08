@@ -406,11 +406,17 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     return total;
   };
 
+  // Check if a field has a pending AI suggestion
+  const getFieldSuggestion = (field: string): MappingSuggestion | undefined => {
+    return suggestions.find(s => s.suggestedField === field && s.status === 'pending');
+  };
+
   // Render a field row in the sidebar
   const renderFieldRow = (field: string) => {
     const mapped = fieldMappings[field];
     const isMapped = Boolean(mapped);
     const sampleVal = isMapped ? getSampleValue(field) : null;
+    const fieldSuggestion = getFieldSuggestion(field);
 
     return (
       <div
@@ -419,16 +425,25 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           "flex items-center justify-between py-1.5 px-2 rounded group transition-colors",
           isMapped
             ? "bg-emerald-500/5 hover:bg-emerald-500/10"
-            : "hover:bg-muted/20"
+            : fieldSuggestion
+              ? "bg-primary/5 hover:bg-primary/10 ring-1 ring-primary/15"
+              : "hover:bg-muted/20"
         )}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {isMapped ? (
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+          ) : fieldSuggestion ? (
+            <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
           ) : (
             <Circle className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
           )}
           <span className={cn("text-xs truncate", isMapped && "font-medium")}>{field}</span>
+          {fieldSuggestion && !isMapped && (
+            <Badge variant="outline" className="text-[8px] h-4 px-1 bg-primary/5 text-primary border-primary/20 shrink-0">
+              AI · Row {fieldSuggestion.rowIdx + 1}
+            </Badge>
+          )}
           {mapped && (
             <div className="flex gap-1 flex-shrink-0">
               {mapped.map((m, i) => (
@@ -442,7 +457,12 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {sampleVal !== null && (
-            <span className="text-[10px] font-mono tabular-nums text-muted-foreground">{formatUSD(sampleVal)}</span>
+            <span className="text-[10px] tabular-nums text-muted-foreground">{formatUSD(sampleVal)}</span>
+          )}
+          {fieldSuggestion && !isMapped && (
+            <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 text-primary" onClick={() => handleAcceptSuggestion(fieldSuggestion.rowIdx)}>
+              <Check className="h-3 w-3 mr-0.5" /> Apply
+            </Button>
           )}
           {selectedRows.size > 0 && (
             <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 opacity-0 group-hover:opacity-100" onClick={() => handleAssignField(field)}>Assign</Button>
