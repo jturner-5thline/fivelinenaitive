@@ -210,6 +210,37 @@ export function CashFlowManager() {
     logAction(`Add Cash-In item`);
   }, [pushUndo, setActiveData, logAction]);
 
+  // Notes handlers
+  const handleNoteEdit = useCallback((index: number, value: string) => {
+    pushUndo(`Edit note ${index}`);
+    setActiveData('sidebar', (prev: SidebarData) => {
+      const next = deepClone(prev);
+      next.notes[index] = value;
+      return next;
+    });
+    logAction(`Edit note ${index}`);
+  }, [pushUndo, setActiveData, logAction]);
+
+  const handleNoteRemove = useCallback((index: number) => {
+    pushUndo(`Remove note`);
+    setActiveData('sidebar', (prev: SidebarData) => {
+      const next = deepClone(prev);
+      next.notes.splice(index, 1);
+      return next;
+    });
+    logAction(`Remove note ${index}`);
+  }, [pushUndo, setActiveData, logAction]);
+
+  const handleNoteAdd = useCallback(() => {
+    pushUndo(`Add note`);
+    setActiveData('sidebar', (prev: SidebarData) => {
+      const next = deepClone(prev);
+      next.notes.push('New note');
+      return next;
+    });
+    logAction(`Add note`);
+  }, [pushUndo, setActiveData, logAction]);
+
   // Plan management
   const handleSavePlan = useCallback((name: string) => {
     const snapshot: PlanSnapshot = {
@@ -296,6 +327,9 @@ export function CashFlowManager() {
           onSidebarEditItem={handleSidebarEditItem}
           onSidebarRemoveItem={handleSidebarRemoveItem}
           onSidebarAddItem={handleSidebarAddItem}
+          onNoteEdit={handleNoteEdit}
+          onNoteRemove={handleNoteRemove}
+          onNoteAdd={handleNoteAdd}
         />
       )}
 
