@@ -250,17 +250,11 @@ const App = () => (
                           <Route path="/email-designer" element={
                             <ProtectedRoute><AppLayout><EmailDesigner /></AppLayout></ProtectedRoute>
                           } />
-                          <Route path="/wf-deals" element={
-                            <ProtectedRoute><AppLayout><WfDeals /></AppLayout></ProtectedRoute>
+                          <Route path="/wf" element={
+                            <ProtectedRoute><AppLayout><WfHub /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/wf-deals/:id" element={
                             <ProtectedRoute><AppLayout><WfDealDetail /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/wf-tasks" element={
-                            <ProtectedRoute><AppLayout><WfTasks /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/wf-admin" element={
-                            <ProtectedRoute><AppLayout><WfAdmin /></AppLayout></ProtectedRoute>
                           } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
