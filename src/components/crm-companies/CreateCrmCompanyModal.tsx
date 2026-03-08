@@ -1,0 +1,143 @@
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useCreateCrmCompany, CRM_COMPANY_TYPES, CRM_COMPANY_STATUSES, CRM_COMPANY_LIFECYCLES } from '@/hooks/useCrmCompanies';
+
+interface CreateCrmCompanyModalProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalProps) {
+  const create = useCreateCrmCompany();
+  const [form, setForm] = useState({
+    name: '',
+    domain: '',
+    industry: '',
+    company_type: 'prospect' as string,
+    status: 'active' as string,
+    lifecycle_stage: 'target' as string,
+    employee_range: '',
+    hq_city: '',
+    hq_country: '',
+    segment: '',
+    website_url: '',
+    linkedin_url: '',
+    phone: '',
+    main_contact_email: '',
+    description: '',
+  });
+
+  const handleSubmit = () => {
+    if (!form.name.trim()) return;
+    create.mutate(form as any, {
+      onSuccess: () => {
+        onClose();
+        setForm({
+          name: '', domain: '', industry: '', company_type: 'prospect', status: 'active',
+          lifecycle_stage: 'target', employee_range: '', hq_city: '', hq_country: '',
+          segment: '', website_url: '', linkedin_url: '', phone: '', main_contact_email: '', description: '',
+        });
+      },
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create Company</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5 col-span-2">
+            <Label htmlFor="name" className="text-xs">Company Name *</Label>
+            <Input id="name" value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="domain" className="text-xs">Domain</Label>
+            <Input id="domain" placeholder="example.com" value={form.domain} onChange={(e) => setForm(p => ({ ...p, domain: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="industry" className="text-xs">Industry</Label>
+            <Input id="industry" value={form.industry} onChange={(e) => setForm(p => ({ ...p, industry: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Type</Label>
+            <Select value={form.company_type} onValueChange={v => setForm(p => ({ ...p, company_type: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CRM_COMPANY_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Status</Label>
+            <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CRM_COMPANY_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Lifecycle Stage</Label>
+            <Select value={form.lifecycle_stage} onValueChange={v => setForm(p => ({ ...p, lifecycle_stage: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CRM_COMPANY_LIFECYCLES.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="segment" className="text-xs">Segment</Label>
+            <Input id="segment" placeholder="SMB, Mid-Market, Enterprise" value={form.segment} onChange={(e) => setForm(p => ({ ...p, segment: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="employee_range" className="text-xs">Employee Range</Label>
+            <Input id="employee_range" placeholder="51-200" value={form.employee_range} onChange={(e) => setForm(p => ({ ...p, employee_range: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="hq_city" className="text-xs">City</Label>
+            <Input id="hq_city" value={form.hq_city} onChange={(e) => setForm(p => ({ ...p, hq_city: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="hq_country" className="text-xs">Country</Label>
+            <Input id="hq_country" value={form.hq_country} onChange={(e) => setForm(p => ({ ...p, hq_country: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="website_url" className="text-xs">Website</Label>
+            <Input id="website_url" value={form.website_url} onChange={(e) => setForm(p => ({ ...p, website_url: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="linkedin_url" className="text-xs">LinkedIn</Label>
+            <Input id="linkedin_url" value={form.linkedin_url} onChange={(e) => setForm(p => ({ ...p, linkedin_url: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="phone" className="text-xs">Phone</Label>
+            <Input id="phone" value={form.phone} onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="main_contact_email" className="text-xs">Main Email</Label>
+            <Input id="main_contact_email" value={form.main_contact_email} onChange={(e) => setForm(p => ({ ...p, main_contact_email: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5 col-span-2">
+            <Label htmlFor="description" className="text-xs">Description</Label>
+            <Textarea id="description" value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} rows={3} />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={create.isPending}>
+            {create.isPending ? 'Creating...' : 'Create Company'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

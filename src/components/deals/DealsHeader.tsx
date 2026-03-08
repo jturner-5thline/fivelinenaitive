@@ -67,6 +67,17 @@ export function DealsHeader() {
           >
             <Link to="/contacts">Contacts</Link>
           </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={location.pathname.startsWith('/crm-companies') 
+              ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
+              : "text-muted-foreground"
+            } 
+            asChild
+          >
+            <Link to="/crm-companies">Companies</Link>
+          </Button>
           {hasPageAccess('analytics') && (
           <HintTooltip
             hint="View charts, metrics, and performance insights for your deals."

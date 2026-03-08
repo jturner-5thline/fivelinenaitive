@@ -71,6 +71,8 @@ const Finance = lazy(lazyRetry(() => import("./pages/Finance")));
 const Contacts = lazy(lazyRetry(() => import("./pages/Contacts")));
 const ContactDetail = lazy(lazyRetry(() => import("./pages/ContactDetail")));
 const NotFound = lazy(lazyRetry(() => import("./pages/NotFound")));
+const CrmCompanies = lazy(lazyRetry(() => import("./pages/CrmCompanies")));
+const CrmCompanyDetail = lazy(lazyRetry(() => import("./pages/CrmCompanyDetail")));
 const PrivacyPolicy = lazy(lazyRetry(() => import("./pages/PrivacyPolicy")));
 const TermsOfService = lazy(lazyRetry(() => import("./pages/TermsOfService")));
 const PendingApproval = lazy(lazyRetry(() => import("./pages/PendingApproval")));
@@ -168,6 +170,12 @@ const App = () => (
                           } />
                           <Route path="/contacts/:id" element={
                             <ProtectedRoute><AppLayout><ContactDetail /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/crm-companies" element={
+                            <ProtectedRoute><AppLayout><CrmCompanies /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/crm-companies/:id" element={
+                            <ProtectedRoute><AppLayout><CrmCompanyDetail /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/hr" element={
                             <ProtectedRoute><AppLayout><HR /></AppLayout></ProtectedRoute>
