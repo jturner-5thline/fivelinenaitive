@@ -48,7 +48,7 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [question, setQuestion] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [scope, setScope] = useState<DocumentScope>('all');
+  // scope and setScope come from useDealSpaceAI hook
   
   const chatEndRef = useRef<HTMLDivElement>(null);
 
