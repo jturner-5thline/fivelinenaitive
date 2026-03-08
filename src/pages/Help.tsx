@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, HelpCircle, RotateCcw, PlayCircle, FileText, Shield } from 'lucide-react';
+import { ArrowLeft, HelpCircle, RotateCcw, PlayCircle, FileText, Shield, BookOpen, MessageSquare } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FeatureWalkthrough, type FeatureGuide } from '@/components/help/FeatureWalkthrough';
+import { KnowledgeBaseSection } from '@/components/help/KnowledgeBaseSection';
+import { SupportTicketsSection } from '@/components/help/SupportTicketsSection';
 import { featureGuides } from '@/data/featureWalkthroughs';
+import type { HelpArticle } from '@/hooks/useHelpCenter';
 
 const faqs = [
   {
