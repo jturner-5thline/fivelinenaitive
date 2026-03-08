@@ -1,31 +1,229 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useWfWorkflows, useWfUsers, useUpdateWfWorkflow } from "@/hooks/useWorkflowSystem";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Briefcase, CheckSquare, SlidersHorizontal } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { Search, Workflow, Activity, Settings2, Users, Zap, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { format } from "date-fns";
 
-import WfDeals from "./WfDeals";
-import WfTasks from "./WfTasks";
-import WfAdmin from "./WfAdmin";
+const TRIGGER_LABELS: Record<string, string> = {
+  stage_change: "Stage Change",
+  calendar_event: "Calendar Event",
+  email_event: "Email Event",
+  manual: "Manual",
+  external: "External",
+};
+
+const OWNER_ROLE_LABELS: Record<string, string> = {
+  Manager: "Manager",
+  Analyst: "Analyst",
+  Ops: "Operations",
+  System: "System",
+};
 
 export default function WfHub() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get("tab") || "deals";
+  const { data: workflows = [], isLoading } = useWfWorkflows();
+  const { data: users = [] } = useWfUsers();
+  const updateWorkflow = useUpdateWfWorkflow();
+  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+
+  const filtered = workflows.filter((wf: any) => {
+    const matchesSearch =
+      wf.name.toLowerCase().includes(search.toLowerCase()) ||
+      wf.key.toLowerCase().includes(search.toLowerCase()) ||
+      (wf.description || "").toLowerCase().includes(search.toLowerCase());
+
+    const matchesTab =
+      activeTab === "all" ||
+      (activeTab === "active" && wf.is_active) ||
+      (activeTab === "inactive" && !wf.is_active);
+
+    const matchesRole =
+      roleFilter === "all" || wf.default_owner_role === roleFilter;
+
+    return matchesSearch && matchesTab && matchesRole;
+  });
+
+  const activeCount = workflows.filter((w: any) => w.is_active).length;
+  const inactiveCount = workflows.filter((w: any) => !w.is_active).length;
+
+  const byRole = workflows.reduce((acc: Record<string, number>, w: any) => {
+    acc[w.default_owner_role] = (acc[w.default_owner_role] || 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="p-6 space-y-6">
       <Helmet><title>Workflows | Naitive</title></Helmet>
-      <h1 className="text-2xl font-bold text-foreground">Workflows</h1>
 
-      <Tabs value={tab} onValueChange={(v) => setSearchParams({ tab: v })}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Workflows</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage workflow definitions, owners, and activation status
+          </p>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Workflow className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Total</p>
+            </div>
+            <p className="text-2xl font-bold text-foreground mt-1">{workflows.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <p className="text-sm text-muted-foreground">Active</p>
+            </div>
+            <p className="text-2xl font-bold text-foreground mt-1">{activeCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <XCircle className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Inactive</p>
+            </div>
+            <p className="text-2xl font-bold text-foreground mt-1">{inactiveCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Owner Roles</p>
+            </div>
+            <p className="text-2xl font-bold text-foreground mt-1">{Object.keys(byRole).length}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search workflows..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Filter by role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            {Object.entries(OWNER_ROLE_LABELS).map(([k, v]) => (
+              <SelectItem key={k} value={k}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="deals"><Briefcase className="h-4 w-4 mr-1.5" />Deals</TabsTrigger>
-          <TabsTrigger value="tasks"><CheckSquare className="h-4 w-4 mr-1.5" />Tasks</TabsTrigger>
-          <TabsTrigger value="admin"><SlidersHorizontal className="h-4 w-4 mr-1.5" />Admin</TabsTrigger>
+          <TabsTrigger value="all">All ({workflows.length})</TabsTrigger>
+          <TabsTrigger value="active">Active ({activeCount})</TabsTrigger>
+          <TabsTrigger value="inactive">Inactive ({inactiveCount})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="deals"><WfDeals embedded /></TabsContent>
-        <TabsContent value="tasks"><WfTasks embedded /></TabsContent>
-        <TabsContent value="admin"><WfAdmin embedded /></TabsContent>
+        <TabsContent value={activeTab} className="space-y-2 mt-4">
+          {isLoading && (
+            <p className="text-sm text-muted-foreground text-center py-8">Loading workflows...</p>
+          )}
+
+          {filtered.map((wf: any) => (
+            <Card key={wf.id} className="hover:shadow-sm transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className={`mt-0.5 p-1.5 rounded-md ${wf.is_active ? 'bg-green-500/10' : 'bg-muted'}`}>
+                      <Workflow className={`h-4 w-4 ${wf.is_active ? 'text-green-500' : 'text-muted-foreground'}`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-foreground">{wf.name}</p>
+                        <Badge variant={wf.is_active ? "default" : "outline"} className="text-xs">
+                          {wf.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{wf.key}</p>
+                      {wf.description && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{wf.description}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-2 flex-wrap">
+                        <Badge variant="outline" className="text-xs gap-1">
+                          <Users className="h-3 w-3" />
+                          {OWNER_ROLE_LABELS[wf.default_owner_role] || wf.default_owner_role}
+                        </Badge>
+                        {wf.default_owner_user_id && (
+                          <Badge variant="secondary" className="text-xs">
+                            Owner: {users.find((u: any) => u.id === wf.default_owner_user_id)?.name || "Unknown"}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <Select
+                      value={wf.default_owner_user_id || "none"}
+                      onValueChange={(v) =>
+                        updateWorkflow.mutate({
+                          id: wf.id,
+                          default_owner_user_id: v === "none" ? null : v,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-44 h-8 text-xs">
+                        <SelectValue placeholder="Assign owner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Use role default</SelectItem>
+                        {users.map((u: any) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Switch
+                      checked={wf.is_active}
+                      onCheckedChange={(checked) =>
+                        updateWorkflow.mutate({ id: wf.id, is_active: checked })
+                      }
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {filtered.length === 0 && !isLoading && (
+            <div className="text-center py-12">
+              <Workflow className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">No workflows found</p>
+              <p className="text-xs text-muted-foreground mt-1">Try adjusting your search or filters</p>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
     </div>
   );
