@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Circle } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Circle, Sparkles, Loader2 } from 'lucide-react';
 import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { formatUSD, extractAmount } from '@/lib/formatters/currency';
+import { useMappingSuggestions, type MappingSuggestion } from '@/hooks/useMappingSuggestions';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   dealId: string;
@@ -160,6 +162,89 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   const [fieldMappings, setFieldMappings] = useState<Record<string, FieldMapping[]>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // AI suggestions hook
+  const {
+    suggestions,
+    isLoading: isSuggestLoading,
+    hasRun: hasSuggestRun,
+    pendingCount,
+    acceptedCount,
+    fetchSuggestions,
+    acceptSuggestion,
+    rejectSuggestion,
+    acceptAll,
+    logPatterns,
+    getSuggestionForRow,
+  } = useMappingSuggestions();
+
+  // Get company_id for the current user
+  const getCompanyId = useCallback(async (): Promise<string | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await supabase.from('company_members').select('company_id').eq('user_id', user.id).limit(1).single();
+    return data?.company_id || null;
+  }, []);
+
+  // Trigger AI suggestions
+  const handleAISuggest = useCallback(async () => {
+    if (!selectedFile) return;
+    const sheet = selectedFile.sheets[activeSheet];
+    if (!sheet) return;
+
+    const companyId = await getCompanyId();
+    if (!companyId) {
+      toast.error('Company not found');
+      return;
+    }
+
+    const rows = sheet.data.slice(0, 200).map((row, idx) => ({
+      rowIdx: idx,
+      label: String(row[0] || ''),
+      sampleValues: row.slice(1, 6),
+    })).filter(r => r.label.trim().length > 0);
+
+    await fetchSuggestions(rows, companyId, dealId);
+  }, [selectedFile, activeSheet, getCompanyId, fetchSuggestions, dealId]);
+
+  // Accept a suggestion and auto-map it
+  const handleAcceptSuggestion = useCallback((rowIdx: number) => {
+    const suggestion = getSuggestionForRow(rowIdx);
+    if (!suggestion || !selectedFile) return;
+
+    const sheet = selectedFile.sheets[activeSheet];
+    const fieldName = suggestion.suggestedField;
+
+    // Auto-assign the mapping
+    const newMapping: FieldMapping = {
+      sheet: sheet.name,
+      rowIdx,
+      label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`),
+    };
+
+    setFieldMappings(prev => ({
+      ...prev,
+      [fieldName]: [...(prev[fieldName] || []), newMapping],
+    }));
+
+    acceptSuggestion(rowIdx);
+  }, [getSuggestionForRow, selectedFile, activeSheet, acceptSuggestion]);
+
+  // Accept all pending suggestions
+  const handleAcceptAll = useCallback(() => {
+    const pending = suggestions.filter(s => s.status === 'pending');
+    pending.forEach(s => handleAcceptSuggestion(s.rowIdx));
+    acceptAll();
+  }, [suggestions, handleAcceptSuggestion, acceptAll]);
+
+  // Log patterns and recalculate
+  const handleRecalculateWithLog = useCallback(async () => {
+    const companyId = await getCompanyId();
+    if (companyId) {
+      await logPatterns(companyId, dealId);
+    }
+    handleRecalculate();
+  }, [getCompanyId, logPatterns, dealId]);
 
   const analyzeFile = useCallback(async (file: File): Promise<AnalyzedFile> => {
     try {
@@ -321,11 +406,17 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     return total;
   };
 
+  // Check if a field has a pending AI suggestion
+  const getFieldSuggestion = (field: string): MappingSuggestion | undefined => {
+    return suggestions.find(s => s.suggestedField === field && s.status === 'pending');
+  };
+
   // Render a field row in the sidebar
   const renderFieldRow = (field: string) => {
     const mapped = fieldMappings[field];
     const isMapped = Boolean(mapped);
     const sampleVal = isMapped ? getSampleValue(field) : null;
+    const fieldSuggestion = getFieldSuggestion(field);
 
     return (
       <div
@@ -334,16 +425,25 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           "flex items-center justify-between py-1.5 px-2 rounded group transition-colors",
           isMapped
             ? "bg-emerald-500/5 hover:bg-emerald-500/10"
-            : "hover:bg-muted/20"
+            : fieldSuggestion
+              ? "bg-primary/5 hover:bg-primary/10 ring-1 ring-primary/15"
+              : "hover:bg-muted/20"
         )}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {isMapped ? (
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+          ) : fieldSuggestion ? (
+            <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
           ) : (
             <Circle className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
           )}
           <span className={cn("text-xs truncate", isMapped && "font-medium")}>{field}</span>
+          {fieldSuggestion && !isMapped && (
+            <Badge variant="outline" className="text-[8px] h-4 px-1 bg-primary/5 text-primary border-primary/20 shrink-0">
+              AI · Row {fieldSuggestion.rowIdx + 1}
+            </Badge>
+          )}
           {mapped && (
             <div className="flex gap-1 flex-shrink-0">
               {mapped.map((m, i) => (
@@ -357,7 +457,12 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {sampleVal !== null && (
-            <span className="text-[10px] font-mono tabular-nums text-muted-foreground">{formatUSD(sampleVal)}</span>
+            <span className="text-[10px] tabular-nums text-muted-foreground">{formatUSD(sampleVal)}</span>
+          )}
+          {fieldSuggestion && !isMapped && (
+            <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 text-primary" onClick={() => handleAcceptSuggestion(fieldSuggestion.rowIdx)}>
+              <Check className="h-3 w-3 mr-0.5" /> Apply
+            </Button>
           )}
           {selectedRows.size > 0 && (
             <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 opacity-0 group-hover:opacity-100" onClick={() => handleAssignField(field)}>Assign</Button>
@@ -535,6 +640,27 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
         </p>
       </div>
 
+      {/* AI Suggestions Banner */}
+      {hasSuggestRun && suggestions.length > 0 && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-xs text-primary font-medium">
+              {pendingCount > 0
+                ? `${pendingCount} AI suggestion${pendingCount > 1 ? 's' : ''} pending review`
+                : `${acceptedCount} suggestion${acceptedCount > 1 ? 's' : ''} applied`}
+            </span>
+          </div>
+          {pendingCount > 0 && (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" className="h-6 text-[10px] text-primary" onClick={handleAcceptAll}>
+                <Check className="h-3 w-3 mr-1" /> Accept All
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -543,12 +669,26 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
               <ArrowLeft className="h-3.5 w-3.5 mr-1" /> All Files
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={handleAISuggest}
+            disabled={isSuggestLoading}
+          >
+            {isSuggestLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {isSuggestLoading ? 'Analyzing...' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
+          </Button>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>
             Change file
           </Button>
-          <Button size="sm" className="h-7 text-xs" onClick={handleRecalculate} disabled={mappedCount === 0}>
+          <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
             <RefreshCw className="h-3.5 w-3.5 mr-1" /> Review mapped data
           </Button>
         </div>
@@ -591,6 +731,8 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                       const isMappedRow = Object.values(fieldMappings).some(maps =>
                         maps.some(m => m.rowIdx === rowIdx && m.sheet === sheet?.name)
                       );
+                      const rowSuggestion = getSuggestionForRow(rowIdx);
+                      const hasSuggestion = !!rowSuggestion && rowSuggestion.status !== 'rejected';
                       return (
                         <tr key={rowIdx}
                           className={cn(
@@ -599,23 +741,62 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                               ? "bg-primary/10 hover:bg-primary/15"
                               : isMappedRow
                                 ? "bg-emerald-500/5 hover:bg-emerald-500/10"
-                                : rowIdx % 2 === 0
-                                  ? "bg-transparent hover:bg-muted/20"
-                                  : "bg-muted/5 hover:bg-muted/20"
+                                : hasSuggestion
+                                  ? rowSuggestion.category === 'bs'
+                                    ? "bg-violet-500/5 hover:bg-violet-500/10"
+                                    : "bg-blue-500/5 hover:bg-blue-500/10"
+                                  : rowIdx % 2 === 0
+                                    ? "bg-transparent hover:bg-muted/20"
+                                    : "bg-muted/5 hover:bg-muted/20"
                           )}
                           onClick={e => handleRowClick(rowIdx, e)}>
-                          <td className="py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20 bg-muted/10">{rowIdx + 1}</td>
-                          {/* First column: label, left-aligned */}
-                          <td className="py-1 px-2 whitespace-nowrap border-r border-border/10 font-medium">
-                            {row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}
+                          <td className={cn(
+                            "py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
+                            hasSuggestion ? "bg-primary/5" : "bg-muted/10",
+                          )}>
+                            {rowIdx + 1}
                           </td>
-                          {/* Remaining columns: right-aligned with currency formatting for numbers */}
+                          {/* First column: label + suggestion badge */}
+                          <td className="py-1 px-2 whitespace-nowrap border-r border-border/10 font-medium">
+                            <div className="flex items-center gap-1.5">
+                              <span>{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
+                              {hasSuggestion && (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[8px] h-4 px-1.5 shrink-0",
+                                    rowSuggestion.category === 'bs'
+                                      ? "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20"
+                                      : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+                                  )}
+                                >
+                                  <Sparkles className="h-2 w-2 mr-0.5" />
+                                  {rowSuggestion.suggestedField}
+                                  <span className="ml-1 opacity-70">{Math.round(rowSuggestion.confidence * 100)}%</span>
+                                </Badge>
+                              )}
+                              {hasSuggestion && rowSuggestion.status === 'pending' && (
+                                <div className="flex gap-0.5 ml-auto">
+                                  <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-emerald-500 hover:text-emerald-600" onClick={(e) => { e.stopPropagation(); handleAcceptSuggestion(rowIdx); }}>
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); rejectSuggestion(rowIdx); }}>
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                              {hasSuggestion && rowSuggestion.status === 'accepted' && (
+                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 ml-auto" />
+                              )}
+                            </div>
+                          </td>
+                          {/* Remaining columns */}
                           {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
                             const cellVal = row[colIdx + 1];
                             const isNum = isNumericCell(cellVal);
                             return (
                               <td key={colIdx + 1} className={cn(
-                                "py-1 px-2 whitespace-nowrap border-r border-border/5 font-mono tabular-nums",
+                                "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
                                 isNum ? "text-right" : "text-left"
                               )}>
                                 {formatCellValue(cellVal)}
@@ -706,7 +887,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
               </table>
             </div>
             <div className="flex justify-end mt-3">
-              <Button size="sm" className="h-7 text-xs" onClick={handleRecalculate}>
+              <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog}>
                 <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save mapping
               </Button>
             </div>

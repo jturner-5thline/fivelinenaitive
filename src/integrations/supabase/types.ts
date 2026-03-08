@@ -7360,6 +7360,72 @@ export type Database = {
         }
         Relationships: []
       }
+      mapping_patterns: {
+        Row: {
+          action: string
+          company_id: string
+          confidence: number | null
+          created_at: string
+          deal_id: string | null
+          field_category: string
+          id: string
+          mapped_field: string
+          occurrence_count: number
+          source_label: string
+          source_label_normalized: string
+          suggested_by: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          company_id: string
+          confidence?: number | null
+          created_at?: string
+          deal_id?: string | null
+          field_category?: string
+          id?: string
+          mapped_field: string
+          occurrence_count?: number
+          source_label: string
+          source_label_normalized: string
+          suggested_by?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          company_id?: string
+          confidence?: number | null
+          created_at?: string
+          deal_id?: string | null
+          field_category?: string
+          id?: string
+          mapped_field?: string
+          occurrence_count?: number
+          source_label?: string
+          source_label_normalized?: string
+          suggested_by?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mapping_patterns_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mapping_patterns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_lenders: {
         Row: {
           active: boolean | null
