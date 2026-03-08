@@ -754,14 +754,29 @@ export default function Analytics() {
         <DealsHeader />
         
         <main className="container mx-auto px-6 py-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-3xl font-bold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Analytics</h1>
               <p className="text-muted-foreground mt-1">
                 View insights and manage your custom widgets and charts. Drag to reorder.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+          </div>
+
+          <Tabs defaultValue="custom" className="w-full">
+            <TabsList className="mb-6">
+              <TabsTrigger value="custom" className="gap-1.5">
+                <BarChart3 className="h-3.5 w-3.5" />
+                Custom Analytics
+              </TabsTrigger>
+              <TabsTrigger value="portfolio-risk" className="gap-1.5">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Portfolio / Risk
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="custom">
+            <div className="flex flex-wrap items-center gap-2 mb-8">
               <Select value={datePreset} onValueChange={handleDatePreset}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Select period" />
