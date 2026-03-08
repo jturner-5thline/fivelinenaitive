@@ -25,6 +25,60 @@ export const ExportModal = memo(function ExportModal({ open, weeklyData, onClose
   const [customFlag, setCustomFlag] = useState('');
 
   const weeks = Object.entries(weeklyData).sort(([a], [b]) => a.localeCompare(b));
+
+  const generatePDF = useCallback(() => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
+    doc.setFontSize(16);
+    doc.setTextColor(30, 41, 59);
+    doc.text(title, 40, 40);
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Generated: ${new Date().toLocaleString()} | ${dateRange}`, 40, 58);
+    if (flags.length > 0) {
+      let x = 40;
+      flags.forEach(flag => {
+        doc.setFillColor(flag.color);
+        doc.circle(x + 4, 76, 4, 'F');
+        doc.setTextColor(30, 41, 59);
+        doc.text(flag.label, x + 12, 79);
+        x += doc.getTextWidth(flag.label) + 24;
+      });
+    }
+    const headers = ['Line Item', ...weeks.slice(0, 12).map(([, v]) => `Wk ${v.week_num}`)];
+    const rowKeys = ['BEGINNING CASH', 'ENDING CASH', 'TOTAL RECEIPTS', 'TOTAL DISBURSEMENTS', 'NET CHANGE'];
+    const body = rowKeys.map(key => [
+      key,
+      ...weeks.slice(0, 12).map(([, v]) => fmtAbbrev((v[key] as number) || 0)),
+    ]);
+    autoTable(doc, {
+      startY: flags.length > 0 ? 95 : 70,
+      head: [headers],
+      body,
+      styles: { fontSize: 8, cellPadding: 3, textColor: [51, 65, 85] },
+      headStyles: { fillColor: [232, 237, 243], textColor: [30, 41, 59], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      theme: 'grid',
+    });
+    if (notes.trim()) {
+      const finalY = (doc as any).lastAutoTable?.finalY || 200;
+      doc.setFontSize(10);
+      doc.setTextColor(30, 41, 59);
+      doc.text('Notes:', 40, finalY + 25);
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      const noteLines = doc.splitTextToSize(notes, 700);
+      doc.text(noteLines, 40, finalY + 40);
+    }
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('Confidential — 5th Line Capital Advisors, LLC', 40, doc.internal.pageSize.getHeight() - 20);
+    doc.text(`Page 1`, doc.internal.pageSize.getWidth() - 60, doc.internal.pageSize.getHeight() - 20);
+    doc.save(`Advisory_CashFlow_Report.pdf`);
+    onArchive({ title, flags: [...flags], notes, weekCount: weeks.length, dateRange });
+    onClose();
+  }, [title, flags, notes, weeks, dateRange, onArchive, onClose]);
+
+  if (!open) return null;
   const dateRange = weeks.length > 0
     ? `${new Date(weeks[0][0]).toLocaleDateString()} — ${new Date(weeks[weeks.length - 1][1].week_ending).toLocaleDateString()}`
     : '';
