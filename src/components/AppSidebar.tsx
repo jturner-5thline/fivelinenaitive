@@ -58,6 +58,7 @@ const menuItems = [
 ];
 
 const footerItems = [
+  { title: "WF Admin", url: "/wf-admin", icon: SlidersHorizontal, featureKey: null },
   { title: "Workflows", url: "/workflows", icon: Workflow, featureKey: "workflows" },
   { title: "Integrations", url: "/integrations", icon: Plug, featureKey: "integrations" },
   { title: "Settings", url: "/settings", icon: Settings, featureKey: null }, // Always visible
