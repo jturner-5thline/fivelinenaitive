@@ -65,7 +65,7 @@ const MigrationTool = lazy(lazyRetry(() => import("./pages/MigrationTool")));
 const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
 const Integrations = lazy(lazyRetry(() => import("./pages/Integrations")));
 const NewsFeed = lazy(lazyRetry(() => import("./pages/NewsFeed")));
-const Research = lazy(lazyRetry(() => import("./pages/Research")));
+
 const Agents = lazy(lazyRetry(() => import("./pages/Agents")));
 const Finance = lazy(lazyRetry(() => import("./pages/Finance")));
 const Contacts = lazy(lazyRetry(() => import("./pages/Contacts")));
@@ -230,9 +230,6 @@ const App = () => (
                           } />
                           <Route path="/integrations" element={
                             <ProtectedRoute><Integrations /></ProtectedRoute>
-                          } />
-                          <Route path="/research" element={
-                            <ProtectedRoute><Research /></ProtectedRoute>
                           } />
                           <Route path="/agents" element={
                             <ProtectedRoute><Agents /></ProtectedRoute>

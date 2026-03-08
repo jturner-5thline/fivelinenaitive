@@ -43,7 +43,7 @@ const menuItems = [
   { title: "Contacts", url: "/contacts", icon: Contact, featureKey: "sales_bd" },
   { title: "Companies", url: "/crm-companies", icon: Building2, featureKey: "sales_bd" },
   { title: "News Feed", url: "/news-feed", icon: Newspaper, featureKey: "newsfeed" },
-  { title: "AI Research", url: "/research", icon: Sparkles, featureKey: "ai_research", iconClassName: "h-[18px] w-[18px]" },
+  
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
   { title: "Metrics", url: "/metrics", icon: BarChart3, featureKey: "metrics" },
   { title: "Insights", url: "/insights", icon: Lightbulb, featureKey: "insights" },
@@ -135,7 +135,7 @@ export function AppSidebar() {
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
                       <div className="relative">
-                        <item.icon className={item.iconClassName || "h-4 w-4"} />
+                        <item.icon className="h-4 w-4" />
                         {item.url === "/tasks" && meetingTaskCount > 0 && (
                           <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                             {meetingTaskCount}
