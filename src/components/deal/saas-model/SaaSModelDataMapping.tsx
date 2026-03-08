@@ -727,6 +727,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
 
   return (
     <div className="space-y-4">
+      {renderSettingsSection()}
       {/* Header with description */}
       <div>
         <h3 className="text-sm font-semibold">Map your financial fields</h3>
