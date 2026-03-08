@@ -57,6 +57,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, sidebarData, theme, isAdmin,
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
   onExport, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem,
+  onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
   const [weeksPast, setWeeksPast] = useState(4);
   const [weeksFuture, setWeeksFuture] = useState(12);
