@@ -73,6 +73,15 @@ interface DealEmailsTabProps {
 type ViewFilter = 'all' | 'unread' | 'needs_response';
 type ChipFilter = 'recent' | 'important' | 'attachments' | null;
 
+// Search filter state
+interface SearchFilters {
+  sender: string;
+  dateRange: 'all' | 'today' | 'this_week' | 'this_month';
+  hasAttachments: boolean;
+  responseStatus: 'all' | 'needs_response' | 'responded';
+  dealAssociation: string; // deal name or 'all'
+}
+
 interface SidebarSection {
   title: string;
   items: SidebarItem[];
