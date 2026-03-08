@@ -584,7 +584,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }
   // Stale Deal Alerts — list
   if (chart.dataSource === 'stale-deal-alerts') {
     const staleDeals = data as any[];
-    const formatCurrency = (v: number) => v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `$${(v / 1_000).toFixed(0)}K` : `$${v}`;
+    const formatCurrency = (v: number) => { const abs = Math.abs(v); const s = v < 0 ? '-' : ''; if (abs >= 1e9) return `${s}$${(abs/1e9).toFixed(1)}B`; if (abs >= 1e6) return `${s}$${(abs/1e6).toFixed(1)}MM`; if (abs >= 1e3) return `${s}$${(abs/1e3).toFixed(1)}K`; return `${s}$${abs.toFixed(0)}`; };
     return (
       <ScrollArea className={cn("border rounded-md", compact ? "h-[180px]" : "h-[300px]")}>
         {staleDeals.length === 0 ? (

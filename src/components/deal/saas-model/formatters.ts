@@ -9,8 +9,8 @@ export function fmtCurrency(val: number | null | undefined, compact = false): st
   let formatted: string;
   if (compact) {
     if (abs >= 1_000_000_000) formatted = `$${(abs / 1_000_000_000).toFixed(1)}B`;
-    else if (abs >= 1_000_000) formatted = `$${(abs / 1_000_000).toFixed(1)}M`;
-    else if (abs >= 1_000) formatted = `$${(abs / 1_000).toFixed(0)}K`;
+    else if (abs >= 1_000_000) formatted = `$${(abs / 1_000_000).toFixed(1)}MM`;
+    else if (abs >= 1_000) formatted = `$${(abs / 1_000).toFixed(1)}K`;
     else formatted = `$${abs.toFixed(0)}`;
   } else {
     formatted = `$${abs.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
