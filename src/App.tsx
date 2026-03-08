@@ -79,7 +79,7 @@ const PendingApproval = lazy(lazyRetry(() => import("./pages/PendingApproval")))
 const PendingCompanyApproval = lazy(lazyRetry(() => import("./pages/PendingCompanyApproval")));
 const Homepage = lazy(lazyRetry(() => import("./pages/Homepage")));
 const Promo = lazy(lazyRetry(() => import("./pages/Promo")));
-const VideoLibrary = lazy(lazyRetry(() => import("./pages/VideoLibrary")));
+
 
 const WfHub = lazy(lazyRetry(() => import("./pages/WfHub")));
 const WfDealDetail = lazy(lazyRetry(() => import("./pages/WfDealDetail")));
