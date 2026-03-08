@@ -1772,6 +1772,7 @@ export type Database = {
           contact_score: number | null
           created_at: string
           created_by: string | null
+          crm_company_id: string | null
           custom_fields: Json | null
           department: string | null
           description: string | null
@@ -1835,6 +1836,7 @@ export type Database = {
           contact_score?: number | null
           created_at?: string
           created_by?: string | null
+          crm_company_id?: string | null
           custom_fields?: Json | null
           department?: string | null
           description?: string | null
@@ -1898,6 +1900,7 @@ export type Database = {
           contact_score?: number | null
           created_at?: string
           created_by?: string | null
+          crm_company_id?: string | null
           custom_fields?: Json | null
           department?: string | null
           description?: string | null
@@ -1958,6 +1961,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contacts_crm_company_id_fkey"
+            columns: ["crm_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contacts_org_company_id_fkey"
             columns: ["org_company_id"]
             isOneToOne: false
@@ -1969,6 +1979,291 @@ export type Database = {
             columns: ["primary_company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_companies: {
+        Row: {
+          additional_domains: string[] | null
+          annual_revenue: number | null
+          arr: number | null
+          company_type: Database["public"]["Enums"]["crm_company_type"] | null
+          contract_end_date: string | null
+          contract_start_date: string | null
+          created_at: string
+          created_by: string | null
+          custom_fields: Json | null
+          customer_tier: string | null
+          description: string | null
+          domain: string | null
+          employee_count: number | null
+          employee_range: string | null
+          external_ids: Json | null
+          hq_city: string | null
+          hq_country: string | null
+          hq_postal_code: string | null
+          hq_state: string | null
+          hubspot_company_id: string | null
+          id: string
+          industry: string | null
+          key_products: string[] | null
+          last_activity_date: string | null
+          last_modified_by: string | null
+          lifecycle_stage:
+            | Database["public"]["Enums"]["crm_company_lifecycle"]
+            | null
+          linkedin_url: string | null
+          logo_url: string | null
+          main_contact_email: string | null
+          migrated_from_hubspot: boolean | null
+          mrr: number | null
+          name: string
+          next_activity_date: string | null
+          org_company_id: string | null
+          owner_user_id: string | null
+          parent_company_id: string | null
+          phone: string | null
+          recent_deal_amount: number | null
+          recent_deal_close_date: string | null
+          regions_served: string[] | null
+          renewal_date: string | null
+          revenue_band: string | null
+          segment: string | null
+          source_system: string | null
+          status: Database["public"]["Enums"]["crm_company_status"] | null
+          sub_industry: string | null
+          synced_with_hubspot: boolean | null
+          tags: string[] | null
+          total_contract_value: number | null
+          twitter_url: string | null
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          additional_domains?: string[] | null
+          annual_revenue?: number | null
+          arr?: number | null
+          company_type?: Database["public"]["Enums"]["crm_company_type"] | null
+          contract_end_date?: string | null
+          contract_start_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_fields?: Json | null
+          customer_tier?: string | null
+          description?: string | null
+          domain?: string | null
+          employee_count?: number | null
+          employee_range?: string | null
+          external_ids?: Json | null
+          hq_city?: string | null
+          hq_country?: string | null
+          hq_postal_code?: string | null
+          hq_state?: string | null
+          hubspot_company_id?: string | null
+          id?: string
+          industry?: string | null
+          key_products?: string[] | null
+          last_activity_date?: string | null
+          last_modified_by?: string | null
+          lifecycle_stage?:
+            | Database["public"]["Enums"]["crm_company_lifecycle"]
+            | null
+          linkedin_url?: string | null
+          logo_url?: string | null
+          main_contact_email?: string | null
+          migrated_from_hubspot?: boolean | null
+          mrr?: number | null
+          name: string
+          next_activity_date?: string | null
+          org_company_id?: string | null
+          owner_user_id?: string | null
+          parent_company_id?: string | null
+          phone?: string | null
+          recent_deal_amount?: number | null
+          recent_deal_close_date?: string | null
+          regions_served?: string[] | null
+          renewal_date?: string | null
+          revenue_band?: string | null
+          segment?: string | null
+          source_system?: string | null
+          status?: Database["public"]["Enums"]["crm_company_status"] | null
+          sub_industry?: string | null
+          synced_with_hubspot?: boolean | null
+          tags?: string[] | null
+          total_contract_value?: number | null
+          twitter_url?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          additional_domains?: string[] | null
+          annual_revenue?: number | null
+          arr?: number | null
+          company_type?: Database["public"]["Enums"]["crm_company_type"] | null
+          contract_end_date?: string | null
+          contract_start_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_fields?: Json | null
+          customer_tier?: string | null
+          description?: string | null
+          domain?: string | null
+          employee_count?: number | null
+          employee_range?: string | null
+          external_ids?: Json | null
+          hq_city?: string | null
+          hq_country?: string | null
+          hq_postal_code?: string | null
+          hq_state?: string | null
+          hubspot_company_id?: string | null
+          id?: string
+          industry?: string | null
+          key_products?: string[] | null
+          last_activity_date?: string | null
+          last_modified_by?: string | null
+          lifecycle_stage?:
+            | Database["public"]["Enums"]["crm_company_lifecycle"]
+            | null
+          linkedin_url?: string | null
+          logo_url?: string | null
+          main_contact_email?: string | null
+          migrated_from_hubspot?: boolean | null
+          mrr?: number | null
+          name?: string
+          next_activity_date?: string | null
+          org_company_id?: string | null
+          owner_user_id?: string | null
+          parent_company_id?: string | null
+          phone?: string | null
+          recent_deal_amount?: number | null
+          recent_deal_close_date?: string | null
+          regions_served?: string[] | null
+          renewal_date?: string | null
+          revenue_band?: string | null
+          segment?: string | null
+          source_system?: string | null
+          status?: Database["public"]["Enums"]["crm_company_status"] | null
+          sub_industry?: string | null
+          synced_with_hubspot?: boolean | null
+          tags?: string[] | null
+          total_contract_value?: number | null
+          twitter_url?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_companies_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_companies_parent_company_id_fkey"
+            columns: ["parent_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_company_activities: {
+        Row: {
+          activity_type: string
+          body: string | null
+          contact_id: string | null
+          created_at: string
+          crm_company_id: string
+          deal_id: string | null
+          id: string
+          logged_by: string | null
+          metadata: Json | null
+          occurred_at: string
+          source: string | null
+          subject: string | null
+        }
+        Insert: {
+          activity_type: string
+          body?: string | null
+          contact_id?: string | null
+          created_at?: string
+          crm_company_id: string
+          deal_id?: string | null
+          id?: string
+          logged_by?: string | null
+          metadata?: Json | null
+          occurred_at?: string
+          source?: string | null
+          subject?: string | null
+        }
+        Update: {
+          activity_type?: string
+          body?: string | null
+          contact_id?: string | null
+          created_at?: string
+          crm_company_id?: string
+          deal_id?: string | null
+          id?: string
+          logged_by?: string | null
+          metadata?: Json | null
+          occurred_at?: string
+          source?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_company_activities_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_company_activities_crm_company_id_fkey"
+            columns: ["crm_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_company_activities_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_company_team: {
+        Row: {
+          created_at: string
+          crm_company_id: string
+          id: string
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          crm_company_id: string
+          id?: string
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          crm_company_id?: string
+          id?: string
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_company_team_crm_company_id_fkey"
+            columns: ["crm_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
             referencedColumns: ["id"]
           },
         ]
@@ -10839,6 +11134,21 @@ export type Database = {
         | "bad_data"
         | "converted"
         | "closed"
+      crm_company_lifecycle:
+        | "target"
+        | "engaged"
+        | "opportunity"
+        | "customer"
+        | "expansion"
+        | "churn_risk"
+      crm_company_status: "active" | "inactive" | "target" | "churned"
+      crm_company_type:
+        | "customer"
+        | "prospect"
+        | "partner"
+        | "vendor"
+        | "internal"
+        | "other"
       data_access_scope: "all" | "team" | "own" | "none"
       feature_status: "disabled" | "staging" | "deployed" | "james_only"
       financial_period_type: "monthly" | "quarterly" | "annual"
@@ -11041,6 +11351,23 @@ export const Constants = {
         "bad_data",
         "converted",
         "closed",
+      ],
+      crm_company_lifecycle: [
+        "target",
+        "engaged",
+        "opportunity",
+        "customer",
+        "expansion",
+        "churn_risk",
+      ],
+      crm_company_status: ["active", "inactive", "target", "churned"],
+      crm_company_type: [
+        "customer",
+        "prospect",
+        "partner",
+        "vendor",
+        "internal",
+        "other",
       ],
       data_access_scope: ["all", "team", "own", "none"],
       feature_status: ["disabled", "staging", "deployed", "james_only"],
