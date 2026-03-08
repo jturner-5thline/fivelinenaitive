@@ -211,7 +211,8 @@ export function useAgreementTemplates() {
 export function useActiveTemplate() {
   const [template, setTemplate] = useState<AgreementTemplate | null>(null);
   const [loading, setLoading] = useState(true);
-  const { companyId } = useCompany();
+  const { company } = useCompany();
+  const companyId = company?.id;
 
   useEffect(() => {
     if (!companyId) return;
