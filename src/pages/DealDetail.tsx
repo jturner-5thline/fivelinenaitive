@@ -89,6 +89,7 @@ import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
 import { DealMemoDialog } from '@/components/deal/DealMemoDialog';
+import { AgreementDrafterDialog } from '@/components/agreement/AgreementDrafterDialog';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
@@ -2505,6 +2506,7 @@ export default function DealDetail() {
               {/* Tab Navigation */}
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}>
                 <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden flex-nowrap">
+                  <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
                   <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
                   <HintTooltip
                     hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."

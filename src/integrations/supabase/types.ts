@@ -660,6 +660,106 @@ export type Database = {
           },
         ]
       }
+      agreement_sections: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          enabled: boolean | null
+          fields: Json | null
+          id: string
+          qualifiers: Json | null
+          section_id: string
+          sort_order: number
+          subsections: Json | null
+          template_id: string
+          template_text: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          fields?: Json | null
+          id?: string
+          qualifiers?: Json | null
+          section_id: string
+          sort_order: number
+          subsections?: Json | null
+          template_id: string
+          template_text?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          fields?: Json | null
+          id?: string
+          qualifiers?: Json | null
+          section_id?: string
+          sort_order?: number
+          subsections?: Json | null
+          template_id?: string
+          template_text?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreement_sections_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "agreement_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agreement_templates: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreement_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_tokens: {
         Row: {
           access_token: string
@@ -4679,6 +4779,60 @@ export type Database = {
             columns: ["parent_comment_id"]
             isOneToOne: false
             referencedRelation: "diligence_report_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drafted_agreements: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          created_by: string
+          deal_id: string
+          field_values: Json | null
+          id: string
+          section_overrides: Json | null
+          status: string | null
+          template_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          created_by: string
+          deal_id: string
+          field_values?: Json | null
+          id?: string
+          section_overrides?: Json | null
+          status?: string | null
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          deal_id?: string
+          field_values?: Json | null
+          id?: string
+          section_overrides?: Json | null
+          status?: string | null
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drafted_agreements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drafted_agreements_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "agreement_templates"
             referencedColumns: ["id"]
           },
         ]

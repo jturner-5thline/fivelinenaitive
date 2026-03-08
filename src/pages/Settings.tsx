@@ -29,6 +29,7 @@ import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSett
 import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
 import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
 import { DistributionStatsSettings } from '@/components/settings/DistributionStatsSettings';
+import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 const SETTINGS_SECTIONS = [
@@ -105,6 +106,10 @@ const SETTINGS_SECTIONS = [
     keywords: ['gamma', 'templates', 'presentation', 'document', 'pitch', 'status', 'update'],
   },
   {
+    id: 'agreement-templates',
+    keywords: ['agreement', 'templates', 'legal', 'advisory', 'drafter', 'contract', 'engagement'],
+  },
+  {
     id: 'preferences',
     keywords: ['preferences', 'theme', 'notifications', 'regional', 'settings', 'dark', 'light', 'mode'],
   },
@@ -137,7 +142,7 @@ const SETTINGS_SECTIONS = [
 // Tab definitions with which section IDs belong to each
 const TABS = [
   { id: 'general', label: 'General', sectionIds: ['account', 'company', 'preferences', 'database'] },
-  { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'writeup-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates'] },
+  { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'writeup-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates', 'agreement-templates'] },
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
   { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'zapier'] },
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'distribution-stats'] },
@@ -294,6 +299,7 @@ export default function Settings() {
                   {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
                   {isVisible('data-room-checklist') && <DefaultChecklistSettings isAdmin={isAdmin} />}
                   {isVisible('gamma-templates') && <GammaTemplatesSettings isAdmin={isAdmin} />}
+                  {isVisible('agreement-templates') && <AgreementTemplatesSettings isAdmin={isAdmin} />}
                   {isVisible('deal-types') && <LenderScoreSettings isAdmin={isAdmin} />}
                   {isVisible('deal-types') && <DisclaimerSettings isAdmin={isAdmin} />}
                 </TabsContent>
