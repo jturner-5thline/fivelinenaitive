@@ -473,14 +473,31 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
         .slice(0, 20);
     }
     
-    default:
-      return [
+    default: {
+      let result = [
         { name: 'A', value: 10 },
         { name: 'B', value: 20 },
         { name: 'C', value: 15 },
         { name: 'D', value: 25 },
       ];
+      return result;
+    }
   }
+};
+
+// Post-process chart data with sort/limit from local config
+const applyLocalConfig = (data: any[], localConfig?: ChartLocalConfig) => {
+  if (!localConfig || !data || data.length === 0) return data;
+  let result = [...data];
+  if (localConfig.sortOrder === 'desc') {
+    result.sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+  } else if (localConfig.sortOrder === 'asc') {
+    result.sort((a, b) => (a.value ?? 0) - (b.value ?? 0));
+  }
+  if (localConfig.limit && localConfig.limit > 0) {
+    result = result.slice(0, localConfig.limit);
+  }
+  return result;
 };
 
 // Get deals matching a specific chart segment
