@@ -685,7 +685,8 @@ function SortableChartCard({
   dateRange, 
   onEdit, 
   onDelete,
-  compact = false
+  compact = false,
+  stageLabels,
 }: { 
   chart: ChartConfig;
   deals: Deal[];
@@ -693,6 +694,7 @@ function SortableChartCard({
   onEdit: (chart: ChartConfig) => void;
   onDelete: (chartId: string) => void;
   compact?: boolean;
+  stageLabels?: Record<string, string>;
 }) {
   const {
     attributes,
