@@ -159,7 +159,10 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
       onMouseLeave={() => setHovered(false)}
     >
       <div className="flex items-start gap-3 px-3 py-4">
-        <EmailAvatar name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name} />
+        <EmailAvatar
+          name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name}
+          email={latest.folder === 'sent' ? latest.to_email : latest.from_email}
+        />
         
         <div className="min-w-0 flex-1">
           {/* Row 1: Sender + timestamp */}
