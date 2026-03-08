@@ -58,7 +58,10 @@ export default function EmailDesigner() {
       <Helmet><title>Email Designer | Naitive</title></Helmet>
       <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-between">
-          <DealsHeader title="Email Designer" subtitle="Create and manage reusable email templates with merge tags" />
+          <div>
+            <h1 className="text-2xl font-semibold">Email Designer</h1>
+            <p className="text-sm text-muted-foreground">Create and manage reusable email templates with merge tags</p>
+          </div>
           <Button onClick={() => setShowCreate(true)} className="gap-2">
             <Plus className="h-4 w-4" /> New Template
           </Button>
