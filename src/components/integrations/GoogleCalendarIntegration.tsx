@@ -240,10 +240,25 @@ export function GoogleCalendarIntegration({ onDisconnect }: GoogleCalendarIntegr
             <Button variant="outline" size="sm" onClick={goToToday}>
               Today
             </Button>
+            <h3 className="font-medium ml-2">
+              {format(currentWeekStart, 'MMM d')} – {format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MMM d, yyyy')}
+            </h3>
           </div>
-          <h3 className="font-medium">
-            {format(currentWeekStart, 'MMM d')} - {format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MMM d, yyyy')}
-          </h3>
+          {/* Pill-style view toggle */}
+          <div className="flex items-center bg-[rgba(255,255,255,0.08)] rounded-lg p-[3px]">
+            {['Day', 'Week', 'Month', 'Agenda'].map(view => (
+              <button
+                key={view}
+                className={`px-3 py-1 text-xs rounded-md transition-all ${
+                  view === 'Week'
+                    ? 'bg-[rgba(255,255,255,0.15)] text-foreground font-semibold'
+                    : 'text-muted-foreground/50 hover:text-foreground'
+                }`}
+              >
+                {view}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Calendar Grid */}
