@@ -339,6 +339,35 @@ const ChartTypeIcon = ({ type }: { type: ChartType }) => {
 function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean }) {
   const data = getChartData(chart.dataSource, deals, dateRange);
   const chartHeight = compact ? 180 : 250;
+
+  // Force horizontal bar chart for pass reasons (better for categorical data)
+  if (chart.dataSource === 'lender-pass-reasons') {
+    const total = data.reduce((s: number, d: any) => s + d.value, 0);
+    const barHeight = Math.max(chartHeight, data.length * 32 + 40);
+    return (
+      <ResponsiveContainer width="100%" height={barHeight}>
+        <BarChart data={data} layout="vertical" margin={{ left: 10, right: 30 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <YAxis dataKey="name" type="category" width={compact ? 100 : 140} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'hsl(var(--popover))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '8px',
+              color: 'hsl(var(--popover-foreground))',
+            }}
+            formatter={(value: number) => [`${value} (${total > 0 ? ((value / total) * 100).toFixed(0) : 0}%)`, 'Count']}
+          />
+          <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+            {data.map((_: any, index: number) => (
+              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  }
   
   switch (chart.type) {
     case 'bar':
