@@ -17,6 +17,9 @@ interface WeeklyReportTabProps {
   onSidebarEditItem: (index: number, field: string, value: string | number) => void;
   onSidebarRemoveItem: (index: number) => void;
   onSidebarAddItem: () => void;
+  onNoteEdit: (index: number, value: string) => void;
+  onNoteRemove: (index: number) => void;
+  onNoteAdd: () => void;
 }
 
 const WEEKLY_ROW_ORDER = [
