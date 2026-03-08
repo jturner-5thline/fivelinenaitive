@@ -56,6 +56,7 @@ const faqs = [
 export default function Help() {
   const [selectedGuide, setSelectedGuide] = useState<FeatureGuide | null>(null);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState<HelpArticle | null>(null);
 
   const handleRestartTour = () => {
     localStorage.removeItem('tour-completed');
