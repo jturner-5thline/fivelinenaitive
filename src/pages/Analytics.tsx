@@ -823,7 +823,6 @@ export default function Analytics() {
                 </Popover>
               )}
             </div>
-          </div>
 
           {/* Widgets Section */}
           <div className="mb-8">
