@@ -93,39 +93,53 @@ const CURRENCY_SYMBOLS: Record<Preferences['currency'], string> = {
 
 export const formatCurrency = (value: number, preferences: Preferences): string => {
   const symbol = CURRENCY_SYMBOLS[preferences.currency];
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
   
   if (preferences.currencyFormat === 'full') {
-    return `${symbol}${value.toLocaleString()}`;
+    return `${sign}${symbol}${abs.toLocaleString()}`;
   }
   
-  const millions = value / 1000000;
-  const thousands = value / 1000;
+  const billions = abs / 1_000_000_000;
+  const millions = abs / 1_000_000;
+  const thousands = abs / 1_000;
   
-  if (value >= 1000000) {
+  if (abs >= 1_000_000_000) {
     switch (preferences.currencyFormat) {
       case 'abbreviated':
-        return `${symbol}${Math.round(millions)}MM`;
+        return `${sign}${symbol}${Math.round(billions)}B`;
       case 'abbreviated-1':
-        return `${symbol}${millions.toFixed(1)}MM`;
+        return `${sign}${symbol}${billions.toFixed(1)}B`;
       case 'abbreviated-2':
-        return `${symbol}${millions.toFixed(2)}MM`;
+        return `${sign}${symbol}${billions.toFixed(2)}B`;
       default:
-        return `${symbol}${millions.toFixed(1)}MM`;
+        return `${sign}${symbol}${billions.toFixed(1)}B`;
     }
-  } else if (value >= 1000) {
+  } else if (abs >= 1_000_000) {
     switch (preferences.currencyFormat) {
       case 'abbreviated':
-        return `${symbol}${Math.round(thousands)}K`;
+        return `${sign}${symbol}${Math.round(millions)}MM`;
       case 'abbreviated-1':
-        return `${symbol}${thousands.toFixed(1)}K`;
+        return `${sign}${symbol}${millions.toFixed(1)}MM`;
       case 'abbreviated-2':
-        return `${symbol}${thousands.toFixed(2)}K`;
+        return `${sign}${symbol}${millions.toFixed(2)}MM`;
       default:
-        return `${symbol}${value.toLocaleString()}`;
+        return `${sign}${symbol}${millions.toFixed(1)}MM`;
+    }
+  } else if (abs >= 1_000) {
+    switch (preferences.currencyFormat) {
+      case 'abbreviated':
+        return `${sign}${symbol}${Math.round(thousands)}K`;
+      case 'abbreviated-1':
+        return `${sign}${symbol}${thousands.toFixed(1)}K`;
+      case 'abbreviated-2':
+        return `${sign}${symbol}${thousands.toFixed(2)}K`;
+      default:
+        return `${sign}${symbol}${thousands.toFixed(1)}K`;
     }
   }
   
-  return `${symbol}${value.toLocaleString()}`;
+  return `${sign}${symbol}${abs.toLocaleString()}`;
 };
 
 interface PreferencesContextType {
