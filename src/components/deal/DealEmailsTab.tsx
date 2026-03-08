@@ -151,6 +151,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   // Fix #17: keyboard shortcuts popover
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // Search filters
+  const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
+    sender: '',
+    dateRange: 'all',
+    hasAttachments: false,
+    responseStatus: 'all',
+    dealAssociation: 'all',
+  });
 
   // Counts
   const needsResponseCount = emails.filter(e => e.needs_response && e.folder === 'inbox').length;
