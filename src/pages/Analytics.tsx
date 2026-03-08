@@ -1328,6 +1328,48 @@ export default function Analytics() {
                 </Popover>
               )}
 
+              {/* Global Filters */}
+              <Select value={globalManager || '__all__'} onValueChange={(v) => setGlobalManager(v === '__all__' ? undefined : v)}>
+                <SelectTrigger className="w-[150px]">
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                    <SelectValue placeholder="Manager" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Managers</SelectItem>
+                  {uniqueManagers.map(m => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={globalStatus || '__all__'} onValueChange={(v) => setGlobalStatus(v === '__all__' ? undefined : v)}>
+                <SelectTrigger className="w-[140px]">
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                    <SelectValue placeholder="Status" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Statuses</SelectItem>
+                  {uniqueStatuses.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {hasGlobalFilters && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setGlobalManager(undefined); setGlobalStatus(undefined); }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p className="text-xs">Clear all filters</p></TooltipContent>
+                </Tooltip>
+              )}
+
               <div className="ml-auto flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
