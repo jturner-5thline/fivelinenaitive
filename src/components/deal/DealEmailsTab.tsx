@@ -38,6 +38,9 @@ import {
   ChevronRight,
   CircleHelp,
   ArrowLeft,
+  Filter,
+  X,
+  Rss,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -69,6 +72,15 @@ interface DealEmailsTabProps {
 
 type ViewFilter = 'all' | 'unread' | 'needs_response';
 type ChipFilter = 'recent' | 'important' | 'attachments' | null;
+
+// Search filter state
+interface SearchFilters {
+  sender: string;
+  dateRange: 'all' | 'today' | 'this_week' | 'this_month';
+  hasAttachments: boolean;
+  responseStatus: 'all' | 'needs_response' | 'responded';
+  dealAssociation: string; // deal name or 'all'
+}
 
 interface SidebarSection {
   title: string;
@@ -139,6 +151,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   // Fix #17: keyboard shortcuts popover
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // Search filters
+  const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
+    sender: '',
+    dateRange: 'all',
+    hasAttachments: false,
+    responseStatus: 'all',
+    dealAssociation: 'all',
+  });
 
   // Counts
   const needsResponseCount = emails.filter(e => e.needs_response && e.folder === 'inbox').length;
@@ -192,7 +213,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     };
   }, [emails]);
 
-  const sidebarSections: SidebarSection[] = [
+  const sidebarSections: (SidebarSection & { isDealFilter?: boolean })[] = [
     {
       title: 'Views',
       defaultOpen: true,
@@ -203,11 +224,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         { id: 'follow_up', label: 'Follow Up', icon: Clock, count: followUpCount || undefined, filterFn: e => e.is_follow_up && e.folder === 'inbox' },
         { id: 'drafts', label: 'Drafts', icon: FileEdit, count: emails.filter(e => e.folder === 'drafts').length || undefined, filterFn: e => e.folder === 'drafts' },
         { id: 'sent', label: 'Sent Items', icon: Send, count: emails.filter(e => e.folder === 'sent').length || undefined, filterFn: e => e.folder === 'sent' },
+        { id: 'newsletters', label: 'Newsletters', icon: Rss, count: countByCategory('newsletter') || undefined, filterFn: e => e.category === 'newsletter' },
       ],
     },
     {
       title: 'Active Deals',
       defaultOpen: true,
+      isDealFilter: true,
       items: activeDealNames.map(name => ({
         id: `deal_${name}`,
         label: name,
@@ -220,10 +243,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     {
       title: 'Other',
       defaultOpen: false,
+      isDealFilter: true,
       items: [
         { id: 'cat_prospect', label: 'Prospects', emoji: '🎯', icon: Target, count: countByCategory('prospect') || undefined, filterFn: e => e.category === 'prospect' },
         { id: 'cat_lender', label: 'Lenders', emoji: '🏦', icon: Landmark, count: countByCategory('lender') || undefined, filterFn: e => e.category === 'lender' },
-        { id: 'cat_newsletter', label: 'Newsletters', emoji: '📰', icon: Newspaper, count: countByCategory('newsletter') || undefined, filterFn: e => e.category === 'newsletter' },
         { id: 'cat_conference', label: 'Conferences/Events', emoji: '🎪', icon: Calendar, count: countByCategory('conference') || undefined, filterFn: e => e.category === 'conference' },
         { id: 'cat_partnership', label: 'Partnerships', emoji: '🤝', icon: Handshake, count: countByCategory('partnership') || undefined, filterFn: e => e.category === 'partnership' },
       ],
@@ -231,6 +254,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     {
       title: 'Internal Process',
       defaultOpen: false,
+      isDealFilter: true,
       items: [
         { id: 'cat_internal_deal', label: 'Deal Management', emoji: '📋', icon: BarChart3, count: emails.filter(e => e.category === 'internal' && e.deal_name).length || undefined, filterFn: e => e.category === 'internal' && !!e.deal_name },
         { id: 'cat_internal_all', label: 'All Hands', emoji: '👥', icon: Users, count: emails.filter(e => e.category === 'internal' && !e.deal_name).length || undefined, filterFn: e => e.category === 'internal' && !e.deal_name },
@@ -239,6 +263,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     {
       title: 'Closed Deals / Archived',
       defaultOpen: false,
+      isDealFilter: true,
       items: [
         { id: 'cat_closed_won', label: 'Successfully Closed', emoji: '✅', icon: CheckCircle2, count: countByCategory('closed_won') || undefined, filterFn: e => e.category === 'closed_won' },
         { id: 'cat_closed_lost', label: 'Closed Lost', emoji: '❌', icon: XCircle, count: countByCategory('closed_lost') || undefined, filterFn: e => e.category === 'closed_lost' },
@@ -256,6 +281,24 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     return sidebarSections[0].items[0];
   }, [activeItemId, sidebarSections]);
 
+  // Active search filter chips for display
+  const activeFilterChips = useMemo(() => {
+    const chips: { key: string; label: string }[] = [];
+    if (searchFilters.sender) chips.push({ key: 'sender', label: `From: ${searchFilters.sender}` });
+    if (searchFilters.dateRange !== 'all') chips.push({ key: 'dateRange', label: `Date: ${searchFilters.dateRange.replace('_', ' ')}` });
+    if (searchFilters.hasAttachments) chips.push({ key: 'hasAttachments', label: 'Has: Attachment' });
+    if (searchFilters.responseStatus !== 'all') chips.push({ key: 'responseStatus', label: `Status: ${searchFilters.responseStatus === 'needs_response' ? 'Needs Response' : 'Responded'}` });
+    if (searchFilters.dealAssociation !== 'all') chips.push({ key: 'dealAssociation', label: `Deal: ${searchFilters.dealAssociation}` });
+    return chips;
+  }, [searchFilters]);
+
+  const removeFilter = (key: string) => {
+    setSearchFilters(prev => ({
+      ...prev,
+      [key]: key === 'hasAttachments' ? false : key === 'sender' ? '' : 'all',
+    }));
+  };
+
   // Filter emails
   const filteredEmails = useMemo(() => {
     let filtered = emails.filter(activeItem.filterFn);
@@ -269,6 +312,24 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (chipFilter === 'important') filtered = filtered.filter(e => e.is_starred || e.labels.includes('Important'));
     if (chipFilter === 'attachments') filtered = filtered.filter(e => e.has_attachments);
 
+    // Search filters
+    if (searchFilters.sender) {
+      const s = searchFilters.sender.toLowerCase();
+      filtered = filtered.filter(e => e.from_name.toLowerCase().includes(s) || e.from_email.toLowerCase().includes(s));
+    }
+    if (searchFilters.dateRange !== 'all') {
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      let cutoff = startOfDay;
+      if (searchFilters.dateRange === 'this_week') cutoff = new Date(startOfDay.getTime() - 7 * 86400000);
+      if (searchFilters.dateRange === 'this_month') cutoff = new Date(startOfDay.getTime() - 30 * 86400000);
+      filtered = filtered.filter(e => new Date(e.received_at) >= cutoff);
+    }
+    if (searchFilters.hasAttachments) filtered = filtered.filter(e => e.has_attachments);
+    if (searchFilters.responseStatus === 'needs_response') filtered = filtered.filter(e => e.needs_response);
+    if (searchFilters.responseStatus === 'responded') filtered = filtered.filter(e => !e.needs_response);
+    if (searchFilters.dealAssociation !== 'all') filtered = filtered.filter(e => e.deal_name === searchFilters.dealAssociation);
+
     // Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -281,7 +342,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, searchQuery]);
+  }, [emails, activeItem, viewFilter, chipFilter, searchQuery, searchFilters]);
 
   const currentThread = useMemo(() => {
     if (!selectedThread) return null;
@@ -444,86 +505,224 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           {/* ─── Left: Grouped sidebar ─── */}
           <div className="border-r flex-shrink-0 w-[220px] flex flex-col">
             <div className="p-2">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                <Input
-                  placeholder="Search emails..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-7 h-7 text-xs bg-muted/30 border-border/50"
-                />
+              <div className="relative flex gap-1">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                  <Input
+                    placeholder="Search emails..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-7 h-7 text-xs bg-muted/30 border-border/50"
+                  />
+                </div>
+                <Popover open={searchFiltersOpen} onOpenChange={setSearchFiltersOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={activeFilterChips.length > 0 ? 'secondary' : 'ghost'}
+                      size="icon"
+                      className={cn('h-7 w-7 shrink-0', activeFilterChips.length > 0 && 'text-primary')}
+                    >
+                      <Filter className="h-3 w-3" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="bottom" align="start" className="w-64 p-3 space-y-3">
+                    <p className="text-xs font-semibold">Filters</p>
+                    {/* Sender */}
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sender</label>
+                      <Input
+                        placeholder="Filter by sender..."
+                        value={searchFilters.sender}
+                        onChange={(e) => setSearchFilters(prev => ({ ...prev, sender: e.target.value }))}
+                        className="h-7 text-xs mt-1"
+                      />
+                    </div>
+                    {/* Date Range */}
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Date Range</label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(['all', 'today', 'this_week', 'this_month'] as const).map(dr => (
+                          <button
+                            key={dr}
+                            onClick={() => setSearchFilters(prev => ({ ...prev, dateRange: dr }))}
+                            className={cn(
+                              'px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+                              searchFilters.dateRange === dr
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            {dr === 'all' ? 'All' : dr === 'today' ? 'Today' : dr === 'this_week' ? 'This Week' : 'This Month'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Has Attachments */}
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Has Attachments</label>
+                      <button
+                        onClick={() => setSearchFilters(prev => ({ ...prev, hasAttachments: !prev.hasAttachments }))}
+                        className={cn(
+                          'px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+                          searchFilters.hasAttachments
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-muted/30 border-border/50 text-muted-foreground'
+                        )}
+                      >
+                        {searchFilters.hasAttachments ? 'Yes' : 'Any'}
+                      </button>
+                    </div>
+                    {/* Response Status */}
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Response Status</label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(['all', 'needs_response', 'responded'] as const).map(rs => (
+                          <button
+                            key={rs}
+                            onClick={() => setSearchFilters(prev => ({ ...prev, responseStatus: rs }))}
+                            className={cn(
+                              'px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+                              searchFilters.responseStatus === rs
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            {rs === 'all' ? 'All' : rs === 'needs_response' ? 'Needs Response' : 'Responded'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Deal Association */}
+                    {activeDealNames.length > 0 && (
+                      <div>
+                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Deal</label>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <button
+                            onClick={() => setSearchFilters(prev => ({ ...prev, dealAssociation: 'all' }))}
+                            className={cn(
+                              'px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+                              searchFilters.dealAssociation === 'all'
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            All
+                          </button>
+                          {activeDealNames.map(name => (
+                            <button
+                              key={name}
+                              onClick={() => setSearchFilters(prev => ({ ...prev, dealAssociation: name }))}
+                              className={cn(
+                                'px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+                                searchFilters.dealAssociation === name
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
+                              )}
+                            >
+                              {name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {activeFilterChips.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-7 text-xs text-muted-foreground"
+                        onClick={() => setSearchFilters({ sender: '', dateRange: 'all', hasAttachments: false, responseStatus: 'all', dealAssociation: 'all' })}
+                      >
+                        Clear all filters
+                      </Button>
+                    )}
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             <ScrollArea className="flex-1">
               <div className="px-1 pb-2">
-                {sidebarSections.map((section) => {
+                {sidebarSections.map((section, sectionIdx) => {
                   const isOpen = isSectionOpen(section);
                   const sectionCount = (sectionEmailCounts as any)[section.title] as number | undefined;
+                  const isDealFilter = (section as any).isDealFilter;
+                  // Add divider before deal filter sections
+                  const isFirstDealSection = isDealFilter && (sectionIdx === 0 || !(sidebarSections[sectionIdx - 1] as any).isDealFilter);
                   return (
-                    <div key={section.title} className="mb-1">
-                      <button
-                        onClick={() => toggleSection(section.title)}
-                        className="w-full flex items-center gap-1 px-2 pt-4 pb-1 text-left"
-                      >
-                        {isOpen ? (
-                          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                        ) : (
-                          <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                        )}
-                        {/* Fix #5: improved section header visual hierarchy */}
-                        <span className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/60 flex-1">
-                          {section.title}
-                        </span>
-                        {/* Fix #6: show count badge when collapsed */}
-                        {!isOpen && sectionCount != null && sectionCount > 0 && (
-                          <span className="text-[10px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 min-w-[20px] text-center bg-muted text-muted-foreground">
-                            {sectionCount}
-                          </span>
-                        )}
-                      </button>
-                      {isOpen && (
-                        <div className="space-y-0.5 mt-0.5">
-                          {section.items.map(item => {
-                            const isActive = activeItemId === item.id;
-                            return (
-                              <button
-                                key={item.id}
-                                onClick={() => {
-                                  setActiveItemId(item.id);
-                                  setSelectedThread(null);
-                                  setViewFilter('all');
-                                  setChipFilter(null);
-                                }}
-                                className={cn(
-                                  'w-full flex items-center gap-2 rounded-r-md text-left transition-all duration-120 px-2.5 py-1.5 relative border-l-[3px]',
-                                  isActive
-                                    ? 'border-l-primary bg-primary/10 text-foreground shadow-[inset_0_0_12px_-4px_hsl(var(--primary)/0.3)]'
-                                    : 'border-l-transparent text-muted-foreground hover:border-l-primary/50 hover:bg-primary/5 hover:text-foreground'
-                                )}
-                              >
-                                {item.indicatorColor ? (
-                                  <span className={cn('w-2 h-2 rounded-full shrink-0', item.indicatorColor)} />
-                                ) : item.emoji ? (
-                                  <span className="text-xs shrink-0">{item.emoji}</span>
-                                ) : (
-                                  <item.icon className="h-3.5 w-3.5 shrink-0" />
-                                )}
-                                <span className="text-xs flex-1 truncate">{item.label}</span>
-                                {item.count != null && item.count > 0 && (
-                                  <span className={cn(
-                                    'text-[10px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 min-w-[20px] text-center',
-                                    item.id === 'needs_response' && item.count > 0
-                                      ? 'bg-destructive text-destructive-foreground'
-                                      : 'bg-muted text-muted-foreground'
-                                  )}>
-                                    {item.count}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
+                    <div key={section.title}>
+                      {isFirstDealSection && (
+                        <div className="mx-2 my-3">
+                          <div className="border-t border-border/30" />
+                          <span className="block text-[9px] uppercase tracking-[0.15em] font-bold text-muted-foreground/40 mt-2 px-1">Deal Filters</span>
                         </div>
                       )}
+                      <div className="mb-1">
+                        <button
+                          onClick={() => toggleSection(section.title)}
+                          className="w-full flex items-center gap-1 px-2 pt-3 pb-1 text-left"
+                        >
+                          {isOpen ? (
+                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                          ) : (
+                            <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                          )}
+                          <span className={cn(
+                            'uppercase tracking-widest font-semibold flex-1',
+                            isDealFilter
+                              ? 'text-[9px] text-muted-foreground/40'
+                              : 'text-[10px] text-muted-foreground/60'
+                          )}>
+                            {section.title}
+                          </span>
+                          {!isOpen && sectionCount != null && sectionCount > 0 && (
+                            <span className="text-[10px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 min-w-[20px] text-center bg-muted text-muted-foreground">
+                              {sectionCount}
+                            </span>
+                          )}
+                        </button>
+                        {isOpen && (
+                          <div className="space-y-0.5 mt-0.5">
+                            {section.items.map(item => {
+                              const isActive = activeItemId === item.id;
+                              return (
+                                <button
+                                  key={item.id}
+                                  onClick={() => {
+                                    setActiveItemId(item.id);
+                                    setSelectedThread(null);
+                                    setViewFilter('all');
+                                    setChipFilter(null);
+                                  }}
+                                  className={cn(
+                                    'w-full flex items-center gap-2 rounded-r-md text-left transition-all duration-120 px-2.5 py-1.5 relative border-l-[3px]',
+                                    isActive
+                                      ? 'border-l-primary bg-primary/10 text-foreground shadow-[inset_0_0_12px_-4px_hsl(var(--primary)/0.3)]'
+                                      : 'border-l-transparent text-muted-foreground hover:border-l-primary/50 hover:bg-primary/5 hover:text-foreground'
+                                  )}
+                                >
+                                  {item.indicatorColor ? (
+                                    <span className={cn('w-2 h-2 rounded-full shrink-0', item.indicatorColor)} />
+                                  ) : item.emoji ? (
+                                    <span className="text-xs shrink-0">{item.emoji}</span>
+                                  ) : (
+                                    <item.icon className={cn('shrink-0', isDealFilter ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
+                                  )}
+                                  <span className={cn('flex-1 truncate', isDealFilter ? 'text-[11px]' : 'text-xs')}>{item.label}</span>
+                                  {item.count != null && item.count > 0 && (
+                                    <span className={cn(
+                                      'text-[10px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 min-w-[20px] text-center',
+                                      item.id === 'needs_response' && item.count > 0
+                                        ? 'bg-destructive text-destructive-foreground'
+                                        : 'bg-muted text-muted-foreground'
+                                    )}>
+                                      {item.count}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -536,11 +735,31 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden',
             (currentThread || composeOpen) ? 'hidden md:flex md:w-[380px]' : 'flex-1 md:w-[380px]'
           )}>
-            {/* View controls */}
+            {/* Header with title + stat pills */}
             <div className="border-b">
               <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-sm font-semibold truncate">{activeLabel}</span>
-                <div className="flex gap-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-semibold truncate">{activeLabel}</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
+                      {filteredEmails.length} total
+                    </span>
+                    {filteredUnread > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
+                        {filteredUnread} unread
+                      </span>
+                    )}
+                    {responseCount > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">
+                        {responseCount} need response
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {/* View filter toggles */}
+              <div className="flex items-center gap-1 px-3 pb-2">
+                <div className="flex gap-1 flex-1">
                   {(['all', 'unread', 'needs_response'] as ViewFilter[]).map(vf => (
                     <button
                       key={vf}
@@ -557,7 +776,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                   ))}
                 </div>
               </div>
-              {/* Filter chips */}
+              {/* Filter chips - pill-shaped */}
               <div className="flex gap-1.5 px-3 pb-2">
                 {([
                   { id: 'recent' as ChipFilter, label: '🕐 Recent' },
@@ -568,16 +787,29 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     key={chip.id}
                     onClick={() => setChipFilter(chipFilter === chip.id ? null : chip.id)}
                     className={cn(
-                      'px-2 py-0.5 rounded-md text-[10px] font-medium border transition-colors',
+                      'px-2.5 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
                       chipFilter === chip.id
-                        ? 'bg-primary/10 border-primary/30 text-primary'
-                        : 'bg-transparent border-border/50 text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted/20 border-border/50 text-muted-foreground hover:border-primary/30 hover:text-foreground'
                     )}
                   >
                     {chip.label}
                   </button>
                 ))}
               </div>
+              {/* Active search filter chips */}
+              {activeFilterChips.length > 0 && (
+                <div className="flex flex-wrap gap-1 px-3 pb-2">
+                  {activeFilterChips.map(chip => (
+                    <span key={chip.key} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      {chip.label}
+                      <button onClick={() => removeFilter(chip.key)} className="hover:text-foreground">
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Email list */}
@@ -589,37 +821,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
               />
-            </div>
-
-            {/* Fix #16: Stats bar — clickable filters */}
-            <div className="flex items-center gap-4 px-3 py-2 border-t bg-muted/10 text-[11px]">
-              <span
-                className={cn(
-                  'cursor-pointer hover:text-foreground transition-colors',
-                  viewFilter === 'all' ? 'text-foreground font-semibold' : 'text-muted-foreground'
-                )}
-                onClick={() => { setViewFilter('all'); }}
-              >
-                📧 <span className="font-semibold tabular-nums">{filteredEmails.length}</span> emails
-              </span>
-              <span
-                className={cn(
-                  'cursor-pointer hover:text-foreground transition-colors',
-                  viewFilter === 'needs_response' ? 'text-foreground font-semibold' : 'text-muted-foreground'
-                )}
-                onClick={() => { setViewFilter('needs_response'); }}
-              >
-                ⚠️ <span className="font-semibold tabular-nums">{responseCount}</span> need response
-              </span>
-              <span
-                className={cn(
-                  'cursor-pointer hover:text-foreground transition-colors',
-                  viewFilter === 'unread' ? 'text-foreground font-semibold' : 'text-muted-foreground'
-                )}
-                onClick={() => { setViewFilter('unread'); }}
-              >
-                📬 <span className="font-semibold tabular-nums">{filteredUnread}</span> unread
-              </span>
             </div>
           </div>
 
