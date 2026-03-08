@@ -281,6 +281,9 @@ export default function ContactDetail() {
 
             {/* Right: Related objects */}
             <div className="col-span-3 space-y-4">
+              {/* AI Field Suggestions */}
+              <ContactFieldSuggestions contactId={contact.id} companyId={(contact as any)?.org_company_id} />
+
               {/* Company */}
               <Card>
                 <CardHeader className="pb-2">
