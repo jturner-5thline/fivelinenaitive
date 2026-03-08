@@ -6,9 +6,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, Filter, MoreHorizontal, ArrowUpDown, UserPlus, ChevronDown } from 'lucide-react';
-import { Contact, LIFECYCLE_STAGES, CONTACT_STATUSES } from '@/hooks/useContacts';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Search, MoreHorizontal, ArrowUpDown, UserPlus, ChevronDown, Building2, Briefcase, Trash2 } from 'lucide-react';
+import { Contact, LIFECYCLE_STAGES, CONTACT_STATUSES, useDeleteContact } from '@/hooks/useContacts';
+import { useCrmCompanies } from '@/hooks/useCrmCompanies';
+import { useLinkContactToCompany, useLinkContactToDeal, useAllDeals } from '@/hooks/useCrmLinks';
+import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
+import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -48,6 +52,24 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  // Link modals
+  const [linkCompanyContactId, setLinkCompanyContactId] = useState<string | null>(null);
+  const [linkDealContactId, setLinkDealContactId] = useState<string | null>(null);
+  const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
+
+  const { data: companies = [] } = useCrmCompanies();
+  const { data: deals = [] } = useAllDeals();
+  const linkToCompany = useLinkContactToCompany();
+  const linkToDeal = useLinkContactToDeal();
+  const deleteContact = useDeleteContact();
+
+  // Build a lookup for company names
+  const companyMap = useMemo(() => {
+    const map = new Map<string, string>();
+    companies.forEach(c => map.set(c.id, c.name));
+    return map;
+  }, [companies]);
 
   const filtered = useMemo(() => {
     let result = [...contacts];
@@ -108,6 +130,20 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
     </button>
   );
 
+  const companyOptions: EntityOption[] = companies.map(c => ({
+    id: c.id,
+    label: c.name,
+    sublabel: c.domain || c.industry || undefined,
+  }));
+
+  const dealOptions: EntityOption[] = deals.map(d => ({
+    id: d.id,
+    label: d.company,
+    sublabel: `${d.stage} · $${Number(d.value || 0).toLocaleString()}`,
+  }));
+
+  const deleteTarget = contacts.find(c => c.id === deleteContactId);
+
   return (
     <div className="space-y-3">
       {/* Toolbar */}
@@ -163,6 +199,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
               <TableHead><SortHeader field="full_name">Name</SortHeader></TableHead>
               <TableHead><SortHeader field="job_title">Title</SortHeader></TableHead>
               <TableHead><SortHeader field="email">Email</SortHeader></TableHead>
+              <TableHead>Company</TableHead>
               <TableHead><SortHeader field="lifecycle_stage">Stage</SortHeader></TableHead>
               <TableHead><SortHeader field="status">Status</SortHeader></TableHead>
               <TableHead><SortHeader field="contact_score">Score</SortHeader></TableHead>
@@ -174,63 +211,135 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
                   <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-40" />
                   <p className="text-sm">No contacts found</p>
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map(contact => (
-                <TableRow
-                  key={contact.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate(`/contacts/${contact.id}`)}
-                >
-                  <TableCell onClick={e => e.stopPropagation()}>
-                    <Checkbox checked={selectedIds.has(contact.id)} onCheckedChange={() => toggleOne(contact.id)} />
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium text-sm">{contact.full_name || '—'}</div>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{contact.job_title || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{contact.email || '—'}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[contact.lifecycle_stage] || '')}>
-                      {LIFECYCLE_STAGES.find(s => s.value === contact.lifecycle_stage)?.label || contact.lifecycle_stage}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={cn('text-[10px]', statusColors[contact.status] || '')}>
-                      {CONTACT_STATUSES.find(s => s.value === contact.status)?.label || contact.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{contact.contact_score || 0}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{contact.lead_source || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {contact.last_activity_date ? format(new Date(contact.last_activity_date), 'MMM d') : '—'}
-                  </TableCell>
-                  <TableCell onClick={e => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => navigate(`/contacts/${contact.id}`)}>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Send Email</DropdownMenuItem>
-                        <DropdownMenuItem>Log Call</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+              filtered.map(contact => {
+                const companyName = (contact as any).crm_company_id ? companyMap.get((contact as any).crm_company_id) : null;
+                return (
+                  <TableRow
+                    key={contact.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/contacts/${contact.id}`)}
+                  >
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      <Checkbox checked={selectedIds.has(contact.id)} onCheckedChange={() => toggleOne(contact.id)} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium text-sm">{contact.full_name || '—'}</div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{contact.job_title || '—'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{contact.email || '—'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {companyName ? (
+                        <span
+                          className="text-primary hover:underline cursor-pointer"
+                          onClick={e => { e.stopPropagation(); navigate(`/crm-companies/${(contact as any).crm_company_id}`); }}
+                        >{companyName}</span>
+                      ) : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[contact.lifecycle_stage] || '')}>
+                        {LIFECYCLE_STAGES.find(s => s.value === contact.lifecycle_stage)?.label || contact.lifecycle_stage}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={cn('text-[10px]', statusColors[contact.status] || '')}>
+                        {CONTACT_STATUSES.find(s => s.value === contact.status)?.label || contact.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{contact.contact_score || 0}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{contact.lead_source || '—'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {contact.last_activity_date ? format(new Date(contact.last_activity_date), 'MMM d') : '—'}
+                    </TableCell>
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => navigate(`/contacts/${contact.id}`)}>View Details</DropdownMenuItem>
+                          <DropdownMenuItem>Send Email</DropdownMenuItem>
+                          <DropdownMenuItem>Log Call</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setLinkCompanyContactId(contact.id)}>
+                            <Building2 className="h-3.5 w-3.5 mr-1.5" /> Link to Company
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setLinkDealContactId(contact.id)}>
+                            <Briefcase className="h-3.5 w-3.5 mr-1.5" /> Link to Deal
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteContactId(contact.id)}>
+                            <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
       </div>
 
       <p className="text-xs text-muted-foreground">{filtered.length} contact{filtered.length !== 1 ? 's' : ''}</p>
+
+      {/* Link to Company Modal */}
+      <EntitySearchModal
+        open={!!linkCompanyContactId}
+        onClose={() => setLinkCompanyContactId(null)}
+        title="Link Contact to Company"
+        placeholder="Search companies..."
+        options={companyOptions}
+        onConfirm={(ids) => {
+          if (linkCompanyContactId && ids[0]) {
+            linkToCompany.mutate({ contactId: linkCompanyContactId, companyId: ids[0] }, {
+              onSuccess: () => setLinkCompanyContactId(null),
+            });
+          }
+        }}
+        confirming={linkToCompany.isPending}
+      />
+
+      {/* Link to Deal Modal */}
+      <EntitySearchModal
+        open={!!linkDealContactId}
+        onClose={() => setLinkDealContactId(null)}
+        title="Link Contact to Deal"
+        placeholder="Search deals..."
+        options={dealOptions}
+        multiSelect
+        onConfirm={(ids) => {
+          if (linkDealContactId) {
+            Promise.all(ids.map(dealId => linkToDeal.mutateAsync({ contactId: linkDealContactId, dealId })))
+              .then(() => setLinkDealContactId(null));
+          }
+        }}
+        confirming={linkToDeal.isPending}
+      />
+
+      {/* Delete Confirmation */}
+      <DeleteConfirmDialog
+        open={!!deleteContactId}
+        onClose={() => setDeleteContactId(null)}
+        title="Delete Contact"
+        description={`Are you sure you want to delete "${deleteTarget?.full_name || 'this contact'}"? This will unlink all associated deals and companies.`}
+        isDeleting={deleteContact.isPending}
+        onConfirm={() => {
+          if (deleteContactId) {
+            deleteContact.mutate(deleteContactId, {
+              onSuccess: () => setDeleteContactId(null),
+            });
+          }
+        }}
+      />
     </div>
   );
 }

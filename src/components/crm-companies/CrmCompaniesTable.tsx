@@ -6,9 +6,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, ArrowUpDown, Building2, ChevronDown } from 'lucide-react';
-import { CrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES } from '@/hooks/useCrmCompanies';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Search, MoreHorizontal, ArrowUpDown, Building2, ChevronDown, Trash2, Users, Briefcase } from 'lucide-react';
+import { CrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, useDeleteCrmCompany } from '@/hooks/useCrmCompanies';
+import { useContacts } from '@/hooks/useContacts';
+import { useLinkContactToCompany } from '@/hooks/useCrmLinks';
+import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
+import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
+import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -42,6 +47,15 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
   const [sortField, setSortField] = useState('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  // Modal states
+  const [linkContactCompanyId, setLinkContactCompanyId] = useState<string | null>(null);
+  const [createContactCompanyId, setCreateContactCompanyId] = useState<string | null>(null);
+  const [deleteCompanyId, setDeleteCompanyId] = useState<string | null>(null);
+
+  const { data: allContacts = [] } = useContacts();
+  const linkContact = useLinkContactToCompany();
+  const deleteCompany = useDeleteCrmCompany();
+
   const filtered = useMemo(() => {
     let result = [...companies];
     if (search.trim()) {
@@ -65,14 +79,8 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
     return result;
   }, [companies, search, lifecycleFilter, statusFilter, sortField, sortDir]);
 
-  const toggleAll = () => {
-    setSelectedIds(selectedIds.size === filtered.length ? new Set() : new Set(filtered.map(c => c.id)));
-  };
-  const toggleOne = (id: string) => {
-    const next = new Set(selectedIds);
-    next.has(id) ? next.delete(id) : next.add(id);
-    setSelectedIds(next);
-  };
+  const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length ? new Set() : new Set(filtered.map(c => c.id)));
+  const toggleOne = (id: string) => { const next = new Set(selectedIds); next.has(id) ? next.delete(id) : next.add(id); setSelectedIds(next); };
   const handleSort = (field: string) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortField(field); setSortDir('asc'); }
@@ -85,6 +93,14 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
   );
 
   const formatCurrency = (v: number | null) => v != null ? `$${v.toLocaleString()}` : '—';
+
+  const contactOptions: EntityOption[] = allContacts.map(c => ({
+    id: c.id,
+    label: c.full_name || `${c.first_name} ${c.last_name}`,
+    sublabel: c.email || c.job_title || undefined,
+  }));
+
+  const deleteTarget = companies.find(c => c.id === deleteCompanyId);
 
   return (
     <div className="space-y-3">
@@ -181,8 +197,20 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => navigate(`/crm-companies/${co.id}`)}>View Details</DropdownMenuItem>
-                      <DropdownMenuItem>Add Contact</DropdownMenuItem>
-                      <DropdownMenuItem>Create Deal</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setLinkContactCompanyId(co.id)}>
+                        <Users className="h-3.5 w-3.5 mr-1.5" /> Link Contact
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setCreateContactCompanyId(co.id)}>
+                        <Users className="h-3.5 w-3.5 mr-1.5" /> Create Contact
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/crm-companies/${co.id}`)}>
+                        <Briefcase className="h-3.5 w-3.5 mr-1.5" /> Link Deal
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleteCompanyId(co.id)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -192,6 +220,46 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
         </Table>
       </div>
       <p className="text-xs text-muted-foreground">{filtered.length} compan{filtered.length !== 1 ? 'ies' : 'y'}</p>
+
+      {/* Link Contact Modal */}
+      <EntitySearchModal
+        open={!!linkContactCompanyId}
+        onClose={() => setLinkContactCompanyId(null)}
+        title="Link Contact to Company"
+        placeholder="Search contacts..."
+        options={contactOptions}
+        multiSelect
+        onConfirm={(ids) => {
+          if (linkContactCompanyId) {
+            Promise.all(ids.map(contactId => linkContact.mutateAsync({ contactId, companyId: linkContactCompanyId })))
+              .then(() => setLinkContactCompanyId(null));
+          }
+        }}
+        confirming={linkContact.isPending}
+      />
+
+      {/* Create Contact Modal pre-linked to company */}
+      <CreateContactModal
+        open={!!createContactCompanyId}
+        onClose={() => setCreateContactCompanyId(null)}
+        defaultCompanyId={createContactCompanyId || undefined}
+      />
+
+      {/* Delete Confirmation */}
+      <DeleteConfirmDialog
+        open={!!deleteCompanyId}
+        onClose={() => setDeleteCompanyId(null)}
+        title="Delete Company"
+        description={`Are you sure you want to delete "${deleteTarget?.name || 'this company'}"? Contacts and deals will be unlinked but not deleted.`}
+        isDeleting={deleteCompany.isPending}
+        onConfirm={() => {
+          if (deleteCompanyId) {
+            deleteCompany.mutate(deleteCompanyId, {
+              onSuccess: () => setDeleteCompanyId(null),
+            });
+          }
+        }}
+      />
     </div>
   );
 }

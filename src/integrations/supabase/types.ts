@@ -4226,6 +4226,7 @@ export type Database = {
           contact: string | null
           contact_info: string | null
           created_at: string
+          crm_company_id: string | null
           deal_owner: string | null
           deal_type: string | null
           engagement_type: string | null
@@ -4264,6 +4265,7 @@ export type Database = {
           contact?: string | null
           contact_info?: string | null
           created_at?: string
+          crm_company_id?: string | null
           deal_owner?: string | null
           deal_type?: string | null
           engagement_type?: string | null
@@ -4302,6 +4304,7 @@ export type Database = {
           contact?: string | null
           contact_info?: string | null
           created_at?: string
+          crm_company_id?: string | null
           deal_owner?: string | null
           deal_type?: string | null
           engagement_type?: string | null
@@ -4336,6 +4339,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_crm_company_id_fkey"
+            columns: ["crm_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
             referencedColumns: ["id"]
           },
           {

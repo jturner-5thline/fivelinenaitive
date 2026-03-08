@@ -6,14 +6,21 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateContact, LIFECYCLE_STAGES, CONTACT_STATUSES } from '@/hooks/useContacts';
+import { useCrmCompanies } from '@/hooks/useCrmCompanies';
+import { Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CreateContactModalProps {
   open: boolean;
   onClose: () => void;
+  defaultCompanyId?: string;
 }
 
-export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
+export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateContactModalProps) {
   const createContact = useCreateContact();
+  const { data: companies = [] } = useCrmCompanies();
+  const [companySearch, setCompanySearch] = useState('');
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -27,17 +34,25 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
     lead_source: '',
     linkedin_url: '',
     description: '',
+    crm_company_id: defaultCompanyId || '' as string,
   });
+
+  const selectedCompany = companies.find(c => c.id === form.crm_company_id);
+
+  const filteredCompanies = companySearch.trim()
+    ? companies.filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase()))
+    : companies.slice(0, 20);
 
   const handleSubmit = () => {
     if (!form.first_name && !form.last_name && !form.email) return;
-    createContact.mutate(form as any, {
+    const payload = { ...form, crm_company_id: form.crm_company_id || null };
+    createContact.mutate(payload as any, {
       onSuccess: () => {
         onClose();
         setForm({
           first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
           job_title: '', department: '', lifecycle_stage: 'lead', status: 'new',
-          lead_source: '', linkedin_url: '', description: '',
+          lead_source: '', linkedin_url: '', description: '', crm_company_id: '',
         });
       },
     });
@@ -63,6 +78,54 @@ export function CreateContactModal({ open, onClose }: CreateContactModalProps) {
             <Label htmlFor="email" className="text-xs">Email</Label>
             <Input id="email" type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} />
           </div>
+
+          {/* Company selector */}
+          <div className="space-y-1.5 col-span-2">
+            <Label className="text-xs">Company</Label>
+            <div className="relative">
+              {selectedCompany ? (
+                <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-background">
+                  <span className="text-sm flex-1">{selectedCompany.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, crm_company_id: '' }))}
+                    className="text-muted-foreground hover:text-foreground"
+                  >×</button>
+                </div>
+              ) : (
+                <>
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search companies..."
+                    value={companySearch}
+                    onChange={e => { setCompanySearch(e.target.value); setShowCompanyDropdown(true); }}
+                    onFocus={() => setShowCompanyDropdown(true)}
+                    className="pl-8"
+                  />
+                  {showCompanyDropdown && filteredCompanies.length > 0 && (
+                    <div className="absolute z-50 top-full mt-1 w-full border rounded-md bg-popover shadow-md max-h-[200px] overflow-y-auto">
+                      {filteredCompanies.map(c => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50"
+                          onClick={() => {
+                            setForm(p => ({ ...p, crm_company_id: c.id }));
+                            setCompanySearch('');
+                            setShowCompanyDropdown(false);
+                          }}
+                        >
+                          <p className="font-medium">{c.name}</p>
+                          {c.domain && <p className="text-xs text-muted-foreground">{c.domain}</p>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="phone_work" className="text-xs">Work Phone</Label>
             <Input id="phone_work" value={form.phone_work} onChange={(e) => setForm(p => ({ ...p, phone_work: e.target.value }))} />
