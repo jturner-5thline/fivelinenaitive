@@ -18,8 +18,16 @@ export function WorkflowSuggestionsWidget() {
   const { data: suggestions = [], isLoading } = useWorkflowSuggestions();
   const dismissSuggestion = useDismissSuggestion();
 
+  // #11: Deduplicate suggestions by name, keeping highest priority
+  const seen = new Set<string>();
+  const deduped = suggestions.filter((s) => {
+    if (seen.has(s.name)) return false;
+    seen.add(s.name);
+    return true;
+  });
+
   // Only show top 3 high-priority suggestions
-  const topSuggestions = suggestions
+  const topSuggestions = deduped
     .filter((s) => s.priority === 'high' || s.priority === 'medium')
     .slice(0, 3);
 

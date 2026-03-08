@@ -68,6 +68,10 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   const [teamMembers, setTeamMembers] = useState<{ user_id: string; display_name: string; email: string }[]>([]);
   const autoBriefedRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const chatSectionRef = useRef<HTMLDivElement>(null);
+
+  // Determine if chat is active (has messages)
+  const isChatActive = messages.length > 0;
 
   // Load team members for @mentions
   useEffect(() => {
@@ -114,10 +118,20 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     setInputValue('');
     setIsLoading(true);
 
+    // Scroll chat into view after sending
+    setTimeout(() => {
+      chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
     let convId = activeConversationId;
     if (!convId) {
       convId = await createConversation(trimmed);
-      if (!convId) { toast.error('Failed to create conversation'); setIsLoading(false); return; }
+      if (!convId) {
+        console.error('[DashboardAI] Failed to create conversation');
+        toast.error('Failed to create conversation');
+        setIsLoading(false);
+        return;
+      }
     }
 
     await saveMessage(convId, 'user', trimmed);
@@ -143,15 +157,27 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
 
+      if (!token) {
+        console.error('[DashboardAI] No auth token available');
+        toast.error('Please sign in again to use the assistant.');
+        setIsLoading(false);
+        return;
+      }
+
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-        body: JSON.stringify({ messages: updatedMessages }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ messages: updatedMessages.map(m => ({ role: m.role, content: m.content })) }),
       });
 
       if (resp.status === 429) { toast.error('Rate limit reached.'); setIsLoading(false); return; }
       if (resp.status === 402) { toast.error('AI credits exhausted.'); setIsLoading(false); return; }
-      if (!resp.ok || !resp.body) throw new Error('Failed to start stream');
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => 'Unknown error');
+        console.error('[DashboardAI] Response error:', resp.status, errText);
+        throw new Error(`AI request failed (${resp.status})`);
+      }
+      if (!resp.body) throw new Error('No response body');
 
       const contentType = resp.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
@@ -185,10 +211,11 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) upsertAssistant(content);
-          } catch { textBuffer = line + '\n' + textBuffer; break; }
+          } catch { /* partial chunk, wait for more data */ }
         }
       }
 
+      // Process any remaining data in buffer
       if (textBuffer.trim()) {
         for (let raw of textBuffer.split('\n')) {
           if (!raw) continue;
@@ -203,8 +230,8 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
 
       if (assistantContent && convId) await saveMessage(convId, 'assistant', assistantContent);
     } catch (err) {
-      console.error('Chat error:', err);
-      toast.error('Failed to get response.');
+      console.error('[DashboardAI] Chat error:', err);
+      toast.error('Failed to get response. Please try again.');
       upsertAssistant('Sorry, I encountered an error. Please try again.');
     } finally {
       setIsLoading(false);
@@ -251,23 +278,25 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     }
   }, [populateInput, handleSend]);
 
-  /** Handle suggestion chip click */
+  /** Handle suggestion chip click (#7) */
   const handleSuggestionClick = useCallback((suggestion: SuggestionConfig) => {
     const textToUse = suggestion.populateText || suggestion.text;
     if (suggestion.requiresInput) {
       populateInput(textToUse);
     } else {
-      setInputValue(textToUse);
+      // Auto-send immediately and scroll to chat
       handleSend(textToUse);
     }
   }, [populateInput, handleSend]);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={chatSectionRef}>
       <Card className={cn(
         'shadow-lg overflow-hidden transition-all duration-300',
         isDrawerMode ? 'border-0 shadow-none h-full flex flex-col' : '',
-        !isDrawerMode && expanded ? 'fixed inset-4 z-50 flex flex-col' : !isDrawerMode ? 'p-4' : ''
+        !isDrawerMode && expanded ? 'fixed inset-4 z-50 flex flex-col' : !isDrawerMode ? 'p-4' : '',
+        // #8: Make sticky when chat is active
+        !isDrawerMode && !expanded && isChatActive ? 'sticky top-4 z-30' : ''
       )}>
         {/* Toolbar — always visible when there are messages or expanded */}
         {(messages.length > 0 || expanded) && (
@@ -306,8 +335,8 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
           )}
 
           <div className={cn('flex-1 flex flex-col min-w-0', expanded ? 'p-4' : '')}>
-            {/* Header section — always visible */}
-            {!showHistory && (
+            {/* #32: Hide shortcut cards and suggestion pills when chat is active */}
+            {!showHistory && !isChatActive && (
               <div className="space-y-4 mb-4">
                 <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
                 <QuickActionCards onAction={handleQuickAction} />

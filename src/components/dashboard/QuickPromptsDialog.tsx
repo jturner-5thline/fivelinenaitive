@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Zap, 
@@ -101,6 +101,25 @@ const getCategoryColor = (category: string) => {
   }
 };
 
+/** #18: Render prompt text with [placeholder] portions styled as visual chips */
+function renderPromptWithChips(text: string) {
+  const parts = text.split(/(\[[^\]]+\])/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) => {
+    if (part.startsWith('[') && part.endsWith(']')) {
+      return (
+        <span
+          key={i}
+          className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-medium border border-primary/20"
+        >
+          {part.slice(1, -1)}
+        </span>
+      );
+    }
+    return <Fragment key={i}>{part}</Fragment>;
+  });
+}
+
 interface QuickPromptsDialogProps {
   trigger: React.ReactNode;
 }
@@ -146,7 +165,6 @@ export function QuickPromptsDialog({ trigger }: QuickPromptsDialogProps) {
   };
 
   const handlePromptClick = (prompt: QuickPrompt) => {
-    // Navigate to research page with the prompt
     navigate('/research', { state: { initialPrompt: prompt.prompt } });
     setOpen(false);
   };
@@ -224,8 +242,6 @@ export function QuickPromptsDialog({ trigger }: QuickPromptsDialogProps) {
     }
   };
 
-  const allPrompts = [...PRESET_PROMPTS, ...customPrompts];
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -258,7 +274,10 @@ export function QuickPromptsDialog({ trigger }: QuickPromptsDialogProps) {
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
                         <p className="font-medium text-sm text-foreground truncate">{prompt.title}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2 break-words">{prompt.prompt}</p>
+                        {/* #18: Render placeholders as styled chips */}
+                        <p className="text-xs text-muted-foreground line-clamp-2 break-words leading-relaxed">
+                          {renderPromptWithChips(prompt.prompt)}
+                        </p>
                       </div>
                       <Badge variant="outline" className="text-xs capitalize shrink-0 hidden sm:inline-flex">
                         {prompt.category}
@@ -337,20 +356,17 @@ export function QuickPromptsDialog({ trigger }: QuickPromptsDialogProps) {
                     <Card 
                       key={prompt.id}
                       className="cursor-pointer hover:bg-muted/50 transition-colors group"
+                      onClick={() => handlePromptClick(prompt)}
                     >
                       <CardContent className="p-3 flex items-start gap-3">
-                        <div 
-                          className={`p-2 rounded-lg shrink-0 ${getCategoryColor(prompt.category)}`}
-                          onClick={() => handlePromptClick(prompt)}
-                        >
+                        <div className={`p-2 rounded-lg shrink-0 ${getCategoryColor(prompt.category)}`}>
                           <IconComponent className="h-4 w-4" />
                         </div>
-                        <div 
-                          className="flex-1 min-w-0 overflow-hidden"
-                          onClick={() => handlePromptClick(prompt)}
-                        >
+                        <div className="flex-1 min-w-0 overflow-hidden">
                           <p className="font-medium text-sm text-foreground truncate">{prompt.title}</p>
-                          <p className="text-xs text-muted-foreground line-clamp-2 break-words">{prompt.prompt}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2 break-words leading-relaxed">
+                            {renderPromptWithChips(prompt.prompt)}
+                          </p>
                         </div>
                         <Button
                           variant="ghost"

@@ -18,8 +18,14 @@ export function AgentSuggestionsWidget() {
   const { data: suggestions = [], isLoading } = useAgentSuggestions();
   const dismissSuggestion = useDismissAgentSuggestion();
 
-  // Only show top 3 high-priority suggestions
-  const topSuggestions = suggestions
+  // #11: Deduplicate by name, then filter to top 3 high-priority
+  const seen = new Set<string>();
+  const deduped = suggestions.filter((s) => {
+    if (seen.has(s.name)) return false;
+    seen.add(s.name);
+    return true;
+  });
+  const topSuggestions = deduped
     .filter((s) => s.priority === 'high' || s.priority === 'medium')
     .slice(0, 3);
 
