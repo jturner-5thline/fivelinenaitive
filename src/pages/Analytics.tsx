@@ -748,7 +748,7 @@ function SortableChartCard({
         </div>
       </CardHeader>
       <CardContent className={compact ? "pt-0 pb-3" : undefined}>
-        <ChartRenderer chart={chart} deals={deals} dateRange={dateRange} compact={compact} />
+        <ChartRenderer chart={chart} deals={deals} dateRange={dateRange} compact={compact} stageLabels={stageLabels} />
       </CardContent>
     </Card>
   );
