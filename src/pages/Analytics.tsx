@@ -1,20 +1,29 @@
 import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Clock } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PortfolioRiskAnalysis } from '@/components/analytics/PortfolioRiskAnalysis';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { format, subDays, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, subDays, subMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from 'date-fns';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +51,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useCharts, ChartType, ChartConfig } from '@/contexts/ChartsContext';
 import { useAnalyticsWidgets, WidgetConfig, WidgetDataSource, WIDGET_DATA_SOURCES, LayoutPreset } from '@/contexts/AnalyticsWidgetsContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { Deal } from '@/types/deal';
@@ -64,8 +74,12 @@ import {
   Tooltip, 
   ResponsiveContainer,
   Cell,
+  FunnelChart,
+  Funnel,
+  LabelList,
 } from 'recharts';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface DateRange {
   from: Date | undefined;
@@ -124,20 +138,29 @@ const getHoursData = (deals: Deal[]) => {
   };
 };
 
-const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRange) => {
+const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRange, stageLabels?: Record<string, string>) => {
   const filteredDeals = dateRange?.from && dateRange?.to 
     ? allDeals.filter(deal => {
         const dealDate = new Date(deal.createdAt);
         return isWithinInterval(dealDate, { start: dateRange.from!, end: dateRange.to! });
       })
     : allDeals;
+
+  const resolveStage = (stageId: string) => stageLabels?.[stageId] || stageId;
+
   switch (dataSource) {
-    case 'deals-by-stage':
+    case 'deals-by-stage': {
       const stageCounts: Record<string, number> = {};
+      // Initialize all configured stages so they all appear even if count is 0
+      if (stageLabels) {
+        Object.values(stageLabels).forEach(label => { stageCounts[label] = 0; });
+      }
       filteredDeals.forEach(deal => {
-        stageCounts[deal.stage] = (stageCounts[deal.stage] || 0) + 1;
+        const label = resolveStage(deal.stage);
+        stageCounts[label] = (stageCounts[label] || 0) + 1;
       });
       return Object.entries(stageCounts).map(([name, value]) => ({ name, value }));
+    }
     
     case 'monthly-value':
       return [
@@ -183,7 +206,6 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
       filteredDeals.forEach(deal => {
         deal.lenders?.forEach(lender => {
           if (lender.trackingStatus === 'passed' && lender.passReason) {
-            // Split comma-separated reasons into individual entries
             lender.passReason.split(', ').forEach(reason => {
               const trimmed = reason.trim();
               if (trimmed) passReasonCounts[trimmed] = (passReasonCounts[trimmed] || 0) + 1;
@@ -207,7 +229,6 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
             { name: 'Market conditions', value: 1 },
           ]
         : Object.entries(passReasonCounts).map(([name, value]) => ({ name, value }));
-      // Sort descending, keep top 8, group rest into "Other"
       passEntries.sort((a, b) => b.value - a.value);
       const totalPassCount = passEntries.reduce((s, e) => s + e.value, 0);
       const threshold = totalPassCount * 0.05;
@@ -295,6 +316,104 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
       return Object.entries(referralValues)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
+
+    case 'conversion-funnel': {
+      // Build funnel from pipeline stages in order
+      const stageOrder = stageLabels ? Object.entries(stageLabels) : [];
+      if (stageOrder.length === 0) {
+        return [
+          { name: 'Sourcing', value: filteredDeals.length, fill: '#9333ea' },
+          { name: 'Screening', value: Math.round(filteredDeals.length * 0.7), fill: '#6366f1' },
+          { name: 'Due Diligence', value: Math.round(filteredDeals.length * 0.45), fill: '#3b82f6' },
+          { name: 'Terms Issued', value: Math.round(filteredDeals.length * 0.25), fill: '#06b6d4' },
+          { name: 'Closing', value: Math.round(filteredDeals.length * 0.15), fill: '#10b981' },
+          { name: 'Funded', value: Math.round(filteredDeals.length * 0.08), fill: '#22c55e' },
+        ];
+      }
+      const funnelColors = ['#9333ea', '#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6'];
+      const stageDealCounts: Record<string, number> = {};
+      filteredDeals.forEach(d => {
+        const label = resolveStage(d.stage);
+        stageDealCounts[label] = (stageDealCounts[label] || 0) + 1;
+      });
+      // Cumulative: deals AT or PAST a given stage
+      let cumulative = filteredDeals.length;
+      return stageOrder.map(([_id, label], i) => {
+        const count = stageDealCounts[label] || 0;
+        const result = { name: label, value: cumulative, fill: funnelColors[i % funnelColors.length] };
+        cumulative -= count;
+        return result;
+      });
+    }
+
+    case 'deal-velocity': {
+      // Average days deals spend in each stage (mock based on updatedAt vs createdAt)
+      const stageEntries = stageLabels ? Object.entries(stageLabels) : [];
+      const stageDays: Record<string, number[]> = {};
+      filteredDeals.forEach(d => {
+        const label = resolveStage(d.stage);
+        const days = differenceInDays(new Date(d.updatedAt), new Date(d.createdAt));
+        if (!stageDays[label]) stageDays[label] = [];
+        stageDays[label].push(Math.max(days, 1));
+      });
+      const result = Object.entries(stageDays).map(([name, days]) => ({
+        name,
+        value: Math.round(days.reduce((s, d) => s + d, 0) / days.length),
+      }));
+      result.sort((a, b) => b.value - a.value);
+      return result;
+    }
+
+    case 'lender-leaderboard': {
+      const lenderStats: Record<string, { reviewed: number; funded: number; passed: number; totalResponseDays: number; responseCount: number }> = {};
+      filteredDeals.forEach(deal => {
+        deal.lenders?.forEach(lender => {
+          if (!lenderStats[lender.name]) {
+            lenderStats[lender.name] = { reviewed: 0, funded: 0, passed: 0, totalResponseDays: 0, responseCount: 0 };
+          }
+          lenderStats[lender.name].reviewed++;
+          if (lender.trackingStatus === 'passed') lenderStats[lender.name].passed++;
+          // Approximate funded from stage
+          if (lender.stage && ['closed-funded', 'term-sheets'].includes(lender.stage)) lenderStats[lender.name].funded++;
+          // Mock response time based on updatedAt
+          if (lender.updatedAt) {
+            const respDays = differenceInDays(new Date(lender.updatedAt), new Date(deal.createdAt));
+            if (respDays > 0) {
+              lenderStats[lender.name].totalResponseDays += respDays;
+              lenderStats[lender.name].responseCount++;
+            }
+          }
+        });
+      });
+      return Object.entries(lenderStats)
+        .map(([name, stats]) => ({
+          name,
+          reviewed: stats.reviewed,
+          funded: stats.funded,
+          passRate: stats.reviewed > 0 ? Math.round((stats.passed / stats.reviewed) * 100) : 0,
+          avgResponseDays: stats.responseCount > 0 ? Math.round(stats.totalResponseDays / stats.responseCount) : 0,
+          value: stats.reviewed, // for sorting
+        }))
+        .sort((a, b) => b.reviewed - a.reviewed)
+        .slice(0, 15);
+    }
+
+    case 'stale-deal-alerts': {
+      const now = new Date();
+      return filteredDeals
+        .filter(d => d.status !== 'archived')
+        .map(d => ({
+          name: d.company || d.name,
+          dealName: d.name,
+          stage: resolveStage(d.stage),
+          daysInStage: differenceInDays(now, new Date(d.updatedAt)),
+          lastActivity: d.updatedAt,
+          value: d.value,
+        }))
+        .filter(d => d.daysInStage >= 30)
+        .sort((a, b) => b.daysInStage - a.daysInStage)
+        .slice(0, 20);
+    }
     
     default:
       return [
@@ -313,6 +432,10 @@ const DATA_SOURCES = [
   { id: 'lender-activity', label: 'Lender Activity' },
   { id: 'deal-value-distribution', label: 'Deal Value Distribution' },
   { id: 'lender-pass-reasons', label: 'Lender Pass Reasons' },
+  { id: 'conversion-funnel', label: 'Conversion Funnel' },
+  { id: 'deal-velocity', label: 'Deal Velocity' },
+  { id: 'lender-leaderboard', label: 'Lender Leaderboard' },
+  { id: 'stale-deal-alerts', label: 'Stale Deal Alerts' },
   { id: 'hours-by-manager', label: 'Hours by Manager' },
   { id: 'hours-by-stage', label: 'Hours by Stage' },
   { id: 'fee-breakdown', label: 'Fee Breakdown ($K)' },
@@ -336,13 +459,20 @@ const ChartTypeIcon = ({ type }: { type: ChartType }) => {
   }
 };
 
-function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean }) {
-  const data = getChartData(chart.dataSource, deals, dateRange);
+function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean; stageLabels?: Record<string, string> }) {
+  const data = getChartData(chart.dataSource, deals, dateRange, stageLabels);
   const chartHeight = compact ? 180 : 250;
 
-  // Force horizontal bar chart for pass reasons (better for categorical data)
+  const tooltipStyle = {
+    backgroundColor: 'hsl(var(--popover))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px',
+    color: 'hsl(var(--popover-foreground))',
+  };
+
+  // Force horizontal bar chart for pass reasons
   if (chart.dataSource === 'lender-pass-reasons') {
-    const total = data.reduce((s: number, d: any) => s + d.value, 0);
+    const total = (data as any[]).reduce((s: number, d: any) => s + d.value, 0);
     const barHeight = Math.max(chartHeight, data.length * 32 + 40);
     return (
       <ResponsiveContainer width="100%" height={barHeight}>
@@ -350,14 +480,8 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
           <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
           <YAxis dataKey="name" type="category" width={compact ? 100 : 140} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--popover))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '8px',
-              color: 'hsl(var(--popover-foreground))',
-            }}
-            formatter={(value: number) => [`${value} (${total > 0 ? ((value / total) * 100).toFixed(0) : 0}%)`, 'Count']}
+          <Tooltip contentStyle={tooltipStyle}
+            formatter={(value: any) => [`${value} (${total > 0 ? ((Number(value) / total) * 100).toFixed(0) : 0}%)`, 'Count']}
           />
           <Bar dataKey="value" radius={[0, 4, 4, 0]}>
             {data.map((_: any, index: number) => (
@@ -366,6 +490,125 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+    );
+  }
+
+  // Conversion Funnel
+  if (chart.dataSource === 'conversion-funnel') {
+    const funnelData = data as any[];
+    return (
+      <div className="space-y-2">
+        {funnelData.map((stage: any, i: number) => {
+          const maxVal = funnelData[0]?.value || 1;
+          const pct = maxVal > 0 ? (stage.value / maxVal) * 100 : 0;
+          const dropOff = i > 0 ? (((funnelData[i - 1].value - stage.value) / funnelData[i - 1].value) * 100) : 0;
+          return (
+            <div key={stage.name} className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground w-24 truncate text-right">{stage.name}</span>
+              <div className="flex-1 h-7 rounded bg-muted/30 relative overflow-hidden">
+                <div
+                  className="h-full rounded transition-all duration-500"
+                  style={{ width: `${pct}%`, backgroundColor: stage.fill }}
+                />
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-foreground">
+                  {stage.value} deals
+                </span>
+              </div>
+              {i > 0 && (
+                <span className="text-[10px] text-destructive whitespace-nowrap w-12">
+                  −{dropOff.toFixed(0)}%
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Deal Velocity — horizontal bar
+  if (chart.dataSource === 'deal-velocity') {
+    const barHeight = Math.max(chartHeight, data.length * 32 + 40);
+    return (
+      <ResponsiveContainer width="100%" height={barHeight}>
+        <BarChart data={data} layout="vertical" margin={{ left: 10, right: 30 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} label={{ value: 'Avg Days', position: 'insideBottom', offset: -5, fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+          <YAxis dataKey="name" type="category" width={compact ? 100 : 140} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => [`${value} days`, 'Avg Duration']} />
+          <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+            {data.map((_: any, index: number) => (
+              <Cell key={index} fill={Number((data[index] as any).value) > 30 ? '#ef4444' : Number((data[index] as any).value) > 14 ? '#f59e0b' : '#22c55e'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  // Lender Leaderboard — table
+  if (chart.dataSource === 'lender-leaderboard') {
+    const rows = data as any[];
+    return (
+      <ScrollArea className={cn("border rounded-md", compact ? "h-[180px]" : "h-[300px]")}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">Lender</TableHead>
+              <TableHead className="text-xs text-right">Reviewed</TableHead>
+              <TableHead className="text-xs text-right">Funded</TableHead>
+              <TableHead className="text-xs text-right">Avg Resp (d)</TableHead>
+              <TableHead className="text-xs text-right">Pass %</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No lender data</TableCell></TableRow>
+            ) : rows.map((row: any) => (
+              <TableRow key={row.name}>
+                <TableCell className="font-medium text-xs truncate max-w-[120px]">{row.name}</TableCell>
+                <TableCell className="text-right text-xs">{row.reviewed}</TableCell>
+                <TableCell className="text-right text-xs">{row.funded}</TableCell>
+                <TableCell className="text-right text-xs">{row.avgResponseDays || '—'}</TableCell>
+                <TableCell className="text-right text-xs">
+                  <Badge variant={row.passRate > 60 ? 'destructive' : 'secondary'} className="text-[10px]">{row.passRate}%</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    );
+  }
+
+  // Stale Deal Alerts — list
+  if (chart.dataSource === 'stale-deal-alerts') {
+    const staleDeals = data as any[];
+    const formatCurrency = (v: number) => v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `$${(v / 1_000).toFixed(0)}K` : `$${v}`;
+    return (
+      <ScrollArea className={cn("border rounded-md", compact ? "h-[180px]" : "h-[300px]")}>
+        {staleDeals.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">No stale deals 🎉</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {staleDeals.map((deal: any, i: number) => (
+              <div key={i} className="flex items-center justify-between px-3 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate">{deal.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Badge variant="outline" className="text-[10px]">{deal.stage}</Badge>
+                    <span className="text-[10px] text-muted-foreground">{formatCurrency(deal.value)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 ml-2">
+                  <AlertTriangle className="h-3 w-3 text-destructive" />
+                  <span className="text-xs font-semibold text-destructive">{deal.daysInStage}d</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ScrollArea>
     );
   }
   
@@ -377,13 +620,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--popover))', 
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px'
-              }} 
-            />
+            <Tooltip contentStyle={tooltipStyle} />
             <Bar dataKey="value" fill={chart.color} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -396,13 +633,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--popover))', 
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px'
-              }} 
-            />
+            <Tooltip contentStyle={tooltipStyle} />
             <Line type="monotone" dataKey="value" stroke={chart.color} strokeWidth={2} dot={{ fill: chart.color }} />
           </RechartsLineChart>
         </ResponsiveContainer>
@@ -420,20 +651,14 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
               outerRadius={compact ? 60 : 80}
               paddingAngle={2}
               dataKey="value"
-              label={compact ? undefined : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              label={compact ? undefined : ({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
               labelLine={false}
             >
-              {data.map((_, index) => (
+              {data.map((_: any, index: number) => (
                 <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--popover))', 
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px'
-              }} 
-            />
+            <Tooltip contentStyle={tooltipStyle} />
           </RechartsPieChart>
         </ResponsiveContainer>
       );
@@ -445,13 +670,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--popover))', 
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px'
-              }} 
-            />
+            <Tooltip contentStyle={tooltipStyle} />
             <Area type="monotone" dataKey="value" stroke={chart.color} fill={chart.color} fillOpacity={0.3} />
           </RechartsAreaChart>
         </ResponsiveContainer>
@@ -466,7 +685,8 @@ function SortableChartCard({
   dateRange, 
   onEdit, 
   onDelete,
-  compact = false
+  compact = false,
+  stageLabels,
 }: { 
   chart: ChartConfig;
   deals: Deal[];
@@ -474,6 +694,7 @@ function SortableChartCard({
   onEdit: (chart: ChartConfig) => void;
   onDelete: (chartId: string) => void;
   compact?: boolean;
+  stageLabels?: Record<string, string>;
 }) {
   const {
     attributes,
@@ -527,7 +748,7 @@ function SortableChartCard({
         </div>
       </CardHeader>
       <CardContent className={compact ? "pt-0 pb-3" : undefined}>
-        <ChartRenderer chart={chart} deals={deals} dateRange={dateRange} compact={compact} />
+        <ChartRenderer chart={chart} deals={deals} dateRange={dateRange} compact={compact} stageLabels={stageLabels} />
       </CardContent>
     </Card>
   );
@@ -537,6 +758,13 @@ export default function Analytics() {
   const { charts, addChart, updateChart, deleteChart, reorderCharts } = useCharts();
   const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, resetToDefaults, presets, savePreset, loadPreset, deletePreset } = useAnalyticsWidgets();
   const { deals } = useDealsContext();
+  const { stages } = useDealStages();
+
+  const stageLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    stages.forEach(s => { map[s.id] = s.label; });
+    return map;
+  }, [stages]);
   
   // Chart dialogs
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
@@ -1075,7 +1303,7 @@ export default function Analytics() {
                     : "grid-cols-1 md:grid-cols-2"
                 )}>
                   {charts.map(chart => (
-                    <SortableChartCard
+                     <SortableChartCard
                       key={chart.id}
                       chart={chart}
                       deals={deals}
@@ -1083,6 +1311,7 @@ export default function Analytics() {
                       onEdit={handleOpenChartDialog}
                       onDelete={confirmDeleteChart}
                       compact={layoutMode === 'compact'}
+                      stageLabels={stageLabels}
                     />
                   ))}
                 </div>
