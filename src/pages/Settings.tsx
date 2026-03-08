@@ -324,6 +324,7 @@ export default function Settings() {
                 <TabsContent value="email" className="space-y-4 mt-4">
                   {isVisible('email-snippets') && <EmailSnippetsSettings />}
                   {isVisible('email-labels') && <EmailLabelsSettings />}
+                  {isVisible('distribution-stats') && <DistributionStatsSettings />}
                 </TabsContent>
               </Tabs>
             )}
