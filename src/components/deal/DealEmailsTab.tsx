@@ -130,6 +130,7 @@ function isAutoReplyOrNewsletter(email: MockEmail): boolean {
 }
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend }: DealEmailsTabProps) {
+  const navigate = useNavigate();
   const [emails, setEmails] = useState<MockEmail[]>(() => {
     const source = externalEmails || initialMockEmails;
     // Fix #13: suppress needs_response on auto-replies/newsletters
