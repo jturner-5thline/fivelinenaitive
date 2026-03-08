@@ -920,8 +920,46 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-background/60',
             (currentThread || composeOpen) ? 'hidden md:flex md:w-[380px]' : 'flex-1 md:w-[380px]'
           )}>
-            {/* Header with title + stat pills */}
+            {/* Header with title + stat pills OR bulk action bar */}
             <div className="border-b">
+              {selectedIds.size > 0 ? (
+                /* ─── Bulk Action Toolbar ─── */
+                <div className="flex items-center gap-2 px-3 py-2 bg-primary/5">
+                  <Checkbox
+                    checked={selectedIds.size === groupEmailsByThread(filteredEmails).length}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        const allIds = new Set(groupEmailsByThread(filteredEmails).map(t => t.threadId));
+                        setSelectedIds(allIds);
+                      } else {
+                        setSelectedIds(new Set());
+                      }
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-xs font-medium text-foreground">
+                    {selectedIds.size} selected
+                  </span>
+                  <Separator orientation="vertical" className="h-4 mx-1" />
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleBulkMarkRead}>
+                    <MailOpen className="h-3 w-3" /> Mark Read
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleBulkMarkUnread}>
+                    <Mail className="h-3 w-3" /> Mark Unread
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleBulkArchive}>
+                    <Archive className="h-3 w-3" /> Archive
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={handleBulkDelete}>
+                    <Trash2 className="h-3 w-3" /> Delete
+                  </Button>
+                  <div className="flex-1" />
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <>
               <div className="flex items-center justify-between px-3 py-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm font-semibold truncate">{activeLabel}</span>
@@ -995,6 +1033,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                   ))}
                 </div>
               )}
+                </>
+              )}
             </div>
 
             {/* Email list */}
@@ -1002,9 +1042,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               <EmailList
                 emails={filteredEmails}
                 selectedThread={currentThread}
-                onSelectThread={(thread) => { setSelectedThread(thread); setComposeOpen(false); }}
+                onSelectThread={handleSelectThread}
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                onMarkRead={handleMarkRead}
+                onMarkUnread={handleMarkUnread}
+                onArchive={handleArchiveEmail}
+                onDelete={handleDeleteEmail}
               />
             </div>
           </div>
