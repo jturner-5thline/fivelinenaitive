@@ -18,6 +18,7 @@ interface CopilotStore {
   openPanel: () => void;
   closePanel: () => void;
   addMessage: (message: CopilotMessage) => void;
+  setMessages: (messages: CopilotMessage[]) => void;
   setProcessing: (processing: boolean) => void;
   clearMessages: () => void;
   setConversationId: (id: string | null) => void;
@@ -35,6 +36,7 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   openPanel: () => set({ isOpen: true }),
   closePanel: () => set({ isOpen: false }),
   addMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
+  setMessages: (messages) => set({ messages }),
   setProcessing: (processing) => set({ isProcessing: processing }),
   clearMessages: () => set({ messages: [], conversationId: null }),
   setConversationId: (id) => set({ conversationId: id }),

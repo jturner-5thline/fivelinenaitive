@@ -2,7 +2,12 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ArrowUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useCopilotStore } from '@/stores/copilotStore';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
+
+const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
 function TypingIndicator() {
   return (
@@ -24,21 +29,85 @@ function TypingIndicator() {
   );
 }
 
+function getPageContext(): { page: string; entityType: string | null; entityId: string | null } {
+  const path = window.location.pathname;
+  const parts = path.split('/').filter(Boolean);
+
+  if (parts[0] === 'deals' && parts[1]) {
+    return { page: 'deal-detail', entityType: 'deal', entityId: parts[1] };
+  }
+  if (parts[0] === 'deals') return { page: 'deals', entityType: null, entityId: null };
+  if (parts[0] === 'tasks') return { page: 'tasks', entityType: null, entityId: null };
+  if (parts[0] === 'lenders' || parts[0] === 'master-lenders') return { page: 'lenders', entityType: null, entityId: null };
+  if (parts[0] === 'pipeline') return { page: 'pipeline', entityType: null, entityId: null };
+  return { page: parts[0] || 'dashboard', entityType: null, entityId: null };
+}
+
 export function AICopilotPanel() {
-  const { isOpen, closePanel, messages, addMessage, isProcessing } = useCopilotStore();
+  const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId } = useCopilotStore();
+  const { user } = useAuth();
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Load conversation on mount
+  useEffect(() => {
+    if (!isOpen || !user || messages.length > 0) return;
+    (async () => {
+      const { data } = await supabase
+        .from('copilot_conversations')
+        .select('id, messages')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (data?.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+        setConversationId(data.id);
+        setMessages(
+          (data.messages as any[]).map((m: any) => ({
+            id: m.id || crypto.randomUUID(),
+            role: m.role,
+            content: m.content,
+            timestamp: new Date(m.timestamp || Date.now()),
+          }))
+        );
+      }
+    })();
+  }, [isOpen, user]);
+
+  // Save conversation
+  const saveConversation = useCallback(
+    async (msgs: typeof messages) => {
+      if (!user) return;
+      const serialized = msgs.map((m) => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp }));
+      const ctx = getPageContext();
+      if (conversationId) {
+        await supabase
+          .from('copilot_conversations')
+          .update({ messages: serialized as any, page_context: ctx.page, updated_at: new Date().toISOString() })
+          .eq('id', conversationId);
+      } else {
+        const { data } = await supabase
+          .from('copilot_conversations')
+          .insert({ user_id: user.id, messages: serialized as any, page_context: ctx.page })
+          .select('id')
+          .single();
+        if (data) setConversationId(data.id);
+      }
+    },
+    [user, conversationId, setConversationId]
+  );
 
   // Auto-resize textarea
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 96) + 'px'; // max ~4 rows
+    ta.style.height = Math.min(ta.scrollHeight, 96) + 'px';
   }, [input]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -57,29 +126,163 @@ export function AICopilotPanel() {
     if (isOpen) setTimeout(() => textareaRef.current?.focus(), 200);
   }, [isOpen]);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || isProcessing) return;
 
-    addMessage({
+    const userMsg = {
       id: crypto.randomUUID(),
-      role: 'user',
+      role: 'user' as const,
       content: text,
       timestamp: new Date(),
-    });
+    };
 
+    addMessage(userMsg);
     setInput('');
+    setProcessing(true);
 
-    // Placeholder assistant reply with markdown
-    setTimeout(() => {
+    // Build history from current messages
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const ctx = getPageContext();
+
+    // Get session token
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      toast.error('Not authenticated');
+      setProcessing(false);
+      return;
+    }
+
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+
+    try {
+      const resp = await fetch(COPILOT_CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          message: text,
+          context: {
+            page: ctx.page,
+            entityType: ctx.entityType,
+            entityId: ctx.entityId,
+            userRole: 'member',
+            companyId: '',
+          },
+          history,
+        }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({}));
+        throw new Error(errBody.error || `Error ${resp.status}`);
+      }
+
+      if (!resp.body) throw new Error('No response body');
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = '';
+      let assistantContent = '';
+      const assistantId = crypto.randomUUID();
+      let streamDone = false;
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') {
+            streamDone = true;
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantContent += content;
+              // Upsert the assistant message in the store
+              const store = useCopilotStore.getState();
+              const existing = store.messages.find((m) => m.id === assistantId);
+              if (existing) {
+                useCopilotStore.setState({
+                  messages: store.messages.map((m) =>
+                    m.id === assistantId ? { ...m, content: assistantContent } : m
+                  ),
+                });
+              } else {
+                useCopilotStore.setState({
+                  messages: [
+                    ...store.messages,
+                    { id: assistantId, role: 'assistant', content: assistantContent, timestamp: new Date() },
+                  ],
+                });
+              }
+            }
+          } catch {
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Final flush
+      if (textBuffer.trim()) {
+        for (let raw of textBuffer.split('\n')) {
+          if (!raw) continue;
+          if (raw.endsWith('\r')) raw = raw.slice(0, -1);
+          if (raw.startsWith(':') || raw.trim() === '') continue;
+          if (!raw.startsWith('data: ')) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantContent += content;
+              useCopilotStore.setState({
+                messages: useCopilotStore.getState().messages.map((m) =>
+                  m.id === assistantId ? { ...m, content: assistantContent } : m
+                ),
+              });
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
+      // Save to DB
+      const allMsgs = useCopilotStore.getState().messages;
+      await saveConversation(allMsgs);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.error('Copilot stream error:', err);
+      toast.error(err.message || 'Failed to get AI response');
       addMessage({
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: "I'm being configured — I'll be able to help soon.\n\n**Features I'll support:**\n\n- Deal insights\n- Task summaries\n- Pipeline analysis\n- Context-aware suggestions",
+        content: 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date(),
       });
-    }, 400);
-  }, [input, addMessage]);
+    } finally {
+      setProcessing(false);
+    }
+  }, [input, isProcessing, messages, addMessage, setProcessing, saveConversation]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -265,7 +468,7 @@ export function AICopilotPanel() {
                 </div>
               </div>
             ))}
-            {isProcessing && (
+            {isProcessing && !messages.some((m) => m.role === 'assistant' && m.content === '') && messages[messages.length - 1]?.role === 'user' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 2 }}>
                   <img src={naitiveFavicon} alt="" style={{ width: 16, height: 16 }} />
@@ -319,7 +522,7 @@ export function AICopilotPanel() {
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isProcessing}
             aria-label="Send message"
             style={{
               position: 'absolute',
@@ -328,11 +531,11 @@ export function AICopilotPanel() {
               width: 32,
               height: 32,
               borderRadius: '50%',
-              background: input.trim() ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+              background: 'hsl(var(--primary))',
               color: 'white',
               border: 'none',
-              cursor: input.trim() ? 'pointer' : 'default',
-              opacity: input.trim() ? 1 : 0.5,
+              cursor: input.trim() && !isProcessing ? 'pointer' : 'default',
+              opacity: input.trim() && !isProcessing ? 1 : 0.5,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
