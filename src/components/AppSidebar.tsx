@@ -53,8 +53,7 @@ const menuItems = [
   { title: "Finance", url: "/finance", icon: DollarSign, featureKey: "finance" },
   { title: "Email Designer", url: "/email-designer", icon: Mail, featureKey: null },
   { title: "Video Library", url: "/video-library", icon: Video, featureKey: null },
-  { title: "WF Deals", url: "/wf-deals", icon: Briefcase, featureKey: null },
-  { title: "WF Tasks", url: "/wf-tasks", icon: CheckSquare, featureKey: null },
+  { title: "Workflows", url: "/wf", icon: Workflow, featureKey: null },
 ];
 
 const footerItems = [
