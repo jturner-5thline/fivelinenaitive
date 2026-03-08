@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Settings, Loader2, Check } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
 import { SaaSModelIncomeStatement } from './SaaSModelIncomeStatement';
@@ -8,7 +8,7 @@ import { SaaSModelBalanceSheet } from './SaaSModelBalanceSheet';
 import { SaaSModelDataMapping } from './SaaSModelDataMapping';
 import { SaaSModelSensitivity } from './SaaSModelSensitivity';
 import { SaaSModelDebtServicing } from './SaaSModelDebtServicing';
-import { SaaSModelSettings } from './SaaSModelSettings';
+
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -84,9 +84,6 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           <TabsTrigger value="debt-servicing" className="gap-1.5 text-xs rounded-sm h-7">
             <Landmark className="h-3.5 w-3.5" /> Debt Servicing
           </TabsTrigger>
-          <TabsTrigger value="settings" className="gap-1.5 text-xs rounded-sm h-7">
-            <Settings className="h-3.5 w-3.5" /> Settings
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
@@ -106,9 +103,6 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         </TabsContent>
         <TabsContent value="debt-servicing" className="mt-4">
           <SaaSModelDebtServicing lenders={lenders} updateLender={updateLender} />
-        </TabsContent>
-        <TabsContent value="settings" className="mt-4">
-          <SaaSModelSettings model={model} updateModel={updateModel} dealId={dealId} />
         </TabsContent>
       </Tabs>
     </div>
