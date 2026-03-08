@@ -8,7 +8,7 @@ import { SaaSModelBalanceSheet } from './SaaSModelBalanceSheet';
 import { SaaSModelDataMapping } from './SaaSModelDataMapping';
 import { SaaSModelSensitivity } from './SaaSModelSensitivity';
 import { SaaSModelDebtServicing } from './SaaSModelDebtServicing';
-import { SaaSModelSettings } from './SaaSModelSettings';
+
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
