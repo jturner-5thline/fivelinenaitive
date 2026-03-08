@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Circle, Clock } from "lucide-react";
 import { format } from "date-fns";
 
-export default function WfTasks() {
+export default function WfTasks({ embedded }: { embedded?: boolean }) {
   const { data: tasks = [] } = useWfTasks();
   const updateTask = useUpdateWfTaskStatus();
 
