@@ -38,27 +38,43 @@ export async function parseExcelFromBuffer(buffer: ArrayBuffer): Promise<ParsedE
         if (value === null || value === undefined) {
           rowData.push(null);
         } else if (typeof value === 'object') {
-          // Handle rich text, formulas, etc.
-          if ('result' in value) {
-            // Formula result
-            const result = value.result;
-            if (typeof result === 'number') {
+          // Handle rich text, formulas, errors, hyperlinks, dates, etc.
+          if (value instanceof Date) {
+            rowData.push(value.toLocaleDateString());
+          } else if ('result' in value) {
+            // Formula cell — extract the resolved result
+            const result = (value as any).result;
+            if (result === null || result === undefined) {
+              rowData.push(null);
+            } else if (typeof result === 'object') {
+              // Nested object result (e.g. error objects, rich text in formula)
+              if ('richText' in result) {
+                rowData.push((result as any).richText.map((rt: { text: string }) => rt.text).join(''));
+              } else if ('text' in result) {
+                rowData.push(String((result as any).text));
+              } else {
+                rowData.push(null);
+              }
+            } else if (typeof result === 'number') {
               rowData.push(result);
-            } else if (result !== undefined && result !== null) {
+            } else {
               rowData.push(String(result));
+            }
+          } else if ('richText' in value) {
+            rowData.push((value as any).richText.map((rt: { text: string }) => rt.text).join(''));
+          } else if ('text' in value) {
+            // Hyperlink or other object with text
+            rowData.push(String((value as any).text));
+          } else if ('error' in value) {
+            rowData.push(String((value as any).error));
+          } else {
+            // Unknown object shape — try to extract any reasonable value
+            const v = (value as any).v ?? (value as any).value ?? (value as any).w;
+            if (v !== undefined && v !== null) {
+              rowData.push(typeof v === 'number' ? v : String(v));
             } else {
               rowData.push(null);
             }
-          } else if ('richText' in value) {
-            // Rich text
-            rowData.push(value.richText.map((rt: { text: string }) => rt.text).join(''));
-          } else if ('text' in value) {
-            // Hyperlink or other object with text
-            rowData.push(String(value.text));
-          } else if (value instanceof Date) {
-            rowData.push(value.toLocaleDateString());
-          } else {
-            rowData.push(String(value));
           }
         } else if (typeof value === 'number') {
           rowData.push(value);

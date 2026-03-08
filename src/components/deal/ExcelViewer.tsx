@@ -312,7 +312,7 @@ export function ExcelViewer({
 
       {/* Spreadsheet Grid */}
       <div className="flex-1 overflow-auto" ref={tableRef}>
-        <table className="border-collapse text-sm w-max min-w-full">
+        <table className="border-collapse text-sm w-max min-w-full font-sans">
           <thead className="sticky top-0 z-10">
             <tr>
               <th className="sticky left-0 z-20 bg-secondary/80 backdrop-blur-sm border-b border-r border-border/30 px-2 py-1.5 text-center text-[11px] font-medium text-muted-foreground w-12">
