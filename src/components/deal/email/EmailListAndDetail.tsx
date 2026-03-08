@@ -354,9 +354,15 @@ interface EmailListProps {
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
   isLoading?: boolean;
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
+  onMarkRead?: (email: MockEmail) => void;
+  onMarkUnread?: (email: MockEmail) => void;
+  onArchive?: (email: MockEmail) => void;
+  onDelete?: (email: MockEmail) => void;
 }
 
-export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading }: EmailListProps) {
+export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete }: EmailListProps) {
   if (isLoading) {
     return <EmailListSkeleton />;
   }
@@ -372,6 +378,14 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
     );
   }
 
+  const handleCheckChange = (threadId: string, checked: boolean) => {
+    if (!onSelectionChange || !selectedIds) return;
+    const next = new Set(selectedIds);
+    if (checked) next.add(threadId);
+    else next.delete(threadId);
+    onSelectionChange(next);
+  };
+
    return (
     <ScrollArea className="h-full w-full">
       <div className="pt-2 pb-2 overflow-hidden">
@@ -383,6 +397,12 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
             onSelect={() => onSelectThread(thread)}
             onToggleLink={onToggleLink}
             onToggleStar={onToggleStar}
+            isChecked={selectedIds?.has(thread.threadId)}
+            onCheckChange={(checked) => handleCheckChange(thread.threadId, checked)}
+            onMarkRead={onMarkRead}
+            onMarkUnread={onMarkUnread}
+            onArchive={onArchive}
+            onDelete={onDelete}
           />
         ))}
       </div>
