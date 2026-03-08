@@ -205,6 +205,6 @@ export default function EmailDesigner() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
