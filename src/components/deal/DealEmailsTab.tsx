@@ -415,14 +415,17 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [selectedIds]);
 
   const handleBulkArchive = useCallback(() => {
-    setEmails(prev => prev.map(e => {
-      const threads = groupEmailsByThread([e]);
-      if (threads.some(t => selectedIds.has(t.threadId))) return { ...e, folder: 'archive' as const };
-      return e;
-    }));
+    const idsToArchive = new Set<string>();
+    const allThreads = groupEmailsByThread(emails);
+    allThreads.forEach(t => {
+      if (selectedIds.has(t.threadId)) {
+        t.emails.forEach(e => idsToArchive.add(e.id));
+      }
+    });
+    setEmails(prev => prev.filter(e => !idsToArchive.has(e.id)));
     toast.success(`${selectedIds.size} archived`);
     setSelectedIds(new Set());
-  }, [selectedIds]);
+  }, [selectedIds, emails]);
 
   const handleBulkDelete = useCallback(() => {
     const idsToDelete = new Set<string>();
