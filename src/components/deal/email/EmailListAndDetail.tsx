@@ -363,7 +363,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
         onClick={toggleExpand}
         className="w-full flex items-center gap-3 px-4 py-3 text-left"
       >
-        <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} size="sm" />
+        <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="sm" />
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <span className={cn('text-sm truncate', isLatest ? 'font-semibold' : 'font-medium text-foreground/80')}>
             {displayName}
