@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Loader2, Save, Undo2, Download } from 'lucide-react';
+import { Loader2, Save, Undo2, Download, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import ExcelJS from 'exceljs';
 import { parseExcelFromUrl, ParsedSheet, createWorkbookFromSheets, workbookToBlob } from '@/lib/excelUtils';
+import type { MappingSuggestion } from '@/hooks/useMappingSuggestions';
 
 interface ExcelViewerProps {
   fileUrl: string;
@@ -13,6 +16,9 @@ interface ExcelViewerProps {
   onSave?: (workbook: ExcelJS.Workbook) => Promise<void>;
   onDownload?: () => void;
   readOnly?: boolean;
+  suggestions?: MappingSuggestion[];
+  onAcceptSuggestion?: (rowIdx: number) => void;
+  onRejectSuggestion?: (rowIdx: number) => void;
 }
 
 interface CellEdit {
@@ -23,12 +29,31 @@ interface CellEdit {
   newValue: string;
 }
 
+// Color map for suggestion categories
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  is: { bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-500/20' },
+  bs: { bg: 'bg-violet-500/10', text: 'text-violet-600 dark:text-violet-400', border: 'border-violet-500/20' },
+  checklist: { bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/20' },
+};
+
+function ConfidenceDot({ value }: { value: number }) {
+  const color = value >= 0.85
+    ? 'bg-emerald-500'
+    : value >= 0.7
+      ? 'bg-amber-500'
+      : 'bg-muted-foreground/50';
+  return <span className={cn('inline-block h-1.5 w-1.5 rounded-full', color)} />;
+}
+
 export function ExcelViewer({ 
   fileUrl, 
   fileName, 
   onSave, 
   onDownload,
-  readOnly = false 
+  readOnly = false,
+  suggestions = [],
+  onAcceptSuggestion,
+  onRejectSuggestion,
 }: ExcelViewerProps) {
   const [workbook, setWorkbook] = useState<ExcelJS.Workbook | null>(null);
   const [sheets, setSheets] = useState<ParsedSheet[]>([]);
@@ -42,6 +67,12 @@ export function ExcelViewer({
   
   const inputRef = useRef<HTMLInputElement>(null);
   const tableRef = useRef<HTMLDivElement>(null);
+
+  // Build suggestions lookup
+  const suggestionMap = new Map<number, MappingSuggestion>();
+  suggestions.forEach(s => {
+    if (s.status !== 'rejected') suggestionMap.set(s.rowIdx, s);
+  });
 
   // Load Excel file
   useEffect(() => {
@@ -102,7 +133,6 @@ export function ExcelViewer({
     const oldValueStr = oldValue !== null && oldValue !== undefined ? String(oldValue) : '';
     
     if (editValue !== oldValueStr) {
-      // Record the edit
       setEditHistory(prev => [...prev, {
         sheet: activeSheet,
         row,
@@ -111,16 +141,13 @@ export function ExcelViewer({
         newValue: editValue,
       }]);
 
-      // Update the sheet data
       setSheets(prev => prev.map(sheet => {
         if (sheet.name !== activeSheet) return sheet;
         
         const newData = [...sheet.data];
-        // Ensure the row exists
         while (newData.length <= row) {
           newData.push([]);
         }
-        // Ensure the column exists
         while (newData[row].length <= col) {
           newData[row].push(null);
         }
@@ -141,7 +168,6 @@ export function ExcelViewer({
       e.preventDefault();
       handleCellBlur();
       
-      // Move to next row
       if (editingCell && currentSheet) {
         const nextRow = editingCell.row + 1;
         if (nextRow < currentSheet.data.length) {
@@ -152,7 +178,6 @@ export function ExcelViewer({
       e.preventDefault();
       handleCellBlur();
       
-      // Move to next column
       if (editingCell && currentSheet) {
         const nextCol = editingCell.col + 1;
         const maxCols = Math.max(...currentSheet.data.map(r => r.length));
@@ -191,9 +216,7 @@ export function ExcelViewer({
 
     setIsSaving(true);
     try {
-      // Create workbook from current sheet data
       const updatedWorkbook = createWorkbookFromSheets(sheets);
-
       await onSave(updatedWorkbook);
       setHasUnsavedChanges(false);
       setEditHistory([]);
@@ -237,6 +260,7 @@ export function ExcelViewer({
   }
 
   const maxCols = Math.max(...currentSheet.data.map(r => r.length), 1);
+  const hasSuggestions = suggestionMap.size > 0;
 
   return (
     <div className="h-full flex flex-col bg-card/40 backdrop-blur-md rounded-lg border border-border/50">
@@ -246,6 +270,12 @@ export function ExcelViewer({
           <span className="text-sm font-medium truncate max-w-[200px] text-foreground">{fileName}</span>
           {hasUnsavedChanges && (
             <span className="text-xs text-warning">• Unsaved changes</span>
+          )}
+          {hasSuggestions && (
+            <Badge variant="outline" className="text-[9px] h-5 gap-1 bg-primary/5 text-primary border-primary/20">
+              <Sparkles className="h-2.5 w-2.5" />
+              {suggestionMap.size} AI suggestion{suggestionMap.size > 1 ? 's' : ''}
+            </Badge>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -330,45 +360,101 @@ export function ExcelViewer({
             </tr>
           </thead>
           <tbody>
-            {currentSheet.data.map((row, rowIndex) => (
-              <tr key={rowIndex} className="group">
-                <td className="sticky left-0 z-10 bg-secondary/60 backdrop-blur-sm border-b border-r border-border/20 px-2 py-1 text-center text-[11px] font-medium text-muted-foreground w-12">
-                  {rowIndex + 1}
-                </td>
-                {Array.from({ length: maxCols }).map((_, colIndex) => {
-                  const cellValue = row[colIndex];
-                  const isEditing = editingCell?.row === rowIndex && editingCell?.col === colIndex;
-                  
-                  return (
-                    <td
-                      key={colIndex}
-                      className={cn(
-                        "border-b border-r border-border/15 px-2 py-1 bg-transparent text-foreground/90",
-                        "hover:bg-primary/5 cursor-cell transition-colors duration-150",
-                        isEditing && "p-0 ring-1 ring-primary/50 bg-card"
-                      )}
-                      style={{ minWidth: currentSheet.colWidths[colIndex] || 100 }}
-                      onClick={() => handleCellClick(rowIndex, colIndex)}
-                    >
-                      {isEditing ? (
-                        <Input
-                          ref={inputRef}
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={handleCellBlur}
-                          onKeyDown={handleKeyDown}
-                          className="h-full w-full border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-primary text-sm px-2 py-1"
-                        />
-                      ) : (
-                        <span className="block truncate text-[13px]">
-                          {cellValue !== null && cellValue !== undefined ? String(cellValue) : ''}
-                        </span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {currentSheet.data.map((row, rowIndex) => {
+              const suggestion = suggestionMap.get(rowIndex);
+              const catColors = suggestion ? CATEGORY_COLORS[suggestion.category] || CATEGORY_COLORS.is : null;
+
+              return (
+                <tr
+                  key={rowIndex}
+                  className={cn(
+                    "group",
+                    suggestion && "relative",
+                    suggestion && suggestion.status === 'accepted' && "bg-emerald-500/5",
+                  )}
+                >
+                  <td className={cn(
+                    "sticky left-0 z-10 backdrop-blur-sm border-b border-r border-border/20 px-2 py-1 text-center text-[11px] font-medium text-muted-foreground w-12",
+                    suggestion ? "bg-primary/5" : "bg-secondary/60",
+                  )}>
+                    <div className="flex items-center justify-center gap-1">
+                      {rowIndex + 1}
+                      {suggestion && <ConfidenceDot value={suggestion.confidence} />}
+                    </div>
+                  </td>
+                  {Array.from({ length: maxCols }).map((_, colIndex) => {
+                    const cellValue = row[colIndex];
+                    const isEditing = editingCell?.row === rowIndex && editingCell?.col === colIndex;
+                    const isFirstCol = colIndex === 0 && suggestion;
+                    
+                    return (
+                      <td
+                        key={colIndex}
+                        className={cn(
+                          "border-b border-r border-border/15 px-2 py-1 bg-transparent text-foreground/90",
+                          "hover:bg-primary/5 cursor-cell transition-colors duration-150",
+                          isEditing && "p-0 ring-1 ring-primary/50 bg-card",
+                          suggestion && !isEditing && catColors?.bg,
+                        )}
+                        style={{ minWidth: currentSheet.colWidths[colIndex] || 100 }}
+                        onClick={() => handleCellClick(rowIndex, colIndex)}
+                      >
+                        {isEditing ? (
+                          <Input
+                            ref={inputRef}
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={handleCellBlur}
+                            onKeyDown={handleKeyDown}
+                            className="h-full w-full border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-primary text-sm px-2 py-1"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="block truncate text-[13px]">
+                              {cellValue !== null && cellValue !== undefined ? String(cellValue) : ''}
+                            </span>
+                            {isFirstCol && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "text-[8px] h-4 px-1.5 shrink-0 cursor-default",
+                                      catColors?.bg, catColors?.text, catColors?.border,
+                                    )}
+                                  >
+                                    <Sparkles className="h-2 w-2 mr-0.5" />
+                                    {suggestion!.suggestedField}
+                                    <span className="ml-1 opacity-70">{Math.round(suggestion!.confidence * 100)}%</span>
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-[200px]">
+                                  <p className="text-xs">{suggestion!.reason}</p>
+                                  {(onAcceptSuggestion || onRejectSuggestion) && (
+                                    <div className="flex gap-1 mt-1.5">
+                                      {onAcceptSuggestion && (
+                                        <Button size="sm" className="h-5 text-[10px] px-2" onClick={(e) => { e.stopPropagation(); onAcceptSuggestion(rowIndex); }}>
+                                          Accept
+                                        </Button>
+                                      )}
+                                      {onRejectSuggestion && (
+                                        <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2" onClick={(e) => { e.stopPropagation(); onRejectSuggestion(rowIndex); }}>
+                                          Dismiss
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -378,11 +464,19 @@ export function ExcelViewer({
         <span>
           {currentSheet.data.length} rows × {maxCols} columns
         </span>
-        {editingCell && (
-          <span className="text-primary/80">
-            Editing: {getColumnLabel(editingCell.col)}{editingCell.row + 1}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {hasSuggestions && (
+            <span className="text-primary/80">
+              <Sparkles className="h-3 w-3 inline mr-1" />
+              {suggestionMap.size} suggested mapping{suggestionMap.size > 1 ? 's' : ''}
+            </span>
+          )}
+          {editingCell && (
+            <span className="text-primary/80">
+              Editing: {getColumnLabel(editingCell.col)}{editingCell.row + 1}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
