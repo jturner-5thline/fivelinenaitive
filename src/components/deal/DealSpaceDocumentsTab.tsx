@@ -204,24 +204,9 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
             </div>
             <div className="flex items-center gap-2">
               {documents.length > 0 && (
-                <>
-                  <Badge variant="secondary" className="text-xs">
-                    {documents.length} file{documents.length !== 1 ? 's' : ''}
-                  </Badge>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleSummarize}
-                    disabled={isSummarizing}
-                  >
-                    {isSummarizing ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Zap className="h-4 w-4 mr-2" />
-                    )}
-                    Summarize All
-                  </Button>
-                </>
+                <Badge variant="secondary" className="text-xs">
+                  {documents.length} file{documents.length !== 1 ? 's' : ''}
+                </Badge>
               )}
             </div>
           </div>
