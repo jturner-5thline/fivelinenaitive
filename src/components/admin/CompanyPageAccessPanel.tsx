@@ -54,6 +54,7 @@ const featureConfigs: FeatureConfig[] = [
   { featureKey: 'page_agents', label: 'AI Agents', description: 'AI-powered automation agents', icon: <Bot className="h-4 w-4" /> },
   { featureKey: 'page_finance', label: 'Finance', description: 'Financial management and reporting', icon: <DollarSign className="h-4 w-4" /> },
   { featureKey: 'page_ai_research', label: 'AI Research', description: 'AI-powered research tools', icon: <Sparkles className="h-4 w-4" /> },
+  { featureKey: 'page_video_library', label: 'Video Library', description: 'Walkthrough videos and learning resources', icon: <Video className="h-4 w-4" /> },
   { featureKey: 'chat_widget', label: 'AI Chat Widget', description: 'AI search and chat assistant', icon: <Bot className="h-4 w-4" /> },
   { featureKey: 'copilot_widget', label: 'naitive Copilot', description: 'Floating AI copilot drawer', icon: <Sparkles className="h-4 w-4" /> },
   { featureKey: 'deal_pulse_widgets', label: 'Deal Pulse Widgets', description: 'Health score, days in stage, lender count metrics', icon: <Activity className="h-4 w-4" /> },

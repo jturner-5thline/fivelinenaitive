@@ -123,6 +123,12 @@ const pageConfigs: PageConfig[] = [
     icon: <Sparkles className="h-5 w-5" />
   },
   { 
+    featureKey: "page_video_library", 
+    label: "Video Library", 
+    description: "Walkthrough videos and learning resources",
+    icon: <Video className="h-5 w-5" />
+  },
+  { 
     featureKey: "chat_widget", 
     label: "AI Chat Widget", 
     description: "AI search and chat assistant widget",
