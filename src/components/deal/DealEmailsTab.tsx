@@ -213,7 +213,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     };
   }, [emails]);
 
-  const sidebarSections: SidebarSection[] = [
+  const sidebarSections: (SidebarSection & { isDealFilter?: boolean })[] = [
     {
       title: 'Views',
       defaultOpen: true,
@@ -224,11 +224,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         { id: 'follow_up', label: 'Follow Up', icon: Clock, count: followUpCount || undefined, filterFn: e => e.is_follow_up && e.folder === 'inbox' },
         { id: 'drafts', label: 'Drafts', icon: FileEdit, count: emails.filter(e => e.folder === 'drafts').length || undefined, filterFn: e => e.folder === 'drafts' },
         { id: 'sent', label: 'Sent Items', icon: Send, count: emails.filter(e => e.folder === 'sent').length || undefined, filterFn: e => e.folder === 'sent' },
+        { id: 'newsletters', label: 'Newsletters', icon: Rss, count: countByCategory('newsletter') || undefined, filterFn: e => e.category === 'newsletter' },
       ],
     },
     {
       title: 'Active Deals',
       defaultOpen: true,
+      isDealFilter: true,
       items: activeDealNames.map(name => ({
         id: `deal_${name}`,
         label: name,
@@ -241,10 +243,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     {
       title: 'Other',
       defaultOpen: false,
+      isDealFilter: true,
       items: [
         { id: 'cat_prospect', label: 'Prospects', emoji: '🎯', icon: Target, count: countByCategory('prospect') || undefined, filterFn: e => e.category === 'prospect' },
         { id: 'cat_lender', label: 'Lenders', emoji: '🏦', icon: Landmark, count: countByCategory('lender') || undefined, filterFn: e => e.category === 'lender' },
-        { id: 'cat_newsletter', label: 'Newsletters', emoji: '📰', icon: Newspaper, count: countByCategory('newsletter') || undefined, filterFn: e => e.category === 'newsletter' },
         { id: 'cat_conference', label: 'Conferences/Events', emoji: '🎪', icon: Calendar, count: countByCategory('conference') || undefined, filterFn: e => e.category === 'conference' },
         { id: 'cat_partnership', label: 'Partnerships', emoji: '🤝', icon: Handshake, count: countByCategory('partnership') || undefined, filterFn: e => e.category === 'partnership' },
       ],
@@ -252,6 +254,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     {
       title: 'Internal Process',
       defaultOpen: false,
+      isDealFilter: true,
       items: [
         { id: 'cat_internal_deal', label: 'Deal Management', emoji: '📋', icon: BarChart3, count: emails.filter(e => e.category === 'internal' && e.deal_name).length || undefined, filterFn: e => e.category === 'internal' && !!e.deal_name },
         { id: 'cat_internal_all', label: 'All Hands', emoji: '👥', icon: Users, count: emails.filter(e => e.category === 'internal' && !e.deal_name).length || undefined, filterFn: e => e.category === 'internal' && !e.deal_name },
@@ -260,6 +263,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     {
       title: 'Closed Deals / Archived',
       defaultOpen: false,
+      isDealFilter: true,
       items: [
         { id: 'cat_closed_won', label: 'Successfully Closed', emoji: '✅', icon: CheckCircle2, count: countByCategory('closed_won') || undefined, filterFn: e => e.category === 'closed_won' },
         { id: 'cat_closed_lost', label: 'Closed Lost', emoji: '❌', icon: XCircle, count: countByCategory('closed_lost') || undefined, filterFn: e => e.category === 'closed_lost' },
