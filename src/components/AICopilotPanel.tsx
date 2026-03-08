@@ -25,7 +25,7 @@ function TypingIndicator() {
 }
 
 export function AICopilotPanel() {
-  const { isOpen, closePanel, messages, addMessage } = useCopilotStore();
+  const { isOpen, closePanel, messages, addMessage, isProcessing } = useCopilotStore();
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
