@@ -607,7 +607,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="flex h-full overflow-hidden max-w-full">
           {/* ─── Left: Grouped sidebar ─── */}
-          <div className="border-r flex-shrink-0 w-[220px] flex flex-col">
+          <div className="border-r flex-shrink-0 w-[220px] flex flex-col bg-background/80">
             <div className="p-2">
               <div className="relative flex gap-1">
                 <div className="relative flex-1">
