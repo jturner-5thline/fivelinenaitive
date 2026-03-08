@@ -3627,6 +3627,143 @@ export type Database = {
           },
         ]
       }
+      deal_saas_lenders: {
+        Row: {
+          config: Json
+          deal_id: string
+          id: string
+          lender_index: number
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json
+          deal_id: string
+          id?: string
+          lender_index?: number
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json
+          deal_id?: string
+          id?: string
+          lender_index?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_saas_lenders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_saas_mappings: {
+        Row: {
+          analysis_result: Json | null
+          deal_id: string
+          detected_date_cols: number[] | null
+          field_mappings: Json | null
+          file_name: string
+          file_size: number | null
+          file_storage_path: string | null
+          id: string
+          mapped_at: string | null
+        }
+        Insert: {
+          analysis_result?: Json | null
+          deal_id: string
+          detected_date_cols?: number[] | null
+          field_mappings?: Json | null
+          file_name: string
+          file_size?: number | null
+          file_storage_path?: string | null
+          id?: string
+          mapped_at?: string | null
+        }
+        Update: {
+          analysis_result?: Json | null
+          deal_id?: string
+          detected_date_cols?: number[] | null
+          field_mappings?: Json | null
+          file_name?: string
+          file_size?: number | null
+          file_storage_path?: string | null
+          id?: string
+          mapped_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_saas_mappings_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_saas_model: {
+        Row: {
+          deal_id: string
+          id: string
+          model_data: Json
+          settings: Json
+          updated_at: string | null
+        }
+        Insert: {
+          deal_id: string
+          id?: string
+          model_data?: Json
+          settings?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          deal_id?: string
+          id?: string
+          model_data?: Json
+          settings?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_saas_model_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_saas_sensitivity: {
+        Row: {
+          deal_id: string
+          id: string
+          scenarios: Json
+          updated_at: string | null
+        }
+        Insert: {
+          deal_id: string
+          id?: string
+          scenarios?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          deal_id?: string
+          id?: string
+          scenarios?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_saas_sensitivity_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_sla_rules: {
         Row: {
           action_config: Json
