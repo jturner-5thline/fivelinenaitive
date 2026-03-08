@@ -101,17 +101,17 @@ export function ExcelModelSheet({ sheet, onCellChange, readOnly = true }: ExcelM
   };
 
   return (
-    <div className="h-full overflow-auto">
+    <div className="h-full overflow-auto bg-card/40 backdrop-blur-md rounded-lg border border-border/50">
       <table className="border-collapse text-sm w-max min-w-full">
         <thead className="sticky top-0 z-10">
           <tr>
-            <th className="sticky left-0 z-20 bg-muted border border-border px-2 py-1 text-center text-xs font-medium text-muted-foreground w-12">
+            <th className="sticky left-0 z-20 bg-secondary/80 backdrop-blur-sm border-b border-r border-border/30 px-2 py-1.5 text-center text-[11px] font-medium text-muted-foreground w-12">
               
             </th>
             {Array.from({ length: maxCols }).map((_, colIndex) => (
               <th
                 key={colIndex}
-                className="bg-muted border border-border px-2 py-1 text-center text-xs font-medium text-muted-foreground"
+                className="bg-secondary/80 backdrop-blur-sm border-b border-r border-border/30 px-2 py-1.5 text-center text-[11px] font-medium text-muted-foreground"
                 style={{ minWidth: sheet.colWidths[colIndex] || 100 }}
               >
                 {getColumnLabel(colIndex)}
@@ -124,7 +124,7 @@ export function ExcelModelSheet({ sheet, onCellChange, readOnly = true }: ExcelM
             const isHeader = isHeaderRow(rowIndex);
             return (
               <tr key={rowIndex} className="group">
-                <td className="sticky left-0 z-10 bg-muted border border-border px-2 py-1 text-center text-xs font-medium text-muted-foreground w-12">
+                <td className="sticky left-0 z-10 bg-secondary/60 backdrop-blur-sm border-b border-r border-border/20 px-2 py-1 text-center text-[11px] font-medium text-muted-foreground w-12">
                   {rowIndex + 1}
                 </td>
                 {Array.from({ length: maxCols }).map((_, colIndex) => {
@@ -136,11 +136,11 @@ export function ExcelModelSheet({ sheet, onCellChange, readOnly = true }: ExcelM
                     <td
                       key={colIndex}
                       className={cn(
-                        "border border-border px-2 py-1 bg-background",
-                        !readOnly && "hover:bg-muted/50 cursor-cell",
-                        isEditing && "p-0 bg-background",
-                        isHeader && "bg-slate-50 dark:bg-slate-900 font-medium",
-                        isNumeric && "text-right font-mono"
+                        "border-b border-r border-border/15 px-2 py-1 bg-transparent text-foreground/90",
+                        !readOnly && "hover:bg-primary/5 cursor-cell transition-colors duration-150",
+                        isEditing && "p-0 ring-1 ring-primary/50 bg-card",
+                        isHeader && "bg-secondary/30 font-medium",
+                        isNumeric && "text-right font-mono tabular-nums"
                       )}
                       style={{ minWidth: sheet.colWidths[colIndex] || 100 }}
                       onClick={() => handleCellClick(rowIndex, colIndex)}
@@ -152,10 +152,10 @@ export function ExcelModelSheet({ sheet, onCellChange, readOnly = true }: ExcelM
                           onChange={(e) => setEditValue(e.target.value)}
                           onBlur={handleCellBlur}
                           onKeyDown={handleKeyDown}
-                          className="h-full w-full border-0 rounded-none focus-visible:ring-2 focus-visible:ring-primary text-sm px-2 py-1"
+                          className="h-full w-full border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-primary text-sm px-2 py-1"
                         />
                       ) : (
-                        <span className="block truncate">
+                        <span className="block truncate text-[13px]">
                           {cellValue !== null && cellValue !== undefined ? String(cellValue) : ''}
                         </span>
                       )}
