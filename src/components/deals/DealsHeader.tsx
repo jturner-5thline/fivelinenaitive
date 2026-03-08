@@ -33,7 +33,7 @@ export function DealsHeader() {
           </div>
         </div>
 
-        <nav className="hidden items-center gap-0.5 md:flex mx-auto shrink-0">
+        <nav className="hidden items-center gap-0.5 md:flex absolute left-1/2 -translate-x-1/2">
           <Button 
             variant="ghost" 
             size="sm" 
