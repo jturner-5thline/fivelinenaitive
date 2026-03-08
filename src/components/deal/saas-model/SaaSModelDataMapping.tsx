@@ -1,0 +1,571 @@
+import { useState, useCallback, useRef } from 'react';
+import { SaaSModelData, IS_FIELDS, BS_FIELDS, FieldMapping, MappingFieldName, FileAnalysisResult } from './types';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft } from 'lucide-react';
+import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
+
+interface Props {
+  dealId: string;
+  model: SaaSModelData;
+  updateModel: (updater: (prev: SaaSModelData) => SaaSModelData) => void;
+  recalculate: () => void;
+}
+
+// Keyword alias dictionary for auto-detection
+const KEYWORD_ALIASES: Record<string, MappingFieldName> = {
+  'mrr': 'Recurring Revenue', 'monthly recurring revenue': 'Recurring Revenue', 'recurring revenue': 'Recurring Revenue', 'subscription revenue': 'Recurring Revenue', 'saas revenue': 'Recurring Revenue',
+  'non-recurring': 'Non-Recurring Revenue', 'non recurring revenue': 'Non-Recurring Revenue', 'one-time revenue': 'Non-Recurring Revenue', 'services revenue': 'Non-Recurring Revenue', 'professional services': 'Non-Recurring Revenue',
+  'other revenue': 'Other Revenue', 'other income': 'Other Revenue', 'miscellaneous revenue': 'Other Revenue',
+  'cogs recurring': 'COGS on Recurring Revenue', 'cost of recurring': 'COGS on Recurring Revenue', 'hosting costs': 'COGS on Recurring Revenue',
+  'cogs non-recurring': 'COGS on Non-Recurring Revenue', 'cost of services': 'COGS on Non-Recurring Revenue',
+  'cogs labor': 'COGS - Labor', 'cost of labor': 'COGS - Labor', 'direct labor': 'COGS - Labor',
+  'salaries': 'Salaries and Benefits', 'salary': 'Salaries and Benefits', 'wages': 'Salaries and Benefits', 'compensation': 'Salaries and Benefits', 'payroll': 'Salaries and Benefits', 'benefits': 'Salaries and Benefits',
+  'sales and marketing': 'Sales and Marketing', 's&m': 'Sales and Marketing', 'marketing': 'Sales and Marketing', 'advertising': 'Sales and Marketing',
+  'r&d': 'Research and Development', 'research': 'Research and Development', 'development': 'Research and Development', 'engineering': 'Research and Development',
+  'professional fees': 'Professional Fees', 'legal': 'Professional Fees', 'accounting': 'Professional Fees', 'consulting': 'Professional Fees',
+  'g&a': 'General and Administrative', 'general and admin': 'General and Administrative', 'admin': 'General and Administrative', 'office': 'General and Administrative', 'rent': 'General and Administrative',
+  'interest expense': 'Interest Expense', 'interest paid': 'Interest Expense',
+  'interest income': 'Interest Income', 'interest earned': 'Interest Income',
+  'depreciation': 'Depreciation Expense', 'amortization': 'Depreciation Expense', 'd&a': 'Depreciation Expense',
+  'other expense': 'Other Expense', 'other expenses': 'Other Expense',
+  'tax': 'Tax Expense', 'taxes': 'Tax Expense', 'income tax': 'Tax Expense', 'tax expense': 'Tax Expense',
+  'cash': 'Cash and Cash Equivalents', 'cash and equivalents': 'Cash and Cash Equivalents', 'cash & equivalents': 'Cash and Cash Equivalents',
+  'marketable securities': 'Marketable Securities', 'investments': 'Marketable Securities', 'short-term investments': 'Marketable Securities',
+  'accounts receivable': 'Accounts Receivable', 'a/r': 'Accounts Receivable', 'ar': 'Accounts Receivable', 'trade receivables': 'Accounts Receivable',
+  'prepaid': 'Prepaid Expenses', 'prepaid expenses': 'Prepaid Expenses', 'prepaids': 'Prepaid Expenses',
+  'inventory': 'Inventory', 'inventories': 'Inventory',
+  'other current assets': 'Other Current Assets',
+  'ppe': 'Property Plant & Equipment', 'property': 'Property Plant & Equipment', 'pp&e': 'Property Plant & Equipment', 'equipment': 'Property Plant & Equipment',
+  'fixed assets': 'Fixed Assets',
+  'capitalized software': 'Capitalized Software', 'cap software': 'Capitalized Software', 'software': 'Capitalized Software',
+  'intangibles': 'Intangible Assets', 'intangible assets': 'Intangible Assets', 'goodwill': 'Intangible Assets',
+  'other lt assets': 'Other LT Assets', 'other long-term assets': 'Other LT Assets',
+  'accounts payable': 'Accounts Payable', 'a/p': 'Accounts Payable', 'ap': 'Accounts Payable', 'trade payables': 'Accounts Payable',
+  'credit cards': 'Credit Cards', 'credit card': 'Credit Cards',
+  'employee accruals': 'Employee Accruals', 'accrued compensation': 'Employee Accruals', 'accrued payroll': 'Employee Accruals',
+  'other accrued': 'Other Accrued Liabilities', 'accrued liabilities': 'Other Accrued Liabilities', 'accrued expenses': 'Other Accrued Liabilities',
+  'short-term debt': 'Short-Term Debt', 'st debt': 'Short-Term Debt', 'current debt': 'Short-Term Debt', 'line of credit': 'Short-Term Debt',
+  'deferred revenue': 'Deferred Revenue', 'unearned revenue': 'Deferred Revenue', 'deferred': 'Deferred Revenue',
+  'other st liabilities': 'Other Short-Term Liabilities', 'other current liabilities': 'Other Short-Term Liabilities',
+  'long-term debt': 'Long-Term Debt', 'lt debt': 'Long-Term Debt', 'term loan': 'Long-Term Debt', 'notes payable': 'Long-Term Debt',
+  'government loan': 'Government Loan', 'gov loan': 'Government Loan', 'ppp': 'Government Loan', 'eidl': 'Government Loan', 'sba': 'Government Loan',
+  'shareholder loan': 'Shareholder Loan', 'shareholder note': 'Shareholder Loan', 'related party': 'Shareholder Loan',
+  'convertible': 'Convertible Notes', 'convertible notes': 'Convertible Notes', 'convertible debt': 'Convertible Notes',
+  'paid in capital': 'Paid in Capital', 'common stock': 'Paid in Capital', 'equity': 'Paid in Capital', 'additional paid-in': 'Paid in Capital',
+  'retained earnings': 'Retained Earnings', 'accumulated deficit': 'Retained Earnings',
+};
+
+type Phase = 'upload' | 'triage' | 'mapping';
+
+interface AnalyzedFile {
+  file: File;
+  sheets: ParsedSheet[];
+  analysis: FileAnalysisResult;
+}
+
+// Map field name to model data path
+function getFieldPath(fieldName: MappingFieldName): string[] {
+  const map: Record<string, string[]> = {
+    'Recurring Revenue': ['revenue', 'recurring'],
+    'Non-Recurring Revenue': ['revenue', 'nonRecurring'],
+    'Other Revenue': ['revenue', 'other'],
+    'COGS on Recurring Revenue': ['cogs', 'onRecurring'],
+    'COGS on Non-Recurring Revenue': ['cogs', 'onNonRecurring'],
+    'COGS - Labor': ['cogs', 'labor'],
+    'Salaries and Benefits': ['opex', 'salaries'],
+    'Sales and Marketing': ['opex', 'salesMarketing'],
+    'Research and Development': ['opex', 'rnd'],
+    'Professional Fees': ['opex', 'professionalFees'],
+    'General and Administrative': ['opex', 'gna'],
+    'Interest Expense': ['interestExpense'],
+    'Interest Income': ['interestIncome'],
+    'Depreciation Expense': ['depreciation'],
+    'Other Expense': ['otherExpense'],
+    'Tax Expense': ['taxExpense'],
+    'Cash and Cash Equivalents': ['balanceSheet', 'cash'],
+    'Marketable Securities': ['balanceSheet', 'marketableSecurities'],
+    'Accounts Receivable': ['balanceSheet', 'ar'],
+    'Prepaid Expenses': ['balanceSheet', 'prepaid'],
+    'Inventory': ['balanceSheet', 'inventory'],
+    'Other Current Assets': ['balanceSheet', 'otherCurrentAssets'],
+    'Property Plant & Equipment': ['balanceSheet', 'ppe'],
+    'Fixed Assets': ['balanceSheet', 'fixedAssets'],
+    'Capitalized Software': ['balanceSheet', 'capSoftware'],
+    'Intangible Assets': ['balanceSheet', 'intangibles'],
+    'Other LT Assets': ['balanceSheet', 'otherLTAssets'],
+    'Accounts Payable': ['balanceSheet', 'ap'],
+    'Credit Cards': ['balanceSheet', 'creditCards'],
+    'Employee Accruals': ['balanceSheet', 'employeeAccruals'],
+    'Other Accrued Liabilities': ['balanceSheet', 'otherAccrued'],
+    'Short-Term Debt': ['balanceSheet', 'stDebt'],
+    'Deferred Revenue': ['balanceSheet', 'deferredRevenue'],
+    'Other Short-Term Liabilities': ['balanceSheet', 'otherSTLiabilities'],
+    'Long-Term Debt': ['balanceSheet', 'ltDebt'],
+    'Government Loan': ['balanceSheet', 'govLoan'],
+    'Shareholder Loan': ['balanceSheet', 'shareholderLoan'],
+    'Convertible Notes': ['balanceSheet', 'convertibleNotes'],
+    'Paid in Capital': ['balanceSheet', 'paidInCapital'],
+    'Retained Earnings': ['balanceSheet', 'retainedEarnings'],
+  };
+  return map[fieldName] || [];
+}
+
+export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }: Props) {
+  const [phase, setPhase] = useState<Phase>('upload');
+  const [analyzedFiles, setAnalyzedFiles] = useState<AnalyzedFile[]>([]);
+  const [selectedFile, setSelectedFile] = useState<AnalyzedFile | null>(null);
+  const [activeSheet, setActiveSheet] = useState(0);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [fieldMappings, setFieldMappings] = useState<Record<string, FieldMapping[]>>({});
+  const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const analyzeFile = useCallback(async (file: File): Promise<AnalyzedFile> => {
+    try {
+      const result = await parseExcelFromFile(file);
+      const matchedFields: string[] = [];
+      let isMatches = 0, bsMatches = 0;
+
+      result.sheets.forEach(sheet => {
+        sheet.data.forEach(row => {
+          const label = String(row[0] || '').toLowerCase().trim();
+          if (!label) return;
+          for (const [keyword, field] of Object.entries(KEYWORD_ALIASES)) {
+            if (label.includes(keyword) && !matchedFields.includes(field)) {
+              matchedFields.push(field);
+              if ((IS_FIELDS as readonly string[]).includes(field)) isMatches++;
+              else bsMatches++;
+            }
+          }
+        });
+      });
+
+      const totalMatches = matchedFields.length;
+      let status: FileAnalysisResult['status'] = 'unrecognized';
+      if (totalMatches >= 8) status = 'mappable';
+      else if (totalMatches >= 2) status = 'partial';
+
+      let type: FileAnalysisResult['type'] = 'Unknown';
+      if (isMatches > 0 && bsMatches > 0) type = 'IS + BS';
+      else if (isMatches > 0) type = 'Income Statement';
+      else if (bsMatches > 0) type = 'Balance Sheet';
+
+      return {
+        file,
+        sheets: result.sheets,
+        analysis: { status, type, totalMatches, isMatches, bsMatches, matchedFields },
+      };
+    } catch {
+      return {
+        file,
+        sheets: [],
+        analysis: { status: 'error', type: 'Unknown', totalMatches: 0, isMatches: 0, bsMatches: 0, matchedFields: [] },
+      };
+    }
+  }, []);
+
+  const handleFilesSelected = useCallback(async (files: FileList) => {
+    setIsProcessing(true);
+    const results: AnalyzedFile[] = [];
+    for (const file of Array.from(files)) {
+      results.push(await analyzeFile(file));
+    }
+    results.sort((a, b) => b.analysis.totalMatches - a.analysis.totalMatches);
+    setAnalyzedFiles(results);
+
+    if (results.length === 1) {
+      setSelectedFile(results[0]);
+      setPhase('mapping');
+    } else {
+      setPhase('triage');
+    }
+    setIsProcessing(false);
+  }, [analyzeFile]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length) handleFilesSelected(e.dataTransfer.files);
+  }, [handleFilesSelected]);
+
+  const handleRowClick = useCallback((rowIdx: number, e: React.MouseEvent) => {
+    setSelectedRows(prev => {
+      const next = new Set(prev);
+      if (e.ctrlKey || e.metaKey) {
+        if (next.has(rowIdx)) next.delete(rowIdx);
+        else next.add(rowIdx);
+      } else {
+        if (next.has(rowIdx) && next.size === 1) next.clear();
+        else { next.clear(); next.add(rowIdx); }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleAssignField = useCallback((fieldName: string) => {
+    if (!selectedFile || selectedRows.size === 0) return;
+    const sheet = selectedFile.sheets[activeSheet];
+    const newMappings = Array.from(selectedRows).map(rowIdx => ({
+      sheet: sheet.name,
+      rowIdx,
+      label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`),
+    }));
+    setFieldMappings(prev => ({
+      ...prev,
+      [fieldName]: [...(prev[fieldName] || []), ...newMappings],
+    }));
+    setSelectedRows(new Set());
+  }, [selectedFile, selectedRows, activeSheet]);
+
+  const handleRemoveMapping = useCallback((fieldName: string, idx: number) => {
+    setFieldMappings(prev => {
+      const updated = { ...prev };
+      updated[fieldName] = updated[fieldName].filter((_, i) => i !== idx);
+      if (!updated[fieldName].length) delete updated[fieldName];
+      return updated;
+    });
+  }, []);
+
+  const handleRecalculate = useCallback(() => {
+    if (!selectedFile) return;
+    updateModel(prev => {
+      const updated = { ...prev };
+      // Inject mapped data
+      Object.entries(fieldMappings).forEach(([fieldName, mappings]) => {
+        const path = getFieldPath(fieldName as MappingFieldName);
+        if (!path.length) return;
+
+        // Sum values from all mapped rows across date columns
+        const sheet = selectedFile.sheets.find(s => s.name === mappings[0]?.sheet) || selectedFile.sheets[0];
+        const numCols = Math.min(24, (sheet.data[0]?.length || 1) - 1);
+        const values = new Array(24).fill(0);
+
+        mappings.forEach(m => {
+          const row = sheet.data[m.rowIdx];
+          if (!row) return;
+          for (let c = 1; c <= numCols && c <= 24; c++) {
+            const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '0').replace(/[,$]/g, ''));
+            if (!isNaN(val)) values[c - 1] += val;
+          }
+        });
+
+        // Set value at path
+        if (path.length === 1) {
+          (updated as any)[path[0]] = values;
+        } else if (path.length === 2) {
+          (updated as any)[path[0]][path[1]] = values;
+        }
+      });
+      return updated;
+    });
+    toast.success('Model recalculated with mapped data');
+  }, [selectedFile, fieldMappings, updateModel]);
+
+  const mappedCount = Object.keys(fieldMappings).length;
+  const totalFields = IS_FIELDS.length + BS_FIELDS.length;
+
+  // Phase 1: Upload
+  if (phase === 'upload') {
+    return (
+      <div className="space-y-4">
+        <Card className="border-border/30 border-dashed">
+          <CardContent className="p-12 flex flex-col items-center justify-center text-center"
+            onDragOver={e => e.preventDefault()} onDrop={handleDrop}>
+            {isProcessing ? (
+              <div className="flex flex-col items-center gap-3">
+                <RefreshCw className="h-10 w-10 text-primary animate-spin" />
+                <p className="text-sm text-muted-foreground">Analyzing files...</p>
+              </div>
+            ) : (
+              <>
+                <Upload className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-sm font-semibold mb-1">Upload Financial Statements</h3>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Drag & drop Excel files (.xlsx, .xls, .csv) or click to browse
+                </p>
+                <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+                  Browse Files
+                </Button>
+                <input ref={fileInputRef} type="file" className="hidden" accept=".xlsx,.xls,.csv" multiple
+                  onChange={e => e.target.files && handleFilesSelected(e.target.files)} />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { title: 'Bulk Upload', desc: 'Upload multiple files at once for batch analysis' },
+            { title: 'Auto-Detect', desc: '200+ keyword aliases match rows to financial fields' },
+            { title: 'Interactive Mapping', desc: 'Click rows to assign them to model fields' },
+          ].map(f => (
+            <Card key={f.title} className="border-border/20">
+              <CardContent className="p-4">
+                <h4 className="text-xs font-semibold mb-1">{f.title}</h4>
+                <p className="text-[10px] text-muted-foreground">{f.desc}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Phase 1.5: Triage
+  if (phase === 'triage') {
+    const counts = { mappable: 0, partial: 0, unrecognized: 0, error: 0 };
+    analyzedFiles.forEach(f => counts[f.analysis.status]++);
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" className="h-7" onClick={() => setPhase('upload')}>
+              <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Start Over
+            </Button>
+            <div className="flex gap-2 text-xs">
+              {counts.mappable > 0 && <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">{counts.mappable} Mappable</Badge>}
+              {counts.partial > 0 && <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20">{counts.partial} Partial</Badge>}
+              {counts.unrecognized > 0 && <Badge variant="secondary">{counts.unrecognized} Not Recognized</Badge>}
+              {counts.error > 0 && <Badge variant="destructive">{counts.error} Error</Badge>}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {analyzedFiles.map((af, idx) => (
+            <Card key={idx} className={cn(
+              "border-border/30 cursor-pointer hover:border-primary/50 transition-colors",
+              af.analysis.status === 'mappable' && "border-emerald-500/30",
+              af.analysis.status === 'partial' && "border-amber-500/30",
+              af.analysis.status === 'error' && "border-destructive/30",
+            )}>
+              <CardContent className="p-4" onClick={() => { setSelectedFile(af); setPhase('mapping'); }}>
+                <div className="flex items-center gap-2 mb-2">
+                  {af.analysis.status === 'mappable' ? <Check className="h-4 w-4 text-emerald-500" /> :
+                    af.analysis.status === 'partial' ? <AlertTriangle className="h-4 w-4 text-amber-500" /> :
+                    af.analysis.status === 'error' ? <X className="h-4 w-4 text-destructive" /> :
+                    <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />}
+                  <span className="text-xs font-medium truncate">{af.file.name}</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground mb-2">
+                  {af.sheets.length} sheets • {af.analysis.type} • {af.analysis.totalMatches}/40 fields
+                </div>
+                <div className="w-full bg-muted/30 rounded-full h-1.5 mb-2">
+                  <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(af.analysis.totalMatches / 40) * 100}%` }} />
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {af.analysis.matchedFields.slice(0, 6).map(f => (
+                    <Badge key={f} variant="secondary" className="text-[9px] h-4">{f}</Badge>
+                  ))}
+                  {af.analysis.matchedFields.length > 6 && (
+                    <Badge variant="secondary" className="text-[9px] h-4">+{af.analysis.matchedFields.length - 6} more</Badge>
+                  )}
+                </div>
+                <Button size="sm" className="w-full mt-3 h-7 text-xs">
+                  Select & Map <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Phase 2: Mapping UI
+  if (!selectedFile) return null;
+  const sheet = selectedFile.sheets[activeSheet];
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          {analyzedFiles.length > 1 && (
+            <Button variant="ghost" size="sm" className="h-7" onClick={() => setPhase('triage')}>
+              <ArrowLeft className="h-3.5 w-3.5 mr-1" /> All Files
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" className="h-7" onClick={() => setPhase('upload')}>
+            Replace File
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {selectedFile.file.name} • {selectedFile.sheets.length} sheets • {sheet?.data.length || 0} rows
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-xs text-muted-foreground">{mappedCount}/{totalFields} mapped</div>
+          <div className="w-24 bg-muted/30 rounded-full h-1.5">
+            <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${(mappedCount / totalFields) * 100}%` }} />
+          </div>
+          <Button size="sm" className="h-7 text-xs" onClick={handleRecalculate} disabled={mappedCount === 0}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Recalculate Model
+          </Button>
+        </div>
+      </div>
+
+      {/* Split panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Left: Spreadsheet */}
+        <div className="lg:col-span-3">
+          <Card className="border-border/30">
+            <CardContent className="p-0">
+              {/* Sheet tabs */}
+              <div className="flex border-b border-border/30 overflow-x-auto">
+                {selectedFile.sheets.map((s, i) => (
+                  <button key={i} className={cn(
+                    "px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors",
+                    i === activeSheet ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                  )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); }}>
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+              <ScrollArea className="h-[500px]">
+                <table className="w-full text-[11px] border-collapse">
+                  <thead className="sticky top-0 z-10 bg-muted/50">
+                    <tr>
+                      <th className="w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20">#</th>
+                      {Array.from({ length: Math.min(sheet?.data[0]?.length || 0, 50) }, (_, i) => (
+                        <th key={i} className="py-1.5 px-2 text-center text-muted-foreground min-w-[70px] border-r border-border/10">
+                          {String.fromCharCode(65 + (i % 26))}{i >= 26 ? String.fromCharCode(65 + Math.floor(i / 26) - 1) : ''}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(sheet?.data || []).slice(0, 200).map((row, rowIdx) => (
+                      <tr key={rowIdx}
+                        className={cn(
+                          "cursor-pointer hover:bg-muted/20 border-b border-border/5",
+                          selectedRows.has(rowIdx) && "bg-primary/10 hover:bg-primary/15"
+                        )}
+                        onClick={e => handleRowClick(rowIdx, e)}>
+                        <td className="py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20 bg-muted/10">{rowIdx + 1}</td>
+                        {Array.from({ length: Math.min(row.length, 50) }, (_, colIdx) => (
+                          <td key={colIdx} className="py-1 px-2 whitespace-nowrap border-r border-border/5 font-mono">
+                            {row[colIdx] !== null && row[colIdx] !== undefined ? String(row[colIdx]) : ''}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right: Field list */}
+        <div className="lg:col-span-2">
+          <Card className="border-border/30">
+            <CardContent className="p-3">
+              {selectedRows.size > 0 && (
+                <div className="mb-3 p-2 rounded bg-primary/10 text-xs text-primary">
+                  {selectedRows.size} row(s) selected — click "Assign" on a field below
+                </div>
+              )}
+              <ScrollArea className="h-[500px]">
+                <div className="space-y-4">
+                  {/* Income Statement fields */}
+                  <div>
+                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Income Statement</h4>
+                    <div className="space-y-1">
+                      {IS_FIELDS.map(field => {
+                        const mapped = fieldMappings[field];
+                        return (
+                          <div key={field} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/10 group">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className={cn("w-2 h-2 rounded-full flex-shrink-0", mapped ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+                              <span className="text-xs truncate">{field}</span>
+                              {mapped && (
+                                <div className="flex gap-1">
+                                  {mapped.map((m, i) => (
+                                    <Badge key={i} variant="secondary" className="text-[9px] h-4 gap-1">
+                                      {m.label}
+                                      <X className="h-2.5 w-2.5 cursor-pointer" onClick={e => { e.stopPropagation(); handleRemoveMapping(field, i); }} />
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            {selectedRows.size > 0 && (
+                              <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 opacity-0 group-hover:opacity-100" onClick={() => handleAssignField(field)}>Assign</Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Balance Sheet fields */}
+                  <div>
+                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Balance Sheet</h4>
+                    <div className="space-y-1">
+                      {BS_FIELDS.map(field => {
+                        const mapped = fieldMappings[field];
+                        return (
+                          <div key={field} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/10 group">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className={cn("w-2 h-2 rounded-full flex-shrink-0", mapped ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+                              <span className="text-xs truncate">{field}</span>
+                              {mapped && (
+                                <div className="flex gap-1">
+                                  {mapped.map((m, i) => (
+                                    <Badge key={i} variant="secondary" className="text-[9px] h-4 gap-1">
+                                      {m.label}
+                                      <X className="h-2.5 w-2.5 cursor-pointer" onClick={e => { e.stopPropagation(); handleRemoveMapping(field, i); }} />
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            {selectedRows.size > 0 && (
+                              <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 opacity-0 group-hover:opacity-100" onClick={() => handleAssignField(field)}>Assign</Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Mapped data preview */}
+      {mappedCount > 0 && (
+        <Card className="border-border/30">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold mb-3">Mapped Data Preview</h3>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/30">
+                  <th className="text-left py-1.5 px-3 text-muted-foreground">Field</th>
+                  <th className="text-left py-1.5 px-3 text-muted-foreground">Source Row(s)</th>
+                  <th className="text-left py-1.5 px-3 text-muted-foreground">Sheet</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(fieldMappings).map(([field, mappings]) => (
+                  <tr key={field} className="border-b border-border/10">
+                    <td className="py-1.5 px-3 font-medium">{field}</td>
+                    <td className="py-1.5 px-3">{mappings.map(m => m.label).join(', ')}</td>
+                    <td className="py-1.5 px-3 text-muted-foreground">{mappings[0]?.sheet}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
