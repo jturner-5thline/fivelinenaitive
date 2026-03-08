@@ -281,6 +281,24 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     return sidebarSections[0].items[0];
   }, [activeItemId, sidebarSections]);
 
+  // Active search filter chips for display
+  const activeFilterChips = useMemo(() => {
+    const chips: { key: string; label: string }[] = [];
+    if (searchFilters.sender) chips.push({ key: 'sender', label: `From: ${searchFilters.sender}` });
+    if (searchFilters.dateRange !== 'all') chips.push({ key: 'dateRange', label: `Date: ${searchFilters.dateRange.replace('_', ' ')}` });
+    if (searchFilters.hasAttachments) chips.push({ key: 'hasAttachments', label: 'Has: Attachment' });
+    if (searchFilters.responseStatus !== 'all') chips.push({ key: 'responseStatus', label: `Status: ${searchFilters.responseStatus === 'needs_response' ? 'Needs Response' : 'Responded'}` });
+    if (searchFilters.dealAssociation !== 'all') chips.push({ key: 'dealAssociation', label: `Deal: ${searchFilters.dealAssociation}` });
+    return chips;
+  }, [searchFilters]);
+
+  const removeFilter = (key: string) => {
+    setSearchFilters(prev => ({
+      ...prev,
+      [key]: key === 'hasAttachments' ? false : key === 'sender' ? '' : 'all',
+    }));
+  };
+
   // Filter emails
   const filteredEmails = useMemo(() => {
     let filtered = emails.filter(activeItem.filterFn);
@@ -294,6 +312,24 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (chipFilter === 'important') filtered = filtered.filter(e => e.is_starred || e.labels.includes('Important'));
     if (chipFilter === 'attachments') filtered = filtered.filter(e => e.has_attachments);
 
+    // Search filters
+    if (searchFilters.sender) {
+      const s = searchFilters.sender.toLowerCase();
+      filtered = filtered.filter(e => e.from_name.toLowerCase().includes(s) || e.from_email.toLowerCase().includes(s));
+    }
+    if (searchFilters.dateRange !== 'all') {
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      let cutoff = startOfDay;
+      if (searchFilters.dateRange === 'this_week') cutoff = new Date(startOfDay.getTime() - 7 * 86400000);
+      if (searchFilters.dateRange === 'this_month') cutoff = new Date(startOfDay.getTime() - 30 * 86400000);
+      filtered = filtered.filter(e => new Date(e.received_at) >= cutoff);
+    }
+    if (searchFilters.hasAttachments) filtered = filtered.filter(e => e.has_attachments);
+    if (searchFilters.responseStatus === 'needs_response') filtered = filtered.filter(e => e.needs_response);
+    if (searchFilters.responseStatus === 'responded') filtered = filtered.filter(e => !e.needs_response);
+    if (searchFilters.dealAssociation !== 'all') filtered = filtered.filter(e => e.deal_name === searchFilters.dealAssociation);
+
     // Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -306,7 +342,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, searchQuery]);
+  }, [emails, activeItem, viewFilter, chipFilter, searchQuery, searchFilters]);
 
   const currentThread = useMemo(() => {
     if (!selectedThread) return null;
