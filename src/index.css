@@ -200,7 +200,11 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+
+  table, th, td, input, textarea, select, button {
+    font-family: inherit;
   }
 
   .dark body {
