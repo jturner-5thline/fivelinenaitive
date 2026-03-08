@@ -6,6 +6,71 @@ async function moveDealStage(dealId: string, newStage: string) {
   await supabase.from('wf_deals').update({ stage: newStage as any }).eq('id', dealId);
 }
 
+// Helper to create a calendar event via the calendar-events edge function
+async function createCalendarEventForDeal(deal: any, summary: string, durationMinutes = 30, offsetDays = 2) {
+  try {
+    const startTime = new Date(Date.now() + offsetDays * 86400000);
+    startTime.setHours(10, 0, 0, 0);
+    const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    const { data, error } = await supabase.functions.invoke('calendar-events', {
+      body: {
+        action: 'create',
+        timezone: userTimezone,
+        event_data: {
+          summary,
+          description: `Auto-created by workflow for deal: ${deal.name || deal.id}`,
+          start: startTime.toISOString(),
+          end: endTime.toISOString(),
+        },
+      },
+    });
+    if (error) console.error('[WF Calendar] Error:', error);
+    else console.log('[WF Calendar] Created event:', data?.event?.id);
+    return data?.event;
+  } catch (err) {
+    console.error('[WF Calendar] Failed:', err);
+    return null;
+  }
+}
+
+// Helper to send workflow email notification via edge function
+async function sendWorkflowNotification(userId: string, dealId: string, dealName: string, message: string) {
+  try {
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    await fetch(`https://${projectId}.supabase.co/functions/v1/notification-engine`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trigger: 'workflow_task_assigned',
+        user_id: userId,
+        deal_id: dealId,
+        metadata: { deal_name: dealName, message },
+      }),
+    });
+  } catch (err) {
+    console.error('[WF Notification] Failed:', err);
+  }
+}
+
+// Helper to fetch Claap recording for a deal
+async function fetchClaapRecordingForDeal(dealId: string) {
+  try {
+    const { data } = await supabase
+      .from('claap_meetings')
+      .select('*')
+      .eq('deal_id', dealId)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data;
+  } catch (err) {
+    console.error('[WF Claap] Failed to fetch recording:', err);
+    return null;
+  }
+}
+
 // ===== W1-W3: Calendar & Sales =====
 registerWorkflow('sales_call_create_deal', {
   key: 'sales_call_create_deal',
@@ -14,19 +79,56 @@ registerWorkflow('sales_call_create_deal', {
   trigger: 'calendar_event',
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
-    // In live integration: fetch Claap recording, AI summarize, create deal
-    console.log('[W1] Sales call deal creation triggered');
+    // Fetch latest Claap recording for AI summary
+    const recording = await fetchClaapRecordingForDeal(deal.id);
+    if (recording?.ai_summary) {
+      console.log('[W1] Found Claap recording with AI summary, enriching deal');
+      // Update deal notes with meeting summary
+      await supabase.from('activity_logs').insert({
+        deal_id: deal.id,
+        activity_type: 'meeting_summary',
+        description: `Sales call AI summary: ${recording.ai_summary.substring(0, 500)}`,
+        user_id: ctx.workflowOwnerId,
+      });
+    }
+
+    // Create follow-up calendar event
+    await createCalendarEventForDeal(deal, `Follow-up: ${deal.name || 'New Deal'}`, 30, 3);
+
+    await createWorkflowTask({
+      dealId: deal.id,
+      title: 'Review sales call recording and confirm deal details',
+      assigneeId: deal.manager_id,
+      workflowOwnerId: ctx.workflowOwnerId,
+      workflowKey: 'sales_call_create_deal',
+      dueOffsetDays: 2,
+      companyId: ctx.companyId,
+    });
   },
 });
 
 registerWorkflow('sales_email_send_nda', {
   key: 'sales_email_send_nda',
   name: 'Sales Email → Send NDA',
-  description: 'When sales email sent, send NDA via DocuSign',
+  description: 'When sales email sent, trigger NDA sending workflow',
   trigger: 'email_event',
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
-    console.log('[W2] NDA send triggered');
+    // Create task for manager to send NDA (DocuSign integration placeholder)
+    await createWorkflowTask({
+      dealId: deal.id,
+      title: 'Send NDA to prospect via DocuSign',
+      assigneeId: deal.manager_id,
+      workflowOwnerId: ctx.workflowOwnerId,
+      workflowKey: 'sales_email_send_nda',
+      dueOffsetDays: 1,
+      companyId: ctx.companyId,
+    });
+
+    // Send notification to manager
+    if (deal.manager_id) {
+      await sendWorkflowNotification(deal.manager_id, deal.id, deal.name || 'Deal', 'NDA ready to send');
+    }
   },
 });
 
@@ -70,6 +172,9 @@ registerWorkflow('analyst_prepare_model_memo', {
       assigneeId: deal.analyst_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'analyst_prepare_model_memo', dueOffsetDays: 5, companyId: ctx.companyId,
     });
+    if (deal.analyst_id) {
+      await sendWorkflowNotification(deal.analyst_id, deal.id, deal.name || 'Deal', 'New task: Prepare model & memo');
+    }
   },
 });
 
@@ -86,6 +191,9 @@ registerWorkflow('analyst_approval_flow', {
         assigneeId: deal.manager_id, workflowOwnerId: deal.manager_id,
         workflowKey: 'analyst_approval_flow', dueOffsetDays: 3, companyId: ctx.companyId,
       });
+      if (deal.manager_id) {
+        await sendWorkflowNotification(deal.manager_id, deal.id, deal.name || 'Deal', 'Analyst approved – review model & memo');
+      }
     }
   },
 });
@@ -128,6 +236,10 @@ registerWorkflow('manager_disapprove_notifications', {
       assigneeId: deal.ops_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'manager_disapprove_notifications', dueOffsetDays: 1, companyId: ctx.companyId,
     });
+    // Notify ops
+    if (deal.ops_id) {
+      await sendWorkflowNotification(deal.ops_id, deal.id, deal.name || 'Deal', 'Manager disapproved – close out deal');
+    }
   },
 });
 
@@ -159,6 +271,8 @@ registerWorkflow('initial_feedback_entry', {
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'initial_feedback_entry', dueOffsetDays: 3, companyId: ctx.companyId,
     });
+    // Create calendar event for feedback call
+    await createCalendarEventForDeal(deal, `Initial Feedback Call – ${deal.name || 'Deal'}`, 30, 2);
   },
 });
 
@@ -322,7 +436,6 @@ registerWorkflow('post_signing_materials_mapped', {
   key: 'post_signing_materials_mapped', name: 'Checklist Materials Mapped',
   trigger: 'manual', default_owner_role: 'analyst',
   handler: async (deal, ctx) => {
-    // Pop-up for analyst to move deal
     await moveDealStage(deal.id, 'client_strategy_review');
   },
 });
@@ -338,6 +451,8 @@ registerWorkflow('client_strategy_set_call', {
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'client_strategy_set_call', dueOffsetDays: 2, companyId: ctx.companyId,
     });
+    // Auto-create calendar event for the kick-off call
+    await createCalendarEventForDeal(deal, `Strategy Kick-off Call – ${deal.name || 'Deal'}`, 45, 3);
   },
 });
 
@@ -356,6 +471,8 @@ registerWorkflow('client_strategy_agenda', {
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'client_strategy_agenda', dueOffsetDays: 3, companyId: ctx.companyId,
     });
+    // Auto-create internal debrief calendar event
+    await createCalendarEventForDeal(deal, `Internal Strategy Debrief – ${deal.name || 'Deal'}`, 30, 4);
   },
 });
 
@@ -363,7 +480,28 @@ registerWorkflow('client_strategy_outcome', {
   key: 'client_strategy_outcome', name: 'Strategy Review Outcome',
   trigger: 'calendar_event', default_owner_role: 'manager',
   handler: async (deal, ctx) => {
-    console.log('[W27] Strategy review outcome');
+    // After strategy call: check for Claap recording and extract insights
+    const recording = await fetchClaapRecordingForDeal(deal.id);
+    if (recording) {
+      console.log('[W27] Found Claap recording for strategy call');
+      if (recording.ai_summary) {
+        await supabase.from('activity_logs').insert({
+          deal_id: deal.id,
+          activity_type: 'meeting_summary',
+          description: `Strategy call summary: ${recording.ai_summary.substring(0, 500)}`,
+          user_id: ctx.workflowOwnerId,
+        });
+      }
+      if (recording.next_steps && recording.next_steps.length > 0) {
+        for (const step of recording.next_steps) {
+          await createWorkflowTask({
+            dealId: deal.id, title: step,
+            assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
+            workflowKey: 'client_strategy_outcome', dueOffsetDays: 5, companyId: ctx.companyId,
+          });
+        }
+      }
+    }
   },
 });
 
@@ -423,6 +561,10 @@ registerWorkflow('submitted_to_lenders_emails', {
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'submitted_to_lenders_emails', dueOffsetDays: 3, companyId: ctx.companyId,
     });
+    // Notify manager that deal is submitted
+    if (deal.manager_id) {
+      await sendWorkflowNotification(deal.manager_id, deal.id, deal.name || 'Deal', 'Deal submitted to lenders – monitoring replies');
+    }
   },
 });
 
@@ -438,6 +580,11 @@ registerWorkflow('positive_lender_response', {
       recurrenceRuleJson: { interval: 7, unit: 'days' },
       dueOffsetDays: 7, companyId: ctx.companyId,
     });
+    // Create recurring calendar event for weekly lender check
+    await createCalendarEventForDeal(deal, `Weekly Lender Review – ${deal.name || 'Deal'}`, 30, 7);
+    if (deal.manager_id) {
+      await sendWorkflowNotification(deal.manager_id, deal.id, deal.name || 'Deal', 'Positive lender response received!');
+    }
   },
 });
 
@@ -459,6 +606,8 @@ registerWorkflow('lenders_review_weekly_check', {
         dueOffsetDays: 5, companyId: ctx.companyId,
       });
     }
+    // Set up weekly review calendar event
+    await createCalendarEventForDeal(deal, `Weekly Lender Review – ${deal.name || 'Deal'}`, 30, 5);
   },
 });
 
@@ -478,6 +627,8 @@ registerWorkflow('terms_issued_analysis', {
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'terms_issued_analysis', dueOffsetDays: 5, companyId: ctx.companyId,
     });
+    // Create terms review call event
+    await createCalendarEventForDeal(deal, `Terms Review Call – ${deal.name || 'Deal'}`, 45, 3);
   },
 });
 
@@ -526,6 +677,11 @@ registerWorkflow('due_diligence_client_flow', {
         dueOffsetDays: 5, companyId: ctx.companyId,
       });
     }
+    // Create educational call event
+    await createCalendarEventForDeal(deal, `Due Diligence Educational Call – ${deal.name || 'Deal'}`, 60, 3);
+    if (deal.manager_id) {
+      await sendWorkflowNotification(deal.manager_id, deal.id, deal.name || 'Deal', 'Due diligence phase started');
+    }
   },
 });
 
@@ -548,6 +704,10 @@ registerWorkflow('funded_naitive_main', {
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'funded_naitive_main', dueOffsetDays: 7, companyId: ctx.companyId,
     });
+    // Celebrate! Send notification
+    if (deal.manager_id) {
+      await sendWorkflowNotification(deal.manager_id, deal.id, deal.name || 'Deal', 'Deal funded! 🎉 Move to Closed Won when ready');
+    }
   },
 });
 
