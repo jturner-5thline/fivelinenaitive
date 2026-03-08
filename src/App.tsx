@@ -171,6 +171,12 @@ const App = () => (
                           <Route path="/contacts/:id" element={
                             <ProtectedRoute><AppLayout><ContactDetail /></AppLayout></ProtectedRoute>
                           } />
+                          <Route path="/crm-companies" element={
+                            <ProtectedRoute><AppLayout><CrmCompanies /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/crm-companies/:id" element={
+                            <ProtectedRoute><AppLayout><CrmCompanyDetail /></AppLayout></ProtectedRoute>
+                          } />
                           <Route path="/hr" element={
                             <ProtectedRoute><AppLayout><HR /></AppLayout></ProtectedRoute>
                           } />
