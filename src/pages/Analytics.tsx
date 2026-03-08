@@ -805,7 +805,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels, 
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <Tooltip contentStyle={tooltipStyle} />
-            <Area type="monotone" dataKey="value" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.3} />
+            <Area type="monotone" dataKey="value" stroke={effectiveColor} fill={effectiveColor} fillOpacity={0.3 * fillOpacity} />
           </RechartsAreaChart>
         </ResponsiveContainer>
       );
