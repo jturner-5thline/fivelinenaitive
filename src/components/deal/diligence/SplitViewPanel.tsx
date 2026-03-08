@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Loader2, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ExcelViewer } from '../ExcelViewer';
 import { DealSpaceNoteEditor } from '../DealSpaceNoteEditor';
-import { useDealSpaceNotes } from '@/hooks/useDealSpaceNotes';
+import { useDealSpaceNotes, DealSpaceNote } from '@/hooks/useDealSpaceNotes';
 import { NotesSidebar } from '../notes/NotesSidebar';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { IngestedFile } from './types';
