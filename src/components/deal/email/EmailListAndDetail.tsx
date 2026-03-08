@@ -96,28 +96,44 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   const latest = thread.latestEmail;
   const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
   const threadCount = thread.emails.length;
+  const isUnread = thread.hasUnread;
+  const isUrgent = thread.needsResponse;
 
   return (
     <div
       className={cn(
-        'group relative rounded-r-lg cursor-pointer transition-all duration-150 mx-0 mr-2 mb-2 border-l-[3px] overflow-hidden',
+        'group relative cursor-pointer transition-all duration-150 mx-0 mr-2 mb-1.5 border-l-[3px] overflow-hidden',
+        // Selected state
         isSelected
-          ? 'bg-primary/10 border-l-primary shadow-[inset_0_0_12px_-4px_hsl(var(--primary)/0.3)] border-t border-r border-b border-t-primary/20 border-r-primary/20 border-b-primary/20'
-          : 'bg-card/40 border-l-transparent border border-border/40 hover:border-l-primary/50 hover:bg-primary/5 hover:border-border/60 rounded-lg',
-        thread.hasUnread && !isSelected && 'border-l-primary',
-        thread.needsResponse && !isSelected && !thread.hasUnread && 'border-l-amber-500'
+          ? 'bg-primary/[0.06] border-l-primary rounded-r-lg shadow-[inset_0_0_12px_-4px_hsl(var(--primary)/0.2)]'
+          : 'rounded-lg',
+        // Unread left border (when not selected)
+        !isSelected && isUnread && 'border-l-primary',
+        // Read: no border accent
+        !isSelected && !isUnread && !isUrgent && 'border-l-transparent',
+        // Urgency: needs response border when not unread
+        !isSelected && isUrgent && !isUnread && 'border-l-amber-500',
+        // Urgency row tint
+        isUrgent && !isSelected && 'bg-destructive/[0.06]',
+        // Default + hover
+        !isSelected && !isUrgent && 'hover:bg-[rgba(255,255,255,0.04)]',
+        isUrgent && !isSelected && 'hover:bg-destructive/[0.08]',
       )}
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="flex items-start gap-3 p-3">
+      <div className="flex items-start gap-3 px-3 py-4">
         <EmailAvatar name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name} />
         
         <div className="min-w-0 flex-1">
+          {/* Row 1: Sender + timestamp */}
           <div className="flex items-center justify-between gap-2 mb-0.5">
             <div className="flex items-center gap-2 min-w-0">
-              <span className={cn('text-sm truncate', thread.hasUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground/90')}>
+              <span className={cn(
+                'text-sm truncate',
+                isUnread ? 'font-semibold text-foreground' : 'font-normal text-foreground/80'
+              )}>
                 {displayName}
               </span>
               {threadCount > 1 && (
@@ -126,11 +142,16 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
                 </span>
               )}
             </div>
-            <span className="text-[11px] text-muted-foreground shrink-0">
+            {/* Timestamp - hidden on hover to make room for actions */}
+            <span className={cn(
+              'text-[11px] text-muted-foreground shrink-0 transition-opacity duration-150',
+              hovered ? 'opacity-0' : 'opacity-100'
+            )}>
               {formatDistanceToNow(new Date(latest.received_at), { addSuffix: false })}
             </span>
           </div>
 
+          {/* Row 2: Badges */}
           <div className="flex items-center gap-1.5 mb-0.5">
             {thread.dealName && (
               <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-primary/10 text-primary border-primary/20">
@@ -142,19 +163,27 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
                 🎯 Prospect
               </Badge>
             )}
-            {thread.needsResponse && (
+            {isUrgent && (
               <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-amber-500/10 text-amber-400 border-amber-500/20">
                 ⏰ Response Due
               </Badge>
             )}
           </div>
           
-          <p className={cn('text-[13px] truncate', thread.hasUnread ? 'text-foreground font-medium' : 'text-foreground/70')}>
+          {/* Row 3: Subject */}
+          <p className={cn(
+            'text-[13px] truncate',
+            isUnread ? 'text-foreground font-medium' : 'text-foreground/70 font-normal'
+          )}>
             {thread.subject}
           </p>
           
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{latest.snippet}</p>
+          {/* Row 4: Snippet - single line, higher contrast */}
+          <p className="text-xs text-muted-foreground/70 truncate mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+            {latest.snippet}
+          </p>
           
+          {/* Row 5: Meta badges */}
           <div className="flex items-center gap-1.5 mt-2">
             {thread.isLinked && (
               <Tooltip>
@@ -173,31 +202,32 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
         </div>
       </div>
 
+      {/* Hover quick actions - slide in over timestamp area */}
       {hovered && (
-        <div className="absolute right-2 top-2 flex items-center gap-0.5 bg-background/95 backdrop-blur-sm border rounded-md shadow-md px-1 py-0.5">
+        <div className="absolute right-2 top-3 flex items-center gap-0.5 bg-background/95 backdrop-blur-sm border rounded-md shadow-md px-1 py-0.5">
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={(e) => { e.stopPropagation(); onToggleStar(latest); }} className="p-1 rounded hover:bg-muted transition-colors">
-                <Star className={cn('h-3.5 w-3.5', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={(e) => { e.stopPropagation(); onToggleLink(latest); }} className="p-1 rounded hover:bg-muted transition-colors">
-                {thread.isLinked ? <Unlink className="h-3.5 w-3.5 text-muted-foreground" /> : <Link2 className="h-3.5 w-3.5 text-muted-foreground" />}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">{thread.isLinked ? 'Unlink' : 'Link'}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={(e) => { e.stopPropagation(); toast.info('Archive coming soon'); }} className="p-1 rounded hover:bg-muted transition-colors">
+              <button onClick={(e) => { e.stopPropagation(); toast.info('Archive coming soon'); }} className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted transition-colors">
                 <Archive className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">Archive</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={(e) => { e.stopPropagation(); toast.info('Snooze coming soon'); }} className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted transition-colors">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Snooze</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={(e) => { e.stopPropagation(); onToggleStar(latest); }} className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted transition-colors">
+                <Star className={cn('h-3.5 w-3.5', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
           </Tooltip>
         </div>
       )}
