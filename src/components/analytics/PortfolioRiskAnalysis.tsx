@@ -21,12 +21,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -117,10 +117,15 @@ export function PortfolioRiskAnalysis() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
 
-  // Drawer state
+  // Drawer state (now Dialog)
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTitle, setDrawerTitle] = useState('');
   const [drawerDeals, setDrawerDeals] = useState<Deal[]>([]);
+
+  // Pop-up states for sections
+  const [trendsOpen, setTrendsOpen] = useState(false);
+  const [concentrationOpen, setConcentrationOpen] = useState(false);
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
 
   const tableRef = useRef<HTMLDivElement>(null);
 
@@ -570,101 +575,39 @@ export function PortfolioRiskAnalysis() {
         </Card>
       </div>
 
-      {/* Portfolio Trends */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Portfolio Trends</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={trendData} margin={{ left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickFormatter={(v) => formatCurrency(v)} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => formatCurrency(value)} />
-              <Legend />
-              <Area type="monotone" dataKey="On Track" stackId="1" fill="#22c55e" fillOpacity={0.5} stroke="#22c55e" strokeWidth={2} />
-              <Area type="monotone" dataKey="At Risk" stackId="1" fill="#f59e0b" fillOpacity={0.5} stroke="#f59e0b" strokeWidth={2} />
-              <Area type="monotone" dataKey="Off Track" stackId="1" fill="#ef4444" fillOpacity={0.5} stroke="#ef4444" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Concentration Analysis + At-Risk Watchlist side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Concentration Analysis */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Concentration Analysis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {concentrationData.length === 0 ? (
-              <p className="text-muted-foreground text-sm py-8 text-center">No deals</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <Treemap
-                  data={concentrationData}
-                  dataKey="value"
-                  nameKey="name"
-                  content={<TreemapContent />}
-                >
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string, props: any) => [
-                    `${formatCurrency(value)} (${props.payload.count} deals)`, name
-                  ]} />
-                </Treemap>
-              </ResponsiveContainer>
-            )}
+      {/* Section trigger cards — open pop-ups */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={() => setTrendsOpen(true)}>
+          <CardContent className="p-5 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-chart-1/10 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Portfolio Trends</p>
+              <p className="text-xs text-muted-foreground">Monthly value by risk status</p>
+            </div>
           </CardContent>
         </Card>
-
-        {/* At-Risk Watchlist */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-destructive" />
-              <CardTitle className="text-lg">At-Risk Watchlist</CardTitle>
+        <Card className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={() => setConcentrationOpen(true)}>
+          <CardContent className="p-5 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-chart-2/10 flex items-center justify-center">
+              <Activity className="h-5 w-5 text-[hsl(var(--chart-2))]" />
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {atRiskWatchlist.length === 0 ? (
-              <p className="text-muted-foreground text-sm py-8 text-center">No at-risk deals 🎉</p>
-            ) : (
-              atRiskWatchlist.map(deal => {
-                const eng = getEngagement(deal);
-                const daysInStage = differenceInDays(new Date(), new Date(deal.updatedAt));
-                return (
-                  <Card key={deal.id} className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm truncate">{deal.company || deal.name}</span>
-                          {statusDot(deal.status)}
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="h-3 w-3" />
-                            {formatCurrency(deal.value)}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Activity className="h-3 w-3" />
-                            {stageLabels[deal.stage] || deal.stage}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {daysInStage}d in stage
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Users className="h-3 w-3" />
-                            <EngagementBar value={eng} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })
-            )}
+            <div>
+              <p className="text-sm font-medium">Concentration Analysis</p>
+              <p className="text-xs text-muted-foreground">Portfolio by deal size bucket</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={() => setWatchlistOpen(true)}>
+          <CardContent className="p-5 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+              <Shield className="h-5 w-5 text-destructive" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">At-Risk Watchlist</p>
+              <p className="text-xs text-muted-foreground">{atRiskWatchlist.length} deal{atRiskWatchlist.length !== 1 ? 's' : ''} flagged</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -781,14 +724,14 @@ export function PortfolioRiskAnalysis() {
         </Card>
       </div>
 
-      {/* Drill-down Drawer */}
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{drawerTitle}</SheetTitle>
-            <SheetDescription>{drawerDeals.length} deal{drawerDeals.length !== 1 ? 's' : ''}</SheetDescription>
-          </SheetHeader>
-          <div className="mt-6 space-y-3">
+      {/* Drill-down Dialog (pie chart clicks) */}
+      <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{drawerTitle}</DialogTitle>
+            <DialogDescription>{drawerDeals.length} deal{drawerDeals.length !== 1 ? 's' : ''}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
             {drawerDeals.map(deal => {
               const eng = getEngagement(deal);
               return (
@@ -813,8 +756,104 @@ export function PortfolioRiskAnalysis() {
               );
             })}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
+
+      {/* Portfolio Trends Pop-up */}
+      <Dialog open={trendsOpen} onOpenChange={setTrendsOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Portfolio Trends</DialogTitle>
+            <DialogDescription>Monthly portfolio value stacked by risk status</DialogDescription>
+          </DialogHeader>
+          <ResponsiveContainer width="100%" height={350}>
+            <AreaChart data={trendData} margin={{ left: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickFormatter={(v) => formatCurrency(v)} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => formatCurrency(value)} />
+              <Legend />
+              <Area type="monotone" dataKey="On Track" stackId="1" fill="#22c55e" fillOpacity={0.5} stroke="#22c55e" strokeWidth={2} />
+              <Area type="monotone" dataKey="At Risk" stackId="1" fill="#f59e0b" fillOpacity={0.5} stroke="#f59e0b" strokeWidth={2} />
+              <Area type="monotone" dataKey="Off Track" stackId="1" fill="#ef4444" fillOpacity={0.5} stroke="#ef4444" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </DialogContent>
+      </Dialog>
+
+      {/* Concentration Analysis Pop-up */}
+      <Dialog open={concentrationOpen} onOpenChange={setConcentrationOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Concentration Analysis</DialogTitle>
+            <DialogDescription>Portfolio breakdown by deal size bucket</DialogDescription>
+          </DialogHeader>
+          {concentrationData.length === 0 ? (
+            <p className="text-muted-foreground text-sm py-8 text-center">No deals</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={320}>
+              <Treemap data={concentrationData} dataKey="value" nameKey="name" content={<TreemapContent />}>
+                <Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string, props: any) => [
+                  `${formatCurrency(value)} (${props.payload.count} deals)`, name
+                ]} />
+              </Treemap>
+            </ResponsiveContainer>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* At-Risk Watchlist Pop-up */}
+      <Dialog open={watchlistOpen} onOpenChange={setWatchlistOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-destructive" />
+              <DialogTitle>At-Risk Watchlist</DialogTitle>
+            </div>
+            <DialogDescription>{atRiskWatchlist.length} deal{atRiskWatchlist.length !== 1 ? 's' : ''} flagged</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {atRiskWatchlist.length === 0 ? (
+              <p className="text-muted-foreground text-sm py-8 text-center">No at-risk deals 🎉</p>
+            ) : (
+              atRiskWatchlist.map(deal => {
+                const eng = getEngagement(deal);
+                const daysInStage = differenceInDays(new Date(), new Date(deal.updatedAt));
+                return (
+                  <Card key={deal.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-sm truncate">{deal.company || deal.name}</span>
+                          {statusDot(deal.status)}
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
+                          <div className="flex items-center gap-1">
+                            <DollarSign className="h-3 w-3" />
+                            {formatCurrency(deal.value)}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Activity className="h-3 w-3" />
+                            {stageLabels[deal.stage] || deal.stage}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {daysInStage}d in stage
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            <EngagementBar value={eng} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
