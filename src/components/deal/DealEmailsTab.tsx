@@ -160,6 +160,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   // Search filters
   const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);
+  // Selection state for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     sender: '',
     dateRange: 'all',
