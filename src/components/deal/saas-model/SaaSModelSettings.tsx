@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SaaSModelData, SaaSModelSettings } from './types';
+import type { SaaSModelData, SaaSModelSettings as SaaSModelSettingsType } from './types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
