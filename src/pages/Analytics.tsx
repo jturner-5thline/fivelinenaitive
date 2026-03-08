@@ -959,7 +959,17 @@ export default function Analytics() {
     stages.forEach(s => { map[s.id] = s.label; });
     return map;
   }, [stages]);
-  
+
+  // Global filters
+  const [globalManager, setGlobalManager] = useState<string | undefined>();
+  const [globalStatus, setGlobalStatus] = useState<string | undefined>();
+  const globalFilters = useMemo(() => ({ manager: globalManager, status: globalStatus }), [globalManager, globalStatus]);
+
+  // Extract unique managers and statuses for filter dropdowns
+  const uniqueManagers = useMemo(() => [...new Set(deals.map(d => d.manager).filter(Boolean))].sort(), [deals]);
+  const uniqueStatuses = useMemo(() => [...new Set(deals.map(d => d.status).filter(Boolean))].sort(), [deals]);
+  const hasGlobalFilters = !!globalManager || !!globalStatus;
+
   // Chart dialogs
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
   const [deleteChartDialogOpen, setDeleteChartDialogOpen] = useState(false);
