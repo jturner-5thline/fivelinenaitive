@@ -197,10 +197,14 @@ export function useUpdateWfDealStage() {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Small delay to let the edge function create tasks
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['wf_tasks'] });
+      }, 2000);
       qc.invalidateQueries({ queryKey: ['wf_deals'] });
       qc.invalidateQueries({ queryKey: ['wf_deal'] });
       qc.invalidateQueries({ queryKey: ['wf_workflows_log'] });
-      toast.success('Stage updated');
+      toast.success('Stage updated – workflows triggered');
     },
   });
 }
