@@ -738,7 +738,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels, 
     );
   }
   
-  switch (chart.type) {
+  switch (effectiveType) {
     case 'bar':
       return (
         <ResponsiveContainer width="100%" height={chartHeight}>
