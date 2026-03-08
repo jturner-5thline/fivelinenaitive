@@ -3,11 +3,13 @@ import { SaaSModelData, IS_FIELDS, BS_FIELDS, FieldMapping, MappingFieldName, Fi
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Circle } from 'lucide-react';
 import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { formatUSD, extractAmount } from '@/lib/formatters/currency';
 
 interface Props {
   dealId: string;
@@ -114,6 +116,40 @@ function getFieldPath(fieldName: MappingFieldName): string[] {
   };
   return map[fieldName] || [];
 }
+
+// Format a cell value: if numeric, show as USD; otherwise show raw string
+function formatCellValue(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'number') return formatUSD(val);
+  const str = String(val);
+  const parsed = parseFloat(str.replace(/[,$\s]/g, ''));
+  if (!isNaN(parsed) && str.match(/^[\s$(-]*[\d,.]+[\s)]*$/)) return formatUSD(parsed);
+  return str;
+}
+
+function isNumericCell(val: unknown): boolean {
+  if (typeof val === 'number') return true;
+  if (val === null || val === undefined) return false;
+  const str = String(val);
+  const parsed = parseFloat(str.replace(/[,$\s]/g, ''));
+  return !isNaN(parsed) && str.match(/^[\s$(-]*[\d,.]+[\s)]*$/) !== null;
+}
+
+// IS field sections for grouping
+const IS_SECTIONS: { label: string; fields: string[] }[] = [
+  { label: 'Revenue', fields: ['Recurring Revenue', 'Non-Recurring Revenue', 'Other Revenue'] },
+  { label: 'Cost of Goods Sold', fields: ['COGS on Recurring Revenue', 'COGS on Non-Recurring Revenue', 'COGS - Labor'] },
+  { label: 'Operating Expenses', fields: ['Salaries and Benefits', 'Sales and Marketing', 'Research and Development', 'Professional Fees', 'General and Administrative'] },
+  { label: 'Other', fields: ['Interest Expense', 'Interest Income', 'Depreciation Expense', 'Other Expense', 'Tax Expense'] },
+];
+
+const BS_SECTIONS: { label: string; fields: string[] }[] = [
+  { label: 'Current Assets', fields: ['Cash and Cash Equivalents', 'Marketable Securities', 'Accounts Receivable', 'Prepaid Expenses', 'Inventory', 'Other Current Assets'] },
+  { label: 'Long-Term Assets', fields: ['Property Plant & Equipment', 'Fixed Assets', 'Capitalized Software', 'Intangible Assets', 'Other LT Assets'] },
+  { label: 'Current Liabilities', fields: ['Accounts Payable', 'Credit Cards', 'Employee Accruals', 'Other Accrued Liabilities', 'Short-Term Debt', 'Deferred Revenue', 'Other Short-Term Liabilities'] },
+  { label: 'Long-Term Liabilities', fields: ['Long-Term Debt', 'Government Loan', 'Shareholder Loan', 'Convertible Notes'] },
+  { label: 'Equity', fields: ['Paid in Capital', 'Retained Earnings'] },
+];
 
 export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }: Props) {
   const [phase, setPhase] = useState<Phase>('upload');
@@ -234,12 +270,10 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     if (!selectedFile) return;
     updateModel(prev => {
       const updated = { ...prev };
-      // Inject mapped data
       Object.entries(fieldMappings).forEach(([fieldName, mappings]) => {
         const path = getFieldPath(fieldName as MappingFieldName);
         if (!path.length) return;
 
-        // Sum values from all mapped rows across date columns
         const sheet = selectedFile.sheets.find(s => s.name === mappings[0]?.sheet) || selectedFile.sheets[0];
         const numCols = Math.min(24, (sheet.data[0]?.length || 1) - 1);
         const values = new Array(24).fill(0);
@@ -253,7 +287,6 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           }
         });
 
-        // Set value at path
         if (path.length === 1) {
           (updated as any)[path[0]] = values;
         } else if (path.length === 2) {
@@ -267,6 +300,86 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
 
   const mappedCount = Object.keys(fieldMappings).length;
   const totalFields = IS_FIELDS.length + BS_FIELDS.length;
+  const unmappedCount = totalFields - mappedCount;
+  const percent = totalFields === 0 ? 0 : Math.round((mappedCount / totalFields) * 100);
+
+  // Helper to get sample value from a mapped field
+  const getSampleValue = (fieldName: string): number | null => {
+    const mappings = fieldMappings[fieldName];
+    if (!mappings || !selectedFile) return null;
+    let total = 0;
+    mappings.forEach(m => {
+      const sheet = selectedFile.sheets.find(s => s.name === m.sheet) || selectedFile.sheets[0];
+      const row = sheet?.data[m.rowIdx];
+      if (!row) return;
+      // Take the first numeric value after column 0
+      for (let c = 1; c < row.length; c++) {
+        const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '').replace(/[,$]/g, ''));
+        if (!isNaN(val)) { total += val; break; }
+      }
+    });
+    return total;
+  };
+
+  // Render a field row in the sidebar
+  const renderFieldRow = (field: string) => {
+    const mapped = fieldMappings[field];
+    const isMapped = Boolean(mapped);
+    const sampleVal = isMapped ? getSampleValue(field) : null;
+
+    return (
+      <div
+        key={field}
+        className={cn(
+          "flex items-center justify-between py-1.5 px-2 rounded group transition-colors",
+          isMapped
+            ? "bg-emerald-500/5 hover:bg-emerald-500/10"
+            : "hover:bg-muted/20"
+        )}
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {isMapped ? (
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+          ) : (
+            <Circle className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
+          )}
+          <span className={cn("text-xs truncate", isMapped && "font-medium")}>{field}</span>
+          {mapped && (
+            <div className="flex gap-1 flex-shrink-0">
+              {mapped.map((m, i) => (
+                <Badge key={i} variant="secondary" className="text-[9px] h-4 gap-1 max-w-[100px] truncate">
+                  {m.label}
+                  <X className="h-2.5 w-2.5 cursor-pointer flex-shrink-0" onClick={e => { e.stopPropagation(); handleRemoveMapping(field, i); }} />
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {sampleVal !== null && (
+            <span className="text-[10px] font-mono tabular-nums text-muted-foreground">{formatUSD(sampleVal)}</span>
+          )}
+          {selectedRows.size > 0 && (
+            <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 opacity-0 group-hover:opacity-100" onClick={() => handleAssignField(field)}>Assign</Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Render field sections with grouped headers
+  const renderFieldSections = (sections: { label: string; fields: string[] }[]) => (
+    <div className="space-y-1">
+      {sections.map(section => (
+        <div key={section.label}>
+          <div className="px-2 py-2 bg-muted/30 rounded-sm mb-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{section.label}</span>
+          </div>
+          {section.fields.map(field => renderFieldRow(field))}
+        </div>
+      ))}
+    </div>
+  );
 
   // Phase 1: Upload
   if (phase === 'upload') {
@@ -325,7 +438,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" className="h-7" onClick={() => setPhase('upload')}>
-              <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Start Over
+              <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Change file
             </Button>
             <div className="flex gap-2 text-xs">
               {counts.mappable > 0 && <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">{counts.mappable} Mappable</Badge>}
@@ -353,10 +466,10 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                   <span className="text-xs font-medium truncate">{af.file.name}</span>
                 </div>
                 <div className="text-[10px] text-muted-foreground mb-2">
-                  {af.sheets.length} sheets • {af.analysis.type} • {af.analysis.totalMatches}/40 fields
+                  {af.sheets.length} sheet{af.sheets.length === 1 ? '' : 's'} · {af.analysis.type} · {af.analysis.totalMatches} of {totalFields} fields detected
                 </div>
                 <div className="w-full bg-muted/30 rounded-full h-1.5 mb-2">
-                  <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(af.analysis.totalMatches / 40) * 100}%` }} />
+                  <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(af.analysis.totalMatches / totalFields) * 100}%` }} />
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {af.analysis.matchedFields.slice(0, 6).map(f => (
@@ -380,10 +493,49 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   // Phase 2: Mapping UI
   if (!selectedFile) return null;
   const sheet = selectedFile.sheets[activeSheet];
+  const sheetCount = selectedFile.sheets.length;
+  const rowCount = sheet?.data.length || 0;
+  const columnCount = sheet?.data[0]?.length || 0;
 
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header with description */}
+      <div>
+        <h3 className="text-sm font-semibold">Map your financial fields</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Connect each column from your upload to a standard model field so we can calculate ARR, EBITDA, and other metrics automatically.
+        </p>
+      </div>
+
+      {/* File card (§7) */}
+      <div className="flex items-center gap-3 rounded-lg border border-border/30 bg-muted/10 px-3 py-2">
+        <div className="flex h-9 w-9 items-center justify-center rounded bg-emerald-500/10">
+          <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium truncate">{selectedFile.file.name}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {sheetCount} sheet{sheetCount === 1 ? '' : 's'} · {rowCount} rows · {columnCount} columns
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>
+          Change file
+        </Button>
+      </div>
+
+      {/* Progress bar (§4) */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium">Mapping progress</span>
+          <span className="text-xs text-muted-foreground">{percent}%</span>
+        </div>
+        <Progress value={percent} className="h-2" />
+        <p className="text-[10px] text-muted-foreground">
+          <span className="font-medium text-foreground">{mappedCount}</span> of {totalFields} fields mapped · <span className="text-amber-500">{unmappedCount} remaining</span>
+        </p>
+      </div>
+
+      {/* Action buttons */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           {analyzedFiles.length > 1 && (
@@ -391,20 +543,13 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
               <ArrowLeft className="h-3.5 w-3.5 mr-1" /> All Files
             </Button>
           )}
-          <Button variant="ghost" size="sm" className="h-7" onClick={() => setPhase('upload')}>
-            Replace File
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            {selectedFile.file.name} • {selectedFile.sheets.length} sheets • {sheet?.data.length || 0} rows
-          </span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="text-xs text-muted-foreground">{mappedCount}/{totalFields} mapped</div>
-          <div className="w-24 bg-muted/30 rounded-full h-1.5">
-            <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${(mappedCount / totalFields) * 100}%` }} />
-          </div>
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>
+            Change file
+          </Button>
           <Button size="sm" className="h-7 text-xs" onClick={handleRecalculate} disabled={mappedCount === 0}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Recalculate Model
+            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Review mapped data
           </Button>
         </div>
       </div>
@@ -428,32 +573,58 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
               </div>
               <ScrollArea className="h-[500px]">
                 <table className="w-full text-[11px] border-collapse">
-                  <thead className="sticky top-0 z-10 bg-muted/50">
+                  <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
                     <tr>
                       <th className="w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20">#</th>
-                      {Array.from({ length: Math.min(sheet?.data[0]?.length || 0, 50) }, (_, i) => (
-                        <th key={i} className="py-1.5 px-2 text-center text-muted-foreground min-w-[70px] border-r border-border/10">
-                          {String.fromCharCode(65 + (i % 26))}{i >= 26 ? String.fromCharCode(65 + Math.floor(i / 26) - 1) : ''}
+                      <th className="py-1.5 px-2 text-left text-muted-foreground min-w-[120px] border-r border-border/10 font-semibold">
+                        Source column
+                      </th>
+                      {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => (
+                        <th key={i + 1} className="py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal">
+                          {String.fromCharCode(65 + ((i + 1) % 26))}{(i + 1) >= 26 ? String.fromCharCode(65 + Math.floor((i + 1) / 26) - 1) : ''}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {(sheet?.data || []).slice(0, 200).map((row, rowIdx) => (
-                      <tr key={rowIdx}
-                        className={cn(
-                          "cursor-pointer hover:bg-muted/20 border-b border-border/5",
-                          selectedRows.has(rowIdx) && "bg-primary/10 hover:bg-primary/15"
-                        )}
-                        onClick={e => handleRowClick(rowIdx, e)}>
-                        <td className="py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20 bg-muted/10">{rowIdx + 1}</td>
-                        {Array.from({ length: Math.min(row.length, 50) }, (_, colIdx) => (
-                          <td key={colIdx} className="py-1 px-2 whitespace-nowrap border-r border-border/5 font-mono">
-                            {row[colIdx] !== null && row[colIdx] !== undefined ? String(row[colIdx]) : ''}
+                    {(sheet?.data || []).slice(0, 200).map((row, rowIdx) => {
+                      const isMappedRow = Object.values(fieldMappings).some(maps =>
+                        maps.some(m => m.rowIdx === rowIdx && m.sheet === sheet?.name)
+                      );
+                      return (
+                        <tr key={rowIdx}
+                          className={cn(
+                            "cursor-pointer transition-colors border-b border-border/5",
+                            selectedRows.has(rowIdx)
+                              ? "bg-primary/10 hover:bg-primary/15"
+                              : isMappedRow
+                                ? "bg-emerald-500/5 hover:bg-emerald-500/10"
+                                : rowIdx % 2 === 0
+                                  ? "bg-transparent hover:bg-muted/20"
+                                  : "bg-muted/5 hover:bg-muted/20"
+                          )}
+                          onClick={e => handleRowClick(rowIdx, e)}>
+                          <td className="py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20 bg-muted/10">{rowIdx + 1}</td>
+                          {/* First column: label, left-aligned */}
+                          <td className="py-1 px-2 whitespace-nowrap border-r border-border/10 font-medium">
+                            {row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}
                           </td>
-                        ))}
-                      </tr>
-                    ))}
+                          {/* Remaining columns: right-aligned with currency formatting for numbers */}
+                          {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
+                            const cellVal = row[colIdx + 1];
+                            const isNum = isNumericCell(cellVal);
+                            return (
+                              <td key={colIdx + 1} className={cn(
+                                "py-1 px-2 whitespace-nowrap border-r border-border/5 font-mono tabular-nums",
+                                isNum ? "text-right" : "text-left"
+                              )}>
+                                {formatCellValue(cellVal)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </ScrollArea>
@@ -461,77 +632,28 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           </Card>
         </div>
 
-        {/* Right: Field list */}
+        {/* Right: Field list with grouped sections */}
         <div className="lg:col-span-2">
           <Card className="border-border/30">
             <CardContent className="p-3">
               {selectedRows.size > 0 && (
-                <div className="mb-3 p-2 rounded bg-primary/10 text-xs text-primary">
-                  {selectedRows.size} row(s) selected — click "Assign" on a field below
+                <div className="mb-3 p-2 rounded bg-primary/10 text-xs text-primary flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5" />
+                  {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected — click "Assign" on a field below
                 </div>
               )}
               <ScrollArea className="h-[500px]">
                 <div className="space-y-4">
                   {/* Income Statement fields */}
                   <div>
-                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Income Statement</h4>
-                    <div className="space-y-1">
-                      {IS_FIELDS.map(field => {
-                        const mapped = fieldMappings[field];
-                        return (
-                          <div key={field} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/10 group">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className={cn("w-2 h-2 rounded-full flex-shrink-0", mapped ? "bg-emerald-500" : "bg-muted-foreground/30")} />
-                              <span className="text-xs truncate">{field}</span>
-                              {mapped && (
-                                <div className="flex gap-1">
-                                  {mapped.map((m, i) => (
-                                    <Badge key={i} variant="secondary" className="text-[9px] h-4 gap-1">
-                                      {m.label}
-                                      <X className="h-2.5 w-2.5 cursor-pointer" onClick={e => { e.stopPropagation(); handleRemoveMapping(field, i); }} />
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            {selectedRows.size > 0 && (
-                              <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 opacity-0 group-hover:opacity-100" onClick={() => handleAssignField(field)}>Assign</Button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Income Statement</h4>
+                    {renderFieldSections(IS_SECTIONS)}
                   </div>
 
                   {/* Balance Sheet fields */}
                   <div>
-                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Balance Sheet</h4>
-                    <div className="space-y-1">
-                      {BS_FIELDS.map(field => {
-                        const mapped = fieldMappings[field];
-                        return (
-                          <div key={field} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/10 group">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className={cn("w-2 h-2 rounded-full flex-shrink-0", mapped ? "bg-emerald-500" : "bg-muted-foreground/30")} />
-                              <span className="text-xs truncate">{field}</span>
-                              {mapped && (
-                                <div className="flex gap-1">
-                                  {mapped.map((m, i) => (
-                                    <Badge key={i} variant="secondary" className="text-[9px] h-4 gap-1">
-                                      {m.label}
-                                      <X className="h-2.5 w-2.5 cursor-pointer" onClick={e => { e.stopPropagation(); handleRemoveMapping(field, i); }} />
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            {selectedRows.size > 0 && (
-                              <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 opacity-0 group-hover:opacity-100" onClick={() => handleAssignField(field)}>Assign</Button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Balance Sheet</h4>
+                    {renderFieldSections(BS_SECTIONS)}
                   </div>
                 </div>
               </ScrollArea>
@@ -540,29 +662,54 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
         </div>
       </div>
 
-      {/* Mapped data preview */}
+      {/* Mapped data preview (§1 + §2: currency formatted) */}
       {mappedCount > 0 && (
         <Card className="border-border/30">
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold mb-3">Mapped Data Preview</h3>
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border/30">
-                  <th className="text-left py-1.5 px-3 text-muted-foreground">Field</th>
-                  <th className="text-left py-1.5 px-3 text-muted-foreground">Source Row(s)</th>
-                  <th className="text-left py-1.5 px-3 text-muted-foreground">Sheet</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(fieldMappings).map(([field, mappings]) => (
-                  <tr key={field} className="border-b border-border/10">
-                    <td className="py-1.5 px-3 font-medium">{field}</td>
-                    <td className="py-1.5 px-3">{mappings.map(m => m.label).join(', ')}</td>
-                    <td className="py-1.5 px-3 text-muted-foreground">{mappings[0]?.sheet}</td>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">Mapped Data Preview</h3>
+              <Badge variant="secondary" className="text-[10px]">{mappedCount} field{mappedCount !== 1 ? 's' : ''} mapped</Badge>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border/30">
+                    <th className="text-left py-1.5 px-3 text-muted-foreground">Field</th>
+                    <th className="text-left py-1.5 px-3 text-muted-foreground">Source Row(s)</th>
+                    <th className="text-left py-1.5 px-3 text-muted-foreground">Sheet</th>
+                    <th className="text-right py-1.5 px-3 text-muted-foreground">Sample Value</th>
+                    <th className="text-center py-1.5 px-3 text-muted-foreground">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {Object.entries(fieldMappings).map(([field, mappings], idx) => {
+                    const sample = getSampleValue(field);
+                    return (
+                      <tr key={field} className={cn(
+                        "border-b border-border/10",
+                        idx % 2 === 0 ? "bg-transparent" : "bg-muted/5"
+                      )}>
+                        <td className="py-1.5 px-3 font-medium">{field}</td>
+                        <td className="py-1.5 px-3">{mappings.map(m => m.label).join(', ')}</td>
+                        <td className="py-1.5 px-3 text-muted-foreground">{mappings[0]?.sheet}</td>
+                        <td className="py-1.5 px-3 text-right font-mono tabular-nums">{formatUSD(extractAmount(sample))}</td>
+                        <td className="py-1.5 px-3 text-center">
+                          <span className="inline-flex items-center gap-1 text-emerald-500 text-[10px]">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Mapped
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end mt-3">
+              <Button size="sm" className="h-7 text-xs" onClick={handleRecalculate}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save mapping
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
