@@ -30,7 +30,7 @@ export function DealsHeader() {
           <DemoModeBadge />
         </div>
 
-        <nav className="hidden items-center gap-1 md:flex absolute left-1/2 -translate-x-1/2">
+        <nav className="hidden items-center gap-1 md:flex mx-auto shrink-0">
           <Button 
             variant="ghost" 
             size="sm" 
