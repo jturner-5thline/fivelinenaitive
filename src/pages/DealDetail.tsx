@@ -89,6 +89,7 @@ import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
 import { DealMemoDialog } from '@/components/deal/DealMemoDialog';
+import { AgreementDrafterDialog } from '@/components/agreement/AgreementDrafterDialog';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
