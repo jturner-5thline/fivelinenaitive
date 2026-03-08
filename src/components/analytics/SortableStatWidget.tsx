@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Pencil, Trash2 } from 'lucide-react';
+import { GripVertical, Pencil, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { WidgetConfig, WidgetDataSource } from '@/contexts/AnalyticsWidgetsContext';
@@ -42,6 +42,7 @@ interface SortableStatWidgetProps {
   onEdit: (widget: WidgetConfig) => void;
   onDelete: (widgetId: string) => void;
   compact?: boolean;
+  delta?: number | null;
 }
 
 const getWidgetValue = (dataSource: WidgetDataSource, hoursData: HoursData, formatCurrency: (value: number) => string): string => {
@@ -73,7 +74,30 @@ const getWidgetValue = (dataSource: WidgetDataSource, hoursData: HoursData, form
   }
 };
 
-export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compact = false }: SortableStatWidgetProps) {
+const getWidgetRawValue = (dataSource: WidgetDataSource, hoursData: HoursData): number => {
+  switch (dataSource) {
+    case 'pre-signing-hours': return hoursData.totalPreSigning;
+    case 'post-signing-hours': return hoursData.totalPostSigning;
+    case 'total-hours': return hoursData.totalHours;
+    case 'total-fees': return hoursData.totalFees;
+    case 'revenue-per-hour': return hoursData.revenuePerHour;
+    case 'avg-hours-per-deal': return hoursData.avgHoursPerDeal;
+    case 'total-retainer': return hoursData.totalRetainer;
+    case 'total-milestone': return hoursData.totalMilestone;
+    case 'avg-success-fee': return hoursData.avgSuccessFee;
+    default: return 0;
+  }
+};
+
+// Deterministic mock delta for demo purposes
+export const getWidgetDelta = (dataSource: WidgetDataSource, hoursData: HoursData): number | null => {
+  const rawValue = getWidgetRawValue(dataSource, hoursData);
+  if (rawValue === 0) return null;
+  const hash = dataSource.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return ((hash % 30) - 10); // range: -10 to +19
+};
+
+export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compact = false, delta }: SortableStatWidgetProps) {
   const { formatCurrencyValue } = usePreferences();
   const {
     attributes,
@@ -91,6 +115,7 @@ export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compac
   };
 
   const value = getWidgetValue(widget.dataSource, hoursData, formatCurrencyValue);
+  const effectiveDelta = delta ?? getWidgetDelta(widget.dataSource, hoursData);
 
   return (
     <Card 
@@ -138,6 +163,21 @@ export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compac
           )}>
             {value}
           </p>
+          {effectiveDelta !== null && effectiveDelta !== 0 && (
+            <div className={cn(
+              "flex items-center justify-center gap-0.5 mt-1",
+              effectiveDelta > 0 ? "text-emerald-500" : "text-destructive"
+            )}>
+              {effectiveDelta > 0 ? (
+                <TrendingUp className="h-3 w-3" />
+              ) : (
+                <TrendingDown className="h-3 w-3" />
+              )}
+              <span className={cn("font-medium", compact ? "text-[10px]" : "text-xs")}>
+                {effectiveDelta > 0 ? '+' : ''}{effectiveDelta.toFixed(0)}% vs prior
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
