@@ -1360,14 +1360,14 @@ export default function Analytics() {
               </Select>
 
               {hasGlobalFilters && (
-                <Tooltip>
+                <UITooltip>
                   <TooltipTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setGlobalManager(undefined); setGlobalStatus(undefined); }}>
                       <X className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent><p className="text-xs">Clear all filters</p></TooltipContent>
-                </Tooltip>
+                </UITooltip>
               )}
 
               <div className="ml-auto flex items-center gap-2">
