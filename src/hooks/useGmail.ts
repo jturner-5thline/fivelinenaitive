@@ -272,7 +272,9 @@ export function useGmail() {
 
       if (error) throw error;
       
-      setMessages(data.messages || []);
+      const fetchedMessages = data.messages || [];
+      setMessages(fetchedMessages);
+      cachedMessages = fetchedMessages;
       setError(null);
       return data;
     } catch (err: any) {
