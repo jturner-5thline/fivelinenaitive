@@ -28,7 +28,8 @@ export function useAgreementTemplates() {
   const [templates, setTemplates] = useState<AgreementTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-  const { companyId } = useCompany();
+  const { company } = useCompany();
+  const companyId = company?.id;
 
   const fetchTemplates = useCallback(async () => {
     if (!companyId) return;
