@@ -299,6 +299,7 @@ export default function Settings() {
                   {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
                   {isVisible('data-room-checklist') && <DefaultChecklistSettings isAdmin={isAdmin} />}
                   {isVisible('gamma-templates') && <GammaTemplatesSettings isAdmin={isAdmin} />}
+                  {isVisible('agreement-templates') && <AgreementTemplatesSettings isAdmin={isAdmin} />}
                   {isVisible('deal-types') && <LenderScoreSettings isAdmin={isAdmin} />}
                   {isVisible('deal-types') && <DisclaimerSettings isAdmin={isAdmin} />}
                 </TabsContent>
