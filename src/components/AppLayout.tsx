@@ -7,6 +7,7 @@ import { TaskAssignmentBanner } from "@/components/TaskAssignmentBanner";
 import { PlatformTour } from "@/components/PlatformTour";
 import { ClaapRoutingTasksBadge } from "@/components/integrations/claap/ClaapRoutingTasksBadge";
 import { CopilotToggleButton } from "@/components/CopilotToggleButton";
+import { AICopilotPanel } from "@/components/AICopilotPanel";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
