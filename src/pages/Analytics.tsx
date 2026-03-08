@@ -822,6 +822,9 @@ function SortableChartCard({
   compact = false,
   stageLabels,
   onSegmentClick,
+  globalFilters,
+  managers,
+  statuses,
 }: { 
   chart: ChartConfig;
   deals: Deal[];
@@ -831,7 +834,15 @@ function SortableChartCard({
   compact?: boolean;
   stageLabels?: Record<string, string>;
   onSegmentClick?: (chartDataSource: string, segmentName: string) => void;
+  globalFilters?: { manager?: string; status?: string };
+  managers?: string[];
+  statuses?: string[];
 }) {
+  const [localConfig, setLocalConfig] = useState<ChartLocalConfig>({
+    chartType: chart.type,
+    primaryColor: chart.color,
+  });
+
   const {
     attributes,
     listeners,
@@ -847,40 +858,60 @@ function SortableChartCard({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const activeFilterCount = [localConfig.filterManager, localConfig.filterStatus, localConfig.sortOrder && localConfig.sortOrder !== 'default' ? true : null, localConfig.limit].filter(Boolean).length;
+
   return (
     <Card ref={setNodeRef} style={style} className={cn("group transition-all duration-300", isDragging && "shadow-lg ring-2 ring-primary/20")}>
       <CardHeader className={cn(
-        "flex flex-row items-center justify-between space-y-0 pb-2",
+        "flex flex-col space-y-0 pb-2",
         compact && "py-3"
       )}>
-        <div className="flex items-center gap-2">
-          <button
-            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none opacity-0 group-hover:opacity-100 transition-opacity"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className={cn("h-4 w-4", compact && "h-3 w-3")} />
-          </button>
-          <ChartTypeIcon type={chart.type} />
-          <CardTitle className={cn("text-lg", compact && "text-base")}>{chart.title}</CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none opacity-0 group-hover:opacity-100 transition-opacity"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className={cn("h-4 w-4", compact && "h-3 w-3")} />
+            </button>
+            <CardTitle className={cn("text-lg", compact && "text-base")}>{chart.title}</CardTitle>
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={cn("h-8 w-8", compact && "h-6 w-6")}
+              onClick={() => onEdit(chart)}
+            >
+              <Pencil className={cn("h-4 w-4", compact && "h-3 w-3")} />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={cn("h-8 w-8 text-destructive hover:text-destructive", compact && "h-6 w-6")}
+              onClick={() => onDelete(chart.id)}
+            >
+              <Trash2 className={cn("h-4 w-4", compact && "h-3 w-3")} />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={cn("h-8 w-8", compact && "h-6 w-6")}
-            onClick={() => onEdit(chart)}
-          >
-            <Pencil className={cn("h-4 w-4", compact && "h-3 w-3")} />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={cn("h-8 w-8 text-destructive hover:text-destructive", compact && "h-6 w-6")}
-            onClick={() => onDelete(chart.id)}
-          >
-            <Trash2 className={cn("h-4 w-4", compact && "h-3 w-3")} />
-          </Button>
+        {/* Inline toolbar */}
+        <div className="pt-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <ChartInlineToolbar
+            chartType={chart.type}
+            dataSource={chart.dataSource}
+            localConfig={localConfig}
+            onChange={setLocalConfig}
+            managers={managers}
+            statuses={statuses}
+            compact={compact}
+          />
         </div>
       </CardHeader>
       <CardContent className={compact ? "pt-0 pb-3" : undefined}>
@@ -891,6 +922,8 @@ function SortableChartCard({
           compact={compact}
           stageLabels={stageLabels}
           onSegmentClick={onSegmentClick ? (segmentName) => onSegmentClick(chart.dataSource, segmentName) : undefined}
+          globalFilters={globalFilters}
+          localConfig={localConfig}
         />
       </CardContent>
     </Card>
