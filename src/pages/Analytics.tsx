@@ -455,13 +455,20 @@ const ChartTypeIcon = ({ type }: { type: ChartType }) => {
   }
 };
 
-function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean }) {
-  const data = getChartData(chart.dataSource, deals, dateRange);
+function ChartRenderer({ chart, deals, dateRange, compact = false, stageLabels }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean; stageLabels?: Record<string, string> }) {
+  const data = getChartData(chart.dataSource, deals, dateRange, stageLabels);
   const chartHeight = compact ? 180 : 250;
 
-  // Force horizontal bar chart for pass reasons (better for categorical data)
+  const tooltipStyle = {
+    backgroundColor: 'hsl(var(--popover))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px',
+    color: 'hsl(var(--popover-foreground))',
+  };
+
+  // Force horizontal bar chart for pass reasons
   if (chart.dataSource === 'lender-pass-reasons') {
-    const total = data.reduce((s: number, d: any) => s + d.value, 0);
+    const total = (data as any[]).reduce((s: number, d: any) => s + d.value, 0);
     const barHeight = Math.max(chartHeight, data.length * 32 + 40);
     return (
       <ResponsiveContainer width="100%" height={barHeight}>
@@ -469,14 +476,8 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
           <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
           <YAxis dataKey="name" type="category" width={compact ? 100 : 140} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--popover))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '8px',
-              color: 'hsl(var(--popover-foreground))',
-            }}
-            formatter={(value: number) => [`${value} (${total > 0 ? ((value / total) * 100).toFixed(0) : 0}%)`, 'Count']}
+          <Tooltip contentStyle={tooltipStyle}
+            formatter={(value: any) => [`${value} (${total > 0 ? ((Number(value) / total) * 100).toFixed(0) : 0}%)`, 'Count']}
           />
           <Bar dataKey="value" radius={[0, 4, 4, 0]}>
             {data.map((_: any, index: number) => (
@@ -485,6 +486,125 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+    );
+  }
+
+  // Conversion Funnel
+  if (chart.dataSource === 'conversion-funnel') {
+    const funnelData = data as any[];
+    return (
+      <div className="space-y-2">
+        {funnelData.map((stage: any, i: number) => {
+          const maxVal = funnelData[0]?.value || 1;
+          const pct = maxVal > 0 ? (stage.value / maxVal) * 100 : 0;
+          const dropOff = i > 0 ? (((funnelData[i - 1].value - stage.value) / funnelData[i - 1].value) * 100) : 0;
+          return (
+            <div key={stage.name} className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground w-24 truncate text-right">{stage.name}</span>
+              <div className="flex-1 h-7 rounded bg-muted/30 relative overflow-hidden">
+                <div
+                  className="h-full rounded transition-all duration-500"
+                  style={{ width: `${pct}%`, backgroundColor: stage.fill }}
+                />
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-foreground">
+                  {stage.value} deals
+                </span>
+              </div>
+              {i > 0 && (
+                <span className="text-[10px] text-destructive whitespace-nowrap w-12">
+                  −{dropOff.toFixed(0)}%
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Deal Velocity — horizontal bar
+  if (chart.dataSource === 'deal-velocity') {
+    const barHeight = Math.max(chartHeight, data.length * 32 + 40);
+    return (
+      <ResponsiveContainer width="100%" height={barHeight}>
+        <BarChart data={data} layout="vertical" margin={{ left: 10, right: 30 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+          <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} label={{ value: 'Avg Days', position: 'insideBottom', offset: -5, fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+          <YAxis dataKey="name" type="category" width={compact ? 100 : 140} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => [`${value} days`, 'Avg Duration']} />
+          <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+            {data.map((_: any, index: number) => (
+              <Cell key={index} fill={Number((data[index] as any).value) > 30 ? '#ef4444' : Number((data[index] as any).value) > 14 ? '#f59e0b' : '#22c55e'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  // Lender Leaderboard — table
+  if (chart.dataSource === 'lender-leaderboard') {
+    const rows = data as any[];
+    return (
+      <ScrollArea className={cn("border rounded-md", compact ? "h-[180px]" : "h-[300px]")}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">Lender</TableHead>
+              <TableHead className="text-xs text-right">Reviewed</TableHead>
+              <TableHead className="text-xs text-right">Funded</TableHead>
+              <TableHead className="text-xs text-right">Avg Resp (d)</TableHead>
+              <TableHead className="text-xs text-right">Pass %</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No lender data</TableCell></TableRow>
+            ) : rows.map((row: any) => (
+              <TableRow key={row.name}>
+                <TableCell className="font-medium text-xs truncate max-w-[120px]">{row.name}</TableCell>
+                <TableCell className="text-right text-xs">{row.reviewed}</TableCell>
+                <TableCell className="text-right text-xs">{row.funded}</TableCell>
+                <TableCell className="text-right text-xs">{row.avgResponseDays || '—'}</TableCell>
+                <TableCell className="text-right text-xs">
+                  <Badge variant={row.passRate > 60 ? 'destructive' : 'secondary'} className="text-[10px]">{row.passRate}%</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    );
+  }
+
+  // Stale Deal Alerts — list
+  if (chart.dataSource === 'stale-deal-alerts') {
+    const staleDeals = data as any[];
+    const formatCurrency = (v: number) => v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `$${(v / 1_000).toFixed(0)}K` : `$${v}`;
+    return (
+      <ScrollArea className={cn("border rounded-md", compact ? "h-[180px]" : "h-[300px]")}>
+        {staleDeals.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">No stale deals 🎉</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {staleDeals.map((deal: any, i: number) => (
+              <div key={i} className="flex items-center justify-between px-3 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate">{deal.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Badge variant="outline" className="text-[10px]">{deal.stage}</Badge>
+                    <span className="text-[10px] text-muted-foreground">{formatCurrency(deal.value)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 ml-2">
+                  <AlertTriangle className="h-3 w-3 text-destructive" />
+                  <span className="text-xs font-semibold text-destructive">{deal.daysInStage}d</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ScrollArea>
     );
   }
   
@@ -496,13 +616,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--popover))', 
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px'
-              }} 
-            />
+            <Tooltip contentStyle={tooltipStyle} />
             <Bar dataKey="value" fill={chart.color} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -515,13 +629,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--popover))', 
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px'
-              }} 
-            />
+            <Tooltip contentStyle={tooltipStyle} />
             <Line type="monotone" dataKey="value" stroke={chart.color} strokeWidth={2} dot={{ fill: chart.color }} />
           </RechartsLineChart>
         </ResponsiveContainer>
@@ -539,20 +647,14 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
               outerRadius={compact ? 60 : 80}
               paddingAngle={2}
               dataKey="value"
-              label={compact ? undefined : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              label={compact ? undefined : ({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
               labelLine={false}
             >
-              {data.map((_, index) => (
+              {data.map((_: any, index: number) => (
                 <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--popover))', 
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px'
-              }} 
-            />
+            <Tooltip contentStyle={tooltipStyle} />
           </RechartsPieChart>
         </ResponsiveContainer>
       );
@@ -564,13 +666,7 @@ function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: Ch
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--popover))', 
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px'
-              }} 
-            />
+            <Tooltip contentStyle={tooltipStyle} />
             <Area type="monotone" dataKey="value" stroke={chart.color} fill={chart.color} fillOpacity={0.3} />
           </RechartsAreaChart>
         </ResponsiveContainer>
