@@ -1761,6 +1761,132 @@ export type Database = {
           },
         ]
       }
+      contact_field_suggestion_audit: {
+        Row: {
+          action: string
+          actor_user_id: string
+          contact_id: string
+          created_at: string | null
+          field_name: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          suggestion_id: string
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          contact_id: string
+          created_at?: string | null
+          field_name: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          suggestion_id: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          contact_id?: string
+          created_at?: string | null
+          field_name?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          suggestion_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_field_suggestion_audit_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_field_suggestion_audit_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "contact_field_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_field_suggestions: {
+        Row: {
+          acted_at: string | null
+          acted_by_user_id: string | null
+          company_id: string
+          confidence: number
+          contact_id: string
+          created_at: string | null
+          current_value: string | null
+          dedupe_key: string
+          field_name: string
+          id: string
+          snoozed_until: string | null
+          source_id: string | null
+          source_snippet: string | null
+          source_type: string
+          status: string
+          suggested_value: string
+          updated_at: string | null
+        }
+        Insert: {
+          acted_at?: string | null
+          acted_by_user_id?: string | null
+          company_id: string
+          confidence: number
+          contact_id: string
+          created_at?: string | null
+          current_value?: string | null
+          dedupe_key: string
+          field_name: string
+          id?: string
+          snoozed_until?: string | null
+          source_id?: string | null
+          source_snippet?: string | null
+          source_type: string
+          status?: string
+          suggested_value: string
+          updated_at?: string | null
+        }
+        Update: {
+          acted_at?: string | null
+          acted_by_user_id?: string | null
+          company_id?: string
+          confidence?: number
+          contact_id?: string
+          created_at?: string | null
+          current_value?: string | null
+          dedupe_key?: string
+          field_name?: string
+          id?: string
+          snoozed_until?: string | null
+          source_id?: string | null
+          source_snippet?: string | null
+          source_type?: string
+          status?: string
+          suggested_value?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_field_suggestions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_field_suggestions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           additional_emails: string[] | null
@@ -5055,6 +5181,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      field_suggestion_thresholds: {
+        Row: {
+          company_id: string
+          field_name: string
+          id: string
+          is_enabled: boolean
+          min_confidence: number
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          field_name: string
+          id?: string
+          is_enabled?: boolean
+          min_confidence?: number
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          field_name?: string
+          id?: string
+          is_enabled?: boolean
+          min_confidence?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_suggestion_thresholds_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       file_checklist_map: {
         Row: {

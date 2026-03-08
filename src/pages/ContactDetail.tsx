@@ -14,6 +14,7 @@ import { useContactCrmCompany, useLinkContactToCompany, useUnlinkContactFromComp
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
+import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSuggestions';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -280,6 +281,9 @@ export default function ContactDetail() {
 
             {/* Right: Related objects */}
             <div className="col-span-3 space-y-4">
+              {/* AI Field Suggestions */}
+              <ContactFieldSuggestions contactId={contact.id} companyId={(contact as any)?.org_company_id} />
+
               {/* Company */}
               <Card>
                 <CardHeader className="pb-2">
