@@ -159,6 +159,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       <FeedbackWidget />
       <TaskAssignmentBanner />
       <PlatformTour />
+      <CopilotToggleButton />
     </SidebarProvider>
   );
 }
