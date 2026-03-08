@@ -117,10 +117,15 @@ export function PortfolioRiskAnalysis() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
 
-  // Drawer state
+  // Drawer state (now Dialog)
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTitle, setDrawerTitle] = useState('');
   const [drawerDeals, setDrawerDeals] = useState<Deal[]>([]);
+
+  // Pop-up states for sections
+  const [trendsOpen, setTrendsOpen] = useState(false);
+  const [concentrationOpen, setConcentrationOpen] = useState(false);
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
 
   const tableRef = useRef<HTMLDivElement>(null);
 
