@@ -163,6 +163,89 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // AI suggestions hook
+  const {
+    suggestions,
+    isLoading: isSuggestLoading,
+    hasRun: hasSuggestRun,
+    pendingCount,
+    acceptedCount,
+    fetchSuggestions,
+    acceptSuggestion,
+    rejectSuggestion,
+    acceptAll,
+    logPatterns,
+    getSuggestionForRow,
+  } = useMappingSuggestions();
+
+  // Get company_id for the current user
+  const getCompanyId = useCallback(async (): Promise<string | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await supabase.from('company_members').select('company_id').eq('user_id', user.id).limit(1).single();
+    return data?.company_id || null;
+  }, []);
+
+  // Trigger AI suggestions
+  const handleAISuggest = useCallback(async () => {
+    if (!selectedFile) return;
+    const sheet = selectedFile.sheets[activeSheet];
+    if (!sheet) return;
+
+    const companyId = await getCompanyId();
+    if (!companyId) {
+      toast.error('Company not found');
+      return;
+    }
+
+    const rows = sheet.data.slice(0, 200).map((row, idx) => ({
+      rowIdx: idx,
+      label: String(row[0] || ''),
+      sampleValues: row.slice(1, 6),
+    })).filter(r => r.label.trim().length > 0);
+
+    await fetchSuggestions(rows, companyId, dealId);
+  }, [selectedFile, activeSheet, getCompanyId, fetchSuggestions, dealId]);
+
+  // Accept a suggestion and auto-map it
+  const handleAcceptSuggestion = useCallback((rowIdx: number) => {
+    const suggestion = getSuggestionForRow(rowIdx);
+    if (!suggestion || !selectedFile) return;
+
+    const sheet = selectedFile.sheets[activeSheet];
+    const fieldName = suggestion.suggestedField;
+
+    // Auto-assign the mapping
+    const newMapping: FieldMapping = {
+      sheet: sheet.name,
+      rowIdx,
+      label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`),
+    };
+
+    setFieldMappings(prev => ({
+      ...prev,
+      [fieldName]: [...(prev[fieldName] || []), newMapping],
+    }));
+
+    acceptSuggestion(rowIdx);
+  }, [getSuggestionForRow, selectedFile, activeSheet, acceptSuggestion]);
+
+  // Accept all pending suggestions
+  const handleAcceptAll = useCallback(() => {
+    const pending = suggestions.filter(s => s.status === 'pending');
+    pending.forEach(s => handleAcceptSuggestion(s.rowIdx));
+    acceptAll();
+  }, [suggestions, handleAcceptSuggestion, acceptAll]);
+
+  // Log patterns and recalculate
+  const handleRecalculateWithLog = useCallback(async () => {
+    const companyId = await getCompanyId();
+    if (companyId) {
+      await logPatterns(companyId, dealId);
+    }
+    handleRecalculate();
+  }, [getCompanyId, logPatterns, dealId]);
+
   const analyzeFile = useCallback(async (file: File): Promise<AnalyzedFile> => {
     try {
       const result = await parseExcelFromFile(file);
