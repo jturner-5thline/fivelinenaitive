@@ -887,7 +887,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
               </table>
             </div>
             <div className="flex justify-end mt-3">
-              <Button size="sm" className="h-7 text-xs" onClick={handleRecalculate}>
+              <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog}>
                 <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save mapping
               </Button>
             </div>
