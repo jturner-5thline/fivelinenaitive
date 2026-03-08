@@ -327,6 +327,9 @@ export function CashFlowManager() {
           onSidebarEditItem={handleSidebarEditItem}
           onSidebarRemoveItem={handleSidebarRemoveItem}
           onSidebarAddItem={handleSidebarAddItem}
+          onNoteEdit={handleNoteEdit}
+          onNoteRemove={handleNoteRemove}
+          onNoteAdd={handleNoteAdd}
         />
       )}
 

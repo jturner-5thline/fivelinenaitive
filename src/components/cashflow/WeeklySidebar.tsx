@@ -8,10 +8,14 @@ interface WeeklySidebarProps {
   onEditItem: (index: number, field: string, value: string | number) => void;
   onRemoveItem: (index: number) => void;
   onAddItem: () => void;
+  onNoteEdit: (index: number, value: string) => void;
+  onNoteRemove: (index: number) => void;
+  onNoteAdd: () => void;
 }
 
 export const WeeklySidebar = memo(function WeeklySidebar({
   data, isAdmin, onEditItem, onRemoveItem, onAddItem,
+  onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklySidebarProps) {
   const total = data.cash_in_next_8_weeks.reduce((s, i) => s + i.amount, 0);
 
@@ -63,8 +67,42 @@ export const WeeklySidebar = memo(function WeeklySidebar({
       <div className="cf-sidebar-card">
         <div className="cf-sidebar-title">Notes & Key Items</div>
         {data.notes.map((note, i) => (
-          <div key={i} className="cf-note-item">{note}</div>
+          <div key={i} className="cf-note-item" style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+            {isAdmin ? (
+              <>
+                <textarea
+                  value={note}
+                  onChange={e => onNoteEdit(i, e.target.value)}
+                  rows={2}
+                  style={{
+                    flex: 1,
+                    background: 'var(--color-surface-offset)',
+                    border: '1px solid var(--color-divider)',
+                    borderRadius: '4px',
+                    color: 'var(--color-text)',
+                    fontSize: 'var(--text-xs)',
+                    padding: '4px 6px',
+                    resize: 'vertical',
+                    fontFamily: 'Inter, sans-serif',
+                    lineHeight: 1.4,
+                  }}
+                />
+                <button
+                  className="cf-row-remove"
+                  style={{ opacity: 1, fontSize: '12px', flexShrink: 0, marginTop: '2px' }}
+                  onClick={() => onNoteRemove(i)}
+                >×</button>
+              </>
+            ) : (
+              <span>{note}</span>
+            )}
+          </div>
         ))}
+        {isAdmin && (
+          <button className="cf-btn cf-btn-ghost" onClick={onNoteAdd} style={{ fontSize: '11px', marginTop: 8 }}>
+            + Add Note
+          </button>
+        )}
       </div>
     </div>
   );

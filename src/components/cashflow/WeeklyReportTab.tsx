@@ -198,6 +198,9 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         onEditItem={onSidebarEditItem}
         onRemoveItem={onSidebarRemoveItem}
         onAddItem={onSidebarAddItem}
+        onNoteEdit={onNoteEdit}
+        onNoteRemove={onNoteRemove}
+        onNoteAdd={onNoteAdd}
       />
 
       {/* Save Plan dialog */}
