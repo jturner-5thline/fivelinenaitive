@@ -62,17 +62,17 @@ export function SaaSModelIncomeStatement({ model }: Props) {
     { label: 'Net Income', values: model.netIncome, isTotal: true },
   ];
 
+  const years = [...new Set(model.months.map(m => m.year))];
+
   if (viewMode === 'annual') {
-    // Group by year
-    const years = [...new Set(model.months.map(m => m.year))];
     return (
       <Card className="border-border/30">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold">Income Statement</h3>
             <div className="flex gap-1">
-              <Button variant={viewMode === 'monthly' ? 'default' : 'outline'} size="sm" className="h-7 text-xs" onClick={() => setViewMode('monthly')}>Monthly</Button>
-              <Button variant={viewMode === 'annual' ? 'default' : 'outline'} size="sm" className="h-7 text-xs" onClick={() => setViewMode('annual')}>Annual</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setViewMode('monthly')}>Monthly</Button>
+              <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => setViewMode('annual')}>Annual</Button>
             </div>
           </div>
           <div className="overflow-x-auto">
