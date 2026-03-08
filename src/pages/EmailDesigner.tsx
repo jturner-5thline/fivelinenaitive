@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Mail, Plus, Trash2, Copy, Edit, Eye, Search } from 'lucide-react';
-import { DealsHeader } from '@/components/deals/DealsHeader';
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
