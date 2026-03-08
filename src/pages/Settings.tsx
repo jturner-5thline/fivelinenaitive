@@ -106,6 +106,10 @@ const SETTINGS_SECTIONS = [
     keywords: ['gamma', 'templates', 'presentation', 'document', 'pitch', 'status', 'update'],
   },
   {
+    id: 'agreement-templates',
+    keywords: ['agreement', 'templates', 'legal', 'advisory', 'drafter', 'contract', 'engagement'],
+  },
+  {
     id: 'preferences',
     keywords: ['preferences', 'theme', 'notifications', 'regional', 'settings', 'dark', 'light', 'mode'],
   },
