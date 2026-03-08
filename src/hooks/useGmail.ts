@@ -251,9 +251,11 @@ export function useGmail() {
       // Simulate brief loading
       await new Promise(r => setTimeout(r, 300));
       const max = options?.maxResults || 20;
-      setMessages(DEMO_MOCK_EMAILS.slice(0, max));
+      const demoMsgs = DEMO_MOCK_EMAILS.slice(0, max);
+      setMessages(demoMsgs);
+      cachedMessages = demoMsgs;
       setIsLoading(false);
-      return { messages: DEMO_MOCK_EMAILS.slice(0, max) };
+      return { messages: demoMsgs };
     }
 
     setIsLoading(true);
