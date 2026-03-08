@@ -126,24 +126,35 @@ interface ThreadListItemProps {
   onSelect: () => void;
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
+  isChecked?: boolean;
+  onCheckChange?: (checked: boolean) => void;
+  onMarkRead?: (email: MockEmail) => void;
+  onMarkUnread?: (email: MockEmail) => void;
+  onArchive?: (email: MockEmail) => void;
+  onDelete?: (email: MockEmail) => void;
 }
 
-function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleStar }: ThreadListItemProps) {
+function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const latest = thread.latestEmail;
   const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
   const threadCount = thread.emails.length;
   const isUnread = thread.hasUnread;
   const isUrgent = thread.needsResponse;
+  const showCheckbox = hovered || isChecked;
 
-  return (
+  const rowContent = (
     <div
       className={cn(
         'group relative cursor-pointer transition-all duration-150 mx-0 mr-2 mb-1.5 border-l-[3px] overflow-hidden',
-        // Selected state
+        // Selected state (clicked to read)
         isSelected
           ? 'bg-primary/[0.06] border-l-primary rounded-r-lg shadow-[inset_0_0_12px_-4px_hsl(var(--primary)/0.2)]'
           : 'rounded-lg',
+        // Checked state (checkbox selected for bulk)
+        isChecked && !isSelected && 'bg-primary/[0.04]',
+        // Unread: slightly brighter background
+        !isSelected && !isChecked && isUnread && 'bg-muted/[0.08]',
         // Unread left border (when not selected)
         !isSelected && isUnread && 'border-l-primary',
         // Read: no border accent
@@ -151,20 +162,42 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
         // Urgency: needs response border when not unread
         !isSelected && isUrgent && !isUnread && 'border-l-amber-500',
         // Urgency row tint
-        isUrgent && !isSelected && 'bg-destructive/[0.06]',
+        isUrgent && !isSelected && !isChecked && 'bg-destructive/[0.06]',
         // Default + hover
-        !isSelected && !isUrgent && 'hover:bg-[rgba(255,255,255,0.04)]',
-        isUrgent && !isSelected && 'hover:bg-destructive/[0.08]',
+        !isSelected && !isUrgent && !isChecked && 'hover:bg-[rgba(255,255,255,0.04)]',
+        isUrgent && !isSelected && !isChecked && 'hover:bg-destructive/[0.08]',
       )}
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div className="flex items-start gap-3 px-3 py-4 min-w-0 overflow-hidden">
-        <EmailAvatar
-          name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name}
-          email={latest.folder === 'sent' ? latest.to_email : latest.from_email}
-        />
+        {/* Checkbox + unread dot area */}
+        <div className="relative flex items-center justify-center shrink-0" style={{ width: 40, height: 40 }}>
+          {showCheckbox ? (
+            <div
+              className="absolute inset-0 flex items-center justify-center z-10"
+              onClick={(e) => { e.stopPropagation(); onCheckChange?.(!isChecked); }}
+            >
+              <Checkbox
+                checked={isChecked}
+                onCheckedChange={(checked) => onCheckChange?.(!!checked)}
+                className="h-4 w-4"
+              />
+            </div>
+          ) : (
+            <>
+              {/* Unread dot */}
+              {isUnread && (
+                <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary z-10" />
+              )}
+              <EmailAvatar
+                name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name}
+                email={latest.folder === 'sent' ? latest.to_email : latest.from_email}
+              />
+            </>
+          )}
+        </div>
         
         <div className="min-w-0 flex-1 overflow-hidden">
           {/* Row 1: Sender + timestamp */}
@@ -172,7 +205,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
             <div className="flex items-center gap-2 min-w-0">
               <span className={cn(
                 'text-sm truncate',
-                isUnread ? 'font-semibold text-foreground' : 'font-normal text-foreground/80'
+                isUnread ? 'font-bold text-foreground' : 'font-normal text-foreground/70'
               )}>
                 {displayName}
               </span>
@@ -213,13 +246,16 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           {/* Row 3: Subject */}
           <p className={cn(
             'text-[13px] truncate',
-            isUnread ? 'text-foreground font-medium' : 'text-foreground/70 font-normal'
+            isUnread ? 'text-foreground font-semibold' : 'text-foreground/60 font-normal'
           )}>
             {thread.subject}
           </p>
           
           {/* Row 4: Snippet - single line, higher contrast */}
-          <p className="text-xs text-muted-foreground/70 truncate mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+          <p className={cn(
+            'text-xs truncate mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis',
+            isUnread ? 'text-muted-foreground/80' : 'text-muted-foreground/50'
+          )}>
             {latest.snippet}
           </p>
           
@@ -247,7 +283,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
         <div className="absolute right-2 top-3 flex items-center gap-0.5 bg-background/95 backdrop-blur-sm border rounded-md shadow-md px-1 py-0.5">
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={(e) => { e.stopPropagation(); toast.info('Archive coming soon'); }} className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted transition-colors">
+              <button onClick={(e) => { e.stopPropagation(); onArchive?.(latest); }} className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted transition-colors">
                 <Archive className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
             </TooltipTrigger>
@@ -272,6 +308,20 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
         </div>
       )}
     </div>
+  );
+
+  return (
+    <EmailContextMenu
+      isRead={!isUnread}
+      isStarred={thread.isStarred}
+      onMarkRead={() => onMarkRead?.(latest)}
+      onMarkUnread={() => onMarkUnread?.(latest)}
+      onToggleStar={() => onToggleStar(latest)}
+      onArchive={() => onArchive?.(latest)}
+      onDelete={() => onDelete?.(latest)}
+    >
+      {rowContent}
+    </EmailContextMenu>
   );
 }
 
