@@ -138,20 +138,29 @@ const getHoursData = (deals: Deal[]) => {
   };
 };
 
-const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRange) => {
+const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRange, stageLabels?: Record<string, string>) => {
   const filteredDeals = dateRange?.from && dateRange?.to 
     ? allDeals.filter(deal => {
         const dealDate = new Date(deal.createdAt);
         return isWithinInterval(dealDate, { start: dateRange.from!, end: dateRange.to! });
       })
     : allDeals;
+
+  const resolveStage = (stageId: string) => stageLabels?.[stageId] || stageId;
+
   switch (dataSource) {
-    case 'deals-by-stage':
+    case 'deals-by-stage': {
       const stageCounts: Record<string, number> = {};
+      // Initialize all configured stages so they all appear even if count is 0
+      if (stageLabels) {
+        Object.values(stageLabels).forEach(label => { stageCounts[label] = 0; });
+      }
       filteredDeals.forEach(deal => {
-        stageCounts[deal.stage] = (stageCounts[deal.stage] || 0) + 1;
+        const label = resolveStage(deal.stage);
+        stageCounts[label] = (stageCounts[label] || 0) + 1;
       });
       return Object.entries(stageCounts).map(([name, value]) => ({ name, value }));
+    }
     
     case 'monthly-value':
       return [
@@ -197,7 +206,6 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
       filteredDeals.forEach(deal => {
         deal.lenders?.forEach(lender => {
           if (lender.trackingStatus === 'passed' && lender.passReason) {
-            // Split comma-separated reasons into individual entries
             lender.passReason.split(', ').forEach(reason => {
               const trimmed = reason.trim();
               if (trimmed) passReasonCounts[trimmed] = (passReasonCounts[trimmed] || 0) + 1;
@@ -221,7 +229,6 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
             { name: 'Market conditions', value: 1 },
           ]
         : Object.entries(passReasonCounts).map(([name, value]) => ({ name, value }));
-      // Sort descending, keep top 8, group rest into "Other"
       passEntries.sort((a, b) => b.value - a.value);
       const totalPassCount = passEntries.reduce((s, e) => s + e.value, 0);
       const threshold = totalPassCount * 0.05;
@@ -309,6 +316,104 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
       return Object.entries(referralValues)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
+
+    case 'conversion-funnel': {
+      // Build funnel from pipeline stages in order
+      const stageOrder = stageLabels ? Object.entries(stageLabels) : [];
+      if (stageOrder.length === 0) {
+        return [
+          { name: 'Sourcing', value: filteredDeals.length, fill: '#9333ea' },
+          { name: 'Screening', value: Math.round(filteredDeals.length * 0.7), fill: '#6366f1' },
+          { name: 'Due Diligence', value: Math.round(filteredDeals.length * 0.45), fill: '#3b82f6' },
+          { name: 'Terms Issued', value: Math.round(filteredDeals.length * 0.25), fill: '#06b6d4' },
+          { name: 'Closing', value: Math.round(filteredDeals.length * 0.15), fill: '#10b981' },
+          { name: 'Funded', value: Math.round(filteredDeals.length * 0.08), fill: '#22c55e' },
+        ];
+      }
+      const funnelColors = ['#9333ea', '#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6'];
+      const stageDealCounts: Record<string, number> = {};
+      filteredDeals.forEach(d => {
+        const label = resolveStage(d.stage);
+        stageDealCounts[label] = (stageDealCounts[label] || 0) + 1;
+      });
+      // Cumulative: deals AT or PAST a given stage
+      let cumulative = filteredDeals.length;
+      return stageOrder.map(([_id, label], i) => {
+        const count = stageDealCounts[label] || 0;
+        const result = { name: label, value: cumulative, fill: funnelColors[i % funnelColors.length] };
+        cumulative -= count;
+        return result;
+      });
+    }
+
+    case 'deal-velocity': {
+      // Average days deals spend in each stage (mock based on updatedAt vs createdAt)
+      const stageEntries = stageLabels ? Object.entries(stageLabels) : [];
+      const stageDays: Record<string, number[]> = {};
+      filteredDeals.forEach(d => {
+        const label = resolveStage(d.stage);
+        const days = differenceInDays(new Date(d.updatedAt), new Date(d.createdAt));
+        if (!stageDays[label]) stageDays[label] = [];
+        stageDays[label].push(Math.max(days, 1));
+      });
+      const result = Object.entries(stageDays).map(([name, days]) => ({
+        name,
+        value: Math.round(days.reduce((s, d) => s + d, 0) / days.length),
+      }));
+      result.sort((a, b) => b.value - a.value);
+      return result;
+    }
+
+    case 'lender-leaderboard': {
+      const lenderStats: Record<string, { reviewed: number; funded: number; passed: number; totalResponseDays: number; responseCount: number }> = {};
+      filteredDeals.forEach(deal => {
+        deal.lenders?.forEach(lender => {
+          if (!lenderStats[lender.name]) {
+            lenderStats[lender.name] = { reviewed: 0, funded: 0, passed: 0, totalResponseDays: 0, responseCount: 0 };
+          }
+          lenderStats[lender.name].reviewed++;
+          if (lender.trackingStatus === 'passed') lenderStats[lender.name].passed++;
+          // Approximate funded from stage
+          if (lender.stage && ['closed-funded', 'term-sheets'].includes(lender.stage)) lenderStats[lender.name].funded++;
+          // Mock response time based on updatedAt
+          if (lender.updatedAt) {
+            const respDays = differenceInDays(new Date(lender.updatedAt), new Date(deal.createdAt));
+            if (respDays > 0) {
+              lenderStats[lender.name].totalResponseDays += respDays;
+              lenderStats[lender.name].responseCount++;
+            }
+          }
+        });
+      });
+      return Object.entries(lenderStats)
+        .map(([name, stats]) => ({
+          name,
+          reviewed: stats.reviewed,
+          funded: stats.funded,
+          passRate: stats.reviewed > 0 ? Math.round((stats.passed / stats.reviewed) * 100) : 0,
+          avgResponseDays: stats.responseCount > 0 ? Math.round(stats.totalResponseDays / stats.responseCount) : 0,
+          value: stats.reviewed, // for sorting
+        }))
+        .sort((a, b) => b.reviewed - a.reviewed)
+        .slice(0, 15);
+    }
+
+    case 'stale-deal-alerts': {
+      const now = new Date();
+      return filteredDeals
+        .filter(d => d.status !== 'archived')
+        .map(d => ({
+          name: d.company || d.name,
+          dealName: d.name,
+          stage: resolveStage(d.stage),
+          daysInStage: differenceInDays(now, new Date(d.updatedAt)),
+          lastActivity: d.updatedAt,
+          value: d.value,
+        }))
+        .filter(d => d.daysInStage >= 30)
+        .sort((a, b) => b.daysInStage - a.daysInStage)
+        .slice(0, 20);
+    }
     
     default:
       return [
