@@ -70,12 +70,12 @@ export function AICopilotPanel() {
 
     setInput('');
 
-    // Placeholder assistant reply
+    // Placeholder assistant reply with markdown
     setTimeout(() => {
       addMessage({
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: "I'm being configured — I'll be able to help soon.",
+        content: "I'm being configured — I'll be able to help soon.\n\n**Features I'll support:**\n\n- Deal insights\n- Task summaries\n- Pipeline analysis\n- Context-aware suggestions",
         timestamp: new Date(),
       });
     }, 400);
