@@ -273,6 +273,21 @@ export default function Help() {
         </main>
       </div>
 
+      {/* Article Detail Dialog */}
+      <Dialog open={!!selectedArticle} onOpenChange={(open) => !open && setSelectedArticle(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedArticle?.title}</DialogTitle>
+          </DialogHeader>
+          {selectedArticle && (
+            <div
+              className="prose prose-sm dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: selectedArticle.body_html }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Walkthrough Dialog */}
       <FeatureWalkthrough
         guide={selectedGuide}
