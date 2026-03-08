@@ -4683,6 +4683,112 @@ export type Database = {
           },
         ]
       }
+      email_block_library: {
+        Row: {
+          block_json: Json
+          category: string | null
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          block_json: Json
+          category?: string | null
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          block_json?: Json
+          category?: string | null
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_block_library_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_distribution_stats: {
+        Row: {
+          clean_bounces: number | null
+          clean_click_rate: number | null
+          clean_clicks: number | null
+          clean_open_rate: number | null
+          clean_opens: number | null
+          clean_sends: number | null
+          clean_unique_opens: number | null
+          company_id: string
+          computed_at: string | null
+          distribution_id: string
+          id: string
+          raw_bounces: number | null
+          raw_clicks: number | null
+          raw_opens: number | null
+          raw_sends: number | null
+          raw_unique_opens: number | null
+        }
+        Insert: {
+          clean_bounces?: number | null
+          clean_click_rate?: number | null
+          clean_clicks?: number | null
+          clean_open_rate?: number | null
+          clean_opens?: number | null
+          clean_sends?: number | null
+          clean_unique_opens?: number | null
+          company_id: string
+          computed_at?: string | null
+          distribution_id: string
+          id?: string
+          raw_bounces?: number | null
+          raw_clicks?: number | null
+          raw_opens?: number | null
+          raw_sends?: number | null
+          raw_unique_opens?: number | null
+        }
+        Update: {
+          clean_bounces?: number | null
+          clean_click_rate?: number | null
+          clean_clicks?: number | null
+          clean_open_rate?: number | null
+          clean_opens?: number | null
+          clean_sends?: number | null
+          clean_unique_opens?: number | null
+          company_id?: string
+          computed_at?: string | null
+          distribution_id?: string
+          id?: string
+          raw_bounces?: number | null
+          raw_clicks?: number | null
+          raw_opens?: number | null
+          raw_sends?: number | null
+          raw_unique_opens?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_distribution_stats_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_label_rules: {
         Row: {
           created_at: string
@@ -4845,6 +4951,59 @@ export type Database = {
           variables?: string[] | null
         }
         Relationships: []
+      }
+      email_templates_v2: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_locked: boolean | null
+          name: string
+          preview_text_template: string | null
+          scope: string
+          subject_template: string | null
+          template_json: Json
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_locked?: boolean | null
+          name: string
+          preview_text_template?: string | null
+          scope?: string
+          subject_template?: string | null
+          template_json?: Json
+          type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_locked?: boolean | null
+          name?: string
+          preview_text_template?: string | null
+          scope?: string
+          subject_template?: string | null
+          template_json?: Json
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_v2_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_thread_labels: {
         Row: {
@@ -7745,6 +7904,41 @@ export type Database = {
             foreignKeyName: "notification_rules_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_tracking_settings: {
+        Row: {
+          company_id: string
+          exclude_bot_traffic: boolean | null
+          id: string
+          internal_domains: string[] | null
+          internal_ip_ranges: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          exclude_bot_traffic?: boolean | null
+          id?: string
+          internal_domains?: string[] | null
+          internal_ip_ranges?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          exclude_bot_traffic?: boolean | null
+          id?: string
+          internal_domains?: string[] | null
+          internal_ip_ranges?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_tracking_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
@@ -10714,6 +10908,89 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      video_resources: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          duration_seconds: number | null
+          id: string
+          level: string | null
+          status: string
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          video_url: string
+          view_count: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          level?: string | null
+          status?: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          video_url: string
+          view_count?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          level?: string | null
+          status?: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          video_url?: string
+          view_count?: number | null
+        }
+        Relationships: []
+      }
+      video_views: {
+        Row: {
+          company_id: string | null
+          completed_at: string | null
+          id: string
+          started_at: string | null
+          user_id: string | null
+          video_resource_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          completed_at?: string | null
+          id?: string
+          started_at?: string | null
+          user_id?: string | null
+          video_resource_id: string
+        }
+        Update: {
+          company_id?: string | null
+          completed_at?: string | null
+          id?: string
+          started_at?: string | null
+          user_id?: string | null
+          video_resource_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_views_video_resource_id_fkey"
+            columns: ["video_resource_id"]
+            isOneToOne: false
+            referencedRelation: "video_resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       waitlist: {
         Row: {
