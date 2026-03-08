@@ -24,6 +24,7 @@ import {
   MinusCircle,
   MessageSquare,
   Archive,
+  Clock,
   FileText,
   ChevronsUpDown,
   MoreHorizontal,
