@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Search, Workflow } from "lucide-react";
 
-export default function WfAdmin() {
+export default function WfAdmin({ embedded }: { embedded?: boolean }) {
   const { data: workflows = [], isLoading } = useWfWorkflows();
   const { data: users = [] } = useWfUsers();
   const updateWorkflow = useUpdateWfWorkflow();
