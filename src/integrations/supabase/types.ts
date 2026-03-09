@@ -760,6 +760,182 @@ export type Database = {
           },
         ]
       }
+      asana_field_mappings: {
+        Row: {
+          asana_field: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          platform_entity: string
+          platform_field: string
+          sync_config_id: string
+          transform_config: Json | null
+          transform_type: string | null
+        }
+        Insert: {
+          asana_field: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          platform_entity?: string
+          platform_field: string
+          sync_config_id: string
+          transform_config?: Json | null
+          transform_type?: string | null
+        }
+        Update: {
+          asana_field?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          platform_entity?: string
+          platform_field?: string
+          sync_config_id?: string
+          transform_config?: Json | null
+          transform_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asana_field_mappings_sync_config_id_fkey"
+            columns: ["sync_config_id"]
+            isOneToOne: false
+            referencedRelation: "asana_sync_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asana_project_filters: {
+        Row: {
+          asana_project_gid: string
+          asana_project_name: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          map_to: string
+          pipeline_id: string | null
+          sync_config_id: string
+        }
+        Insert: {
+          asana_project_gid: string
+          asana_project_name: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          map_to?: string
+          pipeline_id?: string | null
+          sync_config_id: string
+        }
+        Update: {
+          asana_project_gid?: string
+          asana_project_name?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          map_to?: string
+          pipeline_id?: string | null
+          sync_config_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asana_project_filters_sync_config_id_fkey"
+            columns: ["sync_config_id"]
+            isOneToOne: false
+            referencedRelation: "asana_sync_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asana_status_mappings: {
+        Row: {
+          asana_project_gid: string | null
+          asana_section_name: string
+          created_at: string
+          id: string
+          platform_entity: string
+          platform_stage_id: string | null
+          platform_status: string
+          sync_config_id: string
+        }
+        Insert: {
+          asana_project_gid?: string | null
+          asana_section_name: string
+          created_at?: string
+          id?: string
+          platform_entity?: string
+          platform_stage_id?: string | null
+          platform_status: string
+          sync_config_id: string
+        }
+        Update: {
+          asana_project_gid?: string | null
+          asana_section_name?: string
+          created_at?: string
+          id?: string
+          platform_entity?: string
+          platform_stage_id?: string | null
+          platform_status?: string
+          sync_config_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asana_status_mappings_sync_config_id_fkey"
+            columns: ["sync_config_id"]
+            isOneToOne: false
+            referencedRelation: "asana_sync_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asana_sync_config: {
+        Row: {
+          auto_sync_enabled: boolean
+          auto_sync_interval_minutes: number
+          created_at: string
+          id: string
+          integration_id: string
+          sync_direction: string
+          sync_on_task_complete: boolean
+          sync_on_task_create: boolean
+          sync_on_task_update: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_sync_enabled?: boolean
+          auto_sync_interval_minutes?: number
+          created_at?: string
+          id?: string
+          integration_id: string
+          sync_direction?: string
+          sync_on_task_complete?: boolean
+          sync_on_task_create?: boolean
+          sync_on_task_update?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_sync_enabled?: boolean
+          auto_sync_interval_minutes?: number
+          created_at?: string
+          id?: string
+          integration_id?: string
+          sync_direction?: string
+          sync_on_task_complete?: boolean
+          sync_on_task_create?: boolean
+          sync_on_task_update?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asana_sync_config_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: true
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_tokens: {
         Row: {
           access_token: string
