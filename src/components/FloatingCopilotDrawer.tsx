@@ -29,7 +29,7 @@ export function FloatingCopilotDrawer() {
           onClick={() => setOpen(true)}
           className={cn(
             'fixed z-50 h-12 w-12 rounded-full',
-            'bottom-4 right-4 sm:bottom-6 sm:right-6',
+            'bottom-6 right-16',
             'bg-primary text-primary-foreground shadow-lg',
             'hover:scale-105 active:scale-95 transition-all duration-200',
             'flex items-center justify-center',
