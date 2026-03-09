@@ -63,6 +63,7 @@ export function AsanaSyncSettingsModal({ open, onClose, integrationId }: AsanaSy
           .insert({
             integration_id: integrationId,
             user_id: user.id,
+            company_id: company?.id || null,
           })
           .select()
           .single();
