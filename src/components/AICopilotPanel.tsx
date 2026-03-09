@@ -12,6 +12,8 @@ import { CopilotDealCard } from '@/components/copilot/CopilotDealCard';
 import { CopilotLenderCard } from '@/components/copilot/CopilotLenderCard';
 import { CopilotTaskCard } from '@/components/copilot/CopilotTaskCard';
 import { CopilotPipelineSummary } from '@/components/copilot/CopilotPipelineSummary';
+import { CopilotProactiveNudge } from '@/components/copilot/CopilotProactiveNudge';
+import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
@@ -135,6 +137,7 @@ export function AICopilotPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const { nudges, dismissNudge } = useProactiveNudges();
 
   // Load conversation on mount
   useEffect(() => {
@@ -211,8 +214,8 @@ export function AICopilotPanel() {
     if (isOpen) setTimeout(() => textareaRef.current?.focus(), 200);
   }, [isOpen]);
 
-  const handleSend = useCallback(async () => {
-    const text = input.trim();
+  const handleSend = useCallback(async (directMessage?: string) => {
+    const text = (directMessage || input).trim();
     if (!text || isProcessing) return;
 
     const userMsg = {
@@ -369,6 +372,10 @@ export function AICopilotPanel() {
     }
   }, [input, isProcessing, messages, addMessage, setProcessing, saveConversation]);
 
+  const handleNudgeAction = useCallback((prompt: string) => {
+    handleSend(prompt);
+  }, [handleSend]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -436,6 +443,20 @@ export function AICopilotPanel() {
 
       {/* Context Badge placeholder */}
       <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }} />
+
+      {/* Proactive Nudges */}
+      {nudges.length > 0 && messages.length === 0 && (
+        <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+          {nudges.map((nudge) => (
+            <CopilotProactiveNudge
+              key={nudge.id}
+              nudge={nudge}
+              onAction={handleNudgeAction}
+              onDismiss={() => dismissNudge(nudge.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Messages */}
       <div
@@ -566,7 +587,7 @@ export function AICopilotPanel() {
             onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--glass-border)')}
           />
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim() || isProcessing}
             aria-label="Send message"
             style={{
