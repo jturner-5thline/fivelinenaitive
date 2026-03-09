@@ -27,7 +27,6 @@ import { LatestUpdatesDropdown } from '@/components/deals/LatestUpdatesDropdown'
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
-import { FloatingDealsAssistant } from '@/components/deals/FloatingDealsAssistant';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals, DEFAULT_DEAL_FILTERS } from '@/hooks/useDeals';
 import { useDealSavedViews, DealViewConfig } from '@/hooks/useDealSavedViews';
