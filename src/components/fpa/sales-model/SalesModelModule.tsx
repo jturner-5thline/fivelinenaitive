@@ -19,7 +19,7 @@ export function SalesModelModule() {
     setAddMemberOpen, toggleYear, toggleQuarter, removeMember,
   } = store;
 
-  const allTabs = [...BUILT_IN_TABS, ...customMembers.map(m => m.name)];
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Mobile guard
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 900;
