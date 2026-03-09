@@ -647,6 +647,13 @@ export default function Integrations() {
         onOpenChange={setAsanaModalOpen}
         onConnected={() => window.location.reload()}
       />
+      {asanaIntegration && (
+        <AsanaSyncSettingsModal
+          open={asanaSyncModalOpen}
+          onClose={() => setAsanaSyncModalOpen(false)}
+          integrationId={asanaIntegration.id}
+        />
+      )}
     </AppLayout>
   );
 }
