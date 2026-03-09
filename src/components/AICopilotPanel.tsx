@@ -66,7 +66,7 @@ function TypingIndicator() {
 function ShortcutsTooltip({ visible }: { visible: boolean }) {
   if (!visible) return null;
   const shortcuts = [
-    ['⌘J', 'Toggle AI Copilot'],
+    ['⌘J', 'Toggle naitive AI'],
     ['⌘K', 'Quick Command Bar'],
     ['Enter', 'Send message'],
     ['⇧Enter', 'New line'],
@@ -565,7 +565,7 @@ export function AICopilotPanel() {
     <div
       ref={panelRef}
       role="dialog"
-      aria-label="AI Copilot"
+      aria-label="naitive AI"
       aria-modal="true"
       className="animate-slide-in-from-right"
       style={{
@@ -597,7 +597,7 @@ export function AICopilotPanel() {
       <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <img src={naitiveFavicon} alt="" style={{ width: 20, height: 20 }} />
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)' }}>nAItive Copilot</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)' }}>naitive AI</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
           <button onClick={handleNewConversation} aria-label="New conversation" title="New conversation" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>

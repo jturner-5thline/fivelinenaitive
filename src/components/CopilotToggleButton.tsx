@@ -19,7 +19,7 @@ export function CopilotToggleButton() {
   return (
     <button
       onClick={togglePanel}
-      aria-label="Toggle AI Copilot"
+      aria-label="Toggle naitive AI"
       className="copilot-toggle-btn"
       style={{
         position: 'fixed',
@@ -52,7 +52,7 @@ export function CopilotToggleButton() {
         e.currentTarget.style.transform = 'scale(1)';
       }}
     >
-      <img src={naitiveFavicon} alt="AI Copilot" style={{ width: 24, height: 24 }} />
+      <img src={naitiveFavicon} alt="naitive AI" style={{ width: 24, height: 24 }} />
     </button>
   );
 }

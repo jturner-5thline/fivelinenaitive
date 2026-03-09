@@ -35,8 +35,8 @@ export function FloatingCopilotDrawer() {
             'flex items-center justify-center',
             'shadow-[0_4px_20px_hsl(var(--primary)/0.4)]'
           )}
-          title="Open naitive Copilot"
-          aria-label="Open naitive Copilot"
+          title="Open naitive AI"
+          aria-label="Open naitive AI"
         >
           <Sparkles className="h-5 w-5" />
         </button>
@@ -48,7 +48,7 @@ export function FloatingCopilotDrawer() {
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2 text-sm">
                 <Sparkles className="h-4 w-4 text-primary" />
-                naitive Copilot
+                naitive AI
               </SheetTitle>
             </div>
           </SheetHeader>
