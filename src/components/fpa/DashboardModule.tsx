@@ -16,6 +16,7 @@ import { VarianceReviewPanel } from './collaboration/VarianceReviewPanel';
 import { BudgetApprovalWorkflow } from './collaboration/BudgetApprovalWorkflow';
 import { VarianceLegend } from './VarianceLegend';
 import { BoardReportExport } from './BoardReportExport';
+import { BDRoiModule } from './bd-roi/BDRoiModule';
 import { ChartConfigPanel, DEFAULT_CHART_CONFIG, type ChartConfig } from './dashboard/ChartConfigPanel';
 import { FPADashboardConfigPanel } from './dashboard/FPADashboardConfigPanel';
 import { useFPADashboardConfig } from '@/hooks/useFPADashboardConfig';
