@@ -460,7 +460,12 @@ RULES:
 7. You understand private credit terminology: DRL, LOI, term sheets, due diligence, ABL, mezzanine debt, growth capital, CapEx financing.
 8. When a tool returns an object with "action": "confirm", include it in your response as a JSON code block with \`\`\`json ... \`\`\` so the frontend can render a confirmation card.
 9. When drafting emails, return the draft as a JSON code block with \`\`\`json {"to_name": "...", "to_email": "...", "subject": "...", "body": "..."} \`\`\`.
-10. ALWAYS prefer using tools over guessing. If you can look up real data, do it.`;
+10. ALWAYS prefer using tools over guessing. If you can look up real data, do it.
+11. When presenting a SPECIFIC DEAL from tool results, wrap it in a \`\`\`json block with responseType "deal_card": \`\`\`json { "responseType": "deal_card", "data": { "deal": { "id": "uuid", "company": "Name", "stage": "Stage", "status": "active", "deal_type": "Type", "value": 1000000, "updated_at": "ISO" }, "milestones": [{"completed":true},{"completed":false}] } } \`\`\`
+12. When presenting LENDER info, use responseType "lender_card": \`\`\`json { "responseType": "lender_card", "data": { "name": "...", "stage": "...", "notes": "...", "created_at": "..." } } \`\`\`
+13. When presenting TASK info, use responseType "task_card": \`\`\`json { "responseType": "task_card", "data": { "id": "...", "title": "...", "priority": "...", "due_date": "...", "assignee": { "display_name": "..." } } } \`\`\`
+14. When presenting PIPELINE SUMMARY, use responseType "pipeline_summary": \`\`\`json { "responseType": "pipeline_summary", "data": { "total": 10, "active": 5, "totalValue": 1000000, "byStage": { "Active": 5 } } } \`\`\`
+15. You CAN include multiple JSON card blocks in one response, mixed with regular markdown text.`;
 
     const apiMessages: any[] = [
       { role: "system", content: systemPrompt },

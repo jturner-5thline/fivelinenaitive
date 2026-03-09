@@ -8,6 +8,10 @@ import { toast } from 'sonner';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
 import { CopilotEmailDraft } from '@/components/copilot/CopilotEmailDraft';
+import { CopilotDealCard } from '@/components/copilot/CopilotDealCard';
+import { CopilotLenderCard } from '@/components/copilot/CopilotLenderCard';
+import { CopilotTaskCard } from '@/components/copilot/CopilotTaskCard';
+import { CopilotPipelineSummary } from '@/components/copilot/CopilotPipelineSummary';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
@@ -48,7 +52,7 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
 /** Parse assistant content for JSON blocks (confirmations / email drafts) and render inline cards */
 function CopilotAssistantContent({ content }: { content: string }) {
   // Split content into segments: plain markdown + JSON blocks
-  const segments: Array<{ type: 'text' | 'confirm' | 'email'; value: any }> = [];
+  const segments: Array<{ type: 'text' | 'confirm' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline'; value: any }> = [];
   const jsonBlockRegex = /```json\s*(\{[\s\S]*?\})\s*```/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -59,7 +63,15 @@ function CopilotAssistantContent({ content }: { content: string }) {
     }
     try {
       const parsed = JSON.parse(match[1]);
-      if (parsed.action === 'confirm' && parsed.action_type) {
+      if (parsed.responseType === 'deal_card') {
+        segments.push({ type: 'deal', value: parsed.data });
+      } else if (parsed.responseType === 'lender_card') {
+        segments.push({ type: 'lender', value: parsed.data });
+      } else if (parsed.responseType === 'task_card') {
+        segments.push({ type: 'task', value: parsed.data });
+      } else if (parsed.responseType === 'pipeline_summary') {
+        segments.push({ type: 'pipeline', value: parsed.data });
+      } else if (parsed.action === 'confirm' && parsed.action_type) {
         segments.push({ type: 'confirm', value: parsed });
       } else if (parsed.subject && parsed.body) {
         segments.push({ type: 'email', value: parsed });
@@ -82,6 +94,10 @@ function CopilotAssistantContent({ content }: { content: string }) {
       {segments.map((seg, i) => {
         if (seg.type === 'confirm') return <CopilotActionConfirm key={i} action={seg.value} />;
         if (seg.type === 'email') return <CopilotEmailDraft key={i} draft={seg.value} />;
+        if (seg.type === 'deal') return <CopilotDealCard key={i} deal={seg.value.deal} milestones={seg.value.milestones} />;
+        if (seg.type === 'lender') return <CopilotLenderCard key={i} lender={seg.value} />;
+        if (seg.type === 'task') return <CopilotTaskCard key={i} task={seg.value} />;
+        if (seg.type === 'pipeline') return <CopilotPipelineSummary key={i} data={seg.value} />;
         return (
           <ReactMarkdown
             key={i}
