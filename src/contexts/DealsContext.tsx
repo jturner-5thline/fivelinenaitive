@@ -50,7 +50,18 @@ export function DealsProvider({ children }: { children: ReactNode }) {
     getDealById,
   } = useDealsDatabase();
 
-  const value = useMemo(() => ({
+  // Listen for copilot write actions that affect deals
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.actionType === 'update_deal_stage' || detail?.actionType === 'update_lender_status') {
+        fetchDeals();
+      }
+    };
+    window.addEventListener('copilot-action-completed', handler);
+    return () => window.removeEventListener('copilot-action-completed', handler);
+  }, [fetchDeals]);
+
     deals,
     isLoading,
     error,
