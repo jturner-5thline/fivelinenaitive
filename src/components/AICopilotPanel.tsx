@@ -66,7 +66,7 @@ function TypingIndicator() {
 function ShortcutsTooltip({ visible }: { visible: boolean }) {
   if (!visible) return null;
   const shortcuts = [
-    ['⌘J', 'Toggle AI Copilot'],
+    ['⌘J', 'Toggle naitive AI'],
     ['⌘K', 'Quick Command Bar'],
     ['Enter', 'Send message'],
     ['⇧Enter', 'New line'],
