@@ -40,7 +40,7 @@ export default function MigrationTool() {
     return <Navigate to="/" replace />;
   }
 
-    setIsExporting(true);
+    const handleExport = async () => {
     setError(null);
     try {
       const { data, error } = await supabase.functions.invoke("export-data");
