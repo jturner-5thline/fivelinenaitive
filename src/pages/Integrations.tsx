@@ -414,6 +414,7 @@ export default function Integrations() {
           lastSynced={asanaIntegration?.last_sync_at}
           externalUrl="https://app.asana.com"
           externalLabel="Open Asana"
+          onSyncSettings={() => setAsanaSyncModalOpen(true)}
           onDisconnect={async () => {
             if (!asanaIntegration) return;
             const { error } = await supabase.from("integrations").delete().eq("id", asanaIntegration.id);
