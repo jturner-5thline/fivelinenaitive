@@ -137,6 +137,7 @@ export function AICopilotPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const { nudges, dismissNudge } = useProactiveNudges();
 
   // Load conversation on mount
   useEffect(() => {
