@@ -38,13 +38,9 @@ export default function CrmCompanies() {
         <meta name="description" content="Manage B2B accounts, customers, and prospects." />
       </Helmet>
 
-      <div className="bg-background min-h-screen">
-        <div className="container mx-auto py-6 px-4 space-y-6">
+      <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Companies</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">Manage B2B accounts and customer relationships</p>
-            </div>
+            <h1 className="text-2xl font-bold text-foreground">Companies</h1>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm"><Upload className="h-4 w-4 mr-1.5" /> Import</Button>
               <Button size="sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Company</Button>
@@ -67,7 +63,6 @@ export default function CrmCompanies() {
           ) : (
             <CrmCompaniesTable companies={filtered} />
           )}
-        </div>
       </div>
 
       <CreateCrmCompanyModal open={showCreate} onClose={() => setShowCreate(false)} />
