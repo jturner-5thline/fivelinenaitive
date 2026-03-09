@@ -52,7 +52,7 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
 /** Parse assistant content for JSON blocks (confirmations / email drafts) and render inline cards */
 function CopilotAssistantContent({ content }: { content: string }) {
   // Split content into segments: plain markdown + JSON blocks
-  const segments: Array<{ type: 'text' | 'confirm' | 'email'; value: any }> = [];
+  const segments: Array<{ type: 'text' | 'confirm' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline'; value: any }> = [];
   const jsonBlockRegex = /```json\s*(\{[\s\S]*?\})\s*```/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -63,7 +63,15 @@ function CopilotAssistantContent({ content }: { content: string }) {
     }
     try {
       const parsed = JSON.parse(match[1]);
-      if (parsed.action === 'confirm' && parsed.action_type) {
+      if (parsed.responseType === 'deal_card') {
+        segments.push({ type: 'deal', value: parsed.data });
+      } else if (parsed.responseType === 'lender_card') {
+        segments.push({ type: 'lender', value: parsed.data });
+      } else if (parsed.responseType === 'task_card') {
+        segments.push({ type: 'task', value: parsed.data });
+      } else if (parsed.responseType === 'pipeline_summary') {
+        segments.push({ type: 'pipeline', value: parsed.data });
+      } else if (parsed.action === 'confirm' && parsed.action_type) {
         segments.push({ type: 'confirm', value: parsed });
       } else if (parsed.subject && parsed.body) {
         segments.push({ type: 'email', value: parsed });
