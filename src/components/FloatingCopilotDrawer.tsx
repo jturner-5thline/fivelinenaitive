@@ -25,16 +25,18 @@ export function FloatingCopilotDrawer() {
     <>
       {/* Floating trigger button */}
       {!open && (
-        <button
+         <button
           onClick={() => setOpen(true)}
           className={cn(
-            'fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full',
+            'fixed z-50 h-12 w-12 rounded-full',
+            'bottom-4 right-4 sm:bottom-6 sm:right-6',
             'bg-primary text-primary-foreground shadow-lg',
             'hover:scale-105 active:scale-95 transition-all duration-200',
             'flex items-center justify-center',
             'shadow-[0_4px_20px_hsl(var(--primary)/0.4)]'
           )}
           title="Open naitive Copilot"
+          aria-label="Open naitive Copilot"
         >
           <Sparkles className="h-5 w-5" />
         </button>
