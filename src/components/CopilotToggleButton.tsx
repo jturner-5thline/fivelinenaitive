@@ -19,7 +19,7 @@ export function CopilotToggleButton() {
   return (
     <button
       onClick={togglePanel}
-      aria-label="Toggle AI Copilot"
+      aria-label="Toggle naitive AI"
       className="copilot-toggle-btn"
       style={{
         position: 'fixed',
