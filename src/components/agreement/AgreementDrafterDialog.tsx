@@ -182,9 +182,6 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
                     </Tooltip>
                   </TooltipProvider>
 
-                  <Button variant="ghost" size="icon" className="h-8 w-8 ml-3 transition-all duration-150" onClick={() => setOpen(false)}>
-                    <X className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
 
