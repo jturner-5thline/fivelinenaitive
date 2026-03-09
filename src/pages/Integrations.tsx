@@ -639,6 +639,11 @@ export default function Integrations() {
         email={calendar.status?.email || user?.email || undefined}
         onDisconnect={() => { calendar.disconnect(); setCalendarModalOpen(false); }}
       />
+      <AsanaSetupModal
+        open={asanaModalOpen}
+        onOpenChange={setAsanaModalOpen}
+        onConnected={() => window.location.reload()}
+      />
     </AppLayout>
   );
 }
