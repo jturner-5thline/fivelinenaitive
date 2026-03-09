@@ -569,24 +569,95 @@ export function AICopilotPanel() {
             nAItive Copilot
           </span>
         </div>
-        <button
-          onClick={closePanel}
-          aria-label="Close copilot"
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'hsl(var(--muted-foreground))',
-            padding: 4,
-            borderRadius: 6,
-            display: 'flex',
-            transition: 'color 150ms',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
-        >
-          <X size={18} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
+          <button
+            onClick={handleNewConversation}
+            aria-label="New conversation"
+            title="New conversation"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+          >
+            <Plus size={18} />
+          </button>
+          <button
+            onClick={loadHistory}
+            aria-label="Conversation history"
+            title="Conversation history"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+          >
+            <Clock size={18} />
+          </button>
+          <button
+            onClick={closePanel}
+            aria-label="Close copilot"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+          >
+            <X size={18} />
+          </button>
+
+          {/* History Dropdown */}
+          {showHistory && (
+            <div
+              ref={historyRef}
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: 8,
+                width: 300,
+                maxHeight: 320,
+                overflowY: 'auto',
+                background: 'var(--glass-surface)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: 10,
+                boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+                zIndex: 60,
+                padding: 4,
+              }}
+            >
+              {historyItems.length === 0 ? (
+                <div style={{ padding: '12px 10px', fontSize: 13, color: 'hsl(var(--muted-foreground))', textAlign: 'center' }}>
+                  No conversations yet
+                </div>
+              ) : (
+                historyItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => loadConversation(item.id)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: item.id === conversationId ? 'rgba(126,184,247,0.1)' : 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '8px 10px',
+                      borderRadius: 6,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 8,
+                      transition: 'background 100ms',
+                    }}
+                    onMouseEnter={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'rgba(126,184,247,0.06)'; }}
+                    onMouseLeave={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'none'; }}
+                  >
+                    <span style={{ fontSize: 13, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {item.preview}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {formatRelativeDate(item.date)}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Context Badge placeholder */}
