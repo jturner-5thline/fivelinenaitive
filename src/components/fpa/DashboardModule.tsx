@@ -93,6 +93,7 @@ export function DashboardModule() {
                 Board Pack
               </TabsTrigger>
             )}
+            <TabsTrigger value="salesBdRoi" className="text-xs">Sales & BD ROI</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
