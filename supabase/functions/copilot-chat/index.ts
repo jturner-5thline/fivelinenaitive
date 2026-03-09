@@ -234,6 +234,41 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "update_milestone",
+      description: "Mark a deal milestone as complete or incomplete. Returns a confirmation — does NOT execute immediately.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID the milestone belongs to" },
+          milestone_id: { type: "string", description: "Milestone UUID" },
+          milestone_title: { type: "string", description: "Milestone title for display" },
+          completed: { type: "boolean", description: "true to mark complete, false for incomplete" },
+        },
+        required: ["deal_id", "milestone_id", "completed"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_lender_status",
+      description: "Update a deal lender's stage or tracking status. Returns a confirmation — does NOT execute immediately.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string" },
+          lender_id: { type: "string" },
+          lender_name: { type: "string" },
+          stage: { type: "string", description: "New lender stage" },
+          tracking_status: { type: "string", description: "New tracking status" },
+        },
+        required: ["deal_id", "lender_id", "lender_name"],
+      },
+    },
+  },
 ];
 
 // ── Tool executors ──────────────────────────────────────────────
