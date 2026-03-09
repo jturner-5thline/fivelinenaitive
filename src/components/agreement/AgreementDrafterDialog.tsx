@@ -203,7 +203,7 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
                 </div>
 
                 {/* Editor */}
-                <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="flex-1 min-w-0 overflow-auto">
                   <DrафterEditor
                     section={activeSection ? sections.find(s => s.section_id === activeSection) || null : null}
                     values={values}
