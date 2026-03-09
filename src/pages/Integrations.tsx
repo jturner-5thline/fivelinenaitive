@@ -24,6 +24,7 @@ import {
   Database,
   CreditCard,
   MonitorSmartphone,
+  ListChecks,
 } from "lucide-react";
 
 // Hooks
