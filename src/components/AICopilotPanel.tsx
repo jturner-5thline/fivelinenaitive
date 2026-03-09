@@ -584,7 +584,7 @@ export function AICopilotPanel() {
             onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--glass-border)')}
           />
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim() || isProcessing}
             aria-label="Send message"
             style={{
