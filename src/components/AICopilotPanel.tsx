@@ -214,9 +214,10 @@ export function AICopilotPanel() {
     if (isOpen) setTimeout(() => textareaRef.current?.focus(), 200);
   }, [isOpen]);
 
-  const handleSend = useCallback(async () => {
-    const text = input.trim();
+  const handleSend = useCallback(async (directMessage?: string) => {
+    const text = (directMessage || input).trim();
     if (!text || isProcessing) return;
+    if (!directMessage) setInput('');
 
     const userMsg = {
       id: crypto.randomUUID(),
