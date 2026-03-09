@@ -412,34 +412,19 @@ export function AICopilotPanel() {
     if (isOpen) setTimeout(() => textareaRef.current?.focus(), 200);
   }, [isOpen]);
 
-  const handleSend = useCallback(async (directMessage?: string) => {
-    const text = (directMessage || input).trim();
-    if (!text || isProcessing) return;
-
-    // Offline check
-    if (!navigator.onLine) {
-      toast.error("You're offline — messages will send when you reconnect.");
-      return;
-    }
-
-    // Rate limit check
-    if (!checkClientRateLimit()) {
-      toast.error('Rate limit reached — max 20 messages per minute. Please wait.');
-      return;
-    }
-
-    setLastFailedMessage(null);
-    const userMsg = { id: crypto.randomUUID(), role: 'user' as const, content: text, timestamp: new Date() };
-    addMessage(userMsg);
-    setInput('');
+  // Core function that processes a single message (no guard on isProcessing)
+  const processMessage = useCallback(async (text: string) => {
+    isProcessingRef.current = true;
     setProcessing(true);
 
-    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const currentMessages = useCopilotStore.getState().messages;
+    const history = currentMessages.filter(m => m.content !== '__ERROR__').map((m) => ({ role: m.role, content: m.content }));
     const ctx = getPageContext();
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
     if (!accessToken) {
       toast.error('Not authenticated');
+      isProcessingRef.current = false;
       setProcessing(false);
       return;
     }
@@ -520,6 +505,19 @@ export function AICopilotPanel() {
         }
       }
 
+      // If stream produced no content, add a fallback response
+      if (!assistantContent.trim()) {
+        const fallbackId = crypto.randomUUID();
+        useCopilotStore.setState({
+          messages: [...useCopilotStore.getState().messages, {
+            id: fallbackId,
+            role: 'assistant',
+            content: "I'm sorry, I wasn't able to process that request. Could you try rephrasing it?",
+            timestamp: new Date(),
+          }],
+        });
+      }
+
       const allMsgs = useCopilotStore.getState().messages;
       await saveConversation(allMsgs);
     } catch (err: any) {
@@ -533,9 +531,51 @@ export function AICopilotPanel() {
         timestamp: new Date(),
       });
     } finally {
+      isProcessingRef.current = false;
       setProcessing(false);
+      // Process next queued message if any
+      drainQueue();
     }
-  }, [input, isProcessing, messages, addMessage, setProcessing, saveConversation]);
+  }, [addMessage, setProcessing, saveConversation]);
+
+  // Drain the queue: process next message if available
+  const drainQueue = useCallback(() => {
+    if (isProcessingRef.current) return;
+    const next = messageQueueRef.current.shift();
+    if (next) {
+      processMessage(next);
+    }
+  }, [processMessage]);
+
+  const handleSend = useCallback(async (directMessage?: string) => {
+    const text = (directMessage || input).trim();
+    if (!text) return;
+
+    // Offline check
+    if (!navigator.onLine) {
+      toast.error("You're offline — messages will send when you reconnect.");
+      return;
+    }
+
+    // Rate limit check
+    if (!checkClientRateLimit()) {
+      toast.error('Rate limit reached — max 20 messages per minute. Please wait.');
+      return;
+    }
+
+    setLastFailedMessage(null);
+    const userMsg = { id: crypto.randomUUID(), role: 'user' as const, content: text, timestamp: new Date() };
+    addMessage(userMsg);
+    setInput('');
+
+    if (isProcessingRef.current) {
+      // Queue this message to be processed after current one finishes
+      messageQueueRef.current.push(text);
+      return;
+    }
+
+    processMessage(text);
+  }, [input, addMessage, processMessage]);
 
   const handleRetry = useCallback(() => {
     if (!lastFailedMessage) return;
