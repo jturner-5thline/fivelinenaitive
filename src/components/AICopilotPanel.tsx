@@ -565,7 +565,7 @@ export function AICopilotPanel() {
     <div
       ref={panelRef}
       role="dialog"
-      aria-label="AI Copilot"
+      aria-label="naitive AI"
       aria-modal="true"
       className="animate-slide-in-from-right"
       style={{
