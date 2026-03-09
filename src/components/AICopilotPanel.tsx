@@ -444,6 +444,20 @@ export function AICopilotPanel() {
       {/* Context Badge placeholder */}
       <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }} />
 
+      {/* Proactive Nudges */}
+      {nudges.length > 0 && messages.length === 0 && (
+        <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+          {nudges.map((nudge) => (
+            <CopilotProactiveNudge
+              key={nudge.id}
+              nudge={nudge}
+              onAction={handleNudgeAction}
+              onDismiss={() => dismissNudge(nudge.id)}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Messages */}
       <div
         style={{
