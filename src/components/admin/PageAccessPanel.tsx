@@ -136,7 +136,7 @@ const pageConfigs: PageConfig[] = [
   },
   { 
     featureKey: "copilot_widget", 
-    label: "naitive Copilot", 
+    label: "naitive AI", 
     description: "Floating AI copilot drawer accessible from every page",
     icon: <Sparkles className="h-5 w-5" />
   },

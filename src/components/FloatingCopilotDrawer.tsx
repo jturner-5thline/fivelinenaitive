@@ -48,7 +48,7 @@ export function FloatingCopilotDrawer() {
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2 text-sm">
                 <Sparkles className="h-4 w-4 text-primary" />
-                naitive Copilot
+                naitive AI
               </SheetTitle>
             </div>
           </SheetHeader>
