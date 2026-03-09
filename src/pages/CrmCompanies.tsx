@@ -63,7 +63,6 @@ export default function CrmCompanies() {
           ) : (
             <CrmCompaniesTable companies={filtered} />
           )}
-        </div>
       </div>
 
       <CreateCrmCompanyModal open={showCreate} onClose={() => setShowCreate(false)} />
