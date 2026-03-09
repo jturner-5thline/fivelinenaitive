@@ -399,6 +399,31 @@ export default function Integrations() {
     });
   }
 
+  if (isAsanaConnected) {
+    connectedIntegrations.push({
+      key: "asana",
+      render: () => (
+        <IntegrationCard
+          name="Asana"
+          icon={ListChecks}
+          description="Syncs tasks and projects for streamlined project management."
+          status="connected"
+          isConnected
+          lastSynced={asanaIntegration?.last_sync_at}
+          externalUrl="https://app.asana.com"
+          externalLabel="Open Asana"
+          onDisconnect={async () => {
+            if (!asanaIntegration) return;
+            const { error } = await supabase.from("integrations").delete().eq("id", asanaIntegration.id);
+            if (error) { toast.error("Failed to disconnect Asana"); return; }
+            toast.success("Asana disconnected");
+            window.location.reload();
+          }}
+        />
+      ),
+    });
+  }
+
   // === Available (not yet connected) ===
   type AvailableIntegration = { key: string; render: () => React.ReactNode };
   const availableIntegrations: AvailableIntegration[] = [];
