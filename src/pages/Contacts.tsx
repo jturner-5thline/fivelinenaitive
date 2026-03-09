@@ -73,6 +73,7 @@ export default function Contacts() {
           ) : (
             <ContactsTable contacts={filteredContacts} />
           )}
+        </main>
       </div>
 
       <CreateContactModal open={showCreate} onClose={() => setShowCreate(false)} />
