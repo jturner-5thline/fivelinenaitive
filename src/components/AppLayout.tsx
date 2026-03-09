@@ -36,7 +36,7 @@ function MainContent({
   return (
     <main
       className={cn(
-        "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl overflow-auto",
+        "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl overflow-auto scrollbar-thin",
         className,
       )}
       style={{
