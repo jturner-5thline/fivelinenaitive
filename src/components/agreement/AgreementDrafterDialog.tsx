@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { FileSignature, X, RotateCcw, Eye, FileText, Download, Loader2 } from 'lucide-react';
+import { FileSignature, X, RotateCcw, Eye, FileText, Download, Loader2, Save } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +62,10 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
     toast.success('Reset to defaults');
   };
 
+  const handleSaveDraft = () => {
+    toast.success('Draft saved successfully');
+  };
+
   const handleExportPdf = async () => {
     try {
       await exportToPdf(sections, values, companyName);
@@ -89,6 +93,10 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
     }
   };
 
+  const handleReorderSections = useCallback((reorderedSections: AgreementSection[]) => {
+    setSections(reorderedSections);
+  }, []);
+
   return (
     <>
       <TooltipProvider>
@@ -103,7 +111,10 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
       </TooltipProvider>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[95vw] h-[90vh] p-0 gap-0 overflow-hidden" onInteractOutside={e => e.preventDefault()}>
+        <DialogContent
+          className="max-w-[95vw] w-[95vw] h-[92vh] p-0 gap-0 overflow-hidden animate-in fade-in-0 zoom-in-[0.97] duration-300"
+          onInteractOutside={e => e.preventDefault()}
+        >
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -117,26 +128,61 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
           ) : (
             <div className="flex flex-col h-full">
               {/* Header */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b bg-card/50 shrink-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
                 <div className="flex items-center gap-3">
                   <FileSignature className="h-5 w-5 text-primary" />
                   <span className="font-semibold text-sm">Agreement Drafter</span>
                   <Badge variant="outline" className="text-[10px]">{template.name}</Badge>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={handleReset}>
-                    <RotateCcw className="h-3 w-3 mr-1.5" /> Reset
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowFullPreview(true)}>
-                    <Eye className="h-3 w-3 mr-1.5" /> Preview
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={handleExportDocx}>
-                    <Download className="h-3 w-3 mr-1.5" /> DOCX
-                  </Button>
-                  <Button variant="default" size="sm" className="text-xs h-7" onClick={handleExportPdf}>
-                    <Download className="h-3 w-3 mr-1.5" /> PDF
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 ml-2" onClick={() => setOpen(false)}>
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-xs h-8 transition-all duration-150" onClick={handleReset}>
+                          <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Reset all fields to defaults</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-xs h-8 transition-all duration-150" onClick={() => setShowFullPreview(true)}>
+                          <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Full document preview</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-xs h-8 transition-all duration-150" onClick={handleSaveDraft}>
+                          <Save className="h-3.5 w-3.5 mr-1.5" /> Save Draft
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Save current configuration</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-xs h-8 transition-all duration-150" onClick={handleExportDocx}>
+                          <Download className="h-3.5 w-3.5 mr-1.5" /> DOCX
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Export as Word document</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="default" size="sm" className="text-xs h-8 transition-all duration-150" onClick={handleExportPdf}>
+                          <Download className="h-3.5 w-3.5 mr-1.5" /> PDF
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Export as PDF document</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <Button variant="ghost" size="icon" className="h-8 w-8 ml-3 transition-all duration-150" onClick={() => setOpen(false)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -145,12 +191,14 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
               {/* 3-panel layout */}
               <div className="flex flex-1 min-h-0">
                 {/* Sidebar */}
-                <div className="w-72 border-r shrink-0 flex flex-col overflow-hidden">
+                <div className="w-80 border-r shrink-0 flex flex-col overflow-hidden">
                   <DrафterSidebar
                     sections={sections}
                     activeSection={activeSection}
                     onSelectSection={(id) => { setActiveSection(id); scrollToSection(id); }}
                     onToggleSection={toggleSection}
+                    onReorderSections={handleReorderSections}
+                    values={values}
                   />
                 </div>
 

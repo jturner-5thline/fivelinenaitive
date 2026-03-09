@@ -1,4 +1,5 @@
-import { FileText, Plus, Trash2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { FileText, Plus, Trash2, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -9,10 +10,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { AgreementSection, AgreementFieldDef, AgreementSubsection, AgreementQualifier } from './types';
 
-const CATEGORY_COLORS: Record<string, string> = {
-  staple: 'bg-teal-500/20 text-teal-400',
-  configurable: 'bg-amber-500/20 text-amber-400',
-  optional: 'bg-muted text-muted-foreground',
+const CATEGORY_BADGE: Record<string, { label: string; className: string }> = {
+  staple: { label: 'Required', className: 'bg-destructive/15 text-destructive border-destructive/30' },
+  configurable: { label: 'Configurable', className: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
+  optional: { label: 'Optional', className: 'bg-muted text-muted-foreground border-border' },
 };
 
 interface Props {
@@ -22,7 +23,29 @@ interface Props {
   onSectionUpdate: (sectionId: string, updates: Partial<AgreementSection>) => void;
 }
 
+/** Renders {{variable}} tokens as styled pills in a display overlay */
+function TemplateDisplay({ text }: { text: string }) {
+  const parts = text.split(/(\{\{\w+\}\})/g);
+  return (
+    <div className="font-mono text-xs leading-relaxed whitespace-pre-wrap">
+      {parts.map((part, i) => {
+        const match = part.match(/^\{\{(\w+)\}\}$/);
+        if (match) {
+          return (
+            <span key={i} className="inline-flex items-center bg-primary/15 text-primary rounded-md px-1.5 py-0.5 font-mono text-[11px] mx-0.5 border border-primary/20">
+              {`{{${match[1]}}}`}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </div>
+  );
+}
+
 export function DrафterEditor({ section, values, onValueChange, onSectionUpdate }: Props) {
+  const [templateFocused, setTemplateFocused] = useState(false);
+
   if (!section) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -32,6 +55,8 @@ export function DrафterEditor({ section, values, onValueChange, onSectionUpdat
       </div>
     );
   }
+
+  const catBadge = CATEGORY_BADGE[section.category];
 
   const renderField = (field: AgreementFieldDef) => {
     const val = values[field.key] ?? field.defaultValue ?? '';
@@ -95,49 +120,56 @@ export function DrафterEditor({ section, values, onValueChange, onSectionUpdat
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-6 space-y-6 max-w-2xl mx-auto">
+      <div className="p-8 space-y-8 max-w-2xl mx-auto animate-in fade-in-0 slide-in-from-right-2 duration-200">
         {/* Section Header */}
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-lg font-semibold">{section.title}</h2>
-            <Badge variant="outline" className={`text-[10px] ${CATEGORY_COLORS[section.category]}`}>
-              {section.category}
+          <div className="flex items-center gap-2.5 mb-2">
+            <h2 className="text-xl font-semibold">{section.title}</h2>
+            <Badge variant="outline" className={`text-[10px] px-2 ${catBadge.className}`}>
+              {catBadge.label}
             </Badge>
           </div>
           {section.description && (
-            <p className="text-xs text-muted-foreground">{section.description}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{section.description}</p>
           )}
         </div>
 
-        {/* Short Fields in 2-col */}
-        {shortFields.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {shortFields.map(field => (
+        {/* Fields Card */}
+        {(shortFields.length > 0 || longFields.length > 0) && (
+          <div className="border border-border/40 rounded-lg p-5 space-y-4">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Agreement Details</label>
+
+            {/* Short Fields in 2-col */}
+            {shortFields.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {shortFields.map(field => (
+                  <div key={field.key}>
+                    <label className="text-sm font-medium text-muted-foreground mb-1.5 block">{field.label}</label>
+                    {renderField(field)}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Long Fields */}
+            {longFields.map(field => (
               <div key={field.key}>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{field.label}</label>
+                <label className="text-sm font-medium text-muted-foreground mb-1.5 block">{field.label}</label>
                 {renderField(field)}
               </div>
             ))}
           </div>
         )}
 
-        {/* Long Fields */}
-        {longFields.map(field => (
-          <div key={field.key}>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{field.label}</label>
-            {renderField(field)}
-          </div>
-        ))}
-
         {/* Subsections */}
         {section.subsections && section.subsections.length > 0 && (
           <>
             <Separator />
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 block">Fee Tiers</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Fee Tiers</label>
               <div className="space-y-3">
                 {section.subsections.map((sub, si) => (
-                  <div key={sub.id} className={`p-4 rounded-lg border transition-opacity ${sub.enabled ? 'bg-card' : 'opacity-50 bg-muted/30'}`}>
+                  <div key={sub.id} className={`p-4 rounded-lg border transition-all duration-150 ${sub.enabled ? 'bg-card' : 'opacity-50 bg-muted/30'}`}>
                     <div className="flex items-center gap-2 mb-3">
                       <div className="h-6 w-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold shrink-0">{si + 1}</div>
                       <span className="font-medium text-sm flex-1">{sub.title}</span>
@@ -189,8 +221,8 @@ export function DrафterEditor({ section, values, onValueChange, onSectionUpdat
             <Separator />
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Qualifiers</label>
-                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={addQualifier}>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Qualifiers</label>
+                <Button variant="ghost" size="sm" className="text-xs h-7 transition-all duration-150" onClick={addQualifier}>
                   <Plus className="h-3 w-3 mr-1" /> Add Item
                 </Button>
               </div>
@@ -201,12 +233,12 @@ export function DrафterEditor({ section, values, onValueChange, onSectionUpdat
                     <Input
                       value={q.text}
                       onChange={e => updateQualifier(qi, { text: e.target.value })}
-                      className={`flex-1 text-sm bg-transparent border-0 border-b border-border/40 rounded-none focus-visible:ring-0 px-1 ${
+                      className={`flex-1 text-sm bg-transparent border-0 border-b border-border/40 rounded-none focus-visible:ring-0 px-1 transition-all duration-150 ${
                         !q.enabled ? 'opacity-50 line-through' : ''
                       }`}
                     />
                     <Switch checked={q.enabled} onCheckedChange={v => updateQualifier(qi, { enabled: v })} className="scale-[0.6]" />
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive" onClick={() => removeQualifier(qi)}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive transition-opacity duration-150" onClick={() => removeQualifier(qi)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -219,14 +251,32 @@ export function DrафterEditor({ section, values, onValueChange, onSectionUpdat
         {/* Template Text */}
         <Separator />
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">Section Template</label>
-          <Textarea
-            value={section.template_text}
-            onChange={e => onSectionUpdate(section.section_id, { template_text: e.target.value })}
-            className="font-mono text-xs min-h-[100px] bg-muted/30"
-            placeholder='Edit the template text. Use {{variable_name}} for dynamic values.'
-          />
-          <p className="text-[10px] text-muted-foreground/50 mt-1">Use {'{{variable_name}}'} for dynamic values.</p>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Section Template</label>
+
+          {templateFocused ? (
+            <Textarea
+              autoFocus
+              value={section.template_text}
+              onChange={e => onSectionUpdate(section.section_id, { template_text: e.target.value })}
+              onBlur={() => setTemplateFocused(false)}
+              className="font-mono text-xs min-h-[120px] bg-muted/30 transition-all duration-150"
+              placeholder='Edit the template text. Use {{variable_name}} for dynamic values.'
+            />
+          ) : (
+            <div
+              onClick={() => setTemplateFocused(true)}
+              className="min-h-[120px] p-3 rounded-md border border-input bg-muted/30 cursor-text hover:border-primary/30 transition-all duration-150"
+            >
+              <TemplateDisplay text={section.template_text} />
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5 mt-2">
+            <Info className="h-3 w-3 text-muted-foreground/50" />
+            <p className="text-xs text-muted-foreground/60">
+              Use <code className="bg-primary/10 text-primary px-1 py-0.5 rounded text-[10px] font-mono">{'{{variable_name}}'}</code> for dynamic values. Click to edit.
+            </p>
+          </div>
         </div>
       </div>
     </ScrollArea>
