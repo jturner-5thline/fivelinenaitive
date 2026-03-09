@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useCopilotStore } from '@/stores/copilotStore';
-import naitiveFavicon from '@/assets/naitive-favicon.png';
+import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
+import { cn } from '@/lib/utils';
 
 export function CopilotToggleButton() {
   const togglePanel = useCopilotStore((s) => s.togglePanel);
@@ -20,39 +21,33 @@ export function CopilotToggleButton() {
     <button
       onClick={togglePanel}
       aria-label="Toggle naitive AI"
-      className="copilot-toggle-btn"
+      className={cn(
+        "fixed bottom-6 right-6 z-50",
+        "h-12 w-12 rounded-full",
+        "flex items-center justify-center",
+        "shadow-lg cursor-pointer",
+        "hover:scale-105 active:scale-95 transition-all duration-200",
+        "border-0 overflow-visible relative group",
+        "shadow-[0_4px_20px_hsl(270_65%_55%/0.4)]"
+      )}
       style={{
-        position: 'fixed',
-        bottom: 24,
-        right: 24,
-        zIndex: 50,
-        width: 48,
-        height: 48,
-        borderRadius: '50%',
-        background: 'var(--glass-surface)',
-        backdropFilter: 'var(--glass-blur)',
-        WebkitBackdropFilter: 'var(--glass-blur)',
-        border: '1px solid var(--glass-border-accent)',
-        boxShadow: 'var(--glass-shadow), 0 0 20px rgba(126,184,247,0.15)',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 0,
-        transition: 'border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = 'rgba(126,184,247,0.4)';
-        e.currentTarget.style.boxShadow = 'var(--glass-shadow), 0 0 28px rgba(126,184,247,0.3)';
-        e.currentTarget.style.transform = 'scale(1.08)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = '';
-        e.currentTarget.style.boxShadow = 'var(--glass-shadow), 0 0 20px rgba(126,184,247,0.15)';
-        e.currentTarget.style.transform = 'scale(1)';
+        background: 'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
       }}
     >
-      <img src={naitiveFavicon} alt="naitive AI" style={{ width: 24, height: 24 }} />
+      {/* Shimmer overlay */}
+      <span className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
+        <span
+          className="absolute -inset-full animate-[shimmer_5s_ease-in-out_infinite]"
+          style={{
+            background: 'linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%)',
+          }}
+        />
+      </span>
+      <img
+        src={naitiveAiIcon}
+        alt="naitive AI"
+        className="h-7 w-7 shrink-0 brightness-0 invert relative z-10"
+      />
     </button>
   );
 }
