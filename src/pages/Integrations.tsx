@@ -45,6 +45,7 @@ import { CalendarSyncSettingsModal } from "@/components/integrations/CalendarSyn
 import { ClaapIntegration } from "@/components/integrations/ClaapIntegration";
 import { ZapierIntegration } from "@/components/integrations/ZapierIntegration";
 import { AsanaSetupModal } from "@/components/integrations/AsanaSetupModal";
+import { AsanaSyncSettingsModal } from "@/components/integrations/asana/AsanaSyncSettingsModal";
 
 const BANNER_DISMISSED_KEY = "naitive_integrations_banner_dismissed";
 
