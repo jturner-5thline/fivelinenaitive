@@ -17,6 +17,7 @@ import { BudgetApprovalWorkflow } from './collaboration/BudgetApprovalWorkflow';
 import { VarianceLegend } from './VarianceLegend';
 import { BoardReportExport } from './BoardReportExport';
 import { BDRoiModule } from './bd-roi/BDRoiModule';
+import { SalesModelModule } from './sales-model/SalesModelModule';
 import { ChartConfigPanel, DEFAULT_CHART_CONFIG, type ChartConfig } from './dashboard/ChartConfigPanel';
 import { FPADashboardConfigPanel } from './dashboard/FPADashboardConfigPanel';
 import { useFPADashboardConfig } from '@/hooks/useFPADashboardConfig';
@@ -52,8 +53,8 @@ export function DashboardModule() {
   const s = fpaConfig.scenarios;
 
   // If current tab is disabled, fall back to first enabled tab
-  const enabledTabs = [...Object.entries(t).filter(([, v]) => v).map(([k]) => k), 'salesBdRoi'];
-  const activeTab = dashboardTab === 'salesBdRoi' || t[dashboardTab as keyof typeof t] ? dashboardTab : (enabledTabs[0] || 'overview');
+  const enabledTabs = [...Object.entries(t).filter(([, v]) => v).map(([k]) => k), 'salesBdRoi', 'salesModel'];
+  const activeTab = dashboardTab === 'salesBdRoi' || dashboardTab === 'salesModel' || t[dashboardTab as keyof typeof t] ? dashboardTab : (enabledTabs[0] || 'overview');
 
   return (
     <div className="space-y-4">
@@ -94,6 +95,7 @@ export function DashboardModule() {
               </TabsTrigger>
             )}
             <TabsTrigger value="salesBdRoi" className="text-xs">Sales & BD ROI</TabsTrigger>
+            <TabsTrigger value="salesModel" className="text-xs">Sales Model</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
@@ -216,6 +218,12 @@ export function DashboardModule() {
       {activeTab === 'salesBdRoi' && (
         <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <BDRoiModule />
+        </div>
+      )}
+
+      {activeTab === 'salesModel' && (
+        <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+          <SalesModelModule />
         </div>
       )}
     </div>
