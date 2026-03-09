@@ -163,6 +163,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       <PlatformTour />
       <CopilotToggleButton />
       <AICopilotPanel />
+      <CommandBar />
     </SidebarProvider>
   );
 }
