@@ -28,7 +28,7 @@ export function FloatingCopilotDrawer() {
          <button
           onClick={() => setOpen(true)}
           className={cn(
-            'fixed z-50 h-12 w-12 rounded-full',
+            'fixed z-[9999] h-12 w-12 rounded-full',
             'bottom-6 right-6',
             'bg-primary text-primary-foreground shadow-lg',
             'hover:scale-105 active:scale-95 transition-all duration-200',
