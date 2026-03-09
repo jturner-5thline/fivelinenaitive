@@ -280,6 +280,8 @@ export function AICopilotPanel() {
   const historyRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const liveRegionRef = useRef<HTMLDivElement>(null);
+  const messageQueueRef = useRef<string[]>([]);
+  const isProcessingRef = useRef(false);
   const { nudges, dismissNudge } = useProactiveNudges();
   const isMobile = useIsMobile();
   const isOnline = useOnlineStatus();
