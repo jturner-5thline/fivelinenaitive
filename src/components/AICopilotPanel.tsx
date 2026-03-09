@@ -94,6 +94,10 @@ function CopilotAssistantContent({ content }: { content: string }) {
       {segments.map((seg, i) => {
         if (seg.type === 'confirm') return <CopilotActionConfirm key={i} action={seg.value} />;
         if (seg.type === 'email') return <CopilotEmailDraft key={i} draft={seg.value} />;
+        if (seg.type === 'deal') return <CopilotDealCard key={i} deal={seg.value.deal} milestones={seg.value.milestones} />;
+        if (seg.type === 'lender') return <CopilotLenderCard key={i} lender={seg.value} />;
+        if (seg.type === 'task') return <CopilotTaskCard key={i} task={seg.value} />;
+        if (seg.type === 'pipeline') return <CopilotPipelineSummary key={i} data={seg.value} />;
         return (
           <ReactMarkdown
             key={i}
