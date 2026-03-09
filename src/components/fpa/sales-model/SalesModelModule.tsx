@@ -46,8 +46,16 @@ export function SalesModelModule() {
       <div className="flex items-center gap-2 px-3 h-12 border-b" style={{
         background: '#181b24', borderColor: 'rgba(255,255,255,0.06)',
       }}>
-        <button onClick={toggleSidebar} className="p-1.5 rounded hover:bg-white/10">
-          <Menu className="h-4 w-4" style={{ color: '#94a3b8' }} />
+        <button
+          onClick={toggleSidebar}
+          className="p-1.5 rounded-md border transition-colors"
+          style={{
+            borderColor: sidebarOpen ? 'rgba(94,234,212,0.3)' : 'rgba(255,255,255,0.15)',
+            background: sidebarOpen ? 'rgba(94,234,212,0.1)' : 'rgba(255,255,255,0.05)',
+            color: sidebarOpen ? '#5eead4' : '#e2e8f0',
+          }}
+        >
+          <Menu className="h-4.5 w-4.5" />
         </button>
         <span className="text-sm font-semibold" style={{ color: '#e2e8f0' }}>{activeTab}</span>
         <div className="flex-1" />
