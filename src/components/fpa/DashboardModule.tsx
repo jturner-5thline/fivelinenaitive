@@ -212,6 +212,12 @@ export function DashboardModule() {
           <BudgetApprovalWorkflow />
         </div>
       )}
+
+      {activeTab === 'salesBdRoi' && (
+        <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+          <BDRoiModule />
+        </div>
+      )}
     </div>
   );
 }
