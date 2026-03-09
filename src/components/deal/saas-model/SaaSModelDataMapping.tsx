@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Circle, Sparkles, Loader2, Settings, Trash2, ChevronDown } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Circle, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save } from 'lucide-react';
 import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
@@ -159,6 +159,41 @@ const BS_SECTIONS: { label: string; fields: string[] }[] = [
   { label: 'Equity', fields: ['Paid in Capital', 'Retained Earnings'] },
 ];
 
+/** Apply a subset of field mappings to the model and trigger recalculation + save */
+function applyMappingsToModel(
+  fieldMappings: Record<string, FieldMapping[]>,
+  selectedFile: AnalyzedFile,
+  updateModel: (updater: (prev: SaaSModelData) => SaaSModelData) => void,
+) {
+  updateModel(prev => {
+    const updated = { ...prev };
+    Object.entries(fieldMappings).forEach(([fieldName, mappings]) => {
+      const path = getFieldPath(fieldName as MappingFieldName);
+      if (!path.length) return;
+
+      const sheet = selectedFile.sheets.find(s => s.name === mappings[0]?.sheet) || selectedFile.sheets[0];
+      const numCols = Math.min(24, (sheet.data[0]?.length || 1) - 1);
+      const values = new Array(24).fill(0);
+
+      mappings.forEach(m => {
+        const row = sheet.data[m.rowIdx];
+        if (!row) return;
+        for (let c = 1; c <= numCols && c <= 24; c++) {
+          const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '0').replace(/[,$]/g, ''));
+          if (!isNaN(val)) values[c - 1] += val;
+        }
+      });
+
+      if (path.length === 1) {
+        (updated as any)[path[0]] = values;
+      } else if (path.length === 2) {
+        (updated as any)[path[0]][path[1]] = values;
+      }
+    });
+    return updated;
+  });
+}
+
 export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }: Props) {
   const [phase, setPhase] = useState<Phase>('upload');
   const [analyzedFiles, setAnalyzedFiles] = useState<AnalyzedFile[]>([]);
@@ -171,6 +206,8 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [localSettings, setLocalSettings] = useState<SaaSModelSettingsType>({ ...model.settings });
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [lastSavedCount, setLastSavedCount] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSaveSettings = () => {
     updateModel(prev => ({ ...prev, settings: { ...localSettings } }));
@@ -358,7 +395,31 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     acceptAll();
   }, [suggestions, handleAcceptSuggestion, acceptAll]);
 
-  // Log patterns and recalculate
+  // Save progress: apply current mappings to model incrementally
+  const handleSaveProgress = useCallback(async () => {
+    if (!selectedFile || Object.keys(fieldMappings).length === 0) return;
+    
+    setIsSaving(true);
+    try {
+      // Apply all current mappings to the model (triggers recalculate + auto-save)
+      applyMappingsToModel(fieldMappings, selectedFile, updateModel);
+      
+      // Also log patterns if we have a company
+      const companyId = await getCompanyId();
+      if (companyId) {
+        await logPatterns(companyId, dealId);
+      }
+      
+      setLastSavedCount(Object.keys(fieldMappings).length);
+      toast.success(`Saved ${Object.keys(fieldMappings).length} mapped fields — Dashboard, Income Statement & Balance Sheet updated`);
+    } catch {
+      toast.error('Failed to save mapping progress');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId]);
+
+  // Log patterns and recalculate (final full save)
   const handleRecalculateWithLog = useCallback(async () => {
     const companyId = await getCompanyId();
     if (companyId) {
@@ -474,40 +535,15 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
 
   const handleRecalculate = useCallback(() => {
     if (!selectedFile) return;
-    updateModel(prev => {
-      const updated = { ...prev };
-      Object.entries(fieldMappings).forEach(([fieldName, mappings]) => {
-        const path = getFieldPath(fieldName as MappingFieldName);
-        if (!path.length) return;
-
-        const sheet = selectedFile.sheets.find(s => s.name === mappings[0]?.sheet) || selectedFile.sheets[0];
-        const numCols = Math.min(24, (sheet.data[0]?.length || 1) - 1);
-        const values = new Array(24).fill(0);
-
-        mappings.forEach(m => {
-          const row = sheet.data[m.rowIdx];
-          if (!row) return;
-          for (let c = 1; c <= numCols && c <= 24; c++) {
-            const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '0').replace(/[,$]/g, ''));
-            if (!isNaN(val)) values[c - 1] += val;
-          }
-        });
-
-        if (path.length === 1) {
-          (updated as any)[path[0]] = values;
-        } else if (path.length === 2) {
-          (updated as any)[path[0]][path[1]] = values;
-        }
-      });
-      return updated;
-    });
-    toast.success('Model recalculated with mapped data');
+    applyMappingsToModel(fieldMappings, selectedFile, updateModel);
+    toast.success('Model recalculated — Dashboard, Income Statement & Balance Sheet updated');
   }, [selectedFile, fieldMappings, updateModel]);
 
   const mappedCount = Object.keys(fieldMappings).length;
   const totalFields = IS_FIELDS.length + BS_FIELDS.length;
   const unmappedCount = totalFields - mappedCount;
   const percent = totalFields === 0 ? 0 : Math.round((mappedCount / totalFields) * 100);
+  const hasUnsavedMappings = mappedCount > lastSavedCount;
 
   // Helper to get sample value from a mapped field
   const getSampleValue = (fieldName: string): number | null => {
@@ -732,11 +768,11 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
       <div>
         <h3 className="text-sm font-semibold">Map your financial fields</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Connect each column from your upload to a standard model field so we can calculate ARR, EBITDA, and other metrics automatically.
+          Connect each row from your upload to a standard model field. Save your progress at any time — mapped data will immediately populate the Dashboard, Income Statement, and Balance Sheet tabs.
         </p>
       </div>
 
-      {/* File card (§7) */}
+      {/* File card */}
       <div className="flex items-center gap-3 rounded-lg border border-border/30 bg-muted/10 px-3 py-2">
         <div className="flex h-9 w-9 items-center justify-center rounded bg-emerald-500/10">
           <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
@@ -752,16 +788,23 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
         </Button>
       </div>
 
-      {/* Progress bar (§4) */}
+      {/* Progress bar */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium">Mapping progress</span>
           <span className="text-xs text-muted-foreground">{percent}%</span>
         </div>
         <Progress value={percent} className="h-2" />
-        <p className="text-[10px] text-muted-foreground">
-          <span className="font-medium text-foreground">{mappedCount}</span> of {totalFields} fields mapped · <span className="text-amber-500">{unmappedCount} remaining</span>
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] text-muted-foreground">
+            <span className="font-medium text-foreground">{mappedCount}</span> of {totalFields} fields mapped · <span className="text-amber-500">{unmappedCount} remaining</span>
+          </p>
+          {hasUnsavedMappings && (
+            <p className="text-[10px] text-amber-500 font-medium">
+              {mappedCount - lastSavedCount} unsaved mapping{mappedCount - lastSavedCount !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* AI Suggestions Banner */}
@@ -812,8 +855,22 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>
             Change file
           </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-7 text-xs gap-1.5" 
+            onClick={handleSaveProgress} 
+            disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            {isSaving ? 'Saving...' : 'Save Progress'}
+          </Button>
           <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Review mapped data
+            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save & Apply All
           </Button>
         </div>
       </div>
@@ -947,6 +1004,32 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                   {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected — click "Assign" on a field below
                 </div>
               )}
+              
+              {/* Inline Save Progress button at top of field list */}
+              {mappedCount > 0 && (
+                <div className="mb-3 p-2.5 rounded-lg border border-border/30 bg-muted/10 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    <span><span className="font-medium text-foreground">{mappedCount}</span> fields mapped</span>
+                    {hasUnsavedMappings && (
+                      <Badge variant="outline" className="text-[8px] h-4 px-1.5 bg-amber-500/10 text-amber-500 border-amber-500/20">
+                        Unsaved
+                      </Badge>
+                    )}
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant={hasUnsavedMappings ? "default" : "outline"}
+                    className="h-6 text-[10px] px-2.5 gap-1" 
+                    onClick={handleSaveProgress}
+                    disabled={!hasUnsavedMappings || isSaving}
+                  >
+                    {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                    {isSaving ? 'Saving...' : 'Save Progress'}
+                  </Button>
+                </div>
+              )}
+              
               <ScrollArea className="h-[500px]">
                 <div className="space-y-4">
                   {/* Income Statement fields */}
@@ -967,13 +1050,20 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
         </div>
       </div>
 
-      {/* Mapped data preview (§1 + §2: currency formatted) */}
+      {/* Mapped data preview */}
       {mappedCount > 0 && (
         <Card className="border-border/30">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold">Mapped Data Preview</h3>
-              <Badge variant="secondary" className="text-[10px]">{mappedCount} field{mappedCount !== 1 ? 's' : ''} mapped</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-[10px]">{mappedCount} field{mappedCount !== 1 ? 's' : ''} mapped</Badge>
+                {hasUnsavedMappings && (
+                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20">
+                    {mappedCount - lastSavedCount} unsaved
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -983,12 +1073,15 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                     <th className="text-left py-1.5 px-3 text-muted-foreground">Source Row(s)</th>
                     <th className="text-left py-1.5 px-3 text-muted-foreground">Sheet</th>
                     <th className="text-right py-1.5 px-3 text-muted-foreground">Sample Value</th>
+                    <th className="text-center py-1.5 px-3 text-muted-foreground">Populates</th>
                     <th className="text-center py-1.5 px-3 text-muted-foreground">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {Object.entries(fieldMappings).map(([field, mappings], idx) => {
                     const sample = getSampleValue(field);
+                    const isIS = (IS_FIELDS as readonly string[]).includes(field);
+                    const isSaved = idx < lastSavedCount;
                     return (
                       <tr key={field} className={cn(
                         "border-b border-border/10",
@@ -999,9 +1092,25 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                         <td className="py-1.5 px-3 text-muted-foreground">{mappings[0]?.sheet}</td>
                         <td className="py-1.5 px-3 text-right font-mono tabular-nums">{formatUSD(extractAmount(sample))}</td>
                         <td className="py-1.5 px-3 text-center">
-                          <span className="inline-flex items-center gap-1 text-emerald-500 text-[10px]">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Mapped
+                          <Badge variant="outline" className={cn(
+                            "text-[8px] h-4 px-1.5",
+                            isIS 
+                              ? "bg-blue-500/10 text-blue-500 border-blue-500/20" 
+                              : "bg-violet-500/10 text-violet-500 border-violet-500/20"
+                          )}>
+                            {isIS ? 'Income Statement' : 'Balance Sheet'}
+                          </Badge>
+                        </td>
+                        <td className="py-1.5 px-3 text-center">
+                          <span className={cn(
+                            "inline-flex items-center gap-1 text-[10px]",
+                            isSaved ? "text-emerald-500" : "text-amber-500"
+                          )}>
+                            {isSaved ? (
+                              <><CheckCircle2 className="h-3 w-3" /> Saved</>
+                            ) : (
+                              <><Circle className="h-3 w-3" /> Pending</>
+                            )}
                           </span>
                         </td>
                       </tr>
@@ -1010,10 +1119,25 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                 </tbody>
               </table>
             </div>
-            <div className="flex justify-end mt-3">
-              <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save mapping
-              </Button>
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-[10px] text-muted-foreground">
+                Saving will recalculate Dashboard KPIs, charts, and populate the respective Income Statement / Balance Sheet line items
+              </p>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline"
+                  size="sm" 
+                  className="h-7 text-xs gap-1.5" 
+                  onClick={handleSaveProgress}
+                  disabled={!hasUnsavedMappings || isSaving}
+                >
+                  {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  Save Progress
+                </Button>
+                <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save & Apply All
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
