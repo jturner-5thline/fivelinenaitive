@@ -53,8 +53,8 @@ export function DashboardModule() {
   const s = fpaConfig.scenarios;
 
   // If current tab is disabled, fall back to first enabled tab
-  const enabledTabs = [...Object.entries(t).filter(([, v]) => v).map(([k]) => k), 'salesBdRoi'];
-  const activeTab = dashboardTab === 'salesBdRoi' || t[dashboardTab as keyof typeof t] ? dashboardTab : (enabledTabs[0] || 'overview');
+  const enabledTabs = [...Object.entries(t).filter(([, v]) => v).map(([k]) => k), 'salesBdRoi', 'salesModel'];
+  const activeTab = dashboardTab === 'salesBdRoi' || dashboardTab === 'salesModel' || t[dashboardTab as keyof typeof t] ? dashboardTab : (enabledTabs[0] || 'overview');
 
   return (
     <div className="space-y-4">
