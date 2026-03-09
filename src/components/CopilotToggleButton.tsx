@@ -23,7 +23,6 @@ export function CopilotToggleButton() {
       onClick={togglePanel}
       aria-label="Toggle naitive AI"
       className={cn(
-        "fixed bottom-6 right-6 z-[9999]",
         "h-12 w-12 rounded-full",
         "flex items-center justify-center",
         "shadow-lg cursor-pointer",
@@ -32,6 +31,10 @@ export function CopilotToggleButton() {
         "shadow-[0_4px_20px_hsl(270_65%_55%/0.4)]"
       )}
       style={{
+        position: 'fixed',
+        bottom: '24px',
+        right: '24px',
+        zIndex: 99999,
         background: 'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
       }}
     >
