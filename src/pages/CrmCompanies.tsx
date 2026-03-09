@@ -38,7 +38,8 @@ export default function CrmCompanies() {
         <meta name="description" content="Manage B2B accounts, customers, and prospects." />
       </Helmet>
 
-      <div className="p-6 space-y-6">
+      <div className="bg-transparent">
+        <main className="w-full px-4 pt-4 pb-3 sm:px-6 space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Companies</h1>
             <div className="flex items-center gap-2">
@@ -63,6 +64,7 @@ export default function CrmCompanies() {
           ) : (
             <CrmCompaniesTable companies={filtered} />
           )}
+        </main>
       </div>
 
       <CreateCrmCompanyModal open={showCreate} onClose={() => setShowCreate(false)} />
