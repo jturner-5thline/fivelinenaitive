@@ -17,6 +17,7 @@ interface ImportResult {
 }
 
 export default function MigrationTool() {
+  const { isAdmin, isLoading: isAdminLoading } = useAdminRole();
   const [step, setStep] = useState(1);
   const [exportedData, setExportedData] = useState<string>("");
   const [targetUrl, setTargetUrl] = useState("");
