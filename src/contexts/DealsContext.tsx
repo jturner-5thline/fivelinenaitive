@@ -62,6 +62,7 @@ export function DealsProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('copilot-action-completed', handler);
   }, [fetchDeals]);
 
+  const value = useMemo(() => ({
     deals,
     isLoading,
     error,
