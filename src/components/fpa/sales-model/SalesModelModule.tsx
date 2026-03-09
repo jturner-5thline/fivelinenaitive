@@ -20,6 +20,7 @@ export function SalesModelModule() {
   } = store;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const allTabs = [...BUILT_IN_TABS, ...customMembers.map(m => m.name)];
 
   // Mobile guard
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 900;
