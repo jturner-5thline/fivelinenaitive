@@ -425,47 +425,7 @@ export function AICopilotPanel() {
                   {msg.role === 'user' ? (
                     msg.content
                   ) : (
-                    <ReactMarkdown
-                      components={{
-                        p: ({ children }) => <p style={{ margin: '0 0 8px 0' }}>{children}</p>,
-                        strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
-                        em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
-                        ul: ({ children }) => <ul style={{ margin: '4px 0', paddingLeft: 20 }}>{children}</ul>,
-                        ol: ({ children }) => <ol style={{ margin: '4px 0', paddingLeft: 20 }}>{children}</ol>,
-                        li: ({ children }) => <li style={{ margin: '2px 0' }}>{children}</li>,
-                        code: ({ children, className }) => {
-                          const isBlock = className?.includes('language-');
-                          return isBlock ? (
-                            <pre
-                              style={{
-                                background: 'rgba(0,0,0,0.3)',
-                                padding: '8px 10px',
-                                borderRadius: 6,
-                                fontSize: 12,
-                                overflowX: 'auto',
-                                margin: '6px 0',
-                              }}
-                            >
-                              <code>{children}</code>
-                            </pre>
-                          ) : (
-                            <code
-                              style={{
-                                background: 'rgba(0,0,0,0.25)',
-                                padding: '2px 5px',
-                                borderRadius: 4,
-                                fontSize: 13,
-                                fontFamily: 'monospace',
-                              }}
-                            >
-                              {children}
-                            </code>
-                          );
-                        },
-                      }}
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
+                    <CopilotAssistantContent content={msg.content} />
                   )}
                 </div>
               </div>
