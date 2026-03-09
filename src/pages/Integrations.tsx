@@ -33,6 +33,7 @@ import { useQuickBooksStatus, useQuickBooksConnect, useQuickBooksDisconnect, use
 import { useGmail } from "@/hooks/useGmail";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { useIntegrations } from "@/hooks/useIntegrations";
+import { useCompany } from "@/hooks/useCompany";
 import { useIntegrationInterest } from "@/hooks/useIntegrationInterest";
 import { useMicrosoft } from "@/hooks/useMicrosoft";
 
