@@ -26,26 +26,50 @@ async function asanaFetch(path: string, token: string, options: RequestInit = {}
   return res.json();
 }
 
+// Resolve token: from request body (test/connect flow) or from DB (stored integration)
+async function resolveToken(
+  bodyToken: string | undefined,
+  integrationId: string | undefined,
+): Promise<string> {
+  if (bodyToken) return bodyToken;
+
+  if (!integrationId) throw new Error("Either token or integration_id is required");
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  const { data, error } = await supabase
+    .from("integrations")
+    .select("config")
+    .eq("id", integrationId)
+    .single();
+
+  if (error || !data?.config?.api_token) {
+    throw new Error("Integration not found or token missing");
+  }
+
+  return data.config.api_token as string;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { action, token, ...params } = await req.json();
-
-    if (!token) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Token is required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
+    const { action, token, integration_id, ...params } = await req.json();
 
     let result: Record<string, unknown> = {};
 
     switch (action) {
       case "test": {
-        // Verify token by fetching user info and workspaces
+        if (!token) {
+          return new Response(
+            JSON.stringify({ success: false, error: "Token is required for test" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+          );
+        }
         const me = await asanaFetch("/users/me", token);
         const workspaces = me.data?.workspaces || [];
         result = {
@@ -59,33 +83,37 @@ serve(async (req) => {
       }
 
       case "workspaces": {
-        const me = await asanaFetch("/users/me", token);
+        const resolvedToken = await resolveToken(token, integration_id);
+        const me = await asanaFetch("/users/me", resolvedToken);
         result = { success: true, workspaces: me.data?.workspaces || [] };
         break;
       }
 
       case "projects": {
+        const resolvedToken = await resolveToken(token, integration_id);
         const workspace = params.workspace_gid;
         const data = await asanaFetch(
           `/projects?workspace=${workspace}&opt_fields=name,color,archived,created_at`,
-          token
+          resolvedToken
         );
         result = { success: true, projects: data.data || [] };
         break;
       }
 
       case "tasks": {
+        const resolvedToken = await resolveToken(token, integration_id);
         const project = params.project_gid;
         const data = await asanaFetch(
           `/tasks?project=${project}&opt_fields=name,completed,due_on,assignee.name,assignee.email,notes,tags.name,created_at,modified_at`,
-          token
+          resolvedToken
         );
         result = { success: true, tasks: data.data || [] };
         break;
       }
 
       case "create_task": {
-        const data = await asanaFetch("/tasks", token, {
+        const resolvedToken = await resolveToken(token, integration_id);
+        const data = await asanaFetch("/tasks", resolvedToken, {
           method: "POST",
           body: JSON.stringify({ data: params.task_data }),
         });
@@ -94,7 +122,8 @@ serve(async (req) => {
       }
 
       case "update_task": {
-        const data = await asanaFetch(`/tasks/${params.task_gid}`, token, {
+        const resolvedToken = await resolveToken(token, integration_id);
+        const data = await asanaFetch(`/tasks/${params.task_gid}`, resolvedToken, {
           method: "PUT",
           body: JSON.stringify({ data: params.task_data }),
         });

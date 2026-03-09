@@ -35,7 +35,7 @@ export function AsanaSetupModal({ open, onOpenChange, onConnected }: AsanaSetupM
 
     setIsConnecting(true);
     try {
-      // Test the token by calling the edge function
+      // Test the token via edge function
       const { data, error } = await supabase.functions.invoke("asana-proxy", {
         body: { action: "test", token: apiToken.trim() },
       });
@@ -44,13 +44,19 @@ export function AsanaSetupModal({ open, onOpenChange, onConnected }: AsanaSetupM
         throw new Error(data?.error || error?.message || "Invalid token");
       }
 
-      // Store the integration in the integrations table
+      // Store integration with token in config (protected by RLS, resolved server-side)
       const { error: dbError } = await supabase.from("integrations").insert({
         user_id: user.id,
         name: "Asana",
         type: "asana",
         status: "connected",
-        config: { workspace_name: data.workspace_name || "Asana" },
+        config: {
+          workspace_name: data.workspace_name || "Asana",
+          workspace_gid: data.workspace_gid || "",
+          asana_email: data.email || "",
+          asana_user: data.user_name || "",
+          api_token: apiToken.trim(),
+        },
         last_sync_at: new Date().toISOString(),
       });
 
