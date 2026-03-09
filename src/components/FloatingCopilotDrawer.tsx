@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { MessageSquare, X, Pin } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
@@ -21,7 +22,7 @@ export function FloatingCopilotDrawer() {
   if (!user || location.pathname === '/onboarding' || location.pathname === '/auth') return null;
   if (!isLoading && !copilotEnabled) return null;
 
-  return (
+  const content = (
     <>
       {/* Floating trigger button */}
       {!open && (
@@ -77,4 +78,6 @@ export function FloatingCopilotDrawer() {
       </Sheet>
     </>
   );
+
+  return createPortal(content, document.body);
 }
