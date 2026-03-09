@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useCopilotStore } from '@/stores/copilotStore';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 import { cn } from '@/lib/utils';
@@ -17,7 +18,7 @@ export function CopilotToggleButton() {
     return () => window.removeEventListener('keydown', handler);
   }, [togglePanel]);
 
-  return (
+  return createPortal(
     <button
       onClick={togglePanel}
       aria-label="Toggle naitive AI"
@@ -48,6 +49,7 @@ export function CopilotToggleButton() {
         alt="naitive AI"
         className="h-7 w-7 shrink-0 brightness-0 invert relative z-10"
       />
-    </button>
+    </button>,
+    document.body
   );
 }
