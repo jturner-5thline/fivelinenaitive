@@ -126,7 +126,7 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
               <p className="text-sm mt-1">Ask a company admin to create a template in Settings → Agreement Templates</p>
             </div>
           ) : (
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full min-h-0 overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
                 <div className="flex items-center gap-3">
