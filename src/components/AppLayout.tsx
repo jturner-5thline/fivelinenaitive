@@ -36,10 +36,13 @@ function MainContent({
   return (
     <main
       className={cn(
-        "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl overflow-auto",
+        "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl",
         className,
       )}
       style={{
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        scrollbarWidth: 'thin',
         background: 'rgba(8, 10, 18, 0.10)',
         backdropFilter: 'blur(20px) saturate(1.25) brightness(0.98)',
         WebkitBackdropFilter: 'blur(20px) saturate(1.25) brightness(0.98)',
