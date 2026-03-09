@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ArrowUp } from 'lucide-react';
+import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useCopilotStore } from '@/stores/copilotStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { format, isToday, isYesterday } from 'date-fns';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
 import { CopilotEmailDraft } from '@/components/copilot/CopilotEmailDraft';
@@ -130,14 +131,161 @@ function CopilotAssistantContent({ content }: { content: string }) {
   );
 }
 
+function formatRelativeDate(dateStr: string) {
+  const d = new Date(dateStr);
+  if (isToday(d)) return 'Today';
+  if (isYesterday(d)) return 'Yesterday';
+  return format(d, 'MMM d');
+}
+
+function MessageActions({ msg, conversationId }: { msg: { id: string; content: string; metadata?: Record<string, any> }; conversationId: string | null }) {
+  const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(msg.metadata?.feedback ?? null);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(msg.content);
+      setCopied(true);
+      toast.success('Copied to clipboard');
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
+
+  const handleFeedback = async (type: 'up' | 'down') => {
+    const next = feedback === type ? null : type;
+    setFeedback(next);
+    if (!conversationId) return;
+    try {
+      // Update metadata on the conversation record
+      const { data } = await supabase
+        .from('copilot_conversations')
+        .select('messages')
+        .eq('id', conversationId)
+        .single();
+      if (data?.messages && Array.isArray(data.messages)) {
+        const updated = (data.messages as any[]).map((m: any) =>
+          m.id === msg.id ? { ...m, metadata: { ...(m.metadata || {}), feedback: next } } : m
+        );
+        await supabase.from('copilot_conversations').update({ messages: updated as any }).eq('id', conversationId);
+      }
+    } catch { /* silent */ }
+  };
+
+  return (
+    <div
+      className="opacity-0 group-hover/msg:opacity-100 transition-opacity"
+      style={{
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        display: 'flex',
+        gap: 2,
+        background: 'rgba(8,10,18,0.8)',
+        borderRadius: 6,
+        padding: '2px 4px',
+        border: '1px solid var(--glass-border)',
+      }}
+    >
+      <button
+        onClick={handleCopy}
+        title="Copy"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: copied ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))', display: 'flex' }}
+      >
+        {copied ? <Check size={13} /> : <Copy size={13} />}
+      </button>
+      <button
+        onClick={() => handleFeedback('up')}
+        title="Helpful"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: feedback === 'up' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))', display: 'flex', opacity: feedback === 'up' ? 1 : 0.7 }}
+      >
+        <ThumbsUp size={13} />
+      </button>
+      <button
+        onClick={() => handleFeedback('down')}
+        title="Not helpful"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: feedback === 'down' ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))', display: 'flex', opacity: feedback === 'down' ? 1 : 0.7 }}
+      >
+        <ThumbsDown size={13} />
+      </button>
+    </div>
+  );
+}
+
 export function AICopilotPanel() {
   const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId } = useCopilotStore();
   const { user } = useAuth();
   const [input, setInput] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyItems, setHistoryItems] = useState<Array<{ id: string; preview: string; date: string }>>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
   const { nudges, dismissNudge } = useProactiveNudges();
+
+  // New conversation handler
+  const handleNewConversation = useCallback(() => {
+    setConversationId(null);
+    setMessages([]);
+    setShowHistory(false);
+  }, [setConversationId, setMessages]);
+
+  // Load history
+  const loadHistory = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('copilot_conversations')
+      .select('id, messages, updated_at')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(10);
+    if (data) {
+      setHistoryItems(
+        data.map((c: any) => {
+          const msgs = c.messages as any[];
+          const firstUser = msgs?.find((m: any) => m.role === 'user');
+          const preview = firstUser?.content?.slice(0, 50) || 'Empty conversation';
+          return { id: c.id, preview: preview.length === 50 ? preview + '…' : preview, date: c.updated_at };
+        })
+      );
+    }
+    setShowHistory((v) => !v);
+  }, [user]);
+
+  // Load a specific conversation
+  const loadConversation = useCallback(async (id: string) => {
+    const { data } = await supabase
+      .from('copilot_conversations')
+      .select('id, messages')
+      .eq('id', id)
+      .single();
+    if (data?.messages && Array.isArray(data.messages)) {
+      setConversationId(data.id);
+      setMessages(
+        (data.messages as any[]).map((m: any) => ({
+          id: m.id || crypto.randomUUID(),
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(m.timestamp || Date.now()),
+          metadata: m.metadata,
+        }))
+      );
+    }
+    setShowHistory(false);
+  }, [setConversationId, setMessages]);
+
+  // Close history on outside click
+  useEffect(() => {
+    if (!showHistory) return;
+    const handler = (e: MouseEvent) => {
+      if (historyRef.current && !historyRef.current.contains(e.target as Node)) setShowHistory(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showHistory]);
 
   // Load conversation on mount
   useEffect(() => {
@@ -421,24 +569,95 @@ export function AICopilotPanel() {
             nAItive Copilot
           </span>
         </div>
-        <button
-          onClick={closePanel}
-          aria-label="Close copilot"
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'hsl(var(--muted-foreground))',
-            padding: 4,
-            borderRadius: 6,
-            display: 'flex',
-            transition: 'color 150ms',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
-        >
-          <X size={18} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
+          <button
+            onClick={handleNewConversation}
+            aria-label="New conversation"
+            title="New conversation"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+          >
+            <Plus size={18} />
+          </button>
+          <button
+            onClick={loadHistory}
+            aria-label="Conversation history"
+            title="Conversation history"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+          >
+            <Clock size={18} />
+          </button>
+          <button
+            onClick={closePanel}
+            aria-label="Close copilot"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+          >
+            <X size={18} />
+          </button>
+
+          {/* History Dropdown */}
+          {showHistory && (
+            <div
+              ref={historyRef}
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: 8,
+                width: 300,
+                maxHeight: 320,
+                overflowY: 'auto',
+                background: 'var(--glass-surface)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: 10,
+                boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+                zIndex: 60,
+                padding: 4,
+              }}
+            >
+              {historyItems.length === 0 ? (
+                <div style={{ padding: '12px 10px', fontSize: 13, color: 'hsl(var(--muted-foreground))', textAlign: 'center' }}>
+                  No conversations yet
+                </div>
+              ) : (
+                historyItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => loadConversation(item.id)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: item.id === conversationId ? 'rgba(126,184,247,0.1)' : 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '8px 10px',
+                      borderRadius: 6,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 8,
+                      transition: 'background 100ms',
+                    }}
+                    onMouseEnter={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'rgba(126,184,247,0.06)'; }}
+                    onMouseLeave={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'none'; }}
+                  >
+                    <span style={{ fontSize: 13, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {item.preview}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {formatRelativeDate(item.date)}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Context Badge placeholder */}
@@ -489,11 +708,13 @@ export function AICopilotPanel() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
+                className={msg.role === 'assistant' ? 'group/msg' : ''}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
                   gap: 4,
+                  position: 'relative',
                 }}
               >
                 {msg.role === 'assistant' && (
@@ -511,6 +732,7 @@ export function AICopilotPanel() {
                     borderRadius: msg.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
                     fontSize: 14,
                     lineHeight: 1.5,
+                    position: 'relative',
                     ...(msg.role === 'user'
                       ? {
                           background: 'rgba(126,184,247,0.12)',
@@ -530,6 +752,9 @@ export function AICopilotPanel() {
                     msg.content
                   ) : (
                     <CopilotAssistantContent content={msg.content} />
+                  )}
+                  {msg.role === 'assistant' && msg.content && (
+                    <MessageActions msg={msg} conversationId={conversationId} />
                   )}
                 </div>
               </div>
