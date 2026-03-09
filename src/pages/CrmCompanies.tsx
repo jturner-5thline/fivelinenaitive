@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { CrmCompaniesTable } from '@/components/crm-companies/CrmCompaniesTable';
 import { CreateCrmCompanyModal } from '@/components/crm-companies/CreateCrmCompanyModal';
+import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Loader2 } from 'lucide-react';
 
 export default function CrmCompanies() {
