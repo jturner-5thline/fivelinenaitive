@@ -131,6 +131,89 @@ function CopilotAssistantContent({ content }: { content: string }) {
   );
 }
 
+function formatRelativeDate(dateStr: string) {
+  const d = new Date(dateStr);
+  if (isToday(d)) return 'Today';
+  if (isYesterday(d)) return 'Yesterday';
+  return format(d, 'MMM d');
+}
+
+function MessageActions({ msg, conversationId }: { msg: { id: string; content: string; metadata?: Record<string, any> }; conversationId: string | null }) {
+  const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(msg.metadata?.feedback ?? null);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(msg.content);
+      setCopied(true);
+      toast.success('Copied to clipboard');
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
+
+  const handleFeedback = async (type: 'up' | 'down') => {
+    const next = feedback === type ? null : type;
+    setFeedback(next);
+    if (!conversationId) return;
+    try {
+      // Update metadata on the conversation record
+      const { data } = await supabase
+        .from('copilot_conversations')
+        .select('messages')
+        .eq('id', conversationId)
+        .single();
+      if (data?.messages && Array.isArray(data.messages)) {
+        const updated = (data.messages as any[]).map((m: any) =>
+          m.id === msg.id ? { ...m, metadata: { ...(m.metadata || {}), feedback: next } } : m
+        );
+        await supabase.from('copilot_conversations').update({ messages: updated as any }).eq('id', conversationId);
+      }
+    } catch { /* silent */ }
+  };
+
+  return (
+    <div
+      className="opacity-0 group-hover/msg:opacity-100 transition-opacity"
+      style={{
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        display: 'flex',
+        gap: 2,
+        background: 'rgba(8,10,18,0.8)',
+        borderRadius: 6,
+        padding: '2px 4px',
+        border: '1px solid var(--glass-border)',
+      }}
+    >
+      <button
+        onClick={handleCopy}
+        title="Copy"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: copied ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))', display: 'flex' }}
+      >
+        {copied ? <Check size={13} /> : <Copy size={13} />}
+      </button>
+      <button
+        onClick={() => handleFeedback('up')}
+        title="Helpful"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: feedback === 'up' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))', display: 'flex', opacity: feedback === 'up' ? 1 : 0.7 }}
+      >
+        <ThumbsUp size={13} />
+      </button>
+      <button
+        onClick={() => handleFeedback('down')}
+        title="Not helpful"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: feedback === 'down' ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))', display: 'flex', opacity: feedback === 'down' ? 1 : 0.7 }}
+      >
+        <ThumbsDown size={13} />
+      </button>
+    </div>
+  );
+}
+
 export function AICopilotPanel() {
   const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId } = useCopilotStore();
   const { user } = useAuth();
