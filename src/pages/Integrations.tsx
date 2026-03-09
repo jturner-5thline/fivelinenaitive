@@ -45,6 +45,7 @@ import { CalendarSyncSettingsModal } from "@/components/integrations/CalendarSyn
 import { ClaapIntegration } from "@/components/integrations/ClaapIntegration";
 import { ZapierIntegration } from "@/components/integrations/ZapierIntegration";
 import { AsanaSetupModal } from "@/components/integrations/AsanaSetupModal";
+import { AsanaSyncSettingsModal } from "@/components/integrations/asana/AsanaSyncSettingsModal";
 
 const BANNER_DISMISSED_KEY = "naitive_integrations_banner_dismissed";
 
@@ -70,6 +71,7 @@ export default function Integrations() {
   const [gmailModalOpen, setGmailModalOpen] = useState(false);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [asanaModalOpen, setAsanaModalOpen] = useState(false);
+  const [asanaSyncModalOpen, setAsanaSyncModalOpen] = useState(false);
 
   // === HubSpot ===
   const hubspot = useHubSpot();
@@ -412,6 +414,7 @@ export default function Integrations() {
           lastSynced={asanaIntegration?.last_sync_at}
           externalUrl="https://app.asana.com"
           externalLabel="Open Asana"
+          onSyncSettings={() => setAsanaSyncModalOpen(true)}
           onDisconnect={async () => {
             if (!asanaIntegration) return;
             const { error } = await supabase.from("integrations").delete().eq("id", asanaIntegration.id);
@@ -644,6 +647,13 @@ export default function Integrations() {
         onOpenChange={setAsanaModalOpen}
         onConnected={() => window.location.reload()}
       />
+      {asanaIntegration && (
+        <AsanaSyncSettingsModal
+          open={asanaSyncModalOpen}
+          onClose={() => setAsanaSyncModalOpen(false)}
+          integrationId={asanaIntegration.id}
+        />
+      )}
     </AppLayout>
   );
 }
