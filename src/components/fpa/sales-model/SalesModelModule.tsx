@@ -3,7 +3,8 @@ import { SalesModelSidebar } from './SalesModelSidebar';
 import { SalesModelTable } from './SalesModelTable';
 import { SalesModelCharts } from './SalesModelCharts';
 import { AddMemberModal } from './AddMemberModal';
-import { Menu, BarChart3, X, Plus, Monitor } from 'lucide-react';
+import { Menu, BarChart3, X, Plus, Monitor, Maximize2, Minimize2 } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { REPS_DATA } from './salesModelData';
 
@@ -18,6 +19,7 @@ export function SalesModelModule() {
     setAddMemberOpen, toggleYear, toggleQuarter, removeMember,
   } = store;
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const allTabs = [...BUILT_IN_TABS, ...customMembers.map(m => m.name)];
 
   // Mobile guard
@@ -35,10 +37,10 @@ export function SalesModelModule() {
   }
 
   return (
-    <div className="rounded-lg overflow-hidden border" style={{
-      height: 'calc(100vh - 180px)',
+    <div className={isFullscreen ? 'fixed inset-0 z-50' : 'rounded-lg overflow-hidden border'} style={{
+      height: isFullscreen ? '100vh' : 'calc(100vh - 180px)',
       background: '#0f1117',
-      borderColor: 'rgba(255,255,255,0.06)',
+      borderColor: isFullscreen ? 'transparent' : 'rgba(255,255,255,0.06)',
     }}>
       <AddMemberModal />
 
@@ -86,6 +88,18 @@ export function SalesModelModule() {
         >
           <BarChart3 className="h-3.5 w-3.5" /> Charts
         </Button>
+        <button
+          onClick={() => setIsFullscreen(f => !f)}
+          className="p-1.5 rounded-md border transition-colors"
+          style={{
+            borderColor: isFullscreen ? 'rgba(94,234,212,0.3)' : 'rgba(255,255,255,0.15)',
+            background: isFullscreen ? 'rgba(94,234,212,0.1)' : 'rgba(255,255,255,0.05)',
+            color: isFullscreen ? '#5eead4' : '#94a3b8',
+          }}
+          title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+        </button>
       </div>
 
       {/* Tab Bar */}
