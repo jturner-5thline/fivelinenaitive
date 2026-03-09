@@ -35,8 +35,8 @@ export function FloatingCopilotDrawer() {
             'flex items-center justify-center',
             'shadow-[0_4px_20px_hsl(var(--primary)/0.4)]'
           )}
-          title="Open naitive Copilot"
-          aria-label="Open naitive Copilot"
+          title="Open naitive AI"
+          aria-label="Open naitive AI"
         >
           <Sparkles className="h-5 w-5" />
         </button>
