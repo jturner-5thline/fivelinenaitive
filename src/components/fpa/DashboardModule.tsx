@@ -220,6 +220,12 @@ export function DashboardModule() {
           <BDRoiModule />
         </div>
       )}
+
+      {activeTab === 'salesModel' && (
+        <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+          <SalesModelModule />
+        </div>
+      )}
     </div>
   );
 }
