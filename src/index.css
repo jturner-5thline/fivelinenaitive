@@ -310,6 +310,21 @@
   color: hsl(var(--card-foreground)) !important;
 }
 
+/* Thin overlay scrollbar for main content */
+.main-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+.main-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+.main-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.main-scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 @keyframes ripple-effect {
   to {
     transform: scale(2.5);
