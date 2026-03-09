@@ -95,6 +95,7 @@ export function DashboardModule() {
               </TabsTrigger>
             )}
             <TabsTrigger value="salesBdRoi" className="text-xs">Sales & BD ROI</TabsTrigger>
+            <TabsTrigger value="salesModel" className="text-xs">Sales Model</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
