@@ -12,6 +12,8 @@ import { CopilotDealCard } from '@/components/copilot/CopilotDealCard';
 import { CopilotLenderCard } from '@/components/copilot/CopilotLenderCard';
 import { CopilotTaskCard } from '@/components/copilot/CopilotTaskCard';
 import { CopilotPipelineSummary } from '@/components/copilot/CopilotPipelineSummary';
+import { CopilotProactiveNudge } from '@/components/copilot/CopilotProactiveNudge';
+import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
