@@ -9,6 +9,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AsanaProjectsTab } from "./AsanaProjectsTab";
@@ -36,6 +37,7 @@ export interface AsanaSyncConfig {
 
 export function AsanaSyncSettingsModal({ open, onClose, integrationId }: AsanaSyncSettingsModalProps) {
   const { user } = useAuth();
+  const { company } = useCompany();
   const [syncConfig, setSyncConfig] = useState<AsanaSyncConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,6 +63,7 @@ export function AsanaSyncSettingsModal({ open, onClose, integrationId }: AsanaSy
           .insert({
             integration_id: integrationId,
             user_id: user.id,
+            company_id: company?.id || null,
           })
           .select()
           .single();

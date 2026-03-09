@@ -33,6 +33,7 @@ import { useQuickBooksStatus, useQuickBooksConnect, useQuickBooksDisconnect, use
 import { useGmail } from "@/hooks/useGmail";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { useIntegrations } from "@/hooks/useIntegrations";
+import { useCompany } from "@/hooks/useCompany";
 import { useIntegrationInterest } from "@/hooks/useIntegrationInterest";
 import { useMicrosoft } from "@/hooks/useMicrosoft";
 
@@ -60,6 +61,7 @@ const COMING_SOON_INTEGRATIONS = [
 export default function Integrations() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith("@5thline.co") ?? false;
+  const { isAdmin: isCompanyAdmin } = useCompany();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Banner
@@ -414,7 +416,7 @@ export default function Integrations() {
           lastSynced={asanaIntegration?.last_sync_at}
           externalUrl="https://app.asana.com"
           externalLabel="Open Asana"
-          onSyncSettings={() => setAsanaSyncModalOpen(true)}
+          onSyncSettings={isCompanyAdmin ? () => setAsanaSyncModalOpen(true) : undefined}
           onDisconnect={async () => {
             if (!asanaIntegration) return;
             const { error } = await supabase.from("integrations").delete().eq("id", asanaIntegration.id);

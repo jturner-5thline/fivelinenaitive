@@ -890,6 +890,7 @@ export type Database = {
         Row: {
           auto_sync_enabled: boolean
           auto_sync_interval_minutes: number
+          company_id: string | null
           created_at: string
           id: string
           integration_id: string
@@ -903,6 +904,7 @@ export type Database = {
         Insert: {
           auto_sync_enabled?: boolean
           auto_sync_interval_minutes?: number
+          company_id?: string | null
           created_at?: string
           id?: string
           integration_id: string
@@ -916,6 +918,7 @@ export type Database = {
         Update: {
           auto_sync_enabled?: boolean
           auto_sync_interval_minutes?: number
+          company_id?: string | null
           created_at?: string
           id?: string
           integration_id?: string
@@ -927,6 +930,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "asana_sync_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "asana_sync_config_integration_id_fkey"
             columns: ["integration_id"]
