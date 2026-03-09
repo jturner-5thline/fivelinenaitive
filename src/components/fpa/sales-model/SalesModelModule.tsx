@@ -87,6 +87,18 @@ export function SalesModelModule() {
         >
           <BarChart3 className="h-3.5 w-3.5" /> Charts
         </Button>
+        <button
+          onClick={() => setIsFullscreen(f => !f)}
+          className="p-1.5 rounded-md border transition-colors"
+          style={{
+            borderColor: isFullscreen ? 'rgba(94,234,212,0.3)' : 'rgba(255,255,255,0.15)',
+            background: isFullscreen ? 'rgba(94,234,212,0.1)' : 'rgba(255,255,255,0.05)',
+            color: isFullscreen ? '#5eead4' : '#94a3b8',
+          }}
+          title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+        </button>
       </div>
 
       {/* Tab Bar */}
