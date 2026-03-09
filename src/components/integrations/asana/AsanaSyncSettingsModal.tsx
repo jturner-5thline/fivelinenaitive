@@ -37,6 +37,7 @@ export interface AsanaSyncConfig {
 
 export function AsanaSyncSettingsModal({ open, onClose, integrationId }: AsanaSyncSettingsModalProps) {
   const { user } = useAuth();
+  const { company } = useCompany();
   const [syncConfig, setSyncConfig] = useState<AsanaSyncConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
