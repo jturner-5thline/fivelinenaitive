@@ -217,7 +217,6 @@ export function AICopilotPanel() {
   const handleSend = useCallback(async (directMessage?: string) => {
     const text = (directMessage || input).trim();
     if (!text || isProcessing) return;
-    if (!directMessage) setInput('');
 
     const userMsg = {
       id: crypto.randomUUID(),
