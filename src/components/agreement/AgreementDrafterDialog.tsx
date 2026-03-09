@@ -112,7 +112,7 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="max-w-[95vw] w-[95vw] h-[92vh] p-0 gap-0 overflow-hidden animate-in fade-in-0 zoom-in-[0.97] duration-300"
+          className="max-w-[95vw] w-[95vw] max-h-[calc(100vh-60px)] h-[92vh] p-0 gap-0 !flex !flex-col overflow-hidden animate-in fade-in-0 zoom-in-[0.97] duration-300"
           onInteractOutside={e => e.preventDefault()}
         >
           {loading ? (
@@ -126,7 +126,7 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
               <p className="text-sm mt-1">Ask a company admin to create a template in Settings → Agreement Templates</p>
             </div>
           ) : (
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full min-h-0 overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
                 <div className="flex items-center gap-3">
