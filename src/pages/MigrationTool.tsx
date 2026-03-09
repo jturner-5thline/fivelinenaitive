@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, Loader2, Download, Upload, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 interface ImportResult {
   success: boolean;
@@ -15,6 +17,7 @@ interface ImportResult {
 }
 
 export default function MigrationTool() {
+  const { isAdmin, isLoading: isAdminLoading } = useAdminRole();
   const [step, setStep] = useState(1);
   const [exportedData, setExportedData] = useState<string>("");
   const [targetUrl, setTargetUrl] = useState("");
@@ -25,8 +28,19 @@ export default function MigrationTool() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleExport = async () => {
-    setIsExporting(true);
+  if (isAdminLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+    const handleExport = async () => {
     setError(null);
     try {
       const { data, error } = await supabase.functions.invoke("export-data");

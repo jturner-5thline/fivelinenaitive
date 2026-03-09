@@ -224,7 +224,9 @@ const App = () => (
                             <ProtectedRoute><AppLayout><Help /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/accept-invite" element={<AcceptInvite />} />
-                          <Route path="/migrate" element={<MigrationTool />} />
+                          <Route path="/migrate" element={
+                            <ProtectedRoute><MigrationTool /></ProtectedRoute>
+                          } />
                           <Route path="/admin" element={
                             <ProtectedRoute><AppLayout><Admin /></AppLayout></ProtectedRoute>
                           } />
