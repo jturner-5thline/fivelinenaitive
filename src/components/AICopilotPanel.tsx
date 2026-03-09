@@ -708,11 +708,13 @@ export function AICopilotPanel() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
+                className={msg.role === 'assistant' ? 'group/msg' : ''}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
                   gap: 4,
+                  position: 'relative',
                 }}
               >
                 {msg.role === 'assistant' && (
@@ -730,6 +732,7 @@ export function AICopilotPanel() {
                     borderRadius: msg.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
                     fontSize: 14,
                     lineHeight: 1.5,
+                    position: 'relative',
                     ...(msg.role === 'user'
                       ? {
                           background: 'rgba(126,184,247,0.12)',
@@ -749,6 +752,9 @@ export function AICopilotPanel() {
                     msg.content
                   ) : (
                     <CopilotAssistantContent content={msg.content} />
+                  )}
+                  {msg.role === 'assistant' && msg.content && (
+                    <MessageActions msg={msg} conversationId={conversationId} />
                   )}
                 </div>
               </div>
