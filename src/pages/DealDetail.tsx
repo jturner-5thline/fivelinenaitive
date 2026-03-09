@@ -4952,8 +4952,6 @@ export default function DealDetail() {
           }}
         />
       )}
-      {/* Floating AI Deal Assistant */}
-      {deal && <FloatingDealAssistant dealId={deal.id} dealName={deal.company} />}
 
       {/* Task creation prompt after mentioning someone */}
       <CreateTaskForMentionDialog

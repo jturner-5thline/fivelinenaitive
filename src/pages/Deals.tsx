@@ -667,8 +667,6 @@ export default function Dashboard() {
           }}
         />
 
-        {/* Floating AI Assistant */}
-        <FloatingDealsAssistant />
 
         {/* Deal Size Confirmation Dialog (5th Line only) */}
         {sizeConfirm && (
