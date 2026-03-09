@@ -496,6 +496,22 @@ export default function Integrations() {
     });
   }
 
+  if (!isAsanaConnected) {
+    availableIntegrations.push({
+      key: "asana",
+      render: () => (
+        <IntegrationCard
+          name="Asana"
+          icon={ListChecks}
+          description="Sync tasks and projects with Asana for streamlined project management."
+          status="disconnected"
+          isConnected={false}
+          onConnect={() => setAsanaModalOpen(true)}
+        />
+      ),
+    });
+  }
+
   const totalConnected = connectedIntegrations.length;
 
   return (
