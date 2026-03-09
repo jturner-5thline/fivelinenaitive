@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
 import { ContactsTable } from '@/components/contacts/ContactsTable';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
+import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Loader2 } from 'lucide-react';
 
 export default function Contacts() {
