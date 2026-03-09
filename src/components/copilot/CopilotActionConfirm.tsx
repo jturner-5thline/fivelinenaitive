@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ArrowRight, Plus, Edit, Check, Loader2 } from 'lucide-react';
+import { ArrowRight, Plus, Edit, Check, Loader2, CheckCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ConfirmAction {
   action: 'confirm';
@@ -17,12 +18,56 @@ interface Props {
 const iconMap: Record<string, typeof ArrowRight> = {
   update_deal_stage: ArrowRight,
   create_task: Plus,
+  update_milestone: CheckCircle,
+  update_lender_status: RefreshCw,
 };
 
 export function CopilotActionConfirm({ action }: Props) {
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled'>('pending');
+  const queryClient = useQueryClient();
 
   const Icon = iconMap[action.action_type] || Edit;
+
+  const invalidateRelatedQueries = (actionType: string, params: Record<string, any>) => {
+    const dealId = params.deal_id;
+
+    // Always invalidate deals list
+    queryClient.invalidateQueries({ queryKey: ['deals'] });
+
+    switch (actionType) {
+      case 'update_deal_stage':
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        }
+        // Dispatch custom event for non-React-Query state (DealsContext)
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
+
+      case 'create_task':
+        queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        }
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
+
+      case 'update_milestone':
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+          queryClient.invalidateQueries({ queryKey: ['expected-milestones'] });
+        }
+        // Milestones use local state, need custom event
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
+
+      case 'update_lender_status':
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        }
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
+    }
+  };
 
   const handleConfirm = async () => {
     setStatus('loading');
@@ -40,7 +85,9 @@ export function CopilotActionConfirm({ action }: Props) {
       const result = await resp.json();
       if (result.success) {
         setStatus('done');
-        toast.success(result.message || 'Action completed');
+        toast.success(`✓ ${result.message || 'Action completed'}`);
+        // Trigger UI refresh
+        invalidateRelatedQueries(result.actionType || action.action_type, result.params || action.params);
       } else {
         throw new Error(result.error || 'Action failed');
       }

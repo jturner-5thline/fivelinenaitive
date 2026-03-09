@@ -234,6 +234,41 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "update_milestone",
+      description: "Mark a deal milestone as complete or incomplete. Returns a confirmation — does NOT execute immediately.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID the milestone belongs to" },
+          milestone_id: { type: "string", description: "Milestone UUID" },
+          milestone_title: { type: "string", description: "Milestone title for display" },
+          completed: { type: "boolean", description: "true to mark complete, false for incomplete" },
+        },
+        required: ["deal_id", "milestone_id", "completed"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_lender_status",
+      description: "Update a deal lender's stage or tracking status. Returns a confirmation — does NOT execute immediately.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string" },
+          lender_id: { type: "string" },
+          lender_name: { type: "string" },
+          stage: { type: "string", description: "New lender stage" },
+          tracking_status: { type: "string", description: "New tracking status" },
+        },
+        required: ["deal_id", "lender_id", "lender_name"],
+      },
+    },
+  },
 ];
 
 // ── Tool executors ──────────────────────────────────────────────
@@ -341,9 +376,34 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       const { data } = await q;
       return { activities: data || [] };
     }
+    case "update_milestone": {
+      // Look up milestone info
+      const { data: milestone } = await supabase.from("deal_milestones").select("id, title, completed").eq("id", args.milestone_id).single();
+      if (!milestone) return { error: "Milestone not found" };
+      const title = args.milestone_title || milestone.title;
+      return {
+        action: "confirm",
+        action_type: "update_milestone",
+        description: `${args.completed ? 'Mark' : 'Unmark'} "${title}" as ${args.completed ? 'complete' : 'incomplete'}`,
+        params: { milestone_id: args.milestone_id, milestone_title: title, completed: args.completed, deal_id: args.deal_id },
+      };
+    }
+    case "update_lender_status": {
+      const { data: lender } = await supabase.from("deal_lenders").select("id, name, stage, tracking_status").eq("id", args.lender_id).single();
+      if (!lender) return { error: "Lender not found" };
+      const parts = [];
+      if (args.stage) parts.push(`stage to "${args.stage}"`);
+      if (args.tracking_status) parts.push(`status to "${args.tracking_status}"`);
+      return {
+        action: "confirm",
+        action_type: "update_lender_status",
+        description: `Update ${args.lender_name}: ${parts.join(' and ')}`,
+        params: { lender_id: args.lender_id, lender_name: args.lender_name, stage: args.stage, tracking_status: args.tracking_status, deal_id: args.deal_id },
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
-  }
+    }
 }
 
 // ── Confirm action executor ──────────────────────────────────────
@@ -352,6 +412,11 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
     case "update_deal_stage": {
       const { error } = await supabase.from("deals").update({ stage: params.new_stage }).eq("id", params.deal_id);
       if (error) return { success: false, error: error.message };
+      // Verify the change actually happened
+      const { data: verified } = await supabase.from("deals").select("stage").eq("id", params.deal_id).single();
+      if (!verified || verified.stage !== params.new_stage) {
+        return { success: false, error: `Failed to move "${params.deal_name}" to "${params.new_stage}". The stage is still "${verified?.stage || 'unknown'}". Please try again or do it manually.` };
+      }
       // Log activity
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id,
@@ -359,10 +424,10 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         description: `Stage changed from "${params.current_stage}" to "${params.new_stage}"`,
         user_id: userId,
       });
-      return { success: true, message: `Moved "${params.deal_name}" to "${params.new_stage}"` };
+      return { success: true, message: `Moved "${params.deal_name}" to "${params.new_stage}"`, actionType: "update_deal_stage", params: { deal_id: params.deal_id, new_stage: params.new_stage } };
     }
     case "create_task": {
-      const { error } = await supabase.from("tasks").insert({
+      const { data: newTask, error } = await supabase.from("tasks").insert({
         title: params.title,
         description: params.description || null,
         deal_id: params.deal_id || null,
@@ -371,9 +436,40 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         status: "todo",
         assigned_to: userId,
         created_by: userId,
-      });
+      }).select("id, title").single();
       if (error) return { success: false, error: error.message };
-      return { success: true, message: `Task "${params.title}" created` };
+      if (!newTask) return { success: false, error: `Failed to create task "${params.title}". Please try again or create it manually.` };
+      return { success: true, message: `Task "${params.title}" created`, actionType: "create_task", params: { task_id: newTask.id, deal_id: params.deal_id } };
+    }
+    case "update_milestone": {
+      const { error } = await supabase.from("deal_milestones").update({ completed: params.completed, completed_at: params.completed ? new Date().toISOString() : null }).eq("id", params.milestone_id);
+      if (error) return { success: false, error: error.message };
+      // Verify
+      const { data: verified } = await supabase.from("deal_milestones").select("completed").eq("id", params.milestone_id).single();
+      if (!verified || verified.completed !== params.completed) {
+        return { success: false, error: `Failed to ${params.completed ? 'complete' : 'uncomplete'} "${params.milestone_title}". Please try again or do it manually.` };
+      }
+      // Log activity
+      if (params.deal_id) {
+        await supabase.from("activity_logs").insert({
+          deal_id: params.deal_id,
+          activity_type: "milestone_update",
+          description: `Milestone "${params.milestone_title}" marked as ${params.completed ? 'complete' : 'incomplete'}`,
+          user_id: userId,
+        });
+      }
+      return { success: true, message: `${params.milestone_title} marked as ${params.completed ? 'complete' : 'incomplete'}`, actionType: "update_milestone", params: { deal_id: params.deal_id, milestone_id: params.milestone_id } };
+    }
+    case "update_lender_status": {
+      const updateFields: any = {};
+      if (params.stage) updateFields.stage = params.stage;
+      if (params.tracking_status) updateFields.tracking_status = params.tracking_status;
+      const { error } = await supabase.from("deal_lenders").update(updateFields).eq("id", params.lender_id);
+      if (error) return { success: false, error: error.message };
+      // Verify
+      const { data: verified } = await supabase.from("deal_lenders").select("stage, tracking_status").eq("id", params.lender_id).single();
+      if (!verified) return { success: false, error: `Failed to update lender "${params.lender_name}". Please try again or do it manually.` };
+      return { success: true, message: `Updated ${params.lender_name}${params.stage ? ` stage to "${params.stage}"` : ''}${params.tracking_status ? ` status to "${params.tracking_status}"` : ''}`, actionType: "update_lender_status", params: { deal_id: params.deal_id, lender_id: params.lender_id } };
     }
     default:
       return { success: false, error: `Unknown action: ${actionType}` };

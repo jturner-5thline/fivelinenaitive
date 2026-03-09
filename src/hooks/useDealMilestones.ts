@@ -78,7 +78,18 @@ export function useDealMilestones(dealId: string | undefined) {
     }
   }, [dealId, user]);
 
-  // Add a new milestone
+  // Listen for copilot action events to refresh milestones
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.actionType === 'update_milestone' && detail?.params?.deal_id === dealId) {
+        fetchMilestones();
+      }
+    };
+    window.addEventListener('copilot-action-completed', handler);
+    return () => window.removeEventListener('copilot-action-completed', handler);
+  }, [dealId, fetchMilestones]);
+
   const addMilestone = useCallback(async (milestone: Omit<DealMilestone, 'id'>) => {
     if (!dealId || !user) return null;
     

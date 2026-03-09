@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useMemo } from 'react';
+import { createContext, useContext, useEffect, ReactNode, useMemo } from 'react';
 import { useDealsDatabase } from '@/hooks/useDealsDatabase';
 import { Deal, DealLender, DealStatus, DealStage, EngagementType } from '@/types/deal';
 
@@ -49,6 +49,18 @@ export function DealsProvider({ children }: { children: ReactNode }) {
     deleteDeal,
     getDealById,
   } = useDealsDatabase();
+
+  // Listen for copilot write actions that affect deals
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.actionType === 'update_deal_stage' || detail?.actionType === 'update_lender_status') {
+        fetchDeals();
+      }
+    };
+    window.addEventListener('copilot-action-completed', handler);
+    return () => window.removeEventListener('copilot-action-completed', handler);
+  }, [fetchDeals]);
 
   const value = useMemo(() => ({
     deals,
