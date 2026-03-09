@@ -189,9 +189,9 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
               </div>
 
               {/* 3-panel layout */}
-              <div className="flex flex-1 min-h-0">
+              <div className="flex flex-1 min-h-0 overflow-hidden">
                 {/* Sidebar */}
-                <div className="w-80 border-r shrink-0 flex flex-col overflow-hidden">
+                <div className="w-80 border-r shrink-0 flex flex-col min-h-0 overflow-hidden">
                   <DrафterSidebar
                     sections={sections}
                     activeSection={activeSection}
@@ -203,7 +203,7 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
                 </div>
 
                 {/* Editor */}
-                <div className="flex-1 min-w-0 overflow-auto">
+                <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
                   <DrафterEditor
                     section={activeSection ? sections.find(s => s.section_id === activeSection) || null : null}
                     values={values}
@@ -215,7 +215,7 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
                 </div>
 
                 {/* Preview */}
-                <div className="w-[420px] border-l shrink-0 hidden xl:flex flex-col overflow-hidden">
+                <div className="w-[420px] border-l shrink-0 hidden xl:flex flex-col min-h-0 overflow-hidden">
                   <DrафterPreview
                     ref={previewRef}
                     sections={sections}
