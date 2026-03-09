@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
+import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
+import { CopilotEmailDraft } from '@/components/copilot/CopilotEmailDraft';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
@@ -41,6 +43,73 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
   if (parts[0] === 'lenders' || parts[0] === 'master-lenders') return { page: 'lenders', entityType: null, entityId: null };
   if (parts[0] === 'pipeline') return { page: 'pipeline', entityType: null, entityId: null };
   return { page: parts[0] || 'dashboard', entityType: null, entityId: null };
+}
+
+/** Parse assistant content for JSON blocks (confirmations / email drafts) and render inline cards */
+function CopilotAssistantContent({ content }: { content: string }) {
+  // Split content into segments: plain markdown + JSON blocks
+  const segments: Array<{ type: 'text' | 'confirm' | 'email'; value: any }> = [];
+  const jsonBlockRegex = /```json\s*(\{[\s\S]*?\})\s*```/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = jsonBlockRegex.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: 'text', value: content.slice(lastIndex, match.index) });
+    }
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed.action === 'confirm' && parsed.action_type) {
+        segments.push({ type: 'confirm', value: parsed });
+      } else if (parsed.subject && parsed.body) {
+        segments.push({ type: 'email', value: parsed });
+      } else {
+        segments.push({ type: 'text', value: match[0] });
+      }
+    } catch {
+      segments.push({ type: 'text', value: match[0] });
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < content.length) {
+    segments.push({ type: 'text', value: content.slice(lastIndex) });
+  }
+
+  if (segments.length === 0) segments.push({ type: 'text', value: content });
+
+  return (
+    <>
+      {segments.map((seg, i) => {
+        if (seg.type === 'confirm') return <CopilotActionConfirm key={i} action={seg.value} />;
+        if (seg.type === 'email') return <CopilotEmailDraft key={i} draft={seg.value} />;
+        return (
+          <ReactMarkdown
+            key={i}
+            components={{
+              p: ({ children }) => <p style={{ margin: '0 0 8px 0' }}>{children}</p>,
+              strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+              em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
+              ul: ({ children }) => <ul style={{ margin: '4px 0', paddingLeft: 20 }}>{children}</ul>,
+              ol: ({ children }) => <ol style={{ margin: '4px 0', paddingLeft: 20 }}>{children}</ol>,
+              li: ({ children }) => <li style={{ margin: '2px 0' }}>{children}</li>,
+              code: ({ children, className }) => {
+                const isBlock = className?.includes('language-');
+                return isBlock ? (
+                  <pre style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: 6, fontSize: 12, overflowX: 'auto', margin: '6px 0' }}>
+                    <code>{children}</code>
+                  </pre>
+                ) : (
+                  <code style={{ background: 'rgba(0,0,0,0.25)', padding: '2px 5px', borderRadius: 4, fontSize: 13, fontFamily: 'monospace' }}>{children}</code>
+                );
+              },
+            }}
+          >
+            {seg.value}
+          </ReactMarkdown>
+        );
+      })}
+    </>
+  );
 }
 
 export function AICopilotPanel() {
@@ -423,47 +492,7 @@ export function AICopilotPanel() {
                   {msg.role === 'user' ? (
                     msg.content
                   ) : (
-                    <ReactMarkdown
-                      components={{
-                        p: ({ children }) => <p style={{ margin: '0 0 8px 0' }}>{children}</p>,
-                        strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
-                        em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
-                        ul: ({ children }) => <ul style={{ margin: '4px 0', paddingLeft: 20 }}>{children}</ul>,
-                        ol: ({ children }) => <ol style={{ margin: '4px 0', paddingLeft: 20 }}>{children}</ol>,
-                        li: ({ children }) => <li style={{ margin: '2px 0' }}>{children}</li>,
-                        code: ({ children, className }) => {
-                          const isBlock = className?.includes('language-');
-                          return isBlock ? (
-                            <pre
-                              style={{
-                                background: 'rgba(0,0,0,0.3)',
-                                padding: '8px 10px',
-                                borderRadius: 6,
-                                fontSize: 12,
-                                overflowX: 'auto',
-                                margin: '6px 0',
-                              }}
-                            >
-                              <code>{children}</code>
-                            </pre>
-                          ) : (
-                            <code
-                              style={{
-                                background: 'rgba(0,0,0,0.25)',
-                                padding: '2px 5px',
-                                borderRadius: 4,
-                                fontSize: 13,
-                                fontFamily: 'monospace',
-                              }}
-                            >
-                              {children}
-                            </code>
-                          );
-                        },
-                      }}
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
+                    <CopilotAssistantContent content={msg.content} />
                   )}
                 </div>
               </div>
