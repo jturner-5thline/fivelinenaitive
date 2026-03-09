@@ -61,6 +61,7 @@ const COMING_SOON_INTEGRATIONS = [
 export default function Integrations() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith("@5thline.co") ?? false;
+  const { isAdmin: isCompanyAdmin } = useCompany();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Banner
