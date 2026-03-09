@@ -39,16 +39,10 @@ export default function Contacts() {
         <meta name="description" content="Manage your sales contacts, leads, and prospects." />
       </Helmet>
 
-      <div className="bg-background min-h-screen">
-        <div className="container mx-auto py-6 px-4 space-y-6">
+      <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Contacts</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">
-                Manage leads, prospects, and customer relationships
-              </p>
-            </div>
+            <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm">
                 <Upload className="h-4 w-4 mr-1.5" /> Import
