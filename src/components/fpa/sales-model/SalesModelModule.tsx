@@ -3,7 +3,8 @@ import { SalesModelSidebar } from './SalesModelSidebar';
 import { SalesModelTable } from './SalesModelTable';
 import { SalesModelCharts } from './SalesModelCharts';
 import { AddMemberModal } from './AddMemberModal';
-import { Menu, BarChart3, X, Plus, Monitor } from 'lucide-react';
+import { Menu, BarChart3, X, Plus, Monitor, Maximize2, Minimize2 } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { REPS_DATA } from './salesModelData';
 
