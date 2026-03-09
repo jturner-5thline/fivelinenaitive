@@ -40,6 +40,10 @@ function MainContent({
         className,
       )}
       style={{
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        scrollbarWidth: 'thin',
+        scrollbarGutter: 'stable',
         background: 'rgba(8, 10, 18, 0.10)',
         backdropFilter: 'blur(20px) saturate(1.25) brightness(0.98)',
         WebkitBackdropFilter: 'blur(20px) saturate(1.25) brightness(0.98)',
