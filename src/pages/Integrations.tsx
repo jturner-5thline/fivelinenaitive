@@ -69,6 +69,7 @@ export default function Integrations() {
   const [quickbooksModalOpen, setQuickbooksModalOpen] = useState(false);
   const [gmailModalOpen, setGmailModalOpen] = useState(false);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [asanaModalOpen, setAsanaModalOpen] = useState(false);
 
   // === HubSpot ===
   const hubspot = useHubSpot();
