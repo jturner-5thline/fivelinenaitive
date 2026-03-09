@@ -376,9 +376,34 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       const { data } = await q;
       return { activities: data || [] };
     }
+    case "update_milestone": {
+      // Look up milestone info
+      const { data: milestone } = await supabase.from("deal_milestones").select("id, title, completed").eq("id", args.milestone_id).single();
+      if (!milestone) return { error: "Milestone not found" };
+      const title = args.milestone_title || milestone.title;
+      return {
+        action: "confirm",
+        action_type: "update_milestone",
+        description: `${args.completed ? 'Mark' : 'Unmark'} "${title}" as ${args.completed ? 'complete' : 'incomplete'}`,
+        params: { milestone_id: args.milestone_id, milestone_title: title, completed: args.completed, deal_id: args.deal_id },
+      };
+    }
+    case "update_lender_status": {
+      const { data: lender } = await supabase.from("deal_lenders").select("id, name, stage, tracking_status").eq("id", args.lender_id).single();
+      if (!lender) return { error: "Lender not found" };
+      const parts = [];
+      if (args.stage) parts.push(`stage to "${args.stage}"`);
+      if (args.tracking_status) parts.push(`status to "${args.tracking_status}"`);
+      return {
+        action: "confirm",
+        action_type: "update_lender_status",
+        description: `Update ${args.lender_name}: ${parts.join(' and ')}`,
+        params: { lender_id: args.lender_id, lender_name: args.lender_name, stage: args.stage, tracking_status: args.tracking_status, deal_id: args.deal_id },
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
-  }
+    }
 }
 
 // ── Confirm action executor ──────────────────────────────────────
