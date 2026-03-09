@@ -154,7 +154,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         </svg>
       </div>
 
-      <div className="flex w-full h-full min-h-0 bg-transparent p-2 gap-1" style={{ isolation: 'auto' }}>
+      <div className="flex w-full h-full min-h-0 bg-transparent pt-2 pb-2 pl-2 pr-1 gap-1" style={{ isolation: 'auto' }}>
         <AppSidebar />
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
