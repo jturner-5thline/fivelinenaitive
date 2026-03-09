@@ -16,6 +16,7 @@ import { VarianceReviewPanel } from './collaboration/VarianceReviewPanel';
 import { BudgetApprovalWorkflow } from './collaboration/BudgetApprovalWorkflow';
 import { VarianceLegend } from './VarianceLegend';
 import { BoardReportExport } from './BoardReportExport';
+import { BDRoiModule } from './bd-roi/BDRoiModule';
 import { ChartConfigPanel, DEFAULT_CHART_CONFIG, type ChartConfig } from './dashboard/ChartConfigPanel';
 import { FPADashboardConfigPanel } from './dashboard/FPADashboardConfigPanel';
 import { useFPADashboardConfig } from '@/hooks/useFPADashboardConfig';
@@ -51,8 +52,8 @@ export function DashboardModule() {
   const s = fpaConfig.scenarios;
 
   // If current tab is disabled, fall back to first enabled tab
-  const enabledTabs = Object.entries(t).filter(([, v]) => v).map(([k]) => k);
-  const activeTab = t[dashboardTab as keyof typeof t] ? dashboardTab : (enabledTabs[0] || 'overview');
+  const enabledTabs = [...Object.entries(t).filter(([, v]) => v).map(([k]) => k), 'salesBdRoi'];
+  const activeTab = dashboardTab === 'salesBdRoi' || t[dashboardTab as keyof typeof t] ? dashboardTab : (enabledTabs[0] || 'overview');
 
   return (
     <div className="space-y-4">
@@ -92,6 +93,7 @@ export function DashboardModule() {
                 Board Pack
               </TabsTrigger>
             )}
+            <TabsTrigger value="salesBdRoi" className="text-xs">Sales & BD ROI</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
@@ -208,6 +210,12 @@ export function DashboardModule() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <VarianceReviewPanel />
           <BudgetApprovalWorkflow />
+        </div>
+      )}
+
+      {activeTab === 'salesBdRoi' && (
+        <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+          <BDRoiModule />
         </div>
       )}
     </div>
