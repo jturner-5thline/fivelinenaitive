@@ -112,7 +112,7 @@ export function AgreementDrafterDialog({ dealId, companyName, companyShort }: Ag
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="max-w-[95vw] w-[95vw] h-[92vh] p-0 gap-0 overflow-hidden animate-in fade-in-0 zoom-in-[0.97] duration-300"
+          className="max-w-[95vw] w-[95vw] max-h-[calc(100vh-60px)] h-[92vh] p-0 gap-0 flex flex-col overflow-hidden animate-in fade-in-0 zoom-in-[0.97] duration-300"
           onInteractOutside={e => e.preventDefault()}
         >
           {loading ? (
