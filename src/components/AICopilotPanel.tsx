@@ -218,10 +218,74 @@ export function AICopilotPanel() {
   const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId } = useCopilotStore();
   const { user } = useAuth();
   const [input, setInput] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyItems, setHistoryItems] = useState<Array<{ id: string; preview: string; date: string }>>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
   const { nudges, dismissNudge } = useProactiveNudges();
+
+  // New conversation handler
+  const handleNewConversation = useCallback(() => {
+    setConversationId(null);
+    setMessages([]);
+    setShowHistory(false);
+  }, [setConversationId, setMessages]);
+
+  // Load history
+  const loadHistory = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('copilot_conversations')
+      .select('id, messages, updated_at')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(10);
+    if (data) {
+      setHistoryItems(
+        data.map((c: any) => {
+          const msgs = c.messages as any[];
+          const firstUser = msgs?.find((m: any) => m.role === 'user');
+          const preview = firstUser?.content?.slice(0, 50) || 'Empty conversation';
+          return { id: c.id, preview: preview.length === 50 ? preview + '…' : preview, date: c.updated_at };
+        })
+      );
+    }
+    setShowHistory((v) => !v);
+  }, [user]);
+
+  // Load a specific conversation
+  const loadConversation = useCallback(async (id: string) => {
+    const { data } = await supabase
+      .from('copilot_conversations')
+      .select('id, messages')
+      .eq('id', id)
+      .single();
+    if (data?.messages && Array.isArray(data.messages)) {
+      setConversationId(data.id);
+      setMessages(
+        (data.messages as any[]).map((m: any) => ({
+          id: m.id || crypto.randomUUID(),
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(m.timestamp || Date.now()),
+          metadata: m.metadata,
+        }))
+      );
+    }
+    setShowHistory(false);
+  }, [setConversationId, setMessages]);
+
+  // Close history on outside click
+  useEffect(() => {
+    if (!showHistory) return;
+    const handler = (e: MouseEvent) => {
+      if (historyRef.current && !historyRef.current.contains(e.target as Node)) setShowHistory(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showHistory]);
 
   // Load conversation on mount
   useEffect(() => {
