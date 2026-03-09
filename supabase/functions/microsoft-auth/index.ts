@@ -32,11 +32,22 @@ serve(async (req) => {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-  if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET) {
-    return new Response(JSON.stringify({ error: 'Microsoft credentials not configured' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  try {
+    const { action } = await req.clone().json();
+    if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET) {
+      // For status checks, gracefully return disconnected instead of 500
+      if (action === 'check_status') {
+        return new Response(JSON.stringify({ connected: false }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ error: 'Microsoft credentials not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  } catch (_) {
+    // JSON parse will happen again below, let it handle errors there
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
