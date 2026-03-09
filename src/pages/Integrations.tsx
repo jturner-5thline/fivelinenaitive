@@ -197,6 +197,8 @@ export default function Integrations() {
   const isCalendarConnected = calendar.status?.connected ?? false;
   const isClaapConnected = claapIntegration?.status === "connected";
   const isMicrosoftConnected = microsoft.status?.connected ?? false;
+  const asanaIntegration = integrations.find((i) => i.type === "asana");
+  const isAsanaConnected = asanaIntegration?.status === "connected";
 
   // Zapier is always "available" via the webhook config section
   const isZapierActive = true; // Always show in connected for 5thLine users
