@@ -24,6 +24,7 @@ import {
   Database,
   CreditCard,
   MonitorSmartphone,
+  ListChecks,
 } from "lucide-react";
 
 // Hooks
@@ -43,6 +44,7 @@ import { GmailSyncSettingsModal } from "@/components/integrations/GmailSyncSetti
 import { CalendarSyncSettingsModal } from "@/components/integrations/CalendarSyncSettingsModal";
 import { ClaapIntegration } from "@/components/integrations/ClaapIntegration";
 import { ZapierIntegration } from "@/components/integrations/ZapierIntegration";
+import { AsanaSetupModal } from "@/components/integrations/AsanaSetupModal";
 
 const BANNER_DISMISSED_KEY = "naitive_integrations_banner_dismissed";
 
@@ -67,6 +69,7 @@ export default function Integrations() {
   const [quickbooksModalOpen, setQuickbooksModalOpen] = useState(false);
   const [gmailModalOpen, setGmailModalOpen] = useState(false);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [asanaModalOpen, setAsanaModalOpen] = useState(false);
 
   // === HubSpot ===
   const hubspot = useHubSpot();
@@ -194,6 +197,8 @@ export default function Integrations() {
   const isCalendarConnected = calendar.status?.connected ?? false;
   const isClaapConnected = claapIntegration?.status === "connected";
   const isMicrosoftConnected = microsoft.status?.connected ?? false;
+  const asanaIntegration = integrations.find((i) => i.type === "asana");
+  const isAsanaConnected = asanaIntegration?.status === "connected";
 
   // Zapier is always "available" via the webhook config section
   const isZapierActive = true; // Always show in connected for 5thLine users
@@ -394,6 +399,31 @@ export default function Integrations() {
     });
   }
 
+  if (isAsanaConnected) {
+    connectedIntegrations.push({
+      key: "asana",
+      render: () => (
+        <IntegrationCard
+          name="Asana"
+          icon={ListChecks}
+          description="Syncs tasks and projects for streamlined project management."
+          status="connected"
+          isConnected
+          lastSynced={asanaIntegration?.last_sync_at}
+          externalUrl="https://app.asana.com"
+          externalLabel="Open Asana"
+          onDisconnect={async () => {
+            if (!asanaIntegration) return;
+            const { error } = await supabase.from("integrations").delete().eq("id", asanaIntegration.id);
+            if (error) { toast.error("Failed to disconnect Asana"); return; }
+            toast.success("Asana disconnected");
+            window.location.reload();
+          }}
+        />
+      ),
+    });
+  }
+
   // === Available (not yet connected) ===
   type AvailableIntegration = { key: string; render: () => React.ReactNode };
   const availableIntegrations: AvailableIntegration[] = [];
@@ -487,6 +517,22 @@ export default function Integrations() {
             <ClaapIntegration />
           </CardContent>
         </Card>
+      ),
+    });
+  }
+
+  if (!isAsanaConnected) {
+    availableIntegrations.push({
+      key: "asana",
+      render: () => (
+        <IntegrationCard
+          name="Asana"
+          icon={ListChecks}
+          description="Sync tasks and projects with Asana for streamlined project management."
+          status="disconnected"
+          isConnected={false}
+          onConnect={() => setAsanaModalOpen(true)}
+        />
       ),
     });
   }
@@ -592,6 +638,11 @@ export default function Integrations() {
         onClose={() => setCalendarModalOpen(false)}
         email={calendar.status?.email || user?.email || undefined}
         onDisconnect={() => { calendar.disconnect(); setCalendarModalOpen(false); }}
+      />
+      <AsanaSetupModal
+        open={asanaModalOpen}
+        onOpenChange={setAsanaModalOpen}
+        onConnected={() => window.location.reload()}
       />
     </AppLayout>
   );
