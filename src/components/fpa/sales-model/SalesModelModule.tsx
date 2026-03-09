@@ -36,10 +36,10 @@ export function SalesModelModule() {
   }
 
   return (
-    <div className="rounded-lg overflow-hidden border" style={{
-      height: 'calc(100vh - 180px)',
+    <div className={isFullscreen ? 'fixed inset-0 z-50' : 'rounded-lg overflow-hidden border'} style={{
+      height: isFullscreen ? '100vh' : 'calc(100vh - 180px)',
       background: '#0f1117',
-      borderColor: 'rgba(255,255,255,0.06)',
+      borderColor: isFullscreen ? 'transparent' : 'rgba(255,255,255,0.06)',
     }}>
       <AddMemberModal />
 
