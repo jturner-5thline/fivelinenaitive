@@ -71,6 +71,7 @@ export default function Integrations() {
   const [gmailModalOpen, setGmailModalOpen] = useState(false);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [asanaModalOpen, setAsanaModalOpen] = useState(false);
+  const [asanaSyncModalOpen, setAsanaSyncModalOpen] = useState(false);
 
   // === HubSpot ===
   const hubspot = useHubSpot();
