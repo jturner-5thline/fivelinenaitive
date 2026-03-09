@@ -374,18 +374,8 @@ export function AICopilotPanel() {
   }, [input, isProcessing, messages, addMessage, setProcessing, saveConversation]);
 
   const handleNudgeAction = useCallback((prompt: string) => {
-    setInput(prompt);
-    // Use setTimeout to let state update, then trigger send
-    setTimeout(() => {
-      const ta = textareaRef.current;
-      if (ta) {
-        ta.focus();
-        // Programmatically trigger send
-        const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
-        ta.dispatchEvent(event);
-      }
-    }, 50);
-  }, []);
+    handleSend(prompt);
+  }, [handleSend]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
