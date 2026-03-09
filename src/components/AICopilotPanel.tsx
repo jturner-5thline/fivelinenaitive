@@ -8,6 +8,10 @@ import { toast } from 'sonner';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
 import { CopilotEmailDraft } from '@/components/copilot/CopilotEmailDraft';
+import { CopilotDealCard } from '@/components/copilot/CopilotDealCard';
+import { CopilotLenderCard } from '@/components/copilot/CopilotLenderCard';
+import { CopilotTaskCard } from '@/components/copilot/CopilotTaskCard';
+import { CopilotPipelineSummary } from '@/components/copilot/CopilotPipelineSummary';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
