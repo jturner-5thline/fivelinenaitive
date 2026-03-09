@@ -35,7 +35,7 @@ export function AsanaSetupModal({ open, onOpenChange, onConnected }: AsanaSetupM
 
     setIsConnecting(true);
     try {
-      // Test the token and get encrypted version from edge function
+      // Test the token via edge function
       const { data, error } = await supabase.functions.invoke("asana-proxy", {
         body: { action: "test", token: apiToken.trim() },
       });
@@ -44,7 +44,7 @@ export function AsanaSetupModal({ open, onOpenChange, onConnected }: AsanaSetupM
         throw new Error(data?.error || error?.message || "Invalid token");
       }
 
-      // Store the integration with encrypted token
+      // Store integration with token in config (protected by RLS, resolved server-side)
       const { error: dbError } = await supabase.from("integrations").insert({
         user_id: user.id,
         name: "Asana",
@@ -55,7 +55,7 @@ export function AsanaSetupModal({ open, onOpenChange, onConnected }: AsanaSetupM
           workspace_gid: data.workspace_gid || "",
           asana_email: data.email || "",
           asana_user: data.user_name || "",
-          encrypted_token: data.encrypted_token,
+          api_token: apiToken.trim(),
         },
         last_sync_at: new Date().toISOString(),
       });
