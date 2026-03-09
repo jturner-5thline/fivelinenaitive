@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useMemo } from 'react';
+import { createContext, useContext, useEffect, ReactNode, useMemo } from 'react';
 import { useDealsDatabase } from '@/hooks/useDealsDatabase';
 import { Deal, DealLender, DealStatus, DealStage, EngagementType } from '@/types/deal';
 
