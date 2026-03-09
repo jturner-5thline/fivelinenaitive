@@ -98,7 +98,6 @@ import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
 import { DealUpdatesDropdown } from '@/components/deal/DealUpdatesDropdown';
-import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
 import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
 import { useLenderScoreConfig, getScoreStyles } from '@/hooks/useLenderScoreConfig';
 import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
