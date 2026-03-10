@@ -437,6 +437,18 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_deal_health",
+      description: "Get a comprehensive health check for a deal: overdue milestones, stale lenders, missing documents, unassigned outstanding items, and stale activity. Use when user asks 'what should I do next?', 'what needs attention?', 'what's the priority?', or anything about deal health.",
+      parameters: {
+        type: "object",
+        properties: { deal_id: { type: "string" } },
+        required: ["deal_id"],
+      },
+    },
+  },
 ];
 
 // ── Tool executors ──────────────────────────────────────────────
