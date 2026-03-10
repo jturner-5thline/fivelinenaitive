@@ -209,16 +209,8 @@ export default function Integrations() {
   const isMicrosoftConnected = microsoft.status?.connected ?? false;
   const asanaIntegration = integrations.find((i) => i.type === "asana");
   const isAsanaConnected = asanaIntegration?.status === "connected";
-  const isDocuSignConnected = docusign.status?.connected ?? false;
-
   // Zapier is always "available" via the webhook config section
   const isZapierActive = true; // Always show in connected for 5thLine users
-
-  const getDocuSignStatus = (): IntegrationStatus => {
-    if (!isDocuSignConnected) return "disconnected";
-    if (docusign.status?.is_expired) return "requires_reauth";
-    return "connected";
-  };
 
   const getMicrosoftStatus = (): IntegrationStatus => {
     if (!isMicrosoftConnected) return "disconnected";
