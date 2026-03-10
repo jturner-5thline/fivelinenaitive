@@ -185,3 +185,6 @@ verify_jwt = false
 
 [functions.copilot-chat]
 verify_jwt = false
+
+[functions.notify-flex-lender-approved]
+verify_jwt = false
