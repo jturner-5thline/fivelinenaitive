@@ -829,6 +829,135 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         customer_base: writeup.customer_base,
       };
     }
+    // ── DEAL HEALTH CHECK ──
+    case "get_deal_health": {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+      const [dealRes, milestonesRes, outstandingRes, lendersRes, activityRes, attachmentsRes, checklistRes] = await Promise.all([
+        supabase.from("deals").select("company, stage, status, value, updated_at, closing_date").eq("id", args.deal_id).single(),
+        supabase.from("deal_milestones").select("id, title, completed, due_date, status").eq("deal_id", args.deal_id).order("position", { ascending: true }),
+        supabase.from("outstanding_items").select("id, description, status, assigned_to, due_date, priority").eq("deal_id", args.deal_id).in("status", ["open", "pending", "in_progress"]),
+        supabase.from("deal_lenders").select("id, name, stage, tracking_status, updated_at, created_at").eq("deal_id", args.deal_id),
+        supabase.from("activity_logs").select("created_at").eq("deal_id", args.deal_id).order("created_at", { ascending: false }).limit(1),
+        supabase.from("deal_attachments").select("id, category").eq("deal_id", args.deal_id),
+        supabase.from("data_room_checklist_items").select("id, label, category, is_required").eq("is_required", true),
+      ]);
+
+      const deal = dealRes.data;
+      const milestones = milestonesRes.data || [];
+      const outstanding = outstandingRes.data || [];
+      const lenders = lendersRes.data || [];
+      const lastActivity = activityRes.data?.[0]?.created_at;
+      const attachments = attachmentsRes.data || [];
+      const requiredDocs = checklistRes.data || [];
+
+      // Overdue milestones
+      const overdueMilestones = milestones.filter((m: any) => !m.completed && m.due_date && m.due_date < todayStr);
+      const incompleteMilestones = milestones.filter((m: any) => !m.completed);
+
+      // Outstanding items issues
+      const overdueItems = outstanding.filter((o: any) => o.due_date && o.due_date < todayStr);
+      const unassignedItems = outstanding.filter((o: any) => !o.assigned_to);
+
+      // Stale lenders (no update in 7+ days)
+      const staleLenders = lenders.filter((l: any) => {
+        const lastUpdate = l.updated_at || l.created_at;
+        return lastUpdate && lastUpdate < sevenDaysAgo && l.tracking_status !== 'passed';
+      });
+
+      // Lenders needing response
+      const activeLenders = lenders.filter((l: any) => l.tracking_status === 'active' || l.tracking_status === 'on-deck');
+
+      // Stale deal activity
+      const isStale = lastActivity ? lastActivity < fourteenDaysAgo : true;
+      const daysSinceActivity = lastActivity ? Math.floor((Date.now() - new Date(lastActivity).getTime()) / (24 * 60 * 60 * 1000)) : null;
+
+      // Missing required documents (simplified)
+      const uploadedCategories = new Set(attachments.map((a: any) => a.category));
+      const missingDocs = requiredDocs.filter((d: any) => !uploadedCategories.has(d.category));
+
+      const issues: any[] = [];
+
+      if (overdueMilestones.length > 0) {
+        issues.push({
+          priority: "high", category: "milestones",
+          summary: `${overdueMilestones.length} overdue milestone(s)`,
+          details: overdueMilestones.map((m: any) => `"${m.title}" was due ${m.due_date}`),
+          suggestion: "Would you like me to update the due dates or mark any as complete?",
+        });
+      }
+
+      if (overdueItems.length > 0) {
+        issues.push({
+          priority: "high", category: "outstanding_items",
+          summary: `${overdueItems.length} overdue outstanding item(s)`,
+          details: overdueItems.map((o: any) => `"${o.description}" was due ${o.due_date}`),
+          suggestion: "Would you like me to reassign or complete any of these?",
+        });
+      }
+
+      if (staleLenders.length > 0) {
+        issues.push({
+          priority: "medium", category: "lenders",
+          summary: `${staleLenders.length} lender(s) with no update in 7+ days`,
+          details: staleLenders.map((l: any) => l.name),
+          suggestion: "Would you like me to draft follow-up messages for these lenders?",
+        });
+      }
+
+      if (unassignedItems.length > 0) {
+        issues.push({
+          priority: "medium", category: "outstanding_items",
+          summary: `${unassignedItems.length} unassigned outstanding item(s)`,
+          details: unassignedItems.map((o: any) => o.description),
+          suggestion: "Would you like me to assign these to a team member?",
+        });
+      }
+
+      if (missingDocs.length > 0) {
+        issues.push({
+          priority: "medium", category: "data_room",
+          summary: `${missingDocs.length} required document(s) missing`,
+          details: missingDocs.slice(0, 10).map((d: any) => d.label),
+          suggestion: "Would you like me to list all missing documents?",
+        });
+      }
+
+      if (isStale) {
+        issues.push({
+          priority: "low", category: "activity",
+          summary: `Deal activity is stale${daysSinceActivity ? ` (${daysSinceActivity} days since last update)` : ''}`,
+          suggestion: "Would you like me to add a status update note?",
+        });
+      }
+
+      if (incompleteMilestones.length > 0) {
+        const nextMilestone = incompleteMilestones[0];
+        issues.push({
+          priority: "info", category: "milestones",
+          summary: `Next milestone: "${nextMilestone.title}"${nextMilestone.due_date ? ` (due: ${nextMilestone.due_date})` : ' (no due date set)'}`,
+          suggestion: nextMilestone.due_date ? "Would you like me to mark it as complete?" : "Would you like me to set a target date?",
+        });
+      }
+
+      return {
+        deal_name: deal?.company,
+        stage: deal?.stage,
+        value: deal?.value,
+        closing_date: deal?.closing_date,
+        total_issues: issues.filter((i: any) => i.priority !== "info").length,
+        issues: issues.sort((a: any, b: any) => {
+          const order: Record<string, number> = { high: 0, medium: 1, low: 2, info: 3 };
+          return (order[a.priority] ?? 4) - (order[b.priority] ?? 4);
+        }),
+        milestone_progress: `${milestones.filter((m: any) => m.completed).length}/${milestones.length}`,
+        open_outstanding_items: outstanding.length,
+        active_lenders: activeLenders.length,
+        total_lenders: lenders.length,
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
