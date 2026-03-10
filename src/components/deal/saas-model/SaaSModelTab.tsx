@@ -9,6 +9,7 @@ import { SaaSModelDataMapping } from './SaaSModelDataMapping';
 import { SaaSModelSensitivity } from './SaaSModelSensitivity';
 import { SaaSModelDebtServicing } from './SaaSModelDebtServicing';
 import { SaaSModelCharts } from './SaaSModelCharts';
+import { SaaSModelCreditAnalysis } from './SaaSModelCreditAnalysis';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
