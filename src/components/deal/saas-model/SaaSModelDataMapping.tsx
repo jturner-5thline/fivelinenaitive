@@ -78,6 +78,40 @@ interface AnalyzedFile {
   analysis: FileAnalysisResult;
 }
 
+// Confidence level for auto-mapped fields
+type ConfidenceLevel = 'high' | 'medium' | 'low';
+
+interface AutoMapResult {
+  fieldName: MappingFieldName;
+  rowIdx: number;
+  label: string;
+  confidence: ConfidenceLevel;
+  matchType: 'exact' | 'keyword' | 'fuzzy';
+}
+
+interface ValidationWarning {
+  severity: 'error' | 'warning' | 'info';
+  field: string;
+  message: string;
+}
+
+function getMatchConfidence(label: string, keyword: string): ConfidenceLevel {
+  const normalized = label.toLowerCase().trim();
+  // Exact match = high confidence
+  if (normalized === keyword) return 'high';
+  // Starts with keyword = high
+  if (normalized.startsWith(keyword)) return 'high';
+  // Contains keyword as a whole word = medium
+  const wordBoundary = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+  if (wordBoundary.test(normalized)) return 'medium';
+  // Partial match = low
+  return 'low';
+}
+
+function getConfidencePct(level: ConfidenceLevel): number {
+  return level === 'high' ? 95 : level === 'medium' ? 75 : 50;
+}
+
 // Map field name to model data path
 function getFieldPath(fieldName: MappingFieldName): string[] {
   const map: Record<string, string[]> = {
