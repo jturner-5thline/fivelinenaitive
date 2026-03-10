@@ -68,16 +68,8 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   }, []);
 
   const handleExportAction = useCallback((actionId: string) => {
-    if (actionId === 'export-pdf') {
-      toast.promise(
-        new Promise(resolve => setTimeout(resolve, 1500)),
-        { loading: 'Generating PDF…', success: 'PDF exported successfully', error: 'Export failed' }
-      );
-    } else if (actionId === 'export-excel') {
-      toast.promise(
-        new Promise(resolve => setTimeout(resolve, 1500)),
-        { loading: 'Generating Excel…', success: 'Excel exported successfully', error: 'Export failed' }
-      );
+    if (actionId === 'export-pdf' || actionId === 'export-excel') {
+      setActiveTab('export');
     } else if (actionId === 'print') {
       window.print();
     }

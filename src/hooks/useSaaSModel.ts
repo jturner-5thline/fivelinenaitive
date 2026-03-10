@@ -73,7 +73,11 @@ export function useSaaSModel(dealId: string) {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (fadeTimer.current) clearTimeout(fadeTimer.current);
+    };
   }, [dealId]);
 
   // Debounced save

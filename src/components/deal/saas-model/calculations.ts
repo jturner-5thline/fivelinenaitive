@@ -87,6 +87,8 @@ export function createEmptyModel(): SaaSModelData {
 export function recalculateModel(data: SaaSModelData): SaaSModelData {
   const d = { ...data };
   const n = d.months.length;
+  // Deep copy balance sheet to avoid mutating previous state
+  d.balanceSheet = { ...d.balanceSheet };
 
   // Income Statement derived
   d.totalRevenue = Array.from({ length: n }, (_, i) =>
