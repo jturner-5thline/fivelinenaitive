@@ -13,7 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // Validate JWT
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -22,21 +21,35 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const token = authHeader.replace("Bearer ", "");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    let callerUserId: string | null = null;
+
+    // Accept either service role key (from DB trigger) or user JWT
+    if (token === serviceRoleKey) {
+      // Called from database trigger via pg_net - trusted
+      callerUserId = "db_trigger";
+    } else {
+      // Called from client - validate JWT
+      const supabase = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
       });
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      callerUserId = user.id;
     }
 
     const body = await req.json();
@@ -69,8 +82,6 @@ serve(async (req) => {
       );
     }
 
-    // Call FLEx's naitive-lender-sync endpoint with lender_approved event
-    // FLEx looks up the user by email and updates lender_status to 'approved'
     const syncPayload = {
       event: "lender_approved",
       source: "naitive",
@@ -97,10 +108,7 @@ serve(async (req) => {
     );
 
     // Log result
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     await supabaseAdmin.from("integration_logs").insert({
       integration_type: "flex_lender_approval",
@@ -113,7 +121,8 @@ serve(async (req) => {
         flex_profile_id,
         lender_email,
         lender_name,
-        approved_by: user.id,
+        approved_by: callerUserId,
+        trigger_source: body.trigger_source || "client",
       },
     });
 
