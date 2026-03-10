@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
 import { SaaSModelIncomeStatement } from './SaaSModelIncomeStatement';
@@ -11,10 +11,24 @@ import { SaaSModelDebtServicing } from './SaaSModelDebtServicing';
 import { SaaSModelCharts } from './SaaSModelCharts';
 import { SaaSModelCreditAnalysis } from './SaaSModelCreditAnalysis';
 import { AnalysisChatPanel } from './AnalysisChatPanel';
+import { SaaSModelCommandPalette } from './SaaSModelCommandPalette';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+
+const TAB_LABELS: Record<string, string> = {
+  dashboard: 'Dashboard',
+  'income-statement': 'Income Statement',
+  'balance-sheet': 'Balance Sheet',
+  'data-mapping': 'Data Mapping',
+  sensitivity: 'Sensitivity',
+  'debt-servicing': 'Debt Servicing',
+  charts: 'Charts',
+  'credit-analysis': 'Credit Analysis',
+};
 
 interface SaaSModelTabProps {
   dealId: string;
