@@ -1390,7 +1390,7 @@ export default function DealDetail() {
       
       toast({
         title: "Data Room pushed to FLEx",
-        description: `${filesToPush.length} file(s) synced successfully.`,
+        description: filesToPush.length > 0 ? `${filesToPush.length} file(s) synced successfully.` : 'Data room cleared on FLEx.',
       });
       
       logActivity('flex_data_room_push', `Data room pushed to FLEx (${filesToPush.length} files)`, {
