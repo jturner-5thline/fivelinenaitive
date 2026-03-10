@@ -85,6 +85,9 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           <TabsTrigger value="debt-servicing" className="gap-1.5 text-xs rounded-sm h-7">
             <Landmark className="h-3.5 w-3.5" /> Debt Servicing
           </TabsTrigger>
+          <TabsTrigger value="charts" className="gap-1.5 text-xs rounded-sm h-7">
+            <BarChart3 className="h-3.5 w-3.5" /> Charts
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
