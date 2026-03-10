@@ -589,7 +589,57 @@ export function SaaSModelCreditAnalysis({ model }: Props) {
         </TabsContent>
 
         {/* ── COVENANTS ── */}
-        <TabsContent value="covenants" className="mt-4">
+        <TabsContent value="covenants" className="mt-4 space-y-4">
+          {/* Covenant Trend Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {COVENANTS.slice(0, 4).map(cov => {
+              const chartData = covenantHistory.map(i => ({
+                period: model.months[i]?.label || `M${i}`,
+                value: cov.getValue(model, i),
+                threshold: cov.thresholdNum < 1000 ? cov.thresholdNum : undefined,
+              }));
+              const status = getStatus(cov.getValue(model, last), cov.thresholdNum, cov.operator);
+              const s = STATUS_STYLES[status];
+
+              return (
+                <Card key={cov.name} className="border-border/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-semibold">{cov.name}</h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono tabular-nums">{cov.format(cov.getValue(model, last))}</span>
+                        <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-medium"
+                          style={{ backgroundColor: s.bg, color: s.color }}>
+                          <span className="w-1 h-1 rounded-full" style={{ backgroundColor: s.dot }} />
+                          {s.label}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-32">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
+                          <XAxis dataKey="period" tick={{ fontSize: 8 }} />
+                          <YAxis tick={{ fontSize: 8 }} domain={['auto', 'auto']} />
+                          <RechartsTooltip
+                            formatter={(v: number) => [cov.format(v), cov.name]}
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 6, fontSize: 10 }}
+                          />
+                          <Line type="monotone" dataKey="value" stroke="#4C6FFF" strokeWidth={2} dot={{ r: 3 }} />
+                          {cov.thresholdNum < 1000 && (
+                            <ReferenceLine y={cov.thresholdNum} stroke="#F97373" strokeDasharray="4 3" strokeWidth={1}
+                              label={{ value: cov.threshold, position: 'right', style: { fontSize: 8, fill: '#F97373' } }} />
+                          )}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Covenant Table */}
           <Card className="border-border/30">
             <CardContent className="p-4">
               <h3 className="text-sm font-semibold mb-3">Covenant Compliance Tracker</h3>
@@ -623,7 +673,9 @@ export function SaaSModelCreditAnalysis({ model }: Props) {
                           <td className="py-2 px-3 font-medium">{cov.name}</td>
                           <td className="py-2 px-3 text-right font-mono tabular-nums text-muted-foreground">{cov.threshold}</td>
                           <td className="py-2 px-3 text-right font-mono tabular-nums">{cov.format(actual)}</td>
-                          <td className="py-2 px-3 text-right font-mono tabular-nums">{headroom}</td>
+                          <td className={cn("py-2 px-3 text-right font-mono tabular-nums",
+                            status === 'breach' ? 'text-destructive' : status === 'watch' ? 'text-amber-400' : 'text-emerald-400'
+                          )}>{headroom}</td>
                           <td className="py-2 px-3 text-center">
                             <span className="inline-flex items-center gap-1 text-[10px]" style={{ color: t.color }}>
                               <TrendIcon className="h-3 w-3" />
