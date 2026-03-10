@@ -1233,9 +1233,29 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           <Card className="border-border/30">
             <CardContent className="p-3">
               {selectedRows.size > 0 && (
-                <div className="mb-3 p-2 rounded bg-primary/10 text-xs text-primary flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5" />
-                  {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected — click "Assign" on a field below
+                <div className="mb-3 p-2.5 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
+                  <div className="text-xs text-primary flex items-center gap-2">
+                    <Check className="h-3.5 w-3.5" />
+                    {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
+                  </div>
+                  {/* Quick-assign: show unmapped fields as clickable chips */}
+                  <div className="flex flex-wrap gap-1">
+                    {[...IS_FIELDS, ...BS_FIELDS]
+                      .filter(f => !fieldMappings[f])
+                      .slice(0, 12)
+                      .map(f => (
+                        <button
+                          key={f}
+                          onClick={() => handleAssignField(f)}
+                          className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-medium bg-background/80 hover:bg-primary/20 border border-border/30 hover:border-primary/40 transition-colors text-foreground"
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    {[...IS_FIELDS, ...BS_FIELDS].filter(f => !fieldMappings[f]).length > 12 && (
+                      <span className="text-[9px] text-muted-foreground px-1 py-0.5">+{[...IS_FIELDS, ...BS_FIELDS].filter(f => !fieldMappings[f]).length - 12} more below</span>
+                    )}
+                  </div>
                 </div>
               )}
               
