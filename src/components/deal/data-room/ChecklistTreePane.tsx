@@ -51,6 +51,7 @@ interface ChecklistTreePaneProps {
   handleDownloadFile?: DataRoomContextValue['handleDownloadFile'];
   onOpenMappingDialog?: (files: DealAttachment[]) => void;
   allItems?: UnifiedChecklistItem[];
+  deleteAttachment?: DataRoomContextValue['deleteAttachment'];
 }
 
 export function ChecklistTreePane({
