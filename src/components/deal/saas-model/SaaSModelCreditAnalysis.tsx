@@ -5,7 +5,12 @@ import { annualRollup } from './calculations';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { ShieldCheck, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { ShieldCheck, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip as RechartsTooltip, ReferenceLine, Legend,
+} from 'recharts';
 
 interface Props {
   model: SaaSModelData;
