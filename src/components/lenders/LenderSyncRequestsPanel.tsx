@@ -225,6 +225,18 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
           )}
         </CollapsibleContent>
       </div>
+
+      {/* Merge conflict resolution dialog */}
+      {request.request_type === 'merge_conflict' && request.changes_diff && (
+        <MergeConflictDialog
+          open={showMergeDialog}
+          onOpenChange={setShowMergeDialog}
+          lenderName={lenderName}
+          changesDiff={request.changes_diff as Record<string, { old: unknown; new: unknown }>}
+          incomingData={incomingData}
+          onMerge={handleMerge}
+        />
+      )}
     </Collapsible>
   );
 }
