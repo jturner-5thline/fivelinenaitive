@@ -578,21 +578,6 @@ export default function Integrations() {
     });
   }
 
-  if (!isDocuSignConnected) {
-    availableIntegrations.push({
-      key: "docusign",
-      render: () => (
-        <IntegrationCard
-          name="DocuSign"
-          icon={PenTool}
-          description="Send and manage e-signature envelopes directly from deals."
-          status="disconnected"
-          isConnected={false}
-          onConnect={() => docusign.connect()}
-        />
-      ),
-    });
-  }
 
   const totalConnected = connectedIntegrations.length;
 
