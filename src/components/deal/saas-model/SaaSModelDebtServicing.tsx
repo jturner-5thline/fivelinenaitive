@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, memo } from 'react';
 import { LenderConfig, LenderComputedResults } from './types';
 import { calculateLenderResults, createDefaultLenderConfig } from './calculations';
 import { fmtCurrency, fmtPct, fmtNum } from './formatters';
@@ -174,7 +174,7 @@ function CostBreakdown({ results, config }: { results: LenderComputedResults; co
 }
 
 // ── Lender Card ─────────────────────────────────────────
-function LenderCard({ config, results, onChange, label }: {
+const LenderCard = memo(function LenderCard({ config, results, onChange, label }: {
   config: LenderConfig;
   results: LenderComputedResults;
   onChange: (config: LenderConfig) => void;
@@ -320,7 +320,7 @@ function LenderCard({ config, results, onChange, label }: {
       </CardContent>
     </Card>
   );
-}
+});
 
 // ── Comparison Matrix ───────────────────────────────────
 function ComparisonMatrix({ lenders, results }: { lenders: LenderConfig[]; results: LenderComputedResults[] }) {
