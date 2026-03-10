@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command, MessageSquare, History, Dice5, FileText } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { useModelAnnotations } from '@/hooks/useModelAnnotations';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
@@ -13,6 +13,9 @@ import { SaaSModelCharts } from './SaaSModelCharts';
 import { SaaSModelCreditAnalysis } from './SaaSModelCreditAnalysis';
 import { AnalysisChatPanel } from './AnalysisChatPanel';
 import { SaaSModelCommandPalette } from './SaaSModelCommandPalette';
+import { ModelVersioning } from './ModelVersioning';
+import { MonteCarloSimulation } from './MonteCarloSimulation';
+import { CreditMemoExport } from './CreditMemoExport';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
