@@ -183,18 +183,6 @@ export default function Integrations() {
       });
     }
 
-    // DocuSign callback
-    const dsCode = searchParams.get("code");
-    const isDocuSignCallback = searchParams.get("docusign_callback");
-    if (dsCode && isDocuSignCallback && user) {
-      docusign.exchangeCode(dsCode).then((success) => {
-        searchParams.delete("code");
-        searchParams.delete("docusign_callback");
-        setSearchParams(searchParams, { replace: true });
-        if (success) {
-          toast.success("DocuSign connected!");
-        }
-      });
     }
   }, [searchParams]);
 
