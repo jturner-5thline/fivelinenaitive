@@ -320,7 +320,7 @@ const LenderCard = memo(function LenderCard({ config, results, onChange, label }
       </CardContent>
     </Card>
   );
-}
+});
 
 // ── Comparison Matrix ───────────────────────────────────
 function ComparisonMatrix({ lenders, results }: { lenders: LenderConfig[]; results: LenderComputedResults[] }) {
