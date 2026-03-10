@@ -1136,9 +1136,10 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                   </thead>
                   <tbody>
                     {(sheet?.data || []).slice(0, 200).map((row, rowIdx) => {
-                      const isMappedRow = Object.values(fieldMappings).some(maps =>
+                      const mappedToField = Object.entries(fieldMappings).find(([_, maps]) =>
                         maps.some(m => m.rowIdx === rowIdx && m.sheet === sheet?.name)
                       );
+                      const isMappedRow = !!mappedToField;
                       const rowSuggestion = getSuggestionForRow(rowIdx);
                       const hasSuggestion = !!rowSuggestion && rowSuggestion.status !== 'rejected';
                       return (
