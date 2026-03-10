@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-trigger-source, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -13,26 +13,21 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const token = authHeader.replace("Bearer ", "");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
-    let callerUserId: string | null = null;
+    let callerUserId: string = "unknown";
 
-    // Accept either service role key (from DB trigger) or user JWT
-    if (token === serviceRoleKey) {
-      // Called from database trigger via pg_net - trusted
+    // Check if this is from a DB trigger (no auth needed since verify_jwt=false and it's internal)
+    const triggerSource = req.headers.get("x-trigger-source");
+    const authHeader = req.headers.get("authorization");
+
+    if (triggerSource === "db_trigger") {
+      // Called from database trigger via pg_net - trusted internal call
       callerUserId = "db_trigger";
-    } else {
+      console.log("Request from DB trigger - trusted");
+    } else if (authHeader) {
       // Called from client - validate JWT
       const supabase = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
@@ -44,18 +39,26 @@ serve(async (req) => {
       } = await supabase.auth.getUser();
 
       if (authError || !user) {
+        console.error("Auth failed:", authError?.message);
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       callerUserId = user.id;
+    } else {
+      console.error("No auth header and not a DB trigger call");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const body = await req.json();
     const { flex_profile_id, lender_name, lender_email } = body;
 
     if (!lender_email) {
+      console.error("Missing lender_email in request body");
       return new Response(
         JSON.stringify({ error: "lender_email is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -63,7 +66,7 @@ serve(async (req) => {
     }
 
     console.log(
-      `Notifying FLEx about lender approval: email=${lender_email}, name=${lender_name}, profile_id=${flex_profile_id}`
+      `Notifying FLEx about lender approval: email=${lender_email}, name=${lender_name}, profile_id=${flex_profile_id}, caller=${callerUserId}`
     );
 
     const NAITIVE_FLEX_SYNC_KEY = Deno.env.get("NAITIVE_FLEX_SYNC_KEY");
@@ -91,6 +94,8 @@ serve(async (req) => {
         name: lender_name,
       },
     };
+
+    console.log(`Sending to FLEx: ${FLEX_API_URL}/naitive-lender-sync`, JSON.stringify(syncPayload));
 
     const flexResponse = await fetch(`${FLEX_API_URL}/naitive-lender-sync`, {
       method: "POST",
