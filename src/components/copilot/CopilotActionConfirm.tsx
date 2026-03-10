@@ -20,6 +20,8 @@ const iconMap: Record<string, typeof ArrowRight> = {
   create_task: Plus,
   update_milestone: CheckCircle,
   update_lender_status: RefreshCw,
+  delete_outstanding_item: Edit,
+  update_deal_fields: Edit,
 };
 
 export function CopilotActionConfirm({ action }: Props) {
