@@ -13,6 +13,7 @@ import {
   Tooltip, Legend, ReferenceLine,
 } from 'recharts';
 import { ScenarioComparison } from './ScenarioComparison';
+import { EVSensitivityMatrix } from './EVSensitivityMatrix';
 
 interface Props {
   model: SaaSModelData;
