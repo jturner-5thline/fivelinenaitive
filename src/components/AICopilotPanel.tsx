@@ -879,6 +879,7 @@ export function AICopilotPanel() {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
