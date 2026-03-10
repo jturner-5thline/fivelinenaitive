@@ -683,6 +683,8 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   const getAutoMapConfidence = useCallback((fieldName: string): AutoMapResult | undefined => {
     return autoMapResults.find(r => r.fieldName === fieldName);
   }, [autoMapResults]);
+
+  const mappedCount = Object.keys(fieldMappings).length;
   const totalFields = IS_FIELDS.length + BS_FIELDS.length;
   const unmappedCount = totalFields - mappedCount;
   const percent = totalFields === 0 ? 0 : Math.round((mappedCount / totalFields) * 100);
