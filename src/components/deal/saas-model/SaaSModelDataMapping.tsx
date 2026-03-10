@@ -792,17 +792,28 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     );
   };
 
-  // Render field sections with grouped headers
+  // Render field sections with grouped headers + progress
   const renderFieldSections = (sections: { label: string; fields: string[] }[]) => (
     <div className="space-y-1">
-      {sections.map(section => (
-        <div key={section.label}>
-          <div className="px-2 py-2 bg-muted/30 rounded-sm mb-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{section.label}</span>
+      {sections.map(section => {
+        const mapped = section.fields.filter(f => !!fieldMappings[f]).length;
+        const total = section.fields.length;
+        const pct = total > 0 ? (mapped / total) * 100 : 0;
+        return (
+          <div key={section.label}>
+            <div className="px-2 py-2 bg-muted/30 rounded-sm mb-1 flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{section.label}</span>
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-16 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#2ED3B7' : '#4C6FFF' }} />
+                </div>
+                <span className="text-[9px] tabular-nums text-muted-foreground">{mapped}/{total}</span>
+              </div>
+            </div>
+            {section.fields.map(field => renderFieldRow(field))}
           </div>
-          {section.fields.map(field => renderFieldRow(field))}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -811,9 +822,11 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     return (
       <div className="space-y-4">
         {renderSettingsSection()}
-        <Card className="border-border/30 border-dashed">
-          <CardContent className="p-12 flex flex-col items-center justify-center text-center"
-            onDragOver={e => e.preventDefault()} onDrop={handleDrop}>
+        <Card className="border-border/30 border-dashed group/dropzone hover:border-primary/40 transition-colors">
+          <CardContent className="p-16 flex flex-col items-center justify-center text-center"
+            onDragOver={e => { e.preventDefault(); e.currentTarget.closest('.group\\/dropzone')?.classList.add('border-primary/60'); }}
+            onDragLeave={e => { e.currentTarget.closest('.group\\/dropzone')?.classList.remove('border-primary/60'); }}
+            onDrop={e => { e.currentTarget.closest('.group\\/dropzone')?.classList.remove('border-primary/60'); handleDrop(e); }}>
             {isProcessing ? (
               <div className="flex flex-col items-center gap-3">
                 <RefreshCw className="h-10 w-10 text-primary animate-spin" />
@@ -821,13 +834,18 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
               </div>
             ) : (
               <>
-                <Upload className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: 'rgba(76,111,255,0.1)' }}>
+                  <Upload className="h-7 w-7" style={{ color: '#4C6FFF' }} />
+                </div>
                 <h3 className="text-sm font-semibold mb-1">Upload Financial Statements</h3>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Drag & drop Excel files (.xlsx, .xls, .csv) or click to browse
+                <p className="text-xs text-muted-foreground mb-1">
+                  Drag & drop Excel files or click to browse
                 </p>
-                <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-                  Browse Files
+                <p className="text-[10px] text-muted-foreground/60 mb-4">
+                  Supports .xlsx, .xls, .csv — Multiple files welcome
+                </p>
+                <Button size="sm" className="gap-1.5" onClick={() => fileInputRef.current?.click()}>
+                  <FileSpreadsheet className="h-3.5 w-3.5" /> Browse Files
                 </Button>
                 <input ref={fileInputRef} type="file" className="hidden" accept=".xlsx,.xls,.csv" multiple
                   onChange={e => e.target.files && handleFilesSelected(e.target.files)} />
@@ -1125,9 +1143,10 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                   </thead>
                   <tbody>
                     {(sheet?.data || []).slice(0, 200).map((row, rowIdx) => {
-                      const isMappedRow = Object.values(fieldMappings).some(maps =>
+                      const mappedToField = Object.entries(fieldMappings).find(([_, maps]) =>
                         maps.some(m => m.rowIdx === rowIdx && m.sheet === sheet?.name)
                       );
+                      const isMappedRow = !!mappedToField;
                       const rowSuggestion = getSuggestionForRow(rowIdx);
                       const hasSuggestion = !!rowSuggestion && rowSuggestion.status !== 'rejected';
                       return (
@@ -1153,11 +1172,17 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                           )}>
                             {rowIdx + 1}
                           </td>
-                          {/* First column: label + suggestion badge */}
+                          {/* First column: label + mapped field / suggestion badge */}
                           <td className="py-1 px-2 whitespace-nowrap border-r border-border/10 font-medium">
                             <div className="flex items-center gap-1.5">
                               <span>{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
-                              {hasSuggestion && (
+                              {/* Show mapped target field */}
+                              {isMappedRow && mappedToField && (
+                                <Badge variant="outline" className="text-[8px] h-4 px-1.5 shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                                  → {mappedToField[0]}
+                                </Badge>
+                              )}
+                              {hasSuggestion && !isMappedRow && (
                                 <Badge
                                   variant="outline"
                                   className={cn(
@@ -1172,7 +1197,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                                   <span className="ml-1 opacity-70">{Math.round(rowSuggestion.confidence * 100)}%</span>
                                 </Badge>
                               )}
-                              {hasSuggestion && rowSuggestion.status === 'pending' && (
+                              {hasSuggestion && !isMappedRow && rowSuggestion.status === 'pending' && (
                                 <div className="flex gap-0.5 ml-auto">
                                   <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-emerald-500 hover:text-emerald-600" onClick={(e) => { e.stopPropagation(); handleAcceptSuggestion(rowIdx); }}>
                                     <Check className="h-3 w-3" />
@@ -1182,7 +1207,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                                   </Button>
                                 </div>
                               )}
-                              {hasSuggestion && rowSuggestion.status === 'accepted' && (
+                              {hasSuggestion && rowSuggestion.status === 'accepted' && !isMappedRow && (
                                 <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 ml-auto" />
                               )}
                             </div>
@@ -1215,9 +1240,29 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           <Card className="border-border/30">
             <CardContent className="p-3">
               {selectedRows.size > 0 && (
-                <div className="mb-3 p-2 rounded bg-primary/10 text-xs text-primary flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5" />
-                  {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected — click "Assign" on a field below
+                <div className="mb-3 p-2.5 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
+                  <div className="text-xs text-primary flex items-center gap-2">
+                    <Check className="h-3.5 w-3.5" />
+                    {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
+                  </div>
+                  {/* Quick-assign: show unmapped fields as clickable chips */}
+                  <div className="flex flex-wrap gap-1">
+                    {[...IS_FIELDS, ...BS_FIELDS]
+                      .filter(f => !fieldMappings[f])
+                      .slice(0, 12)
+                      .map(f => (
+                        <button
+                          key={f}
+                          onClick={() => handleAssignField(f)}
+                          className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-medium bg-background/80 hover:bg-primary/20 border border-border/30 hover:border-primary/40 transition-colors text-foreground"
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    {[...IS_FIELDS, ...BS_FIELDS].filter(f => !fieldMappings[f]).length > 12 && (
+                      <span className="text-[9px] text-muted-foreground px-1 py-0.5">+{[...IS_FIELDS, ...BS_FIELDS].filter(f => !fieldMappings[f]).length - 12} more below</span>
+                    )}
+                  </div>
                 </div>
               )}
               
