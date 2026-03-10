@@ -37,6 +37,7 @@ import { useIntegrations } from "@/hooks/useIntegrations";
 import { useCompany } from "@/hooks/useCompany";
 import { useIntegrationInterest } from "@/hooks/useIntegrationInterest";
 import { useMicrosoft } from "@/hooks/useMicrosoft";
+import { useDocuSign } from "@/hooks/useDocuSign";
 
 // Components
 import { IntegrationCard, ComingSoonCard, type IntegrationStatus } from "@/components/integrations/IntegrationCard";
