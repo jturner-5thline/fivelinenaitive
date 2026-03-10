@@ -50,6 +50,7 @@ interface SyncRequestCardProps {
 function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onReject, onMerge }: SyncRequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
 
   const incomingData = request.incoming_data as Record<string, unknown>;
   const lenderName = incomingData.name as string;
