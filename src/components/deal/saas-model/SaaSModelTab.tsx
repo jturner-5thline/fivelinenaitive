@@ -53,18 +53,21 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
             {model.settings.companyName} — {model.settings.businessModel}
           </p>
         </div>
-        {saveStatus !== 'idle' && (
-          <Badge variant="outline" className={cn(
-            "text-xs gap-1 transition-opacity",
-            saveStatus === 'saved' && "text-emerald-500 border-emerald-500/30"
-          )}>
-            {saveStatus === 'saving' ? (
-              <><Loader2 className="h-3 w-3 animate-spin" /> Saving...</>
-            ) : (
-              <><Check className="h-3 w-3" /> Saved</>
-            )}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {saveStatus !== 'idle' && (
+            <Badge variant="outline" className={cn(
+              "text-xs gap-1 transition-opacity",
+              saveStatus === 'saved' && "text-emerald-500 border-emerald-500/30"
+            )}>
+              {saveStatus === 'saving' ? (
+                <><Loader2 className="h-3 w-3 animate-spin" /> Saving...</>
+              ) : (
+                <><Check className="h-3 w-3" /> Saved</>
+              )}
+            </Badge>
+          )}
+          <AnalysisChatPanel model={model} activeTab={activeTab} />
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
