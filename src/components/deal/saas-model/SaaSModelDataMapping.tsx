@@ -991,6 +991,40 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
         </div>
       )}
 
+      {/* Validation Warnings Panel */}
+      {validationWarnings.length > 0 && showValidation && (
+        <div className="rounded-lg border border-border/30 bg-muted/5 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/20">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-amber-500" />
+              <span className="text-xs font-medium">
+                Validation ({validationWarnings.filter(w => w.severity === 'error').length} errors, {validationWarnings.filter(w => w.severity === 'warning').length} warnings)
+              </span>
+            </div>
+            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setShowValidation(false)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          <div className="divide-y divide-border/10">
+            {validationWarnings.map((w, i) => (
+              <div key={i} className="flex items-start gap-2 px-3 py-2">
+                {w.severity === 'error' ? (
+                  <X className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                ) : w.severity === 'warning' ? (
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                ) : (
+                  <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <span className="text-xs font-medium">{w.field}</span>
+                  <p className="text-[10px] text-muted-foreground">{w.message}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
