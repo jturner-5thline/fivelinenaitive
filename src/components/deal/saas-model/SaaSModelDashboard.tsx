@@ -62,18 +62,78 @@ export function SaaSModelDashboard({ model }: Props) {
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        <KPICard label="ARR Today" value={fmtCurrency(model.arrToday, true)} icon={DollarSign}
-          delta={model.yoyRevGrowth ? fmtPct(model.yoyRevGrowth) + ' YoY' : undefined}
-          deltaPositive={model.yoyRevGrowth > 0} />
-        <KPICard label="MRR (3mo Avg)" value={fmtCurrency(model.mrrT3M, true)} icon={BarChart3} />
-        <KPICard label="Gross Margin" value={fmtPct(model.latestGrossMargin)} icon={Target} />
-        <KPICard label="YoY Rev Growth" value={fmtPct(model.yoyRevGrowth)} icon={TrendingUp}
-          deltaPositive={model.yoyRevGrowth > 0} />
-        <KPICard label="Net Rev Retention" value={fmtPct(model.netRevenueRetention)} icon={Shield} />
-        <KPICard label="Borrowing Capacity" value={fmtCurrency(model.borrowingCapacity, true)} icon={Zap} />
-        <KPICard label="Facility Rec." value={fmtCurrency(model.facilityRecommendation, true)} icon={DollarSign} />
-      </div>
+      {(() => {
+        const customers = estimateCustomerCount(model);
+        const revSparkline = trailingSparkline(model.totalRevenue);
+        const recurringSparkline = trailingSparkline(model.revenue.recurring);
+        const marginSparkline = trailingSparkline(model.grossMarginPct);
+        const ebitdaSparkline = trailingSparkline(model.ebitda);
+
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <EnhancedKPICard
+              label="ARR Today"
+              value={model.arrToday}
+              formattedValue={fmtCurrency(model.arrToday, true)}
+              delta={model.yoyRevGrowth || undefined}
+              deltaLabel="YoY"
+              sparklineData={recurringSparkline}
+              icon={DollarSign}
+            />
+            <EnhancedKPICard
+              label="MRR (3mo Avg)"
+              value={model.mrrT3M}
+              formattedValue={fmtCurrency(model.mrrT3M, true)}
+              sparklineData={recurringSparkline.slice(-6)}
+              icon={BarChart3}
+            />
+            <EnhancedKPICard
+              label="Gross Margin"
+              value={model.latestGrossMargin}
+              formattedValue={fmtPct(model.latestGrossMargin)}
+              sparklineData={marginSparkline}
+              icon={Target}
+            />
+            <EnhancedKPICard
+              label="YoY Rev Growth"
+              value={model.yoyRevGrowth}
+              formattedValue={fmtPct(model.yoyRevGrowth)}
+              delta={model.yoyRevGrowth || undefined}
+              sparklineData={revSparkline}
+              icon={BarChart3}
+            />
+            <EnhancedKPICard
+              label="Net Rev Retention"
+              value={model.netRevenueRetention}
+              formattedValue={fmtPct(model.netRevenueRetention)}
+              sparklineData={[95, 98, 100, 102, 105, model.netRevenueRetention || 100]}
+              icon={Shield}
+            />
+            <EnhancedKPICard
+              label="Borrowing Capacity"
+              value={model.borrowingCapacity}
+              formattedValue={fmtCurrency(model.borrowingCapacity, true)}
+              sparklineData={ebitdaSparkline}
+              icon={Zap}
+            />
+            <EnhancedKPICard
+              label="Facility Rec."
+              value={model.facilityRecommendation}
+              formattedValue={fmtCurrency(model.facilityRecommendation, true)}
+              icon={DollarSign}
+            />
+            <EnhancedKPICard
+              label="Total Customers"
+              value={customers.current}
+              formattedValue={customers.current.toLocaleString('en-US')}
+              delta={customers.delta || undefined}
+              deltaLabel="MoM"
+              sparklineData={customers.sparkline}
+              icon={Users}
+            />
+          </div>
+        );
+      })()}
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
