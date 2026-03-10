@@ -77,14 +77,12 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
     }
   };
 
-  const handleMerge = async () => {
-    // For merge conflicts, we'll use the incoming data for now
-    // A more sophisticated UI could let users pick field-by-field
+  const handleMerge = async (mergedData: Record<string, unknown>) => {
     setIsProcessing(true);
-    const success = await onMerge(request.id, incomingData);
+    const success = await onMerge(request.id, mergedData);
     setIsProcessing(false);
     if (success) {
-      toast({ title: 'Merged', description: `${lenderName} has been updated with Flex data.` });
+      toast({ title: 'Merged', description: `${lenderName} has been updated with your selected values.` });
     } else {
       toast({ title: 'Error', description: 'Failed to merge request.', variant: 'destructive' });
     }
