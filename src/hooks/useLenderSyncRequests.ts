@@ -59,6 +59,39 @@ export function useLenderSyncRequests(): UseLenderSyncRequestsResult {
     fetchRequests();
   }, [fetchRequests]);
 
+  // Subscribe to realtime changes so all users see updates when any request is approved/rejected
+  useEffect(() => {
+    const channel = supabase
+      .channel('lender-sync-requests-status')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'lender_sync_requests',
+        },
+        () => {
+          fetchRequests();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'lender_sync_requests',
+        },
+        () => {
+          fetchRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchRequests]);
+
   const pendingCount = requests.filter(r => r.status === 'pending').length;
 
   const approveRequest = async (id: string, notes?: string): Promise<boolean> => {
