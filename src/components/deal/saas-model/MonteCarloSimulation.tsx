@@ -32,12 +32,21 @@ interface SimResult {
   mean: number;
 }
 
-function percentile(arr: number[], p: number): number {
-  const sorted = [...arr].sort((a, b) => a - b);
+function percentile(sorted: number[], p: number): number {
   const idx = (p / 100) * (sorted.length - 1);
   const lo = Math.floor(idx);
   const hi = Math.ceil(idx);
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+function computeStats(arr: number[]): { p10: number; p25: number; p50: number; p75: number; p90: number; mean: number } {
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mean = arr.reduce((s, v) => s + v, 0) / arr.length;
+  return {
+    p10: percentile(sorted, 10), p25: percentile(sorted, 25),
+    p50: percentile(sorted, 50), p75: percentile(sorted, 75),
+    p90: percentile(sorted, 90), mean,
+  };
 }
 
 function normalRandom(): number {
@@ -88,30 +97,10 @@ function runSimulation(model: SaaSModelData, config: SimConfig): SimResult[] {
   }
 
   return [
-    {
-      metric: 'Annualized Revenue',
-      p10: percentile(revenueResults, 10), p25: percentile(revenueResults, 25),
-      p50: percentile(revenueResults, 50), p75: percentile(revenueResults, 75),
-      p90: percentile(revenueResults, 90), mean: revenueResults.reduce((s, v) => s + v, 0) / config.iterations,
-    },
-    {
-      metric: 'Annualized EBITDA',
-      p10: percentile(ebitdaResults, 10), p25: percentile(ebitdaResults, 25),
-      p50: percentile(ebitdaResults, 50), p75: percentile(ebitdaResults, 75),
-      p90: percentile(ebitdaResults, 90), mean: ebitdaResults.reduce((s, v) => s + v, 0) / config.iterations,
-    },
-    {
-      metric: 'Gross Margin',
-      p10: percentile(grossMarginResults, 10), p25: percentile(grossMarginResults, 25),
-      p50: percentile(grossMarginResults, 50), p75: percentile(grossMarginResults, 75),
-      p90: percentile(grossMarginResults, 90), mean: grossMarginResults.reduce((s, v) => s + v, 0) / config.iterations,
-    },
-    {
-      metric: 'Ending Cash',
-      p10: percentile(cashResults, 10), p25: percentile(cashResults, 25),
-      p50: percentile(cashResults, 50), p75: percentile(cashResults, 75),
-      p90: percentile(cashResults, 90), mean: cashResults.reduce((s, v) => s + v, 0) / config.iterations,
-    },
+    { metric: 'Annualized Revenue', ...computeStats(revenueResults) },
+    { metric: 'Annualized EBITDA', ...computeStats(ebitdaResults) },
+    { metric: 'Gross Margin', ...computeStats(grossMarginResults) },
+    { metric: 'Ending Cash', ...computeStats(cashResults) },
   ];
 }
 
