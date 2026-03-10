@@ -42,6 +42,7 @@ interface SaaSModelTabProps {
 
 export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   const { model, scenarios, lenders, isLoading, saveStatus, updateModel, recalculate, updateScenarios, updateLender } = useSaaSModel(dealId);
+  const annotationHook = useModelAnnotations(dealId);
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // Keyboard shortcuts: number keys 1-8 to switch tabs
