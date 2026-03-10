@@ -228,8 +228,8 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           due_date: (data as any).due_date,
           task_url: taskUrl,
         };
-        fireZapierWebhook('task_created', user.id, payload);
-        fireZapierWebhook('task_assigned', user.id, payload);
+        fireZapierWebhook('task_created', payload);
+        fireZapierWebhook('task_assigned', payload);
       }
     },
     onError: () => toast.error('Failed to create task'),

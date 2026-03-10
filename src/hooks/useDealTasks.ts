@@ -95,8 +95,8 @@ export function useDealTasks(dealId: string | undefined) {
           deal_id: dealId,
           task_url: taskUrl,
         };
-        fireZapierWebhook('task_created', user.id, webhookPayload);
-        fireZapierWebhook('task_assigned', user.id, webhookPayload);
+        fireZapierWebhook('task_created', webhookPayload);
+        fireZapierWebhook('task_assigned', webhookPayload);
       }
 
       return data;
