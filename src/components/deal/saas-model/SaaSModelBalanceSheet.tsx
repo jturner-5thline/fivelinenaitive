@@ -1,14 +1,96 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { SaaSModelData } from './types';
 import { SpreadsheetTable, RowDef, ViewMode } from './SpreadsheetTable';
+import { Card, CardContent } from '@/components/ui/card';
+import { Scale, TrendingUp, TrendingDown, Landmark, ShieldCheck } from 'lucide-react';
+import { fmtCurrency } from './formatters';
+import { cn } from '@/lib/utils';
 
 interface Props {
   model: SaaSModelData;
 }
 
+function BsKpiCard({ label, value, prevValue, format, icon: Icon, warning }: {
+  label: string;
+  value: number;
+  prevValue?: number;
+  format: 'currency' | 'ratio';
+  icon: React.ElementType;
+  warning?: boolean;
+}) {
+  const formatted = format === 'currency' ? fmtCurrency(value) : value.toFixed(2) + 'x';
+  const hasDelta = prevValue !== undefined && prevValue !== 0;
+  const delta = hasDelta
+    ? format === 'ratio' ? value - prevValue! : ((value - prevValue!) / Math.abs(prevValue!)) * 100
+    : 0;
+  const isPositive = delta > 0;
+
+  return (
+    <Card className={cn("border-border/20", warning && "border-destructive/30")}>
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
+          <Icon className={cn("h-3.5 w-3.5", warning ? "text-destructive/50" : "text-muted-foreground/40")} />
+        </div>
+        <div className={cn("text-base font-semibold font-mono tabular-nums", warning && "text-destructive")}>
+          {formatted}
+        </div>
+        {hasDelta && Math.abs(delta) > 0.01 && (
+          <div className={cn(
+            "flex items-center gap-1 mt-0.5 text-[10px] font-medium",
+            isPositive ? "text-emerald-500" : "text-destructive"
+          )}>
+            {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {isPositive ? '+' : ''}{format === 'ratio' ? delta.toFixed(2) : delta.toFixed(1) + '%'} MoM
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SaaSModelBalanceSheet({ model }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
+  const [showVariance, setShowVariance] = useState(false);
   const bs = model.balanceSheet;
+
+  // Compute KPIs from latest period
+  const kpis = useMemo(() => {
+    const len = bs.totalAssets.length;
+    if (len === 0) return null;
+    const i = len - 1;
+    const p = i - 1;
+
+    const totalCA = bs.totalCurrentAssets[i] ?? 0;
+    const totalCL = bs.totalCurrentLiabilities[i] ?? 0;
+    const prevCA = p >= 0 ? (bs.totalCurrentAssets[p] ?? 0) : 0;
+    const prevCL = p >= 0 ? (bs.totalCurrentLiabilities[p] ?? 0) : 0;
+
+    const workingCapital = totalCA - totalCL;
+    const prevWorkingCapital = p >= 0 ? prevCA - prevCL : 0;
+
+    const currentRatio = totalCL !== 0 ? totalCA / totalCL : 0;
+    const prevCurrentRatio = prevCL !== 0 ? prevCA / prevCL : 0;
+
+    // Quick ratio = (Cash + Marketable Securities + AR) / Current Liabilities
+    const quickAssets = (bs.cash[i] ?? 0) + (bs.marketableSecurities[i] ?? 0) + (bs.ar[i] ?? 0);
+    const prevQuickAssets = p >= 0 ? (bs.cash[p] ?? 0) + (bs.marketableSecurities[p] ?? 0) + (bs.ar[p] ?? 0) : 0;
+    const quickRatio = totalCL !== 0 ? quickAssets / totalCL : 0;
+    const prevQuickRatio = prevCL !== 0 ? prevQuickAssets / prevCL : 0;
+
+    const totalAssets = bs.totalAssets[i] ?? 0;
+    const prevTotalAssets = p >= 0 ? (bs.totalAssets[p] ?? 0) : 0;
+
+    const bsCheck = bs.bsCheck[i] ?? 0;
+
+    return {
+      workingCapital, prevWorkingCapital,
+      currentRatio, prevCurrentRatio,
+      quickRatio, prevQuickRatio,
+      totalAssets, prevTotalAssets,
+      bsBalanced: Math.abs(bsCheck) < 0.01,
+    };
+  }, [bs]);
 
   const rows: RowDef[] = [
     { key: 'sec-assets', label: 'ASSETS', values: [], isSection: true },
@@ -51,14 +133,43 @@ export function SaaSModelBalanceSheet({ model }: Props) {
   ];
 
   return (
-    <SpreadsheetTable
-      title="Balance Sheet"
-      rows={rows}
-      months={model.months}
-      viewMode={viewMode}
-      onViewModeChange={setViewMode}
-      annualAggregation="last"
-      actualThruDate={model.settings.actualThruDate}
-    />
+    <div className="space-y-3">
+      {/* KPI Cards */}
+      {kpis && (
+        <div className="grid grid-cols-5 gap-3">
+          <BsKpiCard label="Total Assets" value={kpis.totalAssets} prevValue={kpis.prevTotalAssets} format="currency" icon={Landmark} />
+          <BsKpiCard label="Working Capital" value={kpis.workingCapital} prevValue={kpis.prevWorkingCapital} format="currency" icon={Scale} warning={kpis.workingCapital < 0} />
+          <BsKpiCard label="Current Ratio" value={kpis.currentRatio} prevValue={kpis.prevCurrentRatio} format="ratio" icon={Scale} warning={kpis.currentRatio < 1} />
+          <BsKpiCard label="Quick Ratio" value={kpis.quickRatio} prevValue={kpis.prevQuickRatio} format="ratio" icon={TrendingUp} warning={kpis.quickRatio < 1} />
+          <Card className={cn("border-border/20", !kpis.bsBalanced && "border-destructive/30")}>
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">BS Check</span>
+                <ShieldCheck className={cn("h-3.5 w-3.5", kpis.bsBalanced ? "text-emerald-500/60" : "text-destructive/50")} />
+              </div>
+              <div className={cn("text-base font-semibold", kpis.bsBalanced ? "text-emerald-500" : "text-destructive")}>
+                {kpis.bsBalanced ? '✓ Balanced' : '✗ Imbalanced'}
+              </div>
+              <div className="text-[10px] text-muted-foreground/50 mt-0.5">
+                Assets = L + E
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <SpreadsheetTable
+        title="Balance Sheet"
+        rows={rows}
+        months={model.months}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        annualAggregation="last"
+        actualThruDate={model.settings.actualThruDate}
+        showVariance={showVariance}
+        onToggleVariance={() => setShowVariance(v => !v)}
+        conditionalFormatting
+      />
+    </div>
   );
 }
