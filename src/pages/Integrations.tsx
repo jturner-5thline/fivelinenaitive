@@ -37,7 +37,7 @@ import { useIntegrations } from "@/hooks/useIntegrations";
 import { useCompany } from "@/hooks/useCompany";
 import { useIntegrationInterest } from "@/hooks/useIntegrationInterest";
 import { useMicrosoft } from "@/hooks/useMicrosoft";
-import { useDocuSign } from "@/hooks/useDocuSign";
+
 
 // Components
 import { IntegrationCard, ComingSoonCard, type IntegrationStatus } from "@/components/integrations/IntegrationCard";
@@ -53,6 +53,7 @@ import { AsanaSyncSettingsModal } from "@/components/integrations/asana/AsanaSyn
 const BANNER_DISMISSED_KEY = "naitive_integrations_banner_dismissed";
 
 const COMING_SOON_INTEGRATIONS = [
+  { key: "docusign", name: "DocuSign", icon: PenTool, description: "Send and manage e-signature envelopes directly from deals" },
   { key: "webhook", name: "Webhook", icon: Webhook, description: "Send nAItive event data to external services via HTTP webhooks" },
   { key: "linkedin", name: "LinkedIn", icon: Linkedin, description: "Enrich deal and contact profiles with LinkedIn data" },
   { key: "email-smtp", name: "Email SMTP", icon: Mail, description: "Send transactional emails via your own custom SMTP server" },
@@ -104,8 +105,6 @@ export default function Integrations() {
   // === Microsoft ===
   const microsoft = useMicrosoft();
 
-  // === DocuSign ===
-  const docusign = useDocuSign();
 
   // === Claap/Zapier from integrations table ===
   const { integrations } = useIntegrations();
@@ -183,20 +182,6 @@ export default function Integrations() {
         }
       });
     }
-
-    // DocuSign callback
-    const dsCode = searchParams.get("code");
-    const isDocuSignCallback = searchParams.get("docusign_callback");
-    if (dsCode && isDocuSignCallback && user) {
-      docusign.exchangeCode(dsCode).then((success) => {
-        searchParams.delete("code");
-        searchParams.delete("docusign_callback");
-        setSearchParams(searchParams, { replace: true });
-        if (success) {
-          toast.success("DocuSign connected!");
-        }
-      });
-    }
   }, [searchParams]);
 
   // HubSpot auto health check
@@ -222,16 +207,8 @@ export default function Integrations() {
   const isMicrosoftConnected = microsoft.status?.connected ?? false;
   const asanaIntegration = integrations.find((i) => i.type === "asana");
   const isAsanaConnected = asanaIntegration?.status === "connected";
-  const isDocuSignConnected = docusign.status?.connected ?? false;
-
   // Zapier is always "available" via the webhook config section
   const isZapierActive = true; // Always show in connected for 5thLine users
-
-  const getDocuSignStatus = (): IntegrationStatus => {
-    if (!isDocuSignConnected) return "disconnected";
-    if (docusign.status?.is_expired) return "requires_reauth";
-    return "connected";
-  };
 
   const getMicrosoftStatus = (): IntegrationStatus => {
     if (!isMicrosoftConnected) return "disconnected";
@@ -455,36 +432,6 @@ export default function Integrations() {
     });
   }
 
-  if (isDocuSignConnected) {
-    connectedIntegrations.push({
-      key: "docusign",
-      render: () => (
-        <IntegrationCard
-          name="DocuSign"
-          icon={PenTool}
-          description="Send and manage e-signature envelopes directly from deals."
-          status={getDocuSignStatus()}
-          isConnected
-          lastSynced={docusign.status?.last_synced}
-          statusDetail={docusign.status?.account_name ? `Account: ${docusign.status.account_name}` : undefined}
-          externalUrl="https://app.docusign.com"
-          externalLabel="Open DocuSign"
-          onTestConnection={async () => {
-            try {
-              await docusign.refresh();
-              toast.success("DocuSign connection is healthy");
-            } catch {
-              toast.error("DocuSign connection test failed");
-            }
-          }}
-          onDisconnect={async () => {
-            await docusign.disconnect();
-            toast.success("DocuSign disconnected");
-          }}
-        />
-      ),
-    });
-  }
 
   // === Available (not yet connected) ===
   type AvailableIntegration = { key: string; render: () => React.ReactNode };
@@ -599,21 +546,6 @@ export default function Integrations() {
     });
   }
 
-  if (!isDocuSignConnected) {
-    availableIntegrations.push({
-      key: "docusign",
-      render: () => (
-        <IntegrationCard
-          name="DocuSign"
-          icon={PenTool}
-          description="Send and manage e-signature envelopes directly from deals."
-          status="disconnected"
-          isConnected={false}
-          onConnect={() => docusign.connect()}
-        />
-      ),
-    });
-  }
 
   const totalConnected = connectedIntegrations.length;
 
