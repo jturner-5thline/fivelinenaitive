@@ -1348,10 +1348,10 @@ export default function DealDetail() {
   const handlePushDataRoomToFlex = useCallback(async () => {
     const filesToPush = attachments.filter(a => selectedFilesForPush.has(a.id));
     
-    if (!id || !deal || filesToPush.length === 0) {
+    if (!id || !deal) {
       toast({
-        title: "No files selected",
-        description: "Select at least one file to push to FLEx.",
+        title: "Error",
+        description: "Deal information is missing.",
         variant: "destructive",
       });
       return;
