@@ -25,6 +25,7 @@ import {
   CreditCard,
   MonitorSmartphone,
   ListChecks,
+  PenTool,
 } from "lucide-react";
 
 // Hooks
