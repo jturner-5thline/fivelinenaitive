@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { format, isToday, isYesterday } from 'date-fns';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
+import { CopilotAutoExecuted } from '@/components/copilot/CopilotAutoExecuted';
 import { CopilotEmailDraft } from '@/components/copilot/CopilotEmailDraft';
 import { CopilotDealCard } from '@/components/copilot/CopilotDealCard';
 import { CopilotLenderCard } from '@/components/copilot/CopilotLenderCard';
@@ -124,7 +125,7 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
 /** Renders assistant content with entity links */
 function CopilotAssistantContent({ content }: { content: string }) {
   const navigate = useNavigate();
-  const segments: Array<{ type: 'text' | 'confirm' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline'; value: any }> = [];
+  const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline'; value: any }> = [];
   const jsonBlockRegex = /```json\s*(\{[\s\S]*?\})\s*```/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -138,6 +139,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
       else if (parsed.responseType === 'task_card') segments.push({ type: 'task', value: parsed.data });
       else if (parsed.responseType === 'pipeline_summary') segments.push({ type: 'pipeline', value: parsed.data });
       else if (parsed.action === 'confirm' && parsed.action_type) segments.push({ type: 'confirm', value: parsed });
+      else if (parsed.action === 'auto_executed' && parsed.action_type) segments.push({ type: 'auto_executed', value: parsed });
       else if (parsed.subject && parsed.body) segments.push({ type: 'email', value: parsed });
       else segments.push({ type: 'text', value: match[0] });
     } catch {
@@ -152,6 +154,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
     <>
       {segments.map((seg, i) => {
         if (seg.type === 'confirm') return <CopilotActionConfirm key={i} action={seg.value} />;
+        if (seg.type === 'auto_executed') return <CopilotAutoExecuted key={i} action={seg.value} />;
         if (seg.type === 'email') return <CopilotEmailDraft key={i} draft={seg.value} />;
         if (seg.type === 'deal') return <CopilotDealCard key={i} deal={seg.value.deal} milestones={seg.value.milestones} />;
         if (seg.type === 'lender') return <CopilotLenderCard key={i} lender={seg.value} />;

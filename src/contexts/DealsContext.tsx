@@ -54,7 +54,13 @@ export function DealsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.actionType === 'update_deal_stage' || detail?.actionType === 'update_lender_status') {
+      const refreshTypes = [
+        'update_deal_stage', 'update_lender_status', 'toggle_milestone',
+        'add_milestone', 'create_outstanding_item', 'complete_outstanding_item',
+        'delete_outstanding_item', 'add_deal_note', 'update_deal_flag',
+        'update_deal_fields',
+      ];
+      if (detail?.actionType && refreshTypes.includes(detail.actionType)) {
         fetchDeals();
       }
     };

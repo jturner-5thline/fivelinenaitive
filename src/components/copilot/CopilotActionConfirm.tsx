@@ -20,6 +20,8 @@ const iconMap: Record<string, typeof ArrowRight> = {
   create_task: Plus,
   update_milestone: CheckCircle,
   update_lender_status: RefreshCw,
+  delete_outstanding_item: Edit,
+  update_deal_fields: Edit,
 };
 
 export function CopilotActionConfirm({ action }: Props) {
@@ -61,6 +63,20 @@ export function CopilotActionConfirm({ action }: Props) {
         break;
 
       case 'update_lender_status':
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        }
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
+
+      case 'delete_outstanding_item':
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        }
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
+
+      case 'update_deal_fields':
         if (dealId) {
           queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
         }
