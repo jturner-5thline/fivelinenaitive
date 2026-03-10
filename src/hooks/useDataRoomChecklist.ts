@@ -80,6 +80,19 @@ export function useDataRoomChecklist() {
     fetchItems();
   }, [fetchItems]);
 
+  // Real-time subscription for template checklist item changes across team
+  useEffect(() => {
+    const channel = supabase
+      .channel('data-room-checklist-items')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'data_room_checklist_items',
+      }, () => { fetchItems(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchItems]);
+
   const addItem = async (item: ChecklistItemInsert): Promise<ChecklistItem | null> => {
     if (!user) return null;
 
