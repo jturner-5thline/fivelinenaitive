@@ -12,6 +12,7 @@ import {
   CartesianGrid, Tooltip, Legend, ReferenceLine, Line, ComposedChart,
 } from 'recharts';
 import { EnhancedKPICard } from './EnhancedKPICard';
+import { AIInsightsPanel } from './AIInsightsPanel';
 
 interface Props {
   model: SaaSModelData;
