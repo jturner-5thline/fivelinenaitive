@@ -96,7 +96,7 @@ function SvgTooltip({ tooltip, svgWidth }: { tooltip: { x: number; y: number; co
 }
 
 // ── Chart 1: Revenue Waterfall ──────────────────────────
-const RevenueWaterfall = memo(function RevenueWaterfall({ model }: Props) {
+function RevenueWaterfall({ model }: Props) {
   const { tooltip, show, hide, svgRef } = useTooltip();
   const annuals = annualSum(model.totalRevenue, model.months);
   if (annuals.length < 2) return <EmptyState />;
