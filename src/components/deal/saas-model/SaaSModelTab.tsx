@@ -32,6 +32,9 @@ const TAB_LABELS: Record<string, string> = {
   'debt-servicing': 'Debt Servicing',
   charts: 'Charts',
   'credit-analysis': 'Credit Analysis',
+  'monte-carlo': 'Monte Carlo',
+  versioning: 'Versioning',
+  export: 'Export',
 };
 
 interface SaaSModelTabProps {
