@@ -325,6 +325,22 @@ export function FileListPane({
               <Pencil className="h-3 w-3" /> Rename
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={async () => {
+              const filesToDelete = attachments.filter(a => selectedFiles.has(a.id));
+              const count = filesToDelete.length;
+              if (!window.confirm(`Delete ${count} file${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+              for (const file of filesToDelete) {
+                await deleteAttachment(file);
+              }
+              setSelectedFiles(new Set());
+            }}
+          >
+            <Trash2 className="h-3 w-3" /> Delete
+          </Button>
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedFiles(new Set())}>
             Clear
           </Button>
