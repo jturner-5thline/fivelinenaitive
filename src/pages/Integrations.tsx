@@ -182,8 +182,6 @@ export default function Integrations() {
         }
       });
     }
-
-    }
   }, [searchParams]);
 
   // HubSpot auto health check
