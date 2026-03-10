@@ -1,14 +1,18 @@
+import { useState } from 'react';
 import { SaaSModelData, SensitivityScenario } from './types';
 import { fmtCurrency, isNegative } from './formatters';
 import { calculateSensitivity } from './calculations';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ReferenceLine,
 } from 'recharts';
+import { ScenarioComparison } from './ScenarioComparison';
 
 interface Props {
   model: SaaSModelData;
