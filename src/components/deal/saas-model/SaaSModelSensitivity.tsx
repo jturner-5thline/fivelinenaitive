@@ -49,6 +49,21 @@ export function SaaSModelSensitivity({ model, scenarios, updateScenarios }: Prop
 
   return (
     <div className="space-y-4">
+      {/* Compare Scenarios Button */}
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 text-xs"
+          onClick={() => setCompareOpen(true)}
+        >
+          <BarChart3 className="h-3.5 w-3.5" />
+          Compare Scenarios
+        </Button>
+      </div>
+
+      <ScenarioComparison model={model} open={compareOpen} onClose={() => setCompareOpen(false)} />
+
       {/* Inputs */}
       <Card className="border-border/30">
         <CardContent className="p-4">
