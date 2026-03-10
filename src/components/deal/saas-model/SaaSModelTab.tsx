@@ -208,6 +208,15 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           <TabsTrigger value="credit-analysis" className="gap-1.5 text-xs rounded-sm h-7" title="Press 8">
             <ShieldCheck className="h-3.5 w-3.5" /> Credit Analysis
           </TabsTrigger>
+          <TabsTrigger value="monte-carlo" className="gap-1.5 text-xs rounded-sm h-7" title="Press 9">
+            <Dice5 className="h-3.5 w-3.5" /> Monte Carlo
+          </TabsTrigger>
+          <TabsTrigger value="versioning" className="gap-1.5 text-xs rounded-sm h-7" title="Press 0">
+            <History className="h-3.5 w-3.5" /> Versioning
+          </TabsTrigger>
+          <TabsTrigger value="export" className="gap-1.5 text-xs rounded-sm h-7">
+            <FileText className="h-3.5 w-3.5" /> Export
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
@@ -233,6 +242,26 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         </TabsContent>
         <TabsContent value="credit-analysis" className="mt-4">
           <SaaSModelCreditAnalysis model={model} />
+        </TabsContent>
+        <TabsContent value="monte-carlo" className="mt-4">
+          <MonteCarloSimulation model={model} />
+        </TabsContent>
+        <TabsContent value="versioning" className="mt-4">
+          <ModelVersioning
+            dealId={dealId}
+            model={model}
+            scenarios={scenarios}
+            lenders={lenders}
+            onRestore={(restoredModel, restoredScenarios, restoredLenders) => {
+              updateModel(() => restoredModel);
+              updateScenarios(restoredScenarios);
+              restoredLenders.forEach((l, i) => updateLender(i, l));
+              toast.success('Model restored from snapshot');
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="export" className="mt-4">
+          <CreditMemoExport model={model} scenarios={scenarios} lenders={lenders} />
         </TabsContent>
       </Tabs>
     </div>
