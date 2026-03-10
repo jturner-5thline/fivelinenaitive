@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Circle, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Circle, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info } from 'lucide-react';
 import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
@@ -76,6 +76,40 @@ interface AnalyzedFile {
   file: File;
   sheets: ParsedSheet[];
   analysis: FileAnalysisResult;
+}
+
+// Confidence level for auto-mapped fields
+type ConfidenceLevel = 'high' | 'medium' | 'low';
+
+interface AutoMapResult {
+  fieldName: MappingFieldName;
+  rowIdx: number;
+  label: string;
+  confidence: ConfidenceLevel;
+  matchType: 'exact' | 'keyword' | 'fuzzy';
+}
+
+interface ValidationWarning {
+  severity: 'error' | 'warning' | 'info';
+  field: string;
+  message: string;
+}
+
+function getMatchConfidence(label: string, keyword: string): ConfidenceLevel {
+  const normalized = label.toLowerCase().trim();
+  // Exact match = high confidence
+  if (normalized === keyword) return 'high';
+  // Starts with keyword = high
+  if (normalized.startsWith(keyword)) return 'high';
+  // Contains keyword as a whole word = medium
+  const wordBoundary = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+  if (wordBoundary.test(normalized)) return 'medium';
+  // Partial match = low
+  return 'low';
+}
+
+function getConfidencePct(level: ConfidenceLevel): number {
+  return level === 'high' ? 95 : level === 'medium' ? 75 : 50;
 }
 
 // Map field name to model data path
@@ -208,6 +242,9 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [lastSavedCount, setLastSavedCount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [autoMapResults, setAutoMapResults] = useState<AutoMapResult[]>([]);
+  const [validationWarnings, setValidationWarnings] = useState<ValidationWarning[]>([]);
+  const [showValidation, setShowValidation] = useState(true);
 
   const handleSaveSettings = () => {
     updateModel(prev => ({ ...prev, settings: { ...localSettings } }));
@@ -539,6 +576,114 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     toast.success('Model recalculated — Dashboard, Income Statement & Balance Sheet updated');
   }, [selectedFile, fieldMappings, updateModel]);
 
+  // Auto-map: use KEYWORD_ALIASES to instantly map rows without AI
+  const handleAutoMap = useCallback(() => {
+    if (!selectedFile) return;
+    const sheet = selectedFile.sheets[activeSheet];
+    if (!sheet) return;
+
+    const results: AutoMapResult[] = [];
+    const newMappings: Record<string, FieldMapping[]> = { ...fieldMappings };
+    const alreadyMapped = new Set(Object.keys(newMappings));
+    const mappedRows = new Set<number>();
+
+    // Collect already mapped rows
+    Object.values(newMappings).forEach(maps => maps.forEach(m => mappedRows.add(m.rowIdx)));
+
+    sheet.data.forEach((row, rowIdx) => {
+      if (mappedRows.has(rowIdx)) return;
+      const label = String(row[0] || '').toLowerCase().trim();
+      if (!label) return;
+
+      for (const [keyword, field] of Object.entries(KEYWORD_ALIASES)) {
+        if (label.includes(keyword) && !alreadyMapped.has(field)) {
+          const confidence = getMatchConfidence(label, keyword);
+          const matchType = label === keyword ? 'exact' : label.startsWith(keyword) ? 'keyword' : 'fuzzy';
+          
+          results.push({ fieldName: field, rowIdx, label: String(row[0]), confidence, matchType });
+          newMappings[field] = [{ sheet: sheet.name, rowIdx, label: String(row[0]) }];
+          alreadyMapped.add(field);
+          mappedRows.add(rowIdx);
+          break;
+        }
+      }
+    });
+
+    if (results.length === 0) {
+      toast.info('No additional fields could be auto-mapped');
+      return;
+    }
+
+    setFieldMappings(newMappings);
+    setAutoMapResults(prev => [...prev, ...results]);
+    toast.success(`Auto-mapped ${results.length} field${results.length !== 1 ? 's' : ''}`);
+  }, [selectedFile, activeSheet, fieldMappings]);
+
+  // Validate mapped data for common issues
+  const runValidation = useCallback(() => {
+    const warnings: ValidationWarning[] = [];
+    
+    // Check for negative revenue
+    if (fieldMappings['Recurring Revenue'] && selectedFile) {
+      const sample = getSampleValue('Recurring Revenue');
+      if (sample !== null && sample < 0) {
+        warnings.push({ severity: 'error', field: 'Recurring Revenue', message: 'Revenue is negative — verify sign convention' });
+      }
+    }
+    
+    // Check COGS > Revenue
+    const totalRev = getSampleValue('Recurring Revenue');
+    const totalCogs = getSampleValue('COGS on Recurring Revenue');
+    if (totalRev !== null && totalCogs !== null && totalCogs > totalRev) {
+      warnings.push({ severity: 'warning', field: 'COGS on Recurring Revenue', message: 'COGS exceeds Revenue — check if values include correct sign' });
+    }
+
+    // Check for missing critical fields
+    const criticalFields = ['Recurring Revenue', 'Cash and Cash Equivalents', 'Accounts Receivable', 'Accounts Payable'];
+    criticalFields.forEach(field => {
+      if (!fieldMappings[field]) {
+        warnings.push({ severity: 'info', field, message: `${field} not mapped — consider mapping for accurate KPIs` });
+      }
+    });
+
+    // Check BS balance
+    if (fieldMappings['Paid in Capital'] || fieldMappings['Retained Earnings']) {
+      const lastBsCheck = model.balanceSheet.bsCheck;
+      const lastVal = lastBsCheck[lastBsCheck.length - 1];
+      if (lastVal !== undefined && Math.abs(lastVal) > 1) {
+        warnings.push({ severity: 'warning', field: 'BS Check', message: `Balance sheet is off by ${formatUSD(lastVal)} — verify asset and liability totals` });
+      }
+    }
+
+    // Check for duplicate mappings (same row mapped to multiple fields)
+    const rowToFields: Record<number, string[]> = {};
+    Object.entries(fieldMappings).forEach(([field, maps]) => {
+      maps.forEach(m => {
+        if (!rowToFields[m.rowIdx]) rowToFields[m.rowIdx] = [];
+        rowToFields[m.rowIdx].push(field);
+      });
+    });
+    Object.entries(rowToFields).forEach(([rowIdx, fields]) => {
+      if (fields.length > 1) {
+        warnings.push({ severity: 'warning', field: fields.join(', '), message: `Row ${Number(rowIdx) + 1} is mapped to multiple fields — this may cause double-counting` });
+      }
+    });
+
+    setValidationWarnings(warnings);
+    if (warnings.filter(w => w.severity === 'error').length > 0) {
+      toast.warning(`${warnings.filter(w => w.severity === 'error').length} validation error(s) found`);
+    } else if (warnings.length > 0) {
+      toast.info(`${warnings.length} validation note(s)`);
+    } else {
+      toast.success('No validation issues found');
+    }
+  }, [fieldMappings, selectedFile, model.balanceSheet.bsCheck]);
+
+  // Get auto-map confidence for a field
+  const getAutoMapConfidence = useCallback((fieldName: string): AutoMapResult | undefined => {
+    return autoMapResults.find(r => r.fieldName === fieldName);
+  }, [autoMapResults]);
+
   const mappedCount = Object.keys(fieldMappings).length;
   const totalFields = IS_FIELDS.length + BS_FIELDS.length;
   const unmappedCount = totalFields - mappedCount;
@@ -596,6 +741,24 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
             <Circle className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
           )}
           <span className={cn("text-xs truncate", isMapped && "font-medium")}>{field}</span>
+          {/* Confidence badge for auto-mapped fields */}
+          {isMapped && (() => {
+            const autoMap = getAutoMapConfidence(field);
+            if (autoMap) {
+              const pct = getConfidencePct(autoMap.confidence);
+              return (
+                <Badge variant="outline" className={cn(
+                  "text-[8px] h-4 px-1 shrink-0",
+                  autoMap.confidence === 'high' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
+                  autoMap.confidence === 'medium' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" :
+                  "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
+                )}>
+                  {pct}%
+                </Badge>
+              );
+            }
+            return null;
+          })()}
           {fieldSuggestion && !isMapped && (
             <Badge variant="outline" className="text-[8px] h-4 px-1 bg-primary/5 text-primary border-primary/20 shrink-0">
               AI · Row {fieldSuggestion.rowIdx + 1}
@@ -828,6 +991,40 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
         </div>
       )}
 
+      {/* Validation Warnings Panel */}
+      {validationWarnings.length > 0 && showValidation && (
+        <div className="rounded-lg border border-border/30 bg-muted/5 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/20">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-amber-500" />
+              <span className="text-xs font-medium">
+                Validation ({validationWarnings.filter(w => w.severity === 'error').length} errors, {validationWarnings.filter(w => w.severity === 'warning').length} warnings)
+              </span>
+            </div>
+            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setShowValidation(false)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          <div className="divide-y divide-border/10">
+            {validationWarnings.map((w, i) => (
+              <div key={i} className="flex items-start gap-2 px-3 py-2">
+                {w.severity === 'error' ? (
+                  <X className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                ) : w.severity === 'warning' ? (
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                ) : (
+                  <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <span className="text-xs font-medium">{w.field}</span>
+                  <p className="text-[10px] text-muted-foreground">{w.message}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -849,6 +1046,25 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
               <Sparkles className="h-3.5 w-3.5" />
             )}
             {isSuggestLoading ? 'Analyzing...' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={handleAutoMap}
+          >
+            <Zap className="h-3.5 w-3.5" />
+            Auto-Map
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={runValidation}
+            disabled={mappedCount === 0}
+          >
+            <ShieldAlert className="h-3.5 w-3.5" />
+            Validate
           </Button>
         </div>
         <div className="flex items-center gap-2">
