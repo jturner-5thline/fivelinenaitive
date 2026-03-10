@@ -442,18 +442,22 @@ export function SaaSModelDashboard({ model: m }: Props) {
         </CardContent>
       </Card>
 
-      {/* Financial Health Ratios */}
-      <Card className="border-border/30">
-        <CardContent className="p-4">
-          <h3 className="text-sm font-semibold mb-3">Financial Health Ratios</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <RatioCard label="Current Ratio" value={m.currentRatio} formatted={fmtRatio(m.currentRatio)} benchmark={1.5} benchmarkLabel="Target: 1.5x" />
-            <RatioCard label="AR/AP Ratio" value={m.arApRatio} formatted={fmtRatio(m.arApRatio)} benchmark={1.0} benchmarkLabel="Target: 1.0x" />
-            <RatioCard label="Cash / Total Assets" value={m.cashTotalAssets * 100} formatted={fmtPct(m.cashTotalAssets * 100)} benchmark={15} benchmarkLabel="Target: 15%" />
-            <RatioCard label="Debt / Total Liabilities" value={m.debtTotalLiabilities * 100} formatted={fmtPct(m.debtTotalLiabilities * 100)} benchmark={50} benchmarkLabel="Max: 50%" />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Financial Health Ratios & AI Insights side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="border-border/30">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold mb-3">Financial Health Ratios</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <RatioCard label="Current Ratio" value={m.currentRatio} formatted={fmtRatio(m.currentRatio)} benchmark={1.5} benchmarkLabel="Target: 1.5x" />
+              <RatioCard label="AR/AP Ratio" value={m.arApRatio} formatted={fmtRatio(m.arApRatio)} benchmark={1.0} benchmarkLabel="Target: 1.0x" />
+              <RatioCard label="Cash / Total Assets" value={m.cashTotalAssets * 100} formatted={fmtPct(m.cashTotalAssets * 100)} benchmark={15} benchmarkLabel="Target: 15%" />
+              <RatioCard label="Debt / Total Liabilities" value={m.debtTotalLiabilities * 100} formatted={fmtPct(m.debtTotalLiabilities * 100)} benchmark={50} benchmarkLabel="Max: 50%" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <AIInsightsPanel model={m} />
+      </div>
     </div>
   );
 }
