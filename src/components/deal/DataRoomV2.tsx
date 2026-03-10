@@ -458,7 +458,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
                 variant="outline"
                 size="sm"
                 onClick={handlePushToFlex}
-                disabled={isPushingToFlex || attachments.length === 0}
+                disabled={isPushingToFlex}
                 className="gap-1.5 h-7 text-xs border-primary/40 text-primary hover:bg-primary/10"
               >
                 {isPushingToFlex ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
