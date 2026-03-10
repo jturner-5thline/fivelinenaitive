@@ -576,7 +576,113 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     toast.success('Model recalculated — Dashboard, Income Statement & Balance Sheet updated');
   }, [selectedFile, fieldMappings, updateModel]);
 
-  const mappedCount = Object.keys(fieldMappings).length;
+  // Auto-map: use KEYWORD_ALIASES to instantly map rows without AI
+  const handleAutoMap = useCallback(() => {
+    if (!selectedFile) return;
+    const sheet = selectedFile.sheets[activeSheet];
+    if (!sheet) return;
+
+    const results: AutoMapResult[] = [];
+    const newMappings: Record<string, FieldMapping[]> = { ...fieldMappings };
+    const alreadyMapped = new Set(Object.keys(newMappings));
+    const mappedRows = new Set<number>();
+
+    // Collect already mapped rows
+    Object.values(newMappings).forEach(maps => maps.forEach(m => mappedRows.add(m.rowIdx)));
+
+    sheet.data.forEach((row, rowIdx) => {
+      if (mappedRows.has(rowIdx)) return;
+      const label = String(row[0] || '').toLowerCase().trim();
+      if (!label) return;
+
+      for (const [keyword, field] of Object.entries(KEYWORD_ALIASES)) {
+        if (label.includes(keyword) && !alreadyMapped.has(field)) {
+          const confidence = getMatchConfidence(label, keyword);
+          const matchType = label === keyword ? 'exact' : label.startsWith(keyword) ? 'keyword' : 'fuzzy';
+          
+          results.push({ fieldName: field, rowIdx, label: String(row[0]), confidence, matchType });
+          newMappings[field] = [{ sheet: sheet.name, rowIdx, label: String(row[0]) }];
+          alreadyMapped.add(field);
+          mappedRows.add(rowIdx);
+          break;
+        }
+      }
+    });
+
+    if (results.length === 0) {
+      toast.info('No additional fields could be auto-mapped');
+      return;
+    }
+
+    setFieldMappings(newMappings);
+    setAutoMapResults(prev => [...prev, ...results]);
+    toast.success(`Auto-mapped ${results.length} field${results.length !== 1 ? 's' : ''}`);
+  }, [selectedFile, activeSheet, fieldMappings]);
+
+  // Validate mapped data for common issues
+  const runValidation = useCallback(() => {
+    const warnings: ValidationWarning[] = [];
+    
+    // Check for negative revenue
+    if (fieldMappings['Recurring Revenue'] && selectedFile) {
+      const sample = getSampleValue('Recurring Revenue');
+      if (sample !== null && sample < 0) {
+        warnings.push({ severity: 'error', field: 'Recurring Revenue', message: 'Revenue is negative — verify sign convention' });
+      }
+    }
+    
+    // Check COGS > Revenue
+    const totalRev = getSampleValue('Recurring Revenue');
+    const totalCogs = getSampleValue('COGS on Recurring Revenue');
+    if (totalRev !== null && totalCogs !== null && totalCogs > totalRev) {
+      warnings.push({ severity: 'warning', field: 'COGS on Recurring Revenue', message: 'COGS exceeds Revenue — check if values include correct sign' });
+    }
+
+    // Check for missing critical fields
+    const criticalFields = ['Recurring Revenue', 'Cash and Cash Equivalents', 'Accounts Receivable', 'Accounts Payable'];
+    criticalFields.forEach(field => {
+      if (!fieldMappings[field]) {
+        warnings.push({ severity: 'info', field, message: `${field} not mapped — consider mapping for accurate KPIs` });
+      }
+    });
+
+    // Check BS balance
+    if (fieldMappings['Paid in Capital'] || fieldMappings['Retained Earnings']) {
+      const lastBsCheck = model.balanceSheet.bsCheck;
+      const lastVal = lastBsCheck[lastBsCheck.length - 1];
+      if (lastVal !== undefined && Math.abs(lastVal) > 1) {
+        warnings.push({ severity: 'warning', field: 'BS Check', message: `Balance sheet is off by ${formatUSD(lastVal)} — verify asset and liability totals` });
+      }
+    }
+
+    // Check for duplicate mappings (same row mapped to multiple fields)
+    const rowToFields: Record<number, string[]> = {};
+    Object.entries(fieldMappings).forEach(([field, maps]) => {
+      maps.forEach(m => {
+        if (!rowToFields[m.rowIdx]) rowToFields[m.rowIdx] = [];
+        rowToFields[m.rowIdx].push(field);
+      });
+    });
+    Object.entries(rowToFields).forEach(([rowIdx, fields]) => {
+      if (fields.length > 1) {
+        warnings.push({ severity: 'warning', field: fields.join(', '), message: `Row ${Number(rowIdx) + 1} is mapped to multiple fields — this may cause double-counting` });
+      }
+    });
+
+    setValidationWarnings(warnings);
+    if (warnings.filter(w => w.severity === 'error').length > 0) {
+      toast.warning(`${warnings.filter(w => w.severity === 'error').length} validation error(s) found`);
+    } else if (warnings.length > 0) {
+      toast.info(`${warnings.length} validation note(s)`);
+    } else {
+      toast.success('No validation issues found');
+    }
+  }, [fieldMappings, selectedFile, model.balanceSheet.bsCheck]);
+
+  // Get auto-map confidence for a field
+  const getAutoMapConfidence = useCallback((fieldName: string): AutoMapResult | undefined => {
+    return autoMapResults.find(r => r.fieldName === fieldName);
+  }, [autoMapResults]);
   const totalFields = IS_FIELDS.length + BS_FIELDS.length;
   const unmappedCount = totalFields - mappedCount;
   const percent = totalFields === 0 ? 0 : Math.round((mappedCount / totalFields) * 100);
