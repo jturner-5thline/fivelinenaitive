@@ -172,6 +172,20 @@ export function useLenderSyncRequests(): UseLenderSyncRequestsResult {
 
       if (statusError) throw statusError;
 
+      // If this was a new lender from FLEx, notify FLEx to update lender_status to approved
+      if (request.request_type === 'new_lender' && request.source_lender_id) {
+        const incomingData = request.incoming_data as Record<string, unknown>;
+        supabase.functions.invoke('notify-flex-lender-approved', {
+          body: {
+            flex_profile_id: request.source_lender_id,
+            lender_name: incomingData.name || request.existing_lender_name,
+            lender_email: incomingData.email,
+          },
+        }).catch((err) => {
+          console.error('Failed to notify FLEx about lender approval:', err);
+        });
+      }
+
       await fetchRequests();
       return true;
     } catch (err) {
