@@ -174,7 +174,7 @@ function CostBreakdown({ results, config }: { results: LenderComputedResults; co
 }
 
 // ── Lender Card ─────────────────────────────────────────
-function LenderCard({ config, results, onChange, label }: {
+const LenderCard = memo(function LenderCard({ config, results, onChange, label }: {
   config: LenderConfig;
   results: LenderComputedResults;
   onChange: (config: LenderConfig) => void;
