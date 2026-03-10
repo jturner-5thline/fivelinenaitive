@@ -143,6 +143,13 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
               )}
             </Badge>
           )}
+          {/* Annotation count badge */}
+          {annotationHook.unresolvedCount > 0 && (
+            <Badge variant="secondary" className="text-[10px] gap-1 h-5">
+              <MessageSquare className="h-3 w-3" />
+              {annotationHook.unresolvedCount} open
+            </Badge>
+          )}
           <AnalysisChatPanel model={model} activeTab={activeTab} />
         </div>
       </div>
