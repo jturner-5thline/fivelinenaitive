@@ -1,14 +1,18 @@
+import { useState } from 'react';
 import { SaaSModelData, SensitivityScenario } from './types';
 import { fmtCurrency, isNegative } from './formatters';
 import { calculateSensitivity } from './calculations';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ReferenceLine,
 } from 'recharts';
+import { ScenarioComparison } from './ScenarioComparison';
 
 interface Props {
   model: SaaSModelData;
@@ -20,6 +24,8 @@ const SCENARIO_COLORS = ['hsl(var(--primary))', 'hsl(220, 80%, 60%)', 'hsl(45, 9
 const SCENARIO_LABELS = ['Scenario 1', 'Scenario 2', 'Scenario 3', 'Scenario 4'];
 
 export function SaaSModelSensitivity({ model, scenarios, updateScenarios }: Props) {
+  const [compareOpen, setCompareOpen] = useState(false);
+
   const handleInputChange = (scenarioIdx: number, field: keyof SensitivityScenario, value: string) => {
     const num = parseFloat(value) || 0;
     const updated = [...scenarios];
@@ -43,6 +49,21 @@ export function SaaSModelSensitivity({ model, scenarios, updateScenarios }: Prop
 
   return (
     <div className="space-y-4">
+      {/* Compare Scenarios Button */}
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 text-xs"
+          onClick={() => setCompareOpen(true)}
+        >
+          <BarChart3 className="h-3.5 w-3.5" />
+          Compare Scenarios
+        </Button>
+      </div>
+
+      <ScenarioComparison model={model} open={compareOpen} onClose={() => setCompareOpen(false)} />
+
       {/* Inputs */}
       <Card className="border-border/30">
         <CardContent className="p-4">
