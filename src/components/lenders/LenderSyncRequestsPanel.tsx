@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
+import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { formatDistanceToNow } from 'date-fns';
 
 interface FieldChangeProps {
