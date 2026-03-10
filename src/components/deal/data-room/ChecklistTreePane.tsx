@@ -59,7 +59,9 @@ export function ChecklistTreePane({
   searchQuery, setSearchQuery, statusFilter, setStatusFilter,
   getFilesForItem, getCategoryByName, unmappedFiles, handleUploadFiles,
   attachments = [], getItemsForFile, setPreviewFile, handleDownloadFile, onOpenMappingDialog, allItems,
+  deleteAttachment,
 }: ChecklistTreePaneProps) {
+  const [selectedUnmapped, setSelectedUnmapped] = useState<Set<string>>(new Set());
 
   const filterItem = (item: UnifiedChecklistItem): boolean => {
     if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
