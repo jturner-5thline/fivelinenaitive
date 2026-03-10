@@ -176,9 +176,21 @@ export function ChecklistTreePane({
                             )}
                           >
                             {isComplete ? (
-                              <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                              <Check
+                                className="h-3.5 w-3.5 text-green-500 shrink-0 cursor-pointer hover:text-green-700 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onToggleItemStatus?.(item.id, false);
+                                }}
+                              />
                             ) : (
-                              <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40 shrink-0" />
+                              <div
+                                className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40 shrink-0 cursor-pointer hover:border-green-500 hover:bg-green-500/10 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onToggleItemStatus?.(item.id, true);
+                                }}
+                              />
                             )}
                             <span className={cn("flex-1 truncate", isComplete && "text-muted-foreground")}>{item.name}</span>
                             {item.is_required && (
