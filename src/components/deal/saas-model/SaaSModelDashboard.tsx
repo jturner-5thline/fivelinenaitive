@@ -363,7 +363,14 @@ export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="border-border/30">
+        <Card className="border-border/30 relative">
+          {ann && (
+            <AnnotationBadge
+              targetType="chart" targetRef="ebitda" targetLabel="EBITDA Chart"
+              annotations={ann.getAnnotationsForTarget('chart', 'ebitda')}
+              onAdd={ann.addAnnotation} onResolve={ann.resolveAnnotation} onDelete={ann.deleteAnnotation}
+            />
+          )}
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold">EBITDA & Operating Income{periodLabel}</h3>
