@@ -8045,6 +8045,59 @@ export type Database = {
         }
         Relationships: []
       }
+      model_annotations: {
+        Row: {
+          content: string
+          created_at: string
+          deal_id: string
+          id: string
+          mentions: string[] | null
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          target_ref: string
+          target_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          mentions?: string[] | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          target_ref: string
+          target_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          mentions?: string[] | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          target_ref?: string
+          target_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_annotations_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_alerts: {
         Row: {
           created_at: string

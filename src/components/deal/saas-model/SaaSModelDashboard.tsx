@@ -12,9 +12,21 @@ import {
   CartesianGrid, Tooltip, Legend, ReferenceLine, Line, ComposedChart,
 } from 'recharts';
 import { EnhancedKPICard } from './EnhancedKPICard';
+import { AIInsightsPanel } from './AIInsightsPanel';
+import { AnnotationBadge } from './AnnotationThread';
+import type { Annotation } from '@/hooks/useModelAnnotations';
+
+interface AnnotationHook {
+  annotations: Annotation[];
+  getAnnotationsForTarget: (targetType: string, targetRef: string) => Annotation[];
+  addAnnotation: (targetType: Annotation['target_type'], targetRef: string, content: string, mentions?: string[]) => Promise<any>;
+  resolveAnnotation: (id: string) => Promise<void>;
+  deleteAnnotation: (id: string) => Promise<void>;
+}
 
 interface Props {
   model: SaaSModelData;
+  annotations?: AnnotationHook;
 }
 
 type PeriodFilter = 'all' | 'ttm' | '6m' | '3m';
@@ -166,7 +178,7 @@ function PeriodSelector({ value, onChange }: { value: PeriodFilter; onChange: (v
   );
 }
 
-export function SaaSModelDashboard({ model: m }: Props) {
+export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
   const [chartPeriod, setChartPeriod] = useState<PeriodFilter>('all');
 
   const last = m.months.length - 1;
@@ -317,7 +329,14 @@ export function SaaSModelDashboard({ model: m }: Props) {
 
       {/* Charts with period selector */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="border-border/30">
+        <Card className="border-border/30 relative">
+          {ann && (
+            <AnnotationBadge
+              targetType="chart" targetRef="revenue" targetLabel="Revenue Chart"
+              annotations={ann.getAnnotationsForTarget('chart', 'revenue')}
+              onAdd={ann.addAnnotation} onResolve={ann.resolveAnnotation} onDelete={ann.deleteAnnotation}
+            />
+          )}
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold">Revenue Trend{periodLabel}</h3>
@@ -344,7 +363,14 @@ export function SaaSModelDashboard({ model: m }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="border-border/30">
+        <Card className="border-border/30 relative">
+          {ann && (
+            <AnnotationBadge
+              targetType="chart" targetRef="ebitda" targetLabel="EBITDA Chart"
+              annotations={ann.getAnnotationsForTarget('chart', 'ebitda')}
+              onAdd={ann.addAnnotation} onResolve={ann.resolveAnnotation} onDelete={ann.deleteAnnotation}
+            />
+          )}
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold">EBITDA & Operating Income{periodLabel}</h3>
@@ -441,18 +467,22 @@ export function SaaSModelDashboard({ model: m }: Props) {
         </CardContent>
       </Card>
 
-      {/* Financial Health Ratios */}
-      <Card className="border-border/30">
-        <CardContent className="p-4">
-          <h3 className="text-sm font-semibold mb-3">Financial Health Ratios</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <RatioCard label="Current Ratio" value={m.currentRatio} formatted={fmtRatio(m.currentRatio)} benchmark={1.5} benchmarkLabel="Target: 1.5x" />
-            <RatioCard label="AR/AP Ratio" value={m.arApRatio} formatted={fmtRatio(m.arApRatio)} benchmark={1.0} benchmarkLabel="Target: 1.0x" />
-            <RatioCard label="Cash / Total Assets" value={m.cashTotalAssets * 100} formatted={fmtPct(m.cashTotalAssets * 100)} benchmark={15} benchmarkLabel="Target: 15%" />
-            <RatioCard label="Debt / Total Liabilities" value={m.debtTotalLiabilities * 100} formatted={fmtPct(m.debtTotalLiabilities * 100)} benchmark={50} benchmarkLabel="Max: 50%" />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Financial Health Ratios & AI Insights side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="border-border/30">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold mb-3">Financial Health Ratios</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <RatioCard label="Current Ratio" value={m.currentRatio} formatted={fmtRatio(m.currentRatio)} benchmark={1.5} benchmarkLabel="Target: 1.5x" />
+              <RatioCard label="AR/AP Ratio" value={m.arApRatio} formatted={fmtRatio(m.arApRatio)} benchmark={1.0} benchmarkLabel="Target: 1.0x" />
+              <RatioCard label="Cash / Total Assets" value={m.cashTotalAssets * 100} formatted={fmtPct(m.cashTotalAssets * 100)} benchmark={15} benchmarkLabel="Target: 15%" />
+              <RatioCard label="Debt / Total Liabilities" value={m.debtTotalLiabilities * 100} formatted={fmtPct(m.debtTotalLiabilities * 100)} benchmark={50} benchmarkLabel="Max: 50%" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <AIInsightsPanel model={m} />
+      </div>
     </div>
   );
 }

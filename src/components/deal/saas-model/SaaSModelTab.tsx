@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command, MessageSquare } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
+import { useModelAnnotations } from '@/hooks/useModelAnnotations';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
 import { SaaSModelIncomeStatement } from './SaaSModelIncomeStatement';
 import { SaaSModelBalanceSheet } from './SaaSModelBalanceSheet';
@@ -41,6 +42,7 @@ interface SaaSModelTabProps {
 
 export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   const { model, scenarios, lenders, isLoading, saveStatus, updateModel, recalculate, updateScenarios, updateLender } = useSaaSModel(dealId);
+  const annotationHook = useModelAnnotations(dealId);
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // Keyboard shortcuts: number keys 1-8 to switch tabs
@@ -141,6 +143,13 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
               )}
             </Badge>
           )}
+          {/* Annotation count badge */}
+          {annotationHook.unresolvedCount > 0 && (
+            <Badge variant="secondary" className="text-[10px] gap-1 h-5">
+              <MessageSquare className="h-3 w-3" />
+              {annotationHook.unresolvedCount} open
+            </Badge>
+          )}
           <AnalysisChatPanel model={model} activeTab={activeTab} />
         </div>
       </div>
@@ -174,7 +183,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
-          <SaaSModelDashboard model={model} />
+          <SaaSModelDashboard model={model} annotations={annotationHook} />
         </TabsContent>
         <TabsContent value="income-statement" className="mt-4">
           <SaaSModelIncomeStatement model={model} />
