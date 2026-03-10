@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { format, isToday, isYesterday } from 'date-fns';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
+import { CopilotAutoExecuted } from '@/components/copilot/CopilotAutoExecuted';
 import { CopilotEmailDraft } from '@/components/copilot/CopilotEmailDraft';
 import { CopilotDealCard } from '@/components/copilot/CopilotDealCard';
 import { CopilotLenderCard } from '@/components/copilot/CopilotLenderCard';
