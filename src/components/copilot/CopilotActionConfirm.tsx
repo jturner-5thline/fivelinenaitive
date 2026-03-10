@@ -68,6 +68,20 @@ export function CopilotActionConfirm({ action }: Props) {
         }
         window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
         break;
+
+      case 'delete_outstanding_item':
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        }
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
+
+      case 'update_deal_fields':
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        }
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
     }
   };
 
