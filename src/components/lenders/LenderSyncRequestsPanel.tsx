@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
+import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { formatDistanceToNow } from 'date-fns';
 
 interface FieldChangeProps {
@@ -49,6 +50,7 @@ interface SyncRequestCardProps {
 function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onReject, onMerge }: SyncRequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
 
   const incomingData = request.incoming_data as Record<string, unknown>;
   const lenderName = incomingData.name as string;
@@ -75,14 +77,12 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
     }
   };
 
-  const handleMerge = async () => {
-    // For merge conflicts, we'll use the incoming data for now
-    // A more sophisticated UI could let users pick field-by-field
+  const handleMerge = async (mergedData: Record<string, unknown>) => {
     setIsProcessing(true);
-    const success = await onMerge(request.id, incomingData);
+    const success = await onMerge(request.id, mergedData);
     setIsProcessing(false);
     if (success) {
-      toast({ title: 'Merged', description: `${lenderName} has been updated with Flex data.` });
+      toast({ title: 'Merged', description: `${lenderName} has been updated with your selected values.` });
     } else {
       toast({ title: 'Error', description: 'Failed to merge request.', variant: 'destructive' });
     }
@@ -144,9 +144,9 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
                     <X className="h-3 w-3 mr-1" />
                     Keep Existing
                   </Button>
-                  <Button size="sm" variant="default" onClick={handleMerge} disabled={isProcessing}>
+                  <Button size="sm" variant="default" onClick={() => setShowMergeDialog(true)} disabled={isProcessing}>
                     <GitMerge className="h-3 w-3 mr-1" />
-                    Use Flex Data
+                    Resolve Conflict
                   </Button>
                 </>
               ) : (
@@ -225,6 +225,18 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
           )}
         </CollapsibleContent>
       </div>
+
+      {/* Merge conflict resolution dialog */}
+      {request.request_type === 'merge_conflict' && request.changes_diff && (
+        <MergeConflictDialog
+          open={showMergeDialog}
+          onOpenChange={setShowMergeDialog}
+          lenderName={lenderName}
+          changesDiff={request.changes_diff as Record<string, { old: unknown; new: unknown }>}
+          incomingData={incomingData}
+          onMerge={handleMerge}
+        />
+      )}
     </Collapsible>
   );
 }
