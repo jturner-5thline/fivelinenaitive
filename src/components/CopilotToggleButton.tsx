@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 
 export function CopilotToggleButton() {
   const togglePanel = useCopilotStore((s) => s.togglePanel);
+  const isOpen = useCopilotStore((s) => s.isOpen);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
