@@ -8098,6 +8098,42 @@ export type Database = {
           },
         ]
       }
+      model_snapshots: {
+        Row: {
+          created_at: string
+          deal_id: string
+          description: string | null
+          id: string
+          label: string
+          lender_data: Json | null
+          model_data: Json
+          sensitivity_data: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          description?: string | null
+          id?: string
+          label?: string
+          lender_data?: Json | null
+          model_data: Json
+          sensitivity_data?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          description?: string | null
+          id?: string
+          label?: string
+          lender_data?: Json | null
+          model_data?: Json
+          sensitivity_data?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       news_alerts: {
         Row: {
           created_at: string
