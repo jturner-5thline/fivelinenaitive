@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, memo } from 'react';
 import { LenderConfig, LenderComputedResults } from './types';
 import { calculateLenderResults, createDefaultLenderConfig } from './calculations';
 import { fmtCurrency, fmtPct, fmtNum } from './formatters';
