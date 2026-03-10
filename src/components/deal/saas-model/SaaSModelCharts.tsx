@@ -4,7 +4,10 @@ import { fmtCurrency, fmtPct } from './formatters';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Download, Image as ImageIcon } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Props {
   model: SaaSModelData;
@@ -694,11 +697,32 @@ function EmptyState() {
   );
 }
 
+// ── Export Chart to Image ────────────────────────────────
+async function exportChartToImage(cardEl: HTMLElement, title: string) {
+  try {
+    const { default: html2canvas } = await import('html2canvas');
+    const canvas = await html2canvas(cardEl, {
+      backgroundColor: '#1a1a2e',
+      scale: 2,
+      logging: false,
+    });
+    const link = document.createElement('a');
+    link.download = `${title.replace(/\s+/g, '-').toLowerCase()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast.success(`Exported "${title}" as PNG`);
+  } catch (err) {
+    console.error('Export failed:', err);
+    toast.error('Failed to export chart');
+  }
+}
+
 // ── Main Charts Tab ─────────────────────────────────────
 type ChartView = 'overview' | 'profitability' | 'liquidity';
 
 export function SaaSModelCharts({ model }: Props) {
   const [view, setView] = useState<ChartView>('overview');
+  const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const chartGroups: Record<ChartView, { title: string; component: JSX.Element }[]> = {
     overview: [
@@ -723,6 +747,18 @@ export function SaaSModelCharts({ model }: Props) {
 
   const charts = chartGroups[view];
 
+  const handleExportAll = useCallback(async () => {
+    toast.promise(
+      (async () => {
+        for (const chart of charts) {
+          const el = chartRefs.current[chart.title];
+          if (el) await exportChartToImage(el, chart.title);
+        }
+      })(),
+      { loading: 'Exporting all charts…', success: 'All charts exported', error: 'Export failed' }
+    );
+  }, [charts]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -733,16 +769,36 @@ export function SaaSModelCharts({ model }: Props) {
             <TabsTrigger value="liquidity" className="text-xs rounded-sm h-6 px-3">Liquidity & Debt</TabsTrigger>
           </TabsList>
         </Tabs>
-        <Badge variant="outline" className="text-[10px] text-muted-foreground">
-          Hover charts for details
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={handleExportAll}>
+            <Download className="h-3 w-3" /> Export All
+          </Button>
+          <Badge variant="outline" className="text-[10px] text-muted-foreground">
+            Hover charts for details
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {charts.map(chart => (
-          <Card key={chart.title} className="border-border/30 group">
+          <Card key={chart.title} className="border-border/30 group relative"
+            ref={(el) => { chartRefs.current[chart.title] = el; }}>
             <CardContent className="p-4">
-              <h3 className="text-sm font-semibold mb-3 text-foreground">{chart.title}</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground">{chart.title}</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => {
+                    const el = chartRefs.current[chart.title];
+                    if (el) exportChartToImage(el, chart.title);
+                  }}
+                  title="Export as PNG"
+                >
+                  <ImageIcon className="h-3 w-3" />
+                </Button>
+              </div>
               <div className="h-56">
                 {chart.component}
               </div>

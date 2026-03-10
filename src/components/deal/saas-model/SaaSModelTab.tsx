@@ -79,12 +79,34 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-96" />
-        <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-28" />)}
+      <div className="space-y-4 animate-in fade-in duration-300">
+        {/* Breadcrumb skeleton */}
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-3 w-3" />
+          <Skeleton className="h-3 w-28" />
         </div>
-        <Skeleton className="h-64" />
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+          <Skeleton className="h-7 w-20" />
+        </div>
+        {/* Tabs skeleton */}
+        <Skeleton className="h-8 w-full max-w-3xl" />
+        {/* KPI cards skeleton */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[1,2,3,4].map(i => (
+            <Skeleton key={i} className="h-24 rounded-lg" />
+          ))}
+        </div>
+        {/* Chart skeletons */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Skeleton className="h-72 rounded-lg" />
+          <Skeleton className="h-72 rounded-lg" />
+        </div>
       </div>
     );
   }
@@ -156,28 +178,28 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="h-8 bg-muted/30 rounded-sm">
-          <TabsTrigger value="dashboard" className="gap-1.5 text-xs rounded-sm h-7">
+          <TabsTrigger value="dashboard" className="gap-1.5 text-xs rounded-sm h-7" title="Press 1">
             <LayoutDashboard className="h-3.5 w-3.5" /> Dashboard
           </TabsTrigger>
-          <TabsTrigger value="income-statement" className="gap-1.5 text-xs rounded-sm h-7">
+          <TabsTrigger value="income-statement" className="gap-1.5 text-xs rounded-sm h-7" title="Press 2">
             <FileSpreadsheet className="h-3.5 w-3.5" /> Income Statement
           </TabsTrigger>
-          <TabsTrigger value="balance-sheet" className="gap-1.5 text-xs rounded-sm h-7">
+          <TabsTrigger value="balance-sheet" className="gap-1.5 text-xs rounded-sm h-7" title="Press 3">
             <Wallet className="h-3.5 w-3.5" /> Balance Sheet
           </TabsTrigger>
-          <TabsTrigger value="data-mapping" className="gap-1.5 text-xs rounded-sm h-7">
+          <TabsTrigger value="data-mapping" className="gap-1.5 text-xs rounded-sm h-7" title="Press 4">
             <Upload className="h-3.5 w-3.5" /> Data Mapping
           </TabsTrigger>
-          <TabsTrigger value="sensitivity" className="gap-1.5 text-xs rounded-sm h-7">
+          <TabsTrigger value="sensitivity" className="gap-1.5 text-xs rounded-sm h-7" title="Press 5">
             <TrendingDown className="h-3.5 w-3.5" /> Sensitivity
           </TabsTrigger>
-          <TabsTrigger value="debt-servicing" className="gap-1.5 text-xs rounded-sm h-7">
+          <TabsTrigger value="debt-servicing" className="gap-1.5 text-xs rounded-sm h-7" title="Press 6">
             <Landmark className="h-3.5 w-3.5" /> Debt Servicing
           </TabsTrigger>
-          <TabsTrigger value="charts" className="gap-1.5 text-xs rounded-sm h-7">
+          <TabsTrigger value="charts" className="gap-1.5 text-xs rounded-sm h-7" title="Press 7">
             <BarChart3 className="h-3.5 w-3.5" /> Charts
           </TabsTrigger>
-          <TabsTrigger value="credit-analysis" className="gap-1.5 text-xs rounded-sm h-7">
+          <TabsTrigger value="credit-analysis" className="gap-1.5 text-xs rounded-sm h-7" title="Press 8">
             <ShieldCheck className="h-3.5 w-3.5" /> Credit Analysis
           </TabsTrigger>
         </TabsList>
