@@ -89,6 +89,9 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           <TabsTrigger value="charts" className="gap-1.5 text-xs rounded-sm h-7">
             <BarChart3 className="h-3.5 w-3.5" /> Charts
           </TabsTrigger>
+          <TabsTrigger value="credit-analysis" className="gap-1.5 text-xs rounded-sm h-7">
+            <ShieldCheck className="h-3.5 w-3.5" /> Credit Analysis
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
