@@ -461,7 +461,7 @@ export function AICopilotPanel() {
       const resp = await fetch(COPILOT_CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ message: text, context: { page: ctx.page, entityType: ctx.entityType, entityId: ctx.entityId, userRole: 'member', companyId: '' }, history }),
+        body: JSON.stringify({ message: text, context: { page: ctx.page, entityType: ctx.entityType, entityId: ctx.entityId, activeTab: ctx.activeTab, banners: ctx.banners, userRole: 'member', companyId: '' }, history }),
         signal: abortRef.current.signal,
       });
 
