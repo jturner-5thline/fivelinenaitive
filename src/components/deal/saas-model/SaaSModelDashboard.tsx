@@ -1,13 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { SaaSModelData } from './types';
 import { fmtCurrency, fmtPct, fmtRatio, isNegative } from './formatters';
 import { annualRollup } from './calculations';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { DollarSign, BarChart3, Target, Shield, Zap, Users, TrendingUp, Activity, Clock } from 'lucide-react';
+import { DollarSign, BarChart3, Target, Shield, Zap, Users, TrendingUp, Activity, Clock, Calendar } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, ReferenceLine, Line,
+  CartesianGrid, Tooltip, Legend, ReferenceLine, Line, ComposedChart,
 } from 'recharts';
 import { EnhancedKPICard } from './EnhancedKPICard';
 
@@ -15,10 +17,18 @@ interface Props {
   model: SaaSModelData;
 }
 
+type PeriodFilter = 'all' | 'ttm' | '6m' | '3m';
+
 function trailingSparkline(data: number[], count = 12): number[] {
   if (!data || data.length === 0) return [];
   const start = Math.max(0, data.length - count);
   return data.slice(start).filter(v => v !== 0 || data.some(d => d !== 0));
+}
+
+function filterByPeriod<T>(data: T[], period: PeriodFilter): T[] {
+  if (period === 'all') return data;
+  const count = period === 'ttm' ? 12 : period === '6m' ? 6 : 3;
+  return data.slice(Math.max(0, data.length - count));
 }
 
 function estimateCustomerCount(model: SaaSModelData): { current: number; sparkline: number[]; delta: number } {
@@ -30,26 +40,20 @@ function estimateCustomerCount(model: SaaSModelData): { current: number; sparkli
   return { current, sparkline, delta };
 }
 
-// ── Health Score ──────────────────────────────────────────
 function computeHealthScore(model: SaaSModelData): { score: number; label: string; color: string } {
   let score = 50;
-  // Gross margin contribution
   if (model.latestGrossMargin >= 70) score += 12;
   else if (model.latestGrossMargin >= 50) score += 6;
   else score -= 5;
-  // Growth
   if (model.yoyRevGrowth >= 25) score += 12;
   else if (model.yoyRevGrowth >= 10) score += 6;
   else score -= 5;
-  // NRR
   if (model.netRevenueRetention >= 110) score += 8;
   else if (model.netRevenueRetention >= 100) score += 4;
   else score -= 4;
-  // Current ratio
   if (model.currentRatio >= 1.5) score += 8;
   else if (model.currentRatio >= 1.0) score += 3;
   else score -= 6;
-  // EBITDA positive
   const last = model.months.length - 1;
   if (model.ebitda[last] > 0) score += 10;
   else score -= 8;
@@ -60,8 +64,7 @@ function computeHealthScore(model: SaaSModelData): { score: number; label: strin
   return { score, label, color };
 }
 
-// ── Health Score Ring ────────────────────────────────────
-function HealthRing({ score, label, color }: { score: number; label: string; color: string }) {
+function HealthRing({ score, label, color, model: m }: { score: number; label: string; color: string; model: SaaSModelData }) {
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
   const dashoffset = circumference - (score / 100) * circumference;
@@ -80,9 +83,9 @@ function HealthRing({ score, label, color }: { score: number; label: string; col
       </div>
       <div className="space-y-1.5">
         {[
-          { label: 'Margins', pct: Math.min(100, Math.max(0, (model.latestGrossMargin / 80) * 100)), color: '#2ED3B7' },
-          { label: 'Growth', pct: Math.min(100, Math.max(0, (model.yoyRevGrowth / 40) * 100)), color: '#4C6FFF' },
-          { label: 'Liquidity', pct: Math.min(100, Math.max(0, (model.currentRatio / 2.5) * 100)), color: '#FFB547' },
+          { label: 'Margins', pct: Math.min(100, Math.max(0, (m.latestGrossMargin / 80) * 100)), color: '#2ED3B7' },
+          { label: 'Growth', pct: Math.min(100, Math.max(0, (m.yoyRevGrowth / 40) * 100)), color: '#4C6FFF' },
+          { label: 'Liquidity', pct: Math.min(100, Math.max(0, (m.currentRatio / 2.5) * 100)), color: '#FFB547' },
         ].map(bar => (
           <div key={bar.label} className="flex items-center gap-2">
             <span className="text-[10px] text-muted-foreground w-14">{bar.label}</span>
@@ -96,10 +99,6 @@ function HealthRing({ score, label, color }: { score: number; label: string; col
   );
 }
 
-// We need access to model in HealthRing — pass it via a wrapper
-let model: SaaSModelData;
-
-// ── Ratio Card with visual bar ───────────────────────────
 function RatioCard({ label, value, formatted, benchmark, benchmarkLabel }: {
   label: string; value: number; formatted: string; benchmark: number; benchmarkLabel: string;
 }) {
@@ -123,21 +122,17 @@ function RatioCard({ label, value, formatted, benchmark, benchmarkLabel }: {
   );
 }
 
-// ── Operational Metrics ──────────────────────────────────
 function computeOperationalMetrics(m: SaaSModelData) {
   const last = m.months.length - 1;
   const monthlyBurn = m.ebitda[last] < 0 ? Math.abs(m.ebitda[last]) : 0;
   const cash = m.balanceSheet.cash[last];
   const runway = monthlyBurn > 0 ? cash / monthlyBurn : 999;
 
-  // Rule of 40
   const ebitdaMargin = m.totalRevenue[last] > 0 ? (m.ebitda[last] / m.totalRevenue[last]) * 100 : 0;
   const ruleOf40 = m.yoyRevGrowth + ebitdaMargin;
 
-  // Operating efficiency (OpEx as % of Revenue)
   const opexPct = m.totalRevenue[last] > 0 ? (m.totalOpEx[last] / m.totalRevenue[last]) * 100 : 0;
 
-  // Magic number proxy (QoQ new ARR / S&M spend)
   const newArr = last >= 3 ? (m.revenue.recurring[last] - m.revenue.recurring[last - 3]) * 4 : 0;
   const smSpend = last >= 3 ? m.opex.salesMarketing.slice(last - 2, last + 1).reduce((s, v) => s + v, 0) : 1;
   const magicNumber = smSpend > 0 ? newArr / smSpend : 0;
@@ -145,24 +140,58 @@ function computeOperationalMetrics(m: SaaSModelData) {
   return { monthlyBurn, runway, ruleOf40, opexPct, magicNumber };
 }
 
+// ── Period Selector ────────────────────────────────────
+function PeriodSelector({ value, onChange }: { value: PeriodFilter; onChange: (v: PeriodFilter) => void }) {
+  const options: { value: PeriodFilter; label: string }[] = [
+    { value: 'all', label: 'All' },
+    { value: 'ttm', label: 'TTM' },
+    { value: '6m', label: '6M' },
+    { value: '3m', label: '3M' },
+  ];
+
+  return (
+    <div className="flex gap-0.5 bg-muted/30 rounded-sm p-0.5">
+      {options.map(opt => (
+        <Button
+          key={opt.value}
+          variant={value === opt.value ? 'default' : 'ghost'}
+          size="sm"
+          className="h-5 text-[10px] px-2 rounded-sm"
+          onClick={() => onChange(opt.value)}
+        >
+          {opt.label}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export function SaaSModelDashboard({ model: m }: Props) {
-  model = m; // for HealthRing access
+  const [chartPeriod, setChartPeriod] = useState<PeriodFilter>('all');
 
   const last = m.months.length - 1;
   const health = useMemo(() => computeHealthScore(m), [m]);
   const ops = useMemo(() => computeOperationalMetrics(m), [m]);
   const customers = useMemo(() => estimateCustomerCount(m), [m]);
 
-  const revenueChartData = m.months.map((mo, i) => ({
-    name: mo.label,
-    recurring: m.revenue.recurring[i],
-    total: m.totalRevenue[i],
-  }));
+  const revenueChartData = useMemo(() => {
+    const all = m.months.map((mo, i) => ({
+      name: mo.label,
+      recurring: m.revenue.recurring[i],
+      nonRecurring: m.revenue.nonRecurring[i],
+      total: m.totalRevenue[i],
+    }));
+    return filterByPeriod(all, chartPeriod);
+  }, [m, chartPeriod]);
 
-  const ebitdaChartData = m.months.map((mo, i) => ({
-    name: mo.label,
-    ebitda: m.ebitda[i],
-  }));
+  const ebitdaChartData = useMemo(() => {
+    const all = m.months.map((mo, i) => ({
+      name: mo.label,
+      ebitda: m.ebitda[i],
+      operatingIncome: m.operatingIncome[i],
+    }));
+    return filterByPeriod(all, chartPeriod);
+  }, [m, chartPeriod]);
 
   const annualData = annualRollup(m, [
     { key: 'recurring', source: m.revenue.recurring, type: 'sum' },
@@ -176,19 +205,20 @@ export function SaaSModelDashboard({ model: m }: Props) {
   const marginSparkline = trailingSparkline(m.grossMarginPct);
   const ebitdaSparkline = trailingSparkline(m.ebitda);
 
+  // Period label for charts
+  const periodLabel = chartPeriod === 'all' ? '' : chartPeriod === 'ttm' ? ' (TTM)' : chartPeriod === '6m' ? ' (6M)' : ' (3M)';
+
   return (
     <div className="space-y-4">
       {/* Row 1: Health Score + Primary KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-4">
-        {/* Health Score */}
         <Card className="border-border/30">
           <CardContent className="p-4">
             <h3 className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Financial Health</h3>
-            <HealthRing score={health.score} label={health.label} color={health.color} />
+            <HealthRing score={health.score} label={health.label} color={health.color} model={m} />
           </CardContent>
         </Card>
 
-        {/* Primary KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <EnhancedKPICard
             label="ARR Today"
@@ -285,22 +315,30 @@ export function SaaSModelDashboard({ model: m }: Props) {
         })}
       </div>
 
-      {/* Charts */}
+      {/* Charts with period selector */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="border-border/30">
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold mb-3">Revenue Trend</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">Revenue Trend{periodLabel}</h3>
+              <PeriodSelector value={chartPeriod} onChange={setChartPeriod} />
+            </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueChartData}>
+                <ComposedChart data={revenueChartData}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={50} />
                   <YAxis tick={{ fontSize: 10 }} tickFormatter={v => fmtCurrency(v, true)} />
-                  <Tooltip formatter={(v: number) => fmtCurrency(v)} labelStyle={{ fontSize: 11 }} />
+                  <Tooltip
+                    formatter={(v: number, name: string) => [fmtCurrency(v), name]}
+                    labelStyle={{ fontSize: 11 }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 6, fontSize: 11 }}
+                  />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Area type="monotone" dataKey="recurring" name="Recurring" stroke="#4C6FFF" fill="#4C6FFF" fillOpacity={0.15} strokeWidth={2} />
-                  <Line type="monotone" dataKey="total" name="Total Revenue" stroke="#2ED3B7" strokeDasharray="5 5" dot={false} strokeWidth={1.5} />
-                </AreaChart>
+                  <Bar dataKey="nonRecurring" name="Non-Recurring" fill="#FFB547" fillOpacity={0.6} stackId="rev" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="recurring" name="Recurring" fill="#4C6FFF" fillOpacity={0.7} stackId="rev" radius={[2, 2, 0, 0]} />
+                  <Line type="monotone" dataKey="total" name="Total" stroke="#2ED3B7" dot={false} strokeWidth={2} strokeDasharray="5 5" />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
@@ -308,21 +346,30 @@ export function SaaSModelDashboard({ model: m }: Props) {
 
         <Card className="border-border/30">
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold mb-3">EBITDA Trend</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">EBITDA & Operating Income{periodLabel}</h3>
+              <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                {m.ebitda[last] >= 0 ? 'Profitable' : 'Pre-profit'}
+              </Badge>
+            </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={ebitdaChartData}>
+                <ComposedChart data={ebitdaChartData}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={50} />
                   <YAxis tick={{ fontSize: 10 }} tickFormatter={v => fmtCurrency(v, true)} />
-                  <Tooltip formatter={(v: number) => fmtCurrency(v)} />
+                  <Tooltip
+                    formatter={(v: number, name: string) => [fmtCurrency(v), name]}
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 6, fontSize: 11 }}
+                  />
                   <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" />
                   <Bar dataKey="ebitda" name="EBITDA" radius={[2, 2, 0, 0]}>
                     {ebitdaChartData.map((entry, idx) => (
                       <Cell key={idx} fill={entry.ebitda >= 0 ? '#4C6FFF' : '#F97373'} />
                     ))}
                   </Bar>
-                </BarChart>
+                  <Line type="monotone" dataKey="operatingIncome" name="Op. Income" stroke="#2ED3B7" dot={false} strokeWidth={1.5} />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
@@ -332,14 +379,22 @@ export function SaaSModelDashboard({ model: m }: Props) {
       {/* Annual Summary */}
       <Card className="border-border/30">
         <CardContent className="p-4">
-          <h3 className="text-sm font-semibold mb-3">Annual Summary</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Annual Summary</h3>
+            <span className="text-[10px] text-muted-foreground">{annualData.length} years</span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/30">
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground sticky left-0 bg-card">Metric</th>
-                  {annualData.map(a => (
-                    <th key={a.year} className="text-right py-2 px-3 font-medium text-muted-foreground">{a.year}</th>
+                  {annualData.map((a, i) => (
+                    <th key={a.year} className="text-right py-2 px-3 font-medium text-muted-foreground">
+                      {a.year}
+                      {i === annualData.length - 1 && (
+                        <Badge variant="outline" className="ml-1 text-[8px] h-3.5 px-1">Latest</Badge>
+                      )}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -352,14 +407,32 @@ export function SaaSModelDashboard({ model: m }: Props) {
                 ].map(row => (
                   <tr key={row.key} className="border-b border-border/10 hover:bg-muted/20">
                     <td className="py-2 px-3 font-medium sticky left-0 bg-card">{row.label}</td>
-                    {annualData.map(a => (
-                      <td key={a.year} className={cn(
-                        "py-2 px-3 text-right font-mono tabular-nums",
-                        isNegative(a.values[row.key]) && "text-destructive"
-                      )}>
-                        {row.fmt(a.values[row.key])}
-                      </td>
-                    ))}
+                    {annualData.map((a, ai) => {
+                      const val = a.values[row.key];
+                      const prevVal = ai > 0 ? annualData[ai - 1].values[row.key] : null;
+                      const yoyPct = prevVal && prevVal !== 0 && row.key !== 'grossMargin'
+                        ? ((val - prevVal) / Math.abs(prevVal)) * 100
+                        : null;
+
+                      return (
+                        <td key={a.year} className={cn(
+                          "py-2 px-3 text-right font-mono tabular-nums",
+                          isNegative(val) && "text-destructive"
+                        )}>
+                          <div className="flex flex-col items-end">
+                            <span>{row.fmt(val)}</span>
+                            {yoyPct !== null && ai > 0 && (
+                              <span className={cn(
+                                "text-[8px]",
+                                yoyPct > 0 ? "text-emerald-500" : "text-destructive"
+                              )}>
+                                {yoyPct > 0 ? '+' : ''}{yoyPct.toFixed(1)}%
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
