@@ -455,6 +455,37 @@ export default function Integrations() {
     });
   }
 
+  if (isDocuSignConnected) {
+    connectedIntegrations.push({
+      key: "docusign",
+      render: () => (
+        <IntegrationCard
+          name="DocuSign"
+          icon={PenTool}
+          description="Send and manage e-signature envelopes directly from deals."
+          status={getDocuSignStatus()}
+          isConnected
+          lastSynced={docusign.status?.last_synced}
+          statusDetail={docusign.status?.account_name ? `Account: ${docusign.status.account_name}` : undefined}
+          externalUrl="https://app.docusign.com"
+          externalLabel="Open DocuSign"
+          onTestConnection={async () => {
+            try {
+              await docusign.refresh();
+              toast.success("DocuSign connection is healthy");
+            } catch {
+              toast.error("DocuSign connection test failed");
+            }
+          }}
+          onDisconnect={async () => {
+            await docusign.disconnect();
+            toast.success("DocuSign disconnected");
+          }}
+        />
+      ),
+    });
+  }
+
   // === Available (not yet connected) ===
   type AvailableIntegration = { key: string; render: () => React.ReactNode };
   const availableIntegrations: AvailableIntegration[] = [];
