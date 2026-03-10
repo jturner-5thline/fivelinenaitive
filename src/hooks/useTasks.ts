@@ -4,10 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 
-async function fireZapierWebhook(eventType: string, userId: string, payload: Record<string, any>) {
+async function fireZapierWebhook(eventType: string, payload: Record<string, any>) {
   try {
     await supabase.functions.invoke('fire-zapier-webhook', {
-      body: { event_type: eventType, user_id: userId, payload },
+      body: { event_type: eventType, payload },
     });
   } catch (e) {
     console.error('Zapier webhook fire failed:', e);
@@ -228,8 +228,8 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           due_date: (data as any).due_date,
           task_url: taskUrl,
         };
-        fireZapierWebhook('task_created', user.id, payload);
-        fireZapierWebhook('task_assigned', user.id, payload);
+        fireZapierWebhook('task_created', payload);
+        fireZapierWebhook('task_assigned', payload);
       }
     },
     onError: () => toast.error('Failed to create task'),
@@ -298,7 +298,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           .select('display_name, email')
           .eq('user_id', updates.assigned_to)
           .single();
-        fireZapierWebhook('task_assigned', user.id, {
+        fireZapierWebhook('task_assigned', {
           task_id: id,
           assigned_to: updates.assigned_to,
           assigned_to_email: assigneeProfile?.email || null,
