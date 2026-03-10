@@ -178,7 +178,7 @@ function PeriodSelector({ value, onChange }: { value: PeriodFilter; onChange: (v
   );
 }
 
-export function SaaSModelDashboard({ model: m }: Props) {
+export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
   const [chartPeriod, setChartPeriod] = useState<PeriodFilter>('all');
 
   const last = m.months.length - 1;
