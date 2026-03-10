@@ -4,7 +4,10 @@ import { fmtCurrency, fmtPct } from './formatters';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Download, Image as ImageIcon } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Props {
   model: SaaSModelData;
