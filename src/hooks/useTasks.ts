@@ -298,7 +298,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           .select('display_name, email')
           .eq('user_id', updates.assigned_to)
           .single();
-        fireZapierWebhook('task_assigned', user.id, {
+        fireZapierWebhook('task_assigned', {
           task_id: id,
           assigned_to: updates.assigned_to,
           assigned_to_email: assigneeProfile?.email || null,
