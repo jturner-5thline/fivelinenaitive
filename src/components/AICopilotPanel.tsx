@@ -626,25 +626,56 @@ export function AICopilotPanel() {
 
   if (!isOpen) return null;
 
-  const panelWidth = isMobile ? '100vw' : 420;
+  const panelWidth = isMobile ? '100vw' : 440;
+  const panelHeight = isMobile ? '100vh' : '70vh';
 
   return (
-    <div
-      ref={panelRef}
-      role="dialog"
-      aria-label="naitive AI"
-      aria-modal="true"
-      className="animate-slide-in-from-right"
-      style={{
-        position: 'fixed', top: 0, right: 0,
-        width: panelWidth, height: '100vh', zIndex: 51,
-        display: 'flex', flexDirection: 'column',
-        background: 'rgba(8, 10, 18, 0.88)',
-        backdropFilter: 'blur(24px) saturate(1.3)',
-        WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-        borderLeft: isMobile ? 'none' : '1px solid var(--glass-border)',
-      }}
-    >
+    <>
+      {/* Backdrop overlay */}
+      <div
+        onClick={closePanel}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 50,
+          background: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          animation: 'copilot-fade-in 200ms ease-out',
+        }}
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-label="naitive AI"
+        aria-modal="true"
+        style={{
+          position: 'fixed',
+          bottom: isMobile ? 0 : 24,
+          right: isMobile ? 0 : 24,
+          width: panelWidth,
+          height: panelHeight,
+          maxHeight: isMobile ? '100vh' : 'calc(100vh - 48px)',
+          zIndex: 51,
+          display: 'flex', flexDirection: 'column',
+          background: 'rgba(8, 10, 18, 0.92)',
+          backdropFilter: 'blur(24px) saturate(1.3)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+          borderRadius: isMobile ? 0 : 16,
+          border: isMobile ? 'none' : '1px solid var(--glass-border)',
+          boxShadow: '0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+          overflow: 'hidden',
+          animation: 'copilot-popup-in 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      >
+        <style>{`
+          @keyframes copilot-popup-in {
+            from { opacity: 0; transform: translateY(16px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes copilot-fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        `}</style>
       {/* Screen reader live region */}
       <div ref={liveRegionRef} aria-live="polite" aria-atomic="true" className="sr-only" />
 
@@ -848,6 +879,7 @@ export function AICopilotPanel() {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
