@@ -79,12 +79,34 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-96" />
-        <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-28" />)}
+      <div className="space-y-4 animate-in fade-in duration-300">
+        {/* Breadcrumb skeleton */}
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-3 w-3" />
+          <Skeleton className="h-3 w-28" />
         </div>
-        <Skeleton className="h-64" />
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+          <Skeleton className="h-7 w-20" />
+        </div>
+        {/* Tabs skeleton */}
+        <Skeleton className="h-8 w-full max-w-3xl" />
+        {/* KPI cards skeleton */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[1,2,3,4].map(i => (
+            <Skeleton key={i} className="h-24 rounded-lg" />
+          ))}
+        </div>
+        {/* Chart skeletons */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Skeleton className="h-72 rounded-lg" />
+          <Skeleton className="h-72 rounded-lg" />
+        </div>
       </div>
     );
   }
