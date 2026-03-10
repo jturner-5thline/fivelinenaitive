@@ -53,7 +53,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
 
   // Keyboard shortcuts: number keys 1-8 to switch tabs
   useEffect(() => {
-    const TAB_KEYS = ['dashboard', 'income-statement', 'balance-sheet', 'data-mapping', 'sensitivity', 'debt-servicing', 'charts', 'credit-analysis'];
+    const TAB_KEYS = ['dashboard', 'income-statement', 'balance-sheet', 'data-mapping', 'sensitivity', 'debt-servicing', 'charts', 'credit-analysis', 'monte-carlo', 'versioning', 'export'];
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
