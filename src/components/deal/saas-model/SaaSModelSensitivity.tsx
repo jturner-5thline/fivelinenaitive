@@ -176,6 +176,9 @@ export function SaaSModelSensitivity({ model, scenarios, updateScenarios }: Prop
           </CardContent>
         </Card>
       ))}
+
+      {/* EV Sensitivity Matrix */}
+      <EVSensitivityMatrix model={model} />
     </div>
   );
 }
