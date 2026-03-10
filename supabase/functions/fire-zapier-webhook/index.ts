@@ -12,17 +12,42 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+    // Verify JWT and extract user_id from the token, not the body
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Missing or invalid Authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    })
+    const token = authHeader.replace('Bearer ', '')
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token)
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error('JWT verification failed:', claimsError)
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const user_id = claimsData.claims.sub as string
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
     const body = await req.json()
-    const { event_type, user_id, payload } = body
+    const { event_type, payload } = body
     console.log('Received webhook request:', JSON.stringify({ event_type, user_id }))
 
-    if (!event_type || !user_id) {
-      console.log('Missing event_type or user_id')
+    if (!event_type) {
+      console.log('Missing event_type')
       return new Response(
-        JSON.stringify({ error: 'Missing event_type or user_id' }),
+        JSON.stringify({ error: 'Missing event_type' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
