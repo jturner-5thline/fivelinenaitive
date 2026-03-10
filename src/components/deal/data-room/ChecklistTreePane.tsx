@@ -301,7 +301,6 @@ export function ChecklistTreePane({
                     </Button>
                   </div>
                 )}
-                </div>
               </div>
             </>
           )}
