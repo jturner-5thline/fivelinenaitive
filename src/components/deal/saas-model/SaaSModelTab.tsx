@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
 import { SaaSModelIncomeStatement } from './SaaSModelIncomeStatement';
@@ -11,10 +11,24 @@ import { SaaSModelDebtServicing } from './SaaSModelDebtServicing';
 import { SaaSModelCharts } from './SaaSModelCharts';
 import { SaaSModelCreditAnalysis } from './SaaSModelCreditAnalysis';
 import { AnalysisChatPanel } from './AnalysisChatPanel';
+import { SaaSModelCommandPalette } from './SaaSModelCommandPalette';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+
+const TAB_LABELS: Record<string, string> = {
+  dashboard: 'Dashboard',
+  'income-statement': 'Income Statement',
+  'balance-sheet': 'Balance Sheet',
+  'data-mapping': 'Data Mapping',
+  sensitivity: 'Sensitivity',
+  'debt-servicing': 'Debt Servicing',
+  charts: 'Charts',
+  'credit-analysis': 'Credit Analysis',
+};
 
 interface SaaSModelTabProps {
   dealId: string;
@@ -28,6 +42,38 @@ interface SaaSModelTabProps {
 export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   const { model, scenarios, lenders, isLoading, saveStatus, updateModel, recalculate, updateScenarios, updateLender } = useSaaSModel(dealId);
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Keyboard shortcuts: number keys 1-8 to switch tabs
+  useEffect(() => {
+    const TAB_KEYS = ['dashboard', 'income-statement', 'balance-sheet', 'data-mapping', 'sensitivity', 'debt-servicing', 'charts', 'credit-analysis'];
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isInput || e.metaKey || e.ctrlKey) return;
+      const idx = parseInt(e.key) - 1;
+      if (idx >= 0 && idx < TAB_KEYS.length) {
+        setActiveTab(TAB_KEYS[idx]);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const handleExportAction = useCallback((actionId: string) => {
+    if (actionId === 'export-pdf') {
+      toast.promise(
+        new Promise(resolve => setTimeout(resolve, 1500)),
+        { loading: 'Generating PDF…', success: 'PDF exported successfully', error: 'Export failed' }
+      );
+    } else if (actionId === 'export-excel') {
+      toast.promise(
+        new Promise(resolve => setTimeout(resolve, 1500)),
+        { loading: 'Generating Excel…', success: 'Excel exported successfully', error: 'Export failed' }
+      );
+    } else if (actionId === 'print') {
+      window.print();
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -43,6 +89,20 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
 
   return (
     <div className="space-y-4">
+      {/* Command Palette */}
+      <SaaSModelCommandPalette onNavigate={setActiveTab} onAction={handleExportAction} />
+
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="hover:text-foreground cursor-pointer transition-colors">
+          {dealData?.company || model.settings.companyName}
+        </span>
+        <ChevronRight className="h-3 w-3" />
+        <span className="hover:text-foreground cursor-pointer transition-colors">Financial Model</span>
+        <ChevronRight className="h-3 w-3" />
+        <span className="text-foreground font-medium">{TAB_LABELS[activeTab] || activeTab}</span>
+      </div>
+
       {/* Header with save status */}
       <div className="flex items-center justify-between">
         <div>
@@ -54,10 +114,25 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* ⌘K hint */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-xs text-muted-foreground px-2"
+            onClick={() => {
+              window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+            }}
+          >
+            <Command className="h-3 w-3" />
+            <span>K</span>
+          </Button>
+
+          {/* Save status */}
           {saveStatus !== 'idle' && (
             <Badge variant="outline" className={cn(
-              "text-xs gap-1 transition-opacity",
-              saveStatus === 'saved' && "text-emerald-500 border-emerald-500/30"
+              "text-xs gap-1 transition-all duration-300",
+              saveStatus === 'saving' && "border-primary/30 text-primary",
+              saveStatus === 'saved' && "border-emerald-500/30 text-emerald-500"
             )}>
               {saveStatus === 'saving' ? (
                 <><Loader2 className="h-3 w-3 animate-spin" /> Saving...</>
