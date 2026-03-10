@@ -24,6 +24,8 @@ const SCENARIO_COLORS = ['hsl(var(--primary))', 'hsl(220, 80%, 60%)', 'hsl(45, 9
 const SCENARIO_LABELS = ['Scenario 1', 'Scenario 2', 'Scenario 3', 'Scenario 4'];
 
 export function SaaSModelSensitivity({ model, scenarios, updateScenarios }: Props) {
+  const [compareOpen, setCompareOpen] = useState(false);
+
   const handleInputChange = (scenarioIdx: number, field: keyof SensitivityScenario, value: string) => {
     const num = parseFloat(value) || 0;
     const updated = [...scenarios];
