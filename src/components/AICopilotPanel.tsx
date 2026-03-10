@@ -111,15 +111,37 @@ function ShortcutsTooltip({ visible }: { visible: boolean }) {
   );
 }
 
-function getPageContext(): { page: string; entityType: string | null; entityId: string | null } {
+function getPageContext(): { page: string; entityType: string | null; entityId: string | null; activeTab: string | null; banners: string[] } {
   const path = window.location.pathname;
   const parts = path.split('/').filter(Boolean);
-  if (parts[0] === 'deals' && parts[1]) return { page: 'deal-detail', entityType: 'deal', entityId: parts[1] };
-  if (parts[0] === 'deals') return { page: 'deals', entityType: null, entityId: null };
-  if (parts[0] === 'tasks') return { page: 'tasks', entityType: null, entityId: null };
-  if (parts[0] === 'lenders' || parts[0] === 'master-lenders') return { page: 'lenders', entityType: null, entityId: null };
-  if (parts[0] === 'pipeline') return { page: 'pipeline', entityType: null, entityId: null };
-  return { page: parts[0] || 'dashboard', entityType: null, entityId: null };
+
+  // Detect active tab from DOM (Radix Tabs uses data-state="active")
+  let activeTab: string | null = null;
+  const activeTabEl = document.querySelector('[role="tablist"] [role="tab"][data-state="active"]');
+  if (activeTabEl) {
+    activeTab = activeTabEl.getAttribute('value') || activeTabEl.textContent?.trim().toLowerCase() || null;
+  }
+
+  // Detect alert banners from DOM
+  const banners: string[] = [];
+  document.querySelectorAll('[data-copilot-banner]').forEach(el => {
+    const text = el.getAttribute('data-copilot-banner') || el.textContent?.trim();
+    if (text) banners.push(text);
+  });
+  // Also scan for common alert patterns in the page
+  document.querySelectorAll('.bg-yellow-500\\/10, .bg-red-500\\/10, .bg-amber-500\\/10, [class*="alert"], [class*="warning"]').forEach(el => {
+    const text = el.textContent?.trim();
+    if (text && text.length < 200 && text.length > 10 && !banners.includes(text)) {
+      banners.push(text);
+    }
+  });
+
+  if (parts[0] === 'deals' && parts[1]) return { page: 'deal-detail', entityType: 'deal', entityId: parts[1], activeTab, banners };
+  if (parts[0] === 'deals') return { page: 'deals', entityType: null, entityId: null, activeTab, banners };
+  if (parts[0] === 'tasks') return { page: 'tasks', entityType: null, entityId: null, activeTab, banners };
+  if (parts[0] === 'lenders' || parts[0] === 'master-lenders') return { page: 'lenders', entityType: null, entityId: null, activeTab, banners };
+  if (parts[0] === 'pipeline') return { page: 'pipeline', entityType: null, entityId: null, activeTab, banners };
+  return { page: parts[0] || 'dashboard', entityType: null, entityId: null, activeTab, banners };
 }
 
 /** Renders assistant content with entity links */
@@ -439,7 +461,7 @@ export function AICopilotPanel() {
       const resp = await fetch(COPILOT_CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ message: text, context: { page: ctx.page, entityType: ctx.entityType, entityId: ctx.entityId, userRole: 'member', companyId: '' }, history }),
+        body: JSON.stringify({ message: text, context: { page: ctx.page, entityType: ctx.entityType, entityId: ctx.entityId, activeTab: ctx.activeTab, banners: ctx.banners, userRole: 'member', companyId: '' }, history }),
         signal: abortRef.current.signal,
       });
 
