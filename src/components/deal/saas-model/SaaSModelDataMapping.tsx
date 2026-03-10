@@ -741,6 +741,24 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
             <Circle className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
           )}
           <span className={cn("text-xs truncate", isMapped && "font-medium")}>{field}</span>
+          {/* Confidence badge for auto-mapped fields */}
+          {isMapped && (() => {
+            const autoMap = getAutoMapConfidence(field);
+            if (autoMap) {
+              const pct = getConfidencePct(autoMap.confidence);
+              return (
+                <Badge variant="outline" className={cn(
+                  "text-[8px] h-4 px-1 shrink-0",
+                  autoMap.confidence === 'high' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
+                  autoMap.confidence === 'medium' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" :
+                  "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
+                )}>
+                  {pct}%
+                </Badge>
+              );
+            }
+            return null;
+          })()}
           {fieldSuggestion && !isMapped && (
             <Badge variant="outline" className="text-[8px] h-4 px-1 bg-primary/5 text-primary border-primary/20 shrink-0">
               AI · Row {fieldSuggestion.rowIdx + 1}
