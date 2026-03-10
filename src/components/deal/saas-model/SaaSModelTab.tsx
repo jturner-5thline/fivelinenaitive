@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command, MessageSquare, History, Dice5, FileText } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { useModelAnnotations } from '@/hooks/useModelAnnotations';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
@@ -13,6 +13,9 @@ import { SaaSModelCharts } from './SaaSModelCharts';
 import { SaaSModelCreditAnalysis } from './SaaSModelCreditAnalysis';
 import { AnalysisChatPanel } from './AnalysisChatPanel';
 import { SaaSModelCommandPalette } from './SaaSModelCommandPalette';
+import { ModelVersioning } from './ModelVersioning';
+import { MonteCarloSimulation } from './MonteCarloSimulation';
+import { CreditMemoExport } from './CreditMemoExport';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +32,9 @@ const TAB_LABELS: Record<string, string> = {
   'debt-servicing': 'Debt Servicing',
   charts: 'Charts',
   'credit-analysis': 'Credit Analysis',
+  'monte-carlo': 'Monte Carlo',
+  versioning: 'Versioning',
+  export: 'Export',
 };
 
 interface SaaSModelTabProps {
@@ -47,7 +53,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
 
   // Keyboard shortcuts: number keys 1-8 to switch tabs
   useEffect(() => {
-    const TAB_KEYS = ['dashboard', 'income-statement', 'balance-sheet', 'data-mapping', 'sensitivity', 'debt-servicing', 'charts', 'credit-analysis'];
+    const TAB_KEYS = ['dashboard', 'income-statement', 'balance-sheet', 'data-mapping', 'sensitivity', 'debt-servicing', 'charts', 'credit-analysis', 'monte-carlo', 'versioning', 'export'];
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
@@ -202,6 +208,15 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           <TabsTrigger value="credit-analysis" className="gap-1.5 text-xs rounded-sm h-7" title="Press 8">
             <ShieldCheck className="h-3.5 w-3.5" /> Credit Analysis
           </TabsTrigger>
+          <TabsTrigger value="monte-carlo" className="gap-1.5 text-xs rounded-sm h-7" title="Press 9">
+            <Dice5 className="h-3.5 w-3.5" /> Monte Carlo
+          </TabsTrigger>
+          <TabsTrigger value="versioning" className="gap-1.5 text-xs rounded-sm h-7" title="Press 0">
+            <History className="h-3.5 w-3.5" /> Versioning
+          </TabsTrigger>
+          <TabsTrigger value="export" className="gap-1.5 text-xs rounded-sm h-7">
+            <FileText className="h-3.5 w-3.5" /> Export
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
@@ -227,6 +242,26 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         </TabsContent>
         <TabsContent value="credit-analysis" className="mt-4">
           <SaaSModelCreditAnalysis model={model} />
+        </TabsContent>
+        <TabsContent value="monte-carlo" className="mt-4">
+          <MonteCarloSimulation model={model} />
+        </TabsContent>
+        <TabsContent value="versioning" className="mt-4">
+          <ModelVersioning
+            dealId={dealId}
+            model={model}
+            scenarios={scenarios}
+            lenders={lenders}
+            onRestore={(restoredModel, restoredScenarios, restoredLenders) => {
+              updateModel(() => restoredModel);
+              updateScenarios(restoredScenarios);
+              restoredLenders.forEach((l, i) => updateLender(i, l));
+              toast.success('Model restored from snapshot');
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="export" className="mt-4">
+          <CreditMemoExport model={model} scenarios={scenarios} lenders={lenders} />
         </TabsContent>
       </Tabs>
     </div>
