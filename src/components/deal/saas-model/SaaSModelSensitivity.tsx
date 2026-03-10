@@ -13,6 +13,7 @@ import {
   Tooltip, Legend, ReferenceLine,
 } from 'recharts';
 import { ScenarioComparison } from './ScenarioComparison';
+import { EVSensitivityMatrix } from './EVSensitivityMatrix';
 
 interface Props {
   model: SaaSModelData;
@@ -175,6 +176,9 @@ export function SaaSModelSensitivity({ model, scenarios, updateScenarios }: Prop
           </CardContent>
         </Card>
       ))}
+
+      {/* EV Sensitivity Matrix */}
+      <EVSensitivityMatrix model={model} />
     </div>
   );
 }
