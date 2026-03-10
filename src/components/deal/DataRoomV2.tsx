@@ -519,6 +519,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
             onOpenMappingDialog={openMappingDialog}
             allItems={allItems}
             deleteAttachment={deleteAttachment}
+            onToggleItemStatus={toggleItemStatus}
           />
         </div>
 
