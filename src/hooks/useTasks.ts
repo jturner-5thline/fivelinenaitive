@@ -4,10 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 
-async function fireZapierWebhook(eventType: string, userId: string, payload: Record<string, any>) {
+async function fireZapierWebhook(eventType: string, payload: Record<string, any>) {
   try {
     await supabase.functions.invoke('fire-zapier-webhook', {
-      body: { event_type: eventType, user_id: userId, payload },
+      body: { event_type: eventType, payload },
     });
   } catch (e) {
     console.error('Zapier webhook fire failed:', e);
