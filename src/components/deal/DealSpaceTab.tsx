@@ -36,7 +36,7 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
         </TabsTrigger>
         <TabsTrigger value="financials" className="flex items-center gap-2 rounded-sm">
           <DollarSign className="h-4 w-4" />
-          $ Analysis
+          Analysis
         </TabsTrigger>
         <TabsTrigger value="documents" className="flex items-center gap-2 rounded-sm">
           <FileText className="h-4 w-4" />
