@@ -1,4 +1,5 @@
-import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye } from 'lucide-react';
+import { useState } from 'react';
+import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
