@@ -1,13 +1,77 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { SaaSModelData } from './types';
 import { SpreadsheetTable, RowDef, ViewMode } from './SpreadsheetTable';
+import { Card, CardContent } from '@/components/ui/card';
+import { TrendingUp, TrendingDown, DollarSign, Percent } from 'lucide-react';
+import { fmtCurrency, fmtPct } from './formatters';
+import { cn } from '@/lib/utils';
 
 interface Props {
   model: SaaSModelData;
 }
 
+function KpiCard({ label, value, delta, format, icon: Icon }: {
+  label: string;
+  value: number;
+  delta?: number;
+  format: 'currency' | 'pct';
+  icon: React.ElementType;
+}) {
+  const formatted = format === 'currency' ? fmtCurrency(value) : fmtPct(value);
+  const hasDelta = delta !== undefined && delta !== 0;
+  const isPositive = (delta ?? 0) > 0;
+
+  return (
+    <Card className="border-border/20">
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
+          <Icon className="h-3.5 w-3.5 text-muted-foreground/40" />
+        </div>
+        <div className="text-base font-semibold font-mono tabular-nums">{formatted}</div>
+        {hasDelta && (
+          <div className={cn(
+            "flex items-center gap-1 mt-0.5 text-[10px] font-medium",
+            isPositive ? "text-emerald-500" : "text-destructive"
+          )}>
+            {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {isPositive ? '+' : ''}{delta!.toFixed(1)}% MoM
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SaaSModelIncomeStatement({ model }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
+  const [showVariance, setShowVariance] = useState(false);
+
+  // Compute latest-period KPIs
+  const kpis = useMemo(() => {
+    const len = model.totalRevenue.length;
+    if (len === 0) return null;
+    const lastIdx = len - 1;
+    const prevIdx = lastIdx - 1;
+
+    const rev = model.totalRevenue[lastIdx] ?? 0;
+    const prevRev = prevIdx >= 0 ? (model.totalRevenue[prevIdx] ?? 0) : 0;
+    const revDelta = prevRev !== 0 ? ((rev - prevRev) / Math.abs(prevRev)) * 100 : 0;
+
+    const gm = model.grossMarginPct[lastIdx] ?? 0;
+    const prevGm = prevIdx >= 0 ? (model.grossMarginPct[prevIdx] ?? 0) : 0;
+    const gmDelta = prevGm !== 0 ? gm - prevGm : 0;
+
+    const oi = model.operatingIncome[lastIdx] ?? 0;
+    const prevOi = prevIdx >= 0 ? (model.operatingIncome[prevIdx] ?? 0) : 0;
+    const oiDelta = prevOi !== 0 ? ((oi - prevOi) / Math.abs(prevOi)) * 100 : 0;
+
+    const ni = model.netIncome[lastIdx] ?? 0;
+    const prevNi = prevIdx >= 0 ? (model.netIncome[prevIdx] ?? 0) : 0;
+    const niDelta = prevNi !== 0 ? ((ni - prevNi) / Math.abs(prevNi)) * 100 : 0;
+
+    return { rev, revDelta, gm, gmDelta, oi, oiDelta, ni, niDelta };
+  }, [model]);
 
   const rows: RowDef[] = [
     { key: 'sec-revenue', label: 'REVENUE', values: [], isSection: true },
@@ -42,14 +106,29 @@ export function SaaSModelIncomeStatement({ model }: Props) {
   ];
 
   return (
-    <SpreadsheetTable
-      title="Income Statement"
-      rows={rows}
-      months={model.months}
-      viewMode={viewMode}
-      onViewModeChange={setViewMode}
-      annualAggregation="sum"
-      actualThruDate={model.settings.actualThruDate}
-    />
+    <div className="space-y-3">
+      {/* Summary KPI Cards */}
+      {kpis && (
+        <div className="grid grid-cols-4 gap-3">
+          <KpiCard label="Total Revenue" value={kpis.rev} delta={kpis.revDelta} format="currency" icon={DollarSign} />
+          <KpiCard label="Gross Margin" value={kpis.gm} delta={kpis.gmDelta} format="pct" icon={Percent} />
+          <KpiCard label="Operating Income" value={kpis.oi} delta={kpis.oiDelta} format="currency" icon={TrendingUp} />
+          <KpiCard label="Net Income" value={kpis.ni} delta={kpis.niDelta} format="currency" icon={DollarSign} />
+        </div>
+      )}
+
+      <SpreadsheetTable
+        title="Income Statement"
+        rows={rows}
+        months={model.months}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        annualAggregation="sum"
+        actualThruDate={model.settings.actualThruDate}
+        showVariance={showVariance}
+        onToggleVariance={() => setShowVariance(v => !v)}
+        conditionalFormatting
+      />
+    </div>
   );
 }

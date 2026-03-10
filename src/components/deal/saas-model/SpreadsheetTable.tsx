@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { fmtCurrency, fmtPct, isNegative } from './formatters';
 import { MonthEntry } from './types';
-import { Grid3X3, Calendar, Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { Grid3X3, Calendar, Download, ChevronDown, ChevronRight, ArrowUpDown } from 'lucide-react';
 
 export interface RowDef {
   key: string;
@@ -18,7 +18,7 @@ export interface RowDef {
   isSection?: boolean;
   isCheck?: boolean;
   indent?: number;
-  formula?: string; // e.g. "SUM(B2:B5)"
+  formula?: string;
 }
 
 export type ViewMode = 'monthly' | 'annual';
@@ -34,10 +34,15 @@ interface SpreadsheetTableProps {
   months: MonthEntry[];
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
-  /** For annual view: 'sum' adds months, 'last' takes last month of year (balance sheet style) */
   annualAggregation?: 'sum' | 'last';
   actualThruDate?: string;
+  showVariance?: boolean;
+  onToggleVariance?: () => void;
+  conditionalFormatting?: boolean;
 }
+
+// Threshold for conditional formatting highlight (>20% MoM swing)
+const VARIANCE_THRESHOLD = 20;
 
 export function SpreadsheetTable({
   title,
@@ -47,6 +52,9 @@ export function SpreadsheetTable({
   onViewModeChange,
   annualAggregation = 'sum',
   actualThruDate,
+  showVariance,
+  onToggleVariance,
+  conditionalFormatting,
 }: SpreadsheetTableProps) {
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
@@ -54,14 +62,12 @@ export function SpreadsheetTable({
 
   const years = useMemo(() => [...new Set(months.map(m => m.year))], [months]);
 
-  // Find the index where forecast starts
   const forecastStartIdx = useMemo(() => {
     if (!actualThruDate) return months.length;
     const thruDate = new Date(actualThruDate);
     return months.findIndex(m => new Date(m.date) > thruDate);
   }, [months, actualThruDate]);
 
-  // Toggle section collapse
   const toggleSection = useCallback((sectionKey: string) => {
     setCollapsedSections(prev => {
       const next = new Set(prev);
@@ -71,7 +77,6 @@ export function SpreadsheetTable({
     });
   }, []);
 
-  // Determine which rows are visible (respect collapsed sections)
   const visibleRows = useMemo(() => {
     const result: (RowDef & { originalIdx: number })[] = [];
     let currentSection: string | null = null;
@@ -89,7 +94,6 @@ export function SpreadsheetTable({
     return result;
   }, [rows, collapsedSections]);
 
-  // Get annual values
   const getAnnualValue = useCallback((values: number[], yearIdx: number, isPct: boolean) => {
     const y = years[yearIdx];
     const indices = months.map((m, i) => m.year === y ? i : -1).filter(i => i >= 0);
@@ -101,7 +105,26 @@ export function SpreadsheetTable({
     return indices.reduce((s, i) => s + (values[i] || 0), 0);
   }, [years, months, annualAggregation]);
 
-  // Formula bar content
+  // Compute MoM variance percentage for a row at a given column index
+  const getVariancePct = useCallback((values: number[], colIdx: number, isPct: boolean): number | null => {
+    if (viewMode === 'annual') {
+      // YoY variance
+      if (colIdx === 0) return null;
+      const curr = getAnnualValue(values, colIdx, isPct);
+      const prev = getAnnualValue(values, colIdx - 1, isPct);
+      if (isPct) return curr - prev;
+      if (prev === 0) return null;
+      return ((curr - prev) / Math.abs(prev)) * 100;
+    }
+    // MoM variance
+    if (colIdx === 0) return null;
+    const curr = values[colIdx] ?? 0;
+    const prev = values[colIdx - 1] ?? 0;
+    if (isPct) return curr - prev;
+    if (prev === 0) return null;
+    return ((curr - prev) / Math.abs(prev)) * 100;
+  }, [viewMode, getAnnualValue]);
+
   const formulaBarContent = useMemo(() => {
     if (!selectedCell) return { cellRef: '', value: '', formula: '', rowLabel: '' };
     const row = visibleRows[selectedCell.rowIdx];
@@ -123,7 +146,6 @@ export function SpreadsheetTable({
     return { cellRef, value: formatted, formula, rowLabel: row.label };
   }, [selectedCell, visibleRows, viewMode, getAnnualValue]);
 
-  // Click outside to deselect
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (tableRef.current && !tableRef.current.contains(e.target as Node)) {
@@ -134,7 +156,6 @@ export function SpreadsheetTable({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Export CSV
   const handleExport = useCallback(() => {
     const cols = viewMode === 'monthly'
       ? months.map(m => m.label)
@@ -169,6 +190,18 @@ export function SpreadsheetTable({
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/20">
           <h3 className="text-sm font-semibold">{title}</h3>
           <div className="flex items-center gap-2">
+            {/* Variance toggle */}
+            {onToggleVariance && (
+              <Button
+                variant={showVariance ? 'default' : 'ghost'}
+                size="sm"
+                className="h-6 text-[11px] px-2.5 rounded-sm gap-1"
+                onClick={onToggleVariance}
+              >
+                <ArrowUpDown className="h-3 w-3" />
+                Δ Variance
+              </Button>
+            )}
             <div className="flex gap-0.5 bg-muted/30 rounded-sm p-0.5">
               <Button
                 variant={viewMode === 'monthly' ? 'default' : 'ghost'}
@@ -330,6 +363,10 @@ export function SpreadsheetTable({
                         : getAnnualValue(row.values, ci, !!row.isPct);
 
                       const isSelected = selectedCell?.rowIdx === visIdx && selectedCell?.colIdx === ci;
+                      
+                      // Variance
+                      const variancePct = showVariance ? getVariancePct(row.values, c.index, !!row.isPct) : null;
+                      const hasLargeSwing = conditionalFormatting && variancePct !== null && Math.abs(variancePct) > VARIANCE_THRESHOLD;
 
                       return (
                         <td
@@ -341,11 +378,22 @@ export function SpreadsheetTable({
                             row.isCheck && v !== 0 && "text-destructive font-bold",
                             c.isForecast && "text-foreground/60",
                             isSelected && "ring-2 ring-primary/50 ring-inset bg-primary/5 rounded-sm",
-                            !isSelected && "hover:bg-muted/20"
+                            !isSelected && "hover:bg-muted/20",
+                            hasLargeSwing && !isSelected && (variancePct! > 0 ? "bg-emerald-500/5" : "bg-destructive/5")
                           )}
                           onClick={() => setSelectedCell({ rowIdx: visIdx, colIdx: ci })}
                         >
-                          {row.isPct ? fmtPct(v) : fmtCurrency(v)}
+                          <div className="flex flex-col items-end">
+                            <span>{row.isPct ? fmtPct(v) : fmtCurrency(v)}</span>
+                            {showVariance && variancePct !== null && (
+                              <span className={cn(
+                                "text-[8px] leading-tight",
+                                variancePct > 0 ? "text-emerald-500" : variancePct < 0 ? "text-destructive" : "text-muted-foreground/40"
+                              )}>
+                                {variancePct > 0 ? '+' : ''}{variancePct.toFixed(1)}%
+                              </span>
+                            )}
+                          </div>
                         </td>
                       );
                     })}
