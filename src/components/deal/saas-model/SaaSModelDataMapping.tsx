@@ -1013,6 +1013,25 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
             )}
             {isSuggestLoading ? 'Analyzing...' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={handleAutoMap}
+          >
+            <Zap className="h-3.5 w-3.5" />
+            Auto-Map
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={runValidation}
+            disabled={mappedCount === 0}
+          >
+            <ShieldAlert className="h-3.5 w-3.5" />
+            Validate
+          </Button>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>
