@@ -144,9 +144,9 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
                     <X className="h-3 w-3 mr-1" />
                     Keep Existing
                   </Button>
-                  <Button size="sm" variant="default" onClick={handleMerge} disabled={isProcessing}>
+                  <Button size="sm" variant="default" onClick={() => setShowMergeDialog(true)} disabled={isProcessing}>
                     <GitMerge className="h-3 w-3 mr-1" />
-                    Use Flex Data
+                    Resolve Conflict
                   </Button>
                 </>
               ) : (
