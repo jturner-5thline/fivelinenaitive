@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Search } from 'lucide-react';
