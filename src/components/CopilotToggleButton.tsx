@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 
 export function CopilotToggleButton() {
   const togglePanel = useCopilotStore((s) => s.togglePanel);
+  const isOpen = useCopilotStore((s) => s.isOpen);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -17,6 +18,8 @@ export function CopilotToggleButton() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [togglePanel]);
+
+  if (isOpen) return null;
 
   return createPortal(
     <button
