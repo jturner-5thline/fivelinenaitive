@@ -53,6 +53,7 @@ interface ChecklistTreePaneProps {
   onOpenMappingDialog?: (files: DealAttachment[]) => void;
   allItems?: UnifiedChecklistItem[];
   deleteAttachment?: DataRoomContextValue['deleteAttachment'];
+  onToggleItemStatus?: (itemId: string, isComplete: boolean) => Promise<boolean>;
 }
 
 export function ChecklistTreePane({
