@@ -792,17 +792,28 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     );
   };
 
-  // Render field sections with grouped headers
+  // Render field sections with grouped headers + progress
   const renderFieldSections = (sections: { label: string; fields: string[] }[]) => (
     <div className="space-y-1">
-      {sections.map(section => (
-        <div key={section.label}>
-          <div className="px-2 py-2 bg-muted/30 rounded-sm mb-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{section.label}</span>
+      {sections.map(section => {
+        const mapped = section.fields.filter(f => !!fieldMappings[f]).length;
+        const total = section.fields.length;
+        const pct = total > 0 ? (mapped / total) * 100 : 0;
+        return (
+          <div key={section.label}>
+            <div className="px-2 py-2 bg-muted/30 rounded-sm mb-1 flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{section.label}</span>
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-16 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#2ED3B7' : '#4C6FFF' }} />
+                </div>
+                <span className="text-[9px] tabular-nums text-muted-foreground">{mapped}/{total}</span>
+              </div>
+            </div>
+            {section.fields.map(field => renderFieldRow(field))}
           </div>
-          {section.fields.map(field => renderFieldRow(field))}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 
