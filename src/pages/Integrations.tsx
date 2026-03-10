@@ -104,6 +104,9 @@ export default function Integrations() {
   // === Microsoft ===
   const microsoft = useMicrosoft();
 
+  // === DocuSign ===
+  const docusign = useDocuSign();
+
   // === Claap/Zapier from integrations table ===
   const { integrations } = useIntegrations();
   const claapIntegration = integrations.find((i) => i.type === "claap");
