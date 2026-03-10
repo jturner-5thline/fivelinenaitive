@@ -329,7 +329,14 @@ export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
 
       {/* Charts with period selector */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="border-border/30">
+        <Card className="border-border/30 relative">
+          {ann && (
+            <AnnotationBadge
+              targetType="chart" targetRef="revenue" targetLabel="Revenue Chart"
+              annotations={ann.getAnnotationsForTarget('chart', 'revenue')}
+              onAdd={ann.addAnnotation} onResolve={ann.resolveAnnotation} onDelete={ann.deleteAnnotation}
+            />
+          )}
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold">Revenue Trend{periodLabel}</h3>
