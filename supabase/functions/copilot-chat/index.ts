@@ -11,12 +11,13 @@ const MAX_TOOL_TURNS = 5;
 
 // ── Context fetchers ──────────────────────────────────────────────
 async function fetchDealContext(supabase: any, entityId: string) {
-  const [dealRes, lendersRes, milestonesRes, activityRes, tasksRes] = await Promise.all([
+  const [dealRes, lendersRes, milestonesRes, activityRes, tasksRes, outstandingRes] = await Promise.all([
     supabase.from("deals").select("*").eq("id", entityId).single(),
     supabase.from("deal_lenders").select("id, name, stage, notes, tracking_status, created_at").eq("deal_id", entityId).order("created_at", { ascending: false }),
     supabase.from("deal_milestones").select("id, title, completed, due_date, created_at").eq("deal_id", entityId).order("due_date", { ascending: true }),
     supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(10),
     supabase.from("tasks").select("id, title, status, priority, due_date").eq("deal_id", entityId).in("status", ["todo", "in_progress"]).order("due_date", { ascending: true }),
+    supabase.from("outstanding_items").select("id, description, status, priority, assigned_to, due_date, eta, notes, lender_id").eq("deal_id", entityId).order("position", { ascending: true }),
   ]);
   const deal = dealRes.data;
   if (!deal) return "Deal not found.";
@@ -24,7 +25,8 @@ async function fetchDealContext(supabase: any, entityId: string) {
   const milestones = milestonesRes.data || [];
   const activities = activityRes.data || [];
   const tasks = tasksRes.data || [];
-  return `DEAL: ${deal.company}\nValue: $${deal.value?.toLocaleString() || "N/A"} | Stage: ${deal.stage || "N/A"} | Status: ${deal.status || "N/A"}\nType: ${deal.deal_type || "N/A"} | Created: ${deal.created_at?.slice(0, 10)}\nNotes: ${deal.notes || "None"}\nNarrative: ${deal.narrative || "None"}\n\nLENDERS (${lenders.length}):\n${lenders.map((l: any) => `- ${l.name} | Stage: ${l.stage || "N/A"} | Status: ${l.tracking_status || "N/A"}`).join("\n") || "None"}\n\nMILESTONES (${milestones.length}):\n${milestones.map((m: any) => `- [${m.completed ? "✓" : "○"}] ${m.title} (due: ${m.due_date || "N/A"})`).join("\n") || "None"}\n\nRECENT ACTIVITY (${activities.length}):\n${activities.map((a: any) => `- ${a.created_at?.slice(0, 10)}: ${a.description} (${a.activity_type})`).join("\n") || "None"}\n\nOPEN TASKS (${tasks.length}):\n${tasks.map((t: any) => `- [${t.priority}] ${t.title} (due: ${t.due_date || "N/A"})`).join("\n") || "None"}`;
+  const outstanding = outstandingRes.data || [];
+  return `DEAL: ${deal.company}\nValue: $${deal.value?.toLocaleString() || "N/A"} | Stage: ${deal.stage || "N/A"} | Status: ${deal.status || "N/A"}\nType: ${deal.deal_type || "N/A"} | Created: ${deal.created_at?.slice(0, 10)}\nNotes: ${deal.notes || "None"}\nNarrative: ${deal.narrative || "None"}\n\nLENDERS (${lenders.length}):\n${lenders.map((l: any) => `- ${l.name} | Stage: ${l.stage || "N/A"} | Status: ${l.tracking_status || "N/A"}`).join("\n") || "None"}\n\nMILESTONES (${milestones.length}):\n${milestones.map((m: any) => `- [${m.completed ? "✓" : "○"}] ${m.title} (due: ${m.due_date || "N/A"}) [id: ${m.id}]`).join("\n") || "None"}\n\nOUTSTANDING ITEMS (${outstanding.length}):\n${outstanding.map((o: any) => `- [${o.status}] ${o.description} | Priority: ${o.priority} | Due: ${o.due_date || "N/A"} | ETA: ${o.eta || "N/A"}`).join("\n") || "None"}\n\nRECENT ACTIVITY (${activities.length}):\n${activities.map((a: any) => `- ${a.created_at?.slice(0, 10)}: ${a.description} (${a.activity_type})`).join("\n") || "None"}\n\nOPEN TASKS (${tasks.length}):\n${tasks.map((t: any) => `- [${t.priority}] ${t.title} (due: ${t.due_date || "N/A"})`).join("\n") || "None"}`;
 }
 
 async function fetchDealsListContext(supabase: any, _userId: string) {
@@ -48,11 +50,9 @@ async function fetchTasksContext(supabase: any, userId: string) {
   if (!tasks || tasks.length === 0) return "No open tasks.";
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
-  const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const overdue = tasks.filter((t: any) => t.due_date && t.due_date < todayStr);
   const dueToday = tasks.filter((t: any) => t.due_date === todayStr);
-  const dueWeek = tasks.filter((t: any) => t.due_date && t.due_date > todayStr && t.due_date <= weekEnd);
-  return `TASKS OVERVIEW:\nTotal Open: ${tasks.length} | Overdue: ${overdue.length} | Due Today: ${dueToday.length} | Due This Week: ${dueWeek.length}\n\nOVERDUE:\n${overdue.map((t: any) => `- [${t.priority}] ${t.title} (due: ${t.due_date})`).join("\n") || "None"}\n\nDUE TODAY:\n${dueToday.map((t: any) => `- [${t.priority}] ${t.title}`).join("\n") || "None"}\n\nDUE THIS WEEK:\n${dueWeek.map((t: any) => `- [${t.priority}] ${t.title} (due: ${t.due_date})`).join("\n") || "None"}`;
+  return `YOUR TASKS (${tasks.length}):\nOverdue: ${overdue.length} | Due Today: ${dueToday.length}\n\n${tasks.map((t: any) => `- [${t.priority}] ${t.title} | Status: ${t.status} | Due: ${t.due_date || "N/A"}`).join("\n")}`;
 }
 
 async function fetchDashboardContext(supabase: any, userId: string) {
@@ -93,7 +93,7 @@ const tools = [
     type: "function",
     function: {
       name: "get_deal",
-      description: "Get details about a specific deal by ID or by searching company name.",
+      description: "Get details about a specific deal by ID or by searching company name. Returns deal info, lenders, milestones, and outstanding items.",
       parameters: {
         type: "object",
         properties: {
@@ -195,10 +195,7 @@ const tools = [
     function: {
       name: "get_pipeline_summary",
       description: "Get pipeline summary: counts by stage, total value, key metrics.",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
+      parameters: { type: "object", properties: {} },
     },
   },
   {
@@ -223,13 +220,14 @@ const tools = [
     type: "function",
     function: {
       name: "get_activity_log",
-      description: "Get recent activity for a deal, user, or company.",
+      description: "Get recent activity/communications history for a deal or globally. Use for questions like 'when was the last update?' or 'what's recent activity?'",
       parameters: {
         type: "object",
         properties: {
           deal_id: { type: "string" },
-          days: { type: "number" },
+          days: { type: "number", description: "Limit to last N days" },
           activity_type: { type: "string" },
+          limit: { type: "number", description: "Max results (default 20)" },
         },
       },
     },
@@ -269,6 +267,78 @@ const tools = [
       },
     },
   },
+  // ── NEW DATA ACCESS TOOLS ──
+  {
+    type: "function",
+    function: {
+      name: "get_outstanding_items",
+      description: "Get outstanding items (action items, requests, follow-ups) for a deal. Use when user asks about outstanding items, open requests, or pending actions.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+          status: { type: "string", description: "Filter by status: open, completed, all", enum: ["open", "completed", "all"] },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_deal_milestones",
+      description: "Get detailed milestone status for a deal including completion dates. Use when user asks about milestone progress, what's complete/incomplete.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_data_room_documents",
+      description: "Get uploaded documents in the deal's data room. Use when user asks 'what documents have been uploaded?', 'what documents are missing?', or about the data room.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_deal_memo",
+      description: "Get the internal deal memo content including narrative, highlights, hurdles, analyst notes, lender notes, and approval status. Use when user asks about the deal memo, narrative, key terms, or company description.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_deal_writeup",
+      description: "Get the deal writeup/company profile including management team, financials, industry info, and company details. Use when user asks about the management team, company background, or deal writeup.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
 ];
 
 // ── Tool executors ──────────────────────────────────────────────
@@ -278,9 +348,12 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (args.deal_id) {
         const { data } = await supabase.from("deals").select("*").eq("id", args.deal_id).single();
         if (!data) return { error: "Deal not found" };
-        const { data: lenders } = await supabase.from("deal_lenders").select("name, stage, notes, tracking_status").eq("deal_id", args.deal_id);
-        const { data: milestones } = await supabase.from("deal_milestones").select("title, completed, due_date").eq("deal_id", args.deal_id);
-        return { deal: data, lenders: lenders || [], milestones: milestones || [] };
+        const [lendersRes, milestonesRes, outstandingRes] = await Promise.all([
+          supabase.from("deal_lenders").select("id, name, stage, notes, tracking_status").eq("deal_id", args.deal_id),
+          supabase.from("deal_milestones").select("id, title, completed, due_date").eq("deal_id", args.deal_id).order("position", { ascending: true }),
+          supabase.from("outstanding_items").select("id, description, status, priority, assigned_to, due_date, eta, notes").eq("deal_id", args.deal_id).order("position", { ascending: true }),
+        ]);
+        return { deal: data, lenders: lendersRes.data || [], milestones: milestonesRes.data || [], outstanding_items: outstandingRes.data || [] };
       }
       if (args.search) {
         const { data } = await supabase.from("deals").select("id, company, value, stage, status, deal_type, updated_at").ilike("company", `%${args.search}%`).limit(5);
@@ -302,7 +375,6 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return { count: results.length, deals: results };
     }
     case "update_deal_stage": {
-      // Look up the deal to get current info
       const { data: deal } = await supabase.from("deals").select("id, company, stage").eq("id", args.deal_id).single();
       if (!deal) return { error: "Deal not found" };
       return {
@@ -354,7 +426,6 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return { total: deals.length, active, totalValue, byStage: stageCounts };
     }
     case "draft_email": {
-      // Return info so the LLM can compose the email. The LLM itself will generate the email body.
       let dealInfo = null;
       if (args.deal_id) {
         const { data } = await supabase.from("deals").select("company, value, stage, deal_type").eq("id", args.deal_id).single();
@@ -370,14 +441,18 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       };
     }
     case "get_activity_log": {
-      let q = supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name, deal_id").order("created_at", { ascending: false }).limit(20);
+      const maxResults = args.limit || 20;
+      let q = supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name, deal_id").order("created_at", { ascending: false }).limit(maxResults);
       if (args.deal_id) q = q.eq("deal_id", args.deal_id);
       if (args.activity_type) q = q.eq("activity_type", args.activity_type);
+      if (args.days) {
+        const cutoff = new Date(Date.now() - args.days * 24 * 60 * 60 * 1000).toISOString();
+        q = q.gte("created_at", cutoff);
+      }
       const { data } = await q;
       return { activities: data || [] };
     }
     case "update_milestone": {
-      // Look up milestone info
       const { data: milestone } = await supabase.from("deal_milestones").select("id, title, completed").eq("id", args.milestone_id).single();
       if (!milestone) return { error: "Milestone not found" };
       const title = args.milestone_title || milestone.title;
@@ -401,9 +476,125 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         params: { lender_id: args.lender_id, lender_name: args.lender_name, stage: args.stage, tracking_status: args.tracking_status, deal_id: args.deal_id },
       };
     }
+    // ── NEW DATA ACCESS TOOLS ──
+    case "get_outstanding_items": {
+      let q = supabase.from("outstanding_items").select("id, description, status, priority, assigned_to, due_date, eta, notes, lender_id, created_at").eq("deal_id", args.deal_id).order("position", { ascending: true });
+      if (args.status === "open") q = q.in("status", ["open", "pending", "in_progress"]);
+      else if (args.status === "completed") q = q.eq("status", "completed");
+      const { data } = await q;
+      const items = data || [];
+      // Try to resolve lender names
+      if (items.length > 0) {
+        const lenderIds = [...new Set(items.filter((i: any) => i.lender_id).map((i: any) => i.lender_id))];
+        if (lenderIds.length > 0) {
+          const { data: lenders } = await supabase.from("deal_lenders").select("id, name").in("id", lenderIds);
+          const lenderMap = new Map((lenders || []).map((l: any) => [l.id, l.name]));
+          items.forEach((i: any) => { if (i.lender_id) i.lender_name = lenderMap.get(i.lender_id) || "Unknown"; });
+        }
+      }
+      return { count: items.length, outstanding_items: items };
+    }
+    case "get_deal_milestones": {
+      const { data } = await supabase.from("deal_milestones").select("id, title, completed, completed_at, due_date, position, status, created_at, updated_at").eq("deal_id", args.deal_id).order("position", { ascending: true });
+      const milestones = data || [];
+      const completed = milestones.filter((m: any) => m.completed).length;
+      return { total: milestones.length, completed, incomplete: milestones.length - completed, milestones };
+    }
+    case "get_data_room_documents": {
+      const [attachmentsRes, spaceDocsRes, checklistRes] = await Promise.all([
+        supabase.from("deal_attachments").select("id, name, category, content_type, size_bytes, created_at, source").eq("deal_id", args.deal_id).order("created_at", { ascending: false }),
+        supabase.from("deal_space_documents").select("id, name, content_type, size_bytes, created_at").eq("deal_id", args.deal_id).order("created_at", { ascending: false }),
+        supabase.from("data_room_checklist_items").select("id, label, category, is_required").limit(100),
+      ]);
+      const attachments = attachmentsRes.data || [];
+      const spaceDocs = spaceDocsRes.data || [];
+      const checklistItems = checklistRes.data || [];
+
+      // Format sizes
+      const formatSize = (bytes: number) => {
+        if (!bytes) return "N/A";
+        if (bytes < 1024) return `${bytes}B`;
+        if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)}KB`;
+        return `${(bytes / 1048576).toFixed(1)}MB`;
+      };
+
+      return {
+        data_room_documents: attachments.map((a: any) => ({
+          name: a.name, category: a.category, type: a.content_type, size: formatSize(a.size_bytes), uploaded: a.created_at?.slice(0, 10), source: a.source,
+        })),
+        deal_space_documents: spaceDocs.map((d: any) => ({
+          name: d.name, type: d.content_type, size: formatSize(d.size_bytes), uploaded: d.created_at?.slice(0, 10),
+        })),
+        checklist_items: checklistItems.map((c: any) => ({
+          label: c.label, category: c.category, required: c.is_required,
+        })),
+        total_attachments: attachments.length,
+        total_space_docs: spaceDocs.length,
+      };
+    }
+    case "get_deal_memo": {
+      const { data: memo } = await supabase.from("deal_memos").select("narrative, highlights, hurdles, analyst_notes, lender_notes, other_notes, approval_state, current_approval_level, submitted_at, approved_at, rejected_at, rejection_reason, updated_at").eq("deal_id", args.deal_id).single();
+      if (!memo) return { has_memo: false, message: "No deal memo exists for this deal yet." };
+      return {
+        has_memo: true,
+        narrative: memo.narrative || "Not written yet",
+        highlights: memo.highlights || "None",
+        hurdles: memo.hurdles || "None",
+        analyst_notes: memo.analyst_notes || "None",
+        lender_notes: memo.lender_notes || "None",
+        other_notes: memo.other_notes || "None",
+        approval_state: memo.approval_state,
+        current_approval_level: memo.current_approval_level,
+        submitted_at: memo.submitted_at,
+        approved_at: memo.approved_at,
+        rejected_at: memo.rejected_at,
+        rejection_reason: memo.rejection_reason,
+        last_updated: memo.updated_at,
+      };
+    }
+    case "get_deal_writeup": {
+      const { data: writeup } = await supabase.from("deal_writeups").select("company_name, description, industry, location, year_founded, headcount, deal_type, capital_ask, use_of_funds, revenue_type, billing_model, b2b_b2c, gross_margins, profitability, last_year_revenue, this_year_revenue, total_equity_raised, existing_debt_details, collateral_available, sponsorship, customer_base, team, company_highlights, key_items, financial_comments, company_url, linkedin_url").eq("deal_id", args.deal_id).single();
+      if (!writeup) return { has_writeup: false, message: "No deal writeup exists for this deal." };
+      return {
+        has_writeup: true,
+        company: {
+          name: writeup.company_name,
+          description: writeup.description,
+          industry: writeup.industry,
+          location: writeup.location,
+          year_founded: writeup.year_founded,
+          headcount: writeup.headcount,
+          website: writeup.company_url,
+          linkedin: writeup.linkedin_url,
+        },
+        deal: {
+          type: writeup.deal_type,
+          capital_ask: writeup.capital_ask,
+          use_of_funds: writeup.use_of_funds,
+        },
+        financials: {
+          revenue_type: writeup.revenue_type,
+          billing_model: writeup.billing_model,
+          b2b_b2c: writeup.b2b_b2c,
+          gross_margins: writeup.gross_margins,
+          profitability: writeup.profitability,
+          last_year_revenue: writeup.last_year_revenue,
+          this_year_revenue: writeup.this_year_revenue,
+          total_equity_raised: writeup.total_equity_raised,
+          existing_debt: writeup.existing_debt_details,
+          collateral: writeup.collateral_available,
+          sponsorship: writeup.sponsorship,
+        },
+        management_team: writeup.team || [],
+        highlights: writeup.company_highlights || [],
+        key_items: writeup.key_items || [],
+        financial_comments: writeup.financial_comments || [],
+        customer_base: writeup.customer_base,
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
-    }
+  }
 }
 
 // ── Confirm action executor ──────────────────────────────────────
@@ -412,12 +603,10 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
     case "update_deal_stage": {
       const { error } = await supabase.from("deals").update({ stage: params.new_stage }).eq("id", params.deal_id);
       if (error) return { success: false, error: error.message };
-      // Verify the change actually happened
       const { data: verified } = await supabase.from("deals").select("stage").eq("id", params.deal_id).single();
       if (!verified || verified.stage !== params.new_stage) {
         return { success: false, error: `Failed to move "${params.deal_name}" to "${params.new_stage}". The stage is still "${verified?.stage || 'unknown'}". Please try again or do it manually.` };
       }
-      // Log activity
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id,
         activity_type: "stage_change",
@@ -444,12 +633,10 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
     case "update_milestone": {
       const { error } = await supabase.from("deal_milestones").update({ completed: params.completed, completed_at: params.completed ? new Date().toISOString() : null }).eq("id", params.milestone_id);
       if (error) return { success: false, error: error.message };
-      // Verify
       const { data: verified } = await supabase.from("deal_milestones").select("completed").eq("id", params.milestone_id).single();
       if (!verified || verified.completed !== params.completed) {
         return { success: false, error: `Failed to ${params.completed ? 'complete' : 'uncomplete'} "${params.milestone_title}". Please try again or do it manually.` };
       }
-      // Log activity
       if (params.deal_id) {
         await supabase.from("activity_logs").insert({
           deal_id: params.deal_id,
@@ -466,7 +653,6 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (params.tracking_status) updateFields.tracking_status = params.tracking_status;
       const { error } = await supabase.from("deal_lenders").update(updateFields).eq("id", params.lender_id);
       if (error) return { success: false, error: error.message };
-      // Verify
       const { data: verified } = await supabase.from("deal_lenders").select("stage, tracking_status").eq("id", params.lender_id).single();
       if (!verified) return { success: false, error: `Failed to update lender "${params.lender_name}". Please try again or do it manually.` };
       return { success: true, message: `Updated ${params.lender_name}${params.stage ? ` stage to "${params.stage}"` : ''}${params.tracking_status ? ` status to "${params.tracking_status}"` : ''}`, actionType: "update_lender_status", params: { deal_id: params.deal_id, lender_id: params.lender_id } };
@@ -547,8 +733,8 @@ ${contextData}
 
 RULES:
 1. Always ground answers in the actual data provided. Never fabricate deal names, lender names, amounts, or dates.
-2. If asked about data you don't have, say so and suggest what the user can do.
-3. For WRITE actions (moving deals, creating tasks), USE THE APPROPRIATE TOOL. The tool will return a confirmation object — include it verbatim in your response.
+2. If asked about data you don't have, USE A TOOL to fetch it. You have tools for: outstanding items, milestones, data room documents, deal memo, deal writeup/management team, activity log, lenders, and tasks.
+3. For WRITE actions (moving deals, creating tasks, updating milestones), USE THE APPROPRIATE TOOL. The tool will return a confirmation object — include it verbatim in your response.
 4. Keep responses concise and actionable. Use bullet points and short paragraphs.
 5. Reference deals, lenders, tasks, contacts by their actual names from the data.
 6. Format financial figures with $ and commas (e.g., $2,500,000).
@@ -557,11 +743,21 @@ RULES:
 9. When drafting emails, return the draft as a JSON code block with \`\`\`json {"to_name": "...", "to_email": "...", "subject": "...", "body": "..."} \`\`\`.
 10. ALWAYS prefer using tools over guessing. If you can look up real data, do it.
 11. CRITICAL: You MUST always provide a response to every user message. If you cannot perform a requested action, explicitly say so (e.g., "I can't do that yet, but here's how to do it manually: ..."). NEVER return an empty or blank response.
-12. When presenting a SPECIFIC DEAL from tool results, wrap it in a \`\`\`json block with responseType "deal_card": \`\`\`json { "responseType": "deal_card", "data": { "deal": { "id": "uuid", "company": "Name", "stage": "Stage", "status": "active", "deal_type": "Type", "value": 1000000, "updated_at": "ISO" }, "milestones": [{"completed":true},{"completed":false}] } } \`\`\`
-12. When presenting LENDER info, use responseType "lender_card": \`\`\`json { "responseType": "lender_card", "data": { "name": "...", "stage": "...", "notes": "...", "created_at": "..." } } \`\`\`
-13. When presenting TASK info, use responseType "task_card": \`\`\`json { "responseType": "task_card", "data": { "id": "...", "title": "...", "priority": "...", "due_date": "...", "assignee": { "display_name": "..." } } } \`\`\`
-14. When presenting PIPELINE SUMMARY, use responseType "pipeline_summary": \`\`\`json { "responseType": "pipeline_summary", "data": { "total": 10, "active": 5, "totalValue": 1000000, "byStage": { "Active": 5 } } } \`\`\`
-15. You CAN include multiple JSON card blocks in one response, mixed with regular markdown text.`;
+12. When presenting a SPECIFIC DEAL from tool results, wrap it in a \`\`\`json block with responseType "deal_card".
+13. When presenting LENDER info, use responseType "lender_card".
+14. When presenting TASK info, use responseType "task_card".
+15. When presenting PIPELINE SUMMARY, use responseType "pipeline_summary".
+16. You CAN include multiple JSON card blocks in one response, mixed with regular markdown text.
+
+AVAILABLE DATA TOOLS (use these when the user asks about specific deal data):
+- get_outstanding_items: For "what are the outstanding items?", "open requests", "pending actions"
+- get_deal_milestones: For milestone progress, completion status
+- get_data_room_documents: For "what documents are uploaded?", "what's in the data room?", "missing documents"
+- get_deal_memo: For deal narrative, highlights, hurdles, analyst/lender notes, approval status
+- get_deal_writeup: For management team, company background, financials, industry info
+- get_activity_log: For "when was the last update?", "recent activity", communication history
+- get_deal_lenders: For lender details on a deal
+- get_tasks: For task lists and overdue items`;
 
     const apiMessages: any[] = [
       { role: "system", content: systemPrompt },
