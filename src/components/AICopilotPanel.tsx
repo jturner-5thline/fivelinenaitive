@@ -139,6 +139,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
       else if (parsed.responseType === 'task_card') segments.push({ type: 'task', value: parsed.data });
       else if (parsed.responseType === 'pipeline_summary') segments.push({ type: 'pipeline', value: parsed.data });
       else if (parsed.action === 'confirm' && parsed.action_type) segments.push({ type: 'confirm', value: parsed });
+      else if (parsed.action === 'auto_executed' && parsed.action_type) segments.push({ type: 'auto_executed', value: parsed });
       else if (parsed.subject && parsed.body) segments.push({ type: 'email', value: parsed });
       else segments.push({ type: 'text', value: match[0] });
     } catch {
