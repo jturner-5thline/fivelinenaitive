@@ -3,39 +3,36 @@ import { fmtCurrency, fmtPct, fmtRatio, isNegative } from './formatters';
 import { annualRollup } from './calculations';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3, Target, Shield, Zap } from 'lucide-react';
+import { DollarSign, BarChart3, Target, Shield, Zap, Users } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ReferenceLine, Area, AreaChart,
 } from 'recharts';
+import { EnhancedKPICard } from './EnhancedKPICard';
 
 interface Props {
   model: SaaSModelData;
 }
 
-function KPICard({ label, value, delta, icon: Icon, deltaPositive }: {
-  label: string; value: string; delta?: string; icon: React.ElementType; deltaPositive?: boolean;
-}) {
-  return (
-    <Card className="border-border/30 bg-card">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
-          <Icon className="h-4 w-4 text-muted-foreground/50" />
-        </div>
-        <div className="text-xl font-bold font-mono tabular-nums">{value}</div>
-        {delta && (
-          <div className={cn(
-            "text-[11px] font-medium mt-1 flex items-center gap-1",
-            deltaPositive ? "text-emerald-500" : "text-destructive"
-          )}>
-            {deltaPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {delta}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+// Generate trailing sparkline data from monthly arrays (last 12 months)
+function trailingSparkline(data: number[], count = 12): number[] {
+  if (!data || data.length === 0) return [];
+  const start = Math.max(0, data.length - count);
+  return data.slice(start).filter(v => v !== 0 || data.some(d => d !== 0));
+}
+
+// Estimate total customers from revenue (synthetic for demo when not available)
+function estimateCustomerCount(model: SaaSModelData): { current: number; sparkline: number[]; delta: number } {
+  // Use ARR / estimated ACV to derive customer count
+  const acv = 120_000; // assumed average contract value
+  const current = model.arrToday > 0 ? Math.round(model.arrToday / acv) : 0;
+  const sparkline = model.totalRevenue.slice(-12).map((r, i, arr) => {
+    const annualized = r * 12;
+    return Math.round(annualized / acv);
+  });
+  const prev = sparkline.length >= 2 ? sparkline[sparkline.length - 2] : current;
+  const delta = prev > 0 ? ((current - prev) / prev) * 100 : 0;
+  return { current, sparkline, delta };
 }
 
 export function SaaSModelDashboard({ model }: Props) {
