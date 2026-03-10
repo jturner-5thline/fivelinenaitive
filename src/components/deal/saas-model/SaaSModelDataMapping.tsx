@@ -1165,11 +1165,17 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                           )}>
                             {rowIdx + 1}
                           </td>
-                          {/* First column: label + suggestion badge */}
+                          {/* First column: label + mapped field / suggestion badge */}
                           <td className="py-1 px-2 whitespace-nowrap border-r border-border/10 font-medium">
                             <div className="flex items-center gap-1.5">
                               <span>{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
-                              {hasSuggestion && (
+                              {/* Show mapped target field */}
+                              {isMappedRow && mappedToField && (
+                                <Badge variant="outline" className="text-[8px] h-4 px-1.5 shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                                  → {mappedToField[0]}
+                                </Badge>
+                              )}
+                              {hasSuggestion && !isMappedRow && (
                                 <Badge
                                   variant="outline"
                                   className={cn(
@@ -1184,7 +1190,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                                   <span className="ml-1 opacity-70">{Math.round(rowSuggestion.confidence * 100)}%</span>
                                 </Badge>
                               )}
-                              {hasSuggestion && rowSuggestion.status === 'pending' && (
+                              {hasSuggestion && !isMappedRow && rowSuggestion.status === 'pending' && (
                                 <div className="flex gap-0.5 ml-auto">
                                   <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-emerald-500 hover:text-emerald-600" onClick={(e) => { e.stopPropagation(); handleAcceptSuggestion(rowIdx); }}>
                                     <Check className="h-3 w-3" />
@@ -1194,7 +1200,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                                   </Button>
                                 </div>
                               )}
-                              {hasSuggestion && rowSuggestion.status === 'accepted' && (
+                              {hasSuggestion && rowSuggestion.status === 'accepted' && !isMappedRow && (
                                 <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 ml-auto" />
                               )}
                             </div>
