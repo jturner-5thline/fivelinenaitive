@@ -125,7 +125,7 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
 /** Renders assistant content with entity links */
 function CopilotAssistantContent({ content }: { content: string }) {
   const navigate = useNavigate();
-  const segments: Array<{ type: 'text' | 'confirm' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline'; value: any }> = [];
+  const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline'; value: any }> = [];
   const jsonBlockRegex = /```json\s*(\{[\s\S]*?\})\s*```/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
