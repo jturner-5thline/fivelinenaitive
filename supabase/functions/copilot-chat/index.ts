@@ -1119,15 +1119,30 @@ serve(async (req) => {
       contextData = "Unable to fetch context data.";
     }
 
+    const activeTab = context?.activeTab || null;
+    const banners = context?.banners || [];
+
     const systemPrompt = `You are the nAItive AI Copilot — an intelligent assistant embedded in a deal management platform for private credit professionals.
 
 CURRENT CONTEXT:
 - Page: ${page}
+- Active Tab: ${activeTab || "None"}
 - Entity: ${context?.entityDetails ? JSON.stringify(context.entityDetails) : "None"}
 - User: ${userName} (${context?.userRole || "member"})
+${banners.length > 0 ? `\nACTIVE ALERTS/BANNERS ON PAGE:\n${banners.map((b: string) => `⚠️ ${b}`).join('\n')}` : ''}
 
 LIVE DATA:
 ${contextData}
+
+TAB-AWARE BEHAVIOR:
+${activeTab === 'lenders' ? '- User is on the Lenders tab. Prioritize lender interaction data, stage changes, and follow-ups when answering questions.' :
+  activeTab === 'deal-info' ? '- User is on the Deal Info tab. Focus on deal details, milestones, outstanding items, and deal health.' :
+  activeTab === 'deal-management' ? '- User is on the Management tab. Focus on team, flags, status, and deal governance.' :
+  activeTab === 'deal-writeup' || activeTab === 'deal-write-up' ? '- User is on the Write Up tab. Focus on company profile, financials, management team.' :
+  activeTab === 'data-room' ? '- User is on the Data Room tab. Focus on documents, uploads, missing requirements.' :
+  activeTab === 'deal-space' ? '- User is on the Deal Space tab. Focus on collaborative content, notes, documents.' :
+  activeTab === 'communication' ? '- User is on the Comms tab. Focus on communications, email drafts, activity history.' :
+  '- Respond based on the general context.'}
 
 RULES:
 1. Always ground answers in actual data. Never fabricate deal names, lender names, amounts, or dates.
@@ -1147,6 +1162,21 @@ RULES:
 13. When presenting deal/lender/task/pipeline data, use responseType cards (deal_card, lender_card, task_card, pipeline_summary).
 14. IMPORTANT: Use the IDs from the LIVE DATA context when calling write tools. The milestone IDs, lender IDs, and outstanding item IDs are listed in [id: ...] format.
 
+PROACTIVE SUGGESTIONS:
+After answering a question or completing an action, ALWAYS offer ONE relevant follow-up suggestion. Examples:
+- After showing lender statuses: "Would you like me to draft follow-up messages for the On-Deck lenders?"
+- After marking a milestone complete: "The next milestone is [X]. Would you like me to set a target date?"
+- When on a deal with alerts: Reference the active banners and offer to help address them.
+- After completing an outstanding item: "Would you like me to check if there are other items that need attention?"
+${banners.length > 0 ? `- IMPORTANT: Be aware of the active alerts shown above. If the user asks "what needs attention?" or similar, reference these alerts specifically and use the get_deal_health tool to provide a comprehensive analysis.` : ''}
+
+"WHAT SHOULD I DO NEXT?" COMMAND:
+When the user asks "what should I do next?", "what needs attention?", "what's the priority?", or similar:
+1. Use the get_deal_health tool to scan for issues
+2. Present a PRIORITIZED action list with the most critical items first
+3. For each issue, offer an actionable suggestion the user can act on immediately
+4. Group issues by category (Milestones, Lenders, Documents, Outstanding Items)
+
 WRITE ACTION TOOLS:
 - toggle_milestone: Mark milestone complete/incomplete (LOW RISK, auto-executes)
 - add_milestone: Add new milestone to deal (LOW RISK, auto-executes)
@@ -1160,7 +1190,7 @@ WRITE ACTION TOOLS:
 - create_task: Create a task (needs confirmation)
 
 READ TOOLS:
-- get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deal, search_deals, search_lenders, get_pipeline_summary`;
+- get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health`;
 
     const apiMessages: any[] = [
       { role: "system", content: systemPrompt },
