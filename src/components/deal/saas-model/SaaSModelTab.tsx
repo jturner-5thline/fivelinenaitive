@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
 import { SaaSModelIncomeStatement } from './SaaSModelIncomeStatement';
