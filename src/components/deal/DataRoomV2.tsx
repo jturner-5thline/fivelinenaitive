@@ -519,6 +519,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
             handleDownloadFile={handleDownloadFile}
             onOpenMappingDialog={openMappingDialog}
             allItems={allItems}
+            deleteAttachment={deleteAttachment}
           />
         </div>
 
