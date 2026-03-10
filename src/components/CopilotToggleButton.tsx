@@ -19,6 +19,8 @@ export function CopilotToggleButton() {
     return () => window.removeEventListener('keydown', handler);
   }, [togglePanel]);
 
+  if (isOpen) return null;
+
   return createPortal(
     <button
       onClick={togglePanel}
