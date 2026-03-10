@@ -13,9 +13,20 @@ import {
 } from 'recharts';
 import { EnhancedKPICard } from './EnhancedKPICard';
 import { AIInsightsPanel } from './AIInsightsPanel';
+import { AnnotationBadge } from './AnnotationThread';
+import type { Annotation } from '@/hooks/useModelAnnotations';
+
+interface AnnotationHook {
+  annotations: Annotation[];
+  getAnnotationsForTarget: (targetType: string, targetRef: string) => Annotation[];
+  addAnnotation: (targetType: Annotation['target_type'], targetRef: string, content: string, mentions?: string[]) => Promise<any>;
+  resolveAnnotation: (id: string) => Promise<void>;
+  deleteAnnotation: (id: string) => Promise<void>;
+}
 
 interface Props {
   model: SaaSModelData;
+  annotations?: AnnotationHook;
 }
 
 type PeriodFilter = 'all' | 'ttm' | '6m' | '3m';
