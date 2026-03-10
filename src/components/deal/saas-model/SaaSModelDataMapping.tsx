@@ -242,6 +242,9 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [lastSavedCount, setLastSavedCount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [autoMapResults, setAutoMapResults] = useState<AutoMapResult[]>([]);
+  const [validationWarnings, setValidationWarnings] = useState<ValidationWarning[]>([]);
+  const [showValidation, setShowValidation] = useState(true);
 
   const handleSaveSettings = () => {
     updateModel(prev => ({ ...prev, settings: { ...localSettings } }));
