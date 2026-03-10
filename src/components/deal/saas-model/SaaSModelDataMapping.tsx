@@ -822,9 +822,11 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     return (
       <div className="space-y-4">
         {renderSettingsSection()}
-        <Card className="border-border/30 border-dashed">
-          <CardContent className="p-12 flex flex-col items-center justify-center text-center"
-            onDragOver={e => e.preventDefault()} onDrop={handleDrop}>
+        <Card className="border-border/30 border-dashed group/dropzone hover:border-primary/40 transition-colors">
+          <CardContent className="p-16 flex flex-col items-center justify-center text-center"
+            onDragOver={e => { e.preventDefault(); e.currentTarget.closest('.group\\/dropzone')?.classList.add('border-primary/60'); }}
+            onDragLeave={e => { e.currentTarget.closest('.group\\/dropzone')?.classList.remove('border-primary/60'); }}
+            onDrop={e => { e.currentTarget.closest('.group\\/dropzone')?.classList.remove('border-primary/60'); handleDrop(e); }}>
             {isProcessing ? (
               <div className="flex flex-col items-center gap-3">
                 <RefreshCw className="h-10 w-10 text-primary animate-spin" />
@@ -832,13 +834,18 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
               </div>
             ) : (
               <>
-                <Upload className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: 'rgba(76,111,255,0.1)' }}>
+                  <Upload className="h-7 w-7" style={{ color: '#4C6FFF' }} />
+                </div>
                 <h3 className="text-sm font-semibold mb-1">Upload Financial Statements</h3>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Drag & drop Excel files (.xlsx, .xls, .csv) or click to browse
+                <p className="text-xs text-muted-foreground mb-1">
+                  Drag & drop Excel files or click to browse
                 </p>
-                <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-                  Browse Files
+                <p className="text-[10px] text-muted-foreground/60 mb-4">
+                  Supports .xlsx, .xls, .csv — Multiple files welcome
+                </p>
+                <Button size="sm" className="gap-1.5" onClick={() => fileInputRef.current?.click()}>
+                  <FileSpreadsheet className="h-3.5 w-3.5" /> Browse Files
                 </Button>
                 <input ref={fileInputRef} type="file" className="hidden" accept=".xlsx,.xls,.csv" multiple
                   onChange={e => e.target.files && handleFilesSelected(e.target.files)} />
