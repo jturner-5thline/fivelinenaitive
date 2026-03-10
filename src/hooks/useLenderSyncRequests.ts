@@ -248,6 +248,18 @@ export function useLenderSyncRequests(): UseLenderSyncRequestsResult {
 
       if (updateError) throw updateError;
 
+      // Sync the merged result back to FLEx
+      try {
+        const { error: syncError } = await supabase.functions.invoke('sync-lender-to-flex', {
+          body: { lender_id: request.existing_lender_id },
+        });
+        if (syncError) {
+          console.warn('Failed to sync merged lender back to FLEx:', syncError);
+        }
+      } catch (syncErr) {
+        console.warn('Error syncing merged lender to FLEx:', syncErr);
+      }
+
       // Update the request status
       const { error: statusError } = await supabase
         .from('lender_sync_requests')
