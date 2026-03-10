@@ -244,19 +244,63 @@ export function ChecklistTreePane({
                   )}
                 </div>
                 <div className="space-y-px ml-1">
-                  {unmappedFiles.slice(0, 10).map(file => (
-                    <div
-                      key={file.id}
-                      className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-pointer"
-                      onClick={() => setPreviewFile?.(file)}
-                    >
-                      <FileIcon name={file.name} className="h-3.5 w-3.5" />
-                      <span className="truncate">{file.name}</span>
-                    </div>
-                  ))}
+                  {unmappedFiles.slice(0, 10).map(file => {
+                    const isChecked = selectedUnmapped.has(file.id);
+                    return (
+                      <div
+                        key={file.id}
+                        className={cn(
+                          "flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-pointer",
+                          isChecked && "ring-1 ring-primary bg-primary/5"
+                        )}
+                        onClick={() => setPreviewFile?.(file)}
+                      >
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              setSelectedUnmapped(prev => {
+                                const next = new Set(prev);
+                                checked ? next.add(file.id) : next.delete(file.id);
+                                return next;
+                              });
+                            }}
+                            className="shrink-0 h-3.5 w-3.5"
+                          />
+                        </div>
+                        <FileIcon name={file.name} className="h-3.5 w-3.5" />
+                        <span className="truncate">{file.name}</span>
+                      </div>
+                    );
+                  })}
                   {unmappedFiles.length > 10 && (
                     <span className="text-[10px] text-muted-foreground px-2">+{unmappedFiles.length - 10} more</span>
                   )}
+                </div>
+                {selectedUnmapped.size > 0 && deleteAttachment && (
+                  <div className="flex items-center gap-2 mt-1.5 px-2">
+                    <span className="text-[10px] text-muted-foreground">{selectedUnmapped.size} selected</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-5 px-2 text-[10px] gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={async () => {
+                        const filesToDelete = unmappedFiles.filter(f => selectedUnmapped.has(f.id));
+                        const count = filesToDelete.length;
+                        if (!window.confirm(`Delete ${count} file${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+                        for (const file of filesToDelete) {
+                          await deleteAttachment(file);
+                        }
+                        setSelectedUnmapped(new Set());
+                      }}
+                    >
+                      <Trash2 className="h-2.5 w-2.5" /> Delete
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-5 px-2 text-[10px]" onClick={() => setSelectedUnmapped(new Set())}>
+                      Clear
+                    </Button>
+                  </div>
+                )}
                 </div>
               </div>
             </>
