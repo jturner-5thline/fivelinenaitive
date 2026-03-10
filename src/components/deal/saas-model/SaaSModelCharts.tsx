@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, memo } from 'react';
 import { SaaSModelData } from './types';
 import { fmtCurrency, fmtPct } from './formatters';
 import { Card, CardContent } from '@/components/ui/card';
