@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3 } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
 import { SaaSModelIncomeStatement } from './SaaSModelIncomeStatement';
@@ -8,6 +8,7 @@ import { SaaSModelBalanceSheet } from './SaaSModelBalanceSheet';
 import { SaaSModelDataMapping } from './SaaSModelDataMapping';
 import { SaaSModelSensitivity } from './SaaSModelSensitivity';
 import { SaaSModelDebtServicing } from './SaaSModelDebtServicing';
+import { SaaSModelCharts } from './SaaSModelCharts';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -84,6 +85,9 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           <TabsTrigger value="debt-servicing" className="gap-1.5 text-xs rounded-sm h-7">
             <Landmark className="h-3.5 w-3.5" /> Debt Servicing
           </TabsTrigger>
+          <TabsTrigger value="charts" className="gap-1.5 text-xs rounded-sm h-7">
+            <BarChart3 className="h-3.5 w-3.5" /> Charts
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
@@ -103,6 +107,9 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         </TabsContent>
         <TabsContent value="debt-servicing" className="mt-4">
           <SaaSModelDebtServicing lenders={lenders} updateLender={updateLender} />
+        </TabsContent>
+        <TabsContent value="charts" className="mt-4">
+          <SaaSModelCharts model={model} />
         </TabsContent>
       </Tabs>
     </div>
