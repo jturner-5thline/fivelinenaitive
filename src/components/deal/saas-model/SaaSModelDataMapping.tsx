@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { SaaSModelData, SaaSModelSettings as SaaSModelSettingsType } from './types';
 import { IS_FIELDS, BS_FIELDS, FieldMapping, MappingFieldName, FileAnalysisResult } from './types';
 import { Card, CardContent } from '@/components/ui/card';
