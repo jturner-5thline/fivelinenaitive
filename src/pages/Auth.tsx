@@ -534,7 +534,7 @@ const Auth = () => {
                 </Button>
               )}
 
-              {(mode === "login" || mode === "signup") && (
+              {(mode === "login" || mode === "signup" || mode === "gate") && (
                 <>
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
