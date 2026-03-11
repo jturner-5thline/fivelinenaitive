@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { lovable } from "@/integrations/lovable/index";
 import naitiveLogoFull from "@/assets/naitive-logo-dark-mode-no-circle.png";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
