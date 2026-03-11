@@ -2531,6 +2531,7 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
+                    {hasDealManagementAccess && (
                     <TabsTrigger value="deal-management" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Management
                       {infoRequestActionCount > 0 && (
@@ -2539,6 +2540,7 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
+                    )}
                     <TabsTrigger value="deal-writeup" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Write Up</TabsTrigger>
                     <TabsTrigger value="data-room" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Data Room
