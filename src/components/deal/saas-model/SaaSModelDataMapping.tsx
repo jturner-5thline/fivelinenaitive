@@ -655,6 +655,15 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           </Button>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => {
+            if (selectedFile) {
+              const url = URL.createObjectURL(selectedFile.file);
+              setExpandedFileUrl(url);
+              setExpandedPreview(true);
+            }
+          }}>
+            <Maximize2 className="h-3.5 w-3.5" /> Expand
+          </Button>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>Change file</Button>
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
             {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
