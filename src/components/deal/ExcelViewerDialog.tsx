@@ -107,7 +107,7 @@ export function ExcelViewerDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           {signedUrl && (
             <ExcelViewer
               fileUrl={signedUrl}
