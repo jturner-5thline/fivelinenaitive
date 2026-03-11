@@ -481,6 +481,7 @@ export default function DealDetail() {
   const { hasAccess: hasLenderMatchingAccess } = useFeatureAccess('lender_matching');
   const { hasPageAccess } = usePageAccessFlags();
   const hasDealSpaceAccess = hasPageAccess('deal_space');
+  const hasDealManagementAccess = hasPageAccess('deal_management');
   const canPushToFlex = hasPageAccess('flex_push');
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading } = useDealsContext();
@@ -2530,6 +2531,7 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
+                    {hasDealManagementAccess && (
                     <TabsTrigger value="deal-management" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Management
                       {infoRequestActionCount > 0 && (
@@ -2538,6 +2540,7 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
+                    )}
                     <TabsTrigger value="deal-writeup" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Write Up</TabsTrigger>
                     <TabsTrigger value="data-room" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Data Room
@@ -4275,6 +4278,7 @@ export default function DealDetail() {
               </div>
                 </TabsContent>
 
+                {hasDealManagementAccess && (
                 <TabsContent value="deal-management" className={cn("mt-6 space-y-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch min-h-[350px]">
                     <div className="flex">
@@ -4289,6 +4293,7 @@ export default function DealDetail() {
                   </div>
                   <DealActivityTab dealId={id!} />
                 </TabsContent>
+                )}
 
                 <TabsContent value="deal-writeup" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-writeup-${tabDirection}`}>
                   <DealWriteUp

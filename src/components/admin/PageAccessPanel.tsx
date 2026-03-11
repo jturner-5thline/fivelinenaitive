@@ -159,6 +159,12 @@ const pageConfigs: PageConfig[] = [
     icon: <Sparkles className="h-5 w-5" />
   },
   { 
+    featureKey: "page_deal_management", 
+    label: "Deal Management Tab", 
+    description: "Management tab in deal detail with tasks, info requests, and activity",
+    icon: <Cog className="h-5 w-5" />
+  },
+  { 
     featureKey: "page_lenders", 
     label: "Lender Directory", 
     description: "Master lender directory and management",

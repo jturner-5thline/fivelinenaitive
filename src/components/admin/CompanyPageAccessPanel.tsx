@@ -60,6 +60,7 @@ const featureConfigs: FeatureConfig[] = [
   { featureKey: 'deal_pulse_widgets', label: 'Deal Pulse Widgets', description: 'Health score, days in stage, lender count metrics', icon: <Activity className="h-4 w-4" /> },
   { featureKey: 'page_deal_detail', label: 'Deal Detail Page', description: 'Individual deal detail view', icon: <Briefcase className="h-4 w-4" /> },
   { featureKey: 'page_deal_space', label: 'Deal Space', description: 'AI-powered deal workspace', icon: <Sparkles className="h-4 w-4" /> },
+  { featureKey: 'page_deal_management', label: 'Deal Management Tab', description: 'Management tab in deal detail', icon: <Cog className="h-4 w-4" /> },
   { featureKey: 'page_lenders', label: 'Lender Directory', description: 'Master lender directory', icon: <Building2 className="h-4 w-4" /> },
   { featureKey: 'page_analytics', label: 'Analytics', description: 'Charts, metrics, and performance insights', icon: <BarChart3 className="h-4 w-4" /> },
   { featureKey: 'page_reports', label: 'Reports', description: 'Custom and scheduled reporting', icon: <FileSignature className="h-4 w-4" /> },
