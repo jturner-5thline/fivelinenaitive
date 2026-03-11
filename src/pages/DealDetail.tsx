@@ -4278,6 +4278,7 @@ export default function DealDetail() {
               </div>
                 </TabsContent>
 
+                {hasDealManagementAccess && (
                 <TabsContent value="deal-management" className={cn("mt-6 space-y-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch min-h-[350px]">
                     <div className="flex">
@@ -4292,6 +4293,7 @@ export default function DealDetail() {
                   </div>
                   <DealActivityTab dealId={id!} />
                 </TabsContent>
+                )}
 
                 <TabsContent value="deal-writeup" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-writeup-${tabDirection}`}>
                   <DealWriteUp
