@@ -481,6 +481,7 @@ export default function DealDetail() {
   const { hasAccess: hasLenderMatchingAccess } = useFeatureAccess('lender_matching');
   const { hasPageAccess } = usePageAccessFlags();
   const hasDealSpaceAccess = hasPageAccess('deal_space');
+  const hasDealManagementAccess = hasPageAccess('deal_management');
   const canPushToFlex = hasPageAccess('flex_push');
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading } = useDealsContext();
