@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { SaaSModelData, SaaSModelSettings as SaaSModelSettingsType } from './types';
 import { IS_FIELDS, BS_FIELDS, FieldMapping, MappingFieldName, FileAnalysisResult } from './types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download } from 'lucide-react';
 import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
+import { ExcelViewer } from '@/components/deal/ExcelViewer';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { formatUSD, extractAmount } from '@/lib/formatters/currency';
@@ -49,6 +51,8 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   const [autoMapResults, setAutoMapResults] = useState<AutoMapResult[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<ValidationWarning[]>([]);
   const [showValidation, setShowValidation] = useState(true);
+  const [expandedPreview, setExpandedPreview] = useState(false);
+  const [expandedFileUrl, setExpandedFileUrl] = useState<string | null>(null);
 
   // Header detection
   const detectedHeaders = useMemo(() => {
@@ -651,6 +655,15 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           </Button>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => {
+            if (selectedFile) {
+              const url = URL.createObjectURL(selectedFile.file);
+              setExpandedFileUrl(url);
+              setExpandedPreview(true);
+            }
+          }}>
+            <Maximize2 className="h-3.5 w-3.5" /> Expand
+          </Button>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>Change file</Button>
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
             {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
@@ -872,6 +885,35 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           </CardContent>
         </Card>
       )}
+      {/* Expanded Excel Preview Dialog */}
+      <Dialog open={expandedPreview} onOpenChange={(open) => {
+        if (!open) {
+          setExpandedPreview(false);
+          if (expandedFileUrl) { URL.revokeObjectURL(expandedFileUrl); setExpandedFileUrl(null); }
+        }
+      }}>
+        <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 bg-card/60 backdrop-blur-xl border-border/40">
+          <DialogHeader className="flex-shrink-0 px-4 py-3 border-b">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="truncate max-w-[500px] text-base">
+                {selectedFile?.file.name}
+              </DialogTitle>
+              <Button variant="ghost" size="icon" onClick={() => { setExpandedPreview(false); if (expandedFileUrl) { URL.revokeObjectURL(expandedFileUrl); setExpandedFileUrl(null); } }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+            {expandedFileUrl && (
+              <ExcelViewer
+                fileUrl={expandedFileUrl}
+                fileName={selectedFile?.file.name || ''}
+                readOnly
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
