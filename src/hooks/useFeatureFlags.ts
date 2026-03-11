@@ -207,9 +207,9 @@ export const usePageAccessFlags = () => {
     // Demo account cannot access finance page
     if (isDemoAccount && pageName === 'finance') return false;
 
-    // While company overrides are still loading, fall back conservatively:
-    // If user has a company but overrides haven't loaded yet, block features
-    // that could be company-gated to prevent flash of unauthorized content.
+    // While flags or company overrides are still loading, block access
+    // to prevent flash of unauthorized content.
+    if (flagsLoading) return false;
     if (effectiveCompanyId && overridesLoading) return false;
 
     // Check company-level override (applies to all users including 5thLine in support mode)
