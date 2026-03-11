@@ -51,6 +51,8 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   const [autoMapResults, setAutoMapResults] = useState<AutoMapResult[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<ValidationWarning[]>([]);
   const [showValidation, setShowValidation] = useState(true);
+  const [expandedPreview, setExpandedPreview] = useState(false);
+  const [expandedFileUrl, setExpandedFileUrl] = useState<string | null>(null);
 
   // Header detection
   const detectedHeaders = useMemo(() => {
