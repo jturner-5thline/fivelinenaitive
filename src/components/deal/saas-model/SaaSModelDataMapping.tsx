@@ -885,6 +885,35 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           </CardContent>
         </Card>
       )}
+      {/* Expanded Excel Preview Dialog */}
+      <Dialog open={expandedPreview} onOpenChange={(open) => {
+        if (!open) {
+          setExpandedPreview(false);
+          if (expandedFileUrl) { URL.revokeObjectURL(expandedFileUrl); setExpandedFileUrl(null); }
+        }
+      }}>
+        <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 bg-card/60 backdrop-blur-xl border-border/40">
+          <DialogHeader className="flex-shrink-0 px-4 py-3 border-b">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="truncate max-w-[500px] text-base">
+                {selectedFile?.file.name}
+              </DialogTitle>
+              <Button variant="ghost" size="icon" onClick={() => { setExpandedPreview(false); if (expandedFileUrl) { URL.revokeObjectURL(expandedFileUrl); setExpandedFileUrl(null); } }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+            {expandedFileUrl && (
+              <ExcelViewer
+                fileUrl={expandedFileUrl}
+                fileName={selectedFile?.file.name || ''}
+                readOnly
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
