@@ -890,9 +890,18 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       </div>
 
       {/* Split panel: spreadsheet + field sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="rounded-lg"
+        onLayout={(sizes) => {
+          try { localStorage.setItem('data-mapping-panel-ratio', JSON.stringify(sizes)); } catch {}
+        }}
+      >
         {/* Left: Spreadsheet */}
-        <div className="lg:col-span-3">
+        <ResizablePanel
+          defaultSize={(() => { try { const s = localStorage.getItem('data-mapping-panel-ratio'); return s ? JSON.parse(s)[0] : 50; } catch { return 50; } })()}
+          minSize={30}
+        >
           <Card className="border-border/30">
             <CardContent className="p-0">
               <div className="flex border-b border-border/30 overflow-x-auto">
