@@ -1244,6 +1244,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           minSize={25}
         >
           <DataMappingFieldSidebar
+            ref={sidebarRef}
             fieldMappings={fieldMappings}
             selectedRows={selectedRows}
             autoMapResults={autoMapResults}
