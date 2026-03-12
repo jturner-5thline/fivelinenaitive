@@ -1065,7 +1065,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           defaultSize={(() => { try { const s = localStorage.getItem('data-mapping-panel-ratio'); return s ? JSON.parse(s)[0] : 50; } catch { return 50; } })()}
           minSize={30}
         >
-          <Card className="border-border/30" ref={spreadsheetRef} tabIndex={0} className2-ignore="outline-none">
+          <div ref={spreadsheetRef} tabIndex={0} className="outline-none">
+          <Card className="border-border/30">
             <CardContent className="p-0">
               <div className="flex border-b border-border/30 overflow-x-auto">
                 {selectedFile.sheets.map((s, i) => (
