@@ -400,9 +400,24 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     });
 
     setValidationWarnings(warnings);
-    if (warnings.filter(w => w.severity === 'error').length > 0) toast.warning(`${warnings.filter(w => w.severity === 'error').length} validation error(s)`);
-    else if (warnings.length > 0) toast.info(`${warnings.length} validation note(s)`);
-    else toast.success('No validation issues found');
+    setShowValidation(true);
+
+    const errors = warnings.filter(w => w.severity === 'error');
+    const warningItems = warnings.filter(w => w.severity === 'warning');
+    const infoItems = warnings.filter(w => w.severity === 'info');
+
+    if (errors.length > 0) {
+      const details = errors.map(e => `• ${e.field}: ${e.message}`).join('\n');
+      toast.error(`${errors.length} validation error(s)`, { description: details, duration: 8000 });
+    } else if (warningItems.length > 0) {
+      const details = warningItems.map(w => `• ${w.field}: ${w.message}`).join('\n');
+      toast.warning(`${warningItems.length} warning(s)`, { description: details, duration: 6000 });
+    } else if (infoItems.length > 0) {
+      const details = infoItems.map(i => `• ${i.field}: ${i.message}`).join('\n');
+      toast.info(`${infoItems.length} note(s)`, { description: details, duration: 5000 });
+    } else {
+      toast.success('No validation issues found');
+    }
   }, [fieldMappings, selectedFile]);
 
   const mappedCount = Object.keys(fieldMappings).length;
@@ -650,9 +665,9 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleAutoMap}>
             <Zap className="h-3.5 w-3.5" /> Auto-Map
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={runValidation} disabled={mappedCount === 0}>
-            <ShieldAlert className="h-3.5 w-3.5" /> Validate
-          </Button>
+           <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
+             <ShieldAlert className="h-3.5 w-3.5" /> Validate
+           </Button>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => {
