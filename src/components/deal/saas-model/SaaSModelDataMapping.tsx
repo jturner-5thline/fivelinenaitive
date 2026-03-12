@@ -861,13 +861,31 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <Maximize2 className="h-3.5 w-3.5" /> Expand
           </Button>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>Change file</Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
-            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            {isSaving ? 'Saving...' : 'Save Progress'}
-          </Button>
-          <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save & Apply All
-          </Button>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
+                  {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  {isSaving ? 'Saving...' : 'Save Draft'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[240px] text-center">
+                Saves your current mapping assignments without updating the financial model. You can continue mapping later.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save &amp; Push to Model
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[260px] text-center">
+                Saves all mappings AND pushes mapped data into the Income Statement, Balance Sheet, and downstream analysis tabs.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
