@@ -332,11 +332,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   // Keep ref in sync for imperative handle
   useEffect(() => { handleSaveProgressRef.current = handleSaveProgress; }, [handleSaveProgress]);
 
-  const handleRecalculateWithLog = useCallback(async () => {
-    const companyId = await getCompanyId();
-    if (companyId) await logPatterns(companyId, dealId);
-    handleRecalculate();
-  }, [getCompanyId, logPatterns, dealId, handleRecalculate]);
 
   const analyzeFile = useCallback(async (file: File): Promise<AnalyzedFile> => {
     try {
