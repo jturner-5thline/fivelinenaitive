@@ -329,7 +329,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     finally { setIsSaving(false); }
   }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId]);
 
-  const handleRecalculateWithLog = useCallback(async () => {
+  // Keep ref in sync for imperative handle
+  useEffect(() => { handleSaveProgressRef.current = handleSaveProgress; }, [handleSaveProgress]);
+
     const companyId = await getCompanyId();
     if (companyId) await logPatterns(companyId, dealId);
     handleRecalculate();
