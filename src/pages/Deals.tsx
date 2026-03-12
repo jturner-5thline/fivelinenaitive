@@ -223,6 +223,11 @@ export default function Dashboard() {
       const updates: Record<string, any> = { stage: newStage };
       if (valueOverride !== undefined) {
         updates.value = valueOverride;
+        // Recalculate total fee based on new deal value and existing success fee percent
+        const deal = allDeals.find(d => d.id === dealId);
+        if (deal?.successFeePercent) {
+          updates.totalFee = (deal.successFeePercent / 100) * valueOverride;
+        }
       }
       await updateDeal(dealId, updates);
       toast({ 
