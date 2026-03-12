@@ -706,12 +706,12 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                   </button>
                 ))}
               </div>
-              <ScrollArea className="h-[500px]">
-                <table className="w-full text-[11px] border-collapse">
-                  <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
+              <div className="h-[500px] overflow-auto relative">
+                <table className="w-max text-[11px] border-collapse">
+                  <thead className="sticky top-0 z-20 bg-muted/80 backdrop-blur-sm">
                     <tr>
-                      <th className="w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20">#</th>
-                      <th className="py-1.5 px-2 text-left text-muted-foreground min-w-[120px] border-r border-border/10 font-semibold">Source column</th>
+                      <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted/80 backdrop-blur-sm">#</th>
+                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] border-r border-border/10 font-semibold bg-muted/80 backdrop-blur-sm" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>Account Name</th>
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => (
                         <th key={i + 1} className="py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal">
                           <div className="flex flex-col items-end">
@@ -738,35 +738,48 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                       const hasSuggestion = !!rowSuggestion && rowSuggestion.status !== 'rejected';
                       const isHeaderRow = detectedHeaders.headerRow === rowIdx;
 
+                      const rowBgClass = isHeaderRow
+                        ? "bg-muted/30 font-semibold"
+                        : selectedRows.has(rowIdx)
+                          ? "bg-primary/10 hover:bg-primary/15"
+                          : isMappedRow
+                            ? "bg-emerald-500/5 hover:bg-emerald-500/10"
+                            : hasSuggestion
+                              ? rowSuggestion.category === 'bs'
+                                ? "bg-violet-500/5 hover:bg-violet-500/10"
+                                : "bg-blue-500/5 hover:bg-blue-500/10"
+                              : rowIdx % 2 === 0
+                                ? "bg-transparent hover:bg-muted/20"
+                                : "bg-muted/5 hover:bg-muted/20";
+
+                      // Sticky cell bg needs to match row bg
+                      const stickyBg = isHeaderRow
+                        ? "bg-muted/30"
+                        : selectedRows.has(rowIdx)
+                          ? "bg-primary/10"
+                          : isMappedRow
+                            ? "bg-emerald-500/5"
+                            : hasSuggestion
+                              ? rowSuggestion.category === 'bs' ? "bg-violet-500/5" : "bg-blue-500/5"
+                              : rowIdx % 2 === 0 ? "bg-card" : "bg-muted/5";
+
                       return (
                         <tr key={rowIdx}
-                          className={cn(
-                            "cursor-pointer transition-colors border-b border-border/5",
-                            isHeaderRow
-                              ? "bg-muted/30 font-semibold"
-                              : selectedRows.has(rowIdx)
-                                ? "bg-primary/10 hover:bg-primary/15"
-                                : isMappedRow
-                                  ? "bg-emerald-500/5 hover:bg-emerald-500/10"
-                                  : hasSuggestion
-                                    ? rowSuggestion.category === 'bs'
-                                      ? "bg-violet-500/5 hover:bg-violet-500/10"
-                                      : "bg-blue-500/5 hover:bg-blue-500/10"
-                                    : rowIdx % 2 === 0
-                                      ? "bg-transparent hover:bg-muted/20"
-                                      : "bg-muted/5 hover:bg-muted/20"
-                          )}
+                          className={cn("cursor-pointer transition-colors border-b border-border/5", rowBgClass)}
                           onClick={e => !isHeaderRow && handleRowClick(rowIdx, e)}>
                           <td className={cn(
-                            "py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
+                            "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
                             isHeaderRow ? "bg-muted/20" : hasSuggestion ? "bg-primary/5" : "bg-muted/10",
                           )}>
                             {isHeaderRow ? <Columns className="h-3 w-3 mx-auto text-muted-foreground/60" /> : rowIdx + 1}
                           </td>
-                          <td className="py-1 px-2 whitespace-nowrap border-r border-border/10 font-medium">
-                            <div className="flex items-center gap-1.5">
-                              <span>{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
-                              {isHeaderRow && <Badge variant="outline" className="text-[7px] h-3.5 px-1">HEADER</Badge>}
+                          <td className={cn(
+                            "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r border-border/10 font-medium",
+                            stickyBg,
+                          )} style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>
+                            <div className="flex items-center gap-1.5 overflow-hidden">
+                              <span className="truncate">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
+                              {isHeaderRow && <Badge variant="outline" className="text-[7px] h-3.5 px-1 shrink-0">HEADER</Badge>}
                               {isMappedRow && mappedToField && (
                                 <Badge variant="outline" className="text-[8px] h-4 px-1.5 shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
                                   → {mappedToField[0]}
@@ -785,7 +798,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                                 </Badge>
                               )}
                               {hasSuggestion && !isMappedRow && rowSuggestion.status === 'pending' && (
-                                <div className="flex gap-0.5 ml-auto">
+                                <div className="flex gap-0.5 ml-auto shrink-0">
                                   <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-emerald-500 hover:text-emerald-600" onClick={e => { e.stopPropagation(); handleAcceptSuggestion(rowIdx); }}>
                                     <Check className="h-3 w-3" />
                                   </Button>
@@ -816,7 +829,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                     })}
                   </tbody>
                 </table>
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
         </div>
