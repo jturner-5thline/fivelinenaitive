@@ -829,7 +829,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
                     })}
                   </tbody>
                 </table>
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
         </div>
