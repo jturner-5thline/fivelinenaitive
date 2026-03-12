@@ -34,7 +34,13 @@ interface Props {
   recalculate: () => void;
 }
 
-export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }: Props) {
+export interface DataMappingHandle {
+  hasUnsavedChanges: () => boolean;
+  saveProgress: () => Promise<void>;
+  getUnsavedCount: () => number;
+}
+
+export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }, ref) {
   const [phase, setPhase] = useState<Phase>('upload');
   const [analyzedFiles, setAnalyzedFiles] = useState<AnalyzedFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<AnalyzedFile | null>(null);
@@ -53,6 +59,7 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   const [showValidation, setShowValidation] = useState(true);
   const [expandedPreview, setExpandedPreview] = useState(false);
   const [expandedFileUrl, setExpandedFileUrl] = useState<string | null>(null);
+  const [isRestoringMappings, setIsRestoringMappings] = useState(false);
 
   // Header detection
   const detectedHeaders = useMemo(() => {
