@@ -5,9 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Circle, Sparkles, Check, X, Save, Loader2, Search, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, Sparkles, Check, X, Save, Loader2, Search, Trash2, Wand2 } from 'lucide-react';
 import { IS_FIELDS, BS_FIELDS, type FieldMapping } from './types';
-import { IS_SECTIONS, BS_SECTIONS, getConfidencePct, type AutoMapResult, formatCellValue } from './dataMappingUtils';
+import { IS_SECTIONS, BS_SECTIONS, getConfidencePct, type AutoMapResult } from './dataMappingUtils';
 import { formatUSD } from '@/lib/formatters/currency';
 import type { MappingSuggestion } from '@/hooks/useMappingSuggestions';
 import type { AnalyzedFile } from './dataMappingUtils';
@@ -24,22 +24,32 @@ interface Props {
   selectedFile: AnalyzedFile | null;
   activeSheet: number;
   flashedFields: Set<string>;
+  pendingAutoMaps: Record<string, { rowIdx: number; label: string; sheetName: string }>;
   onAssignField: (field: string) => void;
   onRemoveMapping: (field: string, idx: number) => void;
   onAcceptSuggestion: (rowIdx: number) => void;
   onSaveProgress: () => void;
   onClearAllMappings: () => void;
   onDeselectRows: () => void;
+  onAcceptAutoMap: (field: string) => void;
+  onRejectAutoMap: (field: string) => void;
+  onAcceptAllAutoMaps: () => void;
+  onAutoMap: () => void;
 }
 
 export function DataMappingFieldSidebar({
   fieldMappings, selectedRows, autoMapResults, suggestions, mappedCount,
   lastSavedCount, hasUnsavedMappings, isSaving, selectedFile, activeSheet,
-  flashedFields, onAssignField, onRemoveMapping, onAcceptSuggestion, onSaveProgress,
-  onClearAllMappings, onDeselectRows,
+  flashedFields, pendingAutoMaps, onAssignField, onRemoveMapping, onAcceptSuggestion,
+  onSaveProgress, onClearAllMappings, onDeselectRows, onAcceptAutoMap, onRejectAutoMap,
+  onAcceptAllAutoMaps, onAutoMap,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'mapped' | 'unmapped'>('all');
+
+  const totalFields = IS_FIELDS.length + BS_FIELDS.length;
+  const pendingCount = Object.keys(pendingAutoMaps).length;
+  const unmappedCount = totalFields - mappedCount;
 
   const getAutoMapConfidence = (fieldName: string): AutoMapResult | undefined => {
     return autoMapResults.find(r => r.fieldName === fieldName);
@@ -73,7 +83,6 @@ export function DataMappingFieldSidebar({
     if (!sheet || !sheet.data[firstRowIdx]) return null;
     const row = sheet.data[firstRowIdx];
     const accountName = row[0] !== null && row[0] !== undefined ? String(row[0]) : `Row ${firstRowIdx + 1}`;
-    // Get last numeric value in the row as the "most recent period" value
     let lastValue: number | null = null;
     for (let c = row.length - 1; c >= 1; c--) {
       const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '').replace(/[,$]/g, ''));
@@ -97,6 +106,8 @@ export function DataMappingFieldSidebar({
     const sampleVal = isMapped ? getSampleValue(field) : null;
     const fieldSuggestion = getFieldSuggestion(field);
     const isFlashing = flashedFields.has(field);
+    const pendingAuto = pendingAutoMaps[field];
+    const hasPendingAuto = !!pendingAuto;
 
     return (
       <div key={field} className={cn(
@@ -104,14 +115,23 @@ export function DataMappingFieldSidebar({
         isFlashing
           ? "bg-emerald-500/20 ring-1 ring-emerald-500/30"
           : isMapped ? "bg-emerald-500/5 hover:bg-emerald-500/10"
+          : hasPendingAuto ? "bg-amber-500/[0.08] hover:bg-amber-500/[0.12] ring-1 ring-amber-500/20"
           : fieldSuggestion ? "bg-primary/5 hover:bg-primary/10 ring-1 ring-primary/15"
           : "hover:bg-muted/20"
       )}>
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {isMapped ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+            : hasPendingAuto ? <Wand2 className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
             : fieldSuggestion ? <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
             : <Circle className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />}
           <span className={cn("text-xs truncate", isMapped && "font-medium")}>{field}</span>
+          {/* Pending auto-map amber tag */}
+          {hasPendingAuto && !isMapped && (
+            <Badge variant="outline" className="text-[8px] h-4 px-1.5 shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 gap-0.5">
+              <Wand2 className="h-2 w-2" />
+              {pendingAuto.label}
+            </Badge>
+          )}
           {isMapped && (() => {
             const autoMap = getAutoMapConfidence(field);
             if (autoMap) {
@@ -127,7 +147,7 @@ export function DataMappingFieldSidebar({
             }
             return null;
           })()}
-          {fieldSuggestion && !isMapped && (
+          {fieldSuggestion && !isMapped && !hasPendingAuto && (
             <Badge variant="outline" className="text-[8px] h-4 px-1 bg-primary/5 text-primary border-primary/20 shrink-0">
               AI · Row {fieldSuggestion.rowIdx + 1}
             </Badge>
@@ -143,16 +163,27 @@ export function DataMappingFieldSidebar({
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {sampleVal !== null && (
             <span className="text-[10px] tabular-nums text-muted-foreground">{formatUSD(sampleVal)}</span>
           )}
-          {fieldSuggestion && !isMapped && (
+          {/* Pending auto-map accept/reject buttons */}
+          {hasPendingAuto && !isMapped && (
+            <div className="flex items-center gap-0.5">
+              <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10" onClick={() => onAcceptAutoMap(field)}>
+                <Check className="h-3 w-3 mr-0.5" /> Accept
+              </Button>
+              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive" onClick={() => onRejectAutoMap(field)}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+          {fieldSuggestion && !isMapped && !hasPendingAuto && (
             <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 text-primary" onClick={() => onAcceptSuggestion(fieldSuggestion.rowIdx)}>
               <Check className="h-3 w-3 mr-0.5" /> Apply
             </Button>
           )}
-          {selectedRows.size > 0 && (
+          {selectedRows.size > 0 && !hasPendingAuto && (
             <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 opacity-0 group-hover:opacity-100" onClick={() => onAssignField(field)}>Assign</Button>
           )}
         </div>
@@ -231,11 +262,51 @@ export function DataMappingFieldSidebar({
                 className="h-5 text-[10px] px-2 rounded-sm flex-1"
                 onClick={() => setFilterMode(mode)}
               >
-                {mode === 'all' ? 'All' : mode === 'mapped' ? `Mapped (${mappedCount})` : `Unmapped (${(IS_FIELDS.length + BS_FIELDS.length) - mappedCount})`}
+                {mode === 'all' ? 'All' : mode === 'mapped' ? `Mapped (${mappedCount})` : `Unmapped (${unmappedCount})`}
               </Button>
             ))}
           </div>
         </div>
+
+        {/* Auto-Map All button — shown when unmapped fields remain and no pending suggestions */}
+        {unmappedCount > 0 && pendingCount === 0 && (
+          <div className="mb-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-8 text-xs gap-2 border-amber-500/30 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/40"
+              onClick={onAutoMap}
+            >
+              <Wand2 className="h-3.5 w-3.5" />
+              Auto-Map All ({unmappedCount} unmapped)
+            </Button>
+          </div>
+        )}
+
+        {/* Pending auto-map review banner */}
+        {pendingCount > 0 && (
+          <div className="mb-3 p-2.5 rounded-lg bg-amber-500/[0.08] border border-amber-500/20 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wand2 className="h-3.5 w-3.5 text-amber-500" />
+                <span className="text-xs text-amber-500 font-medium">
+                  Auto-mapped {pendingCount} of {unmappedCount + pendingCount} unmapped row{unmappedCount + pendingCount !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Review suggestions below. Accept or reject each one.</p>
+            <div className="flex items-center gap-2">
+              <Button size="sm" className="h-6 text-[10px] px-3 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onAcceptAllAutoMaps}>
+                <Check className="h-3 w-3" /> Accept All ({pendingCount})
+              </Button>
+              <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-destructive" onClick={() => {
+                Object.keys(pendingAutoMaps).forEach(f => onRejectAutoMap(f));
+              }}>
+                Dismiss All
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Quick-assign for selected rows */}
         {selectedRows.size > 0 && (

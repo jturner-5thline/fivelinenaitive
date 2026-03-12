@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2 } from 'lucide-react';
 import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
 import { ExcelViewer } from '@/components/deal/ExcelViewer';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,6 +62,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [isRestoringMappings, setIsRestoringMappings] = useState(false);
   const [flashedRows, setFlashedRows] = useState<Set<number>>(new Set());
   const [flashedFields, setFlashedFields] = useState<Set<string>>(new Set());
+  const [pendingAutoMaps, setPendingAutoMaps] = useState<Record<string, { rowIdx: number; label: string; sheetName: string }>>({});
 
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
@@ -451,33 +452,80 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     const sheet = selectedFile.sheets[activeSheet];
     if (!sheet) return;
     const results: AutoMapResult[] = [];
-    const newMappings: Record<string, FieldMapping[]> = { ...fieldMappings };
-    const alreadyMapped = new Set(Object.keys(newMappings));
+    const pending: Record<string, { rowIdx: number; label: string; sheetName: string }> = {};
+    const alreadyMapped = new Set(Object.keys(fieldMappings));
+    const alreadyPending = new Set(Object.keys(pendingAutoMaps));
     const mappedRows = new Set<number>();
-    Object.values(newMappings).forEach(maps => maps.forEach(m => mappedRows.add(m.rowIdx)));
+    Object.values(fieldMappings).forEach(maps => maps.forEach(m => mappedRows.add(m.rowIdx)));
+    Object.values(pendingAutoMaps).forEach(p => mappedRows.add(p.rowIdx));
 
     sheet.data.forEach((row, rowIdx) => {
       if (mappedRows.has(rowIdx)) return;
       const label = String(row[0] || '').toLowerCase().trim();
       if (!label) return;
       for (const [keyword, field] of Object.entries(KEYWORD_ALIASES)) {
-        if (label.includes(keyword) && !alreadyMapped.has(field)) {
+        if (label.includes(keyword) && !alreadyMapped.has(field) && !alreadyPending.has(field)) {
           const confidence = getMatchConfidence(label, keyword);
           const matchType = label === keyword ? 'exact' : label.startsWith(keyword) ? 'keyword' : 'fuzzy';
           results.push({ fieldName: field, rowIdx, label: String(row[0]), confidence, matchType });
-          newMappings[field] = [{ sheet: sheet.name, rowIdx, label: String(row[0]) }];
+          pending[field] = { rowIdx, label: String(row[0]), sheetName: sheet.name };
           alreadyMapped.add(field);
+          alreadyPending.add(field);
           mappedRows.add(rowIdx);
           break;
         }
       }
     });
 
-    if (results.length === 0) { toast.info('No additional fields could be auto-mapped'); return; }
-    setFieldMappings(newMappings);
+    if (Object.keys(pending).length === 0) { toast.info('No additional fields could be auto-mapped'); return; }
+    setPendingAutoMaps(prev => ({ ...prev, ...pending }));
     setAutoMapResults(prev => [...prev, ...results]);
-    toast.success(`Auto-mapped ${results.length} field${results.length !== 1 ? 's' : ''}`);
-  }, [selectedFile, activeSheet, fieldMappings]);
+    toast.success(`Found ${Object.keys(pending).length} suggested mapping${Object.keys(pending).length !== 1 ? 's' : ''} — review below`);
+  }, [selectedFile, activeSheet, fieldMappings, pendingAutoMaps]);
+
+  const handleAcceptAutoMap = useCallback((fieldName: string) => {
+    const pending = pendingAutoMaps[fieldName];
+    if (!pending) return;
+    setFieldMappings(prev => ({
+      ...prev,
+      [fieldName]: [...(prev[fieldName] || []), { sheet: pending.sheetName, rowIdx: pending.rowIdx, label: pending.label }],
+    }));
+    setPendingAutoMaps(prev => {
+      const next = { ...prev };
+      delete next[fieldName];
+      return next;
+    });
+    // Flash
+    setFlashedRows(new Set([pending.rowIdx]));
+    setFlashedFields(new Set([fieldName]));
+    setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
+  }, [pendingAutoMaps]);
+
+  const handleRejectAutoMap = useCallback((fieldName: string) => {
+    setPendingAutoMaps(prev => {
+      const next = { ...prev };
+      delete next[fieldName];
+      return next;
+    });
+  }, []);
+
+  const handleAcceptAllAutoMaps = useCallback(() => {
+    const entries = Object.entries(pendingAutoMaps);
+    if (entries.length === 0) return;
+    setFieldMappings(prev => {
+      const next = { ...prev };
+      entries.forEach(([field, p]) => {
+        next[field] = [...(next[field] || []), { sheet: p.sheetName, rowIdx: p.rowIdx, label: p.label }];
+      });
+      return next;
+    });
+    setPendingAutoMaps({});
+    // Flash all
+    setFlashedRows(new Set(entries.map(([_, p]) => p.rowIdx)));
+    setFlashedFields(new Set(entries.map(([field]) => field)));
+    setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
+    toast.success(`Accepted ${entries.length} mapping${entries.length !== 1 ? 's' : ''}`);
+  }, [pendingAutoMaps]);
 
   const runValidation = useCallback(() => {
     const warnings: ValidationWarning[] = [];
@@ -850,6 +898,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                         maps.some(m => m.rowIdx === rowIdx && m.sheet === sheet?.name)
                       );
                       const isMappedRow = !!mappedToField;
+                      const pendingAutoField = Object.entries(pendingAutoMaps).find(([_, p]) => p.rowIdx === rowIdx && p.sheetName === sheet?.name);
+                      const isPendingAutoMap = !!pendingAutoField;
                       const rowSuggestion = getSuggestionForRow(rowIdx);
                       const hasSuggestion = !!rowSuggestion && rowSuggestion.status !== 'rejected';
                       const isHeaderRow = detectedHeaders.headerRow === rowIdx;
@@ -864,20 +914,24 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             ? "bg-cyan-500/15 hover:bg-cyan-500/20"
                             : isMappedRow
                               ? "bg-emerald-500/[0.08] hover:bg-emerald-500/[0.12]"
-                              : hasSuggestion
-                                ? rowSuggestion.category === 'bs'
-                                  ? "bg-violet-500/5 hover:bg-violet-500/10"
-                                  : "bg-blue-500/5 hover:bg-blue-500/10"
-                                : rowIdx % 2 === 0
-                                  ? "bg-transparent hover:bg-muted/20"
-                                  : "bg-muted/5 hover:bg-muted/20";
+                              : isPendingAutoMap
+                                ? "bg-amber-500/[0.08] hover:bg-amber-500/[0.12]"
+                                : hasSuggestion
+                                  ? rowSuggestion.category === 'bs'
+                                    ? "bg-violet-500/5 hover:bg-violet-500/10"
+                                    : "bg-blue-500/5 hover:bg-blue-500/10"
+                                  : rowIdx % 2 === 0
+                                    ? "bg-transparent hover:bg-muted/20"
+                                    : "bg-muted/5 hover:bg-muted/20";
 
-                      // Left border style for selection/mapped state
+                      // Left border style for selection/mapped/pending state
                       const leftBorderClass = isSelected
                         ? "border-l-2 border-l-cyan-400"
                         : isMappedRow
                           ? "border-l-[4px] border-l-emerald-500"
-                          : "";
+                          : isPendingAutoMap
+                            ? "border-l-[3px] border-l-amber-500"
+                            : "";
 
                       // Sticky cell bg needs to match row bg
                       const stickyBg = isFlashing
@@ -888,9 +942,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             ? "bg-cyan-500/15"
                             : isMappedRow
                               ? "bg-emerald-500/[0.08]"
-                              : hasSuggestion
-                                ? rowSuggestion.category === 'bs' ? "bg-violet-500/5" : "bg-blue-500/5"
-                                : rowIdx % 2 === 0 ? "bg-card" : "bg-muted/5";
+                              : isPendingAutoMap
+                                ? "bg-amber-500/[0.08]"
+                                : hasSuggestion
+                                  ? rowSuggestion.category === 'bs' ? "bg-violet-500/5" : "bg-blue-500/5"
+                                  : rowIdx % 2 === 0 ? "bg-card" : "bg-muted/5";
 
                       return (
                         <tr key={rowIdx}
@@ -917,7 +973,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                   → {mappedToField[0]}
                                 </Badge>
                               )}
-                              {hasSuggestion && !isMappedRow && (
+                              {isPendingAutoMap && pendingAutoField && !isMappedRow && (
+                                <Badge variant="outline" className="text-[8px] h-4 px-1.5 shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 gap-0.5">
+                                  <Wand2 className="h-2 w-2" />
+                                  → {pendingAutoField[0]}
+                                </Badge>
+                              )}
+                              {hasSuggestion && !isMappedRow && !isPendingAutoMap && (
                                 <Badge variant="outline" className={cn(
                                   "text-[8px] h-4 px-1.5 shrink-0",
                                   rowSuggestion.category === 'bs'
@@ -980,12 +1042,17 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             selectedFile={selectedFile}
             activeSheet={activeSheet}
             flashedFields={flashedFields}
+            pendingAutoMaps={pendingAutoMaps}
             onAssignField={handleAssignField}
             onRemoveMapping={handleRemoveMapping}
             onAcceptSuggestion={handleAcceptSuggestion}
             onSaveProgress={handleSaveProgress}
             onClearAllMappings={handleClearAllMappings}
             onDeselectRows={() => setSelectedRows(new Set())}
+            onAcceptAutoMap={handleAcceptAutoMap}
+            onRejectAutoMap={handleRejectAutoMap}
+            onAcceptAllAutoMaps={handleAcceptAllAutoMaps}
+            onAutoMap={handleAutoMap}
           />
         </div>
       </div>
