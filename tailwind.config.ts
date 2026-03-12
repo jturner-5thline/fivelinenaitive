@@ -126,6 +126,10 @@ export default {
 			'glow-pulse': {
 				'0%, 100%': { boxShadow: '0 0 8px rgba(126,184,247,0.2)' },
 				'50%': { boxShadow: '0 0 20px rgba(126,184,247,0.4)' }
+			},
+			'mapping-flash': {
+				'0%': { backgroundColor: 'hsl(142 76% 36% / 0.25)' },
+				'100%': { backgroundColor: 'transparent' }
 			}
 		},
   		animation: {
@@ -138,7 +142,8 @@ export default {
   			'slide-in-from-right': 'slide-in-from-right 0.25s ease-out',
   			'slide-in-from-left': 'slide-in-from-left 0.25s ease-out',
   			'pulse-highlight': 'pulse-highlight 1.5s ease-in-out 2',
-			'glow-pulse': 'glow-pulse 2s ease-in-out infinite'
+			'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+			'mapping-flash': 'mapping-flash 600ms ease-out forwards'
   		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',
