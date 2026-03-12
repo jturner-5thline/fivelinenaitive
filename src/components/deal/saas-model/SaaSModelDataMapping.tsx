@@ -287,6 +287,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     const fieldName = suggestion.suggestedField;
     const newMapping: FieldMapping = { sheet: sheet.name, rowIdx, label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`) };
     setFieldMappings(prev => ({ ...prev, [fieldName]: [...(prev[fieldName] || []), newMapping] }));
+    // Trigger flash
+    setFlashedRows(new Set([rowIdx]));
+    setFlashedFields(new Set([fieldName]));
+    setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
     acceptSuggestion(rowIdx);
   }, [getSuggestionForRow, selectedFile, activeSheet, acceptSuggestion]);
 
