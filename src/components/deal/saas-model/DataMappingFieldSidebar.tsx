@@ -138,6 +138,27 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
     return total;
   };
 
+  // Get all numeric values from mapped rows for sparkline
+  const getFieldTrendData = (fieldName: string): number[] => {
+    const mappings = fieldMappings[fieldName];
+    if (!mappings || !selectedFile) return [];
+    // Sum values across all mapped rows per column
+    const colValues: Record<number, number> = {};
+    mappings.forEach(m => {
+      const sheet = selectedFile.sheets.find(s => s.name === m.sheet) || selectedFile.sheets[0];
+      const row = sheet?.data[m.rowIdx];
+      if (!row) return;
+      for (let c = 1; c < row.length; c++) {
+        const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '').replace(/[,$]/g, ''));
+        if (!isNaN(val)) {
+          colValues[c] = (colValues[c] || 0) + val;
+        }
+      }
+    });
+    const cols = Object.keys(colValues).map(Number).sort((a, b) => a - b);
+    return cols.map(c => colValues[c]);
+  };
+
   // Get info about selected rows for the banner
   const selectedRowInfo = (() => {
     if (selectedRows.size === 0 || !selectedFile) return null;
