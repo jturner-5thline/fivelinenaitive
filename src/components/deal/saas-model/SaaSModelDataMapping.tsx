@@ -399,7 +399,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleRowClick = useCallback((rowIdx: number, e: React.MouseEvent) => {
     setSelectedRows(prev => {
       const next = new Set(prev);
-      if (e.ctrlKey || e.metaKey) {
+      if (e.shiftKey && lastClickedRowRef.current !== null) {
+        // Range selection
+        const start = Math.min(lastClickedRowRef.current, rowIdx);
+        const end = Math.max(lastClickedRowRef.current, rowIdx);
+        for (let i = start; i <= end; i++) next.add(i);
+      } else if (e.ctrlKey || e.metaKey) {
         if (next.has(rowIdx)) next.delete(rowIdx); else next.add(rowIdx);
       } else {
         if (next.has(rowIdx) && next.size === 1) next.clear();
@@ -407,6 +412,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       }
       return next;
     });
+    lastClickedRowRef.current = rowIdx;
   }, []);
 
   // Flash animation helper
