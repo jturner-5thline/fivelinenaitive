@@ -452,33 +452,80 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     const sheet = selectedFile.sheets[activeSheet];
     if (!sheet) return;
     const results: AutoMapResult[] = [];
-    const newMappings: Record<string, FieldMapping[]> = { ...fieldMappings };
-    const alreadyMapped = new Set(Object.keys(newMappings));
+    const pending: Record<string, { rowIdx: number; label: string; sheetName: string }> = {};
+    const alreadyMapped = new Set(Object.keys(fieldMappings));
+    const alreadyPending = new Set(Object.keys(pendingAutoMaps));
     const mappedRows = new Set<number>();
-    Object.values(newMappings).forEach(maps => maps.forEach(m => mappedRows.add(m.rowIdx)));
+    Object.values(fieldMappings).forEach(maps => maps.forEach(m => mappedRows.add(m.rowIdx)));
+    Object.values(pendingAutoMaps).forEach(p => mappedRows.add(p.rowIdx));
 
     sheet.data.forEach((row, rowIdx) => {
       if (mappedRows.has(rowIdx)) return;
       const label = String(row[0] || '').toLowerCase().trim();
       if (!label) return;
       for (const [keyword, field] of Object.entries(KEYWORD_ALIASES)) {
-        if (label.includes(keyword) && !alreadyMapped.has(field)) {
+        if (label.includes(keyword) && !alreadyMapped.has(field) && !alreadyPending.has(field)) {
           const confidence = getMatchConfidence(label, keyword);
           const matchType = label === keyword ? 'exact' : label.startsWith(keyword) ? 'keyword' : 'fuzzy';
           results.push({ fieldName: field, rowIdx, label: String(row[0]), confidence, matchType });
-          newMappings[field] = [{ sheet: sheet.name, rowIdx, label: String(row[0]) }];
+          pending[field] = { rowIdx, label: String(row[0]), sheetName: sheet.name };
           alreadyMapped.add(field);
+          alreadyPending.add(field);
           mappedRows.add(rowIdx);
           break;
         }
       }
     });
 
-    if (results.length === 0) { toast.info('No additional fields could be auto-mapped'); return; }
-    setFieldMappings(newMappings);
+    if (Object.keys(pending).length === 0) { toast.info('No additional fields could be auto-mapped'); return; }
+    setPendingAutoMaps(prev => ({ ...prev, ...pending }));
     setAutoMapResults(prev => [...prev, ...results]);
-    toast.success(`Auto-mapped ${results.length} field${results.length !== 1 ? 's' : ''}`);
-  }, [selectedFile, activeSheet, fieldMappings]);
+    toast.success(`Found ${Object.keys(pending).length} suggested mapping${Object.keys(pending).length !== 1 ? 's' : ''} — review below`);
+  }, [selectedFile, activeSheet, fieldMappings, pendingAutoMaps]);
+
+  const handleAcceptAutoMap = useCallback((fieldName: string) => {
+    const pending = pendingAutoMaps[fieldName];
+    if (!pending) return;
+    setFieldMappings(prev => ({
+      ...prev,
+      [fieldName]: [...(prev[fieldName] || []), { sheet: pending.sheetName, rowIdx: pending.rowIdx, label: pending.label }],
+    }));
+    setPendingAutoMaps(prev => {
+      const next = { ...prev };
+      delete next[fieldName];
+      return next;
+    });
+    // Flash
+    setFlashedRows(new Set([pending.rowIdx]));
+    setFlashedFields(new Set([fieldName]));
+    setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
+  }, [pendingAutoMaps]);
+
+  const handleRejectAutoMap = useCallback((fieldName: string) => {
+    setPendingAutoMaps(prev => {
+      const next = { ...prev };
+      delete next[fieldName];
+      return next;
+    });
+  }, []);
+
+  const handleAcceptAllAutoMaps = useCallback(() => {
+    const entries = Object.entries(pendingAutoMaps);
+    if (entries.length === 0) return;
+    setFieldMappings(prev => {
+      const next = { ...prev };
+      entries.forEach(([field, p]) => {
+        next[field] = [...(next[field] || []), { sheet: p.sheetName, rowIdx: p.rowIdx, label: p.label }];
+      });
+      return next;
+    });
+    setPendingAutoMaps({});
+    // Flash all
+    setFlashedRows(new Set(entries.map(([_, p]) => p.rowIdx)));
+    setFlashedFields(new Set(entries.map(([field]) => field)));
+    setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
+    toast.success(`Accepted ${entries.length} mapping${entries.length !== 1 ? 's' : ''}`);
+  }, [pendingAutoMaps]);
 
   const runValidation = useCallback(() => {
     const warnings: ValidationWarning[] = [];
