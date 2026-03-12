@@ -67,6 +67,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [flashedRows, setFlashedRows] = useState<Set<number>>(new Set());
   const [flashedFields, setFlashedFields] = useState<Set<string>>(new Set());
   const [pendingAutoMaps, setPendingAutoMaps] = useState<Record<string, { rowIdx: number; label: string; sheetName: string }>>({});
+  const [draggingRowIdx, setDraggingRowIdx] = useState<number | null>(null);
   const lastClickedRowRef = useRef<number | null>(null);
   const sidebarRef = useRef<FieldSidebarHandle>(null);
   const spreadsheetRef = useRef<HTMLDivElement>(null);
