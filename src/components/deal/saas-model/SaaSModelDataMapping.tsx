@@ -1030,12 +1030,17 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             selectedFile={selectedFile}
             activeSheet={activeSheet}
             flashedFields={flashedFields}
+            pendingAutoMaps={pendingAutoMaps}
             onAssignField={handleAssignField}
             onRemoveMapping={handleRemoveMapping}
             onAcceptSuggestion={handleAcceptSuggestion}
             onSaveProgress={handleSaveProgress}
             onClearAllMappings={handleClearAllMappings}
             onDeselectRows={() => setSelectedRows(new Set())}
+            onAcceptAutoMap={handleAcceptAutoMap}
+            onRejectAutoMap={handleRejectAutoMap}
+            onAcceptAllAutoMaps={handleAcceptAllAutoMaps}
+            onAutoMap={handleAutoMap}
           />
         </div>
       </div>
