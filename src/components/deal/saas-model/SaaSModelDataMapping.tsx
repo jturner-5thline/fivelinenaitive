@@ -11,8 +11,9 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
@@ -22,7 +23,8 @@ import { toast } from 'sonner';
 import { formatUSD, extractAmount } from '@/lib/formatters/currency';
 import { useMappingSuggestions } from '@/hooks/useMappingSuggestions';
 import { supabase } from '@/integrations/supabase/client';
-import { DataMappingFieldSidebar } from './DataMappingFieldSidebar';
+import { DataMappingFieldSidebar, type FieldSidebarHandle } from './DataMappingFieldSidebar';
+import { useMappingHistory, type MappingAction } from './useMappingHistory';
 import {
   type Phase, type AnalyzedFile, type AutoMapResult, type ValidationWarning,
   KEYWORD_ALIASES, getMatchConfidence, applyMappingsToModel,
@@ -65,6 +67,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [flashedRows, setFlashedRows] = useState<Set<number>>(new Set());
   const [flashedFields, setFlashedFields] = useState<Set<string>>(new Set());
   const [pendingAutoMaps, setPendingAutoMaps] = useState<Record<string, { rowIdx: number; label: string; sheetName: string }>>({});
+  const lastClickedRowRef = useRef<number | null>(null);
+  const sidebarRef = useRef<FieldSidebarHandle>(null);
+  const spreadsheetRef = useRef<HTMLDivElement>(null);
+  const { canUndo, canRedo, pushAction, popUndo, popRedo, peekUndo, peekRedo } = useMappingHistory();
 
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
@@ -393,7 +399,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleRowClick = useCallback((rowIdx: number, e: React.MouseEvent) => {
     setSelectedRows(prev => {
       const next = new Set(prev);
-      if (e.ctrlKey || e.metaKey) {
+      if (e.shiftKey && lastClickedRowRef.current !== null) {
+        // Range selection
+        const start = Math.min(lastClickedRowRef.current, rowIdx);
+        const end = Math.max(lastClickedRowRef.current, rowIdx);
+        for (let i = start; i <= end; i++) next.add(i);
+      } else if (e.ctrlKey || e.metaKey) {
         if (next.has(rowIdx)) next.delete(rowIdx); else next.add(rowIdx);
       } else {
         if (next.has(rowIdx) && next.size === 1) next.clear();
@@ -401,6 +412,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       }
       return next;
     });
+    lastClickedRowRef.current = rowIdx;
   }, []);
 
   // Flash animation helper
@@ -417,25 +429,47 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     const newMappings = rowIndices.map(rowIdx => ({
       sheet: sheet.name, rowIdx, label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`),
     }));
-    setFieldMappings(prev => ({ ...prev, [fieldName]: [...(prev[fieldName] || []), ...newMappings] }));
+    const before = { ...fieldMappings };
+    setFieldMappings(prev => {
+      const next = { ...prev, [fieldName]: [...(prev[fieldName] || []), ...newMappings] };
+      pushAction({
+        type: rowIndices.length > 1 ? 'bulk-assign' : 'assign',
+        description: `${newMappings.map(m => m.label).join(', ')} → ${fieldName}`,
+        before, after: next,
+      });
+      return next;
+    });
     triggerFlash(rowIndices, fieldName);
     setSelectedRows(new Set());
-  }, [selectedFile, selectedRows, activeSheet, triggerFlash]);
+  }, [selectedFile, selectedRows, activeSheet, triggerFlash, fieldMappings, pushAction]);
 
   const handleRemoveMapping = useCallback((fieldName: string, idx: number) => {
+    const before = { ...fieldMappings };
+    const removedLabel = fieldMappings[fieldName]?.[idx]?.label || 'Unknown';
     setFieldMappings(prev => {
       const updated = { ...prev };
       updated[fieldName] = updated[fieldName].filter((_, i) => i !== idx);
       if (!updated[fieldName].length) delete updated[fieldName];
+      pushAction({
+        type: 'remove',
+        description: `${removedLabel} ✕ ${fieldName}`,
+        before, after: updated,
+      });
       return updated;
     });
-  }, []);
+  }, [fieldMappings, pushAction]);
 
   const handleClearAllMappings = useCallback(() => {
+    const before = { ...fieldMappings };
+    pushAction({
+      type: 'clear-all',
+      description: `Clear all ${Object.keys(fieldMappings).length} mappings`,
+      before, after: {},
+    });
     setFieldMappings({});
     setAutoMapResults([]);
     toast.info('All mappings cleared');
-  }, []);
+  }, [fieldMappings, pushAction]);
 
   const handleRecalculate = useCallback(() => {
     if (!selectedFile) return;
@@ -488,20 +522,24 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleAcceptAutoMap = useCallback((fieldName: string) => {
     const pending = pendingAutoMaps[fieldName];
     if (!pending) return;
-    setFieldMappings(prev => ({
-      ...prev,
-      [fieldName]: [...(prev[fieldName] || []), { sheet: pending.sheetName, rowIdx: pending.rowIdx, label: pending.label }],
-    }));
+    const before = { ...fieldMappings };
+    setFieldMappings(prev => {
+      const next = {
+        ...prev,
+        [fieldName]: [...(prev[fieldName] || []), { sheet: pending.sheetName, rowIdx: pending.rowIdx, label: pending.label }],
+      };
+      pushAction({ type: 'accept-auto', description: `${pending.label} → ${fieldName}`, before, after: next });
+      return next;
+    });
     setPendingAutoMaps(prev => {
       const next = { ...prev };
       delete next[fieldName];
       return next;
     });
-    // Flash
     setFlashedRows(new Set([pending.rowIdx]));
     setFlashedFields(new Set([fieldName]));
     setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
-  }, [pendingAutoMaps]);
+  }, [pendingAutoMaps, fieldMappings, pushAction]);
 
   const handleRejectAutoMap = useCallback((fieldName: string) => {
     setPendingAutoMaps(prev => {
@@ -514,20 +552,95 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleAcceptAllAutoMaps = useCallback(() => {
     const entries = Object.entries(pendingAutoMaps);
     if (entries.length === 0) return;
+    const before = { ...fieldMappings };
     setFieldMappings(prev => {
       const next = { ...prev };
       entries.forEach(([field, p]) => {
         next[field] = [...(next[field] || []), { sheet: p.sheetName, rowIdx: p.rowIdx, label: p.label }];
       });
+      pushAction({ type: 'accept-all-auto', description: `Accept ${entries.length} auto-maps`, before, after: next });
       return next;
     });
     setPendingAutoMaps({});
-    // Flash all
     setFlashedRows(new Set(entries.map(([_, p]) => p.rowIdx)));
     setFlashedFields(new Set(entries.map(([field]) => field)));
     setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
     toast.success(`Accepted ${entries.length} mapping${entries.length !== 1 ? 's' : ''}`);
-  }, [pendingAutoMaps]);
+  }, [pendingAutoMaps, fieldMappings, pushAction]);
+
+  // Undo/Redo handlers
+  const handleUndo = useCallback(() => {
+    const action = popUndo();
+    if (!action) return;
+    setFieldMappings(action.before);
+    toast.info(`Undid: ${action.description}`);
+  }, [popUndo]);
+
+  const handleRedo = useCallback(() => {
+    const action = popRedo();
+    if (!action) return;
+    setFieldMappings(action.after);
+    toast.info(`Redid: ${action.description}`);
+  }, [popRedo]);
+
+  // Global keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, arrow keys for spreadsheet)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+      // Redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Only handle navigation keys if not in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      // Escape — deselect
+      if (e.key === 'Escape') {
+        setSelectedRows(new Set());
+        return;
+      }
+
+      // Tab — switch between panels
+      if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
+        const activeEl = document.activeElement;
+        const isInSpreadsheet = spreadsheetRef.current?.contains(activeEl);
+        if (isInSpreadsheet) {
+          e.preventDefault();
+          sidebarRef.current?.focusPanel();
+        }
+        return;
+      }
+
+      // Arrow keys for spreadsheet row navigation
+      const isInSpreadsheet = spreadsheetRef.current?.contains(document.activeElement) || document.activeElement === spreadsheetRef.current;
+      if (isInSpreadsheet && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault();
+        setSelectedRows(prev => {
+          const arr = Array.from(prev);
+          const current = arr.length > 0 ? (e.key === 'ArrowDown' ? Math.max(...arr) : Math.min(...arr)) : -1;
+          const next = e.key === 'ArrowDown' ? current + 1 : Math.max(0, current - 1);
+          lastClickedRowRef.current = next;
+          return new Set([next]);
+        });
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleUndo, handleRedo]);
 
   const runValidation = useCallback(() => {
     const warnings: ValidationWarning[] = [];
@@ -849,6 +962,56 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
            <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
              <ShieldAlert className="h-3.5 w-3.5" /> Validate
            </Button>
+          <div className="h-4 w-px bg-border/30" />
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleUndo} disabled={!canUndo}>
+                  <Undo2 className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Undo (Ctrl+Z)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleRedo} disabled={!canRedo}>
+                  <Redo2 className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                <Keyboard className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-64 p-3">
+              <h4 className="text-xs font-semibold mb-2">Keyboard Shortcuts</h4>
+              <div className="space-y-1.5 text-[11px]">
+                {[
+                  ['↑ / ↓', 'Navigate rows / fields'],
+                  ['Click', 'Select row'],
+                  ['Shift+Click', 'Range select rows'],
+                  ['Ctrl+Click', 'Toggle row selection'],
+                  ['Tab', 'Switch to field panel'],
+                  ['Enter', 'Map selected row → focused field'],
+                  ['Delete', 'Remove mapping from focused field'],
+                  ['Escape', 'Deselect all'],
+                  ['Ctrl+Z', 'Undo last mapping action'],
+                  ['Ctrl+Shift+Z', 'Redo'],
+                ].map(([key, desc]) => (
+                  <div key={key} className="flex items-center justify-between">
+                    <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">{key}</kbd>
+                    <span className="text-muted-foreground">{desc}</span>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => {
@@ -902,6 +1065,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           defaultSize={(() => { try { const s = localStorage.getItem('data-mapping-panel-ratio'); return s ? JSON.parse(s)[0] : 50; } catch { return 50; } })()}
           minSize={30}
         >
+          <div ref={spreadsheetRef} tabIndex={0} className="outline-none">
           <Card className="border-border/30">
             <CardContent className="p-0">
               <div className="flex border-b border-border/30 overflow-x-auto">
@@ -1070,6 +1234,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </div>
             </CardContent>
           </Card>
+          </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle className="mx-1" />
@@ -1079,6 +1244,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           minSize={25}
         >
           <DataMappingFieldSidebar
+            ref={sidebarRef}
             fieldMappings={fieldMappings}
             selectedRows={selectedRows}
             autoMapResults={autoMapResults}
