@@ -973,7 +973,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                   → {mappedToField[0]}
                                 </Badge>
                               )}
-                              {hasSuggestion && !isMappedRow && (
+                              {isPendingAutoMap && pendingAutoField && !isMappedRow && (
+                                <Badge variant="outline" className="text-[8px] h-4 px-1.5 shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 gap-0.5">
+                                  <Wand2 className="h-2 w-2" />
+                                  → {pendingAutoField[0]}
+                                </Badge>
+                              )}
+                              {hasSuggestion && !isMappedRow && !isPendingAutoMap && (
                                 <Badge variant="outline" className={cn(
                                   "text-[8px] h-4 px-1.5 shrink-0",
                                   rowSuggestion.category === 'bs'
