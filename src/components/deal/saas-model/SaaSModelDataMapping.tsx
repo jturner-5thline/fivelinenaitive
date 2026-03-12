@@ -1072,8 +1072,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </Card>
         </div>
 
+        <ResizableHandle withHandle className="mx-1" />
         {/* Right: Field sidebar */}
-        <div className="lg:col-span-2">
+        <ResizablePanel
+          defaultSize={(() => { try { const s = localStorage.getItem('data-mapping-panel-ratio'); return s ? JSON.parse(s)[1] : 50; } catch { return 50; } })()}
+          minSize={25}
+        >
           <DataMappingFieldSidebar
             fieldMappings={fieldMappings}
             selectedRows={selectedRows}
