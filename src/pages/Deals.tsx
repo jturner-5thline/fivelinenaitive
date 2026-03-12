@@ -241,7 +241,7 @@ export default function Dashboard() {
         variant: "destructive"
       });
     }
-  }, [updateDeal, toast]);
+  }, [updateDeal, toast, allDeals]);
 
   const handleStageChange = async (dealId: string, newStage: string) => {
     // For 5th Line users, prompt deal size confirmation on specific stages
