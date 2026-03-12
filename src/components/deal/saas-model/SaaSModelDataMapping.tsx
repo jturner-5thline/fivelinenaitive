@@ -425,6 +425,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     toast.success('Model recalculated — Dashboard, IS & BS updated');
   }, [selectedFile, fieldMappings, updateModel]);
 
+  const handleRecalculateWithLog = useCallback(async () => {
+    const companyId = await getCompanyId();
+    if (companyId) await logPatterns(companyId, dealId);
+    handleRecalculate();
+  }, [getCompanyId, logPatterns, dealId, handleRecalculate]);
+
   const handleAutoMap = useCallback(() => {
     if (!selectedFile) return;
     const sheet = selectedFile.sheets[activeSheet];
