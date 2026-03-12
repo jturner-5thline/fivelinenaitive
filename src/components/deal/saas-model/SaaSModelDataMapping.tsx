@@ -61,6 +61,76 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [expandedFileUrl, setExpandedFileUrl] = useState<string | null>(null);
   const [isRestoringMappings, setIsRestoringMappings] = useState(false);
 
+  // Computed unsaved state (used by hooks below — must be before any early returns)
+  const mappedCount = Object.keys(fieldMappings).length;
+  const hasUnsavedMappings = mappedCount > lastSavedCount;
+
+  // Expose imperative handle for parent navigation guard
+  useImperativeHandle(ref, () => ({
+    hasUnsavedChanges: () => mappedCount > lastSavedCount,
+    saveProgress: async () => { await handleSaveProgressRef.current?.(); },
+    getUnsavedCount: () => Math.max(0, mappedCount - lastSavedCount),
+  }), [mappedCount, lastSavedCount]);
+  const handleSaveProgressRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Browser beforeunload guard
+  useEffect(() => {
+    if (!hasUnsavedMappings) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedMappings]);
+
+  // Restore saved mappings from DB on mount
+  useEffect(() => {
+    const restore = async () => {
+      try {
+        const { data } = await supabase
+          .from('deal_saas_mappings' as any)
+          .select('*')
+          .eq('deal_id', dealId)
+          .order('mapped_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!data) return;
+        const saved = data as any;
+        if (saved.field_mappings && typeof saved.field_mappings === 'object') {
+          const restoredMappings = saved.field_mappings as Record<string, FieldMapping[]>;
+          const mappingCount = Object.keys(restoredMappings).length;
+          if (mappingCount > 0) {
+            setFieldMappings(restoredMappings);
+            setLastSavedCount(mappingCount);
+            // If we have a file_storage_path, try to reload the file from storage
+            if (saved.file_storage_path) {
+              setIsRestoringMappings(true);
+              try {
+                const { data: fileData } = await supabase.storage.from('deal-files').download(saved.file_storage_path);
+                if (fileData) {
+                  const file = new File([fileData], saved.file_name || 'restored.xlsx', {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                  });
+                  const result = await parseExcelFromFile(file);
+                  const analysisResult = saved.analysis_result || { status: 'mappable', type: 'Unknown', totalMatches: 0, isMatches: 0, bsMatches: 0, matchedFields: [] };
+                  const restored: AnalyzedFile = { file, sheets: result.sheets, analysis: analysisResult };
+                  setSelectedFile(restored);
+                  setAnalyzedFiles([restored]);
+                  setPhase('mapping');
+                }
+              } catch (err) {
+                console.warn('Could not restore uploaded file from storage:', err);
+              } finally {
+                setIsRestoringMappings(false);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not restore saved mappings:', err);
+      }
+    };
+    restore();
+  }, [dealId]);
+
   // Header detection
   const detectedHeaders = useMemo(() => {
     if (!selectedFile) return { headerRow: null, headers: [] as string[] };
