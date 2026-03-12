@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
 import { ExcelViewer } from '@/components/deal/ExcelViewer';
 import { ScrollArea } from '@/components/ui/scroll-area';
