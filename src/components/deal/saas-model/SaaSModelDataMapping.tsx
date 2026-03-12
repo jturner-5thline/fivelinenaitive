@@ -1070,7 +1070,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </div>
             </CardContent>
           </Card>
-        </div>
+        </ResizablePanel>
 
         <ResizableHandle withHandle className="mx-1" />
         {/* Right: Field sidebar */}
