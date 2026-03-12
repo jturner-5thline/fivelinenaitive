@@ -898,6 +898,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                         maps.some(m => m.rowIdx === rowIdx && m.sheet === sheet?.name)
                       );
                       const isMappedRow = !!mappedToField;
+                      const pendingAutoField = Object.entries(pendingAutoMaps).find(([_, p]) => p.rowIdx === rowIdx && p.sheetName === sheet?.name);
+                      const isPendingAutoMap = !!pendingAutoField;
                       const rowSuggestion = getSuggestionForRow(rowIdx);
                       const hasSuggestion = !!rowSuggestion && rowSuggestion.status !== 'rejected';
                       const isHeaderRow = detectedHeaders.headerRow === rowIdx;
