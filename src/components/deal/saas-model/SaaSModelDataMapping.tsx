@@ -978,11 +978,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             hasUnsavedMappings={hasUnsavedMappings}
             isSaving={isSaving}
             selectedFile={selectedFile}
+            activeSheet={activeSheet}
+            flashedFields={flashedFields}
             onAssignField={handleAssignField}
             onRemoveMapping={handleRemoveMapping}
             onAcceptSuggestion={handleAcceptSuggestion}
             onSaveProgress={handleSaveProgress}
             onClearAllMappings={handleClearAllMappings}
+            onDeselectRows={() => setSelectedRows(new Set())}
           />
         </div>
       </div>

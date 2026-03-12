@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Circle, Sparkles, Check, X, Save, Loader2, Search, Trash2 } from 'lucide-react';
 import { IS_FIELDS, BS_FIELDS, type FieldMapping } from './types';
-import { IS_SECTIONS, BS_SECTIONS, getConfidencePct, type AutoMapResult } from './dataMappingUtils';
+import { IS_SECTIONS, BS_SECTIONS, getConfidencePct, type AutoMapResult, formatCellValue } from './dataMappingUtils';
 import { formatUSD } from '@/lib/formatters/currency';
 import type { MappingSuggestion } from '@/hooks/useMappingSuggestions';
 import type { AnalyzedFile } from './dataMappingUtils';
@@ -22,17 +22,21 @@ interface Props {
   hasUnsavedMappings: boolean;
   isSaving: boolean;
   selectedFile: AnalyzedFile | null;
+  activeSheet: number;
+  flashedFields: Set<string>;
   onAssignField: (field: string) => void;
   onRemoveMapping: (field: string, idx: number) => void;
   onAcceptSuggestion: (rowIdx: number) => void;
   onSaveProgress: () => void;
   onClearAllMappings: () => void;
+  onDeselectRows: () => void;
 }
 
 export function DataMappingFieldSidebar({
   fieldMappings, selectedRows, autoMapResults, suggestions, mappedCount,
-  lastSavedCount, hasUnsavedMappings, isSaving, selectedFile,
-  onAssignField, onRemoveMapping, onAcceptSuggestion, onSaveProgress, onClearAllMappings,
+  lastSavedCount, hasUnsavedMappings, isSaving, selectedFile, activeSheet,
+  flashedFields, onAssignField, onRemoveMapping, onAcceptSuggestion, onSaveProgress,
+  onClearAllMappings, onDeselectRows,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'mapped' | 'unmapped'>('all');
@@ -61,6 +65,23 @@ export function DataMappingFieldSidebar({
     return total;
   };
 
+  // Get info about the first selected row for the banner
+  const selectedRowInfo = (() => {
+    if (selectedRows.size === 0 || !selectedFile) return null;
+    const firstRowIdx = Array.from(selectedRows)[0];
+    const sheet = selectedFile.sheets[activeSheet];
+    if (!sheet || !sheet.data[firstRowIdx]) return null;
+    const row = sheet.data[firstRowIdx];
+    const accountName = row[0] !== null && row[0] !== undefined ? String(row[0]) : `Row ${firstRowIdx + 1}`;
+    // Get last numeric value in the row as the "most recent period" value
+    let lastValue: number | null = null;
+    for (let c = row.length - 1; c >= 1; c--) {
+      const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '').replace(/[,$]/g, ''));
+      if (!isNaN(val)) { lastValue = val; break; }
+    }
+    return { accountName, lastValue, rowIdx: firstRowIdx };
+  })();
+
   const filterField = (field: string): boolean => {
     const matchesSearch = !searchQuery || field.toLowerCase().includes(searchQuery.toLowerCase());
     const isMapped = !!fieldMappings[field];
@@ -75,11 +96,14 @@ export function DataMappingFieldSidebar({
     const isMapped = Boolean(mapped);
     const sampleVal = isMapped ? getSampleValue(field) : null;
     const fieldSuggestion = getFieldSuggestion(field);
+    const isFlashing = flashedFields.has(field);
 
     return (
       <div key={field} className={cn(
-        "flex items-center justify-between py-1.5 px-2 rounded group transition-colors",
-        isMapped ? "bg-emerald-500/5 hover:bg-emerald-500/10"
+        "flex items-center justify-between py-1.5 px-2 rounded group transition-all duration-500",
+        isFlashing
+          ? "bg-emerald-500/20 ring-1 ring-emerald-500/30"
+          : isMapped ? "bg-emerald-500/5 hover:bg-emerald-500/10"
           : fieldSuggestion ? "bg-primary/5 hover:bg-primary/10 ring-1 ring-primary/15"
           : "hover:bg-muted/20"
       )}>
@@ -179,6 +203,25 @@ export function DataMappingFieldSidebar({
               onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
+
+          {/* Selected row banner */}
+          {selectedRowInfo && (
+            <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-card border border-cyan-500/30 border-l-[3px] border-l-cyan-400">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-muted-foreground/70 leading-none mb-0.5">Mapping:</p>
+                <p className="text-xs font-medium truncate">
+                  {selectedRowInfo.accountName}
+                  {selectedRowInfo.lastValue !== null && (
+                    <span className="text-muted-foreground font-normal"> — {formatUSD(selectedRowInfo.lastValue)}</span>
+                  )}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground shrink-0" onClick={onDeselectRows}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+
           <div className="flex gap-1">
             {(['all', 'mapped', 'unmapped'] as const).map(mode => (
               <Button
@@ -196,8 +239,8 @@ export function DataMappingFieldSidebar({
 
         {/* Quick-assign for selected rows */}
         {selectedRows.size > 0 && (
-          <div className="mb-3 p-2.5 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
-            <div className="text-xs text-primary flex items-center gap-2">
+          <div className="mb-3 p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 space-y-2">
+            <div className="text-xs text-cyan-400 flex items-center gap-2">
               <Check className="h-3.5 w-3.5" />
               {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
             </div>
@@ -207,7 +250,7 @@ export function DataMappingFieldSidebar({
                 .slice(0, 12)
                 .map(f => (
                   <button key={f} onClick={() => onAssignField(f)}
-                    className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-medium bg-background/80 hover:bg-primary/20 border border-border/30 hover:border-primary/40 transition-colors text-foreground">
+                    className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-medium bg-background/80 hover:bg-cyan-500/20 border border-border/30 hover:border-cyan-500/40 transition-colors text-foreground">
                     {f}
                   </button>
                 ))}

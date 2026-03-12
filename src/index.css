@@ -331,3 +331,8 @@
     opacity: 0;
   }
 }
+
+@keyframes mapping-flash {
+  0% { background-color: hsl(142 76% 36% / 0.25); }
+  100% { background-color: transparent; }
+}
