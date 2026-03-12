@@ -60,6 +60,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [expandedPreview, setExpandedPreview] = useState(false);
   const [expandedFileUrl, setExpandedFileUrl] = useState<string | null>(null);
   const [isRestoringMappings, setIsRestoringMappings] = useState(false);
+  const [flashedRows, setFlashedRows] = useState<Set<number>>(new Set());
+  const [flashedFields, setFlashedFields] = useState<Set<string>>(new Set());
 
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
@@ -285,6 +287,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     const fieldName = suggestion.suggestedField;
     const newMapping: FieldMapping = { sheet: sheet.name, rowIdx, label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`) };
     setFieldMappings(prev => ({ ...prev, [fieldName]: [...(prev[fieldName] || []), newMapping] }));
+    // Trigger flash
+    setFlashedRows(new Set([rowIdx]));
+    setFlashedFields(new Set([fieldName]));
+    setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
     acceptSuggestion(rowIdx);
   }, [getSuggestionForRow, selectedFile, activeSheet, acceptSuggestion]);
 
@@ -394,15 +400,24 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     });
   }, []);
 
+  // Flash animation helper
+  const triggerFlash = useCallback((rowIndices: number[], fieldName: string) => {
+    setFlashedRows(new Set(rowIndices));
+    setFlashedFields(new Set([fieldName]));
+    setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
+  }, []);
+
   const handleAssignField = useCallback((fieldName: string) => {
     if (!selectedFile || selectedRows.size === 0) return;
     const sheet = selectedFile.sheets[activeSheet];
-    const newMappings = Array.from(selectedRows).map(rowIdx => ({
+    const rowIndices = Array.from(selectedRows);
+    const newMappings = rowIndices.map(rowIdx => ({
       sheet: sheet.name, rowIdx, label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`),
     }));
     setFieldMappings(prev => ({ ...prev, [fieldName]: [...(prev[fieldName] || []), ...newMappings] }));
+    triggerFlash(rowIndices, fieldName);
     setSelectedRows(new Set());
-  }, [selectedFile, selectedRows, activeSheet]);
+  }, [selectedFile, selectedRows, activeSheet, triggerFlash]);
 
   const handleRemoveMapping = useCallback((fieldName: string, idx: number) => {
     setFieldMappings(prev => {
@@ -838,39 +853,52 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       const rowSuggestion = getSuggestionForRow(rowIdx);
                       const hasSuggestion = !!rowSuggestion && rowSuggestion.status !== 'rejected';
                       const isHeaderRow = detectedHeaders.headerRow === rowIdx;
+                      const isSelected = selectedRows.has(rowIdx);
+                      const isFlashing = flashedRows.has(rowIdx);
 
-                      const rowBgClass = isHeaderRow
-                        ? "bg-muted/30 font-semibold"
-                        : selectedRows.has(rowIdx)
-                          ? "bg-primary/10 hover:bg-primary/15"
-                          : isMappedRow
-                            ? "bg-emerald-500/5 hover:bg-emerald-500/10"
-                            : hasSuggestion
-                              ? rowSuggestion.category === 'bs'
-                                ? "bg-violet-500/5 hover:bg-violet-500/10"
-                                : "bg-blue-500/5 hover:bg-blue-500/10"
-                              : rowIdx % 2 === 0
-                                ? "bg-transparent hover:bg-muted/20"
-                                : "bg-muted/5 hover:bg-muted/20";
+                      const rowBgClass = isFlashing
+                        ? "animate-mapping-flash"
+                        : isHeaderRow
+                          ? "bg-muted/30 font-semibold"
+                          : isSelected
+                            ? "bg-cyan-500/15 hover:bg-cyan-500/20"
+                            : isMappedRow
+                              ? "bg-emerald-500/[0.08] hover:bg-emerald-500/[0.12]"
+                              : hasSuggestion
+                                ? rowSuggestion.category === 'bs'
+                                  ? "bg-violet-500/5 hover:bg-violet-500/10"
+                                  : "bg-blue-500/5 hover:bg-blue-500/10"
+                                : rowIdx % 2 === 0
+                                  ? "bg-transparent hover:bg-muted/20"
+                                  : "bg-muted/5 hover:bg-muted/20";
+
+                      // Left border style for selection/mapped state
+                      const leftBorderClass = isSelected
+                        ? "border-l-2 border-l-cyan-400"
+                        : isMappedRow
+                          ? "border-l-[4px] border-l-emerald-500"
+                          : "";
 
                       // Sticky cell bg needs to match row bg
-                      const stickyBg = isHeaderRow
-                        ? "bg-muted/30"
-                        : selectedRows.has(rowIdx)
-                          ? "bg-primary/10"
-                          : isMappedRow
-                            ? "bg-emerald-500/5"
-                            : hasSuggestion
-                              ? rowSuggestion.category === 'bs' ? "bg-violet-500/5" : "bg-blue-500/5"
-                              : rowIdx % 2 === 0 ? "bg-card" : "bg-muted/5";
+                      const stickyBg = isFlashing
+                        ? "bg-emerald-500/20"
+                        : isHeaderRow
+                          ? "bg-muted/30"
+                          : isSelected
+                            ? "bg-cyan-500/15"
+                            : isMappedRow
+                              ? "bg-emerald-500/[0.08]"
+                              : hasSuggestion
+                                ? rowSuggestion.category === 'bs' ? "bg-violet-500/5" : "bg-blue-500/5"
+                                : rowIdx % 2 === 0 ? "bg-card" : "bg-muted/5";
 
                       return (
                         <tr key={rowIdx}
-                          className={cn("cursor-pointer transition-colors border-b border-border/5", rowBgClass)}
+                          className={cn("cursor-pointer transition-colors border-b border-border/5", rowBgClass, leftBorderClass)}
                           onClick={e => !isHeaderRow && handleRowClick(rowIdx, e)}>
                           <td className={cn(
                             "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
-                            isHeaderRow ? "bg-muted/20" : hasSuggestion ? "bg-primary/5" : "bg-muted/10",
+                            isFlashing ? "bg-emerald-500/20" : isSelected ? "bg-cyan-500/15" : isHeaderRow ? "bg-muted/20" : hasSuggestion ? "bg-primary/5" : "bg-muted/10",
                           )}>
                             {isHeaderRow ? <Columns className="h-3 w-3 mx-auto text-muted-foreground/60" /> : rowIdx + 1}
                           </td>
@@ -879,6 +907,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             stickyBg,
                           )} style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>
                             <div className="flex items-center gap-1.5 overflow-hidden">
+                              {isMappedRow && !isHeaderRow && (
+                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                              )}
                               <span className="truncate">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
                               {isHeaderRow && <Badge variant="outline" className="text-[7px] h-3.5 px-1 shrink-0">HEADER</Badge>}
                               {isMappedRow && mappedToField && (
@@ -947,11 +978,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             hasUnsavedMappings={hasUnsavedMappings}
             isSaving={isSaving}
             selectedFile={selectedFile}
+            activeSheet={activeSheet}
+            flashedFields={flashedFields}
             onAssignField={handleAssignField}
             onRemoveMapping={handleRemoveMapping}
             onAcceptSuggestion={handleAcceptSuggestion}
             onSaveProgress={handleSaveProgress}
             onClearAllMappings={handleClearAllMappings}
+            onDeselectRows={() => setSelectedRows(new Set())}
           />
         </div>
       </div>
