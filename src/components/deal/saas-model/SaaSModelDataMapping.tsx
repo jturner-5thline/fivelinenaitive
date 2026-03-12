@@ -552,20 +552,95 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleAcceptAllAutoMaps = useCallback(() => {
     const entries = Object.entries(pendingAutoMaps);
     if (entries.length === 0) return;
+    const before = { ...fieldMappings };
     setFieldMappings(prev => {
       const next = { ...prev };
       entries.forEach(([field, p]) => {
         next[field] = [...(next[field] || []), { sheet: p.sheetName, rowIdx: p.rowIdx, label: p.label }];
       });
+      pushAction({ type: 'accept-all-auto', description: `Accept ${entries.length} auto-maps`, before, after: next });
       return next;
     });
     setPendingAutoMaps({});
-    // Flash all
     setFlashedRows(new Set(entries.map(([_, p]) => p.rowIdx)));
     setFlashedFields(new Set(entries.map(([field]) => field)));
     setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
     toast.success(`Accepted ${entries.length} mapping${entries.length !== 1 ? 's' : ''}`);
-  }, [pendingAutoMaps]);
+  }, [pendingAutoMaps, fieldMappings, pushAction]);
+
+  // Undo/Redo handlers
+  const handleUndo = useCallback(() => {
+    const action = popUndo();
+    if (!action) return;
+    setFieldMappings(action.before);
+    toast.info(`Undid: ${action.description}`);
+  }, [popUndo]);
+
+  const handleRedo = useCallback(() => {
+    const action = popRedo();
+    if (!action) return;
+    setFieldMappings(action.after);
+    toast.info(`Redid: ${action.description}`);
+  }, [popRedo]);
+
+  // Global keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, arrow keys for spreadsheet)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+      // Redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Only handle navigation keys if not in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      // Escape — deselect
+      if (e.key === 'Escape') {
+        setSelectedRows(new Set());
+        return;
+      }
+
+      // Tab — switch between panels
+      if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
+        const activeEl = document.activeElement;
+        const isInSpreadsheet = spreadsheetRef.current?.contains(activeEl);
+        if (isInSpreadsheet) {
+          e.preventDefault();
+          sidebarRef.current?.focusPanel();
+        }
+        return;
+      }
+
+      // Arrow keys for spreadsheet row navigation
+      const isInSpreadsheet = spreadsheetRef.current?.contains(document.activeElement) || document.activeElement === spreadsheetRef.current;
+      if (isInSpreadsheet && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault();
+        setSelectedRows(prev => {
+          const arr = Array.from(prev);
+          const current = arr.length > 0 ? (e.key === 'ArrowDown' ? Math.max(...arr) : Math.min(...arr)) : -1;
+          const next = e.key === 'ArrowDown' ? current + 1 : Math.max(0, current - 1);
+          lastClickedRowRef.current = next;
+          return new Set([next]);
+        });
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleUndo, handleRedo]);
 
   const runValidation = useCallback(() => {
     const warnings: ValidationWarning[] = [];
