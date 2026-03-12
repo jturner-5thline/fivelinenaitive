@@ -522,20 +522,24 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleAcceptAutoMap = useCallback((fieldName: string) => {
     const pending = pendingAutoMaps[fieldName];
     if (!pending) return;
-    setFieldMappings(prev => ({
-      ...prev,
-      [fieldName]: [...(prev[fieldName] || []), { sheet: pending.sheetName, rowIdx: pending.rowIdx, label: pending.label }],
-    }));
+    const before = { ...fieldMappings };
+    setFieldMappings(prev => {
+      const next = {
+        ...prev,
+        [fieldName]: [...(prev[fieldName] || []), { sheet: pending.sheetName, rowIdx: pending.rowIdx, label: pending.label }],
+      };
+      pushAction({ type: 'accept-auto', description: `${pending.label} → ${fieldName}`, before, after: next });
+      return next;
+    });
     setPendingAutoMaps(prev => {
       const next = { ...prev };
       delete next[fieldName];
       return next;
     });
-    // Flash
     setFlashedRows(new Set([pending.rowIdx]));
     setFlashedFields(new Set([fieldName]));
     setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
-  }, [pendingAutoMaps]);
+  }, [pendingAutoMaps, fieldMappings, pushAction]);
 
   const handleRejectAutoMap = useCallback((fieldName: string) => {
     setPendingAutoMaps(prev => {
