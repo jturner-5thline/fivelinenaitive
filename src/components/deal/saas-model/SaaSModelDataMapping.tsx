@@ -332,10 +332,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   // Keep ref in sync for imperative handle
   useEffect(() => { handleSaveProgressRef.current = handleSaveProgress; }, [handleSaveProgress]);
 
-    const companyId = await getCompanyId();
-    if (companyId) await logPatterns(companyId, dealId);
-    handleRecalculate();
-  }, [getCompanyId, logPatterns, dealId]);
 
   const analyzeFile = useCallback(async (file: File): Promise<AnalyzedFile> => {
     try {
@@ -428,6 +424,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     applyMappingsToModel(fieldMappings, selectedFile, updateModel);
     toast.success('Model recalculated — Dashboard, IS & BS updated');
   }, [selectedFile, fieldMappings, updateModel]);
+
+  const handleRecalculateWithLog = useCallback(async () => {
+    const companyId = await getCompanyId();
+    if (companyId) await logPatterns(companyId, dealId);
+    handleRecalculate();
+  }, [getCompanyId, logPatterns, dealId, handleRecalculate]);
 
   const handleAutoMap = useCallback(() => {
     if (!selectedFile) return;
