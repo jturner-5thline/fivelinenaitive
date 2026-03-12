@@ -223,7 +223,7 @@ export function DataMappingFieldSidebar({
           <div className="mb-3 p-2.5 rounded-lg border border-border/30 bg-muted/10 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-              <span><span className="font-medium text-foreground">{mappedCount}</span> fields mapped</span>
+              <span><span className="font-medium text-foreground">{mappedCount}</span> {mappedCount === 1 ? 'field' : 'fields'} mapped</span>
               {hasUnsavedMappings && (
                 <Badge variant="outline" className="text-[8px] h-4 px-1.5 bg-amber-500/10 text-amber-500 border-amber-500/20">Unsaved</Badge>
               )}
