@@ -67,6 +67,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [flashedRows, setFlashedRows] = useState<Set<number>>(new Set());
   const [flashedFields, setFlashedFields] = useState<Set<string>>(new Set());
   const [pendingAutoMaps, setPendingAutoMaps] = useState<Record<string, { rowIdx: number; label: string; sheetName: string }>>({});
+  const lastClickedRowRef = useRef<number | null>(null);
+  const sidebarRef = useRef<FieldSidebarHandle>(null);
+  const spreadsheetRef = useRef<HTMLDivElement>(null);
+  const { canUndo, canRedo, pushAction, popUndo, popRedo, peekUndo, peekRedo } = useMappingHistory();
 
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
