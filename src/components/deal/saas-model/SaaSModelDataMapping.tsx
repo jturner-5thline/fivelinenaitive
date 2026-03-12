@@ -60,6 +60,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [expandedPreview, setExpandedPreview] = useState(false);
   const [expandedFileUrl, setExpandedFileUrl] = useState<string | null>(null);
   const [isRestoringMappings, setIsRestoringMappings] = useState(false);
+  const [flashedRows, setFlashedRows] = useState<Set<number>>(new Set());
+  const [flashedFields, setFlashedFields] = useState<Set<string>>(new Set());
 
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
