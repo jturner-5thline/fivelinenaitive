@@ -754,21 +754,36 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
       )}
 
-      {/* Progress */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">Mapping progress</span>
-          <span className="text-xs text-muted-foreground">{percent}%</span>
-        </div>
-        <Progress value={percent} className="h-2" />
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] text-muted-foreground">
-            <span className="font-medium text-foreground">{mappedCount}</span> of {totalFields} fields · <span className="text-amber-500">{unmappedCount} remaining</span>
-          </p>
-          {hasUnsavedMappings && (
-            <p className="text-[10px] text-amber-500 font-medium">{mappedCount - lastSavedCount} unsaved</p>
-          )}
-        </div>
+      {/* Compact file summary bar */}
+      <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-card/60 px-3 py-1.5">
+        <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <button
+          className="text-[11px] font-medium text-foreground hover:text-primary transition-colors truncate cursor-pointer"
+          onClick={() => {
+            if (selectedFile) {
+              const url = URL.createObjectURL(selectedFile.file);
+              setExpandedFileUrl(url);
+              setExpandedPreview(true);
+            }
+          }}
+          title="Click to expand preview"
+        >
+          {selectedFile.file.name}
+        </button>
+        <span className="text-[10px] text-muted-foreground/60">|</span>
+        <span className="text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{rowCount} rows × {columnCount} cols</span>
+        {detectedHeaders.headers.length > 0 && (
+          <>
+            <span className="text-[10px] text-muted-foreground/60">|</span>
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+              {detectedHeaders.headers[0]} → {detectedHeaders.headers[detectedHeaders.headers.length - 1]}
+            </span>
+          </>
+        )}
+        <span className="text-[10px] text-muted-foreground/60">|</span>
+        <span className={cn("text-[10px] font-medium tabular-nums whitespace-nowrap", percent === 100 ? "text-emerald-500" : "text-muted-foreground")}>
+          {percent}% mapped
+        </span>
       </div>
 
       {/* AI Suggestions Banner */}
