@@ -1102,8 +1102,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             onAcceptAllAutoMaps={handleAcceptAllAutoMaps}
             onAutoMap={handleAutoMap}
           />
-        </div>
-      </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* Mapped data preview */}
       {mappedCount > 0 && (
