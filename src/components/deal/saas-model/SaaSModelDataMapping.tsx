@@ -1154,10 +1154,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <div className="flex items-center justify-end mt-3 gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleSaveProgress} disabled={!hasUnsavedMappings || isSaving}>
                 {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                Save Progress
+                Save Draft
               </Button>
               <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save & Apply All
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save &amp; Push to Model
               </Button>
             </div>
           </CardContent>
