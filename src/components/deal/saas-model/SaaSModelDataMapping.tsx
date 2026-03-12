@@ -914,20 +914,24 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             ? "bg-cyan-500/15 hover:bg-cyan-500/20"
                             : isMappedRow
                               ? "bg-emerald-500/[0.08] hover:bg-emerald-500/[0.12]"
-                              : hasSuggestion
-                                ? rowSuggestion.category === 'bs'
-                                  ? "bg-violet-500/5 hover:bg-violet-500/10"
-                                  : "bg-blue-500/5 hover:bg-blue-500/10"
-                                : rowIdx % 2 === 0
-                                  ? "bg-transparent hover:bg-muted/20"
-                                  : "bg-muted/5 hover:bg-muted/20";
+                              : isPendingAutoMap
+                                ? "bg-amber-500/[0.08] hover:bg-amber-500/[0.12]"
+                                : hasSuggestion
+                                  ? rowSuggestion.category === 'bs'
+                                    ? "bg-violet-500/5 hover:bg-violet-500/10"
+                                    : "bg-blue-500/5 hover:bg-blue-500/10"
+                                  : rowIdx % 2 === 0
+                                    ? "bg-transparent hover:bg-muted/20"
+                                    : "bg-muted/5 hover:bg-muted/20";
 
-                      // Left border style for selection/mapped state
+                      // Left border style for selection/mapped/pending state
                       const leftBorderClass = isSelected
                         ? "border-l-2 border-l-cyan-400"
                         : isMappedRow
                           ? "border-l-[4px] border-l-emerald-500"
-                          : "";
+                          : isPendingAutoMap
+                            ? "border-l-[3px] border-l-amber-500"
+                            : "";
 
                       // Sticky cell bg needs to match row bg
                       const stickyBg = isFlashing
@@ -938,9 +942,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             ? "bg-cyan-500/15"
                             : isMappedRow
                               ? "bg-emerald-500/[0.08]"
-                              : hasSuggestion
-                                ? rowSuggestion.category === 'bs' ? "bg-violet-500/5" : "bg-blue-500/5"
-                                : rowIdx % 2 === 0 ? "bg-card" : "bg-muted/5";
+                              : isPendingAutoMap
+                                ? "bg-amber-500/[0.08]"
+                                : hasSuggestion
+                                  ? rowSuggestion.category === 'bs' ? "bg-violet-500/5" : "bg-blue-500/5"
+                                  : rowIdx % 2 === 0 ? "bg-card" : "bg-muted/5";
 
                       return (
                         <tr key={rowIdx}
