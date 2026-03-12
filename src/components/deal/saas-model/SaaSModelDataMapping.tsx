@@ -497,11 +497,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     }
   }, [fieldMappings, selectedFile]);
 
-  const mappedCount = Object.keys(fieldMappings).length;
   const totalFields = IS_FIELDS.length + BS_FIELDS.length;
   const unmappedCount = totalFields - mappedCount;
   const percent = totalFields === 0 ? 0 : Math.round((mappedCount / totalFields) * 100);
-  const hasUnsavedMappings = mappedCount > lastSavedCount;
 
   // ── Phase: Upload ──
   if (phase === 'upload') {
