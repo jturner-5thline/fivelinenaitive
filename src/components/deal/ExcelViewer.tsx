@@ -411,7 +411,11 @@ export function ExcelViewer({
                         ) : (
                           <div className="flex items-center gap-1.5">
                             <span className="block truncate text-[13px]">
-                              {cellValue !== null && cellValue !== undefined ? String(cellValue) : ''}
+                              {cellValue !== null && cellValue !== undefined
+                                ? (typeof cellValue === 'number'
+                                  ? cellValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                  : String(cellValue))
+                                : ''}
                             </span>
                             {isFirstCol && (
                               <Tooltip>
