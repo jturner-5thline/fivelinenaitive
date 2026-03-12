@@ -67,6 +67,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [flashedRows, setFlashedRows] = useState<Set<number>>(new Set());
   const [flashedFields, setFlashedFields] = useState<Set<string>>(new Set());
   const [pendingAutoMaps, setPendingAutoMaps] = useState<Record<string, { rowIdx: number; label: string; sheetName: string }>>({});
+  const [draggingRowIdx, setDraggingRowIdx] = useState<number | null>(null);
   const lastClickedRowRef = useRef<number | null>(null);
   const sidebarRef = useRef<FieldSidebarHandle>(null);
   const spreadsheetRef = useRef<HTMLDivElement>(null);
@@ -1159,6 +1160,21 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       return (
                         <tr key={rowIdx}
                           className={cn("cursor-pointer transition-colors border-b border-border/5", rowBgClass, leftBorderClass)}
+                          draggable={!isHeaderRow}
+                          onDragStart={e => {
+                            if (isHeaderRow) { e.preventDefault(); return; }
+                            setDraggingRowIdx(rowIdx);
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', String(rowIdx));
+                            // Create ghost preview
+                            const ghost = document.createElement('div');
+                            ghost.textContent = row[0] !== null && row[0] !== undefined ? String(row[0]) : `Row ${rowIdx + 1}`;
+                            ghost.style.cssText = 'position:fixed;top:-1000px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;color:white;background:hsl(var(--primary));box-shadow:0 4px 12px rgba(0,0,0,0.3);white-space:nowrap;pointer-events:none;z-index:9999;opacity:0.9;';
+                            document.body.appendChild(ghost);
+                            e.dataTransfer.setDragImage(ghost, 0, 0);
+                            setTimeout(() => document.body.removeChild(ghost), 0);
+                          }}
+                          onDragEnd={() => setDraggingRowIdx(null)}
                           onClick={e => !isHeaderRow && handleRowClick(rowIdx, e)}>
                           <td className={cn(
                             "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
@@ -1257,6 +1273,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             activeSheet={activeSheet}
             flashedFields={flashedFields}
             pendingAutoMaps={pendingAutoMaps}
+            draggingRowIdx={draggingRowIdx}
             onAssignField={handleAssignField}
             onRemoveMapping={handleRemoveMapping}
             onAcceptSuggestion={handleAcceptSuggestion}
@@ -1267,6 +1284,18 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             onRejectAutoMap={handleRejectAutoMap}
             onAcceptAllAutoMaps={handleAcceptAllAutoMaps}
             onAutoMap={handleAutoMap}
+            onDropAssign={(fieldName, rowIdx) => {
+              if (!selectedFile) return;
+              const s = selectedFile.sheets[activeSheet];
+              const label = String(s.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`);
+              const before = { ...fieldMappings };
+              setFieldMappings(prev => {
+                const next = { ...prev, [fieldName]: [...(prev[fieldName] || []), { sheet: s.name, rowIdx, label }] };
+                pushAction({ type: 'assign', description: `${label} → ${fieldName}`, before, after: next });
+                return next;
+              });
+              triggerFlash([rowIdx], fieldName);
+            }}
           />
         </ResizablePanel>
       </ResizablePanelGroup>

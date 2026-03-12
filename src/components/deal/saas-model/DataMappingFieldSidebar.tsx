@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Circle, Sparkles, Check, X, Save, Loader2, Search, Trash2, Wand2 } from 'lucide-react';
 import { IS_FIELDS, BS_FIELDS, type FieldMapping } from './types';
@@ -11,6 +12,7 @@ import { IS_SECTIONS, BS_SECTIONS, getConfidencePct, type AutoMapResult } from '
 import { formatUSD } from '@/lib/formatters/currency';
 import type { MappingSuggestion } from '@/hooks/useMappingSuggestions';
 import type { AnalyzedFile } from './dataMappingUtils';
+import { Sparkline } from '@/components/finance/spreadsheet/Sparkline';
 
 export interface FieldSidebarHandle {
   focusPanel: () => void;
@@ -31,6 +33,7 @@ interface Props {
   activeSheet: number;
   flashedFields: Set<string>;
   pendingAutoMaps: Record<string, { rowIdx: number; label: string; sheetName: string }>;
+  draggingRowIdx: number | null;
   onAssignField: (field: string) => void;
   onRemoveMapping: (field: string, idx: number) => void;
   onAcceptSuggestion: (rowIdx: number) => void;
@@ -41,18 +44,20 @@ interface Props {
   onRejectAutoMap: (field: string) => void;
   onAcceptAllAutoMaps: () => void;
   onAutoMap: () => void;
+  onDropAssign: (field: string, rowIdx: number) => void;
 }
 
 export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(function DataMappingFieldSidebar({
   fieldMappings, selectedRows, autoMapResults, suggestions, mappedCount,
   lastSavedCount, hasUnsavedMappings, isSaving, selectedFile, activeSheet,
-  flashedFields, pendingAutoMaps, onAssignField, onRemoveMapping, onAcceptSuggestion,
+  flashedFields, pendingAutoMaps, draggingRowIdx, onAssignField, onRemoveMapping, onAcceptSuggestion,
   onSaveProgress, onClearAllMappings, onDeselectRows, onAcceptAutoMap, onRejectAutoMap,
-  onAcceptAllAutoMaps, onAutoMap,
+  onAcceptAllAutoMaps, onAutoMap, onDropAssign,
 }, ref) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'mapped' | 'unmapped'>('all');
   const [focusedFieldIdx, setFocusedFieldIdx] = useState<number>(-1);
+  const [dragOverField, setDragOverField] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const totalFields = IS_FIELDS.length + BS_FIELDS.length;
@@ -133,6 +138,27 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
     return total;
   };
 
+  // Get all numeric values from mapped rows for sparkline
+  const getFieldTrendData = (fieldName: string): number[] => {
+    const mappings = fieldMappings[fieldName];
+    if (!mappings || !selectedFile) return [];
+    // Sum values across all mapped rows per column
+    const colValues: Record<number, number> = {};
+    mappings.forEach(m => {
+      const sheet = selectedFile.sheets.find(s => s.name === m.sheet) || selectedFile.sheets[0];
+      const row = sheet?.data[m.rowIdx];
+      if (!row) return;
+      for (let c = 1; c < row.length; c++) {
+        const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '').replace(/[,$]/g, ''));
+        if (!isNaN(val)) {
+          colValues[c] = (colValues[c] || 0) + val;
+        }
+      }
+    });
+    const cols = Object.keys(colValues).map(Number).sort((a, b) => a - b);
+    return cols.map(c => colValues[c]);
+  };
+
   // Get info about selected rows for the banner
   const selectedRowInfo = (() => {
     if (selectedRows.size === 0 || !selectedFile) return null;
@@ -194,21 +220,45 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
     const pendingAuto = pendingAutoMaps[field];
     const hasPendingAuto = !!pendingAuto;
     const isFocused = focusedField === field;
+    const isDragOver = dragOverField === field;
+    const isDropTarget = draggingRowIdx !== null && !isMapped && !hasPendingAuto;
 
-    return (
+    const rowContent = (
       <div key={field} className={cn(
         "flex items-center justify-between py-1.5 px-2 rounded group transition-all duration-500",
         isFocused && "ring-1 ring-cyan-400/50 bg-cyan-500/10",
+        isDragOver && "ring-2 ring-dashed ring-teal-400 bg-teal-500/10 shadow-[0_0_12px_-2px_hsl(170,60%,50%,0.3)]",
         isFlashing
           ? "bg-emerald-500/20 ring-1 ring-emerald-500/30"
           : isMapped ? "bg-emerald-500/5 hover:bg-emerald-500/10"
           : hasPendingAuto ? "bg-amber-500/[0.08] hover:bg-amber-500/[0.12] ring-1 ring-amber-500/20"
+          : isDropTarget ? "border border-dashed border-teal-500/30 hover:border-teal-400/50 hover:bg-teal-500/5"
           : fieldSuggestion ? "bg-primary/5 hover:bg-primary/10 ring-1 ring-primary/15"
           : "hover:bg-muted/20"
-      )} onClick={() => {
+      )}
+      onClick={() => {
         const idx = visibleFields.indexOf(field);
         if (idx >= 0) setFocusedFieldIdx(idx);
-      }}>
+      }}
+      onDragOver={e => {
+        if (draggingRowIdx === null || isMapped) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverField(field);
+      }}
+      onDragEnter={e => {
+        if (draggingRowIdx === null || isMapped) return;
+        e.preventDefault();
+        setDragOverField(field);
+      }}
+      onDragLeave={() => setDragOverField(prev => prev === field ? null : prev)}
+      onDrop={e => {
+        e.preventDefault();
+        setDragOverField(null);
+        if (draggingRowIdx === null || isMapped) return;
+        onDropAssign(field, draggingRowIdx);
+      }}
+      >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {isMapped ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
             : hasPendingAuto ? <Wand2 className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
@@ -279,6 +329,53 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
         </div>
       </div>
     );
+
+    // Wrap mapped fields in HoverCard for data preview
+    if (isMapped && mapped) {
+      const trendData = getFieldTrendData(field);
+      const min = trendData.length > 0 ? Math.min(...trendData) : 0;
+      const max = trendData.length > 0 ? Math.max(...trendData) : 0;
+      const avg = trendData.length > 0 ? trendData.reduce((a, b) => a + b, 0) / trendData.length : 0;
+      return (
+        <HoverCard key={field} openDelay={300} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            {rowContent}
+          </HoverCardTrigger>
+          <HoverCardContent side="left" align="center" className="w-64 p-3 bg-card border-border/40 shadow-xl">
+            <div className="space-y-2">
+              <div>
+                <p className="text-[10px] text-muted-foreground/70 mb-0.5">Source</p>
+                <p className="text-xs font-medium">{mapped.map(m => m.label).join(' + ')}</p>
+              </div>
+              {trendData.length > 2 && (
+                <div className="py-1">
+                  <Sparkline data={trendData} type="area" width={220} height={36} color="hsl(var(--primary))" />
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/20">
+                <div>
+                  <p className="text-[9px] text-muted-foreground/60">Min</p>
+                  <p className="text-[10px] font-medium tabular-nums">{formatUSD(min)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-muted-foreground/60">Avg</p>
+                  <p className="text-[10px] font-medium tabular-nums">{formatUSD(avg)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-muted-foreground/60">Max</p>
+                  <p className="text-[10px] font-medium tabular-nums">{formatUSD(max)}</p>
+                </div>
+              </div>
+              {trendData.length > 0 && (
+                <p className="text-[9px] text-muted-foreground/50">{trendData.length} data points</p>
+              )}
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      );
+    }
+
+    return rowContent;
   };
 
   const renderFieldSections = (sections: { label: string; fields: string[] }[]) => (
