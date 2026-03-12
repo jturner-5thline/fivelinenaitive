@@ -33,6 +33,7 @@ interface Props {
   activeSheet: number;
   flashedFields: Set<string>;
   pendingAutoMaps: Record<string, { rowIdx: number; label: string; sheetName: string }>;
+  draggingRowIdx: number | null;
   onAssignField: (field: string) => void;
   onRemoveMapping: (field: string, idx: number) => void;
   onAcceptSuggestion: (rowIdx: number) => void;
@@ -43,6 +44,7 @@ interface Props {
   onRejectAutoMap: (field: string) => void;
   onAcceptAllAutoMaps: () => void;
   onAutoMap: () => void;
+  onDropAssign: (field: string, rowIdx: number) => void;
 }
 
 export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(function DataMappingFieldSidebar({
