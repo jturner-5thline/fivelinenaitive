@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command, MessageSquare, History, Dice5, FileText } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { useModelAnnotations } from '@/hooks/useModelAnnotations';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
 import { SaaSModelIncomeStatement } from './SaaSModelIncomeStatement';
 import { SaaSModelBalanceSheet } from './SaaSModelBalanceSheet';
-import { SaaSModelDataMapping } from './SaaSModelDataMapping';
+import { SaaSModelDataMapping, type DataMappingHandle } from './SaaSModelDataMapping';
 import { SaaSModelSensitivity } from './SaaSModelSensitivity';
 import { SaaSModelDebtServicing } from './SaaSModelDebtServicing';
 import { SaaSModelCharts } from './SaaSModelCharts';
@@ -51,6 +52,12 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   const annotationHook = useModelAnnotations(dealId);
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  // Navigation guard state
+  const dataMappingRef = useRef<DataMappingHandle>(null);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
+
   // Keyboard shortcuts: number keys 1-8 to switch tabs
   useEffect(() => {
     const TAB_KEYS = ['dashboard', 'income-statement', 'balance-sheet', 'data-mapping', 'sensitivity', 'debt-servicing', 'charts', 'credit-analysis', 'monte-carlo', 'versioning', 'export'];
@@ -60,20 +67,55 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
       if (isInput || e.metaKey || e.ctrlKey) return;
       const idx = parseInt(e.key) - 1;
       if (idx >= 0 && idx < TAB_KEYS.length) {
-        setActiveTab(TAB_KEYS[idx]);
+        handleTabChange(TAB_KEYS[idx]);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  }, [activeTab]);
+
+  const handleTabChange = useCallback((newTab: string) => {
+    // If leaving data-mapping with unsaved changes, intercept
+    if (activeTab === 'data-mapping' && newTab !== 'data-mapping' && dataMappingRef.current?.hasUnsavedChanges()) {
+      setPendingTab(newTab);
+      setShowUnsavedDialog(true);
+      return;
+    }
+    setActiveTab(newTab);
+  }, [activeTab]);
+
+  const handleSaveAndLeave = useCallback(async () => {
+    setIsSavingBeforeLeave(true);
+    try {
+      await dataMappingRef.current?.saveProgress();
+      setShowUnsavedDialog(false);
+      if (pendingTab) setActiveTab(pendingTab);
+      setPendingTab(null);
+    } catch {
+      toast.error('Failed to save — please try again');
+    } finally {
+      setIsSavingBeforeLeave(false);
+    }
+  }, [pendingTab]);
+
+  const handleDiscardAndLeave = useCallback(() => {
+    setShowUnsavedDialog(false);
+    if (pendingTab) setActiveTab(pendingTab);
+    setPendingTab(null);
+  }, [pendingTab]);
+
+  const handleCancelLeave = useCallback(() => {
+    setShowUnsavedDialog(false);
+    setPendingTab(null);
   }, []);
 
   const handleExportAction = useCallback((actionId: string) => {
     if (actionId === 'export-pdf' || actionId === 'export-excel') {
-      setActiveTab('export');
+      handleTabChange('export');
     } else if (actionId === 'print') {
       window.print();
     }
-  }, []);
+  }, [handleTabChange]);
 
   if (isLoading) {
     return (
@@ -109,10 +151,12 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
     );
   }
 
+  const unsavedCount = dataMappingRef.current?.getUnsavedCount() ?? 0;
+
   return (
     <div className="space-y-4">
       {/* Command Palette */}
-      <SaaSModelCommandPalette onNavigate={setActiveTab} onAction={handleExportAction} />
+      <SaaSModelCommandPalette onNavigate={handleTabChange} onAction={handleExportAction} />
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -174,7 +218,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="h-8 bg-muted/30 rounded-sm">
           <TabsTrigger value="dashboard" className="gap-1.5 text-xs rounded-sm h-7" title="Press 1">
             <LayoutDashboard className="h-3.5 w-3.5" /> Dashboard
@@ -221,7 +265,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           <SaaSModelBalanceSheet model={model} />
         </TabsContent>
         <TabsContent value="data-mapping" className="mt-4">
-          <SaaSModelDataMapping dealId={dealId} model={model} updateModel={updateModel} recalculate={recalculate} />
+          <SaaSModelDataMapping ref={dataMappingRef} dealId={dealId} model={model} updateModel={updateModel} recalculate={recalculate} />
         </TabsContent>
         <TabsContent value="sensitivity" className="mt-4">
           <SaaSModelSensitivity model={model} scenarios={scenarios} updateScenarios={updateScenarios} />
@@ -256,6 +300,30 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           <CreditMemoExport model={model} scenarios={scenarios} lenders={lenders} />
         </TabsContent>
       </Tabs>
+
+      {/* Unsaved Changes Dialog */}
+      <Dialog open={showUnsavedDialog} onOpenChange={(open) => { if (!open) handleCancelLeave(); }}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have {unsavedCount} unsaved mapping {unsavedCount === 1 ? 'change' : 'changes'}. What would you like to do?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={handleCancelLeave} disabled={isSavingBeforeLeave}>
+              Cancel
+            </Button>
+            <Button variant="outline" onClick={handleDiscardAndLeave} disabled={isSavingBeforeLeave}>
+              Discard & Leave
+            </Button>
+            <Button onClick={handleSaveAndLeave} disabled={isSavingBeforeLeave} className="gap-1.5">
+              {isSavingBeforeLeave ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Save & Leave
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

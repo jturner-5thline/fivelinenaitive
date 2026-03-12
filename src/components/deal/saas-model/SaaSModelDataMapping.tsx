@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { SaaSModelData, SaaSModelSettings as SaaSModelSettingsType } from './types';
 import { IS_FIELDS, BS_FIELDS, FieldMapping, MappingFieldName, FileAnalysisResult } from './types';
@@ -34,7 +34,13 @@ interface Props {
   recalculate: () => void;
 }
 
-export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }: Props) {
+export interface DataMappingHandle {
+  hasUnsavedChanges: () => boolean;
+  saveProgress: () => Promise<void>;
+  getUnsavedCount: () => number;
+}
+
+export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }, ref) {
   const [phase, setPhase] = useState<Phase>('upload');
   const [analyzedFiles, setAnalyzedFiles] = useState<AnalyzedFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<AnalyzedFile | null>(null);
@@ -53,6 +59,77 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
   const [showValidation, setShowValidation] = useState(true);
   const [expandedPreview, setExpandedPreview] = useState(false);
   const [expandedFileUrl, setExpandedFileUrl] = useState<string | null>(null);
+  const [isRestoringMappings, setIsRestoringMappings] = useState(false);
+
+  // Computed unsaved state (used by hooks below — must be before any early returns)
+  const mappedCount = Object.keys(fieldMappings).length;
+  const hasUnsavedMappings = mappedCount > lastSavedCount;
+
+  // Expose imperative handle for parent navigation guard
+  useImperativeHandle(ref, () => ({
+    hasUnsavedChanges: () => mappedCount > lastSavedCount,
+    saveProgress: async () => { await handleSaveProgressRef.current?.(); },
+    getUnsavedCount: () => Math.max(0, mappedCount - lastSavedCount),
+  }), [mappedCount, lastSavedCount]);
+  const handleSaveProgressRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Browser beforeunload guard
+  useEffect(() => {
+    if (!hasUnsavedMappings) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedMappings]);
+
+  // Restore saved mappings from DB on mount
+  useEffect(() => {
+    const restore = async () => {
+      try {
+        const { data } = await supabase
+          .from('deal_saas_mappings' as any)
+          .select('*')
+          .eq('deal_id', dealId)
+          .order('mapped_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!data) return;
+        const saved = data as any;
+        if (saved.field_mappings && typeof saved.field_mappings === 'object') {
+          const restoredMappings = saved.field_mappings as Record<string, FieldMapping[]>;
+          const mappingCount = Object.keys(restoredMappings).length;
+          if (mappingCount > 0) {
+            setFieldMappings(restoredMappings);
+            setLastSavedCount(mappingCount);
+            // If we have a file_storage_path, try to reload the file from storage
+            if (saved.file_storage_path) {
+              setIsRestoringMappings(true);
+              try {
+                const { data: fileData } = await supabase.storage.from('deal-files').download(saved.file_storage_path);
+                if (fileData) {
+                  const file = new File([fileData], saved.file_name || 'restored.xlsx', {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                  });
+                  const result = await parseExcelFromFile(file);
+                  const analysisResult = saved.analysis_result || { status: 'mappable', type: 'Unknown', totalMatches: 0, isMatches: 0, bsMatches: 0, matchedFields: [] };
+                  const restored: AnalyzedFile = { file, sheets: result.sheets, analysis: analysisResult };
+                  setSelectedFile(restored);
+                  setAnalyzedFiles([restored]);
+                  setPhase('mapping');
+                }
+              } catch (err) {
+                console.warn('Could not restore uploaded file from storage:', err);
+              } finally {
+                setIsRestoringMappings(false);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not restore saved mappings:', err);
+      }
+    };
+    restore();
+  }, [dealId]);
 
   // Header detection
   const detectedHeaders = useMemo(() => {
@@ -224,13 +301,37 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
       applyMappingsToModel(fieldMappings, selectedFile, updateModel);
       const companyId = await getCompanyId();
       if (companyId) await logPatterns(companyId, dealId);
-      setLastSavedCount(Object.keys(fieldMappings).length);
-      toast.success(`Saved ${Object.keys(fieldMappings).length} mapped fields — Dashboard, IS & BS updated`);
+
+      // Persist mappings and file to DB
+      let storagePath: string | null = null;
+      try {
+        const filePath = `${dealId}/mapping-source/${selectedFile.file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('deal-files')
+          .upload(filePath, selectedFile.file, { upsert: true });
+        if (!uploadError) storagePath = filePath;
+      } catch { /* non-critical */ }
+
+      await supabase.from('deal_saas_mappings' as any).upsert({
+        deal_id: dealId,
+        field_mappings: fieldMappings,
+        file_name: selectedFile.file.name,
+        file_size: selectedFile.file.size,
+        file_storage_path: storagePath,
+        analysis_result: selectedFile.analysis,
+        mapped_at: new Date().toISOString(),
+      }, { onConflict: 'deal_id' });
+
+      const count = Object.keys(fieldMappings).length;
+      setLastSavedCount(count);
+      toast.success(`Saved ${count} mapped ${count === 1 ? 'field' : 'fields'} — Dashboard, IS & BS updated`);
     } catch { toast.error('Failed to save mapping progress'); }
     finally { setIsSaving(false); }
   }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId]);
 
-  const handleRecalculateWithLog = useCallback(async () => {
+  // Keep ref in sync for imperative handle
+  useEffect(() => { handleSaveProgressRef.current = handleSaveProgress; }, [handleSaveProgress]);
+
     const companyId = await getCompanyId();
     if (companyId) await logPatterns(companyId, dealId);
     handleRecalculate();
@@ -420,11 +521,9 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
     }
   }, [fieldMappings, selectedFile]);
 
-  const mappedCount = Object.keys(fieldMappings).length;
   const totalFields = IS_FIELDS.length + BS_FIELDS.length;
   const unmappedCount = totalFields - mappedCount;
   const percent = totalFields === 0 ? 0 : Math.round((mappedCount / totalFields) * 100);
-  const hasUnsavedMappings = mappedCount > lastSavedCount;
 
   // ── Phase: Upload ──
   if (phase === 'upload') {
@@ -944,4 +1043,4 @@ export function SaaSModelDataMapping({ dealId, model, updateModel, recalculate }
       </Dialog>
     </div>
   );
-}
+});
