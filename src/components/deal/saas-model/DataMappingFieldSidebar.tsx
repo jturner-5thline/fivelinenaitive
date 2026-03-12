@@ -57,6 +57,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'mapped' | 'unmapped'>('all');
   const [focusedFieldIdx, setFocusedFieldIdx] = useState<number>(-1);
+  const [dragOverField, setDragOverField] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const totalFields = IS_FIELDS.length + BS_FIELDS.length;
