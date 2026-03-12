@@ -429,10 +429,19 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     const newMappings = rowIndices.map(rowIdx => ({
       sheet: sheet.name, rowIdx, label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`),
     }));
-    setFieldMappings(prev => ({ ...prev, [fieldName]: [...(prev[fieldName] || []), ...newMappings] }));
+    const before = { ...fieldMappings };
+    setFieldMappings(prev => {
+      const next = { ...prev, [fieldName]: [...(prev[fieldName] || []), ...newMappings] };
+      pushAction({
+        type: rowIndices.length > 1 ? 'bulk-assign' : 'assign',
+        description: `${newMappings.map(m => m.label).join(', ')} → ${fieldName}`,
+        before, after: next,
+      });
+      return next;
+    });
     triggerFlash(rowIndices, fieldName);
     setSelectedRows(new Set());
-  }, [selectedFile, selectedRows, activeSheet, triggerFlash]);
+  }, [selectedFile, selectedRows, activeSheet, triggerFlash, fieldMappings, pushAction]);
 
   const handleRemoveMapping = useCallback((fieldName: string, idx: number) => {
     setFieldMappings(prev => {
