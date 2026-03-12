@@ -396,15 +396,24 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     });
   }, []);
 
+  // Flash animation helper
+  const triggerFlash = useCallback((rowIndices: number[], fieldName: string) => {
+    setFlashedRows(new Set(rowIndices));
+    setFlashedFields(new Set([fieldName]));
+    setTimeout(() => { setFlashedRows(new Set()); setFlashedFields(new Set()); }, 600);
+  }, []);
+
   const handleAssignField = useCallback((fieldName: string) => {
     if (!selectedFile || selectedRows.size === 0) return;
     const sheet = selectedFile.sheets[activeSheet];
-    const newMappings = Array.from(selectedRows).map(rowIdx => ({
+    const rowIndices = Array.from(selectedRows);
+    const newMappings = rowIndices.map(rowIdx => ({
       sheet: sheet.name, rowIdx, label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`),
     }));
     setFieldMappings(prev => ({ ...prev, [fieldName]: [...(prev[fieldName] || []), ...newMappings] }));
+    triggerFlash(rowIndices, fieldName);
     setSelectedRows(new Set());
-  }, [selectedFile, selectedRows, activeSheet]);
+  }, [selectedFile, selectedRows, activeSheet, triggerFlash]);
 
   const handleRemoveMapping = useCallback((fieldName: string, idx: number) => {
     setFieldMappings(prev => {
