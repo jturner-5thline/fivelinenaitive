@@ -414,7 +414,13 @@ export function ExcelViewer({
                               {cellValue !== null && cellValue !== undefined
                                 ? (typeof cellValue === 'number'
                                   ? cellValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                                  : String(cellValue))
+                                  : (() => {
+                                      const str = String(cellValue);
+                                      const parsed = parseFloat(str.replace(/[,$\s]/g, ''));
+                                      return !isNaN(parsed) && str.match(/^[\s$(-]*[\d,.]+[\s)]*$/)
+                                        ? parsed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                        : str;
+                                    })())
                                 : ''}
                             </span>
                             {isFirstCol && (
