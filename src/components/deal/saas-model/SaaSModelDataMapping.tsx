@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
 import { ExcelViewer } from '@/components/deal/ExcelViewer';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -752,21 +754,36 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
       )}
 
-      {/* Progress */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">Mapping progress</span>
-          <span className="text-xs text-muted-foreground">{percent}%</span>
-        </div>
-        <Progress value={percent} className="h-2" />
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] text-muted-foreground">
-            <span className="font-medium text-foreground">{mappedCount}</span> of {totalFields} fields · <span className="text-amber-500">{unmappedCount} remaining</span>
-          </p>
-          {hasUnsavedMappings && (
-            <p className="text-[10px] text-amber-500 font-medium">{mappedCount - lastSavedCount} unsaved</p>
-          )}
-        </div>
+      {/* Compact file summary bar */}
+      <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-card/60 px-3 py-1.5">
+        <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <button
+          className="text-[11px] font-medium text-foreground hover:text-primary transition-colors truncate cursor-pointer"
+          onClick={() => {
+            if (selectedFile) {
+              const url = URL.createObjectURL(selectedFile.file);
+              setExpandedFileUrl(url);
+              setExpandedPreview(true);
+            }
+          }}
+          title="Click to expand preview"
+        >
+          {selectedFile.file.name}
+        </button>
+        <span className="text-[10px] text-muted-foreground/60">|</span>
+        <span className="text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{rowCount} rows × {columnCount} cols</span>
+        {detectedHeaders.headers.length > 0 && (
+          <>
+            <span className="text-[10px] text-muted-foreground/60">|</span>
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+              {detectedHeaders.headers[0]} → {detectedHeaders.headers[detectedHeaders.headers.length - 1]}
+            </span>
+          </>
+        )}
+        <span className="text-[10px] text-muted-foreground/60">|</span>
+        <span className={cn("text-[10px] font-medium tabular-nums whitespace-nowrap", percent === 100 ? "text-emerald-500" : "text-muted-foreground")}>
+          {percent}% mapped
+        </span>
       </div>
 
       {/* AI Suggestions Banner */}
@@ -844,20 +861,47 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <Maximize2 className="h-3.5 w-3.5" /> Expand
           </Button>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>Change file</Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
-            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            {isSaving ? 'Saving...' : 'Save Progress'}
-          </Button>
-          <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save & Apply All
-          </Button>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
+                  {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  {isSaving ? 'Saving...' : 'Save Draft'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[240px] text-center">
+                Saves your current mapping assignments without updating the financial model. You can continue mapping later.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save &amp; Push to Model
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[260px] text-center">
+                Saves all mappings AND pushes mapped data into the Income Statement, Balance Sheet, and downstream analysis tabs.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
       {/* Split panel: spreadsheet + field sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="rounded-lg"
+        onLayout={(sizes) => {
+          try { localStorage.setItem('data-mapping-panel-ratio', JSON.stringify(sizes)); } catch {}
+        }}
+      >
         {/* Left: Spreadsheet */}
-        <div className="lg:col-span-3">
+        <ResizablePanel
+          defaultSize={(() => { try { const s = localStorage.getItem('data-mapping-panel-ratio'); return s ? JSON.parse(s)[0] : 50; } catch { return 50; } })()}
+          minSize={30}
+        >
           <Card className="border-border/30">
             <CardContent className="p-0">
               <div className="flex border-b border-border/30 overflow-x-auto">
@@ -1026,10 +1070,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </div>
             </CardContent>
           </Card>
-        </div>
+        </ResizablePanel>
 
+        <ResizableHandle withHandle className="mx-1" />
         {/* Right: Field sidebar */}
-        <div className="lg:col-span-2">
+        <ResizablePanel
+          defaultSize={(() => { try { const s = localStorage.getItem('data-mapping-panel-ratio'); return s ? JSON.parse(s)[1] : 50; } catch { return 50; } })()}
+          minSize={25}
+        >
           <DataMappingFieldSidebar
             fieldMappings={fieldMappings}
             selectedRows={selectedRows}
@@ -1054,8 +1102,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             onAcceptAllAutoMaps={handleAcceptAllAutoMaps}
             onAutoMap={handleAutoMap}
           />
-        </div>
-      </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* Mapped data preview */}
       {mappedCount > 0 && (
@@ -1106,10 +1154,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <div className="flex items-center justify-end mt-3 gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleSaveProgress} disabled={!hasUnsavedMappings || isSaving}>
                 {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                Save Progress
+                Save Draft
               </Button>
               <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save & Apply All
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save &amp; Push to Model
               </Button>
             </div>
           </CardContent>
