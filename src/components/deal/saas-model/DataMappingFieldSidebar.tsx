@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Circle, Sparkles, Check, X, Save, Loader2, Search, Trash2, Wand2 } from 'lucide-react';
 import { IS_FIELDS, BS_FIELDS, type FieldMapping } from './types';
@@ -11,6 +12,7 @@ import { IS_SECTIONS, BS_SECTIONS, getConfidencePct, type AutoMapResult } from '
 import { formatUSD } from '@/lib/formatters/currency';
 import type { MappingSuggestion } from '@/hooks/useMappingSuggestions';
 import type { AnalyzedFile } from './dataMappingUtils';
+import { Sparkline } from '@/components/finance/spreadsheet/Sparkline';
 
 export interface FieldSidebarHandle {
   focusPanel: () => void;
