@@ -301,8 +301,30 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       applyMappingsToModel(fieldMappings, selectedFile, updateModel);
       const companyId = await getCompanyId();
       if (companyId) await logPatterns(companyId, dealId);
-      setLastSavedCount(Object.keys(fieldMappings).length);
-      toast.success(`Saved ${Object.keys(fieldMappings).length} mapped fields — Dashboard, IS & BS updated`);
+
+      // Persist mappings and file to DB
+      let storagePath: string | null = null;
+      try {
+        const filePath = `${dealId}/mapping-source/${selectedFile.file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('deal-files')
+          .upload(filePath, selectedFile.file, { upsert: true });
+        if (!uploadError) storagePath = filePath;
+      } catch { /* non-critical */ }
+
+      await supabase.from('deal_saas_mappings' as any).upsert({
+        deal_id: dealId,
+        field_mappings: fieldMappings,
+        file_name: selectedFile.file.name,
+        file_size: selectedFile.file.size,
+        file_storage_path: storagePath,
+        analysis_result: selectedFile.analysis,
+        mapped_at: new Date().toISOString(),
+      }, { onConflict: 'deal_id' });
+
+      const count = Object.keys(fieldMappings).length;
+      setLastSavedCount(count);
+      toast.success(`Saved ${count} mapped ${count === 1 ? 'field' : 'fields'} — Dashboard, IS & BS updated`);
     } catch { toast.error('Failed to save mapping progress'); }
     finally { setIsSaving(false); }
   }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId]);
