@@ -50,9 +50,9 @@ interface Props {
 export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(function DataMappingFieldSidebar({
   fieldMappings, selectedRows, autoMapResults, suggestions, mappedCount,
   lastSavedCount, hasUnsavedMappings, isSaving, selectedFile, activeSheet,
-  flashedFields, pendingAutoMaps, onAssignField, onRemoveMapping, onAcceptSuggestion,
+  flashedFields, pendingAutoMaps, draggingRowIdx, onAssignField, onRemoveMapping, onAcceptSuggestion,
   onSaveProgress, onClearAllMappings, onDeselectRows, onAcceptAutoMap, onRejectAutoMap,
-  onAcceptAllAutoMaps, onAutoMap,
+  onAcceptAllAutoMaps, onAutoMap, onDropAssign,
 }, ref) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'mapped' | 'unmapped'>('all');
