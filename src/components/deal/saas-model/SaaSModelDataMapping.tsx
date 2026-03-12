@@ -1273,6 +1273,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             activeSheet={activeSheet}
             flashedFields={flashedFields}
             pendingAutoMaps={pendingAutoMaps}
+            draggingRowIdx={draggingRowIdx}
             onAssignField={handleAssignField}
             onRemoveMapping={handleRemoveMapping}
             onAcceptSuggestion={handleAcceptSuggestion}
@@ -1283,6 +1284,18 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             onRejectAutoMap={handleRejectAutoMap}
             onAcceptAllAutoMaps={handleAcceptAllAutoMaps}
             onAutoMap={handleAutoMap}
+            onDropAssign={(fieldName, rowIdx) => {
+              if (!selectedFile) return;
+              const s = selectedFile.sheets[activeSheet];
+              const label = String(s.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`);
+              const before = { ...fieldMappings };
+              setFieldMappings(prev => {
+                const next = { ...prev, [fieldName]: [...(prev[fieldName] || []), { sheet: s.name, rowIdx, label }] };
+                pushAction({ type: 'assign', description: `${label} → ${fieldName}`, before, after: next });
+                return next;
+              });
+              triggerFlash([rowIdx], fieldName);
+            }}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
