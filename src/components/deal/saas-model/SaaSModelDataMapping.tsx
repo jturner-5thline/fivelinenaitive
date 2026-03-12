@@ -444,19 +444,32 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   }, [selectedFile, selectedRows, activeSheet, triggerFlash, fieldMappings, pushAction]);
 
   const handleRemoveMapping = useCallback((fieldName: string, idx: number) => {
+    const before = { ...fieldMappings };
+    const removedLabel = fieldMappings[fieldName]?.[idx]?.label || 'Unknown';
     setFieldMappings(prev => {
       const updated = { ...prev };
       updated[fieldName] = updated[fieldName].filter((_, i) => i !== idx);
       if (!updated[fieldName].length) delete updated[fieldName];
+      pushAction({
+        type: 'remove',
+        description: `${removedLabel} ✕ ${fieldName}`,
+        before, after: updated,
+      });
       return updated;
     });
-  }, []);
+  }, [fieldMappings, pushAction]);
 
   const handleClearAllMappings = useCallback(() => {
+    const before = { ...fieldMappings };
+    pushAction({
+      type: 'clear-all',
+      description: `Clear all ${Object.keys(fieldMappings).length} mappings`,
+      before, after: {},
+    });
     setFieldMappings({});
     setAutoMapResults([]);
     toast.info('All mappings cleared');
-  }, []);
+  }, [fieldMappings, pushAction]);
 
   const handleRecalculate = useCallback(() => {
     if (!selectedFile) return;
