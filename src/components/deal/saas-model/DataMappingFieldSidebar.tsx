@@ -220,21 +220,45 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
     const pendingAuto = pendingAutoMaps[field];
     const hasPendingAuto = !!pendingAuto;
     const isFocused = focusedField === field;
+    const isDragOver = dragOverField === field;
+    const isDropTarget = draggingRowIdx !== null && !isMapped && !hasPendingAuto;
 
-    return (
+    const rowContent = (
       <div key={field} className={cn(
         "flex items-center justify-between py-1.5 px-2 rounded group transition-all duration-500",
         isFocused && "ring-1 ring-cyan-400/50 bg-cyan-500/10",
+        isDragOver && "ring-2 ring-dashed ring-teal-400 bg-teal-500/10 shadow-[0_0_12px_-2px_hsl(170,60%,50%,0.3)]",
         isFlashing
           ? "bg-emerald-500/20 ring-1 ring-emerald-500/30"
           : isMapped ? "bg-emerald-500/5 hover:bg-emerald-500/10"
           : hasPendingAuto ? "bg-amber-500/[0.08] hover:bg-amber-500/[0.12] ring-1 ring-amber-500/20"
+          : isDropTarget ? "border border-dashed border-teal-500/30 hover:border-teal-400/50 hover:bg-teal-500/5"
           : fieldSuggestion ? "bg-primary/5 hover:bg-primary/10 ring-1 ring-primary/15"
           : "hover:bg-muted/20"
-      )} onClick={() => {
+      )}
+      onClick={() => {
         const idx = visibleFields.indexOf(field);
         if (idx >= 0) setFocusedFieldIdx(idx);
-      }}>
+      }}
+      onDragOver={e => {
+        if (draggingRowIdx === null || isMapped) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverField(field);
+      }}
+      onDragEnter={e => {
+        if (draggingRowIdx === null || isMapped) return;
+        e.preventDefault();
+        setDragOverField(field);
+      }}
+      onDragLeave={() => setDragOverField(prev => prev === field ? null : prev)}
+      onDrop={e => {
+        e.preventDefault();
+        setDragOverField(null);
+        if (draggingRowIdx === null || isMapped) return;
+        onDropAssign(field, draggingRowIdx);
+      }}
+      >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {isMapped ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
             : hasPendingAuto ? <Wand2 className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
@@ -305,6 +329,53 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
         </div>
       </div>
     );
+
+    // Wrap mapped fields in HoverCard for data preview
+    if (isMapped && mapped) {
+      const trendData = getFieldTrendData(field);
+      const min = trendData.length > 0 ? Math.min(...trendData) : 0;
+      const max = trendData.length > 0 ? Math.max(...trendData) : 0;
+      const avg = trendData.length > 0 ? trendData.reduce((a, b) => a + b, 0) / trendData.length : 0;
+      return (
+        <HoverCard key={field} openDelay={300} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            {rowContent}
+          </HoverCardTrigger>
+          <HoverCardContent side="left" align="center" className="w-64 p-3 bg-card border-border/40 shadow-xl">
+            <div className="space-y-2">
+              <div>
+                <p className="text-[10px] text-muted-foreground/70 mb-0.5">Source</p>
+                <p className="text-xs font-medium">{mapped.map(m => m.label).join(' + ')}</p>
+              </div>
+              {trendData.length > 2 && (
+                <div className="py-1">
+                  <Sparkline data={trendData} type="area" width={220} height={36} color="hsl(var(--primary))" />
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/20">
+                <div>
+                  <p className="text-[9px] text-muted-foreground/60">Min</p>
+                  <p className="text-[10px] font-medium tabular-nums">{formatUSD(min)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-muted-foreground/60">Avg</p>
+                  <p className="text-[10px] font-medium tabular-nums">{formatUSD(avg)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-muted-foreground/60">Max</p>
+                  <p className="text-[10px] font-medium tabular-nums">{formatUSD(max)}</p>
+                </div>
+              </div>
+              {trendData.length > 0 && (
+                <p className="text-[9px] text-muted-foreground/50">{trendData.length} data points</p>
+              )}
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      );
+    }
+
+    return rowContent;
   };
 
   const renderFieldSections = (sections: { label: string; fields: string[] }[]) => (
