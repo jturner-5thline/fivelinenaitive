@@ -278,7 +278,7 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
             </button>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Backdrop */}
       {open && (
