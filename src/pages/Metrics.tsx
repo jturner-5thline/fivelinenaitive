@@ -1562,6 +1562,9 @@ export default function Metrics() {
         color: card.color,
         entityFilter: card.entityFilter,
         comparisonPeriod: card.comparisonPeriod,
+        type: card.type,
+        chartType: card.chartType,
+        datarailsConfig: card.datarailsConfig,
       };
       return acc;
     }, {} as Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>);
