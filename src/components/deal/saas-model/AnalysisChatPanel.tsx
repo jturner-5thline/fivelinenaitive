@@ -159,12 +159,6 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
           borderLeft: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        style={{
-          width: 380,
-          backgroundColor: '#0D1225',
-          borderLeft: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
           <h3 className="text-sm font-semibold" style={{ color: '#E8E9ED' }}>Financial Analysis AI</h3>
