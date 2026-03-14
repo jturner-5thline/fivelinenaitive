@@ -1155,6 +1155,16 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
+                <Button variant={selectedRows.size > 0 ? "outline" : "ghost"} size="sm" className="h-7 text-xs gap-1 px-2" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
+                  <span className="font-bold text-xs">±</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Flip +/− sign on selected rows</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleUndo} disabled={!canUndo}>
                   <Undo2 className="h-3.5 w-3.5" />
                 </Button>
@@ -1172,6 +1182,72 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          <div className="h-4 w-px bg-border/30" />
+          {/* Column Manager */}
+          <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
+            <PopoverTrigger asChild>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant={excludedColumns.size > 0 ? "outline" : "ghost"} size="sm" className={cn("h-7 w-7 p-0", excludedColumns.size > 0 && "text-amber-500")}>
+                      <Filter className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Column visibility {excludedColumns.size > 0 ? `(${excludedColumns.size} hidden)` : ''}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="start" className="w-64 p-3 max-h-[350px] overflow-auto">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-semibold">Column Visibility</h4>
+                {excludedColumns.size > 0 && (
+                  <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={handleRestoreAllColumns}>
+                    Show All
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-1">
+                {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
+                  const colIdx = i + 1;
+                  const isExcluded = excludedColumns.has(colIdx);
+                  const headerLabel = detectedHeaders.headers[i] || `Col ${String.fromCharCode(65 + (colIdx % 26))}`;
+                  return (
+                    <div key={colIdx} className="flex items-center justify-between gap-2 py-0.5">
+                      <span className={cn("text-[11px] truncate", isExcluded && "text-muted-foreground line-through")}>{headerLabel}</span>
+                      <Switch checked={!isExcluded} onCheckedChange={(checked) => {
+                        if (checked) handleRestoreColumn(colIdx);
+                        else handleExcludeColumns([colIdx]);
+                      }} className="h-4 w-7" />
+                    </div>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-0.5 ml-1">
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomOut} disabled={zoomLevel <= 50}>
+                    <ZoomOut className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Zoom Out</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-center">{zoomLevel}%</span>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomIn} disabled={zoomLevel >= 200}>
+                    <ZoomIn className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Zoom In (Ctrl+Scroll)</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
@@ -1192,6 +1268,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   ['Escape', 'Deselect all'],
                   ['Ctrl+Z', 'Undo last mapping action'],
                   ['Ctrl+Shift+Z', 'Redo'],
+                  ['Ctrl+Scroll', 'Zoom in/out'],
                 ].map(([key, desc]) => (
                   <div key={key} className="flex items-center justify-between">
                     <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">{key}</kbd>
