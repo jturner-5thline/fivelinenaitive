@@ -168,9 +168,10 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
   };
 
   const handleSave = async () => {
-    if (!title.trim()) return;
+    console.log('[MetricWidgetEditor] handleSave called', { title, dataMode, dataSource, customName, formula: !!formula });
+    if (!title.trim()) { console.log('[MetricWidgetEditor] title empty, returning'); return; }
     if (dataMode === 'custom') {
-      if (!formula || !customName.trim()) return;
+      if (!formula || !customName.trim()) { console.log('[MetricWidgetEditor] custom mode missing fields'); return; }
       try {
         let metricId = selectedCustomMetricId;
         if (metricId && customMetrics.find(m => m.id === metricId)) {
@@ -182,13 +183,14 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
         onSave({ title: title.trim(), type: 'stat', dataSource: `custom-${metricId}`, size, color, entityFilter: entityFilter !== 'all' ? entityFilter : undefined, comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined });
       } catch { return; }
     } else {
-      if (!dataSource) return;
+      if (!dataSource) { console.log('[MetricWidgetEditor] no dataSource, returning'); return; }
       onSave({ title: title.trim(), type, chartType: type === 'chart' ? chartType : undefined, dataSource, size, color, entityFilter: entityFilter !== 'all' ? entityFilter : undefined, comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined });
     }
     onClose();
   };
 
-  const isValid = dataMode === 'preset' ? title.trim() && dataSource : dataMode === 'custom' ? title.trim() && customName.trim() && formula : false;
+  const isValid = dataMode === 'preset' ? !!(title.trim() && dataSource) : dataMode === 'custom' ? !!(title.trim() && customName.trim() && formula) : false;
+  console.log('[MetricWidgetEditor] isValid:', isValid, { dataMode, title: title.trim(), dataSource });
 
   // ─── Live mini preview ───────────────────────────────────────
 
