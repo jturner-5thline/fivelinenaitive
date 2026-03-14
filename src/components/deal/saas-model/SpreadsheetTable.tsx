@@ -39,6 +39,7 @@ interface SpreadsheetTableProps {
   showVariance?: boolean;
   onToggleVariance?: () => void;
   conditionalFormatting?: boolean;
+  compactCurrency?: boolean;
 }
 
 // Threshold for conditional formatting highlight (>20% MoM swing)
@@ -55,6 +56,7 @@ export function SpreadsheetTable({
   showVariance,
   onToggleVariance,
   conditionalFormatting,
+  compactCurrency = false,
 }: SpreadsheetTableProps) {
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
@@ -140,7 +142,7 @@ export function SpreadsheetTable({
       value = getAnnualValue(row.values, selectedCell.colIdx, !!row.isPct);
     }
 
-    const formatted = row.isPct ? fmtPct(value) : fmtCurrency(value);
+    const formatted = row.isPct ? fmtPct(value) : fmtCurrency(value, compactCurrency);
     const formula = row.formula || (row.isTotal ? `SUM(${row.label})` : '');
 
     return { cellRef, value: formatted, formula, rowLabel: row.label };
@@ -384,7 +386,7 @@ export function SpreadsheetTable({
                           onClick={() => setSelectedCell({ rowIdx: visIdx, colIdx: ci })}
                         >
                           <div className="flex flex-col items-end">
-                            <span>{row.isPct ? fmtPct(v) : fmtCurrency(v)}</span>
+                            <span>{row.isPct ? fmtPct(v) : fmtCurrency(v, compactCurrency)}</span>
                             {showVariance && variancePct !== null && (
                               <span className={cn(
                                 "text-[8px] leading-tight",

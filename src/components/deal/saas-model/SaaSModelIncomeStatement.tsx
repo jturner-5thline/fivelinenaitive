@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, DollarSign, Percent } from 'lucide-react';
 import { fmtCurrency, fmtPct } from './formatters';
 import { cn } from '@/lib/utils';
+import { Toggle } from '@/components/ui/toggle';
 
 interface Props {
   model: SaaSModelData;
@@ -46,6 +47,7 @@ function KpiCard({ label, value, delta, format, icon: Icon }: {
 export function SaaSModelIncomeStatement({ model }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [showVariance, setShowVariance] = useState(false);
+  const [compactCurrency, setCompactCurrency] = useState(true);
 
   // Compute latest-period KPIs
   const kpis = useMemo(() => {
@@ -117,6 +119,19 @@ export function SaaSModelIncomeStatement({ model }: Props) {
         </div>
       )}
 
+      <div className="flex items-center justify-end gap-2 -mb-1">
+        <Toggle
+          size="sm"
+          pressed={compactCurrency}
+          onPressedChange={setCompactCurrency}
+          aria-label="Toggle abbreviated currency"
+          className="h-7 px-2 text-[11px] font-mono gap-1"
+        >
+          <DollarSign className="h-3 w-3" />
+          {compactCurrency ? '$1.0MM' : '$1,000,000'}
+        </Toggle>
+      </div>
+
       <SpreadsheetTable
         title="Income Statement"
         rows={rows}
@@ -128,6 +143,7 @@ export function SaaSModelIncomeStatement({ model }: Props) {
         showVariance={showVariance}
         onToggleVariance={() => setShowVariance(v => !v)}
         conditionalFormatting
+        compactCurrency={compactCurrency}
       />
     </div>
   );
