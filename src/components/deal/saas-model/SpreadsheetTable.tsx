@@ -56,6 +56,7 @@ export function SpreadsheetTable({
   showVariance,
   onToggleVariance,
   conditionalFormatting,
+  compactCurrency = false,
 }: SpreadsheetTableProps) {
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
