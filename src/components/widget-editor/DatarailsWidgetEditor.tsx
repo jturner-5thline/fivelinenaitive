@@ -14,7 +14,6 @@ import {
   WidgetConfig,
   DEFAULT_WIDGET_CONFIG,
   ValueConfig,
-  FilterConfig,
   SEED_FIELDS,
 } from './widgetTypes';
 import { FieldCatalog } from './FieldCatalog';
@@ -91,15 +90,6 @@ export function DatarailsWidgetEditor({
         const newValue: ValueConfig = { fieldId: data.fieldId, agg: 'sum', format: 'currency' };
         updateConfig({ ...config, values: [...config.values, newValue] });
       }
-    } else if (target === 'drop-filters') {
-      const newFilter: FilterConfig = {
-        id: `filter-${Date.now()}`,
-        fieldId: data.fieldId,
-        operator: 'eq',
-        values: [],
-        scope: 'widget',
-      };
-      updateConfig({ ...config, filters: [...config.filters, newFilter] });
     }
   };
 

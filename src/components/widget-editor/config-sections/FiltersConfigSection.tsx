@@ -1,61 +1,116 @@
-import { FilterConfig, getField } from '../widgetTypes';
-import { DropZone } from '../DropZone';
+import { WidgetConfig, TimeWindow, Grain } from '../widgetTypes';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Calendar } from 'lucide-react';
 
 interface Props {
-  configs: FilterConfig[];
-  onChange: (configs: FilterConfig[]) => void;
+  config: WidgetConfig;
+  onChange: (config: WidgetConfig) => void;
 }
 
-const OPERATORS = [
-  { value: 'eq', label: 'Equals' },
-  { value: 'neq', label: 'Not Equals' },
-  { value: 'in', label: 'In' },
-  { value: 'gte', label: '≥' },
-  { value: 'lte', label: '≤' },
-] as const;
+const GRAINS: { value: Grain; label: string }[] = [
+  { value: 'day', label: 'Day' },
+  { value: 'month', label: 'Month' },
+  { value: 'quarter', label: 'Quarter' },
+  { value: 'year', label: 'Year' },
+];
 
-export function FiltersConfigSection({ configs, onChange }: Props) {
-  const update = (idx: number, patch: Partial<FilterConfig>) => {
-    onChange(configs.map((c, i) => (i === idx ? { ...c, ...patch } : c)));
-  };
+const WINDOW_GROUPS: { label: string; options: { value: TimeWindow; label: string }[] }[] = [
+  {
+    label: 'Current Period',
+    options: [
+      { value: 'mtd', label: 'Month to Date' },
+      { value: 'qtd', label: 'Quarter to Date' },
+      { value: 'ytd', label: 'Year to Date' },
+    ],
+  },
+  {
+    label: 'Prior Period',
+    options: [
+      { value: 'lastMonth', label: 'Last Month' },
+      { value: 'lastQuarter', label: 'Last Quarter' },
+      { value: 'lastYear', label: 'Last Year' },
+    ],
+  },
+  {
+    label: 'Rolling',
+    options: [
+      { value: 'last3Months', label: 'Last 3 Months' },
+      { value: 'last6Months', label: 'Last 6 Months' },
+      { value: 'ttm', label: 'Trailing 12 Months (TTM)' },
+      { value: 'last12Months', label: 'Last 12 Months' },
+    ],
+  },
+  {
+    label: 'Other',
+    options: [
+      { value: 'all', label: 'All Time' },
+      { value: 'custom', label: 'Custom Range…' },
+    ],
+  },
+];
 
-  const remove = (idx: number) => {
-    onChange(configs.filter((_, i) => i !== idx));
+const WINDOW_LABEL_MAP: Record<string, string> = {};
+for (const g of WINDOW_GROUPS) for (const o of g.options) WINDOW_LABEL_MAP[o.value] = o.label;
+
+export function FiltersConfigSection({ config, onChange }: Props) {
+  const currentWindow = config.xAxis.window || 'all';
+  const currentGrain = config.xAxis.grain || 'month';
+
+  const updateAxis = (patch: Partial<typeof config.xAxis>) => {
+    onChange({ ...config, xAxis: { ...config.xAxis, ...patch } });
   };
 
   return (
-    <div className="space-y-2">
-      {configs.map((fc, idx) => {
-        const field = getField(fc.fieldId);
-        return (
-          <div key={fc.id} className="rounded-lg border border-border bg-secondary/30 p-2.5 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">{field?.name ?? 'Unknown'}</span>
-              <button onClick={() => remove(idx)} className="text-muted-foreground hover:text-destructive">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Select value={fc.operator} onValueChange={(v) => update(idx, { operator: v as FilterConfig['operator'] })}>
-                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {OPERATORS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Input
-                className="h-7 text-xs"
-                placeholder="value1, value2"
-                value={fc.values.join(', ')}
-                onChange={(e) => update(idx, { values: e.target.value.split(',').map((s) => s.trim()) })}
-              />
-            </div>
-          </div>
-        );
-      })}
-      <DropZone id="drop-filters" label="Filters" accepts="any" isEmpty={configs.length === 0 || true} />
+    <div className="space-y-4">
+      {/* Time Period */}
+      <div>
+        <Label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
+          <Calendar className="h-3.5 w-3.5" />
+          Time Period
+        </Label>
+        <Select value={currentWindow} onValueChange={(v) => updateAxis({ window: v as TimeWindow })}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {WINDOW_GROUPS.map((group) => (
+              <div key={group.label}>
+                <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {group.label}
+                </div>
+                {group.options.map((w) => (
+                  <SelectItem key={w.value} value={w.value} className="text-xs">
+                    {w.label}
+                  </SelectItem>
+                ))}
+              </div>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Grain */}
+      <div>
+        <Label className="text-xs text-muted-foreground mb-1.5 block">Granularity</Label>
+        <div className="flex gap-1">
+          {GRAINS.map((g) => (
+            <button
+              key={g.value}
+              onClick={() => updateAxis({ grain: g.value })}
+              className={cn(
+                'px-2.5 py-1 rounded text-xs font-medium transition-colors',
+                currentGrain === g.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              )}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
