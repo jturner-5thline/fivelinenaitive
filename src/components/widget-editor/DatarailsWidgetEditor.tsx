@@ -20,9 +20,11 @@ import {
 import { FieldCatalog } from './FieldCatalog';
 import { ConfigPanel } from './ConfigPanel';
 import { WidgetPreview } from './WidgetPreview';
+import { WidgetBuilderChat } from './WidgetBuilderChat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useState as useStateReact } from 'react';
 
 interface DatarailsWidgetEditorProps {
   initialWidgetConfig?: WidgetConfig;
@@ -40,6 +42,7 @@ export function DatarailsWidgetEditor({
   const [config, setConfig] = useState<WidgetConfig>(initialWidgetConfig ?? DEFAULT_WIDGET_CONFIG);
   const [realtime, setRealtime] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [showAIChat, setShowAIChat] = useStateReact(false);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -107,6 +110,20 @@ export function DatarailsWidgetEditor({
             placeholder="Widget name"
           />
           <div className="flex-1" />
+          {!showAIChat && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAIChat(true)}
+              className="gap-1.5 text-xs h-7 border-primary/30 text-primary hover:bg-primary/10"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+              </span>
+              AI Builder
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => { onCancel?.(); setConfig(initialWidgetConfig ?? DEFAULT_WIDGET_CONFIG); }}>
             Cancel
           </Button>
@@ -115,7 +132,7 @@ export function DatarailsWidgetEditor({
           </Button>
         </div>
 
-        {/* Three-panel */}
+        {/* Three-panel + optional AI chat */}
         <div className="flex flex-1 min-h-0">
           <div className="w-[280px] shrink-0">
             <FieldCatalog />
@@ -123,9 +140,15 @@ export function DatarailsWidgetEditor({
           <div className="flex-1 min-w-0">
             <WidgetPreview config={config} />
           </div>
-          <div className="w-[340px] shrink-0">
-            <ConfigPanel config={config} onChange={updateConfig} realtime={realtime} onRealtimeToggle={setRealtime} />
-          </div>
+          {showAIChat ? (
+            <div className="w-[340px] shrink-0">
+              <WidgetBuilderChat config={config} onConfigUpdate={updateConfig} onClose={() => setShowAIChat(false)} />
+            </div>
+          ) : (
+            <div className="w-[340px] shrink-0">
+              <ConfigPanel config={config} onChange={updateConfig} realtime={realtime} onRealtimeToggle={setRealtime} />
+            </div>
+          )}
         </div>
       </div>
 
