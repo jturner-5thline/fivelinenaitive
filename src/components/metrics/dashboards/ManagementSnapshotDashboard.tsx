@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Pencil, ChevronDown } from 'lucide-react';
@@ -139,13 +138,14 @@ function PeriodBadge({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Badge
+        <Button
           variant="outline"
-          className="w-fit text-xs cursor-pointer hover:bg-accent transition-colors gap-1"
+          size="sm"
+          className="h-6 px-2 text-xs font-medium gap-1"
         >
           {label}
           <ChevronDown className="h-3 w-3 opacity-60" />
-        </Badge>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-52">
         {WINDOW_GROUPS.map((group, gi) => (
@@ -300,7 +300,7 @@ export function ManagementSnapshotDashboard({
                     debtRevenueData.reduce((sum, row) => sum + row.closing + row.milestone + row.retainer, 0)
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground">Reporting Month: Q4-25</p>
+                <p className="text-xs text-muted-foreground">{WINDOW_LABEL_MAP[debtRevenueConfig.timeWindow] || debtRevenueConfig.timeWindow}</p>
               </div>
             ) : (
               <div className="h-[200px]">
