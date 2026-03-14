@@ -65,8 +65,8 @@ export function ConfigPanel({ config, onChange, realtime, onRealtimeToggle }: Pr
             <ValuesConfigSection configs={config.values} onChange={(values) => onChange({ ...config, values })} />
           </Section>
 
-          <Section title="Filters">
-            <FiltersConfigSection configs={config.filters} onChange={(filters) => onChange({ ...config, filters })} />
+          <Section title="Time Period">
+            <FiltersConfigSection config={config} onChange={onChange} />
           </Section>
 
           <Section title="Formula" defaultOpen={false}>
