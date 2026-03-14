@@ -384,20 +384,25 @@ export function ManagementSnapshotDashboard({
           <CardContent>
             {debtRevenueConfig.visualization === 'kpi' ? (
               <div className="h-[200px] flex flex-col items-center justify-center gap-2">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Revenue</p>
-                <p className="text-4xl font-bold text-foreground">
-                  {formatCurrency(
-                    debtRevenueData.reduce((sum, row) => sum + row.closing + row.milestone + row.retainer, 0)
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">{WINDOW_LABEL_MAP[debtRevenueConfig.timeWindow] || debtRevenueConfig.timeWindow}</p>
+                {qbDebtRevenueLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Revenue</p>
+                    <p className="text-4xl font-bold text-foreground">
+                      {formatCurrency(debtRevenueTotal)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{WINDOW_LABEL_MAP[debtRevenueConfig.timeWindow] || debtRevenueConfig.timeWindow}</p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  {debtRevenueConfig.visualization === 'line' ? (
-                    <LineChart data={debtRevenueData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                {qbDebtRevenueLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
                       <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                       <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
