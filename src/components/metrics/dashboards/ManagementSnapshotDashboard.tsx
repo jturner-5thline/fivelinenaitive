@@ -64,9 +64,12 @@ function filterMonthlyRowsByWindow<T extends { month: string }>(rows: T[], windo
   if (!range) return rows;
 
   return rows.filter((row) => {
-    const date = parse(row.month, 'MMM-yy', new Date());
-    if (Number.isNaN(date.getTime())) return false;
-    return isWithinInterval(date, range);
+    const monthDate = parse(row.month, 'MMM-yy', new Date());
+    if (Number.isNaN(monthDate.getTime())) return false;
+
+    const monthStart = startOfMonth(monthDate);
+    const monthEnd = endOfMonth(monthDate);
+    return monthEnd >= range.start && monthStart <= range.end;
   });
 }
 
