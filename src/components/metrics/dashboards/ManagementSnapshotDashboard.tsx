@@ -23,6 +23,53 @@ const formatCurrency = (value: number) => {
   return `$${value.toFixed(0)}`;
 };
 
+const getWindowRange = (window: TimeWindow): { start: Date; end: Date } | null => {
+  const now = new Date();
+
+  switch (window) {
+    case 'mtd':
+      return { start: startOfMonth(now), end: now };
+    case 'lastMonth': {
+      const target = subMonths(now, 1);
+      return { start: startOfMonth(target), end: endOfMonth(target) };
+    }
+    case 'qtd':
+      return { start: startOfQuarter(now), end: now };
+    case 'lastQuarter': {
+      const target = subQuarters(now, 1);
+      return { start: startOfQuarter(target), end: endOfQuarter(target) };
+    }
+    case 'ytd':
+      return { start: startOfYear(now), end: now };
+    case 'lastYear': {
+      const year = now.getFullYear() - 1;
+      return { start: new Date(year, 0, 1), end: new Date(year, 11, 31, 23, 59, 59, 999) };
+    }
+    case 'ttm':
+    case 'last12Months':
+      return { start: subMonths(now, 12), end: now };
+    case 'last6Months':
+      return { start: subMonths(now, 6), end: now };
+    case 'last3Months':
+      return { start: subMonths(now, 3), end: now };
+    case 'all':
+    case 'custom':
+    default:
+      return null;
+  }
+};
+
+function filterMonthlyRowsByWindow<T extends { month: string }>(rows: T[], window: TimeWindow): T[] {
+  const range = getWindowRange(window);
+  if (!range) return rows;
+
+  return rows.filter((row) => {
+    const date = parse(row.month, 'MMM-yy', new Date());
+    if (Number.isNaN(date.getTime())) return false;
+    return isWithinInterval(date, range);
+  });
+}
+
 interface MetricCardProps {
   title: string;
   value: string;
