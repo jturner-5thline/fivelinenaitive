@@ -16,9 +16,10 @@ interface Message {
 interface WidgetBuilderChatProps {
   config: WidgetConfig;
   onConfigUpdate: (config: WidgetConfig) => void;
+  onClose?: () => void;
 }
 
-export function WidgetBuilderChat({ config, onConfigUpdate }: WidgetBuilderChatProps) {
+export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBuilderChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
