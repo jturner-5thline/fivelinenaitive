@@ -346,6 +346,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       if (prev) {
         setSignFlipSelectedRows(new Set());
         setSignFlipSelectedCols(new Set());
+      } else {
+        // Exit eraser mode when entering sign-flip
+        setEraserMode(false);
+        setEraserSelectedRows(new Set());
+        setEraserSelectedCols(new Set());
       }
       return !prev;
     });
