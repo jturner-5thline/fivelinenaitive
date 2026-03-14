@@ -113,6 +113,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
   const xField = getField(config.xAxis.fieldId);
   const xLabel = xField?.name ?? 'Period';
   const isLine = config.type === 'line';
+  const isStacked = config.type === 'stackedBar';
 
   // Get all numeric keys from data (excluding 'period')
   const dataKeys = data.length > 0
