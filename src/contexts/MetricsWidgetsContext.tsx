@@ -4,6 +4,8 @@ export type MetricWidgetType = 'stat' | 'chart';
 export type MetricChartType = 'bar' | 'line' | 'pie' | 'area' | 'composed' | 'waterfall' | 'gauge' | 'bullet' | 'treemap' | 'funnel' | 'radar' | 'heatmap' | 'forecast';
 export type MetricWidgetSize = 'small' | 'medium' | 'large' | 'full';
 
+export type ComparisonPeriod = 'none' | 'prev-month' | 'prev-quarter' | 'prev-year';
+
 export interface MetricWidgetConfig {
   id: string;
   title: string;
@@ -12,6 +14,8 @@ export interface MetricWidgetConfig {
   dataSource: string;
   size: MetricWidgetSize;
   color: string;
+  entityFilter?: string; // QB realm_id or 'all'
+  comparisonPeriod?: ComparisonPeriod;
   createdAt: string;
 }
 
