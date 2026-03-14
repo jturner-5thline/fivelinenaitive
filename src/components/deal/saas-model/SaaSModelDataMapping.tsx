@@ -1344,26 +1344,65 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   </button>
                 ))}
               </div>
-              <div className="h-[500px] overflow-auto relative">
-                <table className="w-max text-[11px] border-collapse">
+              <div className="h-[500px] overflow-auto relative" style={{ fontSize: `${zoomLevel}%` }}>
+                <table className="w-max text-[11px] border-collapse" style={{ fontSize: 'inherit' }}>
                   <thead className="sticky top-0 z-20 bg-muted/80 backdrop-blur-sm">
                     <tr>
                       <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted/80 backdrop-blur-sm">#</th>
                       <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] border-r border-border/10 font-semibold bg-muted/80 backdrop-blur-sm" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>Account Name</th>
-                      {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => (
-                        <th key={i + 1} className="py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal">
-                          <div className="flex flex-col items-end">
-                            <span className="text-[8px] text-muted-foreground/40">
-                              {String.fromCharCode(65 + ((i + 1) % 26))}{(i + 1) >= 26 ? String.fromCharCode(65 + Math.floor((i + 1) / 26) - 1) : ''}
-                            </span>
-                            {detectedHeaders.headers[i] && (
-                              <span className="text-[9px] font-medium text-foreground/70 truncate max-w-[70px]" title={detectedHeaders.headers[i]}>
-                                {detectedHeaders.headers[i]}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                      ))}
+                      {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
+                        const colIdx = i + 1;
+                        const isExcluded = excludedColumns.has(colIdx);
+                        const isColSelected = selectedColumns.has(colIdx);
+                        if (isExcluded) return null;
+                        return (
+                          <ContextMenu key={colIdx}>
+                            <ContextMenuTrigger asChild>
+                              <th
+                                className={cn(
+                                  "py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none",
+                                  isColSelected && "bg-primary/10 ring-1 ring-inset ring-primary/30"
+                                )}
+                                onClick={(e) => handleColumnHeaderClick(colIdx, e)}
+                              >
+                                <div className="flex flex-col items-end">
+                                  <div className="flex items-center gap-1 justify-end w-full">
+                                    <span className="text-[8px] text-muted-foreground/40">
+                                      {String.fromCharCode(65 + (colIdx % 26))}{colIdx >= 26 ? String.fromCharCode(65 + Math.floor(colIdx / 26) - 1) : ''}
+                                    </span>
+                                    <button
+                                      className="opacity-0 group-hover/col:opacity-100 transition-opacity h-3.5 w-3.5 rounded hover:bg-destructive/20 flex items-center justify-center"
+                                      onClick={(e) => { e.stopPropagation(); handleExcludeColumns([colIdx]); }}
+                                      title="Exclude column"
+                                    >
+                                      <X className="h-2.5 w-2.5 text-muted-foreground hover:text-destructive" />
+                                    </button>
+                                  </div>
+                                  {detectedHeaders.headers[i] && (
+                                    <span className="text-[9px] font-medium text-foreground/70 truncate max-w-[70px]" title={detectedHeaders.headers[i]}>
+                                      {detectedHeaders.headers[i]}
+                                    </span>
+                                  )}
+                                </div>
+                              </th>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent className="w-48">
+                              <ContextMenuItem onClick={() => handleExcludeColumns([colIdx])}>
+                                <EyeOff className="h-3.5 w-3.5 mr-2" /> Exclude Column
+                              </ContextMenuItem>
+                              {selectedColumns.size > 1 && (
+                                <ContextMenuItem onClick={() => handleExcludeColumns(Array.from(selectedColumns))}>
+                                  <EyeOff className="h-3.5 w-3.5 mr-2" /> Exclude {selectedColumns.size} Selected
+                                </ContextMenuItem>
+                              )}
+                              <ContextMenuSeparator />
+                              <ContextMenuItem onClick={handleRestoreAllColumns} disabled={excludedColumns.size === 0}>
+                                <Eye className="h-3.5 w-3.5 mr-2" /> Show All Columns
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
