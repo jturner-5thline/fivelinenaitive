@@ -298,6 +298,7 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
                     </Select>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-xs">Widget Type</Label>
                       <Select value={type} onValueChange={v => { setType(v as MetricWidgetType); setDataSource(''); }}>
