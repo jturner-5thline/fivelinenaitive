@@ -99,7 +99,7 @@ function formatCell(val: string | number, format?: string): string {
   return String(val);
 }
 
-const isChartType = (type: string) => ['bar', 'line', 'column', 'columnChart'].includes(type);
+const isChartType = (type: string) => ['bar', 'line', 'column', 'columnChart', 'stackedBar'].includes(type);
 
 function getValueFieldNames(config: WidgetConfig): string[] {
   return config.values.map((v) => {
