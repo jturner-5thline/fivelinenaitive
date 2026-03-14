@@ -1530,7 +1530,7 @@ export default function Metrics() {
                           setDeleteConfirmOpen(true);
                         }}
                       >
-                        {renderStatContent(widget, metrics, qbMetrics, customMetricDefs, widgets)}
+                        {renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets)}
                       </SortableMetricWidget>
                     ))}
                   </div>
