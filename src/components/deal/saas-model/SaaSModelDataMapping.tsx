@@ -1756,10 +1756,18 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               <ContextMenuItem onClick={() => handleExcludeColumns([colIdx])}>
                                 <EyeOff className="h-3.5 w-3.5 mr-2" /> Exclude Column
                               </ContextMenuItem>
+                              <ContextMenuItem onClick={() => handleFlipColumns([colIdx])}>
+                                <span className="font-bold mr-2 text-xs">±</span> {flippedColumns.has(colIdx) ? 'Remove Flip' : 'Flip +/− Sign'}
+                              </ContextMenuItem>
                               {selectedColumns.size > 1 && (
+                                <>
                                 <ContextMenuItem onClick={() => handleExcludeColumns(Array.from(selectedColumns))}>
                                   <EyeOff className="h-3.5 w-3.5 mr-2" /> Exclude {selectedColumns.size} Selected
                                 </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleFlipColumns(Array.from(selectedColumns))}>
+                                  <span className="font-bold mr-2 text-xs">±</span> Flip {selectedColumns.size} Selected
+                                </ContextMenuItem>
+                                </>
                               )}
                               <ContextMenuSeparator />
                               <ContextMenuItem onClick={handleRestoreAllColumns} disabled={excludedColumns.size === 0}>
