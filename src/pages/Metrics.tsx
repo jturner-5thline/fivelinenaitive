@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { format, subMonths, subDays, parseISO } from "date-fns";
 import {
   BarChart,
