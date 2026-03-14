@@ -184,11 +184,11 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
           const result = await createMetric.mutateAsync({ name: customName.trim(), description: customDescription.trim() || undefined, formula, result_type: resultType });
           metricId = result.id;
         }
-        onSave({ title: title.trim(), type: 'stat', dataSource: `custom-${metricId}`, size, color, entityFilter: entityFilter !== 'all' ? entityFilter : undefined, comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined });
+        onSave({ title: title.trim(), type: 'stat', dataSource: `custom-${metricId}`, size, color, entityFilter: entityFilter !== 'all' ? entityFilter : undefined, comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined, timePeriod: timePeriod !== 'all-time' ? timePeriod : undefined });
       } catch { return; }
     } else {
       if (!dataSource) { console.log('[MetricWidgetEditor] no dataSource, returning'); return; }
-      onSave({ title: title.trim(), type, chartType: type === 'chart' ? chartType : undefined, dataSource, size, color, entityFilter: entityFilter !== 'all' ? entityFilter : undefined, comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined });
+      onSave({ title: title.trim(), type, chartType: type === 'chart' ? chartType : undefined, dataSource, size, color, entityFilter: entityFilter !== 'all' ? entityFilter : undefined, comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined, timePeriod: timePeriod !== 'all-time' ? timePeriod : undefined });
     }
     onClose();
   };
