@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Pencil, ChevronDown } from 'lucide-react';
+import { Lock, Pencil, ChevronDown, Loader2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, LineChart, Bar, XAxis, YAxis, Tooltip, Legend, ComposedChart, Line, CartesianGrid } from 'recharts';
 import { parse, endOfMonth, endOfQuarter, startOfMonth, startOfQuarter, startOfYear, subMonths, subQuarters } from 'date-fns';
 import { useMetricsData } from '@/hooks/useMetricsData';
+import { useQBRevenueByWindow } from '@/hooks/useQBWindowData';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
@@ -304,14 +305,19 @@ export function ManagementSnapshotDashboard({
   const debtProfitConfig = getCardConfig('debt-profit', 'Debt Profit');
   const finServProfitConfig = getCardConfig('finserv-profit', 'FinServ Revenue');
 
-  const debtRevenueMonthlyRows = filterMonthlyRowsByWindow(metrics.monthlyData, debtRevenueConfig.timeWindow);
-  const debtRevenueSourceRows = debtRevenueMonthlyRows.length > 0 ? debtRevenueMonthlyRows : metrics.monthlyData.slice(-1);
-  const debtRevenueData = debtRevenueSourceRows.map((row) => ({
-    period: row.month,
+  // Use QB invoices for debt revenue (same source as widget editor)
+  const debtRevenueEntityFilter = cardConfigs['debt-revenue']?.entityFilter;
+  const { data: qbDebtRevenue, isLoading: qbDebtRevenueLoading } = useQBRevenueByWindow(
+    debtRevenueConfig.timeWindow,
+    debtRevenueEntityFilter && debtRevenueEntityFilter !== 'all' ? debtRevenueEntityFilter : null,
+  );
+  const debtRevenueData = (qbDebtRevenue?.periods ?? []).map((row) => ({
+    period: row.period,
+    closing: row.amount,
     retainer: 0,
     milestone: 0,
-    closing: row.totalFees,
   }));
+  const debtRevenueTotal = qbDebtRevenue?.total ?? 0;
 
   const clientsSignedDebtRows = filterMonthlyRowsByWindow(metrics.monthlyData, clientsSignedDebtConfig.timeWindow);
   const clientsSignedDebt = (clientsSignedDebtRows.length > 0 ? clientsSignedDebtRows : metrics.monthlyData.slice(-1)).map((row) => ({
@@ -378,55 +384,65 @@ export function ManagementSnapshotDashboard({
           <CardContent>
             {debtRevenueConfig.visualization === 'kpi' ? (
               <div className="h-[200px] flex flex-col items-center justify-center gap-2">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Revenue</p>
-                <p className="text-4xl font-bold text-foreground">
-                  {formatCurrency(
-                    debtRevenueData.reduce((sum, row) => sum + row.closing + row.milestone + row.retainer, 0)
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">{WINDOW_LABEL_MAP[debtRevenueConfig.timeWindow] || debtRevenueConfig.timeWindow}</p>
+                {qbDebtRevenueLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Revenue</p>
+                    <p className="text-4xl font-bold text-foreground">
+                      {formatCurrency(debtRevenueTotal)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{WINDOW_LABEL_MAP[debtRevenueConfig.timeWindow] || debtRevenueConfig.timeWindow}</p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  {debtRevenueConfig.visualization === 'line' ? (
-                    <LineChart data={debtRevenueData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                      <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                      <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Legend />
-                      <Line type="monotone" dataKey="closing" stroke={debtRevenueConfig.color} name="Closing Fees" strokeWidth={2} />
-                      <Line type="monotone" dataKey="milestone" stroke="hsl(var(--chart-2))" name="Milestone" strokeWidth={2} />
-                      <Line type="monotone" dataKey="retainer" stroke="hsl(var(--chart-3))" name="Retainer" strokeWidth={2} />
-                    </LineChart>
-                  ) : (
-                    <BarChart data={debtRevenueData}>
-                      <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                      <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Legend />
-                      <Bar
-                        dataKey="closing"
-                        stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
-                        fill={debtRevenueConfig.color}
-                        name="Closing Fees"
-                      />
-                      <Bar
-                        dataKey="milestone"
-                        stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
-                        fill="hsl(var(--chart-2))"
-                        name="Milestone"
-                      />
-                      <Bar
-                        dataKey="retainer"
-                        stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
-                        fill="hsl(var(--chart-3))"
-                        name="Retainer"
-                      />
-                    </BarChart>
-                  )}
-                </ResponsiveContainer>
+                {qbDebtRevenueLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    {debtRevenueConfig.visualization === 'line' ? (
+                      <LineChart data={debtRevenueData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                        <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                        <Legend />
+                        <Line type="monotone" dataKey="closing" stroke={debtRevenueConfig.color} name="Closing Fees" strokeWidth={2} />
+                        <Line type="monotone" dataKey="milestone" stroke="hsl(var(--chart-2))" name="Milestone" strokeWidth={2} />
+                        <Line type="monotone" dataKey="retainer" stroke="hsl(var(--chart-3))" name="Retainer" strokeWidth={2} />
+                      </LineChart>
+                    ) : (
+                      <BarChart data={debtRevenueData}>
+                        <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                        <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                        <Legend />
+                        <Bar
+                          dataKey="closing"
+                          stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
+                          fill={debtRevenueConfig.color}
+                          name="Closing Fees"
+                        />
+                        <Bar
+                          dataKey="milestone"
+                          stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
+                          fill="hsl(var(--chart-2))"
+                          name="Milestone"
+                        />
+                        <Bar
+                          dataKey="retainer"
+                          stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
+                          fill="hsl(var(--chart-3))"
+                          name="Retainer"
+                        />
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                )}
               </div>
             )}
           </CardContent>
