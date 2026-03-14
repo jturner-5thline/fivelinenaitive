@@ -26,6 +26,7 @@ export function RichTextInlineEdit({
   autoSave = false,
   autoSaveDelay = 1000,
   mentionUsers,
+  bulletMode = false,
 }: RichTextInlineEditProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
