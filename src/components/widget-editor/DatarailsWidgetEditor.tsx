@@ -110,16 +110,13 @@ export function DatarailsWidgetEditor({
           </Button>
         </div>
 
-        {/* Three-panel */}
+        {/* Two-panel */}
         <div className="flex flex-1 min-h-0">
           <div className="w-[280px] shrink-0">
             <FieldCatalog />
           </div>
           <div className="flex-1 min-w-0">
             <WidgetPreview config={config} />
-          </div>
-          <div className="w-[340px] shrink-0">
-            <ConfigPanel config={config} onChange={updateConfig} realtime={realtime} onRealtimeToggle={setRealtime} />
           </div>
         </div>
       </div>
