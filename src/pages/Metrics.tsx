@@ -1020,7 +1020,38 @@ function renderChartContent(
   }
 }
 
-// Stat widget rendering
+// Helper: compute deal metrics filtered by time period
+function computeFilteredDealMetrics(range: { start: Date; end: Date } | null, rawDeals?: any[]) {
+  if (!range || !rawDeals?.length) return null;
+  const filtered = rawDeals.filter(d => isInRange(d.updated_at, range));
+  const active = filtered.filter(d => d.status !== 'archived');
+  const closedWon = filtered.filter(d => d.status === 'archived' && d.stage === 'closed-won');
+  const totalPipelineValue = active.reduce((s: number, d: any) => s + Number(d.value || 0), 0);
+  const totalClosedWonValue = closedWon.reduce((s: number, d: any) => s + Number(d.value || 0), 0);
+  const totalFees = closedWon.reduce((s: number, d: any) => s + Number(d.total_fee || 0), 0);
+  const avgDealSize = closedWon.length > 0 ? totalClosedWonValue / closedWon.length : 0;
+  return { totalPipelineValue, totalClosedWonValue, totalFees, avgDealSize, activeDealsCount: active.length, closedWonCount: closedWon.length };
+}
+
+// Helper: compute QB metrics filtered by time period
+function computeFilteredQbMetrics(range: { start: Date; end: Date } | null, rawInvoices?: any[], rawPayments?: any[], rawExpenses?: any[]) {
+  if (!range) return null;
+  const invoices = (rawInvoices || []).filter((inv: any) => isInRange(inv.txn_date, range));
+  const payments = (rawPayments || []).filter((p: any) => isInRange(p.txn_date, range));
+  const expenses = (rawExpenses || []).filter((e: any) => isInRange(e.txn_date, range));
+  const totalRevenue = invoices.reduce((s: number, inv: any) => s + (inv.total_amt || 0), 0);
+  const totalAR = invoices.reduce((s: number, inv: any) => s + (inv.balance || 0), 0);
+  const totalPayments = payments.reduce((s: number, p: any) => s + (p.total_amt || 0), 0);
+  const totalExpenses = expenses.reduce((s: number, e: any) => s + (e.total_amt || 0), 0);
+  const now = new Date();
+  const overdueInvoices = invoices.filter((inv: any) => inv.due_date && inv.balance > 0 && new Date(inv.due_date) < now);
+  const overdueAmount = overdueInvoices.reduce((s: number, inv: any) => s + (inv.balance || 0), 0);
+  const collectionRate = totalRevenue > 0 ? ((totalRevenue - totalAR) / totalRevenue) * 100 : 0;
+  const netIncome = totalRevenue - totalExpenses;
+  return { totalRevenue, totalAR, totalPayments, totalExpenses, overdueAmount, overdueCount: overdueInvoices.length, collectionRate, netIncome, totalInvoices: invoices.length };
+}
+
+
 interface RawDataForTimePeriod {
   rawDeals?: any[];
   rawInvoices?: any[];
