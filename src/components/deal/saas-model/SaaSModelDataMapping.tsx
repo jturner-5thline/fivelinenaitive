@@ -72,6 +72,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const sidebarRef = useRef<FieldSidebarHandle>(null);
   const spreadsheetRef = useRef<HTMLDivElement>(null);
   const { canUndo, canRedo, pushAction, popUndo, popRedo, peekUndo, peekRedo } = useMappingHistory();
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const storedFilePathRef = useRef<string | null>(null);
+  const isRestoringRef = useRef(false);
 
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
@@ -84,6 +87,37 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     getUnsavedCount: () => Math.max(0, mappedCount - lastSavedCount),
   }), [mappedCount, lastSavedCount]);
   const handleSaveProgressRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Debounced auto-save of mappings to DB (fires on every mapping change)
+  const autoSaveMappings = useCallback(async (mappings: Record<string, FieldMapping[]>, file: AnalyzedFile | null) => {
+    if (isRestoringRef.current) return; // Don't save while restoring
+    const count = Object.keys(mappings).length;
+    if (count === 0 && !storedFilePathRef.current) return;
+    try {
+      await supabase.from('deal_saas_mappings' as any).upsert({
+        deal_id: dealId,
+        field_mappings: mappings,
+        file_name: file?.file.name || null,
+        file_size: file?.file.size || null,
+        file_storage_path: storedFilePathRef.current,
+        analysis_result: file?.analysis || null,
+        mapped_at: new Date().toISOString(),
+      }, { onConflict: 'deal_id' });
+      setLastSavedCount(count);
+    } catch (err) {
+      console.warn('Auto-save mappings failed:', err);
+    }
+  }, [dealId]);
+
+  // Watch fieldMappings changes and auto-save with debounce
+  useEffect(() => {
+    if (isRestoringRef.current) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      autoSaveMappings(fieldMappings, selectedFile);
+    }, 1500);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  }, [fieldMappings, selectedFile, autoSaveMappings]);
 
   // Browser beforeunload guard
   useEffect(() => {
