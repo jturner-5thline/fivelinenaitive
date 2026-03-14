@@ -135,7 +135,10 @@ export function DatarailsWidgetEditor({
         {/* Three-panel + optional AI chat */}
         <div className="flex flex-1 min-h-0">
           <div className="w-[280px] shrink-0">
-            <FieldCatalog />
+            <FieldCatalog
+              selectedEntityId={config.entityId}
+              onEntityChange={(entityId) => updateConfig({ ...config, entityId })}
+            />
           </div>
           <div className="flex-1 min-w-0">
             <WidgetPreview config={config} onTypeChange={(type) => updateConfig({ ...config, type })} />
