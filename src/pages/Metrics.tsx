@@ -101,6 +101,7 @@ import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
 import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
 import { useCustomMetrics } from "@/hooks/useCustomMetrics";
 import { evaluateFormula, FormulaContext } from "@/lib/customMetricEngine";
+import { SyncStatusBar } from "@/components/metrics/SyncStatusBar";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Management Snapshot', isFavorite: true },
@@ -1498,9 +1499,12 @@ export default function Metrics() {
                   {format(new Date(), "MMM, yyyy")}
                 </Badge>
               </div>
-              <p className="text-muted-foreground mt-1">
-                Pipeline performance analytics powered by real deal data
-              </p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-muted-foreground">
+                  Pipeline performance analytics powered by real deal data
+                </p>
+                <SyncStatusBar />
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={reportingMonth} onValueChange={setReportingMonth}>
@@ -1645,6 +1649,7 @@ export default function Metrics() {
         onClose={() => setEditorOpen(false)}
         onSave={handleSave}
         availableWidgets={widgets.filter(w => w.type === 'stat').map(w => ({ id: w.id, title: w.title }))}
+        existingDataSources={widgets.map(w => w.dataSource)}
       />
 
       {/* Delete Confirmation */}
