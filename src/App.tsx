@@ -166,6 +166,7 @@ const App = () => (
                           } />
                           <Route path="/widget-editor" element={
                             <ProtectedRoute><AppLayout><WidgetEditorPage /></AppLayout></ProtectedRoute>
+                          } />
                           <Route path="/insights" element={
                             <ProtectedRoute><AppLayout><Insights /></AppLayout></ProtectedRoute>
                           } />
