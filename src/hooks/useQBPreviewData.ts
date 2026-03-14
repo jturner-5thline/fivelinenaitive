@@ -248,12 +248,29 @@ export function useQBPreviewData(config: WidgetConfig) {
         }
       }
 
+      // Collect all value labels used across data points
+      const allLabels = new Set<string>();
+      for (const point of periodMap.values()) {
+        for (const k of Object.keys(point)) {
+          if (k !== 'period') allLabels.add(k);
+        }
+      }
+
       // If showZeroPeriods is on and we have a date range, fill in all missing periods
       if (showZeroPeriods && dateRange) {
         const allKeys = generateAllPeriodKeys(dateRange.start, dateRange.end, grain);
         for (const { key, label } of allKeys) {
           if (!periodMap.has(key)) {
             periodMap.set(key, { period: label });
+          }
+        }
+      }
+
+      // Ensure every point has explicit 0 for all value labels (prevents "undefined")
+      for (const point of periodMap.values()) {
+        for (const label of allLabels) {
+          if (!(label in point)) {
+            point[label] = 0;
           }
         }
       }
