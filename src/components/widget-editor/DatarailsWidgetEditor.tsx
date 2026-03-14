@@ -66,7 +66,14 @@ export function DatarailsWidgetEditor({
     const { active, over } = event;
     if (!over) return;
 
-    const data = active.data.current as { fieldId: string; dataType: string; isMeasure: boolean } | undefined;
+    const data = active.data.current as {
+      fieldId: string;
+      dataType: string;
+      isMeasure: boolean;
+      qbAccountName?: string;
+      qbAccountType?: string;
+      qbRealmId?: string;
+    } | undefined;
     if (!data) return;
 
     const target = over.id as string;
@@ -97,6 +104,7 @@ export function DatarailsWidgetEditor({
   };
 
   const activeField = activeId ? SEED_FIELDS.find((f) => f.id === activeId) : null;
+  const activeLabel = activeField?.name ?? (activeId?.startsWith('qb-account-') ? 'QB Account' : null);
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -157,9 +165,9 @@ export function DatarailsWidgetEditor({
 
       {/* Drag overlay */}
       <DragOverlay>
-        {activeField && (
+        {(activeField || activeLabel) && (
           <div className="rounded-md border border-primary bg-card px-3 py-1.5 text-sm font-medium shadow-lg">
-            {activeField.name}
+            {activeField?.name ?? activeLabel}
           </div>
         )}
       </DragOverlay>

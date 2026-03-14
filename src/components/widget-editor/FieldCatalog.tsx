@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Field, SEED_FIELDS, DataType, FieldSource, QB_ENTITIES, getCOAForEntity, COAAccount } from './widgetTypes';
+import { useState, useMemo } from 'react';
+import { Field, SEED_FIELDS, DataType, FieldSource } from './widgetTypes';
 import { useDraggable } from '@dnd-kit/core';
-import { ChevronDown, ChevronRight, Hash, Calendar, Type, Building2, Check, ArrowLeft } from 'lucide-react';
+import { ChevronDown, ChevronRight, Hash, Calendar, Type, Building2, ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useQBEntities, useQBAccounts, QBAccount } from '@/hooks/useQBWidgetData';
 
 const GROUP_LABELS: Record<Field['group'], string> = {
   Financials: 'Financials',
@@ -27,15 +28,14 @@ const SOURCE_FILTERS: { value: FieldSource | 'all'; label: string; dotClass: str
   { value: 'naitive', label: 'naitive', dotClass: 'bg-primary' },
 ];
 
-const COA_TYPE_GROUPS: { type: COAAccount['accountType']; label: string }[] = [
-  { type: 'Income', label: 'Income' },
-  { type: 'COGS', label: 'Cost of Goods Sold' },
-  { type: 'Expense', label: 'Expenses' },
-  { type: 'Asset', label: 'Assets' },
-  { type: 'Liability', label: 'Liabilities' },
-  { type: 'Equity', label: 'Equity' },
-  { type: 'Other', label: 'Other' },
-];
+// Group QB account types into logical categories
+const COA_CLASSIFICATION_GROUPS = [
+  { classification: 'Revenue', label: 'Revenue / Income', types: ['Income', 'Revenue'] },
+  { classification: 'Expense', label: 'Expenses', types: ['Expense', 'Cost of Goods Sold', 'COGS'] },
+  { classification: 'Asset', label: 'Assets', types: ['Bank', 'Accounts Receivable', 'Other Current Asset', 'Fixed Asset', 'Other Asset'] },
+  { classification: 'Liability', label: 'Liabilities', types: ['Accounts Payable', 'Credit Card', 'Other Current Liability', 'Long Term Liability'] },
+  { classification: 'Equity', label: 'Equity', types: ['Equity'] },
+] as const;
 
 function SourceBadge({ source }: { source: FieldSource }) {
   const cfg: Record<FieldSource, { label: string; className: string }> = {
@@ -51,7 +51,7 @@ function SourceBadge({ source }: { source: FieldSource }) {
   );
 }
 
-function DraggableField({ field }: { field: Field | COAAccount }) {
+function DraggableField({ field }: { field: Field }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: field.id,
     data: { fieldId: field.id, dataType: field.dataType, isMeasure: field.isMeasure },
@@ -70,9 +70,7 @@ function DraggableField({ field }: { field: Field | COAAccount }) {
         isDragging && 'opacity-40 ring-2 ring-primary/30'
       )}
     >
-      <span className="truncate flex-1 text-foreground font-medium">
-        {'fullName' in field ? field.name : field.name}
-      </span>
+      <span className="truncate flex-1 text-foreground font-medium">{field.name}</span>
       <SourceBadge source={field.source} />
       <span className={cn('inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold uppercase', badge.className)}>
         <Icon className="h-3 w-3" />
@@ -82,10 +80,21 @@ function DraggableField({ field }: { field: Field | COAAccount }) {
   );
 }
 
-function DraggableCOAField({ account }: { account: COAAccount }) {
+function DraggableCOAAccount({ account }: { account: QBAccount }) {
+  // Use the UUID id as a draggable key, and pass it as fieldId for the widget config
+  const dragId = `qb-account-${account.id}`;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: account.id,
-    data: { fieldId: account.id, dataType: account.dataType, isMeasure: account.isMeasure },
+    id: dragId,
+    data: {
+      fieldId: dragId,
+      dataType: 'number',
+      isMeasure: true,
+      // Extra QB metadata for the config
+      qbAccountId: account.qbId,
+      qbAccountName: account.name,
+      qbAccountType: account.accountType,
+      qbRealmId: account.realmId,
+    },
   });
 
   return (
@@ -99,7 +108,14 @@ function DraggableCOAField({ account }: { account: COAAccount }) {
       )}
     >
       <span className="truncate flex-1 text-foreground font-medium">{account.name}</span>
-      <span className="text-[9px] text-muted-foreground font-medium">{account.accountType}</span>
+      {account.currentBalance != null && (
+        <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
+          ${Math.abs(account.currentBalance).toLocaleString()}
+        </span>
+      )}
+      <span className="rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-[hsl(142,71%,45%)]/15 text-[hsl(142,71%,35%)]">
+        QB
+      </span>
     </div>
   );
 }
@@ -115,14 +131,42 @@ export function FieldCatalog({ selectedEntityId, onEntityChange }: FieldCatalogP
   const [sourceFilter, setSourceFilter] = useState<FieldSource | 'all'>('all');
   const [coaCollapsed, setCoaCollapsed] = useState<Record<string, boolean>>({});
 
+  // Live QB data
+  const { data: qbEntities, isLoading: entitiesLoading } = useQBEntities();
+  const { data: qbAccounts, isLoading: accountsLoading } = useQBAccounts(
+    sourceFilter === 'quickbooks' ? selectedEntityId : null
+  );
+
   const isQB = sourceFilter === 'quickbooks';
   const hasEntity = isQB && selectedEntityId;
 
-  const coaAccounts = hasEntity ? getCOAForEntity(selectedEntityId!) : [];
-  const filteredCOA = coaAccounts.filter(a =>
-    a.name.toLowerCase().includes(search.toLowerCase()) ||
-    a.fullName.toLowerCase().includes(search.toLowerCase())
-  );
+  // Group COA by classification
+  const groupedAccounts = useMemo(() => {
+    if (!qbAccounts) return [];
+    const filtered = qbAccounts.filter(a =>
+      !search || (a.name?.toLowerCase().includes(search.toLowerCase()) ||
+                  a.fullyQualifiedName?.toLowerCase().includes(search.toLowerCase()))
+    );
+
+    return COA_CLASSIFICATION_GROUPS.map(group => ({
+      ...group,
+      accounts: filtered.filter(a => {
+        const at = a.accountType ?? '';
+        const cls = a.classification ?? '';
+        return group.types.some(t => t.toLowerCase() === at.toLowerCase() || t.toLowerCase() === cls.toLowerCase());
+      }),
+    })).filter(g => g.accounts.length > 0);
+  }, [qbAccounts, search]);
+
+  // Accounts that don't match any classification group
+  const ungroupedAccounts = useMemo(() => {
+    if (!qbAccounts) return [];
+    const allGroupedIds = new Set(groupedAccounts.flatMap(g => g.accounts.map(a => a.id)));
+    return qbAccounts.filter(a =>
+      !allGroupedIds.has(a.id) &&
+      (!search || a.name?.toLowerCase().includes(search.toLowerCase()))
+    );
+  }, [qbAccounts, groupedAccounts, search]);
 
   const filtered = SEED_FIELDS.filter((f) => {
     if (sourceFilter !== 'all' && f.source !== sourceFilter) return false;
@@ -130,6 +174,8 @@ export function FieldCatalog({ selectedEntityId, onEntityChange }: FieldCatalogP
   });
 
   const groups = Object.keys(GROUP_LABELS) as Field['group'][];
+
+  const selectedEntity = qbEntities?.find(e => e.realmId === selectedEntityId);
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-card">
@@ -174,30 +220,51 @@ export function FieldCatalog({ selectedEntityId, onEntityChange }: FieldCatalogP
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
             Select Entity
           </p>
-          <div className="space-y-1.5">
-            {QB_ENTITIES.map((entity) => (
-              <button
-                key={entity.id}
-                onClick={() => onEntityChange?.(entity.id)}
-                className={cn(
-                  'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg border transition-all text-left',
-                  'border-border bg-card hover:border-primary/40 hover:bg-primary/5'
-                )}
-              >
-                <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-[hsl(142,71%,45%)]/10 shrink-0">
-                  <Building2 className="h-4 w-4 text-[hsl(142,71%,45%)]" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-foreground truncate">{entity.name}</p>
-                  <p className="text-[10px] text-muted-foreground">Realm {entity.realmId.slice(0, 8)}…</p>
-                </div>
-              </button>
-            ))}
-          </div>
+          {entitiesLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : qbEntities && qbEntities.length > 0 ? (
+            <div className="space-y-1.5">
+              {qbEntities.map((entity) => (
+                <button
+                  key={entity.realmId}
+                  onClick={() => onEntityChange?.(entity.realmId)}
+                  className={cn(
+                    'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg border transition-all text-left',
+                    'border-border bg-card hover:border-primary/40 hover:bg-primary/5',
+                    entity.isExpired && 'opacity-60'
+                  )}
+                >
+                  <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-[hsl(142,71%,45%)]/10 shrink-0">
+                    <Building2 className="h-4 w-4 text-[hsl(142,71%,45%)]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-foreground truncate">
+                      {entity.companyName || `Realm ${entity.realmId}`}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {entity.isExpired ? (
+                        <span className="text-destructive">Needs re-auth</span>
+                      ) : (
+                        `Realm ${entity.realmId.slice(0, 10)}…`
+                      )}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              No QuickBooks companies connected.
+              <br />
+              <span className="text-[10px]">Connect one in Integrations.</span>
+            </p>
+          )}
         </div>
       )}
 
-      {/* Entity selected — show back button + COA */}
+      {/* Entity selected — show back button */}
       {hasEntity && (
         <div className="px-4 py-2 border-b border-border flex items-center gap-2">
           <button
@@ -211,7 +278,7 @@ export function FieldCatalog({ selectedEntityId, onEntityChange }: FieldCatalogP
           <div className="flex items-center gap-1.5 min-w-0">
             <Building2 className="h-3.5 w-3.5 text-[hsl(142,71%,45%)] shrink-0" />
             <span className="text-xs font-semibold text-foreground truncate">
-              {QB_ENTITIES.find(e => e.id === selectedEntityId)?.name}
+              {selectedEntity?.companyName || selectedEntityId}
             </span>
           </div>
         </div>
@@ -225,32 +292,59 @@ export function FieldCatalog({ selectedEntityId, onEntityChange }: FieldCatalogP
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground py-1">
                 Chart of Accounts
               </p>
-              {COA_TYPE_GROUPS.map(({ type, label }) => {
-                const items = filteredCOA.filter(a => a.accountType === type);
-                if (items.length === 0) return null;
-                const isCollapsed = coaCollapsed[type];
-                return (
-                  <div key={type}>
-                    <button
-                      onClick={() => setCoaCollapsed((s) => ({ ...s, [type]: !s[type] }))}
-                      className="flex items-center gap-1 w-full text-[11px] font-semibold uppercase tracking-wider text-muted-foreground py-1.5 hover:text-foreground transition-colors"
-                    >
-                      {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                      {label}
-                      <span className="ml-auto text-[10px] font-normal">{items.length}</span>
-                    </button>
-                    {!isCollapsed && (
-                      <div className="space-y-1 pb-2">
-                        {items.map((a) => (
-                          <DraggableCOAField key={a.id} account={a} />
-                        ))}
+              {accountsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  {groupedAccounts.map(({ classification, label, accounts }) => {
+                    const isCollapsed = coaCollapsed[classification];
+                    return (
+                      <div key={classification}>
+                        <button
+                          onClick={() => setCoaCollapsed((s) => ({ ...s, [classification]: !s[classification] }))}
+                          className="flex items-center gap-1 w-full text-[11px] font-semibold uppercase tracking-wider text-muted-foreground py-1.5 hover:text-foreground transition-colors"
+                        >
+                          {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          {label}
+                          <span className="ml-auto text-[10px] font-normal">{accounts.length}</span>
+                        </button>
+                        {!isCollapsed && (
+                          <div className="space-y-1 pb-2">
+                            {accounts.map((a) => (
+                              <DraggableCOAAccount key={a.id} account={a} />
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-              {filteredCOA.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-6">No accounts match your search</p>
+                    );
+                  })}
+                  {ungroupedAccounts.length > 0 && (
+                    <div>
+                      <button
+                        onClick={() => setCoaCollapsed((s) => ({ ...s, other: !s.other }))}
+                        className="flex items-center gap-1 w-full text-[11px] font-semibold uppercase tracking-wider text-muted-foreground py-1.5 hover:text-foreground transition-colors"
+                      >
+                        {coaCollapsed.other ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        Other
+                        <span className="ml-auto text-[10px] font-normal">{ungroupedAccounts.length}</span>
+                      </button>
+                      {!coaCollapsed.other && (
+                        <div className="space-y-1 pb-2">
+                          {ungroupedAccounts.map((a) => (
+                            <DraggableCOAAccount key={a.id} account={a} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {groupedAccounts.length === 0 && ungroupedAccounts.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-6">
+                      {search ? 'No accounts match your search' : 'No accounts synced for this entity'}
+                    </p>
+                  )}
+                </>
               )}
 
               {/* Divider + standard QB fields below */}
