@@ -81,10 +81,17 @@ export function ManagementSnapshotDashboard({
   cardConfigs = {},
 }: ManagementSnapshotDashboardProps) {
   const { data: metrics, isLoading } = useMetricsData();
+  const { data: qbStatus } = useQuickBooksStatus();
 
   if (isLoading || !metrics) {
     return <div className="animate-pulse space-y-4">Loading...</div>;
   }
+
+  const resolveEntityName = (entityFilter?: string) => {
+    if (!entityFilter || entityFilter === 'all') return null;
+    const conn = qbStatus?.connections?.find(c => c.realmId === entityFilter);
+    return conn?.companyName || entityFilter;
+  };
 
   const getCardConfig = (
     cardId: EditableManagementSnapshotCardId,
@@ -93,6 +100,7 @@ export function ManagementSnapshotDashboard({
   ) => ({
     title: cardConfigs[cardId]?.title || fallbackTitle,
     color: cardConfigs[cardId]?.color || fallbackColor,
+    entityName: resolveEntityName(cardConfigs[cardId]?.entityFilter),
   });
 
   const renderEditAction = (cardId: EditableManagementSnapshotCardId) => {
