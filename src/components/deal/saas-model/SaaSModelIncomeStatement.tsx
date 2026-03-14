@@ -47,6 +47,7 @@ function KpiCard({ label, value, delta, format, icon: Icon }: {
 export function SaaSModelIncomeStatement({ model }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [showVariance, setShowVariance] = useState(false);
+  const [compactCurrency, setCompactCurrency] = useState(true);
 
   // Compute latest-period KPIs
   const kpis = useMemo(() => {
