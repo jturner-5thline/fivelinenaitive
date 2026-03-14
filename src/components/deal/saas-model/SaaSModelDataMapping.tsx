@@ -1844,8 +1844,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             "cursor-pointer transition-colors border-b border-border/5",
                             rowBgClass, leftBorderClass,
                             eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-destructive/15 ring-1 ring-inset ring-destructive/30",
+                            signFlipMode && signFlipSelectedRows.has(rowIdx) && "!bg-amber-500/15 ring-1 ring-inset ring-amber-500/30",
                           )}
-                          draggable={!isHeaderRow && !eraserMode}
+                          draggable={!isHeaderRow && !eraserMode && !signFlipMode}
                           onDragStart={e => {
                             if (isHeaderRow || eraserMode) { e.preventDefault(); return; }
                             setDraggingRowIdx(rowIdx);
