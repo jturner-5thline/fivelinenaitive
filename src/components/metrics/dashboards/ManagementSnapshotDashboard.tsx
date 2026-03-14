@@ -1,11 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, TrendingDown, Lock } from 'lucide-react';
+import { Lock, Pencil } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ComposedChart, Line, CartesianGrid } from 'recharts';
 import { useMetricsData } from '@/hooks/useMetricsData';
-import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -58,12 +57,65 @@ function NoPermissionCard({ title }: { title: string }) {
   );
 }
 
-export function ManagementSnapshotDashboard() {
+export type EditableManagementSnapshotCardId =
+  | 'debt-revenue'
+  | 'finserv-revenue'
+  | 'clients-signed-debt'
+  | 'clients-signed-finserv'
+  | 'outstanding-ar'
+  | 'debt-profit'
+  | 'finserv-profit';
+
+export type ManagementSnapshotEditableConfig = Pick<MetricWidgetConfig, 'title' | 'color' | 'entityFilter' | 'comparisonPeriod'>;
+
+interface ManagementSnapshotDashboardProps {
+  isEditMode?: boolean;
+  onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
+  cardConfigs?: Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>;
+}
+
+export function ManagementSnapshotDashboard({
+  isEditMode = false,
+  onEditCard,
+  cardConfigs = {},
+}: ManagementSnapshotDashboardProps) {
   const { data: metrics, isLoading } = useMetricsData();
 
   if (isLoading || !metrics) {
     return <div className="animate-pulse space-y-4">Loading...</div>;
   }
+
+  const getCardConfig = (
+    cardId: EditableManagementSnapshotCardId,
+    fallbackTitle: string,
+    fallbackColor: string = 'hsl(var(--primary))',
+  ) => ({
+    title: cardConfigs[cardId]?.title || fallbackTitle,
+    color: cardConfigs[cardId]?.color || fallbackColor,
+  });
+
+  const renderEditAction = (cardId: EditableManagementSnapshotCardId) => {
+    if (!isEditMode || !onEditCard) return null;
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        onClick={() => onEditCard(cardId)}
+        aria-label={`Edit ${cardConfigs[cardId]?.title || cardId}`}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+    );
+  };
+
+  const debtRevenueConfig = getCardConfig('debt-revenue', 'Debt Revenue');
+  const finServRevenueConfig = getCardConfig('finserv-revenue', 'FinServ Revenue');
+  const clientsSignedDebtConfig = getCardConfig('clients-signed-debt', 'Clients Signed - Debt');
+  const clientsSignedFinServConfig = getCardConfig('clients-signed-finserv', 'Clients Signed - FinServ');
+  const outstandingARConfig = getCardConfig('outstanding-ar', 'Outstanding A/R');
+  const debtProfitConfig = getCardConfig('debt-profit', 'Debt Profit');
+  const finServProfitConfig = getCardConfig('finserv-profit', 'FinServ Revenue');
 
   // Sample data for charts
   const debtRevenueData = [
@@ -94,7 +146,10 @@ export function ManagementSnapshotDashboard() {
         {/* Debt Revenue Chart */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Debt Revenue</CardTitle>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-sm font-medium">{debtRevenueConfig.title}</CardTitle>
+              {renderEditAction('debt-revenue')}
+            </div>
             <Badge variant="outline" className="w-fit text-xs">Reporting Month: Q4-25</Badge>
           </CardHeader>
           <CardContent>
@@ -105,7 +160,7 @@ export function ManagementSnapshotDashboard() {
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
                   <Legend />
-                  <Bar dataKey="closing" stackId="a" fill="hsl(var(--primary))" name="Closing Fees" />
+                  <Bar dataKey="closing" stackId="a" fill={debtRevenueConfig.color} name="Closing Fees" />
                   <Bar dataKey="milestone" stackId="a" fill="hsl(var(--chart-2))" name="Milestone" />
                   <Bar dataKey="retainer" stackId="a" fill="hsl(var(--chart-3))" name="Retainer" />
                 </BarChart>
@@ -117,7 +172,10 @@ export function ManagementSnapshotDashboard() {
         {/* FinServ Revenue Chart */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">FinServ Revenue</CardTitle>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-sm font-medium">{finServRevenueConfig.title}</CardTitle>
+              {renderEditAction('finserv-revenue')}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[200px]">
@@ -127,7 +185,7 @@ export function ManagementSnapshotDashboard() {
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
                   <Legend />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue" />
+                  <Bar dataKey="revenue" fill={finServRevenueConfig.color} name="Revenue" />
                   <Bar dataKey="recurring" fill="hsl(var(--chart-2))" name="Recurring" />
                 </BarChart>
               </ResponsiveContainer>
@@ -183,7 +241,10 @@ export function ManagementSnapshotDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Clients Signed - Debt</CardTitle>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-sm font-medium">{clientsSignedDebtConfig.title}</CardTitle>
+              {renderEditAction('clients-signed-debt')}
+            </div>
             <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
           </CardHeader>
           <CardContent>
@@ -193,7 +254,7 @@ export function ManagementSnapshotDashboard() {
                   <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill={clientsSignedDebtConfig.color} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -202,7 +263,10 @@ export function ManagementSnapshotDashboard() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Clients Signed - FinServ</CardTitle>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-sm font-medium">{clientsSignedFinServConfig.title}</CardTitle>
+              {renderEditAction('clients-signed-finserv')}
+            </div>
             <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
           </CardHeader>
           <CardContent>
@@ -212,7 +276,7 @@ export function ManagementSnapshotDashboard() {
                   <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill={clientsSignedFinServConfig.color} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -221,7 +285,10 @@ export function ManagementSnapshotDashboard() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Outstanding A/R</CardTitle>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-sm font-medium">{outstandingARConfig.title}</CardTitle>
+              {renderEditAction('outstanding-ar')}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[180px]">
@@ -230,7 +297,7 @@ export function ManagementSnapshotDashboard() {
                   <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <YAxis dataKey="entity" type="category" width={150} tick={{ fontSize: 8 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="amount" fill={outstandingARConfig.color} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -242,7 +309,10 @@ export function ManagementSnapshotDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Debt Profit</CardTitle>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-sm font-medium">{debtProfitConfig.title}</CardTitle>
+              {renderEditAction('debt-profit')}
+            </div>
             <div className="flex gap-2">
               <Badge variant="outline" className="text-xs">Entity: All</Badge>
               <Badge variant="outline" className="text-xs">Year to date</Badge>
@@ -258,7 +328,7 @@ export function ManagementSnapshotDashboard() {
                   <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10 }} />
                   <Tooltip />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="netIncome" fill="hsl(var(--primary))" name="Net Income" />
+                  <Bar yAxisId="left" dataKey="netIncome" fill={debtProfitConfig.color} name="Net Income" />
                   <Line yAxisId="right" type="monotone" dataKey="netIncomePercent" stroke="hsl(var(--chart-2))" name="Net Income %" />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -268,7 +338,10 @@ export function ManagementSnapshotDashboard() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">FinServ Revenue</CardTitle>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-sm font-medium">{finServProfitConfig.title}</CardTitle>
+              {renderEditAction('finserv-profit')}
+            </div>
             <Badge variant="outline" className="text-xs">Year to date</Badge>
           </CardHeader>
           <CardContent>
@@ -281,7 +354,7 @@ export function ManagementSnapshotDashboard() {
                   <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10 }} />
                   <Tooltip />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="netIncome" fill="hsl(var(--primary))" name="Net Income" />
+                  <Bar yAxisId="left" dataKey="netIncome" fill={finServProfitConfig.color} name="Net Income" />
                   <Line yAxisId="right" type="monotone" dataKey="netIncomePercent" stroke="hsl(var(--chart-2))" name="Net Income %" />
                 </ComposedChart>
               </ResponsiveContainer>

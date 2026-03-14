@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { format, subMonths, subDays, parseISO } from "date-fns";
 import {
   BarChart,
@@ -83,6 +83,8 @@ import {
 } from "@/components/metrics/charts";
 import {
   ManagementSnapshotDashboard,
+  type EditableManagementSnapshotCardId,
+  type ManagementSnapshotEditableConfig,
   IncomeBoardDashboard,
   SalesBDROIDashboard,
   SalesTeamBoardDashboard,
@@ -126,6 +128,69 @@ const DASHBOARD_OPTIONS = [
   { id: 'chandler-sales-commission', name: 'Chandler Sales Commission Board', isFavorite: false },
   { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false },
 ];
+
+type ManagementSnapshotCardState = Omit<MetricWidgetConfig, 'id' | 'createdAt'>;
+
+const MANAGEMENT_SNAPSHOT_STORAGE_KEY = 'management-snapshot-editable-cards-v1';
+
+const MANAGEMENT_SNAPSHOT_CARD_DEFAULTS: Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState> = {
+  'debt-revenue': {
+    title: 'Debt Revenue',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'closed-value-12m',
+    size: 'medium',
+    color: 'hsl(var(--primary))',
+  },
+  'finserv-revenue': {
+    title: 'FinServ Revenue',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'fees-pop',
+    size: 'medium',
+    color: 'hsl(var(--chart-4))',
+  },
+  'clients-signed-debt': {
+    title: 'Clients Signed - Debt',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'deal-activity-12m',
+    size: 'medium',
+    color: 'hsl(var(--primary))',
+  },
+  'clients-signed-finserv': {
+    title: 'Clients Signed - FinServ',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'qtd-value',
+    size: 'medium',
+    color: 'hsl(var(--chart-4))',
+  },
+  'outstanding-ar': {
+    title: 'Outstanding A/R',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'pipeline-by-stage',
+    size: 'medium',
+    color: 'hsl(var(--primary))',
+  },
+  'debt-profit': {
+    title: 'Debt Profit',
+    type: 'chart',
+    chartType: 'composed',
+    dataSource: 'manager-performance',
+    size: 'medium',
+    color: 'hsl(var(--primary))',
+  },
+  'finserv-profit': {
+    title: 'FinServ Revenue',
+    type: 'chart',
+    chartType: 'composed',
+    dataSource: 'ytd-cumulative',
+    size: 'medium',
+    color: 'hsl(var(--chart-4))',
+  },
+};
 
 // Generate rolling 12 months labels
 const generateMonthLabels = () => {
@@ -1218,6 +1283,18 @@ export default function Metrics() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWidget, setEditingWidget] = useState<MetricWidgetConfig | undefined>();
+  const [editingManagementSnapshotCardId, setEditingManagementSnapshotCardId] = useState<EditableManagementSnapshotCardId | null>(null);
+  const [managementSnapshotCards, setManagementSnapshotCards] = useState<Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState>>(() => {
+    const saved = localStorage.getItem(MANAGEMENT_SNAPSHOT_STORAGE_KEY);
+    if (!saved) return MANAGEMENT_SNAPSHOT_CARD_DEFAULTS;
+
+    try {
+      const parsed = JSON.parse(saved) as Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState>>;
+      return { ...MANAGEMENT_SNAPSHOT_CARD_DEFAULTS, ...parsed };
+    } catch {
+      return MANAGEMENT_SNAPSHOT_CARD_DEFAULTS;
+    }
+  });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [widgetToDelete, setWidgetToDelete] = useState<string | null>(null);
   const [savePresetOpen, setSavePresetOpen] = useState(false);
@@ -1226,6 +1303,23 @@ export default function Metrics() {
   const [newFolderName, setNewFolderName] = useState('');
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renameFolderName, setRenameFolderName] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem(MANAGEMENT_SNAPSHOT_STORAGE_KEY, JSON.stringify(managementSnapshotCards));
+  }, [managementSnapshotCards]);
+
+  const managementSnapshotCardConfigs = useMemo<Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>>(() => {
+    return (Object.keys(managementSnapshotCards) as EditableManagementSnapshotCardId[]).reduce((acc, key) => {
+      const card = managementSnapshotCards[key];
+      acc[key] = {
+        title: card.title,
+        color: card.color,
+        entityFilter: card.entityFilter,
+        comparisonPeriod: card.comparisonPeriod,
+      };
+      return acc;
+    }, {} as Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>);
+  }, [managementSnapshotCards]);
 
   const {
     folders,
@@ -1257,17 +1351,48 @@ export default function Metrics() {
     }
   };
 
+  const handleCloseEditor = () => {
+    setEditorOpen(false);
+    setEditingWidget(undefined);
+    setEditingManagementSnapshotCardId(null);
+  };
+
   const handleEdit = (widget: MetricWidgetConfig) => {
+    setEditingManagementSnapshotCardId(null);
     setEditingWidget(widget);
     setEditorOpen(true);
   };
 
+  const handleEditManagementSnapshotCard = (cardId: EditableManagementSnapshotCardId) => {
+    setEditingManagementSnapshotCardId(cardId);
+    setEditingWidget({
+      id: `management-snapshot-${cardId}`,
+      createdAt: new Date().toISOString(),
+      ...managementSnapshotCards[cardId],
+    });
+    setEditorOpen(true);
+  };
+
   const handleAdd = () => {
+    setEditingManagementSnapshotCardId(null);
     setEditingWidget(undefined);
     setEditorOpen(true);
   };
 
   const handleSave = (widgetData: Omit<MetricWidgetConfig, 'id' | 'createdAt'>) => {
+    if (editingManagementSnapshotCardId) {
+      setManagementSnapshotCards(prev => ({
+        ...prev,
+        [editingManagementSnapshotCardId]: {
+          ...prev[editingManagementSnapshotCardId],
+          ...widgetData,
+        },
+      }));
+      toast({ title: "Widget updated" });
+      setEditingManagementSnapshotCardId(null);
+      return;
+    }
+
     if (editingWidget) {
       updateWidget(editingWidget.id, widgetData);
       toast({ title: "Widget updated" });
@@ -1569,7 +1694,13 @@ export default function Metrics() {
 
           {/* Dashboard Content - always show pre-built dashboards */}
           <>
-            {selectedDashboard === 'management-snapshot' && <ManagementSnapshotDashboard />}
+            {selectedDashboard === 'management-snapshot' && (
+              <ManagementSnapshotDashboard
+                isEditMode={isEditMode}
+                onEditCard={handleEditManagementSnapshotCard}
+                cardConfigs={managementSnapshotCardConfigs}
+              />
+            )}
             {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
@@ -1644,7 +1775,7 @@ export default function Metrics() {
       <MetricWidgetEditor
         widget={editingWidget}
         isOpen={editorOpen}
-        onClose={() => setEditorOpen(false)}
+        onClose={handleCloseEditor}
         onSave={handleSave}
         availableWidgets={widgets.filter(w => w.type === 'stat').map(w => ({ id: w.id, title: w.title }))}
         existingDataSources={widgets.map(w => w.dataSource)}
