@@ -816,6 +816,21 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     return () => window.removeEventListener('keydown', handler);
   }, [handleUndo, handleRedo]);
 
+  // Ctrl+scroll zoom on spreadsheet
+  useEffect(() => {
+    const el = spreadsheetRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) setZoomLevel(z => Math.min(200, z + 10));
+        else setZoomLevel(z => Math.max(50, z - 10));
+      }
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [phase]);
+
   const runValidation = useCallback(() => {
     const warnings: ValidationWarning[] = [];
     const getSampleValue = (fieldName: string): number | null => {
