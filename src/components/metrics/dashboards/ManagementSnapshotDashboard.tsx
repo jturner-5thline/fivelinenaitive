@@ -362,7 +362,10 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{finServProfitConfig.title}</CardTitle>
               {renderEditAction('finserv-profit')}
             </div>
-            <Badge variant="outline" className="text-xs">Year to date</Badge>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge variant="outline" className="text-xs">Year to date</Badge>
+              {finServProfitConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {finServProfitConfig.entityName}</Badge>}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[180px]">
