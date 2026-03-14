@@ -12,7 +12,7 @@ import { SaaSModelSensitivity } from './SaaSModelSensitivity';
 import { SaaSModelDebtServicing } from './SaaSModelDebtServicing';
 import { SaaSModelCharts } from './SaaSModelCharts';
 import { SaaSModelCreditAnalysis } from './SaaSModelCreditAnalysis';
-import { AnalysisChatPanel } from './AnalysisChatPanel';
+
 import { SaaSModelCommandPalette } from './SaaSModelCommandPalette';
 import { ModelVersioning } from './ModelVersioning';
 import { MonteCarloSimulation } from './MonteCarloSimulation';
