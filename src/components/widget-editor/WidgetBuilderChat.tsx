@@ -33,10 +33,8 @@ export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBui
   }, [messages]);
 
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isOpen]);
+    inputRef.current?.focus();
+  }, []);
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
