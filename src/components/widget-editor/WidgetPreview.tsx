@@ -14,6 +14,15 @@ interface Props {
 
 const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2, 160 60% 45%))', 'hsl(var(--chart-3, 30 80% 55%))', 'hsl(var(--chart-4, 280 65% 60%))', 'hsl(var(--chart-5, 340 75% 55%))'];
 
+// Gradient definitions for bar charts — pairs of [start, end] HSL
+const CHART_GRADIENT_PAIRS: [string, string][] = [
+  ['hsl(213, 90%, 70%)', 'hsl(213, 80%, 50%)'],
+  ['hsl(142, 71%, 55%)', 'hsl(142, 71%, 38%)'],
+  ['hsl(38, 92%, 58%)', 'hsl(38, 92%, 42%)'],
+  ['hsl(270, 60%, 68%)', 'hsl(270, 60%, 48%)'],
+  ['hsl(220, 15%, 65%)', 'hsl(220, 15%, 45%)'],
+];
+
 /** Check if widget config uses QB-backed fields that can pull real data */
 function hasRealDataFields(config: WidgetConfig): boolean {
   return config.values.some(v => v.fieldId && (
@@ -121,10 +130,22 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
     : valueFields;
 
   const ChartComponent = isLine ? LineChart : BarChart;
+  const barRadius: [number, number, number, number] = [6, 6, 0, 0];
 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <ChartComponent data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+        <defs>
+          {dataKeys.map((_, i) => {
+            const [start, end] = CHART_GRADIENT_PAIRS[i % CHART_GRADIENT_PAIRS.length];
+            return (
+              <linearGradient key={`grad-${i}`} id={`barGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={start} stopOpacity={0.95} />
+                <stop offset="100%" stopColor={end} stopOpacity={0.85} />
+              </linearGradient>
+            );
+          })}
+        </defs>
         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
         <XAxis dataKey="period" tick={{ fontSize: 11 }} label={{ value: xLabel, position: 'insideBottom', offset: -2, fontSize: 11 }} />
         <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} />
@@ -134,7 +155,13 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
           isLine ? (
             <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls />
           ) : (
-            <Bar key={name} dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={isStacked ? undefined : [3, 3, 0, 0]} stackId={isStacked ? 'stack' : undefined} />
+            <Bar
+              key={name}
+              dataKey={name}
+              fill={`url(#barGrad-${i})`}
+              radius={isStacked ? (i === dataKeys.length - 1 ? barRadius : [0, 0, 0, 0]) : barRadius}
+              stackId={isStacked ? 'stack' : undefined}
+            />
           )
         )}
       </ChartComponent>
