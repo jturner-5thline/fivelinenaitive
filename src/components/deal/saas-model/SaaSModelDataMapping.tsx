@@ -957,9 +957,15 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             onDragLeave={e => { e.currentTarget.closest('.group\\/dropzone')?.classList.remove('border-primary/60'); }}
             onDrop={e => { e.currentTarget.closest('.group\\/dropzone')?.classList.remove('border-primary/60'); handleDrop(e); }}>
             {isProcessing ? (
-              <div className="flex flex-col items-center gap-3">
+              <div className="flex flex-col items-center gap-3 w-full max-w-xs">
                 <RefreshCw className="h-10 w-10 text-primary animate-spin" />
-                <p className="text-sm text-muted-foreground">Analyzing files...</p>
+                <p className="text-sm text-muted-foreground">{uploadStatus || 'Analyzing files...'}</p>
+                {uploadProgress !== null && (
+                  <div className="w-full space-y-1">
+                    <Progress value={uploadProgress} className="h-2" />
+                    <p className="text-[10px] text-muted-foreground/60 text-center tabular-nums">{uploadProgress}%</p>
+                  </div>
+                )}
               </div>
             ) : (
               <>

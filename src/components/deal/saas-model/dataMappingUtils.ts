@@ -235,3 +235,111 @@ export function extractColumnHeaders(data: unknown[][], headerRowIdx: number): s
     return String(cell).trim();
   });
 }
+
+/**
+ * Parse a date from a column header string.
+ * Supports formats: "Dec 2025", "December 2025", "12/2025", "2025-12", "Dec-25", "FY2025 Q4", "Q4 2025", "2025"
+ */
+export function parseDateFromHeader(header: string): { month: number | null; year: number | null; quarter: number | null } | null {
+  if (!header || !header.trim()) return null;
+  const h = header.trim();
+
+  // Month-Year formats
+  const MONTHS: Record<string, number> = {
+    jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
+    may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9, september: 9,
+    oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
+  };
+
+  // "Dec 2025", "December 2025", "Dec-2025"
+  const monthYearFull = h.match(/^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[.\s-]+(\d{4})$/i);
+  if (monthYearFull) {
+    const month = MONTHS[monthYearFull[1].toLowerCase().slice(0, 3)];
+    return { month, year: parseInt(monthYearFull[2]), quarter: null };
+  }
+
+  // "Dec-25", "Dec 25" (2-digit year)
+  const monthYearShort = h.match(/^(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[.\s-]+(\d{2})$/i);
+  if (monthYearShort) {
+    const month = MONTHS[monthYearShort[1].toLowerCase().slice(0, 3)];
+    const yr = parseInt(monthYearShort[2]);
+    const year = yr >= 50 ? 1900 + yr : 2000 + yr;
+    return { month, year, quarter: null };
+  }
+
+  // "12/2025" or "2025-12"
+  const numericSlash = h.match(/^(\d{1,2})[/\-](\d{4})$/);
+  if (numericSlash) {
+    const a = parseInt(numericSlash[1]), b = parseInt(numericSlash[2]);
+    if (a >= 1 && a <= 12) return { month: a, year: b, quarter: null };
+  }
+  const numericDash = h.match(/^(\d{4})[/\-](\d{1,2})$/);
+  if (numericDash) {
+    const yr = parseInt(numericDash[1]), m = parseInt(numericDash[2]);
+    if (m >= 1 && m <= 12) return { month: m, year: yr, quarter: null };
+  }
+
+  // "FY2025 Q4", "Q4 2025", "FY2025", "FY25"
+  const fyQ = h.match(/^(?:fy\s*)?(\d{2,4})\s*q(\d)$/i) || h.match(/^q(\d)\s*(?:fy\s*)?(\d{2,4})$/i);
+  if (fyQ) {
+    const parts = h.match(/^q(\d)/i) ? [fyQ[2], fyQ[1]] : [fyQ[1], fyQ[2]];
+    let yr = parseInt(parts[0]);
+    if (yr < 100) yr = yr >= 50 ? 1900 + yr : 2000 + yr;
+    const q = parseInt(parts[1]);
+    if (q >= 1 && q <= 4) return { month: null, year: yr, quarter: q };
+  }
+
+  const fyOnly = h.match(/^fy\s*(\d{2,4})$/i);
+  if (fyOnly) {
+    let yr = parseInt(fyOnly[1]);
+    if (yr < 100) yr = yr >= 50 ? 1900 + yr : 2000 + yr;
+    return { month: null, year: yr, quarter: null };
+  }
+
+  // Plain year
+  const plainYear = h.match(/^(\d{4})$/);
+  if (plainYear) return { month: null, year: parseInt(plainYear[1]), quarter: null };
+
+  return null;
+}
+
+/**
+ * Validate extracted dates for sequentiality and gaps.
+ * Returns warnings for non-sequential or gapped dates.
+ */
+export interface DateWarning {
+  colIndex: number;
+  header: string;
+  type: 'gap' | 'non-sequential' | 'ambiguous';
+  message: string;
+}
+
+export function validateDateSequence(headers: string[]): DateWarning[] {
+  const warnings: DateWarning[] = [];
+  const parsed = headers.map(h => parseDateFromHeader(h));
+  
+  let lastDate: { month: number | null; year: number | null } | null = null;
+  for (let i = 0; i < parsed.length; i++) {
+    const d = parsed[i];
+    if (!d || !d.year) continue;
+    
+    if (lastDate && lastDate.year) {
+      // Check for non-sequential years
+      if (d.month && lastDate.month) {
+        const curr = d.year * 12 + d.month;
+        const prev = lastDate.year * 12 + lastDate.month;
+        const diff = Math.abs(curr - prev);
+        if (diff > 2 && diff !== 12) {
+          warnings.push({
+            colIndex: i,
+            header: headers[i],
+            type: 'gap',
+            message: `Gap detected: ${headers[i - 1] || 'prev'} → ${headers[i]} (${diff} month gap)`,
+          });
+        }
+      }
+    }
+    lastDate = d;
+  }
+  return warnings;
+}
