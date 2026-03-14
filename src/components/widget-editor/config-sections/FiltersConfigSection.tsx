@@ -58,6 +58,7 @@ for (const g of WINDOW_GROUPS) for (const o of g.options) WINDOW_LABEL_MAP[o.val
 export function FiltersConfigSection({ config, onChange }: Props) {
   const currentWindow = config.xAxis.window || 'all';
   const currentGrain = config.xAxis.grain || 'month';
+  const showZeroPeriods = config.xAxis.showZeroPeriods ?? true;
 
   const updateAxis = (patch: Partial<typeof config.xAxis>) => {
     onChange({ ...config, xAxis: { ...config.xAxis, ...patch } });
