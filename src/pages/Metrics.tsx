@@ -104,6 +104,7 @@ import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
 import { useCustomMetrics } from "@/hooks/useCustomMetrics";
 import { evaluateFormula, FormulaContext } from "@/lib/customMetricEngine";
 import { SyncStatusBar } from "@/components/metrics/SyncStatusBar";
+import { getTimePeriodRange, getTimePeriodLabel, isInRange } from "@/lib/timePeriodUtils";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Management Snapshot', isFavorite: true },
