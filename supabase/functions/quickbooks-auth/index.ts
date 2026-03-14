@@ -274,21 +274,24 @@ serve(async (req) => {
 
       const realmId = url.searchParams.get("realmId");
 
+      const qbTables = [
+        "quickbooks_tokens", "quickbooks_customers", "quickbooks_invoices",
+        "quickbooks_payments", "quickbooks_sync_history", "quickbooks_accounts",
+        "quickbooks_vendors", "quickbooks_expenses", "quickbooks_bills",
+        "quickbooks_purchase_orders", "quickbooks_journal_entries",
+        "quickbooks_estimates", "quickbooks_credit_memos",
+        "quickbooks_bank_transactions", "quickbooks_reports",
+      ];
+
       if (realmId) {
-        // Disconnect a specific company
-        await supabase.from("quickbooks_tokens").delete().eq("user_id", userId).eq("realm_id", realmId);
-        await supabase.from("quickbooks_customers").delete().eq("user_id", userId).eq("realm_id", realmId);
-        await supabase.from("quickbooks_invoices").delete().eq("user_id", userId).eq("realm_id", realmId);
-        await supabase.from("quickbooks_payments").delete().eq("user_id", userId).eq("realm_id", realmId);
-        await supabase.from("quickbooks_sync_history").delete().eq("user_id", userId).eq("realm_id", realmId);
+        for (const table of qbTables) {
+          await supabase.from(table).delete().eq("user_id", userId).eq("realm_id", realmId);
+        }
         console.log(`[QuickBooks Auth] Disconnected realm ${realmId} for user ${userId}`);
       } else {
-        // Disconnect all
-        await supabase.from("quickbooks_tokens").delete().eq("user_id", userId);
-        await supabase.from("quickbooks_customers").delete().eq("user_id", userId);
-        await supabase.from("quickbooks_invoices").delete().eq("user_id", userId);
-        await supabase.from("quickbooks_payments").delete().eq("user_id", userId);
-        await supabase.from("quickbooks_sync_history").delete().eq("user_id", userId);
+        for (const table of qbTables) {
+          await supabase.from(table).delete().eq("user_id", userId);
+        }
         console.log(`[QuickBooks Auth] Disconnected all for user ${userId}`);
       }
 
