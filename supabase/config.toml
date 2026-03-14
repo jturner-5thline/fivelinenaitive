@@ -188,3 +188,6 @@ verify_jwt = false
 
 [functions.notify-flex-lender-approved]
 verify_jwt = false
+
+[functions.analysis-chat]
+verify_jwt = false
