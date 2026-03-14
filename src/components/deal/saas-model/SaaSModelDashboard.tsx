@@ -257,7 +257,6 @@ export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
             icon={TrendingUp}
           />
         </div>
-      </div>
 
       {/* Row 2: Secondary KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
