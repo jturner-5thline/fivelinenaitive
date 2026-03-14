@@ -459,8 +459,8 @@ export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
         </CardContent>
       </Card>
 
-      {/* Financial Health Ratios & AI Insights side-by-side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Financial Health Ratios, AI Insights & Financial AI */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="border-border/30">
           <CardContent className="p-4">
             <h3 className="text-sm font-semibold mb-3">Financial Health Ratios</h3>
@@ -474,6 +474,8 @@ export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
         </Card>
 
         <AIInsightsPanel model={m} />
+
+        <AnalysisChatPanel model={m} />
       </div>
     </div>
   );
