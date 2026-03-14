@@ -1867,7 +1867,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           }}>
                           <td className={cn(
                             "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
-                            eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/30" : stickyBg,
+                            signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-amber-500/30" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/30" : stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
                               {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/60" /> : rowIdx + 1}
