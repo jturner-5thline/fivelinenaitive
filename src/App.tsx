@@ -49,6 +49,7 @@ const Preferences = lazy(lazyRetry(() => import("./pages/Preferences")));
 const Analytics = lazy(lazyRetry(() => import("./pages/Analytics")));
 const Reports = lazy(lazyRetry(() => import("./pages/Reports")));
 const Metrics = lazy(lazyRetry(() => import("./pages/Metrics")));
+const WidgetEditorPage = lazy(lazyRetry(() => import("./pages/WidgetEditorPage")));
 const Insights = lazy(lazyRetry(() => import("./pages/Insights")));
 const SalesBD = lazy(lazyRetry(() => import("./pages/SalesBD")));
 const HR = lazy(lazyRetry(() => import("./pages/HR")));
@@ -162,6 +163,9 @@ const App = () => (
                           } />
                           <Route path="/metrics" element={
                             <ProtectedRoute><AppLayout><Metrics /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/widget-editor" element={
+                            <ProtectedRoute><AppLayout><WidgetEditorPage /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/insights" element={
                             <ProtectedRoute><AppLayout><Insights /></AppLayout></ProtectedRoute>
