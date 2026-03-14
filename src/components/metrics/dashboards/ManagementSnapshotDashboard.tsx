@@ -69,8 +69,8 @@ export type EditableManagementSnapshotCardId =
 
 export type ManagementSnapshotEditableConfig = Pick<
   MetricWidgetConfig,
-  'title' | 'color' | 'entityFilter' | 'comparisonPeriod' | 'type' | 'chartType' | 'datarailsConfig'
->;
+  'title' | 'color' | 'entityFilter' | 'comparisonPeriod'
+> & Partial<Pick<MetricWidgetConfig, 'type' | 'chartType' | 'datarailsConfig'>>;
 
 type CardVisualization = 'kpi' | 'bar' | 'stackedBar' | 'line';
 
