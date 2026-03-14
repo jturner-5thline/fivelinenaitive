@@ -14,6 +14,16 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const QB_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
 const QB_API_BASE = "https://quickbooks.api.intuit.com/v3/company";
 
+// All supported sync scopes
+const ALL_SCOPES = [
+  "customers", "invoices", "payments", "accounts", "vendors",
+  "expenses", "bills", "purchase_orders", "journal_entries",
+  "estimates", "credit_memos", "bank_deposits", "bank_transfers",
+  "profit_and_loss", "balance_sheet", "ar_aging", "ap_aging",
+] as const;
+
+type SyncScope = typeof ALL_SCOPES[number];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -39,10 +49,11 @@ serve(async (req) => {
       });
     }
 
-    const { syncType, realmId: targetRealmId } = await req.json();
-    console.log(`[QuickBooks Sync] Starting ${syncType || "all"} sync for user ${user.id}, realm: ${targetRealmId || "all"}`);
+    const { syncType, realmId: targetRealmId, scopes } = await req.json();
+    const activeScopes: SyncScope[] = scopes && Array.isArray(scopes) ? scopes : [...ALL_SCOPES];
+    console.log(`[QuickBooks Sync] Starting sync for user ${user.id}, realm: ${targetRealmId || "all"}, scopes: ${activeScopes.join(",")}`);
 
-    // Get stored tokens — either for a specific realm or all
+    // Get stored tokens
     let tokenQuery = supabase
       .from("quickbooks_tokens")
       .select("*")
@@ -134,76 +145,254 @@ serve(async (req) => {
         return response.json();
       }
 
+      async function fetchQBReport(reportName: string, params: Record<string, string> = {}) {
+        const qs = new URLSearchParams(params).toString();
+        const url = `${QB_API_BASE}/${realmId}/reports/${reportName}${qs ? "?" + qs : ""}`;
+        const response = await fetch(url, {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept": "application/json",
+          },
+        });
+        if (!response.ok) {
+          const error = await response.text();
+          console.error(`[QuickBooks Sync] Report API error for ${reportName}:`, error);
+          throw new Error(`Report API error: ${response.status}`);
+        }
+        return response.json();
+      }
+
+      function shouldSync(scope: SyncScope): boolean {
+        if (syncType && syncType !== "all") return syncType === scope;
+        return activeScopes.includes(scope);
+      }
+
+      async function syncQuery<T>(
+        scope: SyncScope,
+        qbEntity: string,
+        tableName: string,
+        mapFn: (item: T) => Record<string, unknown>,
+        conflictKey: string = "realm_id,qb_id"
+      ) {
+        if (!shouldSync(scope)) return;
+        try {
+          const data = await fetchQBData(`query?query=SELECT * FROM ${qbEntity} MAXRESULTS 1000`);
+          const items: T[] = data.QueryResponse?.[qbEntity] || [];
+          let synced = 0;
+          for (const item of items) {
+            const row = { user_id: user.id, realm_id: realmId, ...mapFn(item), synced_at: new Date().toISOString() };
+            const { error } = await supabase.from(tableName).upsert(row, { onConflict: conflictKey });
+            if (!error) synced++;
+          }
+          results[scope] = { synced, errors: items.length - synced };
+        } catch (e) {
+          console.error(`[QuickBooks Sync] ${scope} sync error:`, e);
+          results[scope] = { synced: 0, errors: 1 };
+        }
+      }
+
       try {
-        // Sync Customers
-        if (!syncType || syncType === "customers" || syncType === "all") {
+        // ─── Customers ─────────────────────────────────────
+        await syncQuery("customers", "Customer", "quickbooks_customers", (c: any) => ({
+          qb_id: c.Id, display_name: c.DisplayName, company_name: c.CompanyName,
+          given_name: c.GivenName, family_name: c.FamilyName,
+          email: c.PrimaryEmailAddr?.Address, phone: c.PrimaryPhone?.FreeFormNumber,
+          balance: c.Balance, active: c.Active, metadata: c,
+        }));
+
+        // ─── Invoices ──────────────────────────────────────
+        await syncQuery("invoices", "Invoice", "quickbooks_invoices", (inv: any) => ({
+          qb_id: inv.Id, doc_number: inv.DocNumber,
+          customer_id: inv.CustomerRef?.value, customer_name: inv.CustomerRef?.name,
+          txn_date: inv.TxnDate, due_date: inv.DueDate,
+          total_amt: inv.TotalAmt, balance: inv.Balance,
+          status: inv.Balance === 0 ? "Paid" : inv.DueDate && new Date(inv.DueDate) < new Date() ? "Overdue" : "Open",
+          email_status: inv.EmailStatus, metadata: inv,
+        }));
+
+        // ─── Payments ──────────────────────────────────────
+        await syncQuery("payments", "Payment", "quickbooks_payments", (p: any) => ({
+          qb_id: p.Id, customer_id: p.CustomerRef?.value, customer_name: p.CustomerRef?.name,
+          txn_date: p.TxnDate, total_amt: p.TotalAmt,
+          payment_method: p.PaymentMethodRef?.name, metadata: p,
+        }));
+
+        // ─── Chart of Accounts ─────────────────────────────
+        await syncQuery("accounts", "Account", "quickbooks_accounts", (a: any) => ({
+          qb_id: a.Id, name: a.Name, account_type: a.AccountType,
+          account_sub_type: a.AccountSubType, classification: a.Classification,
+          current_balance: a.CurrentBalance, currency_ref: a.CurrencyRef?.value,
+          active: a.Active, fully_qualified_name: a.FullyQualifiedName,
+          description: a.Description, metadata: a,
+        }));
+
+        // ─── Vendors ───────────────────────────────────────
+        await syncQuery("vendors", "Vendor", "quickbooks_vendors", (v: any) => ({
+          qb_id: v.Id, display_name: v.DisplayName, company_name: v.CompanyName,
+          given_name: v.GivenName, family_name: v.FamilyName,
+          email: v.PrimaryEmailAddr?.Address, phone: v.PrimaryPhone?.FreeFormNumber,
+          balance: v.Balance, active: v.Active, metadata: v,
+        }));
+
+        // ─── Expenses (Purchase) ───────────────────────────
+        await syncQuery("expenses", "Purchase", "quickbooks_expenses", (e: any) => ({
+          qb_id: e.Id, txn_date: e.TxnDate, total_amt: e.TotalAmt,
+          account_ref_id: e.AccountRef?.value, account_ref_name: e.AccountRef?.name,
+          vendor_ref_id: e.EntityRef?.value, vendor_ref_name: e.EntityRef?.name,
+          payment_type: e.PaymentType, doc_number: e.DocNumber,
+          private_note: e.PrivateNote, line_items: e.Line, metadata: e,
+        }));
+
+        // ─── Bills ─────────────────────────────────────────
+        await syncQuery("bills", "Bill", "quickbooks_bills", (b: any) => ({
+          qb_id: b.Id, vendor_ref_id: b.VendorRef?.value, vendor_ref_name: b.VendorRef?.name,
+          txn_date: b.TxnDate, due_date: b.DueDate,
+          total_amt: b.TotalAmt, balance: b.Balance,
+          doc_number: b.DocNumber, private_note: b.PrivateNote,
+          line_items: b.Line, metadata: b,
+        }));
+
+        // ─── Purchase Orders ───────────────────────────────
+        await syncQuery("purchase_orders", "PurchaseOrder", "quickbooks_purchase_orders", (po: any) => ({
+          qb_id: po.Id, vendor_ref_id: po.VendorRef?.value, vendor_ref_name: po.VendorRef?.name,
+          txn_date: po.TxnDate, total_amt: po.TotalAmt,
+          doc_number: po.DocNumber, status: po.POStatus,
+          line_items: po.Line, metadata: po,
+        }));
+
+        // ─── Journal Entries ───────────────────────────────
+        await syncQuery("journal_entries", "JournalEntry", "quickbooks_journal_entries", (je: any) => ({
+          qb_id: je.Id, txn_date: je.TxnDate, doc_number: je.DocNumber,
+          total_amt: je.TotalAmt, adjustment: je.Adjustment,
+          private_note: je.PrivateNote, line_items: je.Line, metadata: je,
+        }));
+
+        // ─── Estimates ─────────────────────────────────────
+        await syncQuery("estimates", "Estimate", "quickbooks_estimates", (est: any) => ({
+          qb_id: est.Id, customer_ref_id: est.CustomerRef?.value, customer_ref_name: est.CustomerRef?.name,
+          txn_date: est.TxnDate, expiration_date: est.ExpirationDate,
+          total_amt: est.TotalAmt, doc_number: est.DocNumber,
+          txn_status: est.TxnStatus, line_items: est.Line, metadata: est,
+        }));
+
+        // ─── Credit Memos ──────────────────────────────────
+        await syncQuery("credit_memos", "CreditMemo", "quickbooks_credit_memos", (cm: any) => ({
+          qb_id: cm.Id, customer_ref_id: cm.CustomerRef?.value, customer_ref_name: cm.CustomerRef?.name,
+          txn_date: cm.TxnDate, total_amt: cm.TotalAmt, balance: cm.Balance,
+          doc_number: cm.DocNumber, line_items: cm.Line, metadata: cm,
+        }));
+
+        // ─── Bank Deposits ─────────────────────────────────
+        if (shouldSync("bank_deposits")) {
           try {
-            const customersData = await fetchQBData("query?query=SELECT * FROM Customer MAXRESULTS 1000");
-            const customers = customersData.QueryResponse?.Customer || [];
+            const data = await fetchQBData("query?query=SELECT * FROM Deposit MAXRESULTS 1000");
+            const items = data.QueryResponse?.Deposit || [];
             let synced = 0;
-            for (const customer of customers) {
-              const { error } = await supabase.from("quickbooks_customers").upsert({
-                user_id: user.id, realm_id: realmId, qb_id: customer.Id,
-                display_name: customer.DisplayName, company_name: customer.CompanyName,
-                given_name: customer.GivenName, family_name: customer.FamilyName,
-                email: customer.PrimaryEmailAddr?.Address, phone: customer.PrimaryPhone?.FreeFormNumber,
-                balance: customer.Balance, active: customer.Active, metadata: customer,
+            for (const d of items) {
+              const { error } = await supabase.from("quickbooks_bank_transactions").upsert({
+                user_id: user.id, realm_id: realmId, qb_id: d.Id, txn_type: "Deposit",
+                txn_date: d.TxnDate, total_amt: d.TotalAmt,
+                account_ref_id: d.DepositToAccountRef?.value,
+                account_ref_name: d.DepositToAccountRef?.name,
+                private_note: d.PrivateNote, line_items: d.Line, metadata: d,
                 synced_at: new Date().toISOString(),
-              }, { onConflict: "realm_id,qb_id" });
+              }, { onConflict: "realm_id,qb_id,txn_type" });
               if (!error) synced++;
             }
-            results.customers = { synced, errors: customers.length - synced };
+            results.bank_deposits = { synced, errors: items.length - synced };
           } catch (e) {
-            console.error("[QuickBooks Sync] Customer sync error:", e);
-            results.customers = { synced: 0, errors: 1 };
+            console.error("[QuickBooks Sync] Bank deposit sync error:", e);
+            results.bank_deposits = { synced: 0, errors: 1 };
           }
         }
 
-        // Sync Invoices
-        if (!syncType || syncType === "invoices" || syncType === "all") {
+        // ─── Bank Transfers ────────────────────────────────
+        if (shouldSync("bank_transfers")) {
           try {
-            const invoicesData = await fetchQBData("query?query=SELECT * FROM Invoice MAXRESULTS 1000");
-            const invoices = invoicesData.QueryResponse?.Invoice || [];
+            const data = await fetchQBData("query?query=SELECT * FROM Transfer MAXRESULTS 1000");
+            const items = data.QueryResponse?.Transfer || [];
             let synced = 0;
-            for (const invoice of invoices) {
-              const { error } = await supabase.from("quickbooks_invoices").upsert({
-                user_id: user.id, realm_id: realmId, qb_id: invoice.Id,
-                doc_number: invoice.DocNumber, customer_id: invoice.CustomerRef?.value,
-                customer_name: invoice.CustomerRef?.name, txn_date: invoice.TxnDate,
-                due_date: invoice.DueDate, total_amt: invoice.TotalAmt, balance: invoice.Balance,
-                status: invoice.Balance === 0 ? "Paid" : invoice.DueDate && new Date(invoice.DueDate) < new Date() ? "Overdue" : "Open",
-                email_status: invoice.EmailStatus, metadata: invoice,
+            for (const t of items) {
+              const { error } = await supabase.from("quickbooks_bank_transactions").upsert({
+                user_id: user.id, realm_id: realmId, qb_id: t.Id, txn_type: "Transfer",
+                txn_date: t.TxnDate, total_amt: t.Amount,
+                account_ref_id: t.FromAccountRef?.value,
+                account_ref_name: t.FromAccountRef?.name,
+                private_note: t.PrivateNote, metadata: t,
                 synced_at: new Date().toISOString(),
-              }, { onConflict: "realm_id,qb_id" });
+              }, { onConflict: "realm_id,qb_id,txn_type" });
               if (!error) synced++;
             }
-            results.invoices = { synced, errors: invoices.length - synced };
+            results.bank_transfers = { synced, errors: items.length - synced };
           } catch (e) {
-            console.error("[QuickBooks Sync] Invoice sync error:", e);
-            results.invoices = { synced: 0, errors: 1 };
+            console.error("[QuickBooks Sync] Bank transfer sync error:", e);
+            results.bank_transfers = { synced: 0, errors: 1 };
           }
         }
 
-        // Sync Payments
-        if (!syncType || syncType === "payments" || syncType === "all") {
+        // ─── Reports: Profit & Loss ────────────────────────
+        if (shouldSync("profit_and_loss")) {
           try {
-            const paymentsData = await fetchQBData("query?query=SELECT * FROM Payment MAXRESULTS 1000");
-            const payments = paymentsData.QueryResponse?.Payment || [];
-            let synced = 0;
-            for (const payment of payments) {
-              const { error } = await supabase.from("quickbooks_payments").upsert({
-                user_id: user.id, realm_id: realmId, qb_id: payment.Id,
-                customer_id: payment.CustomerRef?.value, customer_name: payment.CustomerRef?.name,
-                txn_date: payment.TxnDate, total_amt: payment.TotalAmt,
-                payment_method: payment.PaymentMethodRef?.name, metadata: payment,
-                synced_at: new Date().toISOString(),
-              }, { onConflict: "realm_id,qb_id" });
-              if (!error) synced++;
-            }
-            results.payments = { synced, errors: payments.length - synced };
+            const report = await fetchQBReport("ProfitAndLoss", { date_macro: "This Fiscal Year-to-date" });
+            await supabase.from("quickbooks_reports").insert({
+              user_id: user.id, realm_id: realmId, report_type: "profit_and_loss",
+              report_date: new Date().toISOString().split("T")[0],
+              period_start: report.Header?.StartPeriod, period_end: report.Header?.EndPeriod,
+              report_data: report, metadata: { header: report.Header },
+            });
+            results.profit_and_loss = { synced: 1, errors: 0 };
           } catch (e) {
-            console.error("[QuickBooks Sync] Payment sync error:", e);
-            results.payments = { synced: 0, errors: 1 };
+            console.error("[QuickBooks Sync] P&L report sync error:", e);
+            results.profit_and_loss = { synced: 0, errors: 1 };
+          }
+        }
+
+        // ─── Reports: Balance Sheet ────────────────────────
+        if (shouldSync("balance_sheet")) {
+          try {
+            const report = await fetchQBReport("BalanceSheet", { date_macro: "Today" });
+            await supabase.from("quickbooks_reports").insert({
+              user_id: user.id, realm_id: realmId, report_type: "balance_sheet",
+              report_date: new Date().toISOString().split("T")[0],
+              period_start: report.Header?.StartPeriod, period_end: report.Header?.EndPeriod,
+              report_data: report, metadata: { header: report.Header },
+            });
+            results.balance_sheet = { synced: 1, errors: 0 };
+          } catch (e) {
+            console.error("[QuickBooks Sync] Balance Sheet sync error:", e);
+            results.balance_sheet = { synced: 0, errors: 1 };
+          }
+        }
+
+        // ─── Reports: AR Aging ─────────────────────────────
+        if (shouldSync("ar_aging")) {
+          try {
+            const report = await fetchQBReport("AgedReceivables");
+            await supabase.from("quickbooks_reports").insert({
+              user_id: user.id, realm_id: realmId, report_type: "ar_aging",
+              report_date: new Date().toISOString().split("T")[0],
+              report_data: report, metadata: { header: report.Header },
+            });
+            results.ar_aging = { synced: 1, errors: 0 };
+          } catch (e) {
+            console.error("[QuickBooks Sync] AR Aging sync error:", e);
+            results.ar_aging = { synced: 0, errors: 1 };
+          }
+        }
+
+        // ─── Reports: AP Aging ─────────────────────────────
+        if (shouldSync("ap_aging")) {
+          try {
+            const report = await fetchQBReport("AgedPayables");
+            await supabase.from("quickbooks_reports").insert({
+              user_id: user.id, realm_id: realmId, report_type: "ap_aging",
+              report_date: new Date().toISOString().split("T")[0],
+              report_data: report, metadata: { header: report.Header },
+            });
+            results.ap_aging = { synced: 1, errors: 0 };
+          } catch (e) {
+            console.error("[QuickBooks Sync] AP Aging sync error:", e);
+            results.ap_aging = { synced: 0, errors: 1 };
           }
         }
 

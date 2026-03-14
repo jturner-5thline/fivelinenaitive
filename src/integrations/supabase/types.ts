@@ -8925,6 +8925,225 @@ export type Database = {
           },
         ]
       }
+      quickbooks_accounts: {
+        Row: {
+          account_sub_type: string | null
+          account_type: string | null
+          active: boolean | null
+          classification: string | null
+          created_at: string
+          currency_ref: string | null
+          current_balance: number | null
+          description: string | null
+          fully_qualified_name: string | null
+          id: string
+          metadata: Json | null
+          name: string | null
+          qb_id: string
+          realm_id: string
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          account_sub_type?: string | null
+          account_type?: string | null
+          active?: boolean | null
+          classification?: string | null
+          created_at?: string
+          currency_ref?: string | null
+          current_balance?: number | null
+          description?: string | null
+          fully_qualified_name?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          qb_id: string
+          realm_id: string
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          account_sub_type?: string | null
+          account_type?: string | null
+          active?: boolean | null
+          classification?: string | null
+          created_at?: string
+          currency_ref?: string | null
+          current_balance?: number | null
+          description?: string | null
+          fully_qualified_name?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          qb_id?: string
+          realm_id?: string
+          synced_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quickbooks_bank_transactions: {
+        Row: {
+          account_ref_id: string | null
+          account_ref_name: string | null
+          created_at: string
+          doc_number: string | null
+          id: string
+          line_items: Json | null
+          metadata: Json | null
+          private_note: string | null
+          qb_id: string
+          realm_id: string
+          synced_at: string
+          total_amt: number | null
+          txn_date: string | null
+          txn_type: string
+          user_id: string
+        }
+        Insert: {
+          account_ref_id?: string | null
+          account_ref_name?: string | null
+          created_at?: string
+          doc_number?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          private_note?: string | null
+          qb_id: string
+          realm_id: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          txn_type: string
+          user_id: string
+        }
+        Update: {
+          account_ref_id?: string | null
+          account_ref_name?: string | null
+          created_at?: string
+          doc_number?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          private_note?: string | null
+          qb_id?: string
+          realm_id?: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          txn_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quickbooks_bills: {
+        Row: {
+          balance: number | null
+          created_at: string
+          doc_number: string | null
+          due_date: string | null
+          id: string
+          line_items: Json | null
+          metadata: Json | null
+          private_note: string | null
+          qb_id: string
+          realm_id: string
+          synced_at: string
+          total_amt: number | null
+          txn_date: string | null
+          user_id: string
+          vendor_ref_id: string | null
+          vendor_ref_name: string | null
+        }
+        Insert: {
+          balance?: number | null
+          created_at?: string
+          doc_number?: string | null
+          due_date?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          private_note?: string | null
+          qb_id: string
+          realm_id: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id: string
+          vendor_ref_id?: string | null
+          vendor_ref_name?: string | null
+        }
+        Update: {
+          balance?: number | null
+          created_at?: string
+          doc_number?: string | null
+          due_date?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          private_note?: string | null
+          qb_id?: string
+          realm_id?: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id?: string
+          vendor_ref_id?: string | null
+          vendor_ref_name?: string | null
+        }
+        Relationships: []
+      }
+      quickbooks_credit_memos: {
+        Row: {
+          balance: number | null
+          created_at: string
+          customer_ref_id: string | null
+          customer_ref_name: string | null
+          doc_number: string | null
+          id: string
+          line_items: Json | null
+          metadata: Json | null
+          qb_id: string
+          realm_id: string
+          synced_at: string
+          total_amt: number | null
+          txn_date: string | null
+          user_id: string
+        }
+        Insert: {
+          balance?: number | null
+          created_at?: string
+          customer_ref_id?: string | null
+          customer_ref_name?: string | null
+          doc_number?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          qb_id: string
+          realm_id: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id: string
+        }
+        Update: {
+          balance?: number | null
+          created_at?: string
+          customer_ref_id?: string | null
+          customer_ref_name?: string | null
+          doc_number?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          qb_id?: string
+          realm_id?: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       quickbooks_customers: {
         Row: {
           active: boolean | null
@@ -8976,6 +9195,120 @@ export type Database = {
         }
         Relationships: []
       }
+      quickbooks_estimates: {
+        Row: {
+          created_at: string
+          customer_ref_id: string | null
+          customer_ref_name: string | null
+          doc_number: string | null
+          expiration_date: string | null
+          id: string
+          line_items: Json | null
+          metadata: Json | null
+          qb_id: string
+          realm_id: string
+          synced_at: string
+          total_amt: number | null
+          txn_date: string | null
+          txn_status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_ref_id?: string | null
+          customer_ref_name?: string | null
+          doc_number?: string | null
+          expiration_date?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          qb_id: string
+          realm_id: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          txn_status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_ref_id?: string | null
+          customer_ref_name?: string | null
+          doc_number?: string | null
+          expiration_date?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          qb_id?: string
+          realm_id?: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          txn_status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quickbooks_expenses: {
+        Row: {
+          account_ref_id: string | null
+          account_ref_name: string | null
+          created_at: string
+          doc_number: string | null
+          id: string
+          line_items: Json | null
+          metadata: Json | null
+          payment_type: string | null
+          private_note: string | null
+          qb_id: string
+          realm_id: string
+          synced_at: string
+          total_amt: number | null
+          txn_date: string | null
+          user_id: string
+          vendor_ref_id: string | null
+          vendor_ref_name: string | null
+        }
+        Insert: {
+          account_ref_id?: string | null
+          account_ref_name?: string | null
+          created_at?: string
+          doc_number?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          payment_type?: string | null
+          private_note?: string | null
+          qb_id: string
+          realm_id: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id: string
+          vendor_ref_id?: string | null
+          vendor_ref_name?: string | null
+        }
+        Update: {
+          account_ref_id?: string | null
+          account_ref_name?: string | null
+          created_at?: string
+          doc_number?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          payment_type?: string | null
+          private_note?: string | null
+          qb_id?: string
+          realm_id?: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id?: string
+          vendor_ref_id?: string | null
+          vendor_ref_name?: string | null
+        }
+        Relationships: []
+      }
       quickbooks_invoices: {
         Row: {
           balance: number | null
@@ -9023,6 +9356,54 @@ export type Database = {
           qb_id?: string
           realm_id?: string
           status?: string | null
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quickbooks_journal_entries: {
+        Row: {
+          adjustment: boolean | null
+          created_at: string
+          doc_number: string | null
+          id: string
+          line_items: Json | null
+          metadata: Json | null
+          private_note: string | null
+          qb_id: string
+          realm_id: string
+          synced_at: string
+          total_amt: number | null
+          txn_date: string | null
+          user_id: string
+        }
+        Insert: {
+          adjustment?: boolean | null
+          created_at?: string
+          doc_number?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          private_note?: string | null
+          qb_id: string
+          realm_id: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id: string
+        }
+        Update: {
+          adjustment?: boolean | null
+          created_at?: string
+          doc_number?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          private_note?: string | null
+          qb_id?: string
+          realm_id?: string
           synced_at?: string
           total_amt?: number | null
           txn_date?: string | null
@@ -9092,6 +9473,99 @@ export type Database = {
           synced_at?: string
           total_amt?: number | null
           txn_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quickbooks_purchase_orders: {
+        Row: {
+          created_at: string
+          doc_number: string | null
+          id: string
+          line_items: Json | null
+          metadata: Json | null
+          qb_id: string
+          realm_id: string
+          status: string | null
+          synced_at: string
+          total_amt: number | null
+          txn_date: string | null
+          user_id: string
+          vendor_ref_id: string | null
+          vendor_ref_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          doc_number?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          qb_id: string
+          realm_id: string
+          status?: string | null
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id: string
+          vendor_ref_id?: string | null
+          vendor_ref_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          doc_number?: string | null
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          qb_id?: string
+          realm_id?: string
+          status?: string | null
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id?: string
+          vendor_ref_id?: string | null
+          vendor_ref_name?: string | null
+        }
+        Relationships: []
+      }
+      quickbooks_reports: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          period_end: string | null
+          period_start: string | null
+          realm_id: string
+          report_data: Json
+          report_date: string | null
+          report_type: string
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          period_end?: string | null
+          period_start?: string | null
+          realm_id: string
+          report_data: Json
+          report_date?: string | null
+          report_type: string
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          period_end?: string | null
+          period_start?: string | null
+          realm_id?: string
+          report_data?: Json
+          report_date?: string | null
+          report_type?: string
+          synced_at?: string
           user_id?: string
         }
         Relationships: []
@@ -9184,6 +9658,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      quickbooks_vendors: {
+        Row: {
+          active: boolean | null
+          balance: number | null
+          company_name: string | null
+          created_at: string
+          display_name: string | null
+          email: string | null
+          family_name: string | null
+          given_name: string | null
+          id: string
+          metadata: Json | null
+          phone: string | null
+          qb_id: string
+          realm_id: string
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          balance?: number | null
+          company_name?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          family_name?: string | null
+          given_name?: string | null
+          id?: string
+          metadata?: Json | null
+          phone?: string | null
+          qb_id: string
+          realm_id: string
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          balance?: number | null
+          company_name?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          family_name?: string | null
+          given_name?: string | null
+          id?: string
+          metadata?: Json | null
+          phone?: string | null
+          qb_id?: string
+          realm_id?: string
+          synced_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       rate_limits: {
         Row: {
