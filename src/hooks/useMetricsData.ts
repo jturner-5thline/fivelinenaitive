@@ -318,6 +318,7 @@ export function useMetricsData() {
 
   return {
     data: metricsData,
+    rawDeals: deals || [],
     isLoading,
     error,
   };

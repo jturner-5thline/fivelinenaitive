@@ -104,6 +104,7 @@ import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
 import { useCustomMetrics } from "@/hooks/useCustomMetrics";
 import { evaluateFormula, FormulaContext } from "@/lib/customMetricEngine";
 import { SyncStatusBar } from "@/components/metrics/SyncStatusBar";
+import { getTimePeriodRange, getTimePeriodLabel, isInRange } from "@/lib/timePeriodUtils";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Management Snapshot', isFavorite: true },
@@ -1019,7 +1020,45 @@ function renderChartContent(
   }
 }
 
-// Stat widget rendering
+// Helper: compute deal metrics filtered by time period
+function computeFilteredDealMetrics(range: { start: Date; end: Date } | null, rawDeals?: any[]) {
+  if (!range || !rawDeals?.length) return null;
+  const filtered = rawDeals.filter(d => isInRange(d.updated_at, range));
+  const active = filtered.filter(d => d.status !== 'archived');
+  const closedWon = filtered.filter(d => d.status === 'archived' && d.stage === 'closed-won');
+  const totalPipelineValue = active.reduce((s: number, d: any) => s + Number(d.value || 0), 0);
+  const totalClosedWonValue = closedWon.reduce((s: number, d: any) => s + Number(d.value || 0), 0);
+  const totalFees = closedWon.reduce((s: number, d: any) => s + Number(d.total_fee || 0), 0);
+  const avgDealSize = closedWon.length > 0 ? totalClosedWonValue / closedWon.length : 0;
+  return { totalPipelineValue, totalClosedWonValue, totalFees, avgDealSize, activeDealsCount: active.length, closedWonCount: closedWon.length };
+}
+
+// Helper: compute QB metrics filtered by time period
+function computeFilteredQbMetrics(range: { start: Date; end: Date } | null, rawInvoices?: any[], rawPayments?: any[], rawExpenses?: any[]) {
+  if (!range) return null;
+  const invoices = (rawInvoices || []).filter((inv: any) => isInRange(inv.txn_date, range));
+  const payments = (rawPayments || []).filter((p: any) => isInRange(p.txn_date, range));
+  const expenses = (rawExpenses || []).filter((e: any) => isInRange(e.txn_date, range));
+  const totalRevenue = invoices.reduce((s: number, inv: any) => s + (inv.total_amt || 0), 0);
+  const totalAR = invoices.reduce((s: number, inv: any) => s + (inv.balance || 0), 0);
+  const totalPayments = payments.reduce((s: number, p: any) => s + (p.total_amt || 0), 0);
+  const totalExpenses = expenses.reduce((s: number, e: any) => s + (e.total_amt || 0), 0);
+  const now = new Date();
+  const overdueInvoices = invoices.filter((inv: any) => inv.due_date && inv.balance > 0 && new Date(inv.due_date) < now);
+  const overdueAmount = overdueInvoices.reduce((s: number, inv: any) => s + (inv.balance || 0), 0);
+  const collectionRate = totalRevenue > 0 ? ((totalRevenue - totalAR) / totalRevenue) * 100 : 0;
+  const netIncome = totalRevenue - totalExpenses;
+  return { totalRevenue, totalAR, totalPayments, totalExpenses, overdueAmount, overdueCount: overdueInvoices.length, collectionRate, netIncome, totalInvoices: invoices.length };
+}
+
+
+interface RawDataForTimePeriod {
+  rawDeals?: any[];
+  rawInvoices?: any[];
+  rawPayments?: any[];
+  rawExpenses?: any[];
+}
+
 function renderStatContent(
   widget: MetricWidgetConfig,
   metrics: ReturnType<typeof useMetricsData>['data'],
@@ -1027,8 +1066,17 @@ function renderStatContent(
   hsMetrics?: ReturnType<typeof useHubSpotMetrics>['data'],
   customMetricDefs?: ReturnType<typeof useCustomMetrics>['metrics'],
   allWidgets?: MetricWidgetConfig[],
+  rawData?: RawDataForTimePeriod,
 ) {
   if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-') && !widget.dataSource.startsWith('custom-') && !widget.dataSource.startsWith('xs-')) return null;
+
+  // Time period filtering
+  const range = getTimePeriodRange(widget.timePeriod);
+  const periodLabel = getTimePeriodLabel(widget.timePeriod);
+
+  // Compute time-period-filtered values
+  const fd = computeFilteredDealMetrics(range, rawData?.rawDeals);
+  const fq = computeFilteredQbMetrics(range, rawData?.rawInvoices, rawData?.rawPayments, rawData?.rawExpenses);
 
   // Handle custom calculated metrics
   if (widget.dataSource.startsWith('custom-')) {
@@ -1099,63 +1147,68 @@ function renderStatContent(
     );
   }
 
+  // Use filtered data if time period is set, otherwise use pre-aggregated
+  const dealData = fd || (metrics ? { totalPipelineValue: metrics.totalPipelineValue, totalClosedWonValue: metrics.totalClosedWonValue, totalFees: metrics.totalFees, avgDealSize: metrics.avgDealSize, activeDealsCount: metrics.activeDealsCount, closedWonCount: metrics.closedWonCount } : null);
+  const qbData = fq || (qbMetrics ? { totalRevenue: qbMetrics.totalRevenue, totalAR: qbMetrics.totalAR, totalPayments: qbMetrics.totalPayments, totalExpenses: qbMetrics.totalExpenses, overdueAmount: qbMetrics.overdueAmount, overdueCount: qbMetrics.overdueCount, collectionRate: qbMetrics.collectionRate, netIncome: qbMetrics.netIncome, totalInvoices: qbMetrics.totalInvoices } : null);
+  const periodSuffix = periodLabel ? ` (${periodLabel})` : '';
+
   switch (widget.dataSource) {
     case 'active-pipeline':
-      return (
+      return dealData ? (
         <StatWidgetContent
           title={widget.title}
-          value={formatCurrency(metrics.totalPipelineValue)}
-          subtitle={`${metrics.activeDealsCount} active deals`}
+          value={formatCurrency(dealData.totalPipelineValue)}
+          subtitle={`${dealData.activeDealsCount} active deals${periodSuffix}`}
           icon="pipeline"
           color={widget.color}
         />
-      );
+      ) : null;
     case 'closed-won':
-      return (
+      return dealData ? (
         <StatWidgetContent
           title={widget.title}
-          value={formatCurrency(metrics.totalClosedWonValue)}
-          subtitle={`${metrics.closedWonCount} deals closed`}
+          value={formatCurrency(dealData.totalClosedWonValue)}
+          subtitle={`${dealData.closedWonCount} deals closed${periodSuffix}`}
           icon="trending-up"
           color={widget.color}
         />
-      );
+      ) : null;
     case 'total-fees':
-      return (
+      return dealData ? (
         <StatWidgetContent
           title={widget.title}
-          value={formatCurrency(metrics.totalFees)}
-          subtitle="From closed deals"
+          value={formatCurrency(dealData.totalFees)}
+          subtitle={`From closed deals${periodSuffix}`}
           icon="dollar"
           color={widget.color}
         />
-      );
+      ) : null;
     case 'avg-deal-size':
-      return (
+      return dealData ? (
         <StatWidgetContent
           title={widget.title}
-          value={formatCurrency(metrics.avgDealSize)}
-          subtitle="Based on closed deals"
+          value={formatCurrency(dealData.avgDealSize)}
+          subtitle={`Based on closed deals${periodSuffix}`}
           icon="percent"
           color={widget.color}
         />
-      );
+      ) : null;
     // QuickBooks stat widgets
     case 'qb-total-revenue':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalRevenue)} subtitle={`${qbMetrics.totalInvoices} invoices`} icon="dollar" color={widget.color} />
+      return qbData ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbData.totalRevenue)} subtitle={`${qbData.totalInvoices} invoices${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
     case 'qb-accounts-receivable':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAR)} subtitle={`${qbMetrics.overdueCount} overdue`} icon="trending-up" color={widget.color} />
+      return qbData ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbData.totalAR)} subtitle={`${qbData.overdueCount} overdue${periodSuffix}`} icon="trending-up" color={widget.color} />
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
     case 'qb-total-payments':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalPayments)} subtitle="Payments received" icon="dollar" color={widget.color} />
+      return qbData ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbData.totalPayments)} subtitle={`Payments received${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
@@ -1166,29 +1219,29 @@ function renderStatContent(
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
     case 'qb-collection-rate':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={`${qbMetrics.collectionRate.toFixed(1)}%`} subtitle="Of invoiced amount" icon="percent" color={widget.color} />
+      return qbData ? (
+        <StatWidgetContent title={widget.title} value={`${qbData.collectionRate.toFixed(1)}%`} subtitle={`Of invoiced amount${periodSuffix}`} icon="percent" color={widget.color} />
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
     case 'qb-overdue-amount':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.overdueAmount)} subtitle={`${qbMetrics.overdueCount} invoices overdue`} icon="trending-up" color={widget.color} />
+      return qbData ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbData.overdueAmount)} subtitle={`${qbData.overdueCount} invoices overdue${periodSuffix}`} icon="trending-up" color={widget.color} />
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
     // New QB stats
     case 'qb-total-expenses':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalExpenses)} subtitle={`From expenses & purchases`} icon="dollar" color={widget.color} />
+      return (fq || qbMetrics) ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(fq ? fq.totalExpenses : qbMetrics!.totalExpenses)} subtitle={`From expenses & purchases${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
     case 'qb-total-ap':
       return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAP)} subtitle="Outstanding bills" icon="trending-up" color={widget.color} />
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAP)} subtitle={`Outstanding bills${periodSuffix}`} icon="trending-up" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
     case 'qb-net-income':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.netIncome)} subtitle="Revenue minus expenses" icon="dollar" color={widget.color} />
+      return (fq || qbMetrics) ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(fq ? fq.netIncome : qbMetrics!.netIncome)} subtitle={`Revenue minus expenses${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
     case 'qb-active-vendors':
       return qbMetrics ? (
@@ -1196,11 +1249,11 @@ function renderStatContent(
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
     case 'qb-total-estimates':
       return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalEstimates)} subtitle="Pending estimates" icon="dollar" color={widget.color} />
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalEstimates)} subtitle={`Pending estimates${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
     case 'qb-total-credit-memos':
       return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalCreditMemos)} subtitle="Credit memos issued" icon="dollar" color={widget.color} />
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalCreditMemos)} subtitle={`Credit memos issued${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
 
     // HubSpot stats
@@ -1262,8 +1315,8 @@ function renderStatContent(
 
 export default function Metrics() {
   const [reportingMonth, setReportingMonth] = useState(format(new Date(), "MMM-yy"));
-  const { data: metrics, isLoading, error } = useMetricsData();
-  const { data: qbMetrics } = useQuickBooksMetrics();
+  const { data: metrics, rawDeals, isLoading, error } = useMetricsData();
+  const { data: qbMetrics, rawInvoices, rawPayments, rawExpenses } = useQuickBooksMetrics();
   const { data: hsMetrics } = useHubSpotMetrics();
   const { metrics: customMetricDefs } = useCustomMetrics();
   const {
@@ -1737,7 +1790,7 @@ export default function Metrics() {
                           setDeleteConfirmOpen(true);
                         }}
                       >
-                        {renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets)}
+                        {renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })}
                       </SortableMetricWidget>
                     ))}
                   </div>
