@@ -67,7 +67,12 @@ export type EditableManagementSnapshotCardId =
   | 'debt-profit'
   | 'finserv-profit';
 
-export type ManagementSnapshotEditableConfig = Pick<MetricWidgetConfig, 'title' | 'color' | 'entityFilter' | 'comparisonPeriod'>;
+export type ManagementSnapshotEditableConfig = Pick<
+  MetricWidgetConfig,
+  'title' | 'color' | 'entityFilter' | 'comparisonPeriod' | 'type' | 'chartType' | 'datarailsConfig'
+>;
+
+type CardVisualization = 'kpi' | 'bar' | 'stackedBar' | 'line';
 
 interface ManagementSnapshotDashboardProps {
   isEditMode?: boolean;
@@ -93,6 +98,21 @@ export function ManagementSnapshotDashboard({
     return conn?.companyName || entityFilter;
   };
 
+  const normalizeVisualization = (value?: string): CardVisualization => {
+    if (value === 'kpi') return 'kpi';
+    if (value === 'line') return 'line';
+    if (value === 'stackedBar') return 'stackedBar';
+    return 'bar';
+  };
+
+  const resolveVisualization = (config?: ManagementSnapshotEditableConfig): CardVisualization => {
+    const datarailsType = (config?.datarailsConfig as { type?: string } | undefined)?.type;
+    if (datarailsType) return normalizeVisualization(datarailsType);
+    if (config?.type === 'stat') return 'kpi';
+    if (config?.chartType === 'line') return 'line';
+    return 'bar';
+  };
+
   const getCardConfig = (
     cardId: EditableManagementSnapshotCardId,
     fallbackTitle: string,
@@ -101,6 +121,7 @@ export function ManagementSnapshotDashboard({
     title: cardConfigs[cardId]?.title || fallbackTitle,
     color: cardConfigs[cardId]?.color || fallbackColor,
     entityName: resolveEntityName(cardConfigs[cardId]?.entityFilter),
+    visualization: resolveVisualization(cardConfigs[cardId]),
   });
 
   const renderEditAction = (cardId: EditableManagementSnapshotCardId) => {
