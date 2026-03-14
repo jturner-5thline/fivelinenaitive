@@ -1020,6 +1020,13 @@ function renderChartContent(
 }
 
 // Stat widget rendering
+interface RawDataForTimePeriod {
+  rawDeals?: any[];
+  rawInvoices?: any[];
+  rawPayments?: any[];
+  rawExpenses?: any[];
+}
+
 function renderStatContent(
   widget: MetricWidgetConfig,
   metrics: ReturnType<typeof useMetricsData>['data'],
@@ -1027,8 +1034,13 @@ function renderStatContent(
   hsMetrics?: ReturnType<typeof useHubSpotMetrics>['data'],
   customMetricDefs?: ReturnType<typeof useCustomMetrics>['metrics'],
   allWidgets?: MetricWidgetConfig[],
+  rawData?: RawDataForTimePeriod,
 ) {
   if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-') && !widget.dataSource.startsWith('custom-') && !widget.dataSource.startsWith('xs-')) return null;
+
+  // Time period filtering
+  const range = getTimePeriodRange(widget.timePeriod);
+  const periodLabel = getTimePeriodLabel(widget.timePeriod);
 
   // Handle custom calculated metrics
   if (widget.dataSource.startsWith('custom-')) {
