@@ -14,6 +14,15 @@ interface Props {
 
 const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2, 160 60% 45%))', 'hsl(var(--chart-3, 30 80% 55%))', 'hsl(var(--chart-4, 280 65% 60%))', 'hsl(var(--chart-5, 340 75% 55%))'];
 
+// Gradient definitions for bar charts — pairs of [start, end] HSL
+const CHART_GRADIENT_PAIRS: [string, string][] = [
+  ['hsl(213, 90%, 70%)', 'hsl(213, 80%, 50%)'],
+  ['hsl(142, 71%, 55%)', 'hsl(142, 71%, 38%)'],
+  ['hsl(38, 92%, 58%)', 'hsl(38, 92%, 42%)'],
+  ['hsl(270, 60%, 68%)', 'hsl(270, 60%, 48%)'],
+  ['hsl(220, 15%, 65%)', 'hsl(220, 15%, 45%)'],
+];
+
 /** Check if widget config uses QB-backed fields that can pull real data */
 function hasRealDataFields(config: WidgetConfig): boolean {
   return config.values.some(v => v.fieldId && (
