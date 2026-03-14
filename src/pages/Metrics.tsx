@@ -1775,7 +1775,7 @@ export default function Metrics() {
       <MetricWidgetEditor
         widget={editingWidget}
         isOpen={editorOpen}
-        onClose={() => setEditorOpen(false)}
+        onClose={handleCloseEditor}
         onSave={handleSave}
         availableWidgets={widgets.filter(w => w.type === 'stat').map(w => ({ id: w.id, title: w.title }))}
         existingDataSources={widgets.map(w => w.dataSource)}
