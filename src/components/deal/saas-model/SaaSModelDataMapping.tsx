@@ -1407,6 +1407,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   </thead>
                   <tbody>
                     {(sheet?.data || []).slice(0, 200).map((row, rowIdx) => {
+                      const isFlipped = flippedRows.has(rowIdx);
                       const mappedToField = Object.entries(fieldMappings).find(([_, maps]) =>
                         maps.some(m => m.rowIdx === rowIdx && m.sheet === sheet?.name)
                       );
