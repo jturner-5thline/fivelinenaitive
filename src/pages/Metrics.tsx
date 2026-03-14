@@ -1567,31 +1567,29 @@ export default function Metrics() {
             </div>
           </div>
 
-          {/* Dashboard Content - show pre-built dashboards when NOT in edit mode */}
-          {!isEditMode && (
-            <>
-              {selectedDashboard === 'management-snapshot' && <ManagementSnapshotDashboard />}
-              {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
-              {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
-              {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
-              {selectedDashboard === 'weekly-cashflow' && <WeeklyCashflowDashboard />}
-              {selectedDashboard === 'harvest-monthly-tracking' && <HarvestMonthlyTrackingDashboard />}
-              {selectedDashboard === 'flor-sales-commission' && <SalesCommissionBoardDashboard ownerName="Flor" />}
-              {selectedDashboard === 'james-sales-commission' && <SalesCommissionBoardDashboard ownerName="James Turner" />}
-              {selectedDashboard === 'niki-sales-commission' && <SalesCommissionBoardDashboard ownerName="Niki Heikali" />}
-              {selectedDashboard === 'paz-sales-commission' && <SalesCommissionBoardDashboard ownerName="Paz" />}
-              {selectedDashboard === 'chandler-sales-commission' && <ChandlerSalesCommissionDashboard />}
-              {selectedDashboard === 'consolidated-debt-pipeline' && <ConsolidatedDebtPipelineDashboard />}
-              {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
-              {selectedDashboard === 'deal-stage-timeline' && <DealStageTimelineDashboard />}
-              {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
-              {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
-              {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
-            </>
-          )}
+          {/* Dashboard Content - always show pre-built dashboards */}
+          <>
+            {selectedDashboard === 'management-snapshot' && <ManagementSnapshotDashboard />}
+            {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
+            {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
+            {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
+            {selectedDashboard === 'weekly-cashflow' && <WeeklyCashflowDashboard />}
+            {selectedDashboard === 'harvest-monthly-tracking' && <HarvestMonthlyTrackingDashboard />}
+            {selectedDashboard === 'flor-sales-commission' && <SalesCommissionBoardDashboard ownerName="Flor" />}
+            {selectedDashboard === 'james-sales-commission' && <SalesCommissionBoardDashboard ownerName="James Turner" />}
+            {selectedDashboard === 'niki-sales-commission' && <SalesCommissionBoardDashboard ownerName="Niki Heikali" />}
+            {selectedDashboard === 'paz-sales-commission' && <SalesCommissionBoardDashboard ownerName="Paz" />}
+            {selectedDashboard === 'chandler-sales-commission' && <ChandlerSalesCommissionDashboard />}
+            {selectedDashboard === 'consolidated-debt-pipeline' && <ConsolidatedDebtPipelineDashboard />}
+            {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
+            {selectedDashboard === 'deal-stage-timeline' && <DealStageTimelineDashboard />}
+            {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
+            {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
+            {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
+          </>
 
-          {/* Editable Widgets Grid - shows in edit mode OR on non-pre-built dashboards */}
-          {(isEditMode || !['management-snapshot', 'income-board', 'sales-bd-roi', 'sales-team-board', 'weekly-cashflow', 'harvest-monthly-tracking', 'flor-sales-commission', 'james-sales-commission', 'niki-sales-commission', 'paz-sales-commission', 'chandler-sales-commission', 'consolidated-debt-pipeline', 'controller-dashboard', 'deal-stage-timeline', 'executive-dashboard', 'finserv-financial-metrics', 'quickbooks-financial'].includes(selectedDashboard)) && (
+          {/* Editable Widgets Grid - shows for non-pre-built dashboards */}
+          {!['management-snapshot', 'income-board', 'sales-bd-roi', 'sales-team-board', 'weekly-cashflow', 'harvest-monthly-tracking', 'flor-sales-commission', 'james-sales-commission', 'niki-sales-commission', 'paz-sales-commission', 'chandler-sales-commission', 'consolidated-debt-pipeline', 'controller-dashboard', 'deal-stage-timeline', 'executive-dashboard', 'finserv-financial-metrics', 'quickbooks-financial'].includes(selectedDashboard) && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
                 {/* Stat Widgets Row */}
