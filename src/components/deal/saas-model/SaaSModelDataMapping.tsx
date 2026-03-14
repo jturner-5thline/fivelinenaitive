@@ -257,11 +257,17 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           if (mappingCount > 0) {
             setFieldMappings(restoredMappings);
             setLastSavedCount(mappingCount);
-            // If we had mappings but no file, still go to mapping phase placeholder
             if (!saved.file_storage_path) {
               // No file to restore but mappings exist — unusual state
             }
           }
+        }
+        // Restore excluded columns and flipped rows
+        if (Array.isArray(saved.excluded_columns) && !cancelled) {
+          setExcludedColumns(new Set(saved.excluded_columns));
+        }
+        if (Array.isArray(saved.flipped_rows) && !cancelled) {
+          setFlippedRows(new Set(saved.flipped_rows));
         }
       } catch (err) {
         console.warn('Could not restore saved mappings:', err);
