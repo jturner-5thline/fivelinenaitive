@@ -242,6 +242,20 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       });
     }
 
+    // Fix flipped columns similarly
+    if (colsToDelete.size > 0) {
+      const sortedDeletedCols2 = Array.from(colsToDelete).sort((a, b) => a - b);
+      setFlippedColumns(prev => {
+        const next = new Set<number>();
+        for (const c of prev) {
+          if (colsToDelete.has(c)) continue;
+          const offset = sortedDeletedCols2.filter(d => d < c).length;
+          next.add(c - offset);
+        }
+        return next;
+      });
+    }
+
     const totalRemoved = rowsToDelete.size + colsToDelete.size;
     toast.success(`Removed ${rowsToDelete.size > 0 ? `${rowsToDelete.size} row${rowsToDelete.size > 1 ? 's' : ''}` : ''}${rowsToDelete.size > 0 && colsToDelete.size > 0 ? ' and ' : ''}${colsToDelete.size > 0 ? `${colsToDelete.size} column${colsToDelete.size > 1 ? 's' : ''}` : ''}`);
 
