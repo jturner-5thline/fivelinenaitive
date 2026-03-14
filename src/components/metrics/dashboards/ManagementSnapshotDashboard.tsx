@@ -5,6 +5,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Comp
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
+import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -80,10 +81,17 @@ export function ManagementSnapshotDashboard({
   cardConfigs = {},
 }: ManagementSnapshotDashboardProps) {
   const { data: metrics, isLoading } = useMetricsData();
+  const { data: qbStatus } = useQuickBooksStatus();
 
   if (isLoading || !metrics) {
     return <div className="animate-pulse space-y-4">Loading...</div>;
   }
+
+  const resolveEntityName = (entityFilter?: string) => {
+    if (!entityFilter || entityFilter === 'all') return null;
+    const conn = qbStatus?.connections?.find(c => c.realmId === entityFilter);
+    return conn?.companyName || entityFilter;
+  };
 
   const getCardConfig = (
     cardId: EditableManagementSnapshotCardId,
@@ -92,6 +100,7 @@ export function ManagementSnapshotDashboard({
   ) => ({
     title: cardConfigs[cardId]?.title || fallbackTitle,
     color: cardConfigs[cardId]?.color || fallbackColor,
+    entityName: resolveEntityName(cardConfigs[cardId]?.entityFilter),
   });
 
   const renderEditAction = (cardId: EditableManagementSnapshotCardId) => {
@@ -150,7 +159,10 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{debtRevenueConfig.title}</CardTitle>
               {renderEditAction('debt-revenue')}
             </div>
-            <Badge variant="outline" className="w-fit text-xs">Reporting Month: Q4-25</Badge>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge variant="outline" className="w-fit text-xs">Reporting Month: Q4-25</Badge>
+              {debtRevenueConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {debtRevenueConfig.entityName}</Badge>}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[200px]">
@@ -176,6 +188,7 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{finServRevenueConfig.title}</CardTitle>
               {renderEditAction('finserv-revenue')}
             </div>
+            {finServRevenueConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {finServRevenueConfig.entityName}</Badge>}
           </CardHeader>
           <CardContent>
             <div className="h-[200px]">
@@ -245,7 +258,10 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{clientsSignedDebtConfig.title}</CardTitle>
               {renderEditAction('clients-signed-debt')}
             </div>
-            <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
+              {clientsSignedDebtConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {clientsSignedDebtConfig.entityName}</Badge>}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[180px]">
@@ -267,7 +283,10 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{clientsSignedFinServConfig.title}</CardTitle>
               {renderEditAction('clients-signed-finserv')}
             </div>
-            <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
+              {clientsSignedFinServConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {clientsSignedFinServConfig.entityName}</Badge>}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[180px]">
@@ -289,6 +308,7 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{outstandingARConfig.title}</CardTitle>
               {renderEditAction('outstanding-ar')}
             </div>
+            {outstandingARConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {outstandingARConfig.entityName}</Badge>}
           </CardHeader>
           <CardContent>
             <div className="h-[180px]">
@@ -313,8 +333,8 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{debtProfitConfig.title}</CardTitle>
               {renderEditAction('debt-profit')}
             </div>
-            <div className="flex gap-2">
-              <Badge variant="outline" className="text-xs">Entity: All</Badge>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge variant="outline" className="text-xs">Entity: {debtProfitConfig.entityName || 'All'}</Badge>
               <Badge variant="outline" className="text-xs">Year to date</Badge>
             </div>
           </CardHeader>
@@ -342,7 +362,10 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{finServProfitConfig.title}</CardTitle>
               {renderEditAction('finserv-profit')}
             </div>
-            <Badge variant="outline" className="text-xs">Year to date</Badge>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge variant="outline" className="text-xs">Year to date</Badge>
+              {finServProfitConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {finServProfitConfig.entityName}</Badge>}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[180px]">
