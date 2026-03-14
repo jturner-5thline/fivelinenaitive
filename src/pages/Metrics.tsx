@@ -1219,29 +1219,29 @@ function renderStatContent(
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
     case 'qb-collection-rate':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={`${qbMetrics.collectionRate.toFixed(1)}%`} subtitle="Of invoiced amount" icon="percent" color={widget.color} />
+      return qbData ? (
+        <StatWidgetContent title={widget.title} value={`${qbData.collectionRate.toFixed(1)}%`} subtitle={`Of invoiced amount${periodSuffix}`} icon="percent" color={widget.color} />
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
     case 'qb-overdue-amount':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.overdueAmount)} subtitle={`${qbMetrics.overdueCount} invoices overdue`} icon="trending-up" color={widget.color} />
+      return qbData ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbData.overdueAmount)} subtitle={`${qbData.overdueCount} invoices overdue${periodSuffix}`} icon="trending-up" color={widget.color} />
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
     // New QB stats
     case 'qb-total-expenses':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalExpenses)} subtitle={`From expenses & purchases`} icon="dollar" color={widget.color} />
+      return (fq || qbMetrics) ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(fq ? fq.totalExpenses : qbMetrics!.totalExpenses)} subtitle={`From expenses & purchases${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
     case 'qb-total-ap':
       return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAP)} subtitle="Outstanding bills" icon="trending-up" color={widget.color} />
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAP)} subtitle={`Outstanding bills${periodSuffix}`} icon="trending-up" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
     case 'qb-net-income':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.netIncome)} subtitle="Revenue minus expenses" icon="dollar" color={widget.color} />
+      return (fq || qbMetrics) ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(fq ? fq.netIncome : qbMetrics!.netIncome)} subtitle={`Revenue minus expenses${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
     case 'qb-active-vendors':
       return qbMetrics ? (
@@ -1249,11 +1249,11 @@ function renderStatContent(
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
     case 'qb-total-estimates':
       return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalEstimates)} subtitle="Pending estimates" icon="dollar" color={widget.color} />
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalEstimates)} subtitle={`Pending estimates${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
     case 'qb-total-credit-memos':
       return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalCreditMemos)} subtitle="Credit memos issued" icon="dollar" color={widget.color} />
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalCreditMemos)} subtitle={`Credit memos issued${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
 
     // HubSpot stats
