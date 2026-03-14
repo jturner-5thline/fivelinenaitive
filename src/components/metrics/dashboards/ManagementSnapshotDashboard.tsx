@@ -389,7 +389,7 @@ export function ManagementSnapshotDashboard({
                   {debtRevenueConfig.visualization === 'line' ? (
                     <LineChart data={debtRevenueData}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                      <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                      <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                       <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
                       <Legend />
