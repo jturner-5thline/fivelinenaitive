@@ -176,8 +176,13 @@ export function useQBPreviewData(config: WidgetConfig) {
     isQBAccountField(v.fieldId)
   ));
 
+  // Build a stable key from breakdown/accountFilter config
+  const valuesKey = config.values.map(v => 
+    `${v.fieldId}|${v.breakdown ?? 'total'}|${(v.accountFilter ?? []).sort().join(',')}`
+  ).join(';');
+
   return useQuery({
-    queryKey: ['qb-preview-data', user?.id, realmId, config.values.map(v => v.fieldId).join(','), grain, timeWindow, showZeroPeriods],
+    queryKey: ['qb-preview-data', user?.id, realmId, valuesKey, grain, timeWindow, showZeroPeriods],
     queryFn: async (): Promise<PreviewDataPoint[]> => {
       const dateRange = getDateRange(timeWindow);
 
@@ -200,7 +205,6 @@ export function useQBPreviewData(config: WidgetConfig) {
 
           if (data) {
             const label = data.name ?? 'Account';
-            // Return single point
             const key = 'current';
             if (!periodMap.has(key)) {
               periodMap.set(key, { period: 'Current' });
@@ -210,7 +214,65 @@ export function useQBPreviewData(config: WidgetConfig) {
           continue;
         }
 
-        // Time-series: invoices, payments, expenses
+        // Check if this is a revenue field with byAccount breakdown
+        const isByAccount = vc.breakdown === 'byAccount' && 
+          mapping.table === 'invoices' && 
+          ['f-revenue', 'f-amount'].includes(vc.fieldId);
+
+        if (isByAccount) {
+          // Fetch invoices with metadata to parse line items
+          let query = supabase
+            .from('quickbooks_invoices')
+            .select('txn_date, metadata')
+            .order('txn_date', { ascending: true });
+
+          if (realmId) {
+            query = query.eq('realm_id', realmId);
+          }
+          if (dateRange) {
+            query = query.gte('txn_date', dateRange.start).lte('txn_date', dateRange.end);
+          }
+
+          const { data: rows, error } = await query;
+          if (error || !rows) continue;
+
+          const accountFilter = vc.accountFilter ?? [];
+
+          for (const row of rows) {
+            if (!row.txn_date) continue;
+            const key = toPeriodKey(row.txn_date, grain);
+            const periodLabel = toPeriodLabel(row.txn_date, grain);
+
+            if (!periodMap.has(key)) {
+              periodMap.set(key, { period: periodLabel });
+            }
+            const point = periodMap.get(key)!;
+
+            // Parse line items from metadata
+            const meta = row.metadata as Record<string, unknown> | null;
+            if (!meta) continue;
+            const lines = (meta as { Line?: Array<Record<string, unknown>> }).Line;
+            if (!Array.isArray(lines)) continue;
+
+            for (const line of lines) {
+              if (line.DetailType !== 'SalesItemLineDetail') continue;
+              const detail = line.SalesItemLineDetail as Record<string, unknown> | undefined;
+              if (!detail) continue;
+              const accountRef = detail.ItemAccountRef as { name?: string; value?: string } | undefined;
+              if (!accountRef?.name || !accountRef?.value) continue;
+              const amount = (line.Amount as number) ?? 0;
+
+              // Apply account filter if specified
+              if (accountFilter.length > 0 && !accountFilter.includes(accountRef.value)) continue;
+
+              const acctLabel = accountRef.name;
+              point[acctLabel] = ((point[acctLabel] as number) || 0) + amount;
+            }
+          }
+          continue;
+        }
+
+        // Standard time-series: invoices, payments, expenses (total mode)
         const tableName = mapping.table === 'invoices'
           ? 'quickbooks_invoices'
           : mapping.table === 'payments'
