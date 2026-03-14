@@ -305,14 +305,19 @@ export function ManagementSnapshotDashboard({
   const debtProfitConfig = getCardConfig('debt-profit', 'Debt Profit');
   const finServProfitConfig = getCardConfig('finserv-profit', 'FinServ Revenue');
 
-  const debtRevenueMonthlyRows = filterMonthlyRowsByWindow(metrics.monthlyData, debtRevenueConfig.timeWindow);
-  const debtRevenueSourceRows = debtRevenueMonthlyRows.length > 0 ? debtRevenueMonthlyRows : metrics.monthlyData.slice(-1);
-  const debtRevenueData = debtRevenueSourceRows.map((row) => ({
-    period: row.month,
+  // Use QB invoices for debt revenue (same source as widget editor)
+  const debtRevenueEntityFilter = cardConfigs['debt-revenue']?.entityFilter;
+  const { data: qbDebtRevenue, isLoading: qbDebtRevenueLoading } = useQBRevenueByWindow(
+    debtRevenueConfig.timeWindow,
+    debtRevenueEntityFilter && debtRevenueEntityFilter !== 'all' ? debtRevenueEntityFilter : null,
+  );
+  const debtRevenueData = (qbDebtRevenue?.periods ?? []).map((row) => ({
+    period: row.period,
+    closing: row.amount,
     retainer: 0,
     milestone: 0,
-    closing: row.totalFees,
   }));
+  const debtRevenueTotal = qbDebtRevenue?.total ?? 0;
 
   const clientsSignedDebtRows = filterMonthlyRowsByWindow(metrics.monthlyData, clientsSignedDebtConfig.timeWindow);
   const clientsSignedDebt = (clientsSignedDebtRows.length > 0 ? clientsSignedDebtRows : metrics.monthlyData.slice(-1)).map((row) => ({
