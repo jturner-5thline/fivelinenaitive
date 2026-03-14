@@ -31,6 +31,7 @@ import {
   type Phase, type AnalyzedFile, type AutoMapResult, type ValidationWarning,
   KEYWORD_ALIASES, getMatchConfidence, applyMappingsToModel,
   formatCellValue, isNumericCell, detectHeaderRow, extractColumnHeaders,
+  validateDateSequence, type DateWarning,
 } from './dataMappingUtils';
 
 interface Props {
