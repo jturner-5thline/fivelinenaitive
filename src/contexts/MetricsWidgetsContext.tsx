@@ -67,12 +67,22 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'qb-active-customers', label: 'QB: Active Customers', type: 'stat' },
   { id: 'qb-collection-rate', label: 'QB: Collection Rate', type: 'stat' },
   { id: 'qb-overdue-amount', label: 'QB: Overdue Amount', type: 'stat' },
+  { id: 'qb-total-expenses', label: 'QB: Total Expenses', type: 'stat' },
+  { id: 'qb-total-ap', label: 'QB: Accounts Payable', type: 'stat' },
+  { id: 'qb-net-income', label: 'QB: Net Income', type: 'stat' },
+  { id: 'qb-active-vendors', label: 'QB: Active Vendors', type: 'stat' },
+  { id: 'qb-total-estimates', label: 'QB: Total Estimates', type: 'stat' },
+  { id: 'qb-total-credit-memos', label: 'QB: Credit Memos', type: 'stat' },
   { id: 'qb-revenue-trend', label: 'QB: Revenue Trend (12M)', type: 'chart' },
   { id: 'qb-ar-aging', label: 'QB: AR Aging', type: 'chart' },
+  { id: 'qb-ap-aging', label: 'QB: AP Aging', type: 'chart' },
   { id: 'qb-top-customers', label: 'QB: Top Customers', type: 'chart' },
+  { id: 'qb-top-vendors', label: 'QB: Top Vendors by Spend', type: 'chart' },
+  { id: 'qb-expense-by-category', label: 'QB: Expenses by Category', type: 'chart' },
   { id: 'qb-invoice-status', label: 'QB: Invoice Status', type: 'chart' },
   { id: 'qb-payment-methods', label: 'QB: Payment Methods', type: 'chart' },
   { id: 'qb-revenue-vs-payments', label: 'QB: Revenue vs Payments', type: 'chart' },
+  { id: 'qb-revenue-vs-expenses', label: 'QB: Revenue vs Expenses', type: 'chart' },
   // HubSpot data sources
   { id: 'hs-total-deals', label: 'HS: Total Deals', type: 'stat' },
   { id: 'hs-total-deal-value', label: 'HS: Total Deal Value', type: 'stat' },
@@ -86,6 +96,10 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'hs-deals-by-owner', label: 'HS: Deals by Owner', type: 'chart' },
   { id: 'hs-deal-value-trend', label: 'HS: Deal Value Trend', type: 'chart' },
   { id: 'hs-contacts-by-source', label: 'HS: Contacts by Source', type: 'chart' },
+  // Cross-source
+  { id: 'xs-revenue-per-deal', label: 'Cross: Revenue per Deal Signed', type: 'stat' },
+  { id: 'xs-ar-per-active-deal', label: 'Cross: AR per Active Deal', type: 'stat' },
+  { id: 'xs-collection-rate-by-entity', label: 'Cross: Collection Rate', type: 'stat' },
 ] as const;
 
 export type MetricDataSource = typeof METRIC_WIDGET_DATA_SOURCES[number]['id'];
