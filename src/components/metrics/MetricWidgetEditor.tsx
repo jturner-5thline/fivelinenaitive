@@ -31,6 +31,8 @@ import {
   MetricChartType,
   MetricWidgetSize,
   ComparisonPeriod,
+  TimePeriod,
+  TIME_PERIOD_OPTIONS,
   METRIC_WIDGET_DATA_SOURCES,
 } from '@/contexts/MetricsWidgetsContext';
 import { FormulaBuilder, Timeframe } from './FormulaBuilder';
