@@ -183,12 +183,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         file_storage_path: storedFilePathRef.current,
         analysis_result: file?.analysis || null,
         mapped_at: new Date().toISOString(),
+        excluded_columns: Array.from(excludedColumns),
+        flipped_rows: Array.from(flippedRows),
       }, { onConflict: 'deal_id' });
       setLastSavedCount(count);
     } catch (err) {
       console.warn('Auto-save mappings failed:', err);
     }
-  }, [dealId]);
+  }, [dealId, excludedColumns, flippedRows]);
 
   // Watch fieldMappings changes and auto-save with debounce
   useEffect(() => {
