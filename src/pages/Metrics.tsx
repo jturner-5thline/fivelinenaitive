@@ -1565,6 +1565,7 @@ export default function Metrics() {
         type: card.type,
         chartType: card.chartType,
         datarailsConfig: card.datarailsConfig,
+        timeWindow: (card.datarailsConfig as any)?.xAxis?.window || undefined,
       };
       return acc;
     }, {} as Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>);
@@ -1983,6 +1984,22 @@ export default function Metrics() {
               <ManagementSnapshotDashboard
                 isEditMode={isEditMode}
                 onEditCard={handleEditManagementSnapshotCard}
+                onTimeWindowChange={(cardId, window) => {
+                  setManagementSnapshotCards(prev => {
+                    const card = prev[cardId];
+                    const existingDR = (card.datarailsConfig || {}) as Record<string, any>;
+                    return {
+                      ...prev,
+                      [cardId]: {
+                        ...card,
+                        datarailsConfig: {
+                          ...existingDR,
+                          xAxis: { ...(existingDR.xAxis || {}), window },
+                        },
+                      },
+                    };
+                  });
+                }}
                 cardConfigs={managementSnapshotCardConfigs}
               />
             )}

@@ -1,11 +1,21 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Pencil } from 'lucide-react';
+import { Lock, Pencil, ChevronDown } from 'lucide-react';
 import { ResponsiveContainer, BarChart, LineChart, Bar, XAxis, YAxis, Tooltip, Legend, ComposedChart, Line, CartesianGrid } from 'recharts';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { type TimeWindow } from '@/components/widget-editor/widgetTypes';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -70,19 +80,112 @@ export type EditableManagementSnapshotCardId =
 export type ManagementSnapshotEditableConfig = Pick<
   MetricWidgetConfig,
   'title' | 'color' | 'entityFilter' | 'comparisonPeriod'
-> & Partial<Pick<MetricWidgetConfig, 'type' | 'chartType' | 'datarailsConfig'>>;
+> & Partial<Pick<MetricWidgetConfig, 'type' | 'chartType' | 'datarailsConfig'>> & {
+  timeWindow?: TimeWindow;
+};
+
+const WINDOW_GROUPS: { label: string; options: { value: TimeWindow; label: string }[] }[] = [
+  {
+    label: 'Current Period',
+    options: [
+      { value: 'mtd', label: 'Month to Date' },
+      { value: 'qtd', label: 'Quarter to Date' },
+      { value: 'ytd', label: 'Year to Date' },
+    ],
+  },
+  {
+    label: 'Prior Period',
+    options: [
+      { value: 'lastMonth', label: 'Last Month' },
+      { value: 'lastQuarter', label: 'Last Quarter' },
+      { value: 'lastYear', label: 'Last Year' },
+    ],
+  },
+  {
+    label: 'Rolling',
+    options: [
+      { value: 'last3Months', label: 'Last 3 Months' },
+      { value: 'last6Months', label: 'Last 6 Months' },
+      { value: 'ttm', label: 'Trailing 12 Months (TTM)' },
+      { value: 'last12Months', label: 'Last 12 Months' },
+    ],
+  },
+  {
+    label: 'Other',
+    options: [
+      { value: 'all', label: 'All Time' },
+    ],
+  },
+];
+
+const WINDOW_LABEL_MAP: Record<string, string> = {};
+for (const g of WINDOW_GROUPS) for (const o of g.options) WINDOW_LABEL_MAP[o.value] = o.label;
+
+function PeriodBadge({
+  cardId,
+  currentWindow,
+  onTimeWindowChange,
+}: {
+  cardId: EditableManagementSnapshotCardId;
+  currentWindow: TimeWindow;
+  onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
+}) {
+  const label = WINDOW_LABEL_MAP[currentWindow] || currentWindow;
+
+  if (!onTimeWindowChange) {
+    return <Badge variant="outline" className="w-fit text-xs">{label}</Badge>;
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Badge
+          variant="outline"
+          className="w-fit text-xs cursor-pointer hover:bg-accent transition-colors gap-1"
+        >
+          {label}
+          <ChevronDown className="h-3 w-3 opacity-60" />
+        </Badge>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        {WINDOW_GROUPS.map((group, gi) => (
+          <div key={group.label}>
+            {gi > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {group.label}
+            </DropdownMenuLabel>
+            {group.options.map((opt) => (
+              <DropdownMenuItem
+                key={opt.value}
+                className="text-xs"
+                onSelect={() => onTimeWindowChange(cardId, opt.value)}
+              >
+                {opt.label}
+                {opt.value === currentWindow && (
+                  <span className="ml-auto text-primary">✓</span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </div>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 type CardVisualization = 'kpi' | 'bar' | 'stackedBar' | 'line';
 
 interface ManagementSnapshotDashboardProps {
   isEditMode?: boolean;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
+  onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
   cardConfigs?: Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>;
 }
 
 export function ManagementSnapshotDashboard({
   isEditMode = false,
   onEditCard,
+  onTimeWindowChange,
   cardConfigs = {},
 }: ManagementSnapshotDashboardProps) {
   const { data: metrics, isLoading } = useMetricsData();
@@ -117,11 +220,14 @@ export function ManagementSnapshotDashboard({
     cardId: EditableManagementSnapshotCardId,
     fallbackTitle: string,
     fallbackColor: string = 'hsl(var(--primary))',
+    fallbackWindow: TimeWindow = 'ytd',
   ) => ({
     title: cardConfigs[cardId]?.title || fallbackTitle,
     color: cardConfigs[cardId]?.color || fallbackColor,
     entityName: resolveEntityName(cardConfigs[cardId]?.entityFilter),
     visualization: resolveVisualization(cardConfigs[cardId]),
+    timeWindow: (cardConfigs[cardId]?.timeWindow || fallbackWindow) as TimeWindow,
+    cardId,
   });
 
   const renderEditAction = (cardId: EditableManagementSnapshotCardId) => {
@@ -139,7 +245,7 @@ export function ManagementSnapshotDashboard({
     );
   };
 
-  const debtRevenueConfig = getCardConfig('debt-revenue', 'Debt Revenue');
+  const debtRevenueConfig = getCardConfig('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'lastQuarter');
   const finServRevenueConfig = getCardConfig('finserv-revenue', 'FinServ Revenue');
   const clientsSignedDebtConfig = getCardConfig('clients-signed-debt', 'Clients Signed - Debt');
   const clientsSignedFinServConfig = getCardConfig('clients-signed-finserv', 'Clients Signed - FinServ');
@@ -181,7 +287,7 @@ export function ManagementSnapshotDashboard({
               {renderEditAction('debt-revenue')}
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              <Badge variant="outline" className="w-fit text-xs">Reporting Month: Q4-25</Badge>
+              <PeriodBadge cardId="debt-revenue" currentWindow={debtRevenueConfig.timeWindow} onTimeWindowChange={onTimeWindowChange} />
               {debtRevenueConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {debtRevenueConfig.entityName}</Badge>}
             </div>
           </CardHeader>
@@ -320,7 +426,7 @@ export function ManagementSnapshotDashboard({
               {renderEditAction('clients-signed-debt')}
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
+              <PeriodBadge cardId="clients-signed-debt" currentWindow={clientsSignedDebtConfig.timeWindow} onTimeWindowChange={onTimeWindowChange} />
               {clientsSignedDebtConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {clientsSignedDebtConfig.entityName}</Badge>}
             </div>
           </CardHeader>
@@ -345,7 +451,7 @@ export function ManagementSnapshotDashboard({
               {renderEditAction('clients-signed-finserv')}
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
+              <PeriodBadge cardId="clients-signed-finserv" currentWindow={clientsSignedFinServConfig.timeWindow} onTimeWindowChange={onTimeWindowChange} />
               {clientsSignedFinServConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {clientsSignedFinServConfig.entityName}</Badge>}
             </div>
           </CardHeader>
@@ -396,7 +502,7 @@ export function ManagementSnapshotDashboard({
             </div>
             <div className="flex gap-1.5 flex-wrap">
               <Badge variant="outline" className="text-xs">Entity: {debtProfitConfig.entityName || 'All'}</Badge>
-              <Badge variant="outline" className="text-xs">Year to date</Badge>
+              <PeriodBadge cardId="debt-profit" currentWindow={debtProfitConfig.timeWindow} onTimeWindowChange={onTimeWindowChange} />
             </div>
           </CardHeader>
           <CardContent>
@@ -424,7 +530,7 @@ export function ManagementSnapshotDashboard({
               {renderEditAction('finserv-profit')}
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              <Badge variant="outline" className="text-xs">Year to date</Badge>
+              <PeriodBadge cardId="finserv-profit" currentWindow={finServProfitConfig.timeWindow} onTimeWindowChange={onTimeWindowChange} />
               {finServProfitConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {finServProfitConfig.entityName}</Badge>}
             </div>
           </CardHeader>
