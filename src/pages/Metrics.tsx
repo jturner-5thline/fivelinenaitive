@@ -1649,8 +1649,12 @@ export default function Metrics() {
     );
   }
 
-  const statWidgets = widgets.filter(w => w.type === 'stat');
-  const chartWidgets = widgets.filter(w => w.type === 'chart');
+  const isDatarailsKpiWidget = (widget: MetricWidgetConfig) =>
+    widget.dataSource.startsWith('datarails-') &&
+    (widget.datarailsConfig as { type?: string } | undefined)?.type === 'kpi';
+
+  const statWidgets = widgets.filter(w => w.type === 'stat' || isDatarailsKpiWidget(w));
+  const chartWidgets = widgets.filter(w => w.type === 'chart' && !isDatarailsKpiWidget(w));
 
   return (
     <>
