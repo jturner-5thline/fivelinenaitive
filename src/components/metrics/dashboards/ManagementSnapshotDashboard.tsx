@@ -188,6 +188,7 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{finServRevenueConfig.title}</CardTitle>
               {renderEditAction('finserv-revenue')}
             </div>
+            {finServRevenueConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {finServRevenueConfig.entityName}</Badge>}
           </CardHeader>
           <CardContent>
             <div className="h-[200px]">
