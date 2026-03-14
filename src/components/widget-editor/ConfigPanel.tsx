@@ -62,7 +62,7 @@ export function ConfigPanel({ config, onChange, realtime, onRealtimeToggle }: Pr
           </Section>
 
           <Section title="Values">
-            <ValuesConfigSection configs={config.values} onChange={(values) => onChange({ ...config, values })} />
+            <ValuesConfigSection configs={config.values} onChange={(values) => onChange({ ...config, values })} realmId={config.entityId} />
           </Section>
 
           <Section title="Time Period">
