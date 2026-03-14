@@ -1588,8 +1588,8 @@ export default function Metrics() {
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
           </>
 
-          {/* Editable Widgets Grid - shows for non-pre-built dashboards */}
-          {!['management-snapshot', 'income-board', 'sales-bd-roi', 'sales-team-board', 'weekly-cashflow', 'harvest-monthly-tracking', 'flor-sales-commission', 'james-sales-commission', 'niki-sales-commission', 'paz-sales-commission', 'chandler-sales-commission', 'consolidated-debt-pipeline', 'controller-dashboard', 'deal-stage-timeline', 'executive-dashboard', 'finserv-financial-metrics', 'quickbooks-financial'].includes(selectedDashboard) && (
+          {/* Editable Widgets Grid - always available */}
+          {(
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
                 {/* Stat Widgets Row */}
