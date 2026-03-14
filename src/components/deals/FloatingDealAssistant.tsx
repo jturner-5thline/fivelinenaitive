@@ -132,7 +132,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
           to { opacity: 0; transform: translateY(20px) scale(0.97); }
         }
       `}</style>
-      <div className="fixed bottom-6 right-16 z-[9999] group transition-all duration-300">
+      <div className="fixed bottom-6 right-16 z-[9999] group transition-all duration-300" title="naitive Assistant — General help & platform search">
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <div className="relative">
@@ -164,7 +164,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                     "overflow-hidden whitespace-nowrap transition-all duration-300",
                     isOpen ? "max-w-32 ml-2" : "max-w-0 group-hover:max-w-32 group-hover:ml-2"
                   )}>
-                    Ask AI
+                    naitive Assistant
                   </span>
                 </div>
               </Button>
