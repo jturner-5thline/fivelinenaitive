@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_saas_mappings ADD COLUMN IF NOT EXISTS flipped_columns jsonb DEFAULT '[]'::jsonb;
