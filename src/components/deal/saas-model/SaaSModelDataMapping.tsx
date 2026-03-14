@@ -13,7 +13,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter } from 'lucide-react';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { parseExcelFromFile, ParsedSheet } from '@/lib/excelUtils';
@@ -76,6 +78,85 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const storedFilePathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
 
+  // ── Batch 2: Column Exclude state ──
+  const [excludedColumns, setExcludedColumns] = useState<Set<number>>(new Set());
+  const [showColumnManager, setShowColumnManager] = useState(false);
+  const [columnSelectStart, setColumnSelectStart] = useState<number | null>(null);
+  const [selectedColumns, setSelectedColumns] = useState<Set<number>>(new Set());
+
+  // ── Batch 2: Flip ± state ──
+  const [flippedRows, setFlippedRows] = useState<Set<number>>(new Set());
+
+  // ── Batch 2: Zoom state ──
+  const [zoomLevel, setZoomLevel] = useState<number>(() => {
+    try { const z = localStorage.getItem('data-mapping-zoom'); return z ? Number(z) : 100; } catch { return 100; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('data-mapping-zoom', String(zoomLevel)); } catch {}
+  }, [zoomLevel]);
+
+  const handleZoomIn = useCallback(() => setZoomLevel(z => Math.min(200, z + 10)), []);
+  const handleZoomOut = useCallback(() => setZoomLevel(z => Math.max(50, z - 10)), []);
+
+  // Column header click with shift/ctrl for multi-select
+  const handleColumnHeaderClick = useCallback((colIdx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (e.shiftKey && columnSelectStart !== null) {
+      const start = Math.min(columnSelectStart, colIdx);
+      const end = Math.max(columnSelectStart, colIdx);
+      setSelectedColumns(prev => {
+        const next = new Set(prev);
+        for (let i = start; i <= end; i++) next.add(i);
+        return next;
+      });
+    } else if (e.ctrlKey || e.metaKey) {
+      setSelectedColumns(prev => {
+        const next = new Set(prev);
+        if (next.has(colIdx)) next.delete(colIdx); else next.add(colIdx);
+        return next;
+      });
+      setColumnSelectStart(colIdx);
+    } else {
+      setSelectedColumns(new Set([colIdx]));
+      setColumnSelectStart(colIdx);
+    }
+  }, [columnSelectStart]);
+
+  const handleExcludeColumns = useCallback((cols: number[]) => {
+    setExcludedColumns(prev => {
+      const next = new Set(prev);
+      cols.forEach(c => next.add(c));
+      return next;
+    });
+    setSelectedColumns(new Set());
+    toast.info(`Excluded ${cols.length} column${cols.length > 1 ? 's' : ''}`);
+  }, []);
+
+  const handleRestoreColumn = useCallback((colIdx: number) => {
+    setExcludedColumns(prev => {
+      const next = new Set(prev);
+      next.delete(colIdx);
+      return next;
+    });
+  }, []);
+
+  const handleRestoreAllColumns = useCallback(() => {
+    setExcludedColumns(new Set());
+    toast.info('All columns restored');
+  }, []);
+
+  // Flip rows toggle
+  const handleFlipRows = useCallback((rowIndices: number[]) => {
+    setFlippedRows(prev => {
+      const next = new Set(prev);
+      rowIndices.forEach(r => {
+        if (next.has(r)) next.delete(r); else next.add(r);
+      });
+      return next;
+    });
+    toast.info(`Toggled ± sign on ${rowIndices.length} row${rowIndices.length > 1 ? 's' : ''}`);
+  }, []);
+
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
   const hasUnsavedMappings = mappedCount > lastSavedCount;
@@ -102,14 +183,16 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         file_storage_path: storedFilePathRef.current,
         analysis_result: file?.analysis || null,
         mapped_at: new Date().toISOString(),
+        excluded_columns: Array.from(excludedColumns),
+        flipped_rows: Array.from(flippedRows),
       }, { onConflict: 'deal_id' });
       setLastSavedCount(count);
     } catch (err) {
       console.warn('Auto-save mappings failed:', err);
     }
-  }, [dealId]);
+  }, [dealId, excludedColumns, flippedRows]);
 
-  // Watch fieldMappings changes and auto-save with debounce
+  // Watch fieldMappings/excludedColumns/flippedRows changes and auto-save with debounce
   useEffect(() => {
     if (isRestoringRef.current) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
@@ -117,7 +200,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       autoSaveMappings(fieldMappings, selectedFile);
     }, 1500);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [fieldMappings, selectedFile, autoSaveMappings]);
+  }, [fieldMappings, selectedFile, autoSaveMappings, excludedColumns, flippedRows]);
 
   // Browser beforeunload guard
   useEffect(() => {
@@ -174,11 +257,17 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           if (mappingCount > 0) {
             setFieldMappings(restoredMappings);
             setLastSavedCount(mappingCount);
-            // If we had mappings but no file, still go to mapping phase placeholder
             if (!saved.file_storage_path) {
               // No file to restore but mappings exist — unusual state
             }
           }
+        }
+        // Restore excluded columns and flipped rows
+        if (Array.isArray(saved.excluded_columns) && !cancelled) {
+          setExcludedColumns(new Set(saved.excluded_columns));
+        }
+        if (Array.isArray(saved.flipped_rows) && !cancelled) {
+          setFlippedRows(new Set(saved.flipped_rows));
         }
       } catch (err) {
         console.warn('Could not restore saved mappings:', err);
@@ -384,7 +473,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     if (!selectedFile || Object.keys(fieldMappings).length === 0) return;
     setIsSaving(true);
     try {
-      applyMappingsToModel(fieldMappings, selectedFile, updateModel);
+      applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns);
       const companyId = await getCompanyId();
       if (companyId) await logPatterns(companyId, dealId);
 
@@ -402,6 +491,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         file_storage_path: storagePath,
         analysis_result: selectedFile.analysis,
         mapped_at: new Date().toISOString(),
+        excluded_columns: Array.from(excludedColumns),
+        flipped_rows: Array.from(flippedRows),
       }, { onConflict: 'deal_id' });
 
       const count = Object.keys(fieldMappings).length;
@@ -558,9 +649,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   const handleRecalculate = useCallback(() => {
     if (!selectedFile) return;
-    applyMappingsToModel(fieldMappings, selectedFile, updateModel);
+    applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns);
     toast.success('Model recalculated — Dashboard, IS & BS updated');
-  }, [selectedFile, fieldMappings, updateModel]);
+  }, [selectedFile, fieldMappings, updateModel, flippedRows, excludedColumns]);
 
   const handleRecalculateWithLog = useCallback(async () => {
     const companyId = await getCompanyId();
@@ -726,6 +817,21 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [handleUndo, handleRedo]);
+
+  // Ctrl+scroll zoom on spreadsheet
+  useEffect(() => {
+    const el = spreadsheetRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) setZoomLevel(z => Math.min(200, z + 10));
+        else setZoomLevel(z => Math.max(50, z - 10));
+      }
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [phase]);
 
   const runValidation = useCallback(() => {
     const warnings: ValidationWarning[] = [];
@@ -1051,6 +1157,16 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
+                <Button variant={selectedRows.size > 0 ? "outline" : "ghost"} size="sm" className="h-7 text-xs gap-1 px-2" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
+                  <span className="font-bold text-xs">±</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Flip +/− sign on selected rows</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleUndo} disabled={!canUndo}>
                   <Undo2 className="h-3.5 w-3.5" />
                 </Button>
@@ -1068,6 +1184,72 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          <div className="h-4 w-px bg-border/30" />
+          {/* Column Manager */}
+          <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
+            <PopoverTrigger asChild>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant={excludedColumns.size > 0 ? "outline" : "ghost"} size="sm" className={cn("h-7 w-7 p-0", excludedColumns.size > 0 && "text-amber-500")}>
+                      <Filter className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Column visibility {excludedColumns.size > 0 ? `(${excludedColumns.size} hidden)` : ''}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="start" className="w-64 p-3 max-h-[350px] overflow-auto">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-semibold">Column Visibility</h4>
+                {excludedColumns.size > 0 && (
+                  <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={handleRestoreAllColumns}>
+                    Show All
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-1">
+                {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
+                  const colIdx = i + 1;
+                  const isExcluded = excludedColumns.has(colIdx);
+                  const headerLabel = detectedHeaders.headers[i] || `Col ${String.fromCharCode(65 + (colIdx % 26))}`;
+                  return (
+                    <div key={colIdx} className="flex items-center justify-between gap-2 py-0.5">
+                      <span className={cn("text-[11px] truncate", isExcluded && "text-muted-foreground line-through")}>{headerLabel}</span>
+                      <Switch checked={!isExcluded} onCheckedChange={(checked) => {
+                        if (checked) handleRestoreColumn(colIdx);
+                        else handleExcludeColumns([colIdx]);
+                      }} className="h-4 w-7" />
+                    </div>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-0.5 ml-1">
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomOut} disabled={zoomLevel <= 50}>
+                    <ZoomOut className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Zoom Out</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-center">{zoomLevel}%</span>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomIn} disabled={zoomLevel >= 200}>
+                    <ZoomIn className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Zoom In (Ctrl+Scroll)</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
@@ -1088,6 +1270,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   ['Escape', 'Deselect all'],
                   ['Ctrl+Z', 'Undo last mapping action'],
                   ['Ctrl+Shift+Z', 'Redo'],
+                  ['Ctrl+Scroll', 'Zoom in/out'],
                 ].map(([key, desc]) => (
                   <div key={key} className="flex items-center justify-between">
                     <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">{key}</kbd>
@@ -1163,30 +1346,70 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   </button>
                 ))}
               </div>
-              <div className="h-[500px] overflow-auto relative">
-                <table className="w-max text-[11px] border-collapse">
+              <div className="h-[500px] overflow-auto relative" style={{ fontSize: `${zoomLevel}%` }}>
+                <table className="w-max text-[11px] border-collapse" style={{ fontSize: 'inherit' }}>
                   <thead className="sticky top-0 z-20 bg-muted/80 backdrop-blur-sm">
                     <tr>
                       <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted/80 backdrop-blur-sm">#</th>
                       <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] border-r border-border/10 font-semibold bg-muted/80 backdrop-blur-sm" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>Account Name</th>
-                      {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => (
-                        <th key={i + 1} className="py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal">
-                          <div className="flex flex-col items-end">
-                            <span className="text-[8px] text-muted-foreground/40">
-                              {String.fromCharCode(65 + ((i + 1) % 26))}{(i + 1) >= 26 ? String.fromCharCode(65 + Math.floor((i + 1) / 26) - 1) : ''}
-                            </span>
-                            {detectedHeaders.headers[i] && (
-                              <span className="text-[9px] font-medium text-foreground/70 truncate max-w-[70px]" title={detectedHeaders.headers[i]}>
-                                {detectedHeaders.headers[i]}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                      ))}
+                      {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
+                        const colIdx = i + 1;
+                        const isExcluded = excludedColumns.has(colIdx);
+                        const isColSelected = selectedColumns.has(colIdx);
+                        if (isExcluded) return null;
+                        return (
+                          <ContextMenu key={colIdx}>
+                            <ContextMenuTrigger asChild>
+                              <th
+                                className={cn(
+                                  "py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none",
+                                  isColSelected && "bg-primary/10 ring-1 ring-inset ring-primary/30"
+                                )}
+                                onClick={(e) => handleColumnHeaderClick(colIdx, e)}
+                              >
+                                <div className="flex flex-col items-end">
+                                  <div className="flex items-center gap-1 justify-end w-full">
+                                    <span className="text-[8px] text-muted-foreground/40">
+                                      {String.fromCharCode(65 + (colIdx % 26))}{colIdx >= 26 ? String.fromCharCode(65 + Math.floor(colIdx / 26) - 1) : ''}
+                                    </span>
+                                    <button
+                                      className="opacity-0 group-hover/col:opacity-100 transition-opacity h-3.5 w-3.5 rounded hover:bg-destructive/20 flex items-center justify-center"
+                                      onClick={(e) => { e.stopPropagation(); handleExcludeColumns([colIdx]); }}
+                                      title="Exclude column"
+                                    >
+                                      <X className="h-2.5 w-2.5 text-muted-foreground hover:text-destructive" />
+                                    </button>
+                                  </div>
+                                  {detectedHeaders.headers[i] && (
+                                    <span className="text-[9px] font-medium text-foreground/70 truncate max-w-[70px]" title={detectedHeaders.headers[i]}>
+                                      {detectedHeaders.headers[i]}
+                                    </span>
+                                  )}
+                                </div>
+                              </th>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent className="w-48">
+                              <ContextMenuItem onClick={() => handleExcludeColumns([colIdx])}>
+                                <EyeOff className="h-3.5 w-3.5 mr-2" /> Exclude Column
+                              </ContextMenuItem>
+                              {selectedColumns.size > 1 && (
+                                <ContextMenuItem onClick={() => handleExcludeColumns(Array.from(selectedColumns))}>
+                                  <EyeOff className="h-3.5 w-3.5 mr-2" /> Exclude {selectedColumns.size} Selected
+                                </ContextMenuItem>
+                              )}
+                              <ContextMenuSeparator />
+                              <ContextMenuItem onClick={handleRestoreAllColumns} disabled={excludedColumns.size === 0}>
+                                <Eye className="h-3.5 w-3.5 mr-2" /> Show All Columns
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
                     {(sheet?.data || []).slice(0, 200).map((row, rowIdx) => {
+                      const isFlipped = flippedRows.has(rowIdx);
                       const mappedToField = Object.entries(fieldMappings).find(([_, maps]) =>
                         maps.some(m => m.rowIdx === rowIdx && m.sheet === sheet?.name)
                       );
@@ -1241,8 +1464,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                   ? rowSuggestion.category === 'bs' ? "bg-violet-500/5" : "bg-blue-500/5"
                                   : rowIdx % 2 === 0 ? "bg-card" : "bg-muted/5";
 
-                      return (
-                        <tr key={rowIdx}
+                       return (
+                        <ContextMenu key={rowIdx}>
+                          <ContextMenuTrigger asChild>
+                        <tr
                           className={cn("cursor-pointer transition-colors border-b border-border/5", rowBgClass, leftBorderClass)}
                           draggable={!isHeaderRow}
                           onDragStart={e => {
@@ -1250,7 +1475,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             setDraggingRowIdx(rowIdx);
                             e.dataTransfer.effectAllowed = 'move';
                             e.dataTransfer.setData('text/plain', String(rowIdx));
-                            // Create ghost preview
                             const ghost = document.createElement('div');
                             ghost.textContent = row[0] !== null && row[0] !== undefined ? String(row[0]) : `Row ${rowIdx + 1}`;
                             ghost.style.cssText = 'position:fixed;top:-1000px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;color:white;background:hsl(var(--primary));box-shadow:0 4px 12px rgba(0,0,0,0.3);white-space:nowrap;pointer-events:none;z-index:9999;opacity:0.9;';
@@ -1264,7 +1488,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
                             isFlashing ? "bg-emerald-500/20" : isSelected ? "bg-cyan-500/15" : isHeaderRow ? "bg-muted/20" : hasSuggestion ? "bg-primary/5" : "bg-muted/10",
                           )}>
-                            {isHeaderRow ? <Columns className="h-3 w-3 mx-auto text-muted-foreground/60" /> : rowIdx + 1}
+                            <div className="flex items-center justify-center gap-0.5">
+                              {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/60" /> : rowIdx + 1}
+                              {isFlipped && !isHeaderRow && (
+                                <span className="text-[8px] font-bold text-amber-500" title="Sign flipped (±)">±</span>
+                              )}
+                            </div>
                           </td>
                           <td className={cn(
                             "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r border-border/10 font-medium",
@@ -1315,18 +1544,38 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             </div>
                           </td>
                           {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
-                            const cellVal = row[colIdx + 1];
+                            const actualCol = colIdx + 1;
+                            if (excludedColumns.has(actualCol)) return null;
+                            const cellVal = row[actualCol];
                             const isNum = isNumericCell(cellVal);
+                            // Apply flip multiplier for display
+                            let displayVal = cellVal;
+                            if (isFlipped && isNum && cellVal !== null && cellVal !== undefined) {
+                              const numVal = typeof cellVal === 'number' ? cellVal : parseFloat(String(cellVal).replace(/[,$]/g, ''));
+                              if (!isNaN(numVal)) displayVal = -numVal;
+                            }
                             return (
-                              <td key={colIdx + 1} className={cn(
+                              <td key={actualCol} className={cn(
                                 "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
                                 isNum ? "text-right" : "text-left"
                               )}>
-                                {formatCellValue(cellVal)}
+                                {formatCellValue(displayVal)}
                               </td>
                             );
                           })}
                         </tr>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent className="w-48">
+                            <ContextMenuItem onClick={() => handleFlipRows([rowIdx])}>
+                              <span className="font-bold mr-2 text-xs">±</span> {isFlipped ? 'Remove Flip' : 'Flip +/− Sign'}
+                            </ContextMenuItem>
+                            {selectedRows.size > 1 && (
+                              <ContextMenuItem onClick={() => handleFlipRows(Array.from(selectedRows))}>
+                                <span className="font-bold mr-2 text-xs">±</span> Flip {selectedRows.size} Selected Rows
+                              </ContextMenuItem>
+                            )}
+                          </ContextMenuContent>
+                        </ContextMenu>
                       );
                     })}
                   </tbody>

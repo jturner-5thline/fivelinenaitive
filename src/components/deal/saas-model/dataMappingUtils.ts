@@ -165,6 +165,8 @@ export function applyMappingsToModel(
   fieldMappings: Record<string, FieldMapping[]>,
   selectedFile: AnalyzedFile,
   updateModel: (updater: (prev: import('./types').SaaSModelData) => import('./types').SaaSModelData) => void,
+  flippedRows?: Set<number>,
+  excludedColumns?: Set<number>,
 ) {
   updateModel(prev => {
     const updated = { ...prev };
@@ -179,9 +181,13 @@ export function applyMappingsToModel(
       mappings.forEach(m => {
         const row = sheet.data[m.rowIdx];
         if (!row) return;
-        for (let c = 1; c <= numCols && c <= 24; c++) {
+        const multiplier = flippedRows?.has(m.rowIdx) ? -1 : 1;
+        let colSlot = 0;
+        for (let c = 1; c <= numCols && colSlot < 24; c++) {
+          if (excludedColumns?.has(c)) continue;
           const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '0').replace(/[,$]/g, ''));
-          if (!isNaN(val)) values[c - 1] += val;
+          if (!isNaN(val)) values[colSlot] += val * multiplier;
+          colSlot++;
         }
       });
 

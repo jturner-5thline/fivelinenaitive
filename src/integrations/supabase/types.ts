@@ -4120,10 +4120,12 @@ export type Database = {
           analysis_result: Json | null
           deal_id: string
           detected_date_cols: number[] | null
+          excluded_columns: Json | null
           field_mappings: Json | null
           file_name: string
           file_size: number | null
           file_storage_path: string | null
+          flipped_rows: Json | null
           id: string
           mapped_at: string | null
         }
@@ -4131,10 +4133,12 @@ export type Database = {
           analysis_result?: Json | null
           deal_id: string
           detected_date_cols?: number[] | null
+          excluded_columns?: Json | null
           field_mappings?: Json | null
           file_name: string
           file_size?: number | null
           file_storage_path?: string | null
+          flipped_rows?: Json | null
           id?: string
           mapped_at?: string | null
         }
@@ -4142,10 +4146,12 @@ export type Database = {
           analysis_result?: Json | null
           deal_id?: string
           detected_date_cols?: number[] | null
+          excluded_columns?: Json | null
           field_mappings?: Json | null
           file_name?: string
           file_size?: number | null
           file_storage_path?: string | null
+          flipped_rows?: Json | null
           id?: string
           mapped_at?: string | null
         }
