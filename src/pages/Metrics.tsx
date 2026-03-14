@@ -64,7 +64,8 @@ import {
 import { useMetricsData } from "@/hooks/useMetricsData";
 import { useMetricsWidgets, MetricWidgetConfig, MetricWidgetSize } from "@/contexts/MetricsWidgetsContext";
 import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/components/metrics/SortableMetricWidget";
-import { MetricWidgetEditor } from "@/components/metrics/MetricWidgetEditor";
+import { DatarailsWidgetEditor } from "@/components/widget-editor/DatarailsWidgetEditor";
+import { DEFAULT_WIDGET_CONFIG, WidgetConfig as DatarailsWidgetConfig } from "@/components/widget-editor/widgetTypes";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useDashboardFolders } from "@/contexts/DashboardFoldersContext";
