@@ -958,10 +958,11 @@ function renderStatContent(
   widget: MetricWidgetConfig,
   metrics: ReturnType<typeof useMetricsData>['data'],
   qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data'],
+  hsMetrics?: ReturnType<typeof useHubSpotMetrics>['data'],
   customMetricDefs?: ReturnType<typeof useCustomMetrics>['metrics'],
   allWidgets?: MetricWidgetConfig[],
 ) {
-  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('custom-')) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-') && !widget.dataSource.startsWith('custom-') && !widget.dataSource.startsWith('xs-')) return null;
 
   // Handle custom calculated metrics
   if (widget.dataSource.startsWith('custom-')) {
