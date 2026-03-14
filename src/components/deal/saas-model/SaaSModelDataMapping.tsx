@@ -101,6 +101,150 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleZoomIn = useCallback(() => setZoomLevel(z => Math.min(200, z + 10)), []);
   const handleZoomOut = useCallback(() => setZoomLevel(z => Math.max(50, z - 10)), []);
 
+  // ── Eraser mode state ──
+  const [eraserMode, setEraserMode] = useState(false);
+  const [eraserSelectedRows, setEraserSelectedRows] = useState<Set<number>>(new Set());
+  const [eraserSelectedCols, setEraserSelectedCols] = useState<Set<number>>(new Set());
+
+  const handleToggleEraser = useCallback(() => {
+    setEraserMode(prev => {
+      if (prev) {
+        // Exiting eraser mode — clear selections
+        setEraserSelectedRows(new Set());
+        setEraserSelectedCols(new Set());
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleEraserRowClick = useCallback((rowIdx: number, e: React.MouseEvent) => {
+    setEraserSelectedRows(prev => {
+      const next = new Set(prev);
+      if (e.shiftKey && prev.size > 0) {
+        const existing = Array.from(prev);
+        const last = existing[existing.length - 1];
+        const start = Math.min(last, rowIdx);
+        const end = Math.max(last, rowIdx);
+        for (let i = start; i <= end; i++) next.add(i);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (next.has(rowIdx)) next.delete(rowIdx); else next.add(rowIdx);
+      } else {
+        if (next.has(rowIdx) && next.size === 1) next.clear();
+        else { next.clear(); next.add(rowIdx); }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleEraserColClick = useCallback((colIdx: number, e: React.MouseEvent) => {
+    setEraserSelectedCols(prev => {
+      const next = new Set(prev);
+      if (e.shiftKey && prev.size > 0) {
+        const existing = Array.from(prev);
+        const last = existing[existing.length - 1];
+        const start = Math.min(last, colIdx);
+        const end = Math.max(last, colIdx);
+        for (let i = start; i <= end; i++) next.add(i);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (next.has(colIdx)) next.delete(colIdx); else next.add(colIdx);
+      } else {
+        if (next.has(colIdx) && next.size === 1) next.clear();
+        else { next.clear(); next.add(colIdx); }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleEraserDelete = useCallback(() => {
+    if (!selectedFile) return;
+    const sheet = selectedFile.sheets[activeSheet];
+    if (!sheet) return;
+
+    const rowsToDelete = eraserSelectedRows;
+    const colsToDelete = eraserSelectedCols;
+
+    if (rowsToDelete.size === 0 && colsToDelete.size === 0) return;
+
+    // Build new data by filtering rows and columns
+    let newData = sheet.data.map(row => [...row]);
+
+    // Remove rows (filter by index)
+    if (rowsToDelete.size > 0) {
+      newData = newData.filter((_, i) => !rowsToDelete.has(i));
+    }
+
+    // Remove columns (filter each row)
+    if (colsToDelete.size > 0) {
+      newData = newData.map(row => row.filter((_, ci) => !colsToDelete.has(ci)));
+    }
+
+    // Update the sheet data in-place
+    const updatedSheets = selectedFile.sheets.map((s, i) => {
+      if (i !== activeSheet) return s;
+      return { ...s, data: newData };
+    });
+
+    const updatedFile = { ...selectedFile, sheets: updatedSheets };
+    setSelectedFile(updatedFile);
+    setAnalyzedFiles(prev => prev.map(f => f === selectedFile ? updatedFile : f));
+
+    // Fix field mappings: adjust row indices after row deletion
+    if (rowsToDelete.size > 0) {
+      const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
+      setFieldMappings(prev => {
+        const next: Record<string, FieldMapping[]> = {};
+        for (const [field, maps] of Object.entries(prev)) {
+          const adjusted = maps
+            .filter(m => m.sheet !== sheet.name || !rowsToDelete.has(m.rowIdx))
+            .map(m => {
+              if (m.sheet !== sheet.name) return m;
+              // Count how many deleted rows are before this row
+              const offset = sortedDeletedRows.filter(d => d < m.rowIdx).length;
+              return { ...m, rowIdx: m.rowIdx - offset };
+            });
+          if (adjusted.length > 0) next[field] = adjusted;
+        }
+        return next;
+      });
+    }
+
+    // Fix flipped rows similarly
+    if (rowsToDelete.size > 0) {
+      const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
+      setFlippedRows(prev => {
+        const next = new Set<number>();
+        for (const r of prev) {
+          if (rowsToDelete.has(r)) continue;
+          const offset = sortedDeletedRows.filter(d => d < r).length;
+          next.add(r - offset);
+        }
+        return next;
+      });
+    }
+
+    // Fix excluded columns similarly  
+    if (colsToDelete.size > 0) {
+      const sortedDeletedCols = Array.from(colsToDelete).sort((a, b) => a - b);
+      setExcludedColumns(prev => {
+        const next = new Set<number>();
+        for (const c of prev) {
+          if (colsToDelete.has(c)) continue;
+          const offset = sortedDeletedCols.filter(d => d < c).length;
+          next.add(c - offset);
+        }
+        return next;
+      });
+    }
+
+    const totalRemoved = rowsToDelete.size + colsToDelete.size;
+    toast.success(`Removed ${rowsToDelete.size > 0 ? `${rowsToDelete.size} row${rowsToDelete.size > 1 ? 's' : ''}` : ''}${rowsToDelete.size > 0 && colsToDelete.size > 0 ? ' and ' : ''}${colsToDelete.size > 0 ? `${colsToDelete.size} column${colsToDelete.size > 1 ? 's' : ''}` : ''}`);
+
+    // Clear eraser selections
+    setEraserSelectedRows(new Set());
+    setEraserSelectedCols(new Set());
+    setSelectedRows(new Set());
+  }, [selectedFile, activeSheet, eraserSelectedRows, eraserSelectedCols]);
+
   // Column header click with shift/ctrl for multi-select
   const handleColumnHeaderClick = useCallback((colIdx: number, e: React.MouseEvent) => {
     e.stopPropagation();
