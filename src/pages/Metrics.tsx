@@ -1694,7 +1694,13 @@ export default function Metrics() {
 
           {/* Dashboard Content - always show pre-built dashboards */}
           <>
-            {selectedDashboard === 'management-snapshot' && <ManagementSnapshotDashboard />}
+            {selectedDashboard === 'management-snapshot' && (
+              <ManagementSnapshotDashboard
+                isEditMode={isEditMode}
+                onEditCard={handleEditManagementSnapshotCard}
+                cardConfigs={managementSnapshotCardConfigs}
+              />
+            )}
             {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
