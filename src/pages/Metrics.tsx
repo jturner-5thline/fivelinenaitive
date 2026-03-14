@@ -1147,63 +1147,68 @@ function renderStatContent(
     );
   }
 
+  // Use filtered data if time period is set, otherwise use pre-aggregated
+  const dealData = fd || (metrics ? { totalPipelineValue: metrics.totalPipelineValue, totalClosedWonValue: metrics.totalClosedWonValue, totalFees: metrics.totalFees, avgDealSize: metrics.avgDealSize, activeDealsCount: metrics.activeDealsCount, closedWonCount: metrics.closedWonCount } : null);
+  const qbData = fq || (qbMetrics ? { totalRevenue: qbMetrics.totalRevenue, totalAR: qbMetrics.totalAR, totalPayments: qbMetrics.totalPayments, totalExpenses: qbMetrics.totalExpenses, overdueAmount: qbMetrics.overdueAmount, overdueCount: qbMetrics.overdueCount, collectionRate: qbMetrics.collectionRate, netIncome: qbMetrics.netIncome, totalInvoices: qbMetrics.totalInvoices } : null);
+  const periodSuffix = periodLabel ? ` (${periodLabel})` : '';
+
   switch (widget.dataSource) {
     case 'active-pipeline':
-      return (
+      return dealData ? (
         <StatWidgetContent
           title={widget.title}
-          value={formatCurrency(metrics.totalPipelineValue)}
-          subtitle={`${metrics.activeDealsCount} active deals`}
+          value={formatCurrency(dealData.totalPipelineValue)}
+          subtitle={`${dealData.activeDealsCount} active deals${periodSuffix}`}
           icon="pipeline"
           color={widget.color}
         />
-      );
+      ) : null;
     case 'closed-won':
-      return (
+      return dealData ? (
         <StatWidgetContent
           title={widget.title}
-          value={formatCurrency(metrics.totalClosedWonValue)}
-          subtitle={`${metrics.closedWonCount} deals closed`}
+          value={formatCurrency(dealData.totalClosedWonValue)}
+          subtitle={`${dealData.closedWonCount} deals closed${periodSuffix}`}
           icon="trending-up"
           color={widget.color}
         />
-      );
+      ) : null;
     case 'total-fees':
-      return (
+      return dealData ? (
         <StatWidgetContent
           title={widget.title}
-          value={formatCurrency(metrics.totalFees)}
-          subtitle="From closed deals"
+          value={formatCurrency(dealData.totalFees)}
+          subtitle={`From closed deals${periodSuffix}`}
           icon="dollar"
           color={widget.color}
         />
-      );
+      ) : null;
     case 'avg-deal-size':
-      return (
+      return dealData ? (
         <StatWidgetContent
           title={widget.title}
-          value={formatCurrency(metrics.avgDealSize)}
-          subtitle="Based on closed deals"
+          value={formatCurrency(dealData.avgDealSize)}
+          subtitle={`Based on closed deals${periodSuffix}`}
           icon="percent"
           color={widget.color}
         />
-      );
+      ) : null;
     // QuickBooks stat widgets
     case 'qb-total-revenue':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalRevenue)} subtitle={`${qbMetrics.totalInvoices} invoices`} icon="dollar" color={widget.color} />
+      return qbData ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbData.totalRevenue)} subtitle={`${qbData.totalInvoices} invoices${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
     case 'qb-accounts-receivable':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAR)} subtitle={`${qbMetrics.overdueCount} overdue`} icon="trending-up" color={widget.color} />
+      return qbData ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbData.totalAR)} subtitle={`${qbData.overdueCount} overdue${periodSuffix}`} icon="trending-up" color={widget.color} />
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
     case 'qb-total-payments':
-      return qbMetrics ? (
-        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalPayments)} subtitle="Payments received" icon="dollar" color={widget.color} />
+      return qbData ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbData.totalPayments)} subtitle={`Payments received${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
