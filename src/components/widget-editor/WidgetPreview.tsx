@@ -3,7 +3,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useMemo } from 'react';
-import { BarChart3, LineChart as LineChartIcon, Hash, Loader2, Database } from 'lucide-react';
+import { BarChart3, LineChart as LineChartIcon, Hash, Loader2, Database, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQBPreviewData, PreviewDataPoint } from '@/hooks/useQBPreviewData';
 
@@ -99,7 +99,7 @@ function formatCell(val: string | number, format?: string): string {
   return String(val);
 }
 
-const isChartType = (type: string) => ['bar', 'line', 'column', 'columnChart'].includes(type);
+const isChartType = (type: string) => ['bar', 'line', 'column', 'columnChart', 'stackedBar'].includes(type);
 
 function getValueFieldNames(config: WidgetConfig): string[] {
   return config.values.map((v) => {
@@ -113,6 +113,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
   const xField = getField(config.xAxis.fieldId);
   const xLabel = xField?.name ?? 'Period';
   const isLine = config.type === 'line';
+  const isStacked = config.type === 'stackedBar';
 
   // Get all numeric keys from data (excluding 'period')
   const dataKeys = data.length > 0
@@ -133,7 +134,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
           isLine ? (
             <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls />
           ) : (
-            <Bar key={name} dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[3, 3, 0, 0]} />
+            <Bar key={name} dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={isStacked ? undefined : [3, 3, 0, 0]} stackId={isStacked ? 'stack' : undefined} />
           )
         )}
       </ChartComponent>
@@ -179,6 +180,7 @@ function KpiPreview({ config, data }: { config: WidgetConfig; data?: PreviewData
 const VIEW_MODES = [
   { type: 'kpi' as const, icon: Hash, label: 'Metric' },
   { type: 'bar' as const, icon: BarChart3, label: 'Bar' },
+  { type: 'stackedBar' as const, icon: Layers, label: 'Stacked' },
   { type: 'line' as const, icon: LineChartIcon, label: 'Line' },
 ] as const;
 
