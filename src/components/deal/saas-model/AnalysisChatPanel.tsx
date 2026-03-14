@@ -144,9 +144,10 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
         className="gap-1.5 text-xs"
         style={{ backgroundColor: '#2ED3B7', color: '#050814' }}
         onClick={() => setOpen(o => !o)}
+        title="Financial Analysis AI — Ask questions about your financial model"
       >
         <MessageSquare className="h-3.5 w-3.5" />
-        Chat
+        Financial AI
       </Button>
 
       {/* Panel */}
