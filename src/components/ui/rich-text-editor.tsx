@@ -154,8 +154,14 @@ export function RichTextEditor({
   }, [content, editor]);
 
   useEffect(() => {
-    editor?.commands.focus('end');
-  }, [editor]);
+    if (!editor) return;
+    // In bullet mode, wrap content in a bullet list if it's not already
+    if (bulletMode && !editor.isActive('bulletList')) {
+      editor.chain().focus('end').toggleBulletList().run();
+    } else {
+      editor.commands.focus('end');
+    }
+  }, [editor, bulletMode]);
 
   if (!editor) {
     return null;
