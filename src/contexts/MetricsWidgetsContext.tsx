@@ -30,6 +30,7 @@ export interface MetricWidgetConfig {
   entityFilter?: string; // QB realm_id or 'all'
   comparisonPeriod?: ComparisonPeriod;
   timePeriod?: TimePeriod;
+  datarailsConfig?: Record<string, any>; // Full Datarails widget editor config for custom widgets
   createdAt: string;
 }
 

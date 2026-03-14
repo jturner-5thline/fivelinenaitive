@@ -62,7 +62,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useMetricsData } from "@/hooks/useMetricsData";
-import { useMetricsWidgets, MetricWidgetConfig, MetricWidgetSize } from "@/contexts/MetricsWidgetsContext";
+import { useMetricsWidgets, MetricWidgetConfig, MetricWidgetSize, MetricChartType } from "@/contexts/MetricsWidgetsContext";
 import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/components/metrics/SortableMetricWidget";
 import { DatarailsWidgetEditor } from "@/components/widget-editor/DatarailsWidgetEditor";
 import { DEFAULT_WIDGET_CONFIG, WidgetConfig as DatarailsWidgetConfig } from "@/components/widget-editor/widgetTypes";
@@ -237,7 +237,7 @@ function renderChartContent(
   qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data'],
   hsMetrics?: ReturnType<typeof useHubSpotMetrics>['data'],
 ) {
-  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-')) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-') && !widget.dataSource.startsWith('datarails-')) return null;
   if (widget.dataSource.startsWith('qb-') && !qbMetrics) {
     return (
       <ChartWidgetContent title={widget.title}>
@@ -1010,7 +1010,70 @@ function renderChartContent(
       );
     }
 
-    default:
+    default: {
+      // Datarails custom widgets - render using stored config
+      if (widget.dataSource.startsWith('datarails-') && widget.datarailsConfig) {
+        const dc = widget.datarailsConfig;
+        const valueNames = (dc.values || []).map((v: any) => v.fieldId || 'Value').filter(Boolean);
+        const chartHeight = widget.size === 'small' ? 180 : widget.size === 'medium' ? 240 : 280;
+        
+        // Generate sample data for display
+        const sampleMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        const sampleData = sampleMonths.map((month, i) => {
+          const row: any = { month };
+          valueNames.forEach((name: string, j: number) => {
+            row[name] = Math.round(20000 + Math.random() * 80000 + i * 5000);
+          });
+          return row;
+        });
+
+        const isStacked = dc.type === 'stackedBar';
+        const barRadius: [number, number, number, number] = [6, 6, 0, 0];
+
+        return (
+          <ChartWidgetContent title={widget.title} description="Custom widget">
+            <div style={{ height: chartHeight }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sampleData}>
+                  <defs>
+                    {valueNames.map((name: string, i: number) => {
+                      const [c1, c2] = [
+                        ['hsl(213, 90%, 70%)', 'hsl(213, 80%, 50%)'],
+                        ['hsl(142, 71%, 55%)', 'hsl(142, 71%, 38%)'],
+                        ['hsl(38, 92%, 58%)', 'hsl(38, 92%, 42%)'],
+                        ['hsl(270, 60%, 68%)', 'hsl(270, 60%, 48%)'],
+                        ['hsl(220, 15%, 65%)', 'hsl(220, 15%, 45%)'],
+                      ][i % 5];
+                      return (
+                        <linearGradient key={name} id={`drGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={c1} />
+                          <stop offset="100%" stopColor={c2} />
+                        </linearGradient>
+                      );
+                    })}
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(value: number) => [formatCurrency(value)]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                  <Legend />
+                  {valueNames.map((name: string, i: number) => (
+                    <Bar
+                      key={name}
+                      dataKey={name}
+                      fill={`url(#drGrad-${i})`}
+                      name={name.replace('f-', '').replace(/-/g, ' ')}
+                      radius={barRadius}
+                      stackId={isStacked ? 'stack' : undefined}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartWidgetContent>
+        );
+      }
+
       return (
         <ChartWidgetContent title={widget.title}>
           <div className="flex items-center justify-center h-40 text-muted-foreground">
@@ -1018,6 +1081,7 @@ function renderChartContent(
           </div>
         </ChartWidgetContent>
       );
+    }
   }
 }
 
@@ -1069,7 +1133,7 @@ function renderStatContent(
   allWidgets?: MetricWidgetConfig[],
   rawData?: RawDataForTimePeriod,
 ) {
-  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-') && !widget.dataSource.startsWith('custom-') && !widget.dataSource.startsWith('xs-')) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-') && !widget.dataSource.startsWith('custom-') && !widget.dataSource.startsWith('xs-') && !widget.dataSource.startsWith('datarails-')) return null;
 
   // Time period filtering
   const range = getTimePeriodRange(widget.timePeriod);
@@ -1305,12 +1369,32 @@ function renderStatContent(
         <StatWidgetContent title={widget.title} value={`${qbMetrics.collectionRate.toFixed(1)}%`} subtitle="Collected vs invoiced" icon="percent" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Requires QuickBooks</p></CardContent>);
 
-    default:
+    default: {
+      // Datarails custom KPI widgets
+      if (widget.dataSource.startsWith('datarails-') && widget.datarailsConfig) {
+        const dc = widget.datarailsConfig;
+        const valueName = (dc.values?.[0]?.fieldId || 'metric').replace('f-', '').replace(/-/g, ' ');
+        const sampleValue = Math.round(45000 + Math.random() * 55000);
+        const format = dc.values?.[0]?.format;
+        const displayValue = format === 'percent' ? `${(sampleValue / 1000).toFixed(1)}%` 
+          : format === 'currency' ? formatCurrency(sampleValue)
+          : sampleValue.toLocaleString();
+        return (
+          <StatWidgetContent 
+            title={widget.title} 
+            value={displayValue} 
+            subtitle={`Custom KPI · ${valueName}`} 
+            icon="dollar" 
+            color={widget.color} 
+          />
+        );
+      }
       return (
         <CardContent className="pt-6">
           <p className="text-muted-foreground">Unknown stat: {widget.dataSource}</p>
         </CardContent>
       );
+    }
   }
 }
 
@@ -1832,15 +1916,25 @@ export default function Metrics() {
             onSave={(datarailsConfig) => {
               // Map Datarails config to MetricWidgetConfig for persistence
               const valueField = datarailsConfig.values[0];
+              const chartTypeMap: Record<string, MetricChartType> = {
+                columnChart: 'bar',
+                bar: 'bar',
+                stackedBar: 'bar',
+                line: 'line',
+                kpi: 'bar',
+                table: 'bar',
+                column: 'bar',
+              };
               const widgetData: Omit<MetricWidgetConfig, 'id' | 'createdAt'> = {
                 title: datarailsConfig.name,
                 type: datarailsConfig.type === 'kpi' ? 'stat' : 'chart',
-                chartType: datarailsConfig.type === 'columnChart' ? 'bar' : 'line',
-                dataSource: valueField?.fieldId || 'custom',
+                chartType: chartTypeMap[datarailsConfig.type] || 'bar',
+                dataSource: `datarails-${Date.now()}`,
                 size: 'medium' as MetricWidgetSize,
                 color: 'hsl(var(--primary))',
                 timePeriod: datarailsConfig.xAxis.window === 'last3Months' ? 'last-90d' 
                   : datarailsConfig.xAxis.window === 'ytd' ? 'ytd' : 'all-time',
+                datarailsConfig: datarailsConfig as unknown as Record<string, any>,
               };
               handleSave(widgetData);
               handleCloseEditor();
