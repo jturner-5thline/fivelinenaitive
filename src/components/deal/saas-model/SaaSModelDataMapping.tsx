@@ -649,9 +649,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   const handleRecalculate = useCallback(() => {
     if (!selectedFile) return;
-    applyMappingsToModel(fieldMappings, selectedFile, updateModel);
+    applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns);
     toast.success('Model recalculated — Dashboard, IS & BS updated');
-  }, [selectedFile, fieldMappings, updateModel]);
+  }, [selectedFile, fieldMappings, updateModel, flippedRows, excludedColumns]);
 
   const handleRecalculateWithLog = useCallback(async () => {
     const companyId = await getCompanyId();
