@@ -150,12 +150,9 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
         Financial AI
       </Button>
 
-      {/* Panel */}
-      <div
-        className={cn(
-          "fixed top-0 right-0 h-full z-50 transition-transform duration-300 ease-out flex flex-col",
-          open ? "translate-x-0" : "translate-x-full"
-        )}
+      {/* Panel - only render DOM when open */}
+      {open && <div
+        className="fixed top-0 right-0 h-full z-50 flex flex-col animate-in slide-in-from-right duration-300"
         style={{
           width: 380,
           backgroundColor: '#0D1225',
@@ -275,7 +272,7 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
             </button>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Backdrop */}
       {open && (
