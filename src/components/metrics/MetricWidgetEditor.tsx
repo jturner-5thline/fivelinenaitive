@@ -107,6 +107,8 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
       setDataSource(widget.dataSource);
       setSize(widget.size);
       setColor(widget.color);
+      setEntityFilter(widget.entityFilter || 'all');
+      setComparisonPeriod(widget.comparisonPeriod || 'none');
       if (widget.dataSource.startsWith('custom-')) {
         setDataMode('custom');
         const metricId = widget.dataSource.replace('custom-', '');
@@ -135,6 +137,8 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
       setFormula(null);
       setResultType('number');
       setSelectedCustomMetricId('');
+      setEntityFilter('all');
+      setComparisonPeriod('none');
     }
   }, [widget, isOpen, customMetrics]);
 
