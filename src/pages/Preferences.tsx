@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock, Users, ChevronDown, Search, X } from 'lucide-react';
-import { useTheme } from 'next-themes';
+
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -47,7 +47,7 @@ const TABS = [
 ];
 
 export default function Preferences() {
-  const { theme, setTheme } = useTheme();
+  
   const { preferences, updatePreference } = usePreferences();
   const { stages } = useLenderStages();
   const { isAdmin } = useCompany();
@@ -165,22 +165,6 @@ export default function Preferences() {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="space-y-0.5">
-                                <Label>Theme</Label>
-                                <p className="text-sm text-muted-foreground">Select your preferred theme</p>
-                              </div>
-                              <Select value={theme} onValueChange={setTheme}>
-                                <SelectTrigger className="w-32">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="light">Light</SelectItem>
-                                  <SelectItem value="dark">Dark</SelectItem>
-                                  <SelectItem value="system">System</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
                             <div className="flex items-center justify-between">
                               <div className="space-y-0.5">
                                 <Label>Compact Mode</Label>
