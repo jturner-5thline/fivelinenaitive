@@ -245,7 +245,7 @@ export function ManagementSnapshotDashboard({
     );
   };
 
-  const debtRevenueConfig = getCardConfig('debt-revenue', 'Debt Revenue');
+  const debtRevenueConfig = getCardConfig('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'lastQuarter');
   const finServRevenueConfig = getCardConfig('finserv-revenue', 'FinServ Revenue');
   const clientsSignedDebtConfig = getCardConfig('clients-signed-debt', 'Clients Signed - Debt');
   const clientsSignedFinServConfig = getCardConfig('clients-signed-finserv', 'Clients Signed - FinServ');
