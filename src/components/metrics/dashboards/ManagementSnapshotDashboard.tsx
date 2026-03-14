@@ -530,7 +530,7 @@ export function ManagementSnapshotDashboard({
               {renderEditAction('finserv-profit')}
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              <Badge variant="outline" className="text-xs">Year to date</Badge>
+              <PeriodBadge cardId="finserv-profit" currentWindow={finServProfitConfig.timeWindow} onTimeWindowChange={onTimeWindowChange} />
               {finServProfitConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {finServProfitConfig.entityName}</Badge>}
             </div>
           </CardHeader>
