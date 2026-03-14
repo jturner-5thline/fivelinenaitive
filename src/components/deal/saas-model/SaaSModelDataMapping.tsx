@@ -869,7 +869,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               af.analysis.status === 'partial' && "border-amber-500/30",
               af.analysis.status === 'error' && "border-destructive/30",
             )}>
-              <CardContent className="p-4" onClick={() => { setSelectedFile(af); setPhase('mapping'); }}>
+              <CardContent className="p-4" onClick={async () => { setSelectedFile(af); setPhase('mapping'); await persistFileToStorage(af.file); }}>
                 <div className="flex items-center gap-2 mb-2">
                   {af.analysis.status === 'mappable' ? <Check className="h-4 w-4 text-emerald-500" /> :
                     af.analysis.status === 'partial' ? <AlertTriangle className="h-4 w-4 text-amber-500" /> :
