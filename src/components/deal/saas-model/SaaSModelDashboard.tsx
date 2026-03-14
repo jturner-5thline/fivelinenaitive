@@ -222,16 +222,8 @@ export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Row 1: Health Score + Primary KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-4">
-        <Card className="border-border/30">
-          <CardContent className="p-4">
-            <h3 className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Financial Health</h3>
-            <HealthRing score={health.score} label={health.label} color={health.color} model={m} />
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Row 1: Primary KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <EnhancedKPICard
             label="ARR Today"
             value={m.arrToday}
@@ -265,7 +257,6 @@ export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
             icon={TrendingUp}
           />
         </div>
-      </div>
 
       {/* Row 2: Secondary KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
