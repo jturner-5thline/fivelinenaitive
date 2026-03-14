@@ -1,4 +1,4 @@
-import { AxisConfig, getField, Grain } from '../widgetTypes';
+import { AxisConfig, getField, Grain, TimeWindow } from '../widgetTypes';
 import { DropZone } from '../DropZone';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,16 +11,46 @@ interface Props {
 }
 
 const GRAINS: { value: Grain; label: string }[] = [
+  { value: 'day', label: 'Day' },
   { value: 'month', label: 'Month' },
   { value: 'quarter', label: 'Quarter' },
   { value: 'year', label: 'Year' },
 ];
 
-const WINDOWS = [
-  { value: 'last3Months', label: 'Last 3 months' },
-  { value: 'ytd', label: 'YTD' },
-  { value: 'all', label: 'All' },
-] as const;
+const WINDOW_GROUPS: { label: string; options: { value: TimeWindow; label: string }[] }[] = [
+  {
+    label: 'Current Period',
+    options: [
+      { value: 'mtd', label: 'Month to Date' },
+      { value: 'qtd', label: 'Quarter to Date' },
+      { value: 'ytd', label: 'Year to Date' },
+    ],
+  },
+  {
+    label: 'Prior Period',
+    options: [
+      { value: 'lastMonth', label: 'Last Month' },
+      { value: 'lastQuarter', label: 'Last Quarter' },
+      { value: 'lastYear', label: 'Last Year' },
+    ],
+  },
+  {
+    label: 'Rolling',
+    options: [
+      { value: 'last3Months', label: 'Last 3 Months' },
+      { value: 'last6Months', label: 'Last 6 Months' },
+      { value: 'ttm', label: 'Trailing 12 Months (TTM)' },
+      { value: 'last12Months', label: 'Last 12 Months' },
+    ],
+  },
+  {
+    label: 'Other',
+    options: [
+      { value: 'all', label: 'All Time' },
+      { value: 'custom', label: 'Custom Range…' },
+    ],
+  },
+];
 
 export function AxisConfigSection({ config, onChange }: Props) {
   const field = getField(config.fieldId);
@@ -60,14 +90,23 @@ export function AxisConfigSection({ config, onChange }: Props) {
             </div>
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Time window</Label>
-            <Select value={config.window || 'all'} onValueChange={(v) => onChange({ ...config, window: v as AxisConfig['window'] })}>
+            <Label className="text-xs text-muted-foreground mb-1 block">Time Period</Label>
+            <Select value={config.window || 'all'} onValueChange={(v) => onChange({ ...config, window: v as TimeWindow })}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {WINDOWS.map((w) => (
-                  <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
+                {WINDOW_GROUPS.map((group) => (
+                  <div key={group.label}>
+                    <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {group.label}
+                    </div>
+                    {group.options.map((w) => (
+                      <SelectItem key={w.value} value={w.value} className="text-xs">
+                        {w.label}
+                      </SelectItem>
+                    ))}
+                  </div>
                 ))}
               </SelectContent>
             </Select>

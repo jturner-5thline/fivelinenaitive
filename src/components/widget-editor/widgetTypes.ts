@@ -12,10 +12,12 @@ export interface Field {
 
 export type Grain = 'day' | 'month' | 'quarter' | 'year';
 
+export type TimeWindow = 'mtd' | 'lastMonth' | 'qtd' | 'lastQuarter' | 'ytd' | 'lastYear' | 'ttm' | 'last3Months' | 'last6Months' | 'last12Months' | 'all' | 'custom';
+
 export interface AxisConfig {
   fieldId: string | null;
   grain?: Grain;
-  window?: 'last3Months' | 'ytd' | 'all' | 'custom';
+  window?: TimeWindow;
 }
 
 export interface SeriesConfig {
