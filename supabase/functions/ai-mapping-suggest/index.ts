@@ -103,7 +103,11 @@ Rules:
 - Use the row label and sample values to determine the mapping
 - For rows that are subtotals (e.g. "Total Revenue", "Gross Profit"), do NOT map them
 - Confidence: 0.9+ for exact matches, 0.7-0.9 for strong keyword matches, 0.5-0.7 for contextual inference
-- category: "is" for income statement, "bs" for balance sheet, "checklist" for checklist items`;
+- category: "is" for income statement, "bs" for balance sheet, "checklist" for checklist items
+
+Keyword-to-field rules (apply with high confidence 0.85+):
+- Rows containing "SaaS", "Subscription", "Recurring", "Licensing", or "Software" in the label should map to "Recurring Revenue"
+- These keywords strongly indicate recurring revenue streams even if the label is not an exact match`;
 
     const userPrompt = `Analyze these rows and suggest mappings:\n\n${rowsText}`;
 
