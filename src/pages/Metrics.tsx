@@ -1550,7 +1550,7 @@ export default function Metrics() {
                           setDeleteConfirmOpen(true);
                         }}
                       >
-                        {renderChartContent(widget, metrics, qbMetrics)}
+                        {renderChartContent(widget, metrics, qbMetrics, hsMetrics)}
                       </SortableMetricWidget>
                     ))}
                   </div>
