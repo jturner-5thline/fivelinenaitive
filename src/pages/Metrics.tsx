@@ -1111,6 +1111,80 @@ function renderStatContent(
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
+    // New QB stats
+    case 'qb-total-expenses':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalExpenses)} subtitle={`From expenses & purchases`} icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'qb-total-ap':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAP)} subtitle="Outstanding bills" icon="trending-up" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'qb-net-income':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.netIncome)} subtitle="Revenue minus expenses" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'qb-active-vendors':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${qbMetrics.activeVendors}`} subtitle={`of ${qbMetrics.totalVendors} total`} icon="pipeline" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'qb-total-estimates':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalEstimates)} subtitle="Pending estimates" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'qb-total-credit-memos':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalCreditMemos)} subtitle="Credit memos issued" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+
+    // HubSpot stats
+    case 'hs-total-deals':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.totalDeals}`} subtitle="From HubSpot" icon="pipeline" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-total-deal-value':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(hsMetrics.totalDealValue)} subtitle={`${hsMetrics.totalDeals} deals`} icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-deals-won':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.dealsWon}`} subtitle={formatCurrency(hsMetrics.dealsWonValue)} icon="trending-up" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-deals-lost':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.dealsLost}`} subtitle={formatCurrency(hsMetrics.dealsLostValue)} icon="trending-up" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-win-rate':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.winRate.toFixed(1)}%`} subtitle="Won / (Won + Lost)" icon="percent" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-avg-deal-size':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(hsMetrics.avgDealSize)} subtitle="Average across all deals" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-total-contacts':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.totalContacts}`} subtitle="From HubSpot" icon="pipeline" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-total-companies':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.totalCompanies}`} subtitle="From HubSpot" icon="pipeline" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+
+    // Cross-source stats
+    case 'xs-revenue-per-deal':
+      return (qbMetrics && hsMetrics && hsMetrics.dealsWon > 0) ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalRevenue / hsMetrics.dealsWon)} subtitle="QB Revenue ÷ HS Deals Won" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Requires QB + HS</p></CardContent>);
+    case 'xs-ar-per-active-deal':
+      return (qbMetrics && metrics && metrics.activeDealsCount > 0) ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAR / metrics.activeDealsCount)} subtitle="QB AR ÷ Active Deals" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Requires QB + Deals</p></CardContent>);
+    case 'xs-collection-rate-by-entity':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${qbMetrics.collectionRate.toFixed(1)}%`} subtitle="Collected vs invoiced" icon="percent" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Requires QuickBooks</p></CardContent>);
+
     default:
       return (
         <CardContent className="pt-6">
