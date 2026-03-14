@@ -1,13 +1,18 @@
 import { useMemo } from 'react';
 import { useQuickBooksInvoices, useQuickBooksCustomers, useQuickBooksPayments } from '@/hooks/useQuickBooks';
-import { format, subMonths, parseISO, startOfMonth, isAfter } from 'date-fns';
+import { useQuickBooksExpanded } from '@/hooks/useQuickBooksExpanded';
+import { format, subMonths, startOfMonth } from 'date-fns';
 
 export function useQuickBooksMetrics(realmId?: string) {
   const { data: invoices = [], isLoading: invoicesLoading } = useQuickBooksInvoices(realmId);
   const { data: customers = [], isLoading: customersLoading } = useQuickBooksCustomers(realmId);
   const { data: payments = [], isLoading: paymentsLoading } = useQuickBooksPayments(realmId);
+  const {
+    expenses, bills, vendors, accounts, estimates, creditMemos,
+    isLoading: expandedLoading,
+  } = useQuickBooksExpanded(realmId);
 
-  const isLoading = invoicesLoading || customersLoading || paymentsLoading;
+  const isLoading = invoicesLoading || customersLoading || paymentsLoading || expandedLoading;
 
   const metrics = useMemo(() => {
     // Total revenue (sum of all invoice totals)
@@ -36,30 +41,53 @@ export function useQuickBooksMetrics(realmId?: string) {
     );
     const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + (inv.balance || 0), 0);
 
+    // --- Expanded metrics ---
+
+    // Total expenses
+    const totalExpenses = expenses.reduce((sum, e) => sum + (e.total_amt || 0), 0);
+
+    // Total bills
+    const totalBills = bills.reduce((sum, b) => sum + (b.total_amt || 0), 0);
+
+    // Outstanding AP (unpaid bills)
+    const totalAP = bills.reduce((sum, b) => sum + (b.balance || 0), 0);
+
+    // Total estimates
+    const totalEstimates = estimates.reduce((sum, e) => sum + (e.total_amt || 0), 0);
+
+    // Total credit memos
+    const totalCreditMemos = creditMemos.reduce((sum, c) => sum + (c.total_amt || 0), 0);
+
+    // Active vendors
+    const activeVendors = vendors.filter(v => v.active).length;
+    const totalVendors = vendors.length;
+
+    // Net income proxy (revenue - expenses)
+    const netIncome = totalRevenue - totalExpenses;
+
     // Monthly revenue trend (last 12 months)
-    const monthlyRevenue: { month: string; revenue: number; payments: number; invoiceCount: number }[] = [];
+    const monthlyRevenue: { month: string; revenue: number; payments: number; expenses: number; invoiceCount: number }[] = [];
     for (let i = 11; i >= 0; i--) {
       const monthDate = subMonths(now, i);
       const monthStr = format(monthDate, 'MMM-yy');
       const monthStart = startOfMonth(monthDate);
       const nextMonthStart = startOfMonth(subMonths(now, i - 1));
 
-      const monthInvoices = invoices.filter(inv => {
-        if (!inv.txn_date) return false;
-        const d = new Date(inv.txn_date);
+      const inRange = (dateStr: string | null) => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
         return d >= monthStart && d < nextMonthStart;
-      });
+      };
 
-      const monthPayments = payments.filter(p => {
-        if (!p.txn_date) return false;
-        const d = new Date(p.txn_date);
-        return d >= monthStart && d < nextMonthStart;
-      });
+      const monthInvoices = invoices.filter(inv => inRange(inv.txn_date));
+      const monthPayments = payments.filter(p => inRange(p.txn_date));
+      const monthExpenses = expenses.filter(e => inRange(e.txn_date));
 
       monthlyRevenue.push({
         month: monthStr,
         revenue: monthInvoices.reduce((s, inv) => s + (inv.total_amt || 0), 0),
         payments: monthPayments.reduce((s, p) => s + (p.total_amt || 0), 0),
+        expenses: monthExpenses.reduce((s, e) => s + (e.total_amt || 0), 0),
         invoiceCount: monthInvoices.length,
       });
     }
@@ -77,6 +105,24 @@ export function useQuickBooksMetrics(realmId?: string) {
     });
     const topCustomers = Object.values(customerRevenue)
       .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
+    // Top vendors by spend
+    const vendorSpend: Record<string, { name: string; spend: number; count: number }> = {};
+    expenses.forEach(e => {
+      const name = e.vendor_ref_name || 'Unknown';
+      if (!vendorSpend[name]) vendorSpend[name] = { name, spend: 0, count: 0 };
+      vendorSpend[name].spend += e.total_amt || 0;
+      vendorSpend[name].count += 1;
+    });
+    bills.forEach(b => {
+      const name = b.vendor_ref_name || 'Unknown';
+      if (!vendorSpend[name]) vendorSpend[name] = { name, spend: 0, count: 0 };
+      vendorSpend[name].spend += b.total_amt || 0;
+      vendorSpend[name].count += 1;
+    });
+    const topVendors = Object.values(vendorSpend)
+      .sort((a, b) => b.spend - a.spend)
       .slice(0, 10);
 
     // Invoice status breakdown
@@ -101,6 +147,15 @@ export function useQuickBooksMetrics(realmId?: string) {
       paymentMethods[method].value += p.total_amt || 0;
     });
 
+    // Expense by category (account)
+    const expenseByCategory: Record<string, { category: string; amount: number; count: number }> = {};
+    expenses.forEach(e => {
+      const cat = e.account_ref_name || 'Uncategorized';
+      if (!expenseByCategory[cat]) expenseByCategory[cat] = { category: cat, amount: 0, count: 0 };
+      expenseByCategory[cat].amount += e.total_amt || 0;
+      expenseByCategory[cat].count += 1;
+    });
+
     // AR aging buckets
     const agingBuckets = { current: 0, '1-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
     invoices.forEach(inv => {
@@ -115,10 +170,31 @@ export function useQuickBooksMetrics(realmId?: string) {
       else agingBuckets['90+'] += inv.balance;
     });
 
-    const arAgingData = Object.entries(agingBuckets).map(([bucket, value]) => ({
-      bucket,
-      value,
-    }));
+    // AP aging buckets
+    const apAgingBuckets = { current: 0, '1-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
+    bills.forEach(b => {
+      if (!b.balance || b.balance <= 0) return;
+      if (!b.due_date) { apAgingBuckets.current += b.balance; return; }
+      const dueDate = new Date(b.due_date);
+      const daysPast = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysPast <= 0) apAgingBuckets.current += b.balance;
+      else if (daysPast <= 30) apAgingBuckets['1-30'] += b.balance;
+      else if (daysPast <= 60) apAgingBuckets['31-60'] += b.balance;
+      else if (daysPast <= 90) apAgingBuckets['61-90'] += b.balance;
+      else apAgingBuckets['90+'] += b.balance;
+    });
+
+    const arAgingData = Object.entries(agingBuckets).map(([bucket, value]) => ({ bucket, value }));
+    const apAgingData = Object.entries(apAgingBuckets).map(([bucket, value]) => ({ bucket, value }));
+
+    // Account type breakdown from chart of accounts
+    const accountTypes: Record<string, { type: string; count: number; balance: number }> = {};
+    accounts.forEach(a => {
+      const t = a.account_type || 'Other';
+      if (!accountTypes[t]) accountTypes[t] = { type: t, count: 0, balance: 0 };
+      accountTypes[t].count += 1;
+      accountTypes[t].balance += a.current_balance || 0;
+    });
 
     return {
       totalRevenue,
@@ -131,13 +207,27 @@ export function useQuickBooksMetrics(realmId?: string) {
       overdueAmount,
       overdueCount: overdueInvoices.length,
       totalInvoices: invoices.length,
+      // Expanded
+      totalExpenses,
+      totalBills,
+      totalAP,
+      totalEstimates,
+      totalCreditMemos,
+      activeVendors,
+      totalVendors,
+      netIncome,
+      // Charts
       monthlyRevenue,
       topCustomers,
+      topVendors,
       invoiceStatusBreakdown: Object.values(statusBreakdown),
       paymentMethodsBreakdown: Object.values(paymentMethods),
+      expenseByCategoryData: Object.values(expenseByCategory).sort((a, b) => b.amount - a.amount).slice(0, 10),
       arAgingData,
+      apAgingData,
+      accountTypeData: Object.values(accountTypes).sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance)),
     };
-  }, [invoices, customers, payments]);
+  }, [invoices, customers, payments, expenses, bills, vendors, accounts, estimates, creditMemos]);
 
   return { data: metrics, isLoading };
 }
