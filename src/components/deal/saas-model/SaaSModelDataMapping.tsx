@@ -434,16 +434,51 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     }
   }, []);
 
+  // Upload file to storage immediately and persist reference
+  const persistFileToStorage = useCallback(async (file: File) => {
+    try {
+      const filePath = `${dealId}/mapping-source/${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('deal-files')
+        .upload(filePath, file, { upsert: true });
+      if (!uploadError) {
+        storedFilePathRef.current = filePath;
+        return filePath;
+      }
+    } catch (err) {
+      console.warn('Failed to persist file to storage:', err);
+    }
+    return null;
+  }, [dealId]);
+
   const handleFilesSelected = useCallback(async (files: FileList) => {
     setIsProcessing(true);
     const results: AnalyzedFile[] = [];
     for (const file of Array.from(files)) results.push(await analyzeFile(file));
     results.sort((a, b) => b.analysis.totalMatches - a.analysis.totalMatches);
     setAnalyzedFiles(results);
-    if (results.length === 1) { setSelectedFile(results[0]); setPhase('mapping'); }
-    else setPhase('triage');
+    if (results.length === 1) {
+      setSelectedFile(results[0]);
+      setPhase('mapping');
+      // Immediately persist the file to storage so it survives navigation
+      const storagePath = await persistFileToStorage(results[0].file);
+      if (storagePath) {
+        // Save initial record so file reference is persisted even before any mapping
+        await supabase.from('deal_saas_mappings' as any).upsert({
+          deal_id: dealId,
+          field_mappings: fieldMappings,
+          file_name: results[0].file.name,
+          file_size: results[0].file.size,
+          file_storage_path: storagePath,
+          analysis_result: results[0].analysis,
+          mapped_at: new Date().toISOString(),
+        }, { onConflict: 'deal_id' });
+      }
+    } else {
+      setPhase('triage');
+    }
     setIsProcessing(false);
-  }, [analyzeFile]);
+  }, [analyzeFile, persistFileToStorage, dealId, fieldMappings]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
