@@ -1373,19 +1373,62 @@ function renderStatContent(
       // Datarails custom KPI widgets
       if (widget.dataSource.startsWith('datarails-') && widget.datarailsConfig) {
         const dc = widget.datarailsConfig;
-        const valueName = (dc.values?.[0]?.fieldId || 'metric').replace('f-', '').replace(/-/g, ' ');
-        const sampleValue = Math.round(45000 + Math.random() * 55000);
+        const selectedFieldId = dc.values?.[0]?.fieldId as string | undefined;
         const format = dc.values?.[0]?.format;
-        const displayValue = format === 'percent' ? `${(sampleValue / 1000).toFixed(1)}%` 
-          : format === 'currency' ? formatCurrency(sampleValue)
-          : sampleValue.toLocaleString();
+
+        const metricLabel = selectedFieldId
+          ? (selectedFieldId.startsWith('qb-account-')
+              ? 'QB Account'
+              : selectedFieldId.replace(/^[a-z]-/, '').replace(/-/g, ' '))
+          : 'metric';
+
+        let configuredValue: number | undefined;
+        switch (selectedFieldId) {
+          case 'f-revenue':
+            configuredValue = qbData?.totalRevenue;
+            break;
+          case 'f-expenses':
+            configuredValue = qbData?.totalExpenses;
+            break;
+          case 'f-net-income':
+            configuredValue = qbData?.netIncome;
+            break;
+          case 'f-amount':
+            configuredValue = qbData?.totalPayments ?? qbData?.totalRevenue;
+            break;
+          case 'f-deal-amount':
+            configuredValue = dealData?.totalClosedWonValue;
+            break;
+          case 'f-pipeline-val':
+            configuredValue = dealData?.totalPipelineValue;
+            break;
+          case 'f-win-rate': {
+            const closed = dealData?.closedWonCount ?? 0;
+            const active = dealData?.activeDealsCount ?? 0;
+            const total = closed + active;
+            configuredValue = total > 0 ? (closed / total) * 100 : 0;
+            break;
+          }
+          default:
+            configuredValue = undefined;
+        }
+
+        const fallbackValue = Math.round(45000 + Math.random() * 55000);
+        const value = configuredValue ?? fallbackValue;
+
+        const displayValue = format === 'percent'
+          ? `${value.toFixed(1)}%`
+          : format === 'currency'
+            ? formatCurrency(value)
+            : Math.round(value).toLocaleString();
+
         return (
-          <StatWidgetContent 
-            title={widget.title} 
-            value={displayValue} 
-            subtitle={`Custom KPI · ${valueName}`} 
-            icon="dollar" 
-            color={widget.color} 
+          <StatWidgetContent
+            title={widget.title}
+            value={displayValue}
+            subtitle={`Custom KPI · ${metricLabel}`}
+            icon="dollar"
+            color={widget.color}
           />
         );
       }
