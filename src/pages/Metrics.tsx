@@ -1940,9 +1940,8 @@ export default function Metrics() {
       {editorOpen && (
         <div className="fixed inset-0 z-50 bg-background">
           <DatarailsWidgetEditor
+            initialWidgetConfig={editorInitialConfig}
             onSave={(datarailsConfig) => {
-              // Map Datarails config to MetricWidgetConfig for persistence
-              const valueField = datarailsConfig.values[0];
               const chartTypeMap: Record<string, MetricChartType> = {
                 columnChart: 'bar',
                 bar: 'bar',
@@ -1952,15 +1951,25 @@ export default function Metrics() {
                 table: 'bar',
                 column: 'bar',
               };
+
+              const dataSource =
+                editingWidget?.dataSource?.startsWith('datarails-')
+                  ? editingWidget.dataSource
+                  : `datarails-${Date.now()}`;
+
               const widgetData: Omit<MetricWidgetConfig, 'id' | 'createdAt'> = {
                 title: datarailsConfig.name,
                 type: datarailsConfig.type === 'kpi' ? 'stat' : 'chart',
                 chartType: chartTypeMap[datarailsConfig.type] || 'bar',
-                dataSource: `datarails-${Date.now()}`,
+                dataSource,
                 size: 'medium' as MetricWidgetSize,
                 color: 'hsl(var(--primary))',
-                timePeriod: datarailsConfig.xAxis.window === 'last3Months' ? 'last-90d' 
-                  : datarailsConfig.xAxis.window === 'ytd' ? 'ytd' : 'all-time',
+                timePeriod:
+                  datarailsConfig.xAxis.window === 'last3Months'
+                    ? 'last-90d'
+                    : datarailsConfig.xAxis.window === 'ytd'
+                      ? 'ytd'
+                      : 'all-time',
                 datarailsConfig: datarailsConfig as unknown as Record<string, any>,
               };
               handleSave(widgetData);
