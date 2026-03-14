@@ -213,7 +213,7 @@ export function GlobalSearchAI() {
       <Button
         variant="outline"
         className={cn(
-          "relative h-8 w-[220px] sm:w-[240px] justify-start rounded-md bg-muted/50 text-xs font-normal text-muted-foreground shadow-none sm:pr-12",
+          "relative h-8 w-full max-w-[240px] min-w-[140px] justify-start rounded-md bg-muted/50 text-xs font-normal text-muted-foreground shadow-none sm:pr-12",
           "border border-primary/40 hover:border-primary focus-visible:border-primary",
           shouldPulse && "animate-glow-pulse"
         )}

@@ -22,18 +22,18 @@ export function DealsHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="relative flex h-14 sm:h-16 items-center justify-between pl-3 pr-3 sm:pr-6 gap-2">
-        <div className="flex items-center gap-2 shrink-0">
-          <Link to="/" className="flex items-center gap-2">
+      <div className="relative flex h-14 sm:h-16 items-center justify-between pl-3 pr-3 sm:pr-6 gap-2 min-w-0">
+        <div className="flex items-center gap-2 shrink-0 min-w-0">
+          <Link to="/" className="flex items-center gap-2 shrink-0">
             <Logo className="h-[85px]" />
           </Link>
           <DemoModeBadge />
-          <div className="shrink-0">
+          <div className="shrink min-w-0">
             <GlobalSearchAI />
           </div>
         </div>
 
-        <nav className="hidden items-center gap-0.5 md:flex absolute left-1/2 -translate-x-1/2">
+        <nav className="hidden items-center gap-0.5 lg:flex shrink-0">
           <Button 
             variant="ghost" 
             size="sm" 
@@ -114,7 +114,7 @@ export function DealsHeader() {
             </Button>
           )}
         </nav>
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
           {!location.pathname.startsWith('/deal/') && (
             <Tooltip>
               <TooltipTrigger asChild>
