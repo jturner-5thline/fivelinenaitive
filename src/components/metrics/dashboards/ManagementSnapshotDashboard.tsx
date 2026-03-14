@@ -138,13 +138,14 @@ function PeriodBadge({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Badge
+        <Button
           variant="outline"
-          className="w-fit text-xs cursor-pointer hover:bg-accent transition-colors gap-1"
+          size="sm"
+          className="h-6 px-2 text-xs font-medium gap-1"
         >
           {label}
           <ChevronDown className="h-3 w-3 opacity-60" />
-        </Badge>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-52">
         {WINDOW_GROUPS.map((group, gi) => (
