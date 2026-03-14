@@ -2103,14 +2103,79 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </Button>
             </div>
           </DialogHeader>
-          <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-            {expandedFileUrl && (
-              <ExcelViewer
-                fileUrl={expandedFileUrl}
-                fileName={selectedFile?.file.name || ''}
-                readOnly
-              />
-            )}
+          <div className="flex-1 min-h-0 min-w-0 overflow-auto p-2">
+            {selectedFile && (() => {
+              const expSheet = selectedFile.sheets[activeSheet];
+              if (!expSheet) return null;
+              return (
+                <table className="w-max text-[11px] border-collapse">
+                  <thead className="sticky top-0 z-20 bg-muted">
+                    <tr>
+                      <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted">#</th>
+                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[200px] min-w-[200px] border-r border-border/10 font-semibold bg-muted" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>Account Name</th>
+                      {Array.from({ length: Math.min((expSheet.data[0]?.length || 0) - 1, 49) }, (_, i) => {
+                        const colIdx = i + 1;
+                        if (excludedColumns.has(colIdx)) return null;
+                        const isColFlipped = flippedColumns.has(colIdx);
+                        return (
+                          <th key={colIdx} className={cn(
+                            "py-1.5 px-2 text-right text-muted-foreground min-w-[90px] border-r border-border/10 font-normal",
+                            isColFlipped && "bg-amber-500/10",
+                          )}>
+                            <div className="flex items-center gap-1 justify-end">
+                              {isColFlipped && <span className="text-[8px] font-bold text-amber-500">±</span>}
+                              <span className="text-[8px] text-muted-foreground/40">
+                                {String.fromCharCode(65 + (colIdx % 26))}{colIdx >= 26 ? String.fromCharCode(65 + Math.floor(colIdx / 26) - 1) : ''}
+                              </span>
+                            </div>
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expSheet.data.map((row, rowIdx) => {
+                      const isFlipped = flippedRows.has(rowIdx);
+                      return (
+                        <tr key={rowIdx} className={cn("border-b border-border/5", rowIdx % 2 === 0 ? "bg-transparent" : "bg-muted/5")}>
+                          <td className="sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20 bg-card">
+                            <div className="flex items-center justify-center gap-0.5">
+                              {rowIdx + 1}
+                              {isFlipped && <span className="text-[8px] font-bold text-amber-500">±</span>}
+                            </div>
+                          </td>
+                          <td className="sticky left-8 z-10 py-1 px-2 w-[200px] min-w-[200px] border-r border-border/10 font-medium bg-card" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>
+                            <span className="truncate">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
+                          </td>
+                          {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
+                            const actualCol = colIdx + 1;
+                            if (excludedColumns.has(actualCol)) return null;
+                            const cellVal = row[actualCol];
+                            const isNum = isNumericCell(cellVal);
+                            const isColFlipped = flippedColumns.has(actualCol);
+                            const shouldFlip = isFlipped !== isColFlipped;
+                            let displayVal = cellVal;
+                            if (shouldFlip && isNum && cellVal !== null && cellVal !== undefined) {
+                              const numVal = typeof cellVal === 'number' ? cellVal : parseFloat(String(cellVal).replace(/[,$]/g, ''));
+                              if (!isNaN(numVal)) displayVal = -numVal;
+                            }
+                            return (
+                              <td key={actualCol} className={cn(
+                                "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
+                                isNum ? "text-right" : "text-left",
+                                isColFlipped && "bg-amber-500/5",
+                              )}>
+                                {formatCellValue(displayVal)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
