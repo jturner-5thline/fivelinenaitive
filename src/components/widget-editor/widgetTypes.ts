@@ -1,4 +1,5 @@
 export type DataType = 'number' | 'string' | 'date';
+export type FieldSource = 'quickbooks' | 'hubspot' | 'naitive';
 
 export interface Field {
   id: string;
@@ -6,6 +7,7 @@ export interface Field {
   group: 'Financials' | 'AccountDim' | 'DateDim' | 'General' | 'System';
   dataType: DataType;
   isMeasure: boolean;
+  source: FieldSource;
 }
 
 export type Grain = 'day' | 'month' | 'quarter' | 'year';
