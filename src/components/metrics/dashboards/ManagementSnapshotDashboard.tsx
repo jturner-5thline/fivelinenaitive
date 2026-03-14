@@ -620,7 +620,7 @@ export function ManagementSnapshotDashboard({
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={finservProfitData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                  <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                   <YAxis yAxisId="left" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10 }} />
                   <Tooltip />
