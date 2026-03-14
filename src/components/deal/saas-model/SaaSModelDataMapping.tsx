@@ -1528,20 +1528,20 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             ? "border-l-[3px] border-l-amber-500"
                             : "";
 
-                      // Sticky cell bg needs to match row bg
+                      // Sticky cell bg — MUST be opaque so scrolling content doesn't show through
                       const stickyBg = isFlashing
-                        ? "bg-emerald-500/20"
+                        ? "bg-emerald-900"
                         : isHeaderRow
-                          ? "bg-muted/30"
+                          ? "bg-muted"
                           : isSelected
-                            ? "bg-cyan-500/15"
+                            ? "bg-cyan-950"
                             : isMappedRow
-                              ? "bg-emerald-500/[0.08]"
+                              ? "bg-emerald-950"
                               : isPendingAutoMap
-                                ? "bg-amber-500/[0.08]"
+                                ? "bg-amber-950"
                                 : hasSuggestion
-                                  ? rowSuggestion.category === 'bs' ? "bg-violet-500/5" : "bg-blue-500/5"
-                                  : rowIdx % 2 === 0 ? "bg-card" : "bg-muted/5";
+                                  ? rowSuggestion.category === 'bs' ? "bg-violet-950" : "bg-blue-950"
+                                  : rowIdx % 2 === 0 ? "bg-card" : "bg-card";
 
                        return (
                         <ContextMenu key={rowIdx}>
