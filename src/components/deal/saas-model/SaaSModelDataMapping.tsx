@@ -371,15 +371,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       const companyId = await getCompanyId();
       if (companyId) await logPatterns(companyId, dealId);
 
-      // Persist mappings and file to DB
-      let storagePath: string | null = null;
-      try {
-        const filePath = `${dealId}/mapping-source/${selectedFile.file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('deal-files')
-          .upload(filePath, selectedFile.file, { upsert: true });
-        if (!uploadError) storagePath = filePath;
-      } catch { /* non-critical */ }
+      // Use already-persisted storage path, or upload now if missing
+      let storagePath = storedFilePathRef.current;
+      if (!storagePath) {
+        storagePath = await persistFileToStorage(selectedFile.file);
+      }
 
       await supabase.from('deal_saas_mappings' as any).upsert({
         deal_id: dealId,
@@ -396,7 +392,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       toast.success(`Saved ${count} mapped ${count === 1 ? 'field' : 'fields'} — Dashboard, IS & BS updated`);
     } catch { toast.error('Failed to save mapping progress'); }
     finally { setIsSaving(false); }
-  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId]);
+  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage]);
 
   // Keep ref in sync for imperative handle
   useEffect(() => { handleSaveProgressRef.current = handleSaveProgress; }, [handleSaveProgress]);
