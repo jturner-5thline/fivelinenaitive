@@ -5,8 +5,10 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  MouseSensor,
   useSensor,
   useSensors,
+  closestCenter,
 } from '@dnd-kit/core';
 import {
   WidgetConfig,
@@ -39,7 +41,10 @@ export function DatarailsWidgetEditor({
   const [realtime, setRealtime] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const updateConfig = useCallback(
     (next: WidgetConfig) => {
@@ -91,7 +96,7 @@ export function DatarailsWidgetEditor({
   const activeField = activeId ? SEED_FIELDS.find((f) => f.id === activeId) : null;
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-full">
         {/* Top bar */}
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-card">
