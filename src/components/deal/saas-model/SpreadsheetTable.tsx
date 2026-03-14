@@ -39,6 +39,7 @@ interface SpreadsheetTableProps {
   showVariance?: boolean;
   onToggleVariance?: () => void;
   conditionalFormatting?: boolean;
+  compactCurrency?: boolean;
 }
 
 // Threshold for conditional formatting highlight (>20% MoM swing)
