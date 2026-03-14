@@ -1716,10 +1716,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                         <ContextMenu key={rowIdx}>
                           <ContextMenuTrigger asChild>
                         <tr
-                          className={cn("cursor-pointer transition-colors border-b border-border/5", rowBgClass, leftBorderClass)}
-                          draggable={!isHeaderRow}
+                          className={cn(
+                            "cursor-pointer transition-colors border-b border-border/5",
+                            rowBgClass, leftBorderClass,
+                            eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-destructive/15 ring-1 ring-inset ring-destructive/30",
+                          )}
+                          draggable={!isHeaderRow && !eraserMode}
                           onDragStart={e => {
-                            if (isHeaderRow) { e.preventDefault(); return; }
+                            if (isHeaderRow || eraserMode) { e.preventDefault(); return; }
                             setDraggingRowIdx(rowIdx);
                             e.dataTransfer.effectAllowed = 'move';
                             e.dataTransfer.setData('text/plain', String(rowIdx));
@@ -1731,10 +1735,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             setTimeout(() => document.body.removeChild(ghost), 0);
                           }}
                           onDragEnd={() => setDraggingRowIdx(null)}
-                          onClick={e => !isHeaderRow && handleRowClick(rowIdx, e)}>
+                          onClick={e => {
+                            if (eraserMode) { handleEraserRowClick(rowIdx, e); return; }
+                            if (!isHeaderRow) handleRowClick(rowIdx, e);
+                          }}>
                           <td className={cn(
                             "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
-                            stickyBg,
+                            eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/30" : stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
                               {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/60" /> : rowIdx + 1}
