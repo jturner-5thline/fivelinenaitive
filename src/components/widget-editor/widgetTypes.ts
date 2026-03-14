@@ -104,88 +104,10 @@ export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
 // helper to look up field by id
 export function getField(fieldId: string | null): Field | undefined {
   if (!fieldId) return undefined;
-  // Check seed fields first, then COA-generated fields
-  return SEED_FIELDS.find((f) => f.id === fieldId)
-    ?? QB_CHART_OF_ACCOUNTS.flatMap(e => e.accounts).find(a => a.id === fieldId) as Field | undefined;
+  return SEED_FIELDS.find((f) => f.id === fieldId);
 }
 
-// ---------- QuickBooks entities (realms) ----------
-
-export interface QBEntity {
-  id: string;
-  name: string;
-  realmId: string;
-}
-
-export const QB_ENTITIES: QBEntity[] = [
-  { id: 'entity-1', name: 'Acme Corp — US Operations', realmId: '4620816365185389260' },
-  { id: 'entity-2', name: 'Acme Corp — Canada', realmId: '9130348291837465012' },
-  { id: 'entity-3', name: 'Acme Holdings Ltd', realmId: '1284756901234567890' },
-];
-
-// ---------- Chart of Accounts per entity ----------
-
-export interface COAAccount {
-  id: string;
-  name: string;
-  fullName: string;
-  accountType: 'Income' | 'Expense' | 'COGS' | 'Asset' | 'Liability' | 'Equity' | 'Other';
-  parentName?: string;
-  group: Field['group'];
-  dataType: DataType;
-  isMeasure: boolean;
-  source: FieldSource;
-}
-
-interface EntityCOA {
-  entityId: string;
-  accounts: COAAccount[];
-}
-
-export const QB_CHART_OF_ACCOUNTS: EntityCOA[] = [
-  {
-    entityId: 'entity-1',
-    accounts: [
-      // Income
-      { id: 'coa-1-sales', name: 'Sales Revenue', fullName: 'Income > Sales Revenue', accountType: 'Income', parentName: 'Income', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-1-service', name: 'Service Revenue', fullName: 'Income > Service Revenue', accountType: 'Income', parentName: 'Income', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-1-other-income', name: 'Other Income', fullName: 'Income > Other Income', accountType: 'Income', parentName: 'Income', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      // COGS
-      { id: 'coa-1-cogs-materials', name: 'Materials', fullName: 'COGS > Materials', accountType: 'COGS', parentName: 'COGS', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-1-cogs-labor', name: 'Direct Labor', fullName: 'COGS > Direct Labor', accountType: 'COGS', parentName: 'COGS', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      // Expenses
-      { id: 'coa-1-rent', name: 'Rent & Lease', fullName: 'Expenses > Rent & Lease', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-1-payroll', name: 'Payroll', fullName: 'Expenses > Payroll', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-1-utilities', name: 'Utilities', fullName: 'Expenses > Utilities', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-1-marketing', name: 'Marketing & Advertising', fullName: 'Expenses > Marketing & Advertising', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-1-insurance', name: 'Insurance', fullName: 'Expenses > Insurance', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-1-depreciation', name: 'Depreciation', fullName: 'Expenses > Depreciation', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-    ],
-  },
-  {
-    entityId: 'entity-2',
-    accounts: [
-      { id: 'coa-2-sales', name: 'Sales Revenue', fullName: 'Income > Sales Revenue', accountType: 'Income', parentName: 'Income', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-2-consulting', name: 'Consulting Revenue', fullName: 'Income > Consulting Revenue', accountType: 'Income', parentName: 'Income', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-2-cogs', name: 'Cost of Goods Sold', fullName: 'COGS > Cost of Goods Sold', accountType: 'COGS', parentName: 'COGS', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-2-salaries', name: 'Salaries & Wages', fullName: 'Expenses > Salaries & Wages', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-2-rent', name: 'Office Rent', fullName: 'Expenses > Office Rent', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-2-travel', name: 'Travel & Entertainment', fullName: 'Expenses > Travel & Entertainment', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-2-professional', name: 'Professional Fees', fullName: 'Expenses > Professional Fees', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-    ],
-  },
-  {
-    entityId: 'entity-3',
-    accounts: [
-      { id: 'coa-3-mgmt-fees', name: 'Management Fees', fullName: 'Income > Management Fees', accountType: 'Income', parentName: 'Income', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-3-intercompany', name: 'Intercompany Revenue', fullName: 'Income > Intercompany Revenue', accountType: 'Income', parentName: 'Income', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-3-admin', name: 'G&A Expenses', fullName: 'Expenses > G&A Expenses', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-3-legal', name: 'Legal Fees', fullName: 'Expenses > Legal Fees', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-      { id: 'coa-3-audit', name: 'Audit & Accounting', fullName: 'Expenses > Audit & Accounting', accountType: 'Expense', parentName: 'Operating Expenses', group: 'Financials', dataType: 'number', isMeasure: true, source: 'quickbooks' },
-    ],
-  },
-];
-
-export function getCOAForEntity(entityId: string): COAAccount[] {
-  return QB_CHART_OF_ACCOUNTS.find(e => e.entityId === entityId)?.accounts ?? [];
+// For QB COA account drag items, the fieldId starts with 'qb-account-'
+export function isQBAccountField(fieldId: string | null): boolean {
+  return !!fieldId && fieldId.startsWith('qb-account-');
 }
