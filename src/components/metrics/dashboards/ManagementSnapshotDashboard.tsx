@@ -80,7 +80,98 @@ export type EditableManagementSnapshotCardId =
 export type ManagementSnapshotEditableConfig = Pick<
   MetricWidgetConfig,
   'title' | 'color' | 'entityFilter' | 'comparisonPeriod'
-> & Partial<Pick<MetricWidgetConfig, 'type' | 'chartType' | 'datarailsConfig'>>;
+> & Partial<Pick<MetricWidgetConfig, 'type' | 'chartType' | 'datarailsConfig'>> & {
+  timeWindow?: TimeWindow;
+};
+
+const WINDOW_GROUPS: { label: string; options: { value: TimeWindow; label: string }[] }[] = [
+  {
+    label: 'Current Period',
+    options: [
+      { value: 'mtd', label: 'Month to Date' },
+      { value: 'qtd', label: 'Quarter to Date' },
+      { value: 'ytd', label: 'Year to Date' },
+    ],
+  },
+  {
+    label: 'Prior Period',
+    options: [
+      { value: 'lastMonth', label: 'Last Month' },
+      { value: 'lastQuarter', label: 'Last Quarter' },
+      { value: 'lastYear', label: 'Last Year' },
+    ],
+  },
+  {
+    label: 'Rolling',
+    options: [
+      { value: 'last3Months', label: 'Last 3 Months' },
+      { value: 'last6Months', label: 'Last 6 Months' },
+      { value: 'ttm', label: 'Trailing 12 Months (TTM)' },
+      { value: 'last12Months', label: 'Last 12 Months' },
+    ],
+  },
+  {
+    label: 'Other',
+    options: [
+      { value: 'all', label: 'All Time' },
+    ],
+  },
+];
+
+const WINDOW_LABEL_MAP: Record<string, string> = {};
+for (const g of WINDOW_GROUPS) for (const o of g.options) WINDOW_LABEL_MAP[o.value] = o.label;
+
+function PeriodBadge({
+  cardId,
+  currentWindow,
+  onTimeWindowChange,
+}: {
+  cardId: EditableManagementSnapshotCardId;
+  currentWindow: TimeWindow;
+  onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
+}) {
+  const label = WINDOW_LABEL_MAP[currentWindow] || currentWindow;
+
+  if (!onTimeWindowChange) {
+    return <Badge variant="outline" className="w-fit text-xs">{label}</Badge>;
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Badge
+          variant="outline"
+          className="w-fit text-xs cursor-pointer hover:bg-accent transition-colors gap-1"
+        >
+          {label}
+          <ChevronDown className="h-3 w-3 opacity-60" />
+        </Badge>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        {WINDOW_GROUPS.map((group, gi) => (
+          <div key={group.label}>
+            {gi > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {group.label}
+            </DropdownMenuLabel>
+            {group.options.map((opt) => (
+              <DropdownMenuItem
+                key={opt.value}
+                className="text-xs"
+                onSelect={() => onTimeWindowChange(cardId, opt.value)}
+              >
+                {opt.label}
+                {opt.value === currentWindow && (
+                  <span className="ml-auto text-primary">✓</span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </div>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 type CardVisualization = 'kpi' | 'bar' | 'stackedBar' | 'line';
 
