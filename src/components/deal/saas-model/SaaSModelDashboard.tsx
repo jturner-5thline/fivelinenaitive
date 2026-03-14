@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { EnhancedKPICard } from './EnhancedKPICard';
 import { AIInsightsPanel } from './AIInsightsPanel';
+import { AnalysisChatPanel } from './AnalysisChatPanel';
 import { AnnotationBadge } from './AnnotationThread';
 import type { Annotation } from '@/hooks/useModelAnnotations';
 
