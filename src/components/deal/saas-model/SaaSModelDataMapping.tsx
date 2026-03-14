@@ -298,6 +298,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     return { headerRow, headers };
   }, [selectedFile, activeSheet]);
 
+  // Date validation warnings for column headers
+  const dateWarnings = useMemo(() => {
+    if (detectedHeaders.headers.length === 0) return [] as DateWarning[];
+    return validateDateSequence(detectedHeaders.headers);
+  }, [detectedHeaders.headers]);
+
   const handleSaveSettings = () => {
     updateModel(prev => ({ ...prev, settings: { ...localSettings } }));
     setSettingsSaved(true);
