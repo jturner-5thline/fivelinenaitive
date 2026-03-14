@@ -1283,6 +1283,18 @@ export default function Metrics() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWidget, setEditingWidget] = useState<MetricWidgetConfig | undefined>();
+  const [editingManagementSnapshotCardId, setEditingManagementSnapshotCardId] = useState<EditableManagementSnapshotCardId | null>(null);
+  const [managementSnapshotCards, setManagementSnapshotCards] = useState<Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState>>(() => {
+    const saved = localStorage.getItem(MANAGEMENT_SNAPSHOT_STORAGE_KEY);
+    if (!saved) return MANAGEMENT_SNAPSHOT_CARD_DEFAULTS;
+
+    try {
+      const parsed = JSON.parse(saved) as Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState>>;
+      return { ...MANAGEMENT_SNAPSHOT_CARD_DEFAULTS, ...parsed };
+    } catch {
+      return MANAGEMENT_SNAPSHOT_CARD_DEFAULTS;
+    }
+  });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [widgetToDelete, setWidgetToDelete] = useState<string | null>(null);
   const [savePresetOpen, setSavePresetOpen] = useState(false);
@@ -1291,6 +1303,23 @@ export default function Metrics() {
   const [newFolderName, setNewFolderName] = useState('');
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renameFolderName, setRenameFolderName] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem(MANAGEMENT_SNAPSHOT_STORAGE_KEY, JSON.stringify(managementSnapshotCards));
+  }, [managementSnapshotCards]);
+
+  const managementSnapshotCardConfigs = useMemo<Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>>(() => {
+    return (Object.keys(managementSnapshotCards) as EditableManagementSnapshotCardId[]).reduce((acc, key) => {
+      const card = managementSnapshotCards[key];
+      acc[key] = {
+        title: card.title,
+        color: card.color,
+        entityFilter: card.entityFilter,
+        comparisonPeriod: card.comparisonPeriod,
+      };
+      return acc;
+    }, {} as Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>);
+  }, [managementSnapshotCards]);
 
   const {
     folders,
@@ -1322,17 +1351,48 @@ export default function Metrics() {
     }
   };
 
+  const handleCloseEditor = () => {
+    setEditorOpen(false);
+    setEditingWidget(undefined);
+    setEditingManagementSnapshotCardId(null);
+  };
+
   const handleEdit = (widget: MetricWidgetConfig) => {
+    setEditingManagementSnapshotCardId(null);
     setEditingWidget(widget);
     setEditorOpen(true);
   };
 
+  const handleEditManagementSnapshotCard = (cardId: EditableManagementSnapshotCardId) => {
+    setEditingManagementSnapshotCardId(cardId);
+    setEditingWidget({
+      id: `management-snapshot-${cardId}`,
+      createdAt: new Date().toISOString(),
+      ...managementSnapshotCards[cardId],
+    });
+    setEditorOpen(true);
+  };
+
   const handleAdd = () => {
+    setEditingManagementSnapshotCardId(null);
     setEditingWidget(undefined);
     setEditorOpen(true);
   };
 
   const handleSave = (widgetData: Omit<MetricWidgetConfig, 'id' | 'createdAt'>) => {
+    if (editingManagementSnapshotCardId) {
+      setManagementSnapshotCards(prev => ({
+        ...prev,
+        [editingManagementSnapshotCardId]: {
+          ...prev[editingManagementSnapshotCardId],
+          ...widgetData,
+        },
+      }));
+      toast({ title: "Widget updated" });
+      setEditingManagementSnapshotCardId(null);
+      return;
+    }
+
     if (editingWidget) {
       updateWidget(editingWidget.id, widgetData);
       toast({ title: "Widget updated" });
