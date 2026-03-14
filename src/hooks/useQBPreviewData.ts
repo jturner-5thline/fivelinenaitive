@@ -129,7 +129,7 @@ export function useQBPreviewData(config: WidgetConfig) {
   ));
 
   return useQuery({
-    queryKey: ['qb-preview-data', user?.id, realmId, config.values.map(v => v.fieldId).join(','), grain, timeWindow],
+    queryKey: ['qb-preview-data', user?.id, realmId, config.values.map(v => v.fieldId).join(','), grain, timeWindow, showZeroPeriods],
     queryFn: async (): Promise<PreviewDataPoint[]> => {
       const dateRange = getDateRange(timeWindow);
 
