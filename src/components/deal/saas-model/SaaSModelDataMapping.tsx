@@ -473,7 +473,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     if (!selectedFile || Object.keys(fieldMappings).length === 0) return;
     setIsSaving(true);
     try {
-      applyMappingsToModel(fieldMappings, selectedFile, updateModel);
+      applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns);
       const companyId = await getCompanyId();
       if (companyId) await logPatterns(companyId, dealId);
 
