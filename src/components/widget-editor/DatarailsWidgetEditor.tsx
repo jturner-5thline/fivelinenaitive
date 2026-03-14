@@ -16,10 +16,11 @@ import {
   SEED_FIELDS,
 } from './widgetTypes';
 import { FieldCatalog } from './FieldCatalog';
+import { ConfigPanel } from './ConfigPanel';
 import { WidgetPreview } from './WidgetPreview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useWidgetEditorData } from '@/hooks/useWidgetEditorData';
+import { cn } from '@/lib/utils';
 
 interface DatarailsWidgetEditorProps {
   initialWidgetConfig?: WidgetConfig;
@@ -35,9 +36,8 @@ export function DatarailsWidgetEditor({
   onCancel,
 }: DatarailsWidgetEditorProps) {
   const [config, setConfig] = useState<WidgetConfig>(initialWidgetConfig ?? DEFAULT_WIDGET_CONFIG);
+  const [realtime, setRealtime] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
-
-  const { accounts, entities, isLoading } = useWidgetEditorData();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -88,17 +88,7 @@ export function DatarailsWidgetEditor({
     }
   };
 
-  // Resolve drag overlay label from seed fields or accounts
-  const getActiveLabel = (): string | null => {
-    if (!activeId) return null;
-    const seedField = SEED_FIELDS.find((f) => f.id === activeId);
-    if (seedField) return seedField.name;
-    const account = accounts.find((a) => `qb-account-${a.id}` === activeId);
-    if (account) return account.name;
-    return null;
-  };
-
-  const activeLabel = getActiveLabel();
+  const activeField = activeId ? SEED_FIELDS.find((f) => f.id === activeId) : null;
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -120,22 +110,25 @@ export function DatarailsWidgetEditor({
           </Button>
         </div>
 
-        {/* Two-panel */}
+        {/* Three-panel */}
         <div className="flex flex-1 min-h-0">
           <div className="w-[280px] shrink-0">
-            <FieldCatalog accounts={accounts} entities={entities} isLoading={isLoading} />
+            <FieldCatalog />
           </div>
           <div className="flex-1 min-w-0">
             <WidgetPreview config={config} />
+          </div>
+          <div className="w-[340px] shrink-0">
+            <ConfigPanel config={config} onChange={updateConfig} realtime={realtime} onRealtimeToggle={setRealtime} />
           </div>
         </div>
       </div>
 
       {/* Drag overlay */}
       <DragOverlay>
-        {activeLabel && (
+        {activeField && (
           <div className="rounded-md border border-primary bg-card px-3 py-1.5 text-sm font-medium shadow-lg">
-            {activeLabel}
+            {activeField.name}
           </div>
         )}
       </DragOverlay>
