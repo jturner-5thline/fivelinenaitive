@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter, Eraser } from 'lucide-react';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -100,6 +100,150 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   const handleZoomIn = useCallback(() => setZoomLevel(z => Math.min(200, z + 10)), []);
   const handleZoomOut = useCallback(() => setZoomLevel(z => Math.max(50, z - 10)), []);
+
+  // ── Eraser mode state ──
+  const [eraserMode, setEraserMode] = useState(false);
+  const [eraserSelectedRows, setEraserSelectedRows] = useState<Set<number>>(new Set());
+  const [eraserSelectedCols, setEraserSelectedCols] = useState<Set<number>>(new Set());
+
+  const handleToggleEraser = useCallback(() => {
+    setEraserMode(prev => {
+      if (prev) {
+        // Exiting eraser mode — clear selections
+        setEraserSelectedRows(new Set());
+        setEraserSelectedCols(new Set());
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleEraserRowClick = useCallback((rowIdx: number, e: React.MouseEvent) => {
+    setEraserSelectedRows(prev => {
+      const next = new Set(prev);
+      if (e.shiftKey && prev.size > 0) {
+        const existing = Array.from(prev);
+        const last = existing[existing.length - 1];
+        const start = Math.min(last, rowIdx);
+        const end = Math.max(last, rowIdx);
+        for (let i = start; i <= end; i++) next.add(i);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (next.has(rowIdx)) next.delete(rowIdx); else next.add(rowIdx);
+      } else {
+        if (next.has(rowIdx) && next.size === 1) next.clear();
+        else { next.clear(); next.add(rowIdx); }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleEraserColClick = useCallback((colIdx: number, e: React.MouseEvent) => {
+    setEraserSelectedCols(prev => {
+      const next = new Set(prev);
+      if (e.shiftKey && prev.size > 0) {
+        const existing = Array.from(prev);
+        const last = existing[existing.length - 1];
+        const start = Math.min(last, colIdx);
+        const end = Math.max(last, colIdx);
+        for (let i = start; i <= end; i++) next.add(i);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (next.has(colIdx)) next.delete(colIdx); else next.add(colIdx);
+      } else {
+        if (next.has(colIdx) && next.size === 1) next.clear();
+        else { next.clear(); next.add(colIdx); }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleEraserDelete = useCallback(() => {
+    if (!selectedFile) return;
+    const sheet = selectedFile.sheets[activeSheet];
+    if (!sheet) return;
+
+    const rowsToDelete = eraserSelectedRows;
+    const colsToDelete = eraserSelectedCols;
+
+    if (rowsToDelete.size === 0 && colsToDelete.size === 0) return;
+
+    // Build new data by filtering rows and columns
+    let newData = sheet.data.map(row => [...row]);
+
+    // Remove rows (filter by index)
+    if (rowsToDelete.size > 0) {
+      newData = newData.filter((_, i) => !rowsToDelete.has(i));
+    }
+
+    // Remove columns (filter each row)
+    if (colsToDelete.size > 0) {
+      newData = newData.map(row => row.filter((_, ci) => !colsToDelete.has(ci)));
+    }
+
+    // Update the sheet data in-place
+    const updatedSheets = selectedFile.sheets.map((s, i) => {
+      if (i !== activeSheet) return s;
+      return { ...s, data: newData };
+    });
+
+    const updatedFile = { ...selectedFile, sheets: updatedSheets };
+    setSelectedFile(updatedFile);
+    setAnalyzedFiles(prev => prev.map(f => f === selectedFile ? updatedFile : f));
+
+    // Fix field mappings: adjust row indices after row deletion
+    if (rowsToDelete.size > 0) {
+      const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
+      setFieldMappings(prev => {
+        const next: Record<string, FieldMapping[]> = {};
+        for (const [field, maps] of Object.entries(prev)) {
+          const adjusted = maps
+            .filter(m => m.sheet !== sheet.name || !rowsToDelete.has(m.rowIdx))
+            .map(m => {
+              if (m.sheet !== sheet.name) return m;
+              // Count how many deleted rows are before this row
+              const offset = sortedDeletedRows.filter(d => d < m.rowIdx).length;
+              return { ...m, rowIdx: m.rowIdx - offset };
+            });
+          if (adjusted.length > 0) next[field] = adjusted;
+        }
+        return next;
+      });
+    }
+
+    // Fix flipped rows similarly
+    if (rowsToDelete.size > 0) {
+      const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
+      setFlippedRows(prev => {
+        const next = new Set<number>();
+        for (const r of prev) {
+          if (rowsToDelete.has(r)) continue;
+          const offset = sortedDeletedRows.filter(d => d < r).length;
+          next.add(r - offset);
+        }
+        return next;
+      });
+    }
+
+    // Fix excluded columns similarly  
+    if (colsToDelete.size > 0) {
+      const sortedDeletedCols = Array.from(colsToDelete).sort((a, b) => a - b);
+      setExcludedColumns(prev => {
+        const next = new Set<number>();
+        for (const c of prev) {
+          if (colsToDelete.has(c)) continue;
+          const offset = sortedDeletedCols.filter(d => d < c).length;
+          next.add(c - offset);
+        }
+        return next;
+      });
+    }
+
+    const totalRemoved = rowsToDelete.size + colsToDelete.size;
+    toast.success(`Removed ${rowsToDelete.size > 0 ? `${rowsToDelete.size} row${rowsToDelete.size > 1 ? 's' : ''}` : ''}${rowsToDelete.size > 0 && colsToDelete.size > 0 ? ' and ' : ''}${colsToDelete.size > 0 ? `${colsToDelete.size} column${colsToDelete.size > 1 ? 's' : ''}` : ''}`);
+
+    // Clear eraser selections
+    setEraserSelectedRows(new Set());
+    setEraserSelectedCols(new Set());
+    setSelectedRows(new Set());
+  }, [selectedFile, activeSheet, eraserSelectedRows, eraserSelectedCols]);
 
   // Column header click with shift/ctrl for multi-select
   const handleColumnHeaderClick = useCallback((colIdx: number, e: React.MouseEvent) => {
@@ -1415,15 +1559,39 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           <div ref={spreadsheetRef} tabIndex={0} className="outline-none">
           <Card className="border-border/30">
             <CardContent className="p-0">
-              <div className="flex border-b border-border/30 overflow-x-auto">
-                {selectedFile.sheets.map((s, i) => (
-                  <button key={i} className={cn(
-                    "px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors",
-                    i === activeSheet ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-                  )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); }}>
-                    {s.name}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between border-b border-border/30">
+                <div className="flex overflow-x-auto">
+                  {selectedFile.sheets.map((s, i) => (
+                    <button key={i} className={cn(
+                      "px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors",
+                      i === activeSheet ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                    )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); }}>
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1 px-2">
+                  {eraserMode && (eraserSelectedRows.size > 0 || eraserSelectedCols.size > 0) && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-6 text-[10px] gap-1 px-2"
+                      onClick={handleEraserDelete}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Delete {eraserSelectedRows.size > 0 ? `${eraserSelectedRows.size}R` : ''}{eraserSelectedRows.size > 0 && eraserSelectedCols.size > 0 ? ' · ' : ''}{eraserSelectedCols.size > 0 ? `${eraserSelectedCols.size}C` : ''}
+                    </Button>
+                  )}
+                  <Button
+                    variant={eraserMode ? "default" : "ghost"}
+                    size="sm"
+                    className={cn("h-6 w-6 p-0", eraserMode && "bg-destructive hover:bg-destructive/90")}
+                    onClick={handleToggleEraser}
+                    title={eraserMode ? "Exit eraser mode" : "Eraser — select rows/columns to remove"}
+                  >
+                    <Eraser className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
               <div className="h-[500px] overflow-auto relative" style={{ fontSize: `${zoomLevel}%` }}>
                 <table className="w-max text-[11px] border-collapse" style={{ fontSize: 'inherit' }}>
@@ -1442,9 +1610,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               <th
                                 className={cn(
                                   "py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none",
-                                  isColSelected && "bg-primary/10 ring-1 ring-inset ring-primary/30"
+                                  isColSelected && !eraserMode && "bg-primary/10 ring-1 ring-inset ring-primary/30",
+                                  eraserMode && eraserSelectedCols.has(colIdx) && "bg-destructive/20 ring-1 ring-inset ring-destructive/40",
                                 )}
-                                onClick={(e) => handleColumnHeaderClick(colIdx, e)}
+                                onClick={(e) => eraserMode ? handleEraserColClick(colIdx, e) : handleColumnHeaderClick(colIdx, e)}
                               >
                                 <div className="flex flex-col items-end">
                                   <div className="flex items-center gap-1 justify-end w-full">
@@ -1547,10 +1716,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                         <ContextMenu key={rowIdx}>
                           <ContextMenuTrigger asChild>
                         <tr
-                          className={cn("cursor-pointer transition-colors border-b border-border/5", rowBgClass, leftBorderClass)}
-                          draggable={!isHeaderRow}
+                          className={cn(
+                            "cursor-pointer transition-colors border-b border-border/5",
+                            rowBgClass, leftBorderClass,
+                            eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-destructive/15 ring-1 ring-inset ring-destructive/30",
+                          )}
+                          draggable={!isHeaderRow && !eraserMode}
                           onDragStart={e => {
-                            if (isHeaderRow) { e.preventDefault(); return; }
+                            if (isHeaderRow || eraserMode) { e.preventDefault(); return; }
                             setDraggingRowIdx(rowIdx);
                             e.dataTransfer.effectAllowed = 'move';
                             e.dataTransfer.setData('text/plain', String(rowIdx));
@@ -1562,10 +1735,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             setTimeout(() => document.body.removeChild(ghost), 0);
                           }}
                           onDragEnd={() => setDraggingRowIdx(null)}
-                          onClick={e => !isHeaderRow && handleRowClick(rowIdx, e)}>
+                          onClick={e => {
+                            if (eraserMode) { handleEraserRowClick(rowIdx, e); return; }
+                            if (!isHeaderRow) handleRowClick(rowIdx, e);
+                          }}>
                           <td className={cn(
                             "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
-                            stickyBg,
+                            eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/30" : stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
                               {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/60" /> : rowIdx + 1}
