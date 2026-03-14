@@ -185,7 +185,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
               <div>
                 <h3 className="font-semibold flex items-center gap-2">
                   <img src={naitiveAiIcon} alt="AI" className="h-4 w-4" />
-                  Deal Assistant
+                  naitive Assistant
                 </h3>
                 {dealName && activeTab === 'deal' && (
                   <p className="text-xs text-muted-foreground mt-0.5">{dealName}</p>
