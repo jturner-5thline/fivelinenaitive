@@ -1610,9 +1610,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               <th
                                 className={cn(
                                   "py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none",
-                                  isColSelected && "bg-primary/10 ring-1 ring-inset ring-primary/30"
+                                  isColSelected && !eraserMode && "bg-primary/10 ring-1 ring-inset ring-primary/30",
+                                  eraserMode && eraserSelectedCols.has(colIdx) && "bg-destructive/20 ring-1 ring-inset ring-destructive/40",
                                 )}
-                                onClick={(e) => handleColumnHeaderClick(colIdx, e)}
+                                onClick={(e) => eraserMode ? handleEraserColClick(colIdx, e) : handleColumnHeaderClick(colIdx, e)}
                               >
                                 <div className="flex flex-col items-end">
                                   <div className="flex items-center gap-1 justify-end w-full">
