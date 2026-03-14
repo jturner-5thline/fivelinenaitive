@@ -227,7 +227,7 @@ export function RichTextEditor({
       </div>
       <EditorContent 
         editor={editor} 
-        className="w-[600px] max-w-[600px] border border-input rounded-md bg-background focus-within:ring-1 focus-within:ring-ring [&_.ProseMirror]:break-words [&_.ProseMirror]:whitespace-pre-wrap [&_.ProseMirror]:overflow-wrap-anywhere [&_.mention]:text-primary [&_.mention]:font-medium"
+        className="w-[600px] max-w-[600px] border border-input rounded-md bg-background focus-within:ring-1 focus-within:ring-ring [&_.ProseMirror]:break-words [&_.ProseMirror]:whitespace-pre-wrap [&_.ProseMirror]:overflow-wrap-anywhere [&_.mention]:text-primary [&_.mention]:font-medium [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5"
       />
     </div>
   );
