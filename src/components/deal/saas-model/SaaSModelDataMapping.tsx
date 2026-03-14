@@ -489,6 +489,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         if (Array.isArray(saved.flipped_rows) && !cancelled) {
           setFlippedRows(new Set(saved.flipped_rows));
         }
+        if (Array.isArray((saved as any).flipped_columns) && !cancelled) {
+          setFlippedColumns(new Set((saved as any).flipped_columns));
+        }
       } catch (err) {
         console.warn('Could not restore saved mappings:', err);
       } finally {
