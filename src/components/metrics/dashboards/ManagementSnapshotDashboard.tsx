@@ -403,41 +403,46 @@ export function ManagementSnapshotDashboard({
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                      <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                      <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Legend />
-                      <Line type="monotone" dataKey="closing" stroke={debtRevenueConfig.color} name="Closing Fees" strokeWidth={2} />
-                      <Line type="monotone" dataKey="milestone" stroke="hsl(var(--chart-2))" name="Milestone" strokeWidth={2} />
-                      <Line type="monotone" dataKey="retainer" stroke="hsl(var(--chart-3))" name="Retainer" strokeWidth={2} />
-                    </LineChart>
-                  ) : (
-                    <BarChart data={debtRevenueData}>
-                      <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                      <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Legend />
-                      <Bar
-                        dataKey="closing"
-                        stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
-                        fill={debtRevenueConfig.color}
-                        name="Closing Fees"
-                      />
-                      <Bar
-                        dataKey="milestone"
-                        stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
-                        fill="hsl(var(--chart-2))"
-                        name="Milestone"
-                      />
-                      <Bar
-                        dataKey="retainer"
-                        stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
-                        fill="hsl(var(--chart-3))"
-                        name="Retainer"
-                      />
-                    </BarChart>
-                  )}
-                </ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%">
+                    {debtRevenueConfig.visualization === 'line' ? (
+                      <LineChart data={debtRevenueData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                        <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                        <Legend />
+                        <Line type="monotone" dataKey="closing" stroke={debtRevenueConfig.color} name="Closing Fees" strokeWidth={2} />
+                        <Line type="monotone" dataKey="milestone" stroke="hsl(var(--chart-2))" name="Milestone" strokeWidth={2} />
+                        <Line type="monotone" dataKey="retainer" stroke="hsl(var(--chart-3))" name="Retainer" strokeWidth={2} />
+                      </LineChart>
+                    ) : (
+                      <BarChart data={debtRevenueData}>
+                        <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                        <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                        <Legend />
+                        <Bar
+                          dataKey="closing"
+                          stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
+                          fill={debtRevenueConfig.color}
+                          name="Closing Fees"
+                        />
+                        <Bar
+                          dataKey="milestone"
+                          stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
+                          fill="hsl(var(--chart-2))"
+                          name="Milestone"
+                        />
+                        <Bar
+                          dataKey="retainer"
+                          stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
+                          fill="hsl(var(--chart-3))"
+                          name="Retainer"
+                        />
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                )}
               </div>
             )}
           </CardContent>
