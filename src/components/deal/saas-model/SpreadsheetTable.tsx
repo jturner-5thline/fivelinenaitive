@@ -386,7 +386,7 @@ export function SpreadsheetTable({
                           onClick={() => setSelectedCell({ rowIdx: visIdx, colIdx: ci })}
                         >
                           <div className="flex flex-col items-end">
-                            <span>{row.isPct ? fmtPct(v) : fmtCurrency(v)}</span>
+                            <span>{row.isPct ? fmtPct(v) : fmtCurrency(v, compactCurrency)}</span>
                             {showVariance && variancePct !== null && (
                               <span className={cn(
                                 "text-[8px] leading-tight",
