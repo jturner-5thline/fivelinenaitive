@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Pencil, ChevronDown } from 'lucide-react';
+import { Lock, Pencil, ChevronDown, Loader2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, LineChart, Bar, XAxis, YAxis, Tooltip, Legend, ComposedChart, Line, CartesianGrid } from 'recharts';
 import { parse, endOfMonth, endOfQuarter, startOfMonth, startOfQuarter, startOfYear, subMonths, subQuarters } from 'date-fns';
 import { useMetricsData } from '@/hooks/useMetricsData';
+import { useQBRevenueByWindow } from '@/hooks/useQBWindowData';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
