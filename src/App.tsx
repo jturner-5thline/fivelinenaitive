@@ -97,7 +97,7 @@ function PageLoader() {
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="app-theme">
+      <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" storageKey="app-theme">
         <AuthProvider>
           <PreferencesProvider>
             <DealsProvider>
