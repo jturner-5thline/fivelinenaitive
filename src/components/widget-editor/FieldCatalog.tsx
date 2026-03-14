@@ -56,7 +56,7 @@ function DraggableField({ field }: { field: Field }) {
       {...listeners}
       {...attributes}
       className={cn(
-        'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-card cursor-grab select-none transition-all text-sm',
+        'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-card cursor-grab select-none transition-all text-sm touch-none',
         isDragging && 'opacity-40 ring-2 ring-primary/30'
       )}
     >
