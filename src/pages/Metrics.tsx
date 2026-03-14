@@ -98,6 +98,7 @@ import {
   QuickBooksFinancialDashboard,
 } from "@/components/metrics/dashboards";
 import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
+import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
 import { useCustomMetrics } from "@/hooks/useCustomMetrics";
 import { evaluateFormula, FormulaContext } from "@/lib/customMetricEngine";
 // Dashboard options
