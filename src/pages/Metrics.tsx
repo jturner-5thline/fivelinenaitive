@@ -1043,9 +1043,9 @@ function renderStatContent(
   const range = getTimePeriodRange(widget.timePeriod);
   const periodLabel = getTimePeriodLabel(widget.timePeriod);
 
-  // Compute time-period-filtered values when a period is set
-  const filteredDealMetrics = useMemoFilteredDeals(range, rawData?.rawDeals);
-  const filteredQbMetrics = useMemoFilteredQb(range, rawData?.rawInvoices, rawData?.rawPayments, rawData?.rawExpenses);
+  // Compute time-period-filtered values
+  const fd = computeFilteredDealMetrics(range, rawData?.rawDeals);
+  const fq = computeFilteredQbMetrics(range, rawData?.rawInvoices, rawData?.rawPayments, rawData?.rawExpenses);
 
   // Handle custom calculated metrics
   if (widget.dataSource.startsWith('custom-')) {
