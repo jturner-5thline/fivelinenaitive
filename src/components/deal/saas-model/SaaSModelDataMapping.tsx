@@ -1559,15 +1559,39 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           <div ref={spreadsheetRef} tabIndex={0} className="outline-none">
           <Card className="border-border/30">
             <CardContent className="p-0">
-              <div className="flex border-b border-border/30 overflow-x-auto">
-                {selectedFile.sheets.map((s, i) => (
-                  <button key={i} className={cn(
-                    "px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors",
-                    i === activeSheet ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-                  )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); }}>
-                    {s.name}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between border-b border-border/30">
+                <div className="flex overflow-x-auto">
+                  {selectedFile.sheets.map((s, i) => (
+                    <button key={i} className={cn(
+                      "px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors",
+                      i === activeSheet ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                    )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); }}>
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1 px-2">
+                  {eraserMode && (eraserSelectedRows.size > 0 || eraserSelectedCols.size > 0) && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-6 text-[10px] gap-1 px-2"
+                      onClick={handleEraserDelete}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Delete {eraserSelectedRows.size > 0 ? `${eraserSelectedRows.size}R` : ''}{eraserSelectedRows.size > 0 && eraserSelectedCols.size > 0 ? ' · ' : ''}{eraserSelectedCols.size > 0 ? `${eraserSelectedCols.size}C` : ''}
+                    </Button>
+                  )}
+                  <Button
+                    variant={eraserMode ? "default" : "ghost"}
+                    size="sm"
+                    className={cn("h-6 w-6 p-0", eraserMode && "bg-destructive hover:bg-destructive/90")}
+                    onClick={handleToggleEraser}
+                    title={eraserMode ? "Exit eraser mode" : "Eraser — select rows/columns to remove"}
+                  >
+                    <Eraser className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
               <div className="h-[500px] overflow-auto relative" style={{ fontSize: `${zoomLevel}%` }}>
                 <table className="w-max text-[11px] border-collapse" style={{ fontSize: 'inherit' }}>
