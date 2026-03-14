@@ -541,18 +541,64 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   }, []);
 
   const handleFilesSelected = useCallback(async (files: FileList) => {
+    // Client-side validation
+    const validExts = ['.xlsx', '.xls', '.csv'];
+    const MAX_SIZE = 50 * 1024 * 1024; // 50MB hard limit
+    const WARN_SIZE = 20 * 1024 * 1024; // 20MB warning
+    for (const file of Array.from(files)) {
+      const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+      if (!validExts.includes(ext)) {
+        toast.error(`Unsupported file type: ${ext}. Use .xlsx, .xls, or .csv`);
+        return;
+      }
+      if (file.size > MAX_SIZE) {
+        toast.error(`File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB. Max is 50MB.`);
+        return;
+      }
+      if (file.size > WARN_SIZE) {
+        toast.warning(`Large file (${(file.size / 1024 / 1024).toFixed(1)}MB) — parsing may take a moment`);
+      }
+    }
+
     setIsProcessing(true);
+    setUploadProgress(0);
+    setUploadStatus('Validating files...');
+
     const results: AnalyzedFile[] = [];
-    for (const file of Array.from(files)) results.push(await analyzeFile(file));
+    const totalFiles = files.length;
+    for (let i = 0; i < totalFiles; i++) {
+      const file = files[i];
+      setUploadStatus(`Parsing ${file.name}...`);
+      setUploadProgress(Math.round(((i) / totalFiles) * 60));
+
+      // Set a timeout for very large files
+      const parsePromise = analyzeFile(file);
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 60000));
+      const result = await Promise.race([parsePromise, timeoutPromise]);
+
+      if (!result) {
+        toast.error(`Parsing "${file.name}" timed out. Try reducing the number of tabs or rows.`);
+        setIsProcessing(false);
+        setUploadProgress(null);
+        setUploadStatus('');
+        return;
+      }
+
+      results.push(result);
+      setUploadProgress(Math.round(((i + 1) / totalFiles) * 60));
+    }
+
     results.sort((a, b) => b.analysis.totalMatches - a.analysis.totalMatches);
     setAnalyzedFiles(results);
+
     if (results.length === 1) {
       setSelectedFile(results[0]);
       setPhase('mapping');
-      // Immediately persist the file to storage so it survives navigation
+      setUploadStatus('Uploading to storage...');
+      setUploadProgress(70);
       const storagePath = await persistFileToStorage(results[0].file);
+      setUploadProgress(90);
       if (storagePath) {
-        // Save initial record so file reference is persisted even before any mapping
         await supabase.from('deal_saas_mappings' as any).upsert({
           deal_id: dealId,
           field_mappings: fieldMappings,
@@ -563,9 +609,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           mapped_at: new Date().toISOString(),
         }, { onConflict: 'deal_id' });
       }
+      setUploadProgress(100);
     } else {
       setPhase('triage');
     }
+    setTimeout(() => { setUploadProgress(null); setUploadStatus(''); }, 500);
     setIsProcessing(false);
   }, [analyzeFile, persistFileToStorage, dealId, fieldMappings]);
 
