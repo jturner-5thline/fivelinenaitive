@@ -110,6 +110,6 @@ export function useQBRevenueByWindow(window: TimeWindow, realmId?: string | null
       return { periods: sorted, total };
     },
     enabled: !!user,
-    staleTime: 60_000,
+    staleTime: 10_000,
   });
 }
