@@ -1718,7 +1718,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   <thead className="sticky top-0 z-20 bg-muted">
                     <tr>
                       <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted">#</th>
-                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] border-r border-border/10 font-semibold bg-muted" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>Account Name</th>
+                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] border-r-2 border-r-border/50 font-semibold bg-muted" style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>Account Name</th>
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         const isExcluded = excludedColumns.has(colIdx);
