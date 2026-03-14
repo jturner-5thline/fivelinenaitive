@@ -142,7 +142,7 @@ export function SpreadsheetTable({
       value = getAnnualValue(row.values, selectedCell.colIdx, !!row.isPct);
     }
 
-    const formatted = row.isPct ? fmtPct(value) : fmtCurrency(value);
+    const formatted = row.isPct ? fmtPct(value) : fmtCurrency(value, compactCurrency);
     const formula = row.formula || (row.isTotal ? `SUM(${row.label})` : '');
 
     return { cellRef, value: formatted, formula, rowLabel: row.label };
