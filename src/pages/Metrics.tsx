@@ -1133,7 +1133,7 @@ function renderStatContent(
   allWidgets?: MetricWidgetConfig[],
   rawData?: RawDataForTimePeriod,
 ) {
-  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-') && !widget.dataSource.startsWith('custom-') && !widget.dataSource.startsWith('xs-')) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-') && !widget.dataSource.startsWith('custom-') && !widget.dataSource.startsWith('xs-') && !widget.dataSource.startsWith('datarails-')) return null;
 
   // Time period filtering
   const range = getTimePeriodRange(widget.timePeriod);
