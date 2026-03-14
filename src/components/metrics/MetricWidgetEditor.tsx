@@ -139,6 +139,7 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
       setColor(widget.color);
       setEntityFilter(widget.entityFilter || 'all');
       setComparisonPeriod(widget.comparisonPeriod || 'none');
+      setTimePeriod(widget.timePeriod || 'all-time');
       if (widget.dataSource.startsWith('custom-')) {
         setDataMode('custom');
         const metricId = widget.dataSource.replace('custom-', '');
