@@ -144,9 +144,10 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
         className="gap-1.5 text-xs"
         style={{ backgroundColor: '#2ED3B7', color: '#050814' }}
         onClick={() => setOpen(o => !o)}
+        title="Financial Analysis AI — Ask questions about your financial model"
       >
         <MessageSquare className="h-3.5 w-3.5" />
-        Chat
+        Financial AI
       </Button>
 
       {/* Panel */}
@@ -163,7 +164,7 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-          <h3 className="text-sm font-semibold" style={{ color: '#E8E9ED' }}>How can I help you today?</h3>
+          <h3 className="text-sm font-semibold" style={{ color: '#E8E9ED' }}>Financial Analysis AI</h3>
           <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-[rgba(255,255,255,0.06)]">
             <X className="h-4 w-4" style={{ color: '#8B8FA3' }} />
           </button>

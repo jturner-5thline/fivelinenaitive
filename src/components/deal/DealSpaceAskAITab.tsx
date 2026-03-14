@@ -145,6 +145,9 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
             <CardDescription>
               Ask questions about your uploaded documents and financials
             </CardDescription>
+            <p className="text-[10px] text-muted-foreground/60 mt-1 leading-relaxed">
+              💡 <strong>Ask AI</strong> answers document questions · <strong>Financial AI</strong> (Analysis tab) analyzes your model · <strong>naitive Assistant</strong> (bottom-right) for general help
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {/* Scope filter */}

@@ -31,6 +31,7 @@ import {
   type Phase, type AnalyzedFile, type AutoMapResult, type ValidationWarning,
   KEYWORD_ALIASES, getMatchConfidence, applyMappingsToModel,
   formatCellValue, isNumericCell, detectHeaderRow, extractColumnHeaders,
+  validateDateSequence, type DateWarning,
 } from './dataMappingUtils';
 
 interface Props {
@@ -52,6 +53,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [selectedFile, setSelectedFile] = useState<AnalyzedFile | null>(null);
   const [activeSheet, setActiveSheet] = useState(0);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
   const [fieldMappings, setFieldMappings] = useState<Record<string, FieldMapping[]>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -294,6 +297,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     const headers = headerRow !== null ? extractColumnHeaders(sheet.data, headerRow) : [];
     return { headerRow, headers };
   }, [selectedFile, activeSheet]);
+
+  // Date validation warnings for column headers
+  const dateWarnings = useMemo(() => {
+    if (detectedHeaders.headers.length === 0) return [] as DateWarning[];
+    return validateDateSequence(detectedHeaders.headers);
+  }, [detectedHeaders.headers]);
 
   const handleSaveSettings = () => {
     updateModel(prev => ({ ...prev, settings: { ...localSettings } }));
@@ -539,18 +548,64 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   }, []);
 
   const handleFilesSelected = useCallback(async (files: FileList) => {
+    // Client-side validation
+    const validExts = ['.xlsx', '.xls', '.csv'];
+    const MAX_SIZE = 50 * 1024 * 1024; // 50MB hard limit
+    const WARN_SIZE = 20 * 1024 * 1024; // 20MB warning
+    for (const file of Array.from(files)) {
+      const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+      if (!validExts.includes(ext)) {
+        toast.error(`Unsupported file type: ${ext}. Use .xlsx, .xls, or .csv`);
+        return;
+      }
+      if (file.size > MAX_SIZE) {
+        toast.error(`File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB. Max is 50MB.`);
+        return;
+      }
+      if (file.size > WARN_SIZE) {
+        toast.warning(`Large file (${(file.size / 1024 / 1024).toFixed(1)}MB) — parsing may take a moment`);
+      }
+    }
+
     setIsProcessing(true);
+    setUploadProgress(0);
+    setUploadStatus('Validating files...');
+
     const results: AnalyzedFile[] = [];
-    for (const file of Array.from(files)) results.push(await analyzeFile(file));
+    const totalFiles = files.length;
+    for (let i = 0; i < totalFiles; i++) {
+      const file = files[i];
+      setUploadStatus(`Parsing ${file.name}...`);
+      setUploadProgress(Math.round(((i) / totalFiles) * 60));
+
+      // Set a timeout for very large files
+      const parsePromise = analyzeFile(file);
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 60000));
+      const result = await Promise.race([parsePromise, timeoutPromise]);
+
+      if (!result) {
+        toast.error(`Parsing "${file.name}" timed out. Try reducing the number of tabs or rows.`);
+        setIsProcessing(false);
+        setUploadProgress(null);
+        setUploadStatus('');
+        return;
+      }
+
+      results.push(result);
+      setUploadProgress(Math.round(((i + 1) / totalFiles) * 60));
+    }
+
     results.sort((a, b) => b.analysis.totalMatches - a.analysis.totalMatches);
     setAnalyzedFiles(results);
+
     if (results.length === 1) {
       setSelectedFile(results[0]);
       setPhase('mapping');
-      // Immediately persist the file to storage so it survives navigation
+      setUploadStatus('Uploading to storage...');
+      setUploadProgress(70);
       const storagePath = await persistFileToStorage(results[0].file);
+      setUploadProgress(90);
       if (storagePath) {
-        // Save initial record so file reference is persisted even before any mapping
         await supabase.from('deal_saas_mappings' as any).upsert({
           deal_id: dealId,
           field_mappings: fieldMappings,
@@ -561,9 +616,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           mapped_at: new Date().toISOString(),
         }, { onConflict: 'deal_id' });
       }
+      setUploadProgress(100);
     } else {
       setPhase('triage');
     }
+    setTimeout(() => { setUploadProgress(null); setUploadStatus(''); }, 500);
     setIsProcessing(false);
   }, [analyzeFile, persistFileToStorage, dealId, fieldMappings]);
 
@@ -907,9 +964,15 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             onDragLeave={e => { e.currentTarget.closest('.group\\/dropzone')?.classList.remove('border-primary/60'); }}
             onDrop={e => { e.currentTarget.closest('.group\\/dropzone')?.classList.remove('border-primary/60'); handleDrop(e); }}>
             {isProcessing ? (
-              <div className="flex flex-col items-center gap-3">
+              <div className="flex flex-col items-center gap-3 w-full max-w-xs">
                 <RefreshCw className="h-10 w-10 text-primary animate-spin" />
-                <p className="text-sm text-muted-foreground">Analyzing files...</p>
+                <p className="text-sm text-muted-foreground">{uploadStatus || 'Analyzing files...'}</p>
+                {uploadProgress !== null && (
+                  <div className="w-full space-y-1">
+                    <Progress value={uploadProgress} className="h-2" />
+                    <p className="text-[10px] text-muted-foreground/60 text-center tabular-nums">{uploadProgress}%</p>
+                  </div>
+                )}
               </div>
             ) : (
               <>
@@ -1047,13 +1110,29 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* Detected column headers preview */}
       {detectedHeaders.headers.length > 0 && (
-        <div className="flex items-center gap-1.5 px-1 overflow-x-auto">
-          <span className="text-[9px] text-muted-foreground/60 shrink-0">Columns:</span>
-          {detectedHeaders.headers.filter(h => h).slice(0, 18).map((h, i) => (
-            <Badge key={i} variant="outline" className="text-[8px] h-4 px-1.5 shrink-0 whitespace-nowrap">{h}</Badge>
-          ))}
-          {detectedHeaders.headers.filter(h => h).length > 18 && (
-            <span className="text-[8px] text-muted-foreground/50">+{detectedHeaders.headers.filter(h => h).length - 18}</span>
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5 px-1 overflow-x-auto">
+            <span className="text-[9px] text-muted-foreground/60 shrink-0">Columns:</span>
+            {detectedHeaders.headers.filter(h => h).slice(0, 18).map((h, i) => {
+              const hasWarning = dateWarnings.some(w => w.colIndex === i);
+              return (
+                <Badge key={i} variant="outline" className={cn("text-[8px] h-4 px-1.5 shrink-0 whitespace-nowrap", hasWarning && "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400")}>
+                  {hasWarning && <AlertTriangle className="h-2 w-2 mr-0.5" />}
+                  {h}
+                </Badge>
+              );
+            })}
+            {detectedHeaders.headers.filter(h => h).length > 18 && (
+              <span className="text-[8px] text-muted-foreground/50">+{detectedHeaders.headers.filter(h => h).length - 18}</span>
+            )}
+          </div>
+          {dateWarnings.length > 0 && (
+            <div className="flex items-center gap-1.5 px-1">
+              <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
+              <span className="text-[9px] text-amber-500">
+                {dateWarnings.length} date gap{dateWarnings.length > 1 ? 's' : ''} detected: {dateWarnings.map(w => w.message).join('; ')}
+              </span>
+            </div>
           )}
         </div>
       )}
