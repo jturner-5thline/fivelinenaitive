@@ -258,7 +258,10 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{clientsSignedDebtConfig.title}</CardTitle>
               {renderEditAction('clients-signed-debt')}
             </div>
-            <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
+              {clientsSignedDebtConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {clientsSignedDebtConfig.entityName}</Badge>}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[180px]">
