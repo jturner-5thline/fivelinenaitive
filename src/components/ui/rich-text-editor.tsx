@@ -25,6 +25,7 @@ export function RichTextEditor({
   className,
   mentionUsers = [],
   onBlurSave,
+  bulletMode = false,
 }: RichTextEditorProps) {
   const mentionUsersRef = useRef(mentionUsers);
   mentionUsersRef.current = mentionUsers;
