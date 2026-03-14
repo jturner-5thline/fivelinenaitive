@@ -130,10 +130,22 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
     : valueFields;
 
   const ChartComponent = isLine ? LineChart : BarChart;
+  const barRadius: [number, number, number, number] = [6, 6, 0, 0];
 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <ChartComponent data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+        <defs>
+          {dataKeys.map((_, i) => {
+            const [start, end] = CHART_GRADIENT_PAIRS[i % CHART_GRADIENT_PAIRS.length];
+            return (
+              <linearGradient key={`grad-${i}`} id={`barGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={start} stopOpacity={0.95} />
+                <stop offset="100%" stopColor={end} stopOpacity={0.85} />
+              </linearGradient>
+            );
+          })}
+        </defs>
         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
         <XAxis dataKey="period" tick={{ fontSize: 11 }} label={{ value: xLabel, position: 'insideBottom', offset: -2, fontSize: 11 }} />
         <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} />
@@ -143,7 +155,13 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
           isLine ? (
             <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls />
           ) : (
-            <Bar key={name} dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={isStacked ? undefined : [3, 3, 0, 0]} stackId={isStacked ? 'stack' : undefined} />
+            <Bar
+              key={name}
+              dataKey={name}
+              fill={`url(#barGrad-${i})`}
+              radius={isStacked ? (i === dataKeys.length - 1 ? barRadius : [0, 0, 0, 0]) : barRadius}
+              stackId={isStacked ? 'stack' : undefined}
+            />
           )
         )}
       </ChartComponent>
