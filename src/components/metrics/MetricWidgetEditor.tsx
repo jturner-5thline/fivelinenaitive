@@ -86,6 +86,8 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
   const [size, setSize] = useState<MetricWidgetSize>('medium');
   const [color, setColor] = useState('hsl(var(--primary))');
   const [dataMode, setDataMode] = useState<DataMode>(widget ? 'preset' : 'template');
+  const [entityFilter, setEntityFilter] = useState<string>('all');
+  const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>('none');
 
   // Custom metric fields
   const [customName, setCustomName] = useState('');
@@ -95,6 +97,7 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
   const [selectedCustomMetricId, setSelectedCustomMetricId] = useState('');
 
   const { metrics: customMetrics, createMetric, updateMetric } = useCustomMetrics();
+  const { data: qbStatus } = useQuickBooksStatus();
 
   useEffect(() => {
     if (widget) {
