@@ -31,6 +31,8 @@ import {
   MetricChartType,
   MetricWidgetSize,
   ComparisonPeriod,
+  TimePeriod,
+  TIME_PERIOD_OPTIONS,
   METRIC_WIDGET_DATA_SOURCES,
 } from '@/contexts/MetricsWidgetsContext';
 import { FormulaBuilder, Timeframe } from './FormulaBuilder';
@@ -112,6 +114,7 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
   const [dataMode, setDataMode] = useState<DataMode>(widget ? 'preset' : 'template');
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>('none');
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('all-time');
   const [timeframe, setTimeframe] = useState<Timeframe>('all-time');
 
   // Custom metric fields
@@ -136,6 +139,7 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
       setColor(widget.color);
       setEntityFilter(widget.entityFilter || 'all');
       setComparisonPeriod(widget.comparisonPeriod || 'none');
+      setTimePeriod(widget.timePeriod || 'all-time');
       if (widget.dataSource.startsWith('custom-')) {
         setDataMode('custom');
         const metricId = widget.dataSource.replace('custom-', '');
@@ -155,7 +159,7 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
       setTitle(''); setType('chart'); setChartType('bar'); setDataSource(''); setSize('medium');
       setColor('hsl(var(--primary))'); setDataMode('template'); setCustomName(''); setCustomDescription('');
       setFormula(null); setResultType('number'); setSelectedCustomMetricId('');
-      setEntityFilter('all'); setComparisonPeriod('none'); setTimeframe('all-time');
+      setEntityFilter('all'); setComparisonPeriod('none'); setTimePeriod('all-time'); setTimeframe('all-time');
       setStatIcon('dollar'); setCustomHex('');
     }
   }, [widget, isOpen, customMetrics]);
@@ -168,10 +172,9 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
   };
 
   const handleSave = async () => {
-    console.log('[MetricWidgetEditor] handleSave called', { title, dataMode, dataSource, customName, formula: !!formula });
-    if (!title.trim()) { console.log('[MetricWidgetEditor] title empty, returning'); return; }
+    if (!title.trim()) return;
     if (dataMode === 'custom') {
-      if (!formula || !customName.trim()) { console.log('[MetricWidgetEditor] custom mode missing fields'); return; }
+      if (!formula || !customName.trim()) return;
       try {
         let metricId = selectedCustomMetricId;
         if (metricId && customMetrics.find(m => m.id === metricId)) {
@@ -180,17 +183,16 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
           const result = await createMetric.mutateAsync({ name: customName.trim(), description: customDescription.trim() || undefined, formula, result_type: resultType });
           metricId = result.id;
         }
-        onSave({ title: title.trim(), type: 'stat', dataSource: `custom-${metricId}`, size, color, entityFilter: entityFilter !== 'all' ? entityFilter : undefined, comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined });
+        onSave({ title: title.trim(), type: 'stat', dataSource: `custom-${metricId}`, size, color, entityFilter: entityFilter !== 'all' ? entityFilter : undefined, comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined, timePeriod: timePeriod !== 'all-time' ? timePeriod : undefined });
       } catch { return; }
     } else {
-      if (!dataSource) { console.log('[MetricWidgetEditor] no dataSource, returning'); return; }
-      onSave({ title: title.trim(), type, chartType: type === 'chart' ? chartType : undefined, dataSource, size, color, entityFilter: entityFilter !== 'all' ? entityFilter : undefined, comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined });
+      if (!dataSource) return;
+      onSave({ title: title.trim(), type, chartType: type === 'chart' ? chartType : undefined, dataSource, size, color, entityFilter: entityFilter !== 'all' ? entityFilter : undefined, comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined, timePeriod: timePeriod !== 'all-time' ? timePeriod : undefined });
     }
     onClose();
   };
 
   const isValid = dataMode === 'preset' ? !!(title.trim() && dataSource) : dataMode === 'custom' ? !!(title.trim() && customName.trim() && formula) : false;
-  console.log('[MetricWidgetEditor] isValid:', isValid, { dataMode, title: title.trim(), dataSource });
 
   // ─── Live mini preview ───────────────────────────────────────
 
@@ -276,6 +278,19 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
                         <SelectItem value="all">All Entities</SelectItem>
                         {qbConnections.map(c => (
                           <SelectItem key={c.realmId} value={c.realmId}>{c.companyName || c.realmId}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Time Period */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Time Period</Label>
+                    <Select value={timePeriod} onValueChange={v => setTimePeriod(v as TimePeriod)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Time" /></SelectTrigger>
+                      <SelectContent>
+                        {TIME_PERIOD_OPTIONS.map(o => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

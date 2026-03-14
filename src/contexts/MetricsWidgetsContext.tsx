@@ -5,6 +5,19 @@ export type MetricChartType = 'bar' | 'line' | 'pie' | 'area' | 'composed' | 'wa
 export type MetricWidgetSize = 'small' | 'medium' | 'large' | 'full';
 
 export type ComparisonPeriod = 'none' | 'prev-month' | 'prev-quarter' | 'prev-year';
+export type TimePeriod = 'all-time' | 'this-week' | 'this-month' | 'this-quarter' | 'ytd' | 'ttm' | 'last-30d' | 'last-90d' | 'last-12m' | 'custom';
+
+export const TIME_PERIOD_OPTIONS: { value: TimePeriod; label: string }[] = [
+  { value: 'all-time', label: 'All Time' },
+  { value: 'this-week', label: 'This Week' },
+  { value: 'this-month', label: 'This Month' },
+  { value: 'this-quarter', label: 'This Quarter' },
+  { value: 'ytd', label: 'Year to Date' },
+  { value: 'ttm', label: 'TTM (Trailing 12M)' },
+  { value: 'last-30d', label: 'Last 30 Days' },
+  { value: 'last-90d', label: 'Last 90 Days' },
+  { value: 'last-12m', label: 'Last 12 Months' },
+];
 
 export interface MetricWidgetConfig {
   id: string;
@@ -16,6 +29,7 @@ export interface MetricWidgetConfig {
   color: string;
   entityFilter?: string; // QB realm_id or 'all'
   comparisonPeriod?: ComparisonPeriod;
+  timePeriod?: TimePeriod;
   createdAt: string;
 }
 
