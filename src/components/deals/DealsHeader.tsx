@@ -114,7 +114,7 @@ export function DealsHeader() {
             </Button>
           )}
         </nav>
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
           {!location.pathname.startsWith('/deal/') && (
             <Tooltip>
               <TooltipTrigger asChild>
