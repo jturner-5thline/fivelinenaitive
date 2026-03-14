@@ -159,7 +159,7 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
       setTitle(''); setType('chart'); setChartType('bar'); setDataSource(''); setSize('medium');
       setColor('hsl(var(--primary))'); setDataMode('template'); setCustomName(''); setCustomDescription('');
       setFormula(null); setResultType('number'); setSelectedCustomMetricId('');
-      setEntityFilter('all'); setComparisonPeriod('none'); setTimeframe('all-time');
+      setEntityFilter('all'); setComparisonPeriod('none'); setTimePeriod('all-time'); setTimeframe('all-time');
       setStatIcon('dollar'); setCustomHex('');
     }
   }, [widget, isOpen, customMetrics]);
