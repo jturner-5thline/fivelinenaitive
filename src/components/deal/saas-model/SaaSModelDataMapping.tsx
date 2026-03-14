@@ -702,7 +702,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     if (!selectedFile || Object.keys(fieldMappings).length === 0) return;
     setIsSaving(true);
     try {
-      applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns);
+      applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns, flippedColumns);
       const companyId = await getCompanyId();
       if (companyId) await logPatterns(companyId, dealId);
 
@@ -722,6 +722,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         mapped_at: new Date().toISOString(),
         excluded_columns: Array.from(excludedColumns),
         flipped_rows: Array.from(flippedRows),
+        flipped_columns: Array.from(flippedColumns),
       }, { onConflict: 'deal_id' });
 
       const count = Object.keys(fieldMappings).length;
@@ -729,7 +730,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       toast.success(`Saved ${count} mapped ${count === 1 ? 'field' : 'fields'} — Dashboard, IS & BS updated`);
     } catch { toast.error('Failed to save mapping progress'); }
     finally { setIsSaving(false); }
-  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage]);
+  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage, flippedRows, flippedColumns, excludedColumns]);
 
   // Keep ref in sync for imperative handle
   useEffect(() => { handleSaveProgressRef.current = handleSaveProgress; }, [handleSaveProgress]);
