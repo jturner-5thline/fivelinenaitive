@@ -220,11 +220,14 @@ export function ManagementSnapshotDashboard({
     cardId: EditableManagementSnapshotCardId,
     fallbackTitle: string,
     fallbackColor: string = 'hsl(var(--primary))',
+    fallbackWindow: TimeWindow = 'ytd',
   ) => ({
     title: cardConfigs[cardId]?.title || fallbackTitle,
     color: cardConfigs[cardId]?.color || fallbackColor,
     entityName: resolveEntityName(cardConfigs[cardId]?.entityFilter),
     visualization: resolveVisualization(cardConfigs[cardId]),
+    timeWindow: (cardConfigs[cardId]?.timeWindow || fallbackWindow) as TimeWindow,
+    cardId,
   });
 
   const renderEditAction = (cardId: EditableManagementSnapshotCardId) => {
