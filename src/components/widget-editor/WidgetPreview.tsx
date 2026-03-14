@@ -131,7 +131,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {dataKeys.map((name, i) =>
           isLine ? (
-            <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} />
+            <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls />
           ) : (
             <Bar key={name} dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[3, 3, 0, 0]} />
           )
