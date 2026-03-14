@@ -1517,6 +1517,33 @@ export default function Metrics() {
     setEditorOpen(true);
   };
 
+  const editorInitialConfig = useMemo<DatarailsWidgetConfig>(() => {
+    if (!editingWidget) return DEFAULT_WIDGET_CONFIG;
+
+    const persisted = editingWidget.datarailsConfig as Partial<DatarailsWidgetConfig> | undefined;
+    if (persisted) {
+      return {
+        ...DEFAULT_WIDGET_CONFIG,
+        ...persisted,
+        id: persisted.id ?? editingWidget.id,
+        name: persisted.name ?? editingWidget.title,
+      };
+    }
+
+    return {
+      ...DEFAULT_WIDGET_CONFIG,
+      id: editingWidget.id,
+      name: editingWidget.title || DEFAULT_WIDGET_CONFIG.name,
+      type: editingWidget.type === 'stat'
+        ? 'kpi'
+        : editingWidget.chartType === 'line'
+          ? 'line'
+          : editingWidget.chartType === 'bar'
+            ? 'bar'
+            : 'columnChart',
+    };
+  }, [editingWidget]);
+
   const handleSave = (widgetData: Omit<MetricWidgetConfig, 'id' | 'createdAt'>) => {
     if (editingManagementSnapshotCardId) {
       setManagementSnapshotCards(prev => ({
@@ -1913,9 +1940,8 @@ export default function Metrics() {
       {editorOpen && (
         <div className="fixed inset-0 z-50 bg-background">
           <DatarailsWidgetEditor
+            initialWidgetConfig={editorInitialConfig}
             onSave={(datarailsConfig) => {
-              // Map Datarails config to MetricWidgetConfig for persistence
-              const valueField = datarailsConfig.values[0];
               const chartTypeMap: Record<string, MetricChartType> = {
                 columnChart: 'bar',
                 bar: 'bar',
@@ -1925,15 +1951,25 @@ export default function Metrics() {
                 table: 'bar',
                 column: 'bar',
               };
+
+              const dataSource =
+                editingWidget?.dataSource?.startsWith('datarails-')
+                  ? editingWidget.dataSource
+                  : `datarails-${Date.now()}`;
+
               const widgetData: Omit<MetricWidgetConfig, 'id' | 'createdAt'> = {
                 title: datarailsConfig.name,
                 type: datarailsConfig.type === 'kpi' ? 'stat' : 'chart',
                 chartType: chartTypeMap[datarailsConfig.type] || 'bar',
-                dataSource: `datarails-${Date.now()}`,
+                dataSource,
                 size: 'medium' as MetricWidgetSize,
                 color: 'hsl(var(--primary))',
-                timePeriod: datarailsConfig.xAxis.window === 'last3Months' ? 'last-90d' 
-                  : datarailsConfig.xAxis.window === 'ytd' ? 'ytd' : 'all-time',
+                timePeriod:
+                  datarailsConfig.xAxis.window === 'last3Months'
+                    ? 'last-90d'
+                    : datarailsConfig.xAxis.window === 'ytd'
+                      ? 'ytd'
+                      : 'all-time',
                 datarailsConfig: datarailsConfig as unknown as Record<string, any>,
               };
               handleSave(widgetData);
