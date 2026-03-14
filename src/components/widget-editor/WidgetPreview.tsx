@@ -117,6 +117,46 @@ function getValueFieldNames(config: WidgetConfig): string[] {
   });
 }
 
+/** Custom bar shape that only rounds the top if this segment is the topmost with data */
+function StackedBarShape(props: Record<string, unknown> & { dataKeys: string[]; currentKey: string }) {
+  const { x, y, width, height, fill, dataKeys, currentKey, ...rest } = props;
+  const payload = (rest as { payload?: Record<string, unknown> }).payload;
+  const R = 6;
+
+  // Determine if this key is the topmost segment with a non-zero value
+  let isTop = true;
+  if (payload && dataKeys) {
+    const myIdx = dataKeys.indexOf(currentKey as string);
+    for (let j = myIdx + 1; j < dataKeys.length; j++) {
+      const val = (payload as Record<string, number>)[dataKeys[j]];
+      if (val && val > 0) {
+        isTop = false;
+        break;
+      }
+    }
+  }
+
+  const rx = (x as number) ?? 0;
+  const ry = (y as number) ?? 0;
+  const rw = (width as number) ?? 0;
+  const rh = (height as number) ?? 0;
+
+  if (rh <= 0 || rw <= 0) return null;
+
+  if (isTop && rh > R) {
+    // Rounded top corners
+    const path = `M${rx},${ry + R}
+      Q${rx},${ry} ${rx + R},${ry}
+      L${rx + rw - R},${ry}
+      Q${rx + rw},${ry} ${rx + rw},${ry + R}
+      L${rx + rw},${ry + rh}
+      L${rx},${ry + rh}Z`;
+    return <path d={path} fill={fill as string} />;
+  }
+
+  return <rect x={rx} y={ry} width={rw} height={rh} fill={fill as string} />;
+}
+
 function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<string, string | number>[] }) {
   const valueFields = getValueFieldNames(config);
   const xField = getField(config.xAxis.fieldId);
@@ -154,13 +194,20 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
         {dataKeys.map((name, i) =>
           isLine ? (
             <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls />
+          ) : isStacked ? (
+            <Bar
+              key={name}
+              dataKey={name}
+              fill={`url(#barGrad-${i})`}
+              stackId="stack"
+              shape={(props: Record<string, unknown>) => <StackedBarShape {...props} dataKeys={dataKeys} currentKey={name} />}
+            />
           ) : (
             <Bar
               key={name}
               dataKey={name}
               fill={`url(#barGrad-${i})`}
               radius={barRadius}
-              stackId={isStacked ? 'stack' : undefined}
             />
           )
         )}
