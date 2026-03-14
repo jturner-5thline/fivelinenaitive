@@ -170,8 +170,6 @@ export function DatarailsWidgetEditor({
             {activeField?.name ?? activeLabel}
           </div>
         )}
-          </div>
-        )}
       </DragOverlay>
     </DndContext>
   );
