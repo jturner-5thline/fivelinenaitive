@@ -14,6 +14,7 @@ interface RichTextInlineEditProps {
   autoSave?: boolean;
   autoSaveDelay?: number;
   mentionUsers?: MentionUser[];
+  bulletMode?: boolean;
 }
 
 export function RichTextInlineEdit({
