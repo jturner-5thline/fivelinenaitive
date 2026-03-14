@@ -1825,15 +1825,30 @@ export default function Metrics() {
         </div>
       </div>
 
-      {/* Widget Editor Dialog */}
-      <MetricWidgetEditor
-        widget={editingWidget}
-        isOpen={editorOpen}
-        onClose={handleCloseEditor}
-        onSave={handleSave}
-        availableWidgets={widgets.filter(w => w.type === 'stat').map(w => ({ id: w.id, title: w.title }))}
-        existingDataSources={widgets.map(w => w.dataSource)}
-      />
+      {/* Widget Editor - Full Screen Overlay */}
+      {editorOpen && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <DatarailsWidgetEditor
+            onSave={(datarailsConfig) => {
+              // Map Datarails config to MetricWidgetConfig for persistence
+              const valueField = datarailsConfig.values[0];
+              const widgetData: Omit<MetricWidgetConfig, 'id' | 'createdAt'> = {
+                title: datarailsConfig.name,
+                type: datarailsConfig.type === 'kpi' ? 'stat' : 'chart',
+                chartType: datarailsConfig.type === 'columnChart' ? 'bar' : 'line',
+                dataSource: valueField?.fieldId || 'custom',
+                size: 'medium' as MetricWidgetSize,
+                color: 'hsl(var(--primary))',
+                timePeriod: datarailsConfig.xAxis.window === 'last3Months' ? 'last-90d' 
+                  : datarailsConfig.xAxis.window === 'ytd' ? 'ytd' : 'all-time',
+              };
+              handleSave(widgetData);
+              handleCloseEditor();
+            }}
+            onCancel={() => handleCloseEditor()}
+          />
+        </div>
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
