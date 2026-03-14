@@ -1010,7 +1010,70 @@ function renderChartContent(
       );
     }
 
-    default:
+    default: {
+      // Datarails custom widgets - render using stored config
+      if (widget.dataSource.startsWith('datarails-') && widget.datarailsConfig) {
+        const dc = widget.datarailsConfig;
+        const valueNames = (dc.values || []).map((v: any) => v.fieldId || 'Value').filter(Boolean);
+        const chartHeight = widget.size === 'small' ? 180 : widget.size === 'medium' ? 240 : 280;
+        
+        // Generate sample data for display
+        const sampleMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        const sampleData = sampleMonths.map((month, i) => {
+          const row: any = { month };
+          valueNames.forEach((name: string, j: number) => {
+            row[name] = Math.round(20000 + Math.random() * 80000 + i * 5000);
+          });
+          return row;
+        });
+
+        const isStacked = dc.type === 'stackedBar';
+        const barRadius: [number, number, number, number] = [6, 6, 0, 0];
+
+        return (
+          <ChartWidgetContent title={widget.title} description="Custom widget">
+            <div style={{ height: chartHeight }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sampleData}>
+                  <defs>
+                    {valueNames.map((name: string, i: number) => {
+                      const [c1, c2] = [
+                        ['hsl(213, 90%, 70%)', 'hsl(213, 80%, 50%)'],
+                        ['hsl(142, 71%, 55%)', 'hsl(142, 71%, 38%)'],
+                        ['hsl(38, 92%, 58%)', 'hsl(38, 92%, 42%)'],
+                        ['hsl(270, 60%, 68%)', 'hsl(270, 60%, 48%)'],
+                        ['hsl(220, 15%, 65%)', 'hsl(220, 15%, 45%)'],
+                      ][i % 5];
+                      return (
+                        <linearGradient key={name} id={`drGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={c1} />
+                          <stop offset="100%" stopColor={c2} />
+                        </linearGradient>
+                      );
+                    })}
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(value: number) => [formatCurrency(value)]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                  <Legend />
+                  {valueNames.map((name: string, i: number) => (
+                    <Bar
+                      key={name}
+                      dataKey={name}
+                      fill={`url(#drGrad-${i})`}
+                      name={name.replace('f-', '').replace(/-/g, ' ')}
+                      radius={barRadius}
+                      stackId={isStacked ? 'stack' : undefined}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartWidgetContent>
+        );
+      }
+
       return (
         <ChartWidgetContent title={widget.title}>
           <div className="flex items-center justify-center h-40 text-muted-foreground">
@@ -1018,6 +1081,7 @@ function renderChartContent(
           </div>
         </ChartWidgetContent>
       );
+    }
   }
 }
 
