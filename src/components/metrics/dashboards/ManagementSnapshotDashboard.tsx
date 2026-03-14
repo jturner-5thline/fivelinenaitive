@@ -333,8 +333,8 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{debtProfitConfig.title}</CardTitle>
               {renderEditAction('debt-profit')}
             </div>
-            <div className="flex gap-2">
-              <Badge variant="outline" className="text-xs">Entity: All</Badge>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge variant="outline" className="text-xs">Entity: {debtProfitConfig.entityName || 'All'}</Badge>
               <Badge variant="outline" className="text-xs">Year to date</Badge>
             </div>
           </CardHeader>
