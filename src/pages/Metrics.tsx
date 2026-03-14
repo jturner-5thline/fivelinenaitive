@@ -1984,6 +1984,22 @@ export default function Metrics() {
               <ManagementSnapshotDashboard
                 isEditMode={isEditMode}
                 onEditCard={handleEditManagementSnapshotCard}
+                onTimeWindowChange={(cardId, window) => {
+                  setManagementSnapshotCards(prev => {
+                    const card = prev[cardId];
+                    const existingDR = (card.datarailsConfig || {}) as Record<string, any>;
+                    return {
+                      ...prev,
+                      [cardId]: {
+                        ...card,
+                        datarailsConfig: {
+                          ...existingDR,
+                          xAxis: { ...(existingDR.xAxis || {}), window },
+                        },
+                      },
+                    };
+                  });
+                }}
                 cardConfigs={managementSnapshotCardConfigs}
               />
             )}
