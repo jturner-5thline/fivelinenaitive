@@ -1,10 +1,11 @@
-import { WidgetConfig, getField } from './widgetTypes';
+import { WidgetConfig, getField, isQBAccountField } from './widgetTypes';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useMemo } from 'react';
-import { BarChart3, LineChart as LineChartIcon, Hash } from 'lucide-react';
+import { BarChart3, LineChart as LineChartIcon, Hash, Loader2, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useQBPreviewData, PreviewDataPoint } from '@/hooks/useQBPreviewData';
 
 interface Props {
   config: WidgetConfig;
@@ -13,11 +14,20 @@ interface Props {
 
 const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2, 160 60% 45%))', 'hsl(var(--chart-3, 30 80% 55%))', 'hsl(var(--chart-4, 280 65% 60%))', 'hsl(var(--chart-5, 340 75% 55%))'];
 
+/** Check if widget config uses QB-backed fields that can pull real data */
+function hasRealDataFields(config: WidgetConfig): boolean {
+  return config.values.some(v => v.fieldId && (
+    ['f-revenue', 'f-amount', 'f-expenses', 'f-cogs'].includes(v.fieldId) ||
+    isQBAccountField(v.fieldId)
+  ));
+}
+
 function buildInterpretation(config: WidgetConfig): string {
   const parts: string[] = [];
   const valueNames = config.values.map((v) => {
     const f = getField(v.fieldId);
-    return `${v.agg.charAt(0).toUpperCase() + v.agg.slice(1)} of ${f?.name ?? '?'}`;
+    const name = f?.name ?? (isQBAccountField(v.fieldId) ? 'QB Account' : '?');
+    return `${v.agg.charAt(0).toUpperCase() + v.agg.slice(1)} of ${name}`;
   });
   if (valueNames.length > 0) parts.push(valueNames.join(', '));
   else parts.push('(no values selected)');
@@ -91,12 +101,23 @@ function formatCell(val: string | number, format?: string): string {
 
 const isChartType = (type: string) => ['bar', 'line', 'column', 'columnChart'].includes(type);
 
-function ChartPreview({ config }: Props) {
-  const data = useMemo(() => generateChartData(config), [config]);
-  const valueFields = config.values.map((v) => getField(v.fieldId)?.name ?? 'Value');
+function getValueFieldNames(config: WidgetConfig): string[] {
+  return config.values.map((v) => {
+    const f = getField(v.fieldId);
+    return f?.name ?? (isQBAccountField(v.fieldId) ? 'QB Account' : 'Value');
+  });
+}
+
+function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<string, string | number>[] }) {
+  const valueFields = getValueFieldNames(config);
   const xField = getField(config.xAxis.fieldId);
   const xLabel = xField?.name ?? 'Period';
   const isLine = config.type === 'line';
+
+  // Get all numeric keys from data (excluding 'period')
+  const dataKeys = data.length > 0
+    ? Object.keys(data[0]).filter(k => k !== 'period')
+    : valueFields;
 
   const ChartComponent = isLine ? LineChart : BarChart;
 
@@ -105,10 +126,10 @@ function ChartPreview({ config }: Props) {
       <ChartComponent data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
         <XAxis dataKey="period" tick={{ fontSize: 11 }} label={{ value: xLabel, position: 'insideBottom', offset: -2, fontSize: 11 }} />
-        <YAxis tick={{ fontSize: 11 }} />
-        <Tooltip formatter={(value: number) => value.toLocaleString()} />
+        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} />
+        <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {valueFields.map((name, i) =>
+        {dataKeys.map((name, i) =>
           isLine ? (
             <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} />
           ) : (
@@ -120,22 +141,37 @@ function ChartPreview({ config }: Props) {
   );
 }
 
-function KpiPreview({ config }: Props) {
+function KpiPreview({ config, data }: { config: WidgetConfig; data?: PreviewDataPoint[] }) {
   const valueField = config.values[0];
   const f = getField(valueField?.fieldId);
-  const name = f?.name ?? 'Metric';
+  const name = f?.name ?? (isQBAccountField(valueField?.fieldId) ? 'QB Account' : 'Metric');
   const format = valueField?.format ?? 'number';
-  const mockVal = format === 'percent' ? 42.7 : 284350;
-  const formatted = format === 'currency' ? `$${mockVal.toLocaleString()}` : format === 'percent' ? `${mockVal}%` : mockVal.toLocaleString();
+
+  // Use real data if available
+  let displayVal: number;
+  if (data && data.length > 0) {
+    // Sum all values across all periods for the first value field
+    const keys = Object.keys(data[0]).filter(k => k !== 'period');
+    displayVal = data.reduce((sum, row) => {
+      const val = keys.length > 0 ? (row[keys[0]] as number) ?? 0 : 0;
+      return sum + val;
+    }, 0);
+  } else {
+    displayVal = format === 'percent' ? 42.7 : 284350;
+  }
+
+  const formatted = format === 'currency' ? `$${displayVal.toLocaleString()}` : format === 'percent' ? `${displayVal.toFixed(1)}%` : displayVal.toLocaleString();
 
   return (
     <div className="flex flex-col items-center justify-center py-12 gap-2">
       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{name}</p>
       <p className="text-4xl font-bold text-foreground">{formatted}</p>
-      <div className="flex items-center gap-1 text-xs text-primary font-medium">
-        <span>▲ 12.4%</span>
-        <span className="text-muted-foreground">vs prior period</span>
-      </div>
+      {!data && (
+        <div className="flex items-center gap-1 text-xs text-primary font-medium">
+          <span>▲ 12.4%</span>
+          <span className="text-muted-foreground">vs prior period</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -148,8 +184,18 @@ const VIEW_MODES = [
 
 export function WidgetPreview({ config, onTypeChange }: Props) {
   const interpretation = buildInterpretation(config);
-  const rows = generateMockRows(config);
-  const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+  const useRealData = hasRealDataFields(config);
+  const { data: realData, isLoading: realDataLoading } = useQBPreviewData(config);
+
+  // Fallback mock data
+  const mockRows = useMemo(() => generateMockRows(config), [config]);
+  const mockChartData = useMemo(() => generateChartData(config), [config]);
+
+  const chartData = useRealData && realData && realData.length > 0 ? realData : mockChartData;
+  const tableData = useRealData && realData && realData.length > 0 ? realData : mockRows;
+  const isLive = useRealData && realData && realData.length > 0;
+
+  const columns = tableData.length > 0 ? Object.keys(tableData[0]) : [];
 
   const hasData = config.values.length > 0 || config.xAxis.fieldId;
   const activeType = config.type;
@@ -192,29 +238,42 @@ export function WidgetPreview({ config, onTypeChange }: Props) {
             <p className="text-xs text-primary font-medium">{interpretation}</p>
           </div>
 
-          {hasData ? (
+          {/* Loading state */}
+          {useRealData && realDataLoading && (
+            <div className="flex items-center justify-center h-32 gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Loading QuickBooks data…</span>
+            </div>
+          )}
+
+          {hasData && !realDataLoading ? (
             <>
-              {activeType === 'kpi' && config.values.length > 0 && (
-                <div className="rounded-lg border border-border p-4 relative">
-                  <span className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+              {/* Data source badge */}
+              <div className="flex items-center gap-1.5">
+                {isLive ? (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,35%)] border border-[hsl(142,71%,45%)]/20">
+                    <Database className="h-3 w-3" />
+                    Live QuickBooks data
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground">
                     Sample data
                   </span>
-                  <KpiPreview config={config} />
+                )}
+              </div>
+
+              {activeType === 'kpi' && config.values.length > 0 && (
+                <div className="rounded-lg border border-border p-4">
+                  <KpiPreview config={config} data={isLive ? realData : undefined} />
                 </div>
               )}
               {showChart && (
-                <div className="rounded-lg border border-border p-4 relative">
-                  <span className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                    Sample data
-                  </span>
-                  <ChartPreview config={config} />
+                <div className="rounded-lg border border-border p-4">
+                  <ChartPreview config={config} data={chartData} />
                 </div>
               )}
               {(!showChart && activeType !== 'kpi') && (
-                <div className="rounded-lg border border-border overflow-hidden relative">
-                  <span className="absolute top-2 right-2 z-10 text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                    Sample data
-                  </span>
+                <div className="rounded-lg border border-border overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -224,11 +283,11 @@ export function WidgetPreview({ config, onTypeChange }: Props) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {rows.map((row, i) => (
+                      {tableData.map((row, i) => (
                         <TableRow key={i}>
                           {columns.map((col) => (
                             <TableCell key={col} className="text-xs whitespace-nowrap">
-                              {formatCell(row[col], formatMap[col])}
+                              {formatCell(row[col], formatMap[col] ?? (typeof row[col] === 'number' ? 'currency' : undefined))}
                             </TableCell>
                           ))}
                         </TableRow>
@@ -238,11 +297,11 @@ export function WidgetPreview({ config, onTypeChange }: Props) {
                 </div>
               )}
             </>
-          ) : (
+          ) : !realDataLoading ? (
             <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
               Drag fields to the configuration panel to build your widget
             </div>
-          )}
+          ) : null}
         </div>
       </ScrollArea>
     </div>
