@@ -1,10 +1,14 @@
 import { WidgetConfig, getField } from './widgetTypes';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useMemo } from 'react';
 
 interface Props {
   config: WidgetConfig;
 }
+
+const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2, 160 60% 45%))', 'hsl(var(--chart-3, 30 80% 55%))', 'hsl(var(--chart-4, 280 65% 60%))', 'hsl(var(--chart-5, 340 75% 55%))'];
 
 function buildInterpretation(config: WidgetConfig): string {
   const parts: string[] = [];
@@ -28,6 +32,21 @@ function buildInterpretation(config: WidgetConfig): string {
   if (config.filters.length > 0) parts.push(`with ${config.filters.length} filter(s)`);
 
   return parts.join(' ');
+}
+
+function generateChartData(config: WidgetConfig): Record<string, string | number>[] {
+  const periods = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  return periods.map((p) => {
+    const row: Record<string, string | number> = { period: p };
+    for (const vc of config.values) {
+      const f = getField(vc.fieldId);
+      const name = f?.name ?? 'Value';
+      row[name] = vc.format === 'percent'
+        ? +(Math.random() * 100).toFixed(1)
+        : Math.round(Math.random() * 500000 + 50000);
+    }
+    return row;
+  });
 }
 
 function generateMockRows(config: WidgetConfig): Record<string, string | number>[] {
@@ -67,14 +86,45 @@ function formatCell(val: string | number, format?: string): string {
   return String(val);
 }
 
+const isChartType = (type: string) => ['bar', 'line', 'column', 'columnChart'].includes(type);
+
+function ChartPreview({ config }: Props) {
+  const data = useMemo(() => generateChartData(config), [config]);
+  const valueFields = config.values.map((v) => getField(v.fieldId)?.name ?? 'Value');
+  const xField = getField(config.xAxis.fieldId);
+  const xLabel = xField?.name ?? 'Period';
+  const isLine = config.type === 'line';
+
+  const ChartComponent = isLine ? LineChart : BarChart;
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <ChartComponent data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+        <XAxis dataKey="period" tick={{ fontSize: 11 }} label={{ value: xLabel, position: 'insideBottom', offset: -2, fontSize: 11 }} />
+        <YAxis tick={{ fontSize: 11 }} />
+        <Tooltip formatter={(value: number) => value.toLocaleString()} />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+        {valueFields.map((name, i) =>
+          isLine ? (
+            <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} />
+          ) : (
+            <Bar key={name} dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[3, 3, 0, 0]} />
+          )
+        )}
+      </ChartComponent>
+    </ResponsiveContainer>
+  );
+}
+
 export function WidgetPreview({ config }: Props) {
   const interpretation = buildInterpretation(config);
   const rows = generateMockRows(config);
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
 
   const hasData = config.values.length > 0 || config.xAxis.fieldId;
+  const showChart = isChartType(config.type) && config.values.length > 0;
 
-  // Build a format map for value columns
   const formatMap: Record<string, string> = {};
   for (const vc of config.values) {
     const f = getField(vc.fieldId);
@@ -94,28 +144,45 @@ export function WidgetPreview({ config }: Props) {
           </div>
 
           {hasData ? (
-            <div className="rounded-lg border border-border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {columns.map((col) => (
-                      <TableHead key={col} className="text-xs font-semibold whitespace-nowrap">{col}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row, i) => (
-                    <TableRow key={i}>
-                      {columns.map((col) => (
-                        <TableCell key={col} className="text-xs whitespace-nowrap">
-                          {formatCell(row[col], formatMap[col])}
-                        </TableCell>
+            <>
+              {showChart && (
+                <div className="rounded-lg border border-border p-4 relative">
+                  <span className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                    Sample data
+                  </span>
+                  <ChartPreview config={config} />
+                </div>
+              )}
+              {(!showChart || config.type === 'table') && (
+                <div className="rounded-lg border border-border overflow-hidden relative">
+                  {config.type === 'table' && (
+                    <span className="absolute top-2 right-2 z-10 text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                      Sample data
+                    </span>
+                  )}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {columns.map((col) => (
+                          <TableHead key={col} className="text-xs font-semibold whitespace-nowrap">{col}</TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((row, i) => (
+                        <TableRow key={i}>
+                          {columns.map((col) => (
+                            <TableCell key={col} className="text-xs whitespace-nowrap">
+                              {formatCell(row[col], formatMap[col])}
+                            </TableCell>
+                          ))}
+                        </TableRow>
                       ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </>
           ) : (
             <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
               Drag fields to the configuration panel to build your widget

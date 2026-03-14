@@ -2,15 +2,17 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkles, Send, Loader2, X, Bot, User } from 'lucide-react';
+import { Sparkles, Send, Loader2, X, Bot, User, Undo2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import type { WidgetConfig } from './widgetTypes';
+import { SEED_FIELDS, getField } from './widgetTypes';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  hadConfigUpdate?: boolean;
 }
 
 interface WidgetBuilderChatProps {
@@ -19,10 +21,118 @@ interface WidgetBuilderChatProps {
   onClose?: () => void;
 }
 
+// --- Helpers ---
+
+const SOURCE_ABBR: Record<string, string> = { quickbooks: 'QB', hubspot: 'HS', naitive: 'NT' };
+const SOURCE_COLORS: Record<string, string> = {
+  QB: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
+  HS: 'bg-blue-500/15 text-blue-700 dark:text-blue-400',
+  NT: 'bg-purple-500/15 text-purple-700 dark:text-purple-400',
+};
+
+function SourceBadge({ tag }: { tag: string }) {
+  return (
+    <span className={cn('inline-flex text-[9px] font-semibold px-1 py-0.5 rounded ml-0.5', SOURCE_COLORS[tag] || 'bg-muted text-muted-foreground')}>
+      {tag}
+    </span>
+  );
+}
+
+function renderContentWithBadges(text: string) {
+  // Split on (QB), (HS), (NT) and render badges inline
+  const parts = text.split(/(\(QB\)|\(HS\)|\(NT\))/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^\((QB|HS|NT)\)$/);
+    if (match) return <SourceBadge key={i} tag={match[1]} />;
+    return <span key={i}>{part}</span>;
+  });
+}
+
+function MarkdownWithBadges({ content }: { content: string }) {
+  return (
+    <div className="prose prose-xs max-w-none [&_p]:m-0 [&_ul]:m-0 [&_li]:m-0 [&_ol]:m-0 text-inherit">
+      <ReactMarkdown
+        components={{
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          p: ({ node, ...props }) => <p>{renderContentWithBadges(String(props.children))}</p>,
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          li: ({ node, ...props }) => <li>{renderContentWithBadges(String(props.children))}</li>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+function buildConfigDiff(prev: WidgetConfig, next: WidgetConfig): string {
+  const lines: string[] = [];
+  if (prev.name !== next.name) lines.push(`• **Name:** ${prev.name} → ${next.name}`);
+  if (prev.type !== next.type) lines.push(`• **Chart type:** ${prev.type} → ${next.type}`);
+
+  const prevX = getField(prev.xAxis.fieldId);
+  const nextX = getField(next.xAxis.fieldId);
+  if (prev.xAxis.fieldId !== next.xAxis.fieldId || prev.xAxis.grain !== next.xAxis.grain) {
+    const prevLabel = prevX ? `${prevX.name} (${prev.xAxis.grain ?? ''})` : '(none)';
+    const nextLabel = nextX ? `${nextX.name} (${next.xAxis.grain ?? ''} grain)` : '(none)';
+    lines.push(`• **X-Axis:** ${prevLabel} → ${nextLabel}`);
+  }
+  if (prev.xAxis.window !== next.xAxis.window) {
+    lines.push(`• **Window:** ${prev.xAxis.window ?? 'all'} → ${next.xAxis.window ?? 'all'}`);
+  }
+
+  const prevS = getField(prev.series.fieldId);
+  const nextS = getField(next.series.fieldId);
+  if (prev.series.fieldId !== next.series.fieldId) {
+    lines.push(`• **Series:** ${prevS?.name ?? '(none)'} → ${nextS?.name ?? '(none)'}`);
+  }
+
+  const prevValIds = prev.values.map(v => v.fieldId).sort().join(',');
+  const nextValIds = next.values.map(v => v.fieldId).sort().join(',');
+  if (prevValIds !== nextValIds) {
+    const added = next.values.filter(v => !prev.values.some(p => p.fieldId === v.fieldId));
+    const removed = prev.values.filter(v => !next.values.some(n => n.fieldId === v.fieldId));
+    if (added.length) {
+      const names = added.map(v => {
+        const f = getField(v.fieldId);
+        const src = f ? SOURCE_ABBR[f.source] : '';
+        const fmt = v.format === 'currency' ? '$' : v.format === 'percent' ? '%' : '#';
+        return `${f?.name ?? '?'} (${src}) (${v.agg}, ${fmt})`;
+      });
+      lines.push(`• **Values added:** ${names.join(', ')}`);
+    }
+    if (removed.length) {
+      const names = removed.map(v => getField(v.fieldId)?.name ?? '?');
+      lines.push(`• **Values removed:** ${names.join(', ')}`);
+    }
+  }
+
+  if (prev.filters.length !== next.filters.length) {
+    lines.push(`• **Filters:** ${prev.filters.length} → ${next.filters.length}`);
+  }
+
+  if (lines.length === 0) return '';
+  return `✅ Widget updated:\n${lines.join('\n')}`;
+}
+
+function getSuggestions(config: WidgetConfig): string[] {
+  const s: string[] = [];
+  if (config.filters.length === 0) s.push('Add a filter');
+  if (config.values.length > 0) {
+    s.push('Change chart type');
+    s.push('Change aggregation');
+  }
+  s.push('Rename widget');
+  return s.slice(0, 4);
+}
+
+// --- Main Component ---
+
 export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBuilderChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [configHistory, setConfigHistory] = useState<WidgetConfig[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -36,9 +146,29 @@ export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBui
     inputRef.current?.focus();
   }, []);
 
+  const pushHistory = useCallback((cfg: WidgetConfig) => {
+    setConfigHistory(prev => [...prev.slice(-19), cfg]);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (configHistory.length === 0) return;
+    const prev = configHistory[configHistory.length - 1];
+    setConfigHistory(h => h.slice(0, -1));
+    onConfigUpdate(prev);
+    setMessages(m => [...m, { role: 'assistant', content: '↩ Reverted to previous configuration.' }]);
+  }, [configHistory, onConfigUpdate]);
+
   const sendMessage = useCallback(async () => {
     const text = input.trim();
     if (!text || isLoading) return;
+
+    // Local undo detection
+    if (/^undo(\s+that)?$/i.test(text)) {
+      setInput('');
+      setMessages(m => [...m, { role: 'user', content: text }]);
+      handleUndo();
+      return;
+    }
 
     const userMsg: Message = { role: 'user', content: text };
     const newMessages = [...messages, userMsg];
@@ -51,14 +181,20 @@ export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBui
         body: {
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
           currentConfig: config,
+          availableFields: SEED_FIELDS,
         },
       });
 
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
 
+      let diffSummary = '';
+
       // Apply config update if returned
       if (data?.configUpdate) {
+        const prevConfig = { ...config };
+        pushHistory(prevConfig);
+
         const update = data.configUpdate;
         const newConfig = { ...config };
 
@@ -84,11 +220,18 @@ export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBui
         }
 
         onConfigUpdate(newConfig);
+        diffSummary = buildConfigDiff(prevConfig, newConfig);
       }
+
+      const aiContent = data?.content || '';
+      const finalContent = diffSummary
+        ? (aiContent ? `${diffSummary}\n\n${aiContent}` : diffSummary)
+        : (aiContent || 'Done!');
 
       const assistantMsg: Message = {
         role: 'assistant',
-        content: data?.content || 'Done!',
+        content: finalContent,
+        hadConfigUpdate: !!data?.configUpdate,
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err) {
@@ -100,9 +243,9 @@ export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBui
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, messages, config, onConfigUpdate]);
+  }, [input, isLoading, messages, config, onConfigUpdate, pushHistory, handleUndo]);
 
-
+  const suggestions = getSuggestions(config);
 
   return (
     <div className="flex flex-col h-full border-l border-border bg-card">
@@ -138,7 +281,7 @@ export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBui
                 ].map(s => (
                   <button
                     key={s}
-                    onClick={() => { setInput(s); }}
+                    onClick={() => { setInput(s); inputRef.current?.focus(); }}
                     className="text-[10px] px-2 py-1 rounded-full border border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {s}
@@ -149,27 +292,53 @@ export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBui
           )}
 
           {messages.map((msg, i) => (
-            <div key={i} className={cn('flex gap-2', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-              {msg.role === 'assistant' && (
-                <div className="h-5 w-5 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3 w-3 text-primary" />
+            <div key={i} className="space-y-1.5">
+              <div className={cn('flex gap-2', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                {msg.role === 'assistant' && (
+                  <div className="h-5 w-5 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="h-3 w-3 text-primary" />
+                  </div>
+                )}
+                <div className={cn(
+                  'rounded-lg px-2.5 py-1.5 text-xs max-w-[85%] leading-relaxed',
+                  msg.role === 'user'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-secondary-foreground'
+                )}>
+                  {msg.role === 'assistant' ? (
+                    <MarkdownWithBadges content={msg.content} />
+                  ) : msg.content}
+                </div>
+                {msg.role === 'user' && (
+                  <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+
+              {/* Undo button for config updates */}
+              {msg.role === 'assistant' && msg.hadConfigUpdate && (
+                <div className="pl-7">
+                  <Button variant="ghost" size="sm" className="h-5 text-[10px] gap-1 text-muted-foreground hover:text-foreground px-1.5" onClick={handleUndo}>
+                    <Undo2 className="h-3 w-3" /> Undo
+                  </Button>
                 </div>
               )}
-              <div className={cn(
-                'rounded-lg px-2.5 py-1.5 text-xs max-w-[85%] leading-relaxed',
-                msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground'
-              )}>
-                {msg.role === 'assistant' ? (
-                  <div className="prose prose-xs prose-invert max-w-none [&_p]:m-0 [&_ul]:m-0 [&_li]:m-0">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
-                ) : msg.content}
-              </div>
-              {msg.role === 'user' && (
-                <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
-                  <User className="h-3 w-3 text-muted-foreground" />
+
+              {/* Suggestion chips after last assistant message */}
+              {msg.role === 'assistant' && i === messages.length - 1 && !isLoading && (
+                <div className="pl-7 flex flex-wrap gap-1.5">
+                  {suggestions.map(s => (
+                    <Button
+                      key={s}
+                      variant="outline"
+                      size="sm"
+                      className="h-5 text-[10px] px-2 py-0"
+                      onClick={() => { setInput(s); inputRef.current?.focus(); }}
+                    >
+                      {s}
+                    </Button>
+                  ))}
                 </div>
               )}
             </div>
