@@ -127,9 +127,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedMappings]);
 
-  // Restore saved mappings from DB on mount
+  // Restore saved mappings and file from DB on mount
   useEffect(() => {
-    const restore = async () => {
+    let cancelled = false;
+    async function restore() {
+      isRestoringRef.current = true;
       try {
         const { data } = await supabase
           .from('deal_saas_mappings' as any)
@@ -138,43 +140,60 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           .order('mapped_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (!data) return;
+        if (!data || cancelled) { isRestoringRef.current = false; return; }
         const saved = data as any;
-        if (saved.field_mappings && typeof saved.field_mappings === 'object') {
+
+        // Restore file from storage if path exists
+        if (saved.file_storage_path) {
+          storedFilePathRef.current = saved.file_storage_path;
+          setIsRestoringMappings(true);
+          try {
+            const { data: fileData } = await supabase.storage.from('deal-files').download(saved.file_storage_path);
+            if (fileData && !cancelled) {
+              const file = new File([fileData], saved.file_name || 'restored.xlsx', {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+              });
+              const result = await parseExcelFromFile(file);
+              const analysisResult = saved.analysis_result || { status: 'mappable', type: 'Unknown', totalMatches: 0, isMatches: 0, bsMatches: 0, matchedFields: [] };
+              const restored: AnalyzedFile = { file, sheets: result.sheets, analysis: analysisResult };
+              setSelectedFile(restored);
+              setAnalyzedFiles([restored]);
+              setPhase('mapping');
+            }
+          } catch (err) {
+            console.warn('Could not restore uploaded file from storage:', err);
+          } finally {
+            if (!cancelled) setIsRestoringMappings(false);
+          }
+        }
+
+        // Restore mappings
+        if (saved.field_mappings && typeof saved.field_mappings === 'object' && !cancelled) {
           const restoredMappings = saved.field_mappings as Record<string, FieldMapping[]>;
           const mappingCount = Object.keys(restoredMappings).length;
           if (mappingCount > 0) {
             setFieldMappings(restoredMappings);
             setLastSavedCount(mappingCount);
-            // If we have a file_storage_path, try to reload the file from storage
-            if (saved.file_storage_path) {
-              setIsRestoringMappings(true);
-              try {
-                const { data: fileData } = await supabase.storage.from('deal-files').download(saved.file_storage_path);
-                if (fileData) {
-                  const file = new File([fileData], saved.file_name || 'restored.xlsx', {
-                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                  });
-                  const result = await parseExcelFromFile(file);
-                  const analysisResult = saved.analysis_result || { status: 'mappable', type: 'Unknown', totalMatches: 0, isMatches: 0, bsMatches: 0, matchedFields: [] };
-                  const restored: AnalyzedFile = { file, sheets: result.sheets, analysis: analysisResult };
-                  setSelectedFile(restored);
-                  setAnalyzedFiles([restored]);
-                  setPhase('mapping');
-                }
-              } catch (err) {
-                console.warn('Could not restore uploaded file from storage:', err);
-              } finally {
-                setIsRestoringMappings(false);
-              }
+            // If we had mappings but no file, still go to mapping phase placeholder
+            if (!saved.file_storage_path) {
+              // No file to restore but mappings exist — unusual state
             }
           }
         }
       } catch (err) {
         console.warn('Could not restore saved mappings:', err);
+      } finally {
+        if (!cancelled) {
+          // Delay clearing the restoring flag so the auto-save effect doesn't fire immediately
+          setTimeout(() => { isRestoringRef.current = false; }, 500);
+        }
       }
-    };
+    }
     restore();
+    return () => {
+      cancelled = true;
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
   }, [dealId]);
 
   // Header detection
