@@ -1462,8 +1462,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                   ? rowSuggestion.category === 'bs' ? "bg-violet-500/5" : "bg-blue-500/5"
                                   : rowIdx % 2 === 0 ? "bg-card" : "bg-muted/5";
 
-                      return (
-                        <tr key={rowIdx}
+                       return (
+                        <ContextMenu key={rowIdx}>
+                          <ContextMenuTrigger asChild>
+                        <tr
                           className={cn("cursor-pointer transition-colors border-b border-border/5", rowBgClass, leftBorderClass)}
                           draggable={!isHeaderRow}
                           onDragStart={e => {
@@ -1471,7 +1473,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             setDraggingRowIdx(rowIdx);
                             e.dataTransfer.effectAllowed = 'move';
                             e.dataTransfer.setData('text/plain', String(rowIdx));
-                            // Create ghost preview
                             const ghost = document.createElement('div');
                             ghost.textContent = row[0] !== null && row[0] !== undefined ? String(row[0]) : `Row ${rowIdx + 1}`;
                             ghost.style.cssText = 'position:fixed;top:-1000px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;color:white;background:hsl(var(--primary));box-shadow:0 4px 12px rgba(0,0,0,0.3);white-space:nowrap;pointer-events:none;z-index:9999;opacity:0.9;';
@@ -1485,7 +1486,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
                             isFlashing ? "bg-emerald-500/20" : isSelected ? "bg-cyan-500/15" : isHeaderRow ? "bg-muted/20" : hasSuggestion ? "bg-primary/5" : "bg-muted/10",
                           )}>
-                            {isHeaderRow ? <Columns className="h-3 w-3 mx-auto text-muted-foreground/60" /> : rowIdx + 1}
+                            <div className="flex items-center justify-center gap-0.5">
+                              {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/60" /> : rowIdx + 1}
+                              {isFlipped && !isHeaderRow && (
+                                <span className="text-[8px] font-bold text-amber-500" title="Sign flipped (±)">±</span>
+                              )}
+                            </div>
                           </td>
                           <td className={cn(
                             "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r border-border/10 font-medium",
@@ -1536,18 +1542,38 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             </div>
                           </td>
                           {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
-                            const cellVal = row[colIdx + 1];
+                            const actualCol = colIdx + 1;
+                            if (excludedColumns.has(actualCol)) return null;
+                            const cellVal = row[actualCol];
                             const isNum = isNumericCell(cellVal);
+                            // Apply flip multiplier for display
+                            let displayVal = cellVal;
+                            if (isFlipped && isNum && cellVal !== null && cellVal !== undefined) {
+                              const numVal = typeof cellVal === 'number' ? cellVal : parseFloat(String(cellVal).replace(/[,$]/g, ''));
+                              if (!isNaN(numVal)) displayVal = -numVal;
+                            }
                             return (
-                              <td key={colIdx + 1} className={cn(
+                              <td key={actualCol} className={cn(
                                 "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
                                 isNum ? "text-right" : "text-left"
                               )}>
-                                {formatCellValue(cellVal)}
+                                {formatCellValue(displayVal)}
                               </td>
                             );
                           })}
                         </tr>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent className="w-48">
+                            <ContextMenuItem onClick={() => handleFlipRows([rowIdx])}>
+                              <span className="font-bold mr-2 text-xs">±</span> {isFlipped ? 'Remove Flip' : 'Flip +/− Sign'}
+                            </ContextMenuItem>
+                            {selectedRows.size > 1 && (
+                              <ContextMenuItem onClick={() => handleFlipRows(Array.from(selectedRows))}>
+                                <span className="font-bold mr-2 text-xs">±</span> Flip {selectedRows.size} Selected Rows
+                              </ContextMenuItem>
+                            )}
+                          </ContextMenuContent>
+                        </ContextMenu>
                       );
                     })}
                   </tbody>
