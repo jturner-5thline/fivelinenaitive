@@ -14,6 +14,7 @@ interface RichTextEditorProps {
   className?: string;
   mentionUsers?: MentionUser[];
   onBlurSave?: () => void;
+  bulletMode?: boolean;
 }
 
 export function RichTextEditor({
