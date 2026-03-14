@@ -113,6 +113,19 @@ export function FiltersConfigSection({ config, onChange }: Props) {
           ))}
         </div>
       </div>
+
+      {/* Show $0 Periods */}
+      <div className="flex items-center justify-between">
+        <Label htmlFor="show-zero-periods" className="text-xs text-muted-foreground cursor-pointer">
+          Show $0 periods
+        </Label>
+        <Switch
+          id="show-zero-periods"
+          checked={showZeroPeriods}
+          onCheckedChange={(v) => updateAxis({ showZeroPeriods: v })}
+          className="scale-75 origin-right"
+        />
+      </div>
     </div>
   );
 }
