@@ -1124,6 +1124,7 @@ export default function Metrics() {
   const [reportingMonth, setReportingMonth] = useState(format(new Date(), "MMM-yy"));
   const { data: metrics, isLoading, error } = useMetricsData();
   const { data: qbMetrics } = useQuickBooksMetrics();
+  const { data: hsMetrics } = useHubSpotMetrics();
   const { metrics: customMetricDefs } = useCustomMetrics();
   const {
     widgets, 
