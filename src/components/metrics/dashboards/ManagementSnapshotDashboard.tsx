@@ -502,7 +502,7 @@ export function ManagementSnapshotDashboard({
             </div>
             <div className="flex gap-1.5 flex-wrap">
               <Badge variant="outline" className="text-xs">Entity: {debtProfitConfig.entityName || 'All'}</Badge>
-              <Badge variant="outline" className="text-xs">Year to date</Badge>
+              <PeriodBadge cardId="debt-profit" currentWindow={debtProfitConfig.timeWindow} onTimeWindowChange={onTimeWindowChange} />
             </div>
           </CardHeader>
           <CardContent>
