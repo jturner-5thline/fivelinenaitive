@@ -14,6 +14,7 @@ interface RichTextInlineEditProps {
   autoSave?: boolean;
   autoSaveDelay?: number;
   mentionUsers?: MentionUser[];
+  bulletMode?: boolean;
 }
 
 export function RichTextInlineEdit({
@@ -25,6 +26,7 @@ export function RichTextInlineEdit({
   autoSave = false,
   autoSaveDelay = 1000,
   mentionUsers,
+  bulletMode = false,
 }: RichTextInlineEditProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -138,6 +140,7 @@ export function RichTextInlineEdit({
           onCancel={handleCancel}
           mentionUsers={mentionUsers}
           onBlurSave={() => handleSave()}
+          bulletMode={bulletMode}
         />
         {showSaved && (
           <div className="absolute -top-6 right-0 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 animate-fade-in">

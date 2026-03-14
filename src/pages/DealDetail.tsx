@@ -2445,9 +2445,8 @@ export default function DealDetail() {
               </div>
               
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-t border-border mt-4 pt-4">
-                <div className="w-full sm:w-[75%] flex flex-col gap-1 pl-4">
+                <div className="w-full sm:w-[75%] flex flex-col gap-1">
                   <div className="flex items-start gap-2">
-                    <span className="text-lg text-foreground/90 mt-0.5">•</span>
                     <RichTextInlineEdit
                       value={deal.notes || ''}
                       onSave={(value) => {
@@ -2476,6 +2475,7 @@ export default function DealDetail() {
                       autoSave
                       autoSaveDelay={1500}
                       mentionUsers={mentionUsers}
+                      bulletMode
                     />
                   </div>
                   {deal.notesUpdatedAt && (
