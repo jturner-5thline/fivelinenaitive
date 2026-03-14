@@ -24,6 +24,59 @@ interface QuickBooksSyncSettingsModalProps {
   onClose: () => void;
 }
 
+const SYNC_SCOPE_GROUPS = [
+  {
+    label: 'Core',
+    items: [
+      { key: 'customers', label: 'Customers' },
+      { key: 'invoices', label: 'Invoices' },
+      { key: 'payments', label: 'Payments' },
+    ],
+  },
+  {
+    label: 'Accounts & Vendors',
+    items: [
+      { key: 'accounts', label: 'Chart of Accounts' },
+      { key: 'vendors', label: 'Vendors' },
+    ],
+  },
+  {
+    label: 'Expenses & Payables',
+    items: [
+      { key: 'expenses', label: 'Expenses' },
+      { key: 'bills', label: 'Bills' },
+      { key: 'purchase_orders', label: 'Purchase Orders' },
+    ],
+  },
+  {
+    label: 'Other Transactions',
+    items: [
+      { key: 'journal_entries', label: 'Journal Entries' },
+      { key: 'estimates', label: 'Estimates' },
+      { key: 'credit_memos', label: 'Credit Memos' },
+      { key: 'bank_deposits', label: 'Bank Deposits' },
+      { key: 'bank_transfers', label: 'Bank Transfers' },
+    ],
+  },
+  {
+    label: 'Financial Reports',
+    items: [
+      { key: 'profit_and_loss', label: 'Profit & Loss' },
+      { key: 'balance_sheet', label: 'Balance Sheet' },
+      { key: 'ar_aging', label: 'AR Aging' },
+      { key: 'ap_aging', label: 'AP Aging' },
+    ],
+  },
+];
+
+const ALL_SCOPE_KEYS = SYNC_SCOPE_GROUPS.flatMap(g => g.items.map(i => i.key));
+
+function getDefaultSyncScope(): Record<string, boolean> {
+  const scope: Record<string, boolean> = {};
+  ALL_SCOPE_KEYS.forEach(k => { scope[k] = true; });
+  return scope;
+}
+
 export function QuickBooksSyncSettingsModal({ open, onClose }: QuickBooksSyncSettingsModalProps) {
   const { data: status } = useQuickBooksStatus();
   const connect = useQuickBooksConnect();
@@ -40,18 +93,24 @@ export function QuickBooksSyncSettingsModal({ open, onClose }: QuickBooksSyncSet
 
   const { data: syncHistory = [] } = useQuickBooksSyncHistory(selectedRealmId);
 
-  const [syncScope, setSyncScope] = useState({
-    customers: true,
-    invoices: true,
-    payments: true,
-  });
+  const [syncScope, setSyncScope] = useState<Record<string, boolean>>(getDefaultSyncScope);
+
+  const enabledScopes = ALL_SCOPE_KEYS.filter(k => syncScope[k]);
+  const allChecked = enabledScopes.length === ALL_SCOPE_KEYS.length;
+  const noneChecked = enabledScopes.length === 0;
+
+  const handleToggleAll = (checked: boolean) => {
+    const next: Record<string, boolean> = {};
+    ALL_SCOPE_KEYS.forEach(k => { next[k] = checked; });
+    setSyncScope(next);
+  };
 
   const handleSync = (realmId?: string) => {
-    sync.mutate({ realmId: realmId || selectedRealmId || '' });
+    sync.mutate({ realmId: realmId || selectedRealmId || '', scopes: enabledScopes });
   };
 
   const handleSyncAll = () => {
-    connections.forEach((c) => sync.mutate({ realmId: c.realmId }));
+    connections.forEach((c) => sync.mutate({ realmId: c.realmId, scopes: enabledScopes }));
     toast.success('Syncing all companies...');
   };
 
@@ -94,11 +153,11 @@ export function QuickBooksSyncSettingsModal({ open, onClose }: QuickBooksSyncSet
                 </div>
               )}
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleSync()}>
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  Sync
+                <Button variant="outline" size="sm" onClick={() => handleSync()} disabled={sync.isPending || noneChecked}>
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${sync.isPending ? 'animate-spin' : ''}`} />
+                  Sync Selected
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleSyncAll}>
+                <Button variant="outline" size="sm" onClick={handleSyncAll} disabled={sync.isPending || noneChecked}>
                   Sync All Companies
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleAddCompany}>
@@ -112,19 +171,41 @@ export function QuickBooksSyncSettingsModal({ open, onClose }: QuickBooksSyncSet
 
             {/* Sync Scope */}
             <div>
-              <h4 className="text-sm font-medium mb-3">Sync Scope</h4>
-              <div className="space-y-2">
-                {Object.entries(syncScope).map(([key, checked]) => (
-                  <div key={key} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`qb-scope-${key}`}
-                      checked={checked}
-                      onCheckedChange={(v) => setSyncScope((prev) => ({ ...prev, [key]: !!v }))}
-                    />
-                    <Label htmlFor={`qb-scope-${key}`} className="text-sm capitalize">{key}</Label>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium">Sync Scope</h4>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="qb-scope-all"
+                    checked={allChecked}
+                    onCheckedChange={(v) => handleToggleAll(!!v)}
+                  />
+                  <Label htmlFor="qb-scope-all" className="text-xs text-muted-foreground">Select All</Label>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {SYNC_SCOPE_GROUPS.map((group) => (
+                  <div key={group.label}>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{group.label}</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                      {group.items.map((item) => (
+                        <div key={item.key} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`qb-scope-${item.key}`}
+                            checked={!!syncScope[item.key]}
+                            onCheckedChange={(v) => setSyncScope((prev) => ({ ...prev, [item.key]: !!v }))}
+                          />
+                          <Label htmlFor={`qb-scope-${item.key}`} className="text-sm">{item.label}</Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
+
+              <p className="text-[11px] text-muted-foreground mt-2">
+                {enabledScopes.length} of {ALL_SCOPE_KEYS.length} data types selected
+              </p>
             </div>
 
             <Separator />
@@ -151,7 +232,7 @@ export function QuickBooksSyncSettingsModal({ open, onClose }: QuickBooksSyncSet
                         <TableCell className="text-xs">{h.completed_at ? format(new Date(h.completed_at), 'HH:mm') : '—'}</TableCell>
                         <TableCell className="text-xs">{h.records_synced ?? '—'}</TableCell>
                         <TableCell>
-                          <Badge variant={h.status === 'completed' ? 'default' : 'destructive'} className="text-[10px]">
+                          <Badge variant={h.status === 'completed' || h.status === 'success' ? 'default' : h.status === 'partial' ? 'secondary' : 'destructive'} className="text-[10px]">
                             {h.status}
                           </Badge>
                         </TableCell>
@@ -169,7 +250,7 @@ export function QuickBooksSyncSettingsModal({ open, onClose }: QuickBooksSyncSet
             {/* Data Usage Note */}
             <div className="rounded-lg border border-border/50 p-3 bg-muted/30">
               <p className="text-xs text-muted-foreground">
-                <strong>Data Usage:</strong> nAItive uses your QuickBooks data to display financial context on deal and company profiles. To create or edit transactions, open QuickBooks directly.
+                <strong>Data Usage:</strong> nAItive uses your QuickBooks data to display financial context on deal and company profiles, and to power configurable metrics dashboards. To create or edit transactions, open QuickBooks directly.
               </p>
             </div>
           </div>

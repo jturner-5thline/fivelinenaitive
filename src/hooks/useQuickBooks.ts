@@ -163,9 +163,9 @@ export function useQuickBooksSync() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params?: { syncType?: string; realmId?: string }) => {
+    mutationFn: async (params?: { syncType?: string; realmId?: string; scopes?: string[] }) => {
       const { data, error } = await supabase.functions.invoke("quickbooks-sync", {
-        body: { syncType: params?.syncType, realmId: params?.realmId },
+        body: { syncType: params?.syncType, realmId: params?.realmId, scopes: params?.scopes },
       });
 
       if (error) throw error;
