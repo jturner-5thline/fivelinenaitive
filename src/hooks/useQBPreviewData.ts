@@ -200,6 +200,16 @@ export function useQBPreviewData(config: WidgetConfig) {
         }
       }
 
+      // If showZeroPeriods is on and we have a date range, fill in all missing periods
+      if (showZeroPeriods && dateRange) {
+        const allKeys = generateAllPeriodKeys(dateRange.start, dateRange.end, grain);
+        for (const { key, label } of allKeys) {
+          if (!periodMap.has(key)) {
+            periodMap.set(key, { period: label });
+          }
+        }
+      }
+
       // Sort by period key
       let sorted = Array.from(periodMap.entries())
         .sort(([a], [b]) => a.localeCompare(b))
