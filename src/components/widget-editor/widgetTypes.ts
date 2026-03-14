@@ -56,27 +56,36 @@ export interface WidgetConfig {
 // ---------- seed data ----------
 
 export const SEED_FIELDS: Field[] = [
-  // Financials
-  { id: 'f-amount',       name: 'Amount',          group: 'Financials', dataType: 'number', isMeasure: true },
-  { id: 'f-budget',       name: 'Budget',          group: 'Financials', dataType: 'number', isMeasure: true },
-  { id: 'f-variance',     name: 'Variance',        group: 'Financials', dataType: 'number', isMeasure: true },
-  { id: 'f-revenue',      name: 'Revenue',         group: 'Financials', dataType: 'number', isMeasure: true },
-  { id: 'f-cogs',         name: 'COGS',            group: 'Financials', dataType: 'number', isMeasure: true },
+  // Financials — QuickBooks
+  { id: 'f-amount',       name: 'Amount',          group: 'Financials', dataType: 'number', isMeasure: true,  source: 'quickbooks' },
+  { id: 'f-budget',       name: 'Budget',          group: 'Financials', dataType: 'number', isMeasure: true,  source: 'naitive' },
+  { id: 'f-variance',     name: 'Variance',        group: 'Financials', dataType: 'number', isMeasure: true,  source: 'naitive' },
+  { id: 'f-revenue',      name: 'Revenue',         group: 'Financials', dataType: 'number', isMeasure: true,  source: 'quickbooks' },
+  { id: 'f-cogs',         name: 'COGS',            group: 'Financials', dataType: 'number', isMeasure: true,  source: 'quickbooks' },
+  { id: 'f-expenses',     name: 'Expenses',        group: 'Financials', dataType: 'number', isMeasure: true,  source: 'quickbooks' },
+  { id: 'f-net-income',   name: 'Net Income',      group: 'Financials', dataType: 'number', isMeasure: true,  source: 'quickbooks' },
+  // Financials — HubSpot
+  { id: 'f-deal-amount',  name: 'Deal Amount',     group: 'Financials', dataType: 'number', isMeasure: true,  source: 'hubspot' },
+  { id: 'f-pipeline-val', name: 'Pipeline Value',  group: 'Financials', dataType: 'number', isMeasure: true,  source: 'hubspot' },
+  { id: 'f-win-rate',     name: 'Win Rate',        group: 'Financials', dataType: 'number', isMeasure: true,  source: 'hubspot' },
   // Account Dim
-  { id: 'a-full',         name: 'Account Full',    group: 'AccountDim', dataType: 'string', isMeasure: false },
-  { id: 'a-parent',       name: 'Account Parent',  group: 'AccountDim', dataType: 'string', isMeasure: false },
-  { id: 'a-type',         name: 'Account Type',    group: 'AccountDim', dataType: 'string', isMeasure: false },
+  { id: 'a-full',         name: 'Account Full',    group: 'AccountDim', dataType: 'string', isMeasure: false, source: 'quickbooks' },
+  { id: 'a-parent',       name: 'Account Parent',  group: 'AccountDim', dataType: 'string', isMeasure: false, source: 'quickbooks' },
+  { id: 'a-type',         name: 'Account Type',    group: 'AccountDim', dataType: 'string', isMeasure: false, source: 'quickbooks' },
   // Date Dim
-  { id: 'd-report',       name: 'Reporting Month', group: 'DateDim',    dataType: 'date',   isMeasure: false },
-  { id: 'd-fiscal',       name: 'Fiscal Quarter',  group: 'DateDim',    dataType: 'date',   isMeasure: false },
-  { id: 'd-year',         name: 'Fiscal Year',     group: 'DateDim',    dataType: 'date',   isMeasure: false },
-  // General
-  { id: 'g-dept',         name: 'Department',      group: 'General',    dataType: 'string', isMeasure: false },
-  { id: 'g-entity',       name: 'Entity',          group: 'General',    dataType: 'string', isMeasure: false },
-  { id: 'g-region',       name: 'Region',          group: 'General',    dataType: 'string', isMeasure: false },
+  { id: 'd-report',       name: 'Reporting Month', group: 'DateDim',    dataType: 'date',   isMeasure: false, source: 'naitive' },
+  { id: 'd-fiscal',       name: 'Fiscal Quarter',  group: 'DateDim',    dataType: 'date',   isMeasure: false, source: 'naitive' },
+  { id: 'd-year',         name: 'Fiscal Year',     group: 'DateDim',    dataType: 'date',   isMeasure: false, source: 'naitive' },
+  // General — HubSpot
+  { id: 'g-deal-stage',   name: 'Deal Stage',      group: 'General',    dataType: 'string', isMeasure: false, source: 'hubspot' },
+  { id: 'g-deal-owner',   name: 'Deal Owner',      group: 'General',    dataType: 'string', isMeasure: false, source: 'hubspot' },
+  // General — naitive
+  { id: 'g-dept',         name: 'Department',      group: 'General',    dataType: 'string', isMeasure: false, source: 'naitive' },
+  { id: 'g-entity',       name: 'Entity',          group: 'General',    dataType: 'string', isMeasure: false, source: 'naitive' },
+  { id: 'g-region',       name: 'Region',          group: 'General',    dataType: 'string', isMeasure: false, source: 'naitive' },
   // System
-  { id: 's-created',      name: 'Created Date',    group: 'System',     dataType: 'date',   isMeasure: false },
-  { id: 's-user',         name: 'Created By',      group: 'System',     dataType: 'string', isMeasure: false },
+  { id: 's-created',      name: 'Created Date',    group: 'System',     dataType: 'date',   isMeasure: false, source: 'naitive' },
+  { id: 's-user',         name: 'Created By',      group: 'System',     dataType: 'string', isMeasure: false, source: 'naitive' },
 ];
 
 export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
