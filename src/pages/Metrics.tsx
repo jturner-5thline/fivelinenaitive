@@ -98,6 +98,7 @@ import {
   QuickBooksFinancialDashboard,
 } from "@/components/metrics/dashboards";
 import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
+import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
 import { useCustomMetrics } from "@/hooks/useCustomMetrics";
 import { evaluateFormula, FormulaContext } from "@/lib/customMetricEngine";
 // Dashboard options
@@ -165,14 +166,24 @@ const formatPercent = (value: number) => `${value}%`;
 function renderChartContent(
   widget: MetricWidgetConfig,
   metrics: ReturnType<typeof useMetricsData>['data'],
-  qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data']
+  qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data'],
+  hsMetrics?: ReturnType<typeof useHubSpotMetrics>['data'],
 ) {
-  if (!metrics && !widget.dataSource.startsWith('qb-')) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-')) return null;
   if (widget.dataSource.startsWith('qb-') && !qbMetrics) {
     return (
       <ChartWidgetContent title={widget.title}>
         <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
           Connect QuickBooks to see this data
+        </div>
+      </ChartWidgetContent>
+    );
+  }
+  if (widget.dataSource.startsWith('hs-') && !hsMetrics) {
+    return (
+      <ChartWidgetContent title={widget.title}>
+        <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
+          Connect HubSpot to see this data
         </div>
       </ChartWidgetContent>
     );
@@ -738,6 +749,199 @@ function renderChartContent(
       );
     }
 
+    // New QB charts
+    case 'qb-ap-aging': {
+      if (!qbMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Outstanding payables by aging bucket">
+          <div style={{ height: chartHeight }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={qbMetrics.apAgingData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
+                <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(v: number) => [formatCurrency(v), "Outstanding"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                <Bar dataKey="value" fill={widget.color} radius={[4, 4, 0, 0]}>
+                  {qbMetrics.apAgingData.map((_, index) => (
+                    <Cell key={index} fill={index <= 1 ? "hsl(var(--primary))" : index <= 2 ? "hsl(var(--chart-4))" : "hsl(var(--destructive))"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'qb-top-vendors': {
+      if (!qbMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="By total spend (expenses + bills)">
+          <div style={{ height: chartHeight }}>
+            {qbMetrics.topVendors.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={qbMetrics.topVendors} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 9 }} />
+                  <Tooltip formatter={(v: number) => [formatCurrency(v), "Spend"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                  <Bar dataKey="spend" fill={widget.color} radius={[0, 4, 4, 0]}>
+                    {qbMetrics.topVendors.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">No vendor data</div>
+            )}
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'qb-expense-by-category': {
+      if (!qbMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Top expense categories">
+          <div style={{ height: chartHeight }}>
+            {qbMetrics.expenseByCategoryData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={qbMetrics.expenseByCategoryData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="category" type="category" width={120} tick={{ fontSize: 9 }} />
+                  <Tooltip formatter={(v: number) => [formatCurrency(v), "Amount"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                  <Bar dataKey="amount" fill={widget.color} radius={[0, 4, 4, 0]}>
+                    {qbMetrics.expenseByCategoryData.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">No expense data</div>
+            )}
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'qb-revenue-vs-expenses': {
+      if (!qbMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Monthly revenue vs expenses">
+          <div style={{ height: chartHeight }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={qbMetrics.monthlyRevenue}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v: number, name: string) => [formatCurrency(v), name]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                <Legend />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" fill="hsl(var(--destructive))" name="Expenses" radius={[4, 4, 0, 0]} />
+                <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={2} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    // HubSpot chart widgets
+    case 'hs-pipeline-by-stage': {
+      if (!hsMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="HubSpot deals by stage">
+          <div style={{ height: chartHeight }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hsMetrics.pipelineByStage.slice(0, 8)} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                <YAxis dataKey="stage" type="category" width={100} tick={{ fontSize: 9 }} />
+                <Tooltip formatter={(v: number) => [formatCurrency(v), "Value"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                <Bar dataKey="value" fill={widget.color} radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'hs-deals-by-owner': {
+      if (!hsMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Deal value by owner/manager">
+          <div style={{ height: chartHeight }}>
+            {hsMetrics.dealsByOwner.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={hsMetrics.dealsByOwner} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="owner" type="category" width={100} tick={{ fontSize: 9 }} />
+                  <Tooltip formatter={(v: number, _: string, props: any) => [`${formatCurrency(v)} (${props.payload.count} deals)`, "Value"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                  <Bar dataKey="value" fill={widget.color} radius={[0, 4, 4, 0]}>
+                    {hsMetrics.dealsByOwner.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">No owner data</div>
+            )}
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'hs-deal-value-trend': {
+      if (!hsMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Rolling 12 months deal creation">
+          <div style={{ height: chartHeight }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={hsMetrics.dealValueTrend}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis yAxisId="left" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v: number, name: string) => [name === 'value' ? formatCurrency(v) : v, name === 'value' ? 'Deal Value' : 'Deal Count']} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                <Legend />
+                <Bar yAxisId="left" dataKey="value" fill={widget.color} name="Deal Value" radius={[4, 4, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" name="Deal Count" strokeWidth={2} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'hs-contacts-by-source': {
+      if (!hsMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Deal distribution by type">
+          <div style={{ height: chartHeight }}>
+            {hsMetrics.contactsBySource.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={hsMetrics.contactsBySource} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="count" nameKey="source" label={({ source, count }) => `${source} (${count})`} labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}>
+                    {hsMetrics.contactsBySource.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">No source data</div>
+            )}
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
     default:
       return (
         <ChartWidgetContent title={widget.title}>
@@ -754,10 +958,11 @@ function renderStatContent(
   widget: MetricWidgetConfig,
   metrics: ReturnType<typeof useMetricsData>['data'],
   qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data'],
+  hsMetrics?: ReturnType<typeof useHubSpotMetrics>['data'],
   customMetricDefs?: ReturnType<typeof useCustomMetrics>['metrics'],
   allWidgets?: MetricWidgetConfig[],
 ) {
-  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('custom-')) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-') && !widget.dataSource.startsWith('custom-') && !widget.dataSource.startsWith('xs-')) return null;
 
   // Handle custom calculated metrics
   if (widget.dataSource.startsWith('custom-')) {
@@ -906,6 +1111,80 @@ function renderStatContent(
       ) : (
         <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
       );
+    // New QB stats
+    case 'qb-total-expenses':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalExpenses)} subtitle={`From expenses & purchases`} icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'qb-total-ap':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAP)} subtitle="Outstanding bills" icon="trending-up" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'qb-net-income':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.netIncome)} subtitle="Revenue minus expenses" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'qb-active-vendors':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${qbMetrics.activeVendors}`} subtitle={`of ${qbMetrics.totalVendors} total`} icon="pipeline" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'qb-total-estimates':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalEstimates)} subtitle="Pending estimates" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'qb-total-credit-memos':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalCreditMemos)} subtitle="Credit memos issued" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+
+    // HubSpot stats
+    case 'hs-total-deals':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.totalDeals}`} subtitle="From HubSpot" icon="pipeline" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-total-deal-value':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(hsMetrics.totalDealValue)} subtitle={`${hsMetrics.totalDeals} deals`} icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-deals-won':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.dealsWon}`} subtitle={formatCurrency(hsMetrics.dealsWonValue)} icon="trending-up" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-deals-lost':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.dealsLost}`} subtitle={formatCurrency(hsMetrics.dealsLostValue)} icon="trending-up" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-win-rate':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.winRate.toFixed(1)}%`} subtitle="Won / (Won + Lost)" icon="percent" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-avg-deal-size':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(hsMetrics.avgDealSize)} subtitle="Average across all deals" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-total-contacts':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.totalContacts}`} subtitle="From HubSpot" icon="pipeline" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+    case 'hs-total-companies':
+      return hsMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${hsMetrics.totalCompanies}`} subtitle="From HubSpot" icon="pipeline" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect HubSpot</p></CardContent>);
+
+    // Cross-source stats
+    case 'xs-revenue-per-deal':
+      return (qbMetrics && hsMetrics && hsMetrics.dealsWon > 0) ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalRevenue / hsMetrics.dealsWon)} subtitle="QB Revenue ÷ HS Deals Won" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Requires QB + HS</p></CardContent>);
+    case 'xs-ar-per-active-deal':
+      return (qbMetrics && metrics && metrics.activeDealsCount > 0) ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAR / metrics.activeDealsCount)} subtitle="QB AR ÷ Active Deals" icon="dollar" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Requires QB + Deals</p></CardContent>);
+    case 'xs-collection-rate-by-entity':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${qbMetrics.collectionRate.toFixed(1)}%`} subtitle="Collected vs invoiced" icon="percent" color={widget.color} />
+      ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Requires QuickBooks</p></CardContent>);
+
     default:
       return (
         <CardContent className="pt-6">
@@ -919,6 +1198,7 @@ export default function Metrics() {
   const [reportingMonth, setReportingMonth] = useState(format(new Date(), "MMM-yy"));
   const { data: metrics, isLoading, error } = useMetricsData();
   const { data: qbMetrics } = useQuickBooksMetrics();
+  const { data: hsMetrics } = useHubSpotMetrics();
   const { metrics: customMetricDefs } = useCustomMetrics();
   const {
     widgets, 
@@ -1324,7 +1604,7 @@ export default function Metrics() {
                           setDeleteConfirmOpen(true);
                         }}
                       >
-                        {renderStatContent(widget, metrics, qbMetrics, customMetricDefs, widgets)}
+                        {renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets)}
                       </SortableMetricWidget>
                     ))}
                   </div>
@@ -1344,7 +1624,7 @@ export default function Metrics() {
                           setDeleteConfirmOpen(true);
                         }}
                       >
-                        {renderChartContent(widget, metrics, qbMetrics)}
+                        {renderChartContent(widget, metrics, qbMetrics, hsMetrics)}
                       </SortableMetricWidget>
                     ))}
                   </div>
