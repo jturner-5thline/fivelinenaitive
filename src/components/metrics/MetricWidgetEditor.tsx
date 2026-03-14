@@ -329,6 +329,40 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
                     ))}
                   </div>
                 </div>
+
+                {/* Entity Filter */}
+                {(dataSource.startsWith('qb-') || dataSource.startsWith('xs-')) && qbStatus?.connections && qbStatus.connections.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Entity Filter</Label>
+                    <Select value={entityFilter} onValueChange={setEntityFilter}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Entities (Aggregated)</SelectItem>
+                        {qbStatus.connections.map((conn) => (
+                          <SelectItem key={conn.realmId} value={conn.realmId}>
+                            {conn.companyName || conn.realmId}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Comparison Period */}
+                {type === 'stat' && (
+                  <div className="space-y-2">
+                    <Label>Comparison Period</Label>
+                    <Select value={comparisonPeriod} onValueChange={(v) => setComparisonPeriod(v as ComparisonPeriod)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Comparison</SelectItem>
+                        <SelectItem value="prev-month">vs Previous Month</SelectItem>
+                        <SelectItem value="prev-quarter">vs Previous Quarter</SelectItem>
+                        <SelectItem value="prev-year">vs Previous Year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </TabsContent>
