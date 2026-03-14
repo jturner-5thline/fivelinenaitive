@@ -229,5 +229,4 @@ export function useQuickBooksMetrics(realmId?: string) {
     };
   }, [invoices, customers, payments, expenses, bills, vendors, accounts, estimates, creditMemos]);
 
-  return { data: metrics, isLoading };
-}
+  return { data: metrics, isLoading, rawInvoices: invoices, rawPayments: payments, rawExpenses: expenses };
