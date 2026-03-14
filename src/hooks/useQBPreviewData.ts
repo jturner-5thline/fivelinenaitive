@@ -201,9 +201,19 @@ export function useQBPreviewData(config: WidgetConfig) {
       }
 
       // Sort by period key
-      const sorted = Array.from(periodMap.entries())
+      let sorted = Array.from(periodMap.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([, v]) => v);
+
+      // Filter out $0 periods if configured
+      if (!showZeroPeriods) {
+        sorted = sorted.filter((point) => {
+          const numericValues = Object.entries(point)
+            .filter(([k]) => k !== 'period')
+            .map(([, v]) => (typeof v === 'number' ? v : 0));
+          return numericValues.some((v) => v !== 0);
+        });
+      }
 
       return sorted;
     },
