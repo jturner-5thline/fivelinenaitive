@@ -167,6 +167,7 @@ export function applyMappingsToModel(
   updateModel: (updater: (prev: import('./types').SaaSModelData) => import('./types').SaaSModelData) => void,
   flippedRows?: Set<number>,
   excludedColumns?: Set<number>,
+  flippedColumns?: Set<number>,
 ) {
   updateModel(prev => {
     const updated = { ...prev };
@@ -181,12 +182,13 @@ export function applyMappingsToModel(
       mappings.forEach(m => {
         const row = sheet.data[m.rowIdx];
         if (!row) return;
-        const multiplier = flippedRows?.has(m.rowIdx) ? -1 : 1;
+        const rowMultiplier = flippedRows?.has(m.rowIdx) ? -1 : 1;
         let colSlot = 0;
         for (let c = 1; c <= numCols && colSlot < 24; c++) {
           if (excludedColumns?.has(c)) continue;
+          const colMultiplier = flippedColumns?.has(c) ? -1 : 1;
           const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '0').replace(/[,$]/g, ''));
-          if (!isNaN(val)) values[colSlot] += val * multiplier;
+          if (!isNaN(val)) values[colSlot] += val * rowMultiplier * colMultiplier;
           colSlot++;
         }
       });
