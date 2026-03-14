@@ -142,7 +142,7 @@ export function DatarailsWidgetEditor({
           </div>
           {showAIChat ? (
             <div className="w-[340px] shrink-0">
-              <WidgetBuilderChat config={config} onConfigUpdate={updateConfig} />
+              <WidgetBuilderChat config={config} onConfigUpdate={updateConfig} onClose={() => setShowAIChat(false)} />
             </div>
           ) : (
             <div className="w-[340px] shrink-0">
