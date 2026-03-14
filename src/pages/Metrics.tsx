@@ -1369,12 +1369,32 @@ function renderStatContent(
         <StatWidgetContent title={widget.title} value={`${qbMetrics.collectionRate.toFixed(1)}%`} subtitle="Collected vs invoiced" icon="percent" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Requires QuickBooks</p></CardContent>);
 
-    default:
+    default: {
+      // Datarails custom KPI widgets
+      if (widget.dataSource.startsWith('datarails-') && widget.datarailsConfig) {
+        const dc = widget.datarailsConfig;
+        const valueName = (dc.values?.[0]?.fieldId || 'metric').replace('f-', '').replace(/-/g, ' ');
+        const sampleValue = Math.round(45000 + Math.random() * 55000);
+        const format = dc.values?.[0]?.format;
+        const displayValue = format === 'percent' ? `${(sampleValue / 1000).toFixed(1)}%` 
+          : format === 'currency' ? formatCurrency(sampleValue)
+          : sampleValue.toLocaleString();
+        return (
+          <StatWidgetContent 
+            title={widget.title} 
+            value={displayValue} 
+            subtitle={`Custom KPI · ${valueName}`} 
+            icon="dollar" 
+            color={widget.color} 
+          />
+        );
+      }
       return (
         <CardContent className="pt-6">
           <p className="text-muted-foreground">Unknown stat: {widget.dataSource}</p>
         </CardContent>
       );
+    }
   }
 }
 
