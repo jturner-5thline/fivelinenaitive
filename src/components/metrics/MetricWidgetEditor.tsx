@@ -114,6 +114,7 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
   const [dataMode, setDataMode] = useState<DataMode>(widget ? 'preset' : 'template');
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>('none');
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('all-time');
   const [timeframe, setTimeframe] = useState<Timeframe>('all-time');
 
   // Custom metric fields
