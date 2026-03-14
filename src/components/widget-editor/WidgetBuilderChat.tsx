@@ -102,19 +102,7 @@ export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBui
     }
   }, [input, isLoading, messages, config, onConfigUpdate]);
 
-  if (!isOpen) {
-    return (
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => setIsOpen(true)}
-        className="gap-1.5 text-xs h-7 border-primary/30 text-primary hover:bg-primary/10"
-      >
-        <Sparkles className="h-3 w-3" />
-        AI Builder
-      </Button>
-    );
-  }
+
 
   return (
     <div className="flex flex-col h-full border-l border-border bg-card">
