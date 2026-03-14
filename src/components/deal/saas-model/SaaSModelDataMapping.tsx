@@ -1565,7 +1565,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           onClick={e => !isHeaderRow && handleRowClick(rowIdx, e)}>
                           <td className={cn(
                             "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
-                            isFlashing ? "bg-emerald-500/20" : isSelected ? "bg-cyan-500/15" : isHeaderRow ? "bg-muted/20" : hasSuggestion ? "bg-primary/5" : "bg-muted/10",
+                            stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
                               {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/60" /> : rowIdx + 1}
