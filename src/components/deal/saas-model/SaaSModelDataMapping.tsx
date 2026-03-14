@@ -1848,7 +1848,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           )}
                           draggable={!isHeaderRow && !eraserMode && !signFlipMode}
                           onDragStart={e => {
-                            if (isHeaderRow || eraserMode) { e.preventDefault(); return; }
+                            if (isHeaderRow || eraserMode || signFlipMode) { e.preventDefault(); return; }
                             setDraggingRowIdx(rowIdx);
                             e.dataTransfer.effectAllowed = 'move';
                             e.dataTransfer.setData('text/plain', String(rowIdx));
@@ -1861,6 +1861,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           }}
                           onDragEnd={() => setDraggingRowIdx(null)}
                           onClick={e => {
+                            if (signFlipMode) { handleSignFlipRowClick(rowIdx, e); return; }
                             if (eraserMode) { handleEraserRowClick(rowIdx, e); return; }
                             if (!isHeaderRow) handleRowClick(rowIdx, e);
                           }}>
