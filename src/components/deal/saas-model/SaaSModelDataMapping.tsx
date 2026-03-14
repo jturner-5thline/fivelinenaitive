@@ -412,7 +412,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     }
   }, [dealId, excludedColumns, flippedRows, flippedColumns]);
 
-  // Watch fieldMappings/excludedColumns/flippedRows changes and auto-save with debounce
+  // Watch fieldMappings/excludedColumns/flippedRows/flippedColumns changes and auto-save with debounce
   useEffect(() => {
     if (isRestoringRef.current) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
@@ -420,7 +420,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       autoSaveMappings(fieldMappings, selectedFile);
     }, 1500);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [fieldMappings, selectedFile, autoSaveMappings, excludedColumns, flippedRows]);
+  }, [fieldMappings, selectedFile, autoSaveMappings, excludedColumns, flippedRows, flippedColumns]);
 
   // Browser beforeunload guard
   useEffect(() => {
