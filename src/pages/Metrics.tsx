@@ -83,6 +83,8 @@ import {
 } from "@/components/metrics/charts";
 import {
   ManagementSnapshotDashboard,
+  type EditableManagementSnapshotCardId,
+  type ManagementSnapshotEditableConfig,
   IncomeBoardDashboard,
   SalesBDROIDashboard,
   SalesTeamBoardDashboard,
