@@ -1929,16 +1929,20 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             if (excludedColumns.has(actualCol)) return null;
                             const cellVal = row[actualCol];
                             const isNum = isNumericCell(cellVal);
-                            // Apply flip multiplier for display
+                            const isColFlipped = flippedColumns.has(actualCol);
+                            // Apply flip multiplier for display (row flip XOR column flip)
                             let displayVal = cellVal;
-                            if (isFlipped && isNum && cellVal !== null && cellVal !== undefined) {
+                            const shouldFlip = isFlipped !== isColFlipped; // XOR: flip if one but not both
+                            if (shouldFlip && isNum && cellVal !== null && cellVal !== undefined) {
                               const numVal = typeof cellVal === 'number' ? cellVal : parseFloat(String(cellVal).replace(/[,$]/g, ''));
                               if (!isNaN(numVal)) displayVal = -numVal;
                             }
                             return (
                               <td key={actualCol} className={cn(
                                 "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
-                                isNum ? "text-right" : "text-left"
+                                isNum ? "text-right" : "text-left",
+                                isColFlipped && !signFlipMode && "bg-amber-500/5",
+                                signFlipMode && signFlipSelectedCols.has(actualCol) && "bg-amber-500/15",
                               )}>
                                 {formatCellValue(displayVal)}
                               </td>
