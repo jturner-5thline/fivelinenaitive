@@ -41,7 +41,10 @@ export function DatarailsWidgetEditor({
   const [realtime, setRealtime] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const updateConfig = useCallback(
     (next: WidgetConfig) => {
