@@ -180,6 +180,7 @@ function KpiPreview({ config, data }: { config: WidgetConfig; data?: PreviewData
 const VIEW_MODES = [
   { type: 'kpi' as const, icon: Hash, label: 'Metric' },
   { type: 'bar' as const, icon: BarChart3, label: 'Bar' },
+  { type: 'stackedBar' as const, icon: Layers, label: 'Stacked' },
   { type: 'line' as const, icon: LineChartIcon, label: 'Line' },
 ] as const;
 

@@ -47,7 +47,7 @@ export interface FormulaConfig {
 export interface WidgetConfig {
   id: string;
   name: string;
-  type: 'table' | 'columnChart' | 'kpi' | 'bar' | 'line' | 'column';
+  type: 'table' | 'columnChart' | 'kpi' | 'bar' | 'line' | 'column' | 'stackedBar';
   datasetId: string;
   entityId?: string | null;
   xAxis: AxisConfig;
