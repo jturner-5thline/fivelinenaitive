@@ -98,6 +98,54 @@ function toPeriodKey(dateStr: string, grain: Grain | undefined): string {
   }
 }
 
+/** Generate all period keys between start and end dates for the given grain */
+function generateAllPeriodKeys(start: string, end: string, grain: Grain | undefined): { key: string; label: string }[] {
+  const results: { key: string; label: string }[] = [];
+  const current = new Date(start + 'T00:00:00');
+  const endDate = new Date(end + 'T00:00:00');
+
+  // Align to grain boundary
+  switch (grain) {
+    case 'month':
+      current.setDate(1);
+      break;
+    case 'quarter':
+      current.setDate(1);
+      current.setMonth(Math.floor(current.getMonth() / 3) * 3);
+      break;
+    case 'year':
+      current.setMonth(0, 1);
+      break;
+  }
+
+  const seen = new Set<string>();
+  while (current <= endDate) {
+    const dateStr = current.toISOString().slice(0, 10);
+    const key = toPeriodKey(dateStr, grain);
+    if (!seen.has(key)) {
+      seen.add(key);
+      results.push({ key, label: toPeriodLabel(dateStr, grain) });
+    }
+    // Advance
+    switch (grain) {
+      case 'day':
+        current.setDate(current.getDate() + 1);
+        break;
+      case 'quarter':
+        current.setMonth(current.getMonth() + 3);
+        break;
+      case 'year':
+        current.setFullYear(current.getFullYear() + 1);
+        break;
+      case 'month':
+      default:
+        current.setMonth(current.getMonth() + 1);
+        break;
+    }
+  }
+  return results;
+}
+
 /** Determine which QB table(s) to query based on the configured value fields */
 function getRelevantFieldMapping(fieldId: string): { table: 'invoices' | 'payments' | 'expenses' | 'accounts'; amountCol: string; label: string } | null {
   // Standard seed fields
