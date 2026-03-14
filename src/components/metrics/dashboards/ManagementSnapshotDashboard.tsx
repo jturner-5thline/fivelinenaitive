@@ -300,7 +300,7 @@ export function ManagementSnapshotDashboard({
                     debtRevenueData.reduce((sum, row) => sum + row.closing + row.milestone + row.retainer, 0)
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground">Reporting Month: Q4-25</p>
+                <p className="text-xs text-muted-foreground">{WINDOW_LABEL_MAP[debtRevenueConfig.timeWindow] || debtRevenueConfig.timeWindow}</p>
               </div>
             ) : (
               <div className="h-[200px]">
