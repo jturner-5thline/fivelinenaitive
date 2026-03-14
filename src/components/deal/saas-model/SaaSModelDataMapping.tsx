@@ -78,6 +78,85 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const storedFilePathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
 
+  // ── Batch 2: Column Exclude state ──
+  const [excludedColumns, setExcludedColumns] = useState<Set<number>>(new Set());
+  const [showColumnManager, setShowColumnManager] = useState(false);
+  const [columnSelectStart, setColumnSelectStart] = useState<number | null>(null);
+  const [selectedColumns, setSelectedColumns] = useState<Set<number>>(new Set());
+
+  // ── Batch 2: Flip ± state ──
+  const [flippedRows, setFlippedRows] = useState<Set<number>>(new Set());
+
+  // ── Batch 2: Zoom state ──
+  const [zoomLevel, setZoomLevel] = useState<number>(() => {
+    try { const z = localStorage.getItem('data-mapping-zoom'); return z ? Number(z) : 100; } catch { return 100; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('data-mapping-zoom', String(zoomLevel)); } catch {}
+  }, [zoomLevel]);
+
+  const handleZoomIn = useCallback(() => setZoomLevel(z => Math.min(200, z + 10)), []);
+  const handleZoomOut = useCallback(() => setZoomLevel(z => Math.max(50, z - 10)), []);
+
+  // Column header click with shift/ctrl for multi-select
+  const handleColumnHeaderClick = useCallback((colIdx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (e.shiftKey && columnSelectStart !== null) {
+      const start = Math.min(columnSelectStart, colIdx);
+      const end = Math.max(columnSelectStart, colIdx);
+      setSelectedColumns(prev => {
+        const next = new Set(prev);
+        for (let i = start; i <= end; i++) next.add(i);
+        return next;
+      });
+    } else if (e.ctrlKey || e.metaKey) {
+      setSelectedColumns(prev => {
+        const next = new Set(prev);
+        if (next.has(colIdx)) next.delete(colIdx); else next.add(colIdx);
+        return next;
+      });
+      setColumnSelectStart(colIdx);
+    } else {
+      setSelectedColumns(new Set([colIdx]));
+      setColumnSelectStart(colIdx);
+    }
+  }, [columnSelectStart]);
+
+  const handleExcludeColumns = useCallback((cols: number[]) => {
+    setExcludedColumns(prev => {
+      const next = new Set(prev);
+      cols.forEach(c => next.add(c));
+      return next;
+    });
+    setSelectedColumns(new Set());
+    toast.info(`Excluded ${cols.length} column${cols.length > 1 ? 's' : ''}`);
+  }, []);
+
+  const handleRestoreColumn = useCallback((colIdx: number) => {
+    setExcludedColumns(prev => {
+      const next = new Set(prev);
+      next.delete(colIdx);
+      return next;
+    });
+  }, []);
+
+  const handleRestoreAllColumns = useCallback(() => {
+    setExcludedColumns(new Set());
+    toast.info('All columns restored');
+  }, []);
+
+  // Flip rows toggle
+  const handleFlipRows = useCallback((rowIndices: number[]) => {
+    setFlippedRows(prev => {
+      const next = new Set(prev);
+      rowIndices.forEach(r => {
+        if (next.has(r)) next.delete(r); else next.add(r);
+      });
+      return next;
+    });
+    toast.info(`Toggled ± sign on ${rowIndices.length} row${rowIndices.length > 1 ? 's' : ''}`);
+  }, []);
+
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
   const hasUnsavedMappings = mappedCount > lastSavedCount;
