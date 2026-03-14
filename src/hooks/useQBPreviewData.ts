@@ -122,13 +122,14 @@ export function useQBPreviewData(config: WidgetConfig) {
   const realmId = config.entityId;
   const grain = config.xAxis.grain;
   const timeWindow = config.xAxis.window;
+  const showZeroPeriods = config.xAxis.showZeroPeriods ?? true;
   const hasQBValues = config.values.some(v => v.fieldId && (
     ['f-revenue', 'f-amount', 'f-expenses', 'f-cogs'].includes(v.fieldId) ||
     isQBAccountField(v.fieldId)
   ));
 
   return useQuery({
-    queryKey: ['qb-preview-data', user?.id, realmId, config.values.map(v => v.fieldId).join(','), grain, timeWindow],
+    queryKey: ['qb-preview-data', user?.id, realmId, config.values.map(v => v.fieldId).join(','), grain, timeWindow, showZeroPeriods],
     queryFn: async (): Promise<PreviewDataPoint[]> => {
       const dateRange = getDateRange(timeWindow);
 
@@ -200,9 +201,19 @@ export function useQBPreviewData(config: WidgetConfig) {
       }
 
       // Sort by period key
-      const sorted = Array.from(periodMap.entries())
+      let sorted = Array.from(periodMap.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([, v]) => v);
+
+      // Filter out $0 periods if configured
+      if (!showZeroPeriods) {
+        sorted = sorted.filter((point) => {
+          const numericValues = Object.entries(point)
+            .filter(([k]) => k !== 'period')
+            .map(([, v]) => (typeof v === 'number' ? v : 0));
+          return numericValues.some((v) => v !== 0);
+        });
+      }
 
       return sorted;
     },

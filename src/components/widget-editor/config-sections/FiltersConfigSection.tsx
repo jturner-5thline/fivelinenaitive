@@ -1,6 +1,7 @@
 import { WidgetConfig, TimeWindow, Grain } from '../widgetTypes';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Calendar } from 'lucide-react';
 
@@ -57,6 +58,7 @@ for (const g of WINDOW_GROUPS) for (const o of g.options) WINDOW_LABEL_MAP[o.val
 export function FiltersConfigSection({ config, onChange }: Props) {
   const currentWindow = config.xAxis.window || 'all';
   const currentGrain = config.xAxis.grain || 'month';
+  const showZeroPeriods = config.xAxis.showZeroPeriods ?? true;
 
   const updateAxis = (patch: Partial<typeof config.xAxis>) => {
     onChange({ ...config, xAxis: { ...config.xAxis, ...patch } });
@@ -110,6 +112,19 @@ export function FiltersConfigSection({ config, onChange }: Props) {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Show $0 Periods */}
+      <div className="flex items-center justify-between">
+        <Label htmlFor="show-zero-periods" className="text-xs text-muted-foreground cursor-pointer">
+          Show $0 periods
+        </Label>
+        <Switch
+          id="show-zero-periods"
+          checked={showZeroPeriods}
+          onCheckedChange={(v) => updateAxis({ showZeroPeriods: v })}
+          className="scale-75 origin-right"
+        />
       </div>
     </div>
   );

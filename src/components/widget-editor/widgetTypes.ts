@@ -18,6 +18,7 @@ export interface AxisConfig {
   fieldId: string | null;
   grain?: Grain;
   window?: TimeWindow;
+  showZeroPeriods?: boolean;
 }
 
 export interface SeriesConfig {
