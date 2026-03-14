@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, DollarSign, Percent } from 'lucide-react';
 import { fmtCurrency, fmtPct } from './formatters';
 import { cn } from '@/lib/utils';
+import { Toggle } from '@/components/ui/toggle';
 
 interface Props {
   model: SaaSModelData;
