@@ -138,7 +138,7 @@ export function DatarailsWidgetEditor({
             <FieldCatalog />
           </div>
           <div className="flex-1 min-w-0">
-            <WidgetPreview config={config} />
+            <WidgetPreview config={config} onTypeChange={(type) => updateConfig({ ...config, type })} />
           </div>
           {showAIChat ? (
             <div className="w-[340px] shrink-0">

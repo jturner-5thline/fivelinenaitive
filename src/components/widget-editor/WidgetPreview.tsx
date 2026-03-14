@@ -3,9 +3,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useMemo } from 'react';
+import { BarChart3, LineChart as LineChartIcon, Hash } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Props {
   config: WidgetConfig;
+  onTypeChange?: (type: WidgetConfig['type']) => void;
 }
 
 const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2, 160 60% 45%))', 'hsl(var(--chart-3, 30 80% 55%))', 'hsl(var(--chart-4, 280 65% 60%))', 'hsl(var(--chart-5, 340 75% 55%))'];
