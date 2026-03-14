@@ -26,12 +26,14 @@ import {
   MetricWidgetType, 
   MetricChartType, 
   MetricWidgetSize,
+  ComparisonPeriod,
   METRIC_WIDGET_DATA_SOURCES 
 } from '@/contexts/MetricsWidgetsContext';
 import { FormulaBuilder } from './FormulaBuilder';
 import { MetricTemplateGallery } from './MetricTemplateGallery';
 import { FormulaNode, FormulaResultType } from '@/lib/customMetricEngine';
 import { useCustomMetrics } from '@/hooks/useCustomMetrics';
+import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
 
 interface MetricWidgetEditorProps {
   widget?: MetricWidgetConfig;
@@ -84,6 +86,8 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
   const [size, setSize] = useState<MetricWidgetSize>('medium');
   const [color, setColor] = useState('hsl(var(--primary))');
   const [dataMode, setDataMode] = useState<DataMode>(widget ? 'preset' : 'template');
+  const [entityFilter, setEntityFilter] = useState<string>('all');
+  const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>('none');
 
   // Custom metric fields
   const [customName, setCustomName] = useState('');
@@ -93,6 +97,7 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
   const [selectedCustomMetricId, setSelectedCustomMetricId] = useState('');
 
   const { metrics: customMetrics, createMetric, updateMetric } = useCustomMetrics();
+  const { data: qbStatus } = useQuickBooksStatus();
 
   useEffect(() => {
     if (widget) {
@@ -102,6 +107,8 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
       setDataSource(widget.dataSource);
       setSize(widget.size);
       setColor(widget.color);
+      setEntityFilter(widget.entityFilter || 'all');
+      setComparisonPeriod(widget.comparisonPeriod || 'none');
       if (widget.dataSource.startsWith('custom-')) {
         setDataMode('custom');
         const metricId = widget.dataSource.replace('custom-', '');
@@ -130,6 +137,8 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
       setFormula(null);
       setResultType('number');
       setSelectedCustomMetricId('');
+      setEntityFilter('all');
+      setComparisonPeriod('none');
     }
   }, [widget, isOpen, customMetrics]);
 
@@ -172,6 +181,8 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
           dataSource: `custom-${metricId}`,
           size,
           color,
+          entityFilter: entityFilter !== 'all' ? entityFilter : undefined,
+          comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined,
         });
       } catch {
         return;
@@ -185,6 +196,8 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
         dataSource,
         size,
         color,
+        entityFilter: entityFilter !== 'all' ? entityFilter : undefined,
+        comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined,
       });
     }
     onClose();
@@ -316,6 +329,40 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
                     ))}
                   </div>
                 </div>
+
+                {/* Entity Filter */}
+                {(dataSource.startsWith('qb-') || dataSource.startsWith('xs-')) && qbStatus?.connections && qbStatus.connections.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Entity Filter</Label>
+                    <Select value={entityFilter} onValueChange={setEntityFilter}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Entities (Aggregated)</SelectItem>
+                        {qbStatus.connections.map((conn) => (
+                          <SelectItem key={conn.realmId} value={conn.realmId}>
+                            {conn.companyName || conn.realmId}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Comparison Period */}
+                {type === 'stat' && (
+                  <div className="space-y-2">
+                    <Label>Comparison Period</Label>
+                    <Select value={comparisonPeriod} onValueChange={(v) => setComparisonPeriod(v as ComparisonPeriod)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Comparison</SelectItem>
+                        <SelectItem value="prev-month">vs Previous Month</SelectItem>
+                        <SelectItem value="prev-quarter">vs Previous Quarter</SelectItem>
+                        <SelectItem value="prev-year">vs Previous Year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </TabsContent>
