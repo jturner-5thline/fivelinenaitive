@@ -1730,6 +1730,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               >
                                 <div className="flex flex-col items-end">
                                   <div className="flex items-center gap-1 justify-end w-full">
+                                    {flippedColumns.has(colIdx) && (
+                                      <span className="text-[8px] font-bold text-amber-500" title="Sign flipped (±)">±</span>
+                                    )}
                                     <span className="text-[8px] text-muted-foreground/40">
                                       {String.fromCharCode(65 + (colIdx % 26))}{colIdx >= 26 ? String.fromCharCode(65 + Math.floor(colIdx / 26) - 1) : ''}
                                     </span>
