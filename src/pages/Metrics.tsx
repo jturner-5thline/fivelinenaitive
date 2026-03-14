@@ -101,6 +101,7 @@ import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
 import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
 import { useCustomMetrics } from "@/hooks/useCustomMetrics";
 import { evaluateFormula, FormulaContext } from "@/lib/customMetricEngine";
+import { SyncStatusBar } from "@/components/metrics/SyncStatusBar";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Management Snapshot', isFavorite: true },
