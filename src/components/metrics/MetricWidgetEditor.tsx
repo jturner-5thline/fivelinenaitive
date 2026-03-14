@@ -285,7 +285,19 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Time Period */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Time Period</Label>
+                    <Select value={timePeriod} onValueChange={v => setTimePeriod(v as TimePeriod)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Time" /></SelectTrigger>
+                      <SelectContent>
+                        {TIME_PERIOD_OPTIONS.map(o => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                     <div className="space-y-1.5">
                       <Label className="text-xs">Widget Type</Label>
                       <Select value={type} onValueChange={v => { setType(v as MetricWidgetType); setDataSource(''); }}>
