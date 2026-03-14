@@ -287,7 +287,7 @@ export function ManagementSnapshotDashboard({
               {renderEditAction('debt-revenue')}
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              <Badge variant="outline" className="w-fit text-xs">Reporting Month: Q4-25</Badge>
+              <PeriodBadge cardId="debt-revenue" currentWindow={debtRevenueConfig.timeWindow} onTimeWindowChange={onTimeWindowChange} />
               {debtRevenueConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {debtRevenueConfig.entityName}</Badge>}
             </div>
           </CardHeader>
