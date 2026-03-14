@@ -181,6 +181,8 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
           dataSource: `custom-${metricId}`,
           size,
           color,
+          entityFilter: entityFilter !== 'all' ? entityFilter : undefined,
+          comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined,
         });
       } catch {
         return;
@@ -194,6 +196,8 @@ export function MetricWidgetEditor({ widget, isOpen, onClose, onSave, availableW
         dataSource,
         size,
         color,
+        entityFilter: entityFilter !== 'all' ? entityFilter : undefined,
+        comparisonPeriod: comparisonPeriod !== 'none' ? comparisonPeriod : undefined,
       });
     }
     onClose();
