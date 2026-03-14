@@ -165,9 +165,11 @@ export function DatarailsWidgetEditor({
 
       {/* Drag overlay */}
       <DragOverlay>
-        {activeField && (
+        {(activeField || activeLabel) && (
           <div className="rounded-md border border-primary bg-card px-3 py-1.5 text-sm font-medium shadow-lg">
-            {activeField.name}
+            {activeField?.name ?? activeLabel}
+          </div>
+        )}
           </div>
         )}
       </DragOverlay>
