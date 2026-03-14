@@ -1714,12 +1714,17 @@ export default function Metrics() {
     );
   }
 
-  const isDatarailsKpiWidget = (widget: MetricWidgetConfig) =>
-    widget.dataSource.startsWith('datarails-') &&
-    (widget.datarailsConfig as { type?: string } | undefined)?.type === 'kpi';
+  const getWidgetDisplayType = (widget: MetricWidgetConfig): 'stat' | 'chart' => {
+    if (widget.dataSource.startsWith('datarails-')) {
+      const selectedType = (widget.datarailsConfig as { type?: string } | undefined)?.type;
+      if (selectedType === 'kpi') return 'stat';
+      if (selectedType) return 'chart';
+    }
+    return widget.type;
+  };
 
-  const statWidgets = widgets.filter(w => w.type === 'stat' || isDatarailsKpiWidget(w));
-  const chartWidgets = widgets.filter(w => w.type === 'chart' && !isDatarailsKpiWidget(w));
+  const statWidgets = widgets.filter((w) => getWidgetDisplayType(w) === 'stat');
+  const chartWidgets = widgets.filter((w) => getWidgetDisplayType(w) === 'chart');
 
   return (
     <>
