@@ -1718,7 +1718,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   <thead className="sticky top-0 z-20 bg-muted">
                     <tr>
                       <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted">#</th>
-                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] border-r border-border/10 font-semibold bg-muted" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>Account Name</th>
+                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] border-r-2 border-r-border/50 font-semibold bg-muted" style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>Account Name</th>
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         const isExcluded = excludedColumns.has(colIdx);
@@ -1886,9 +1886,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             </div>
                           </td>
                           <td className={cn(
-                            "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r border-border/10 font-medium",
+                            "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r-2 border-r-border/50 font-medium",
                             stickyBg,
-                          )} style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>
+                          )} style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>
                             <div className="flex items-center gap-1.5 overflow-hidden">
                               {isMappedRow && !isHeaderRow && (
                                 <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
@@ -2112,7 +2112,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   <thead className="sticky top-0 z-20 bg-muted">
                     <tr>
                       <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted">#</th>
-                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[200px] min-w-[200px] border-r border-border/10 font-semibold bg-muted" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>Account Name</th>
+                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[200px] min-w-[200px] border-r-2 border-r-border/50 font-semibold bg-muted" style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>Account Name</th>
                       {Array.from({ length: Math.min((expSheet.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         if (excludedColumns.has(colIdx)) return null;
@@ -2144,7 +2144,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               {isFlipped && <span className="text-[8px] font-bold text-amber-500">±</span>}
                             </div>
                           </td>
-                          <td className="sticky left-8 z-10 py-1 px-2 w-[200px] min-w-[200px] border-r border-border/10 font-medium bg-card" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.3)' }}>
+                          <td className="sticky left-8 z-10 py-1 px-2 w-[200px] min-w-[200px] border-r-2 border-r-border/50 font-medium bg-card" style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>
                             <span className="truncate">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
                           </td>
                           {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
