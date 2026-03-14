@@ -1,6 +1,7 @@
 import { WidgetConfig, TimeWindow, Grain } from '../widgetTypes';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Calendar } from 'lucide-react';
 
