@@ -1790,7 +1790,7 @@ export default function Metrics() {
                           setDeleteConfirmOpen(true);
                         }}
                       >
-                        {renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets)}
+                        {renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })}
                       </SortableMetricWidget>
                     ))}
                   </div>
