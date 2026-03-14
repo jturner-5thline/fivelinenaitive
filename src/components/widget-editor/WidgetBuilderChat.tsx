@@ -114,7 +114,7 @@ export function WidgetBuilderChat({ config, onConfigUpdate, onClose }: WidgetBui
           </div>
           <span className="text-xs font-semibold text-foreground">AI Widget Builder</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsOpen(false)}>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onClose?.()}>
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>
