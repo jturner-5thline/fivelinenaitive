@@ -49,6 +49,7 @@ const Preferences = lazy(lazyRetry(() => import("./pages/Preferences")));
 const Analytics = lazy(lazyRetry(() => import("./pages/Analytics")));
 const Reports = lazy(lazyRetry(() => import("./pages/Reports")));
 const Metrics = lazy(lazyRetry(() => import("./pages/Metrics")));
+const WidgetEditorPage = lazy(lazyRetry(() => import("./pages/WidgetEditorPage")));
 const Insights = lazy(lazyRetry(() => import("./pages/Insights")));
 const SalesBD = lazy(lazyRetry(() => import("./pages/SalesBD")));
 const HR = lazy(lazyRetry(() => import("./pages/HR")));
