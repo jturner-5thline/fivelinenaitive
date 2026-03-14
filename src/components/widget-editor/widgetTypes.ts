@@ -46,6 +46,7 @@ export interface WidgetConfig {
   name: string;
   type: 'table' | 'columnChart' | 'kpi' | 'bar' | 'line' | 'column';
   datasetId: string;
+  entityId?: string | null;
   xAxis: AxisConfig;
   series: SeriesConfig;
   values: ValueConfig[];
