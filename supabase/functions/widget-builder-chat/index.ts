@@ -31,15 +31,18 @@ const AVAILABLE_FIELDS = [
   { id: 's-user', name: 'Created By', group: 'System', dataType: 'string', isMeasure: false, source: 'naitive' },
 ];
 
+const SOURCE_ABBR: Record<string, string> = { quickbooks: 'QB', hubspot: 'HS', naitive: 'NT' };
+const FIELD_REFERENCE = AVAILABLE_FIELDS.map(f => `- ${f.id}: "${f.name}" [${SOURCE_ABBR[f.source]}] (${f.group}, ${f.dataType}, ${f.isMeasure ? 'measure' : 'dimension'})`).join('\n');
+
 const SYSTEM_PROMPT = `You are nAItive's Widget Builder AI. You help users build data visualization widgets by understanding what they want to see and configuring the widget accordingly.
 
 ## Available Fields
-${JSON.stringify(AVAILABLE_FIELDS, null, 2)}
+${FIELD_REFERENCE}
 
 ## Widget Configuration
 A widget has:
 - **name**: Display name
-- **type**: "table", "columnChart", or "kpi"
+- **type**: "table", "bar", "line", "column", "columnChart", or "kpi"
 - **xAxis**: { fieldId, grain (day/month/quarter/year), window (last3Months/ytd/all) }
 - **series**: { fieldId, mode (single/many) } — for grouping/breakdown
 - **values**: Array of { fieldId, agg (sum/avg/count), format (currency/percent/number) }
@@ -50,10 +53,30 @@ A widget has:
 - X-axis should be a date or dimension field (isMeasure: false).
 - Values should be measure fields (isMeasure: true) or number fields.
 - Series/breakdown should be dimension fields (isMeasure: false).
-- Ask clarifying questions when the user's request is ambiguous.
 - When you have enough info, call the update_widget_config tool to apply changes.
 - Be concise and helpful. After applying changes, briefly describe what you configured.
-- You can make partial updates — only include the fields you want to change.`;
+- You can make partial updates — only include the fields you want to change.
+
+## CRITICAL: Field-Aware Responses
+- ALWAYS reference fields by their display name followed by the source abbreviation in parentheses. Examples: "Revenue (QB)", "Reporting Month (NT)", "Deal Amount (HS)".
+- NEVER use generic language like "the data", "your metric", or "the field". Always name the specific field with its source tag.
+- Source abbreviations: QB = QuickBooks, HS = HubSpot, NT = naitive.
+
+## Smart Clarification Rules
+- When the user's request is ambiguous (e.g., "show revenue" could mean Revenue (QB) or Deal Amount (HS)), respond ONLY with a content message asking which field they mean. Do NOT include a configUpdate.
+- When the user specifies a chart type but not axes/values, ask what fields to use before applying.
+- When the user says "last 6 months" or similar time ranges not matching existing window options, ask whether they want "last3Months", "ytd", or "all".
+- If a request is clear and unambiguous, apply the configUpdate immediately — do NOT ask unnecessary questions.
+
+## Compound Request Handling
+- When a user message contains multiple distinct requests (e.g., "change to line chart and add net income"), apply ALL changes in a single configUpdate tool call.
+- In your content response, enumerate each change as a numbered list so the user can verify:
+  Example: "Applied 2 changes:\\n1. Chart type → line\\n2. Added Net Income (QB) to values (sum, $)"
+- If one part is ambiguous but another is clear, apply the clear part and ask about the ambiguous part.
+
+## Response Format
+- Either respond with a configUpdate tool call (when confident) OR just a content message with clarifying questions (when ambiguous). Avoid both simultaneously when uncertain.
+- After applying changes, describe each change referencing exact field names and source tags.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -88,12 +111,12 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "update_widget_config",
-              description: "Apply configuration changes to the widget. Only include fields you want to change.",
+              description: "Apply configuration changes to the widget. Only include fields you want to change. Use this ONLY when you are confident about the user's intent.",
               parameters: {
                 type: "object",
                 properties: {
                   name: { type: "string", description: "Widget display name" },
-                  type: { type: "string", enum: ["table", "columnChart", "kpi"] },
+                  type: { type: "string", enum: ["table", "bar", "line", "column", "columnChart", "kpi"] },
                   xAxis: {
                     type: "object",
                     properties: {
@@ -181,9 +204,9 @@ serve(async (req) => {
     // Get text content
     result.content = choice.message?.content || "";
 
-    // If tool was called but no text, generate a follow-up to describe changes
+    // If tool was called but no text, generate a brief confirmation
     if (result.configUpdate && !result.content) {
-      result.content = "I've updated the widget configuration based on your request.";
+      result.content = "Configuration applied.";
     }
 
     return new Response(JSON.stringify(result), {
