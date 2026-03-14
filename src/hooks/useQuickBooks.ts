@@ -176,6 +176,9 @@ export function useQuickBooksSync() {
       queryClient.invalidateQueries({ queryKey: ["quickbooks-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-payments"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-history"] });
+      queryClient.invalidateQueries({ queryKey: ["qb-revenue-window"] });
+      queryClient.invalidateQueries({ queryKey: ["qb-preview-data"] });
+      queryClient.invalidateQueries({ queryKey: ["qb-revenue-accounts"] });
 
       const totalSynced = data.totalSynced ?? 0;
       toast.success(`Synced ${totalSynced} records from QuickBooks`);
