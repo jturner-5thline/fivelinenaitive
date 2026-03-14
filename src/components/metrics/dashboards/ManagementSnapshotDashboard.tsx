@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Pencil, ChevronDown } from 'lucide-react';
 import { ResponsiveContainer, BarChart, LineChart, Bar, XAxis, YAxis, Tooltip, Legend, ComposedChart, Line, CartesianGrid } from 'recharts';
+import { parse, endOfMonth, endOfQuarter, startOfMonth, startOfQuarter, startOfYear, subMonths, subQuarters } from 'date-fns';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
@@ -21,6 +22,56 @@ const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(1)}k`;
   return `$${value.toFixed(0)}`;
 };
+
+const getWindowRange = (window: TimeWindow): { start: Date; end: Date } | null => {
+  const now = new Date();
+
+  switch (window) {
+    case 'mtd':
+      return { start: startOfMonth(now), end: now };
+    case 'lastMonth': {
+      const target = subMonths(now, 1);
+      return { start: startOfMonth(target), end: endOfMonth(target) };
+    }
+    case 'qtd':
+      return { start: startOfQuarter(now), end: now };
+    case 'lastQuarter': {
+      const target = subQuarters(now, 1);
+      return { start: startOfQuarter(target), end: endOfQuarter(target) };
+    }
+    case 'ytd':
+      return { start: startOfYear(now), end: now };
+    case 'lastYear': {
+      const year = now.getFullYear() - 1;
+      return { start: new Date(year, 0, 1), end: new Date(year, 11, 31, 23, 59, 59, 999) };
+    }
+    case 'ttm':
+    case 'last12Months':
+      return { start: subMonths(now, 12), end: now };
+    case 'last6Months':
+      return { start: subMonths(now, 6), end: now };
+    case 'last3Months':
+      return { start: subMonths(now, 3), end: now };
+    case 'all':
+    case 'custom':
+    default:
+      return null;
+  }
+};
+
+function filterMonthlyRowsByWindow<T extends { month: string }>(rows: T[], window: TimeWindow): T[] {
+  const range = getWindowRange(window);
+  if (!range) return rows;
+
+  return rows.filter((row) => {
+    const monthDate = parse(row.month, 'MMM-yy', new Date());
+    if (Number.isNaN(monthDate.getTime())) return false;
+
+    const monthStart = startOfMonth(monthDate);
+    const monthEnd = endOfMonth(monthDate);
+    return monthEnd >= range.start && monthStart <= range.end;
+  });
+}
 
 interface MetricCardProps {
   title: string;
@@ -253,22 +304,55 @@ export function ManagementSnapshotDashboard({
   const debtProfitConfig = getCardConfig('debt-profit', 'Debt Profit');
   const finServProfitConfig = getCardConfig('finserv-profit', 'FinServ Revenue');
 
-  // Sample data for charts
-  const debtRevenueData = [
-    { quarter: 'Q4-25', retainer: 60000, milestone: 1000, closing: 178000, label: '$244k' },
-  ];
+  const debtRevenueMonthlyRows = filterMonthlyRowsByWindow(metrics.monthlyData, debtRevenueConfig.timeWindow);
+  const debtRevenueSourceRows = debtRevenueMonthlyRows.length > 0 ? debtRevenueMonthlyRows : metrics.monthlyData.slice(-1);
+  const debtRevenueData = debtRevenueSourceRows.map((row) => ({
+    period: row.month,
+    retainer: 0,
+    milestone: 0,
+    closing: row.totalFees,
+  }));
 
+  const clientsSignedDebtRows = filterMonthlyRowsByWindow(metrics.monthlyData, clientsSignedDebtConfig.timeWindow);
+  const clientsSignedDebt = (clientsSignedDebtRows.length > 0 ? clientsSignedDebtRows : metrics.monthlyData.slice(-1)).map((row) => ({
+    month: row.month,
+    count: row.dealCount,
+  }));
+
+  const clientsSignedFinServRows = filterMonthlyRowsByWindow(metrics.monthlyData, clientsSignedFinServConfig.timeWindow);
+  const clientsSignedFinServ = (clientsSignedFinServRows.length > 0 ? clientsSignedFinServRows : metrics.monthlyData.slice(-1)).map((row) => ({
+    month: row.month,
+    count: row.dealCount,
+  }));
+
+  const debtProfitRows = filterMonthlyRowsByWindow(metrics.monthlyData, debtProfitConfig.timeWindow);
+  const debtProfitData = (debtProfitRows.length > 0 ? debtProfitRows : metrics.monthlyData.slice(-1)).map((row) => {
+    const netIncome = row.closedWonValue - row.totalFees;
+    const netIncomePercent = row.closedWonValue > 0 ? (netIncome / row.closedWonValue) * 100 : 0;
+    return {
+      period: row.month,
+      netIncome,
+      netIncomePercent: Math.round(netIncomePercent * 10) / 10,
+    };
+  });
+
+  const finServProfitRows = filterMonthlyRowsByWindow(metrics.monthlyData, finServProfitConfig.timeWindow);
+  const finservProfitData = (finServProfitRows.length > 0 ? finServProfitRows : metrics.monthlyData.slice(-1)).map((row) => {
+    const netIncome = row.closedWonValue - row.totalFees;
+    const netIncomePercent = row.closedWonValue > 0 ? (netIncome / row.closedWonValue) * 100 : 0;
+    return {
+      period: row.month,
+      netIncome,
+      netIncomePercent: Math.round(netIncomePercent * 10) / 10,
+    };
+  });
+
+  // Keep static placeholders for cards not yet wired to dynamic sources
   const finservRevenueData = [
     { month: 'Nov-25', revenue: 27000, recurring: 9000 },
     { month: 'Dec-25', revenue: 25000, recurring: 9000 },
     { month: 'Jan-26', revenue: 23000, recurring: 9000 },
   ];
-
-  const clientsSignedDebt = [{ month: 'Jan-26', count: 1 }];
-  const clientsSignedFinServ = [{ month: 'Jan-26', count: 1 }];
-
-  const debtProfitData = [{ quarter: 'Q1-26', netIncome: 22000, netIncomePercent: 70 }];
-  const finservProfitData = [{ quarter: 'Q1-26', netIncome: 32000, netIncomePercent: 75 }];
 
   const arData = [
     { entity: '5th Line Capital Advisors LLC', amount: 80500 },
@@ -308,7 +392,7 @@ export function ManagementSnapshotDashboard({
                   {debtRevenueConfig.visualization === 'line' ? (
                     <LineChart data={debtRevenueData}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                      <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                      <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                       <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
                       <Legend />
@@ -318,7 +402,7 @@ export function ManagementSnapshotDashboard({
                     </LineChart>
                   ) : (
                     <BarChart data={debtRevenueData}>
-                      <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                      <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                       <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
                       <Legend />
@@ -510,7 +594,7 @@ export function ManagementSnapshotDashboard({
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={debtProfitData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                  <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                   <YAxis yAxisId="left" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10 }} />
                   <Tooltip />
@@ -539,7 +623,7 @@ export function ManagementSnapshotDashboard({
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={finservProfitData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                  <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                   <YAxis yAxisId="left" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10 }} />
                   <Tooltip />
