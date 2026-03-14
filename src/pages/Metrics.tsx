@@ -129,6 +129,69 @@ const DASHBOARD_OPTIONS = [
   { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false },
 ];
 
+type ManagementSnapshotCardState = Omit<MetricWidgetConfig, 'id' | 'createdAt'>;
+
+const MANAGEMENT_SNAPSHOT_STORAGE_KEY = 'management-snapshot-editable-cards-v1';
+
+const MANAGEMENT_SNAPSHOT_CARD_DEFAULTS: Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState> = {
+  'debt-revenue': {
+    title: 'Debt Revenue',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'closed-value-12m',
+    size: 'medium',
+    color: 'hsl(var(--primary))',
+  },
+  'finserv-revenue': {
+    title: 'FinServ Revenue',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'fees-pop',
+    size: 'medium',
+    color: 'hsl(var(--chart-4))',
+  },
+  'clients-signed-debt': {
+    title: 'Clients Signed - Debt',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'deal-activity-12m',
+    size: 'medium',
+    color: 'hsl(var(--primary))',
+  },
+  'clients-signed-finserv': {
+    title: 'Clients Signed - FinServ',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'qtd-value',
+    size: 'medium',
+    color: 'hsl(var(--chart-4))',
+  },
+  'outstanding-ar': {
+    title: 'Outstanding A/R',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'pipeline-by-stage',
+    size: 'medium',
+    color: 'hsl(var(--primary))',
+  },
+  'debt-profit': {
+    title: 'Debt Profit',
+    type: 'chart',
+    chartType: 'composed',
+    dataSource: 'manager-performance',
+    size: 'medium',
+    color: 'hsl(var(--primary))',
+  },
+  'finserv-profit': {
+    title: 'FinServ Revenue',
+    type: 'chart',
+    chartType: 'composed',
+    dataSource: 'ytd-cumulative',
+    size: 'medium',
+    color: 'hsl(var(--chart-4))',
+  },
+};
+
 // Generate rolling 12 months labels
 const generateMonthLabels = () => {
   const labels = [];
