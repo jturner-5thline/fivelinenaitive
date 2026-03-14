@@ -1013,10 +1013,15 @@ function renderChartContent(
     default: {
       // Datarails custom widgets - render using stored config
       if (widget.dataSource.startsWith('datarails-') && widget.datarailsConfig) {
-        const dc = widget.datarailsConfig;
+        const dc = widget.datarailsConfig as {
+          type?: string;
+          values?: Array<{ fieldId?: string | null; format?: string }>;
+        };
+
+        const selectedType = dc.type ?? 'bar';
 
         // If the user chose "Metric" (KPI) view, render as a stat card, not a chart
-        if (dc.type === 'kpi') {
+        if (selectedType === 'kpi') {
           const selectedFieldId = dc.values?.[0]?.fieldId as string | undefined;
           const fmt = dc.values?.[0]?.format;
           const metricLabel = selectedFieldId
@@ -1030,6 +1035,7 @@ function renderChartContent(
             : fmt === 'currency'
               ? formatCurrency(fallbackValue)
               : fallbackValue.toLocaleString();
+
           return (
             <StatWidgetContent
               title={widget.title}
@@ -1041,60 +1047,92 @@ function renderChartContent(
           );
         }
 
-        const valueNames = (dc.values || []).map((v: any) => v.fieldId || 'Value').filter(Boolean);
+        const valueNames = (dc.values || []).map((v) => v.fieldId || 'Value').filter(Boolean) as string[];
         const chartHeight = widget.size === 'small' ? 180 : widget.size === 'medium' ? 240 : 280;
-        
+
+        if (valueNames.length === 0) {
+          return (
+            <ChartWidgetContent title={widget.title} description="Custom widget">
+              <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
+                Add at least one value to visualize this widget
+              </div>
+            </ChartWidgetContent>
+          );
+        }
+
         // Generate sample data for display
         const sampleMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
         const sampleData = sampleMonths.map((month, i) => {
-          const row: any = { month };
-          valueNames.forEach((name: string, j: number) => {
+          const row: Record<string, string | number> = { month };
+          valueNames.forEach((name) => {
             row[name] = Math.round(20000 + Math.random() * 80000 + i * 5000);
           });
           return row;
         });
 
-        const isStacked = dc.type === 'stackedBar';
+        const isLine = selectedType === 'line';
+        const isStacked = selectedType === 'stackedBar';
         const barRadius: [number, number, number, number] = [6, 6, 0, 0];
 
         return (
           <ChartWidgetContent title={widget.title} description="Custom widget">
             <div style={{ height: chartHeight }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sampleData}>
-                  <defs>
-                    {valueNames.map((name: string, i: number) => {
-                      const [c1, c2] = [
-                        ['hsl(213, 90%, 70%)', 'hsl(213, 80%, 50%)'],
-                        ['hsl(142, 71%, 55%)', 'hsl(142, 71%, 38%)'],
-                        ['hsl(38, 92%, 58%)', 'hsl(38, 92%, 42%)'],
-                        ['hsl(270, 60%, 68%)', 'hsl(270, 60%, 48%)'],
-                        ['hsl(220, 15%, 65%)', 'hsl(220, 15%, 45%)'],
-                      ][i % 5];
-                      return (
-                        <linearGradient key={name} id={`drGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={c1} />
-                          <stop offset="100%" stopColor={c2} />
-                        </linearGradient>
-                      );
-                    })}
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                  <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => [formatCurrency(value)]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                  <Legend />
-                  {valueNames.map((name: string, i: number) => (
-                    <Bar
-                      key={name}
-                      dataKey={name}
-                      fill={`url(#drGrad-${i})`}
-                      name={name.replace('f-', '').replace(/-/g, ' ')}
-                      radius={barRadius}
-                      stackId={isStacked ? 'stack' : undefined}
-                    />
-                  ))}
-                </BarChart>
+                {isLine ? (
+                  <LineChart data={sampleData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                    <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(value: number) => [formatCurrency(value)]} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                    <Legend />
+                    {valueNames.map((name, i) => (
+                      <Line
+                        key={name}
+                        type="monotone"
+                        dataKey={name}
+                        stroke={COLORS[i % COLORS.length]}
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        name={name.replace('f-', '').replace(/-/g, ' ')}
+                      />
+                    ))}
+                  </LineChart>
+                ) : (
+                  <BarChart data={sampleData}>
+                    <defs>
+                      {valueNames.map((name, i) => {
+                        const [c1, c2] = [
+                          ['hsl(213, 90%, 70%)', 'hsl(213, 80%, 50%)'],
+                          ['hsl(142, 71%, 55%)', 'hsl(142, 71%, 38%)'],
+                          ['hsl(38, 92%, 58%)', 'hsl(38, 92%, 42%)'],
+                          ['hsl(270, 60%, 68%)', 'hsl(270, 60%, 48%)'],
+                          ['hsl(220, 15%, 65%)', 'hsl(220, 15%, 45%)'],
+                        ][i % 5];
+                        return (
+                          <linearGradient key={name} id={`drGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={c1} />
+                            <stop offset="100%" stopColor={c2} />
+                          </linearGradient>
+                        );
+                      })}
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                    <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(value: number) => [formatCurrency(value)]} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                    <Legend />
+                    {valueNames.map((name, i) => (
+                      <Bar
+                        key={name}
+                        dataKey={name}
+                        fill={`url(#drGrad-${i})`}
+                        name={name.replace('f-', '').replace(/-/g, ' ')}
+                        radius={barRadius}
+                        stackId={isStacked ? 'stack' : undefined}
+                      />
+                    ))}
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             </div>
           </ChartWidgetContent>
