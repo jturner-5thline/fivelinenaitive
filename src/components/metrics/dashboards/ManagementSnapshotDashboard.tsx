@@ -159,7 +159,10 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{debtRevenueConfig.title}</CardTitle>
               {renderEditAction('debt-revenue')}
             </div>
-            <Badge variant="outline" className="w-fit text-xs">Reporting Month: Q4-25</Badge>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge variant="outline" className="w-fit text-xs">Reporting Month: Q4-25</Badge>
+              {debtRevenueConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {debtRevenueConfig.entityName}</Badge>}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[200px]">
