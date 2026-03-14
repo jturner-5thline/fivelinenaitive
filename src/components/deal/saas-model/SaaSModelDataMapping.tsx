@@ -1656,12 +1656,32 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                     <button key={i} className={cn(
                       "px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors",
                       i === activeSheet ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-                    )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); }}>
+                    )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); setSignFlipSelectedRows(new Set()); setSignFlipSelectedCols(new Set()); }}>
                       {s.name}
                     </button>
                   ))}
                 </div>
                 <div className="flex items-center gap-1 px-2">
+                  {signFlipMode && (signFlipSelectedRows.size > 0 || signFlipSelectedCols.size > 0) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[10px] gap-1 px-2 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+                      onClick={handleApplySignFlip}
+                    >
+                      <ArrowUpDown className="h-3 w-3" />
+                      Flip ± {signFlipSelectedRows.size > 0 ? `${signFlipSelectedRows.size}R` : ''}{signFlipSelectedRows.size > 0 && signFlipSelectedCols.size > 0 ? ' · ' : ''}{signFlipSelectedCols.size > 0 ? `${signFlipSelectedCols.size}C` : ''}
+                    </Button>
+                  )}
+                  <Button
+                    variant={signFlipMode ? "default" : "ghost"}
+                    size="sm"
+                    className={cn("h-6 w-6 p-0", signFlipMode && "bg-amber-600 hover:bg-amber-600/90 text-white")}
+                    onClick={handleToggleSignFlip}
+                    title={signFlipMode ? "Exit sign-flip mode" : "Sign flip — select rows/columns to invert ±"}
+                  >
+                    <ArrowUpDown className="h-3.5 w-3.5" />
+                  </Button>
                   {eraserMode && (eraserSelectedRows.size > 0 || eraserSelectedCols.size > 0) && (
                     <Button
                       variant="destructive"
