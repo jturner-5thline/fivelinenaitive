@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Pencil } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ComposedChart, Line, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, BarChart, LineChart, Bar, XAxis, YAxis, Tooltip, Legend, ComposedChart, Line, CartesianGrid } from 'recharts';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
