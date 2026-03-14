@@ -1645,6 +1645,7 @@ export default function Metrics() {
         onClose={() => setEditorOpen(false)}
         onSave={handleSave}
         availableWidgets={widgets.filter(w => w.type === 'stat').map(w => ({ id: w.id, title: w.title }))}
+        existingDataSources={widgets.map(w => w.dataSource)}
       />
 
       {/* Delete Confirmation */}
