@@ -1499,9 +1499,12 @@ export default function Metrics() {
                   {format(new Date(), "MMM, yyyy")}
                 </Badge>
               </div>
-              <p className="text-muted-foreground mt-1">
-                Pipeline performance analytics powered by real deal data
-              </p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-muted-foreground">
+                  Pipeline performance analytics powered by real deal data
+                </p>
+                <SyncStatusBar />
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={reportingMonth} onValueChange={setReportingMonth}>
