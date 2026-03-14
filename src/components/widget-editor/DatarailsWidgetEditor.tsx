@@ -20,9 +20,11 @@ import {
 import { FieldCatalog } from './FieldCatalog';
 import { ConfigPanel } from './ConfigPanel';
 import { WidgetPreview } from './WidgetPreview';
+import { WidgetBuilderChat } from './WidgetBuilderChat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useState as useStateReact } from 'react';
 
 interface DatarailsWidgetEditorProps {
   initialWidgetConfig?: WidgetConfig;
