@@ -47,7 +47,7 @@ const TABS = [
 ];
 
 export default function Preferences() {
-  const { theme, setTheme } = useTheme();
+  
   const { preferences, updatePreference } = usePreferences();
   const { stages } = useLenderStages();
   const { isAdmin } = useCompany();
