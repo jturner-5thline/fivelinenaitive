@@ -308,6 +308,7 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{outstandingARConfig.title}</CardTitle>
               {renderEditAction('outstanding-ar')}
             </div>
+            {outstandingARConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {outstandingARConfig.entityName}</Badge>}
           </CardHeader>
           <CardContent>
             <div className="h-[180px]">
