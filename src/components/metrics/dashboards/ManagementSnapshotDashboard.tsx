@@ -399,7 +399,7 @@ export function ManagementSnapshotDashboard({
                     </LineChart>
                   ) : (
                     <BarChart data={debtRevenueData}>
-                      <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                      <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                       <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
                       <Legend />
