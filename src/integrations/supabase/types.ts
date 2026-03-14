@@ -10434,6 +10434,42 @@ export type Database = {
           },
         ]
       }
+      sync_schedule_settings: {
+        Row: {
+          created_at: string
+          hs_enabled: boolean
+          id: string
+          interval_hours: number
+          last_hs_sync: string | null
+          last_qb_sync: string | null
+          qb_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hs_enabled?: boolean
+          id?: string
+          interval_hours?: number
+          last_hs_sync?: string | null
+          last_qb_sync?: string | null
+          qb_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hs_enabled?: boolean
+          id?: string
+          interval_hours?: number
+          last_hs_sync?: string | null
+          last_qb_sync?: string | null
+          qb_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       system_announcements: {
         Row: {
           created_at: string
