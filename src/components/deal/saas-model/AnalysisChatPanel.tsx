@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, MessageSquare, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Send, MessageSquare, Loader2 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { SaaSModelData } from './types';
 import { fmtCurrency, fmtPct } from './formatters';
@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 
 interface Props {
   model: SaaSModelData;
-  activeTab: string;
+  activeTab?: string;
 }
 
 type Msg = { role: 'user' | 'assistant'; content: string };
@@ -25,8 +25,7 @@ const SUGGESTED_PROMPTS = [
   "How does gross margin compare to benchmarks?",
 ];
 
-export function AnalysisChatPanel({ model, activeTab }: Props) {
-  const [open, setOpen] = useState(false);
+export function AnalysisChatPanel({ model, activeTab = 'dashboard' }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +36,6 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -137,85 +135,54 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
   };
 
   return (
-    <>
-      {/* Toggle Button */}
-      <Button
-        size="sm"
-        className="gap-1.5 text-xs"
-        style={{ backgroundColor: '#2ED3B7', color: '#050814' }}
-        onClick={() => setOpen(o => !o)}
-        title="Financial Analysis AI — Ask questions about your financial model"
-      >
-        <MessageSquare className="h-3.5 w-3.5" />
-        Financial AI
-      </Button>
-
-      {/* Panel - only render DOM when open */}
-      {open && <div
-        className="fixed top-0 right-0 h-full z-50 flex flex-col animate-in slide-in-from-right duration-300"
-        style={{
-          width: 380,
-          backgroundColor: '#0D1225',
-          borderLeft: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
+    <Card className="border-border/30 flex flex-col" style={{ minHeight: 340, maxHeight: 480 }}>
+      <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-          <h3 className="text-sm font-semibold" style={{ color: '#E8E9ED' }}>Financial Analysis AI</h3>
-          <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-[rgba(255,255,255,0.06)]">
-            <X className="h-4 w-4" style={{ color: '#8B8FA3' }} />
-          </button>
-        </div>
-
-        {/* Context Tags */}
-        <div className="flex flex-wrap gap-1.5 px-4 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-          {CONTEXT_TAGS.map(tag => (
-            <span
-              key={tag}
-              className="px-2 py-0.5 rounded-full text-[10px] font-medium"
-              style={{ backgroundColor: 'rgba(46,211,183,0.1)', color: '#2ED3B7' }}
-            >
-              {tag}
-            </span>
-          ))}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Financial AI</h3>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {CONTEXT_TAGS.map(tag => (
+              <span
+                key={tag}
+                className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-primary/10 text-primary"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ scrollbarWidth: 'thin' }}>
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ scrollbarWidth: 'thin' }}>
           {messages.length === 0 && (
-            <div className="space-y-2 pt-4">
-              <p className="text-xs text-center mb-4" style={{ color: '#4A4E63' }}>Ask about your financial model</p>
-              {SUGGESTED_PROMPTS.map(prompt => (
-                <button
-                  key={prompt}
-                  onClick={() => sendMessage(prompt)}
-                  className="w-full text-left text-xs px-3 py-2 rounded-lg transition-colors"
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.03)',
-                    color: '#8B8FA3',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)')}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)')}
-                >
-                  {prompt}
-                </button>
-              ))}
+            <div className="space-y-2 pt-2">
+              <p className="text-xs text-center text-muted-foreground mb-3">Ask about your financial model</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {SUGGESTED_PROMPTS.map(prompt => (
+                  <button
+                    key={prompt}
+                    onClick={() => sendMessage(prompt)}
+                    className="text-left text-[11px] px-2.5 py-2 rounded-md transition-colors border border-border/30 text-muted-foreground hover:border-border hover:text-foreground bg-muted/20"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
           {messages.map((msg, i) => (
             <div key={i} className={cn("flex", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
               <div
-                className="max-w-[85%] rounded-lg px-3 py-2 text-xs"
-                style={msg.role === 'user' ? {
-                  backgroundColor: '#141A33',
-                  color: '#E8E9ED',
-                } : {
-                  backgroundColor: '#0D1225',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  color: '#E8E9ED',
-                }}
+                className={cn(
+                  "max-w-[85%] rounded-lg px-3 py-2 text-xs",
+                  msg.role === 'user'
+                    ? "bg-primary/10 text-foreground"
+                    : "bg-muted/30 border border-border/30 text-foreground"
+                )}
               >
                 {msg.role === 'assistant' ? (
                   <div className="prose prose-sm prose-invert max-w-none [&_p]:text-xs [&_p]:leading-relaxed [&_li]:text-xs [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs [&_code]:text-[10px] [&_code]:font-mono">
@@ -230,7 +197,7 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
 
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <div className="flex justify-start">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ color: '#8B8FA3' }}>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin" /> Thinking...
               </div>
             </div>
@@ -240,7 +207,7 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
         </div>
 
         {/* Input */}
-        <div className="p-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="px-3 py-2 border-t border-border/30">
           <div className="flex items-end gap-2">
             <textarea
               ref={textareaRef}
@@ -254,34 +221,19 @@ export function AnalysisChatPanel({ model, activeTab }: Props) {
               }}
               placeholder="Ask about your model..."
               rows={1}
-              className="flex-1 resize-none rounded-lg px-3 py-2 text-xs outline-none"
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.06)',
-                color: '#E8E9ED',
-                maxHeight: 120,
-              }}
+              className="flex-1 resize-none rounded-md px-3 py-2 text-xs outline-none bg-muted/30 border border-border/30 text-foreground placeholder:text-muted-foreground focus:border-primary/50"
+              style={{ maxHeight: 120 }}
             />
             <button
               onClick={() => sendMessage(input)}
               disabled={!input.trim() || isLoading}
-              className="p-2 rounded-lg transition-colors disabled:opacity-30"
-              style={{ backgroundColor: '#2ED3B7', color: '#050814' }}
+              className="p-2 rounded-md transition-colors disabled:opacity-30 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Send className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
-      </div>}
-
-      {/* Backdrop */}
-      {open && (
-        <div
-          className="fixed inset-0 z-40"
-          style={{ backgroundColor: 'rgba(5,8,20,0.3)' }}
-          onClick={() => setOpen(false)}
-        />
-      )}
-    </>
+      </CardContent>
+    </Card>
   );
 }
