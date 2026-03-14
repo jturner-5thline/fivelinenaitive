@@ -1014,6 +1014,33 @@ function renderChartContent(
       // Datarails custom widgets - render using stored config
       if (widget.dataSource.startsWith('datarails-') && widget.datarailsConfig) {
         const dc = widget.datarailsConfig;
+
+        // If the user chose "Metric" (KPI) view, render as a stat card, not a chart
+        if (dc.type === 'kpi') {
+          const selectedFieldId = dc.values?.[0]?.fieldId as string | undefined;
+          const fmt = dc.values?.[0]?.format;
+          const metricLabel = selectedFieldId
+            ? (selectedFieldId.startsWith('qb-account-')
+                ? 'QB Account'
+                : selectedFieldId.replace(/^[a-z]-/, '').replace(/-/g, ' '))
+            : 'metric';
+          const fallbackValue = 284350;
+          const displayValue = fmt === 'percent'
+            ? `${(fallbackValue / 1000).toFixed(1)}%`
+            : fmt === 'currency'
+              ? formatCurrency(fallbackValue)
+              : fallbackValue.toLocaleString();
+          return (
+            <StatWidgetContent
+              title={widget.title}
+              value={displayValue}
+              subtitle={`Custom KPI · ${metricLabel}`}
+              icon="dollar"
+              color={widget.color}
+            />
+          );
+        }
+
         const valueNames = (dc.values || []).map((v: any) => v.fieldId || 'Value').filter(Boolean);
         const chartHeight = widget.size === 'small' ? 180 : widget.size === 'medium' ? 240 : 280;
         
