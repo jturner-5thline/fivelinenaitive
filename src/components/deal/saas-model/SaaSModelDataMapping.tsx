@@ -310,6 +310,72 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     toast.info(`Toggled ± sign on ${rowIndices.length} row${rowIndices.length > 1 ? 's' : ''}`);
   }, []);
 
+  // Flip columns toggle
+  const handleFlipColumns = useCallback((colIndices: number[]) => {
+    setFlippedColumns(prev => {
+      const next = new Set(prev);
+      colIndices.forEach(c => {
+        if (next.has(c)) next.delete(c); else next.add(c);
+      });
+      return next;
+    });
+    toast.info(`Toggled ± sign on ${colIndices.length} column${colIndices.length > 1 ? 's' : ''}`);
+  }, []);
+
+  // Sign-flip mode toggle
+  const handleToggleSignFlip = useCallback(() => {
+    setSignFlipMode(prev => {
+      if (prev) {
+        setSignFlipSelectedRows(new Set());
+        setSignFlipSelectedCols(new Set());
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleSignFlipRowClick = useCallback((rowIdx: number, e: React.MouseEvent) => {
+    setSignFlipSelectedRows(prev => {
+      const next = new Set(prev);
+      if (e.shiftKey && prev.size > 0) {
+        const last = Array.from(prev).pop()!;
+        const start = Math.min(last, rowIdx);
+        const end = Math.max(last, rowIdx);
+        for (let i = start; i <= end; i++) next.add(i);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (next.has(rowIdx)) next.delete(rowIdx); else next.add(rowIdx);
+      } else {
+        if (next.has(rowIdx) && next.size === 1) next.clear();
+        else { next.clear(); next.add(rowIdx); }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSignFlipColClick = useCallback((colIdx: number, e: React.MouseEvent) => {
+    setSignFlipSelectedCols(prev => {
+      const next = new Set(prev);
+      if (e.shiftKey && prev.size > 0) {
+        const last = Array.from(prev).pop()!;
+        const start = Math.min(last, colIdx);
+        const end = Math.max(last, colIdx);
+        for (let i = start; i <= end; i++) next.add(i);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (next.has(colIdx)) next.delete(colIdx); else next.add(colIdx);
+      } else {
+        if (next.has(colIdx) && next.size === 1) next.clear();
+        else { next.clear(); next.add(colIdx); }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleApplySignFlip = useCallback(() => {
+    if (signFlipSelectedRows.size > 0) handleFlipRows(Array.from(signFlipSelectedRows));
+    if (signFlipSelectedCols.size > 0) handleFlipColumns(Array.from(signFlipSelectedCols));
+    setSignFlipSelectedRows(new Set());
+    setSignFlipSelectedCols(new Set());
+  }, [signFlipSelectedRows, signFlipSelectedCols, handleFlipRows, handleFlipColumns]);
+
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
   const hasUnsavedMappings = mappedCount > lastSavedCount;
