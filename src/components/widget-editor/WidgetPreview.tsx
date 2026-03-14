@@ -159,7 +159,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
               key={name}
               dataKey={name}
               fill={`url(#barGrad-${i})`}
-              radius={isStacked ? (i === dataKeys.length - 1 ? barRadius : [0, 0, 0, 0]) : barRadius}
+              radius={barRadius}
               stackId={isStacked ? 'stack' : undefined}
             />
           )
