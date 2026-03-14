@@ -186,19 +186,59 @@ export function ManagementSnapshotDashboard({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={debtRevenueData}>
-                  <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
-                  <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Legend />
-                  <Bar dataKey="closing" stackId="a" fill={debtRevenueConfig.color} name="Closing Fees" />
-                  <Bar dataKey="milestone" stackId="a" fill="hsl(var(--chart-2))" name="Milestone" />
-                  <Bar dataKey="retainer" stackId="a" fill="hsl(var(--chart-3))" name="Retainer" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {debtRevenueConfig.visualization === 'kpi' ? (
+              <div className="h-[200px] flex flex-col items-center justify-center gap-2">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Revenue</p>
+                <p className="text-4xl font-bold text-foreground">
+                  {formatCurrency(
+                    debtRevenueData.reduce((sum, row) => sum + row.closing + row.milestone + row.retainer, 0)
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">Reporting Month: Q4-25</p>
+              </div>
+            ) : (
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  {debtRevenueConfig.visualization === 'line' ? (
+                    <LineChart data={debtRevenueData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                      <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Legend />
+                      <Line type="monotone" dataKey="closing" stroke={debtRevenueConfig.color} name="Closing Fees" strokeWidth={2} />
+                      <Line type="monotone" dataKey="milestone" stroke="hsl(var(--chart-2))" name="Milestone" strokeWidth={2} />
+                      <Line type="monotone" dataKey="retainer" stroke="hsl(var(--chart-3))" name="Retainer" strokeWidth={2} />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={debtRevenueData}>
+                      <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                      <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Legend />
+                      <Bar
+                        dataKey="closing"
+                        stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
+                        fill={debtRevenueConfig.color}
+                        name="Closing Fees"
+                      />
+                      <Bar
+                        dataKey="milestone"
+                        stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
+                        fill="hsl(var(--chart-2))"
+                        name="Milestone"
+                      />
+                      <Bar
+                        dataKey="retainer"
+                        stackId={debtRevenueConfig.visualization === 'stackedBar' ? 'debt-revenue-stack' : undefined}
+                        fill="hsl(var(--chart-3))"
+                        name="Retainer"
+                      />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
 
