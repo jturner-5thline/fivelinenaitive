@@ -283,7 +283,10 @@ export function ManagementSnapshotDashboard({
               <CardTitle className="text-sm font-medium">{clientsSignedFinServConfig.title}</CardTitle>
               {renderEditAction('clients-signed-finserv')}
             </div>
-            <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
+              {clientsSignedFinServConfig.entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {clientsSignedFinServConfig.entityName}</Badge>}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[180px]">
