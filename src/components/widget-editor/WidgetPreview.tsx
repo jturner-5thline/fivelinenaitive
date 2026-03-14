@@ -3,9 +3,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useMemo } from 'react';
+import { BarChart3, LineChart as LineChartIcon, Hash } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Props {
   config: WidgetConfig;
+  onTypeChange?: (type: WidgetConfig['type']) => void;
 }
 
 const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2, 160 60% 45%))', 'hsl(var(--chart-3, 30 80% 55%))', 'hsl(var(--chart-4, 280 65% 60%))', 'hsl(var(--chart-5, 340 75% 55%))'];
@@ -117,13 +120,40 @@ function ChartPreview({ config }: Props) {
   );
 }
 
-export function WidgetPreview({ config }: Props) {
+function KpiPreview({ config }: Props) {
+  const valueField = config.values[0];
+  const f = getField(valueField?.fieldId);
+  const name = f?.name ?? 'Metric';
+  const format = valueField?.format ?? 'number';
+  const mockVal = format === 'percent' ? 42.7 : 284350;
+  const formatted = format === 'currency' ? `$${mockVal.toLocaleString()}` : format === 'percent' ? `${mockVal}%` : mockVal.toLocaleString();
+
+  return (
+    <div className="flex flex-col items-center justify-center py-12 gap-2">
+      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{name}</p>
+      <p className="text-4xl font-bold text-foreground">{formatted}</p>
+      <div className="flex items-center gap-1 text-xs text-primary font-medium">
+        <span>▲ 12.4%</span>
+        <span className="text-muted-foreground">vs prior period</span>
+      </div>
+    </div>
+  );
+}
+
+const VIEW_MODES = [
+  { type: 'kpi' as const, icon: Hash, label: 'Metric' },
+  { type: 'bar' as const, icon: BarChart3, label: 'Bar' },
+  { type: 'line' as const, icon: LineChartIcon, label: 'Line' },
+] as const;
+
+export function WidgetPreview({ config, onTypeChange }: Props) {
   const interpretation = buildInterpretation(config);
   const rows = generateMockRows(config);
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
 
   const hasData = config.values.length > 0 || config.xAxis.fieldId;
-  const showChart = isChartType(config.type) && config.values.length > 0;
+  const activeType = config.type;
+  const showChart = isChartType(activeType) && config.values.length > 0;
 
   const formatMap: Record<string, string> = {};
   for (const vc of config.values) {
@@ -133,8 +163,27 @@ export function WidgetPreview({ config }: Props) {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="px-5 py-3 border-b border-border">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
         <h2 className="text-sm font-semibold text-foreground">Preview</h2>
+        {onTypeChange && (
+          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/50 p-0.5">
+            {VIEW_MODES.map(({ type, icon: Icon, label }) => (
+              <button
+                key={type}
+                onClick={() => onTypeChange(type)}
+                className={cn(
+                  'flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all',
+                  activeType === type
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <ScrollArea className="flex-1">
         <div className="p-5 space-y-4">
@@ -145,6 +194,14 @@ export function WidgetPreview({ config }: Props) {
 
           {hasData ? (
             <>
+              {activeType === 'kpi' && config.values.length > 0 && (
+                <div className="rounded-lg border border-border p-4 relative">
+                  <span className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                    Sample data
+                  </span>
+                  <KpiPreview config={config} />
+                </div>
+              )}
               {showChart && (
                 <div className="rounded-lg border border-border p-4 relative">
                   <span className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
@@ -153,13 +210,11 @@ export function WidgetPreview({ config }: Props) {
                   <ChartPreview config={config} />
                 </div>
               )}
-              {(!showChart || config.type === 'table') && (
+              {(!showChart && activeType !== 'kpi') && (
                 <div className="rounded-lg border border-border overflow-hidden relative">
-                  {config.type === 'table' && (
-                    <span className="absolute top-2 right-2 z-10 text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                      Sample data
-                    </span>
-                  )}
+                  <span className="absolute top-2 right-2 z-10 text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                    Sample data
+                  </span>
                   <Table>
                     <TableHeader>
                       <TableRow>
