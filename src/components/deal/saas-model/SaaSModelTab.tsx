@@ -214,7 +214,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
               {annotationHook.unresolvedCount} open
             </Badge>
           )}
-          <AnalysisChatPanel model={model} activeTab={activeTab} />
+          {activeTab !== 'data-mapping' && <AnalysisChatPanel model={model} activeTab={activeTab} />}
         </div>
       </div>
 
