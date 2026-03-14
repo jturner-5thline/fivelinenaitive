@@ -1565,6 +1565,7 @@ export default function Metrics() {
         type: card.type,
         chartType: card.chartType,
         datarailsConfig: card.datarailsConfig,
+        timeWindow: (card.datarailsConfig as any)?.xAxis?.window || undefined,
       };
       return acc;
     }, {} as Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>);
