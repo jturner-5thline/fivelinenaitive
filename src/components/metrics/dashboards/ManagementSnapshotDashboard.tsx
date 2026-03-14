@@ -1,11 +1,21 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Pencil } from 'lucide-react';
+import { Lock, Pencil, ChevronDown } from 'lucide-react';
 import { ResponsiveContainer, BarChart, LineChart, Bar, XAxis, YAxis, Tooltip, Legend, ComposedChart, Line, CartesianGrid } from 'recharts';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { type TimeWindow } from '@/components/widget-editor/widgetTypes';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
