@@ -115,9 +115,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleToggleEraser = useCallback(() => {
     setEraserMode(prev => {
       if (prev) {
-        // Exiting eraser mode — clear selections
         setEraserSelectedRows(new Set());
         setEraserSelectedCols(new Set());
+      } else {
+        // Exit sign-flip mode when entering eraser
+        setSignFlipMode(false);
+        setSignFlipSelectedRows(new Set());
+        setSignFlipSelectedCols(new Set());
       }
       return !prev;
     });
