@@ -42,6 +42,7 @@ export function DatarailsWidgetEditor({
   const [config, setConfig] = useState<WidgetConfig>(initialWidgetConfig ?? DEFAULT_WIDGET_CONFIG);
   const [realtime, setRealtime] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [showAIChat, setShowAIChat] = useStateReact(false);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
