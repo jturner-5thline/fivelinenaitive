@@ -5,8 +5,10 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  MouseSensor,
   useSensor,
   useSensors,
+  closestCenter,
 } from '@dnd-kit/core';
 import {
   WidgetConfig,
