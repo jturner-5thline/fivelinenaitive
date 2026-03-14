@@ -301,22 +301,55 @@ export function ManagementSnapshotDashboard({
   const debtProfitConfig = getCardConfig('debt-profit', 'Debt Profit');
   const finServProfitConfig = getCardConfig('finserv-profit', 'FinServ Revenue');
 
-  // Sample data for charts
-  const debtRevenueData = [
-    { quarter: 'Q4-25', retainer: 60000, milestone: 1000, closing: 178000, label: '$244k' },
-  ];
+  const debtRevenueMonthlyRows = filterMonthlyRowsByWindow(metrics.monthlyData, debtRevenueConfig.timeWindow);
+  const debtRevenueSourceRows = debtRevenueMonthlyRows.length > 0 ? debtRevenueMonthlyRows : metrics.monthlyData.slice(-1);
+  const debtRevenueData = debtRevenueSourceRows.map((row) => ({
+    period: row.month,
+    retainer: 0,
+    milestone: 0,
+    closing: row.totalFees,
+  }));
 
+  const clientsSignedDebtRows = filterMonthlyRowsByWindow(metrics.monthlyData, clientsSignedDebtConfig.timeWindow);
+  const clientsSignedDebt = (clientsSignedDebtRows.length > 0 ? clientsSignedDebtRows : metrics.monthlyData.slice(-1)).map((row) => ({
+    month: row.month,
+    count: row.dealCount,
+  }));
+
+  const clientsSignedFinServRows = filterMonthlyRowsByWindow(metrics.monthlyData, clientsSignedFinServConfig.timeWindow);
+  const clientsSignedFinServ = (clientsSignedFinServRows.length > 0 ? clientsSignedFinServRows : metrics.monthlyData.slice(-1)).map((row) => ({
+    month: row.month,
+    count: row.dealCount,
+  }));
+
+  const debtProfitRows = filterMonthlyRowsByWindow(metrics.monthlyData, debtProfitConfig.timeWindow);
+  const debtProfitData = (debtProfitRows.length > 0 ? debtProfitRows : metrics.monthlyData.slice(-1)).map((row) => {
+    const netIncome = row.closedWonValue - row.totalFees;
+    const netIncomePercent = row.closedWonValue > 0 ? (netIncome / row.closedWonValue) * 100 : 0;
+    return {
+      period: row.month,
+      netIncome,
+      netIncomePercent: Math.round(netIncomePercent * 10) / 10,
+    };
+  });
+
+  const finServProfitRows = filterMonthlyRowsByWindow(metrics.monthlyData, finServProfitConfig.timeWindow);
+  const finservProfitData = (finServProfitRows.length > 0 ? finServProfitRows : metrics.monthlyData.slice(-1)).map((row) => {
+    const netIncome = row.closedWonValue - row.totalFees;
+    const netIncomePercent = row.closedWonValue > 0 ? (netIncome / row.closedWonValue) * 100 : 0;
+    return {
+      period: row.month,
+      netIncome,
+      netIncomePercent: Math.round(netIncomePercent * 10) / 10,
+    };
+  });
+
+  // Keep static placeholders for cards not yet wired to dynamic sources
   const finservRevenueData = [
     { month: 'Nov-25', revenue: 27000, recurring: 9000 },
     { month: 'Dec-25', revenue: 25000, recurring: 9000 },
     { month: 'Jan-26', revenue: 23000, recurring: 9000 },
   ];
-
-  const clientsSignedDebt = [{ month: 'Jan-26', count: 1 }];
-  const clientsSignedFinServ = [{ month: 'Jan-26', count: 1 }];
-
-  const debtProfitData = [{ quarter: 'Q1-26', netIncome: 22000, netIncomePercent: 70 }];
-  const finservProfitData = [{ quarter: 'Q1-26', netIncome: 32000, netIncomePercent: 75 }];
 
   const arData = [
     { entity: '5th Line Capital Advisors LLC', amount: 80500 },
