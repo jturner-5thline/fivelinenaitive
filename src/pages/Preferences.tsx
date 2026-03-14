@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock, Users, ChevronDown, Search, X } from 'lucide-react';
-import { useTheme } from 'next-themes';
+
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
