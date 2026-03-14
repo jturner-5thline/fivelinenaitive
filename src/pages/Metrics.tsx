@@ -237,7 +237,7 @@ function renderChartContent(
   qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data'],
   hsMetrics?: ReturnType<typeof useHubSpotMetrics>['data'],
 ) {
-  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-')) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-') && !widget.dataSource.startsWith('datarails-')) return null;
   if (widget.dataSource.startsWith('qb-') && !qbMetrics) {
     return (
       <ChartWidgetContent title={widget.title}>
