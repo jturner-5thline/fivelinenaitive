@@ -16,11 +16,10 @@ import {
   SEED_FIELDS,
 } from './widgetTypes';
 import { FieldCatalog } from './FieldCatalog';
-import { ConfigPanel } from './ConfigPanel';
 import { WidgetPreview } from './WidgetPreview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { useWidgetEditorData } from '@/hooks/useWidgetEditorData';
 
 interface DatarailsWidgetEditorProps {
   initialWidgetConfig?: WidgetConfig;
@@ -36,8 +35,9 @@ export function DatarailsWidgetEditor({
   onCancel,
 }: DatarailsWidgetEditorProps) {
   const [config, setConfig] = useState<WidgetConfig>(initialWidgetConfig ?? DEFAULT_WIDGET_CONFIG);
-  const [realtime, setRealtime] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  const { accounts, entities, isLoading } = useWidgetEditorData();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -88,7 +88,17 @@ export function DatarailsWidgetEditor({
     }
   };
 
-  const activeField = activeId ? SEED_FIELDS.find((f) => f.id === activeId) : null;
+  // Resolve drag overlay label from seed fields or accounts
+  const getActiveLabel = (): string | null => {
+    if (!activeId) return null;
+    const seedField = SEED_FIELDS.find((f) => f.id === activeId);
+    if (seedField) return seedField.name;
+    const account = accounts.find((a) => `qb-account-${a.id}` === activeId);
+    if (account) return account.name;
+    return null;
+  };
+
+  const activeLabel = getActiveLabel();
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -113,7 +123,7 @@ export function DatarailsWidgetEditor({
         {/* Two-panel */}
         <div className="flex flex-1 min-h-0">
           <div className="w-[280px] shrink-0">
-            <FieldCatalog />
+            <FieldCatalog accounts={accounts} entities={entities} isLoading={isLoading} />
           </div>
           <div className="flex-1 min-w-0">
             <WidgetPreview config={config} />
@@ -123,9 +133,9 @@ export function DatarailsWidgetEditor({
 
       {/* Drag overlay */}
       <DragOverlay>
-        {activeField && (
+        {activeLabel && (
           <div className="rounded-md border border-primary bg-card px-3 py-1.5 text-sm font-medium shadow-lg">
-            {activeField.name}
+            {activeLabel}
           </div>
         )}
       </DragOverlay>
