@@ -178,6 +178,7 @@ type CardVisualization = 'kpi' | 'bar' | 'stackedBar' | 'line';
 interface ManagementSnapshotDashboardProps {
   isEditMode?: boolean;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
+  onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
   cardConfigs?: Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>;
 }
 
