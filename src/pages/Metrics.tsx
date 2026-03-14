@@ -166,14 +166,24 @@ const formatPercent = (value: number) => `${value}%`;
 function renderChartContent(
   widget: MetricWidgetConfig,
   metrics: ReturnType<typeof useMetricsData>['data'],
-  qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data']
+  qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data'],
+  hsMetrics?: ReturnType<typeof useHubSpotMetrics>['data'],
 ) {
-  if (!metrics && !widget.dataSource.startsWith('qb-')) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-') && !widget.dataSource.startsWith('hs-')) return null;
   if (widget.dataSource.startsWith('qb-') && !qbMetrics) {
     return (
       <ChartWidgetContent title={widget.title}>
         <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
           Connect QuickBooks to see this data
+        </div>
+      </ChartWidgetContent>
+    );
+  }
+  if (widget.dataSource.startsWith('hs-') && !hsMetrics) {
+    return (
+      <ChartWidgetContent title={widget.title}>
+        <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
+          Connect HubSpot to see this data
         </div>
       </ChartWidgetContent>
     );
