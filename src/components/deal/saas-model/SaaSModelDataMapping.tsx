@@ -363,6 +363,23 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     acceptAll();
   }, [suggestions, handleAcceptSuggestion, acceptAll]);
 
+  // Upload file to storage immediately and persist reference
+  const persistFileToStorage = useCallback(async (file: File) => {
+    try {
+      const filePath = `${dealId}/mapping-source/${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('deal-files')
+        .upload(filePath, file, { upsert: true });
+      if (!uploadError) {
+        storedFilePathRef.current = filePath;
+        return filePath;
+      }
+    } catch (err) {
+      console.warn('Failed to persist file to storage:', err);
+    }
+    return null;
+  }, [dealId]);
+
   const handleSaveProgress = useCallback(async () => {
     if (!selectedFile || Object.keys(fieldMappings).length === 0) return;
     setIsSaving(true);
@@ -429,23 +446,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       return { file, sheets: [], analysis: { status: 'error', type: 'Unknown', totalMatches: 0, isMatches: 0, bsMatches: 0, matchedFields: [] } };
     }
   }, []);
-
-  // Upload file to storage immediately and persist reference
-  const persistFileToStorage = useCallback(async (file: File) => {
-    try {
-      const filePath = `${dealId}/mapping-source/${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('deal-files')
-        .upload(filePath, file, { upsert: true });
-      if (!uploadError) {
-        storedFilePathRef.current = filePath;
-        return filePath;
-      }
-    } catch (err) {
-      console.warn('Failed to persist file to storage:', err);
-    }
-    return null;
-  }, [dealId]);
 
   const handleFilesSelected = useCallback(async (files: FileList) => {
     setIsProcessing(true);
