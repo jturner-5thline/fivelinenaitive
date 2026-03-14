@@ -4125,6 +4125,7 @@ export type Database = {
           file_name: string
           file_size: number | null
           file_storage_path: string | null
+          flipped_columns: Json | null
           flipped_rows: Json | null
           id: string
           mapped_at: string | null
@@ -4138,6 +4139,7 @@ export type Database = {
           file_name: string
           file_size?: number | null
           file_storage_path?: string | null
+          flipped_columns?: Json | null
           flipped_rows?: Json | null
           id?: string
           mapped_at?: string | null
@@ -4151,6 +4153,7 @@ export type Database = {
           file_name?: string
           file_size?: number | null
           file_storage_path?: string | null
+          flipped_columns?: Json | null
           flipped_rows?: Json | null
           id?: string
           mapped_at?: string | null

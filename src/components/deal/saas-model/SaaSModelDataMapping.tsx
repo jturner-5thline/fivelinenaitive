@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter, Eraser } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter, Eraser, ArrowUpDown } from 'lucide-react';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -89,6 +89,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   // ── Batch 2: Flip ± state ──
   const [flippedRows, setFlippedRows] = useState<Set<number>>(new Set());
+  const [flippedColumns, setFlippedColumns] = useState<Set<number>>(new Set());
+
+  // ── Sign-flip mode state ──
+  const [signFlipMode, setSignFlipMode] = useState(false);
+  const [signFlipSelectedRows, setSignFlipSelectedRows] = useState<Set<number>>(new Set());
+  const [signFlipSelectedCols, setSignFlipSelectedCols] = useState<Set<number>>(new Set());
 
   // ── Batch 2: Zoom state ──
   const [zoomLevel, setZoomLevel] = useState<number>(() => {
@@ -109,9 +115,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleToggleEraser = useCallback(() => {
     setEraserMode(prev => {
       if (prev) {
-        // Exiting eraser mode — clear selections
         setEraserSelectedRows(new Set());
         setEraserSelectedCols(new Set());
+      } else {
+        // Exit sign-flip mode when entering eraser
+        setSignFlipMode(false);
+        setSignFlipSelectedRows(new Set());
+        setSignFlipSelectedCols(new Set());
       }
       return !prev;
     });
@@ -236,6 +246,20 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       });
     }
 
+    // Fix flipped columns similarly
+    if (colsToDelete.size > 0) {
+      const sortedDeletedCols2 = Array.from(colsToDelete).sort((a, b) => a - b);
+      setFlippedColumns(prev => {
+        const next = new Set<number>();
+        for (const c of prev) {
+          if (colsToDelete.has(c)) continue;
+          const offset = sortedDeletedCols2.filter(d => d < c).length;
+          next.add(c - offset);
+        }
+        return next;
+      });
+    }
+
     const totalRemoved = rowsToDelete.size + colsToDelete.size;
     toast.success(`Removed ${rowsToDelete.size > 0 ? `${rowsToDelete.size} row${rowsToDelete.size > 1 ? 's' : ''}` : ''}${rowsToDelete.size > 0 && colsToDelete.size > 0 ? ' and ' : ''}${colsToDelete.size > 0 ? `${colsToDelete.size} column${colsToDelete.size > 1 ? 's' : ''}` : ''}`);
 
@@ -304,6 +328,77 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     toast.info(`Toggled ± sign on ${rowIndices.length} row${rowIndices.length > 1 ? 's' : ''}`);
   }, []);
 
+  // Flip columns toggle
+  const handleFlipColumns = useCallback((colIndices: number[]) => {
+    setFlippedColumns(prev => {
+      const next = new Set(prev);
+      colIndices.forEach(c => {
+        if (next.has(c)) next.delete(c); else next.add(c);
+      });
+      return next;
+    });
+    toast.info(`Toggled ± sign on ${colIndices.length} column${colIndices.length > 1 ? 's' : ''}`);
+  }, []);
+
+  // Sign-flip mode toggle
+  const handleToggleSignFlip = useCallback(() => {
+    setSignFlipMode(prev => {
+      if (prev) {
+        setSignFlipSelectedRows(new Set());
+        setSignFlipSelectedCols(new Set());
+      } else {
+        // Exit eraser mode when entering sign-flip
+        setEraserMode(false);
+        setEraserSelectedRows(new Set());
+        setEraserSelectedCols(new Set());
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleSignFlipRowClick = useCallback((rowIdx: number, e: React.MouseEvent) => {
+    setSignFlipSelectedRows(prev => {
+      const next = new Set(prev);
+      if (e.shiftKey && prev.size > 0) {
+        const last = Array.from(prev).pop()!;
+        const start = Math.min(last, rowIdx);
+        const end = Math.max(last, rowIdx);
+        for (let i = start; i <= end; i++) next.add(i);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (next.has(rowIdx)) next.delete(rowIdx); else next.add(rowIdx);
+      } else {
+        if (next.has(rowIdx) && next.size === 1) next.clear();
+        else { next.clear(); next.add(rowIdx); }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSignFlipColClick = useCallback((colIdx: number, e: React.MouseEvent) => {
+    setSignFlipSelectedCols(prev => {
+      const next = new Set(prev);
+      if (e.shiftKey && prev.size > 0) {
+        const last = Array.from(prev).pop()!;
+        const start = Math.min(last, colIdx);
+        const end = Math.max(last, colIdx);
+        for (let i = start; i <= end; i++) next.add(i);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (next.has(colIdx)) next.delete(colIdx); else next.add(colIdx);
+      } else {
+        if (next.has(colIdx) && next.size === 1) next.clear();
+        else { next.clear(); next.add(colIdx); }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleApplySignFlip = useCallback(() => {
+    if (signFlipSelectedRows.size > 0) handleFlipRows(Array.from(signFlipSelectedRows));
+    if (signFlipSelectedCols.size > 0) handleFlipColumns(Array.from(signFlipSelectedCols));
+    setSignFlipSelectedRows(new Set());
+    setSignFlipSelectedCols(new Set());
+  }, [signFlipSelectedRows, signFlipSelectedCols, handleFlipRows, handleFlipColumns]);
+
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
   const hasUnsavedMappings = mappedCount > lastSavedCount;
@@ -332,14 +427,15 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         mapped_at: new Date().toISOString(),
         excluded_columns: Array.from(excludedColumns),
         flipped_rows: Array.from(flippedRows),
+        flipped_columns: Array.from(flippedColumns),
       }, { onConflict: 'deal_id' });
       setLastSavedCount(count);
     } catch (err) {
       console.warn('Auto-save mappings failed:', err);
     }
-  }, [dealId, excludedColumns, flippedRows]);
+  }, [dealId, excludedColumns, flippedRows, flippedColumns]);
 
-  // Watch fieldMappings/excludedColumns/flippedRows changes and auto-save with debounce
+  // Watch fieldMappings/excludedColumns/flippedRows/flippedColumns changes and auto-save with debounce
   useEffect(() => {
     if (isRestoringRef.current) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
@@ -347,7 +443,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       autoSaveMappings(fieldMappings, selectedFile);
     }, 1500);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [fieldMappings, selectedFile, autoSaveMappings, excludedColumns, flippedRows]);
+  }, [fieldMappings, selectedFile, autoSaveMappings, excludedColumns, flippedRows, flippedColumns]);
 
   // Browser beforeunload guard
   useEffect(() => {
@@ -415,6 +511,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         }
         if (Array.isArray(saved.flipped_rows) && !cancelled) {
           setFlippedRows(new Set(saved.flipped_rows));
+        }
+        if (Array.isArray((saved as any).flipped_columns) && !cancelled) {
+          setFlippedColumns(new Set((saved as any).flipped_columns));
         }
       } catch (err) {
         console.warn('Could not restore saved mappings:', err);
@@ -626,7 +725,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     if (!selectedFile || Object.keys(fieldMappings).length === 0) return;
     setIsSaving(true);
     try {
-      applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns);
+      applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns, flippedColumns);
       const companyId = await getCompanyId();
       if (companyId) await logPatterns(companyId, dealId);
 
@@ -646,6 +745,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         mapped_at: new Date().toISOString(),
         excluded_columns: Array.from(excludedColumns),
         flipped_rows: Array.from(flippedRows),
+        flipped_columns: Array.from(flippedColumns),
       }, { onConflict: 'deal_id' });
 
       const count = Object.keys(fieldMappings).length;
@@ -653,7 +753,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       toast.success(`Saved ${count} mapped ${count === 1 ? 'field' : 'fields'} — Dashboard, IS & BS updated`);
     } catch { toast.error('Failed to save mapping progress'); }
     finally { setIsSaving(false); }
-  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage]);
+  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage, flippedRows, flippedColumns, excludedColumns]);
 
   // Keep ref in sync for imperative handle
   useEffect(() => { handleSaveProgressRef.current = handleSaveProgress; }, [handleSaveProgress]);
@@ -850,9 +950,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   const handleRecalculate = useCallback(() => {
     if (!selectedFile) return;
-    applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns);
+    applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns, flippedColumns);
     toast.success('Model recalculated — Dashboard, IS & BS updated');
-  }, [selectedFile, fieldMappings, updateModel, flippedRows, excludedColumns]);
+  }, [selectedFile, fieldMappings, updateModel, flippedRows, excludedColumns, flippedColumns]);
 
   const handleRecalculateWithLog = useCallback(async () => {
     const companyId = await getCompanyId();
@@ -1565,12 +1665,32 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                     <button key={i} className={cn(
                       "px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors",
                       i === activeSheet ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-                    )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); }}>
+                    )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); setSignFlipSelectedRows(new Set()); setSignFlipSelectedCols(new Set()); }}>
                       {s.name}
                     </button>
                   ))}
                 </div>
                 <div className="flex items-center gap-1 px-2">
+                  {signFlipMode && (signFlipSelectedRows.size > 0 || signFlipSelectedCols.size > 0) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[10px] gap-1 px-2 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+                      onClick={handleApplySignFlip}
+                    >
+                      <ArrowUpDown className="h-3 w-3" />
+                      Flip ± {signFlipSelectedRows.size > 0 ? `${signFlipSelectedRows.size}R` : ''}{signFlipSelectedRows.size > 0 && signFlipSelectedCols.size > 0 ? ' · ' : ''}{signFlipSelectedCols.size > 0 ? `${signFlipSelectedCols.size}C` : ''}
+                    </Button>
+                  )}
+                  <Button
+                    variant={signFlipMode ? "default" : "ghost"}
+                    size="sm"
+                    className={cn("h-6 w-6 p-0", signFlipMode && "bg-amber-600 hover:bg-amber-600/90 text-white")}
+                    onClick={handleToggleSignFlip}
+                    title={signFlipMode ? "Exit sign-flip mode" : "Sign flip — select rows/columns to invert ±"}
+                  >
+                    <ArrowUpDown className="h-3.5 w-3.5" />
+                  </Button>
                   {eraserMode && (eraserSelectedRows.size > 0 || eraserSelectedCols.size > 0) && (
                     <Button
                       variant="destructive"
@@ -1610,13 +1730,18 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               <th
                                 className={cn(
                                   "py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none",
-                                  isColSelected && !eraserMode && "bg-primary/10 ring-1 ring-inset ring-primary/30",
+                                  isColSelected && !eraserMode && !signFlipMode && "bg-primary/10 ring-1 ring-inset ring-primary/30",
                                   eraserMode && eraserSelectedCols.has(colIdx) && "bg-destructive/20 ring-1 ring-inset ring-destructive/40",
+                                  signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-amber-500/20 ring-1 ring-inset ring-amber-500/40",
+                                  flippedColumns.has(colIdx) && !signFlipMode && !eraserMode && "bg-amber-500/10",
                                 )}
-                                onClick={(e) => eraserMode ? handleEraserColClick(colIdx, e) : handleColumnHeaderClick(colIdx, e)}
+                                onClick={(e) => signFlipMode ? handleSignFlipColClick(colIdx, e) : eraserMode ? handleEraserColClick(colIdx, e) : handleColumnHeaderClick(colIdx, e)}
                               >
                                 <div className="flex flex-col items-end">
                                   <div className="flex items-center gap-1 justify-end w-full">
+                                    {flippedColumns.has(colIdx) && (
+                                      <span className="text-[8px] font-bold text-amber-500" title="Sign flipped (±)">±</span>
+                                    )}
                                     <span className="text-[8px] text-muted-foreground/40">
                                       {String.fromCharCode(65 + (colIdx % 26))}{colIdx >= 26 ? String.fromCharCode(65 + Math.floor(colIdx / 26) - 1) : ''}
                                     </span>
@@ -1640,10 +1765,18 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               <ContextMenuItem onClick={() => handleExcludeColumns([colIdx])}>
                                 <EyeOff className="h-3.5 w-3.5 mr-2" /> Exclude Column
                               </ContextMenuItem>
+                              <ContextMenuItem onClick={() => handleFlipColumns([colIdx])}>
+                                <span className="font-bold mr-2 text-xs">±</span> {flippedColumns.has(colIdx) ? 'Remove Flip' : 'Flip +/− Sign'}
+                              </ContextMenuItem>
                               {selectedColumns.size > 1 && (
+                                <>
                                 <ContextMenuItem onClick={() => handleExcludeColumns(Array.from(selectedColumns))}>
                                   <EyeOff className="h-3.5 w-3.5 mr-2" /> Exclude {selectedColumns.size} Selected
                                 </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleFlipColumns(Array.from(selectedColumns))}>
+                                  <span className="font-bold mr-2 text-xs">±</span> Flip {selectedColumns.size} Selected
+                                </ContextMenuItem>
+                                </>
                               )}
                               <ContextMenuSeparator />
                               <ContextMenuItem onClick={handleRestoreAllColumns} disabled={excludedColumns.size === 0}>
@@ -1720,10 +1853,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             "cursor-pointer transition-colors border-b border-border/5",
                             rowBgClass, leftBorderClass,
                             eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-destructive/15 ring-1 ring-inset ring-destructive/30",
+                            signFlipMode && signFlipSelectedRows.has(rowIdx) && "!bg-amber-500/15 ring-1 ring-inset ring-amber-500/30",
                           )}
-                          draggable={!isHeaderRow && !eraserMode}
+                          draggable={!isHeaderRow && !eraserMode && !signFlipMode}
                           onDragStart={e => {
-                            if (isHeaderRow || eraserMode) { e.preventDefault(); return; }
+                            if (isHeaderRow || eraserMode || signFlipMode) { e.preventDefault(); return; }
                             setDraggingRowIdx(rowIdx);
                             e.dataTransfer.effectAllowed = 'move';
                             e.dataTransfer.setData('text/plain', String(rowIdx));
@@ -1736,12 +1870,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           }}
                           onDragEnd={() => setDraggingRowIdx(null)}
                           onClick={e => {
+                            if (signFlipMode) { handleSignFlipRowClick(rowIdx, e); return; }
                             if (eraserMode) { handleEraserRowClick(rowIdx, e); return; }
                             if (!isHeaderRow) handleRowClick(rowIdx, e);
                           }}>
                           <td className={cn(
                             "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
-                            eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/30" : stickyBg,
+                            signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-amber-500/30" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/30" : stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
                               {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/60" /> : rowIdx + 1}
@@ -1803,16 +1938,20 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             if (excludedColumns.has(actualCol)) return null;
                             const cellVal = row[actualCol];
                             const isNum = isNumericCell(cellVal);
-                            // Apply flip multiplier for display
+                            const isColFlipped = flippedColumns.has(actualCol);
+                            // Apply flip multiplier for display (row flip XOR column flip)
                             let displayVal = cellVal;
-                            if (isFlipped && isNum && cellVal !== null && cellVal !== undefined) {
+                            const shouldFlip = isFlipped !== isColFlipped; // XOR: flip if one but not both
+                            if (shouldFlip && isNum && cellVal !== null && cellVal !== undefined) {
                               const numVal = typeof cellVal === 'number' ? cellVal : parseFloat(String(cellVal).replace(/[,$]/g, ''));
                               if (!isNaN(numVal)) displayVal = -numVal;
                             }
                             return (
                               <td key={actualCol} className={cn(
                                 "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
-                                isNum ? "text-right" : "text-left"
+                                isNum ? "text-right" : "text-left",
+                                isColFlipped && !signFlipMode && "bg-amber-500/5",
+                                signFlipMode && signFlipSelectedCols.has(actualCol) && "bg-amber-500/15",
                               )}>
                                 {formatCellValue(displayVal)}
                               </td>
