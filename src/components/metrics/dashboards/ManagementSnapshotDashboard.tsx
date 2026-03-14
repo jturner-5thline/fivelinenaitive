@@ -185,6 +185,7 @@ interface ManagementSnapshotDashboardProps {
 export function ManagementSnapshotDashboard({
   isEditMode = false,
   onEditCard,
+  onTimeWindowChange,
   cardConfigs = {},
 }: ManagementSnapshotDashboardProps) {
   const { data: metrics, isLoading } = useMetricsData();
