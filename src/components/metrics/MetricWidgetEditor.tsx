@@ -26,12 +26,14 @@ import {
   MetricWidgetType, 
   MetricChartType, 
   MetricWidgetSize,
+  ComparisonPeriod,
   METRIC_WIDGET_DATA_SOURCES 
 } from '@/contexts/MetricsWidgetsContext';
 import { FormulaBuilder } from './FormulaBuilder';
 import { MetricTemplateGallery } from './MetricTemplateGallery';
 import { FormulaNode, FormulaResultType } from '@/lib/customMetricEngine';
 import { useCustomMetrics } from '@/hooks/useCustomMetrics';
+import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
 
 interface MetricWidgetEditorProps {
   widget?: MetricWidgetConfig;
