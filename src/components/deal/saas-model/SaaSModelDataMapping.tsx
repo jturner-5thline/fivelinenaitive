@@ -1110,13 +1110,29 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* Detected column headers preview */}
       {detectedHeaders.headers.length > 0 && (
-        <div className="flex items-center gap-1.5 px-1 overflow-x-auto">
-          <span className="text-[9px] text-muted-foreground/60 shrink-0">Columns:</span>
-          {detectedHeaders.headers.filter(h => h).slice(0, 18).map((h, i) => (
-            <Badge key={i} variant="outline" className="text-[8px] h-4 px-1.5 shrink-0 whitespace-nowrap">{h}</Badge>
-          ))}
-          {detectedHeaders.headers.filter(h => h).length > 18 && (
-            <span className="text-[8px] text-muted-foreground/50">+{detectedHeaders.headers.filter(h => h).length - 18}</span>
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5 px-1 overflow-x-auto">
+            <span className="text-[9px] text-muted-foreground/60 shrink-0">Columns:</span>
+            {detectedHeaders.headers.filter(h => h).slice(0, 18).map((h, i) => {
+              const hasWarning = dateWarnings.some(w => w.colIndex === i);
+              return (
+                <Badge key={i} variant="outline" className={cn("text-[8px] h-4 px-1.5 shrink-0 whitespace-nowrap", hasWarning && "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400")}>
+                  {hasWarning && <AlertTriangle className="h-2 w-2 mr-0.5" />}
+                  {h}
+                </Badge>
+              );
+            })}
+            {detectedHeaders.headers.filter(h => h).length > 18 && (
+              <span className="text-[8px] text-muted-foreground/50">+{detectedHeaders.headers.filter(h => h).length - 18}</span>
+            )}
+          </div>
+          {dateWarnings.length > 0 && (
+            <div className="flex items-center gap-1.5 px-1">
+              <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
+              <span className="text-[9px] text-amber-500">
+                {dateWarnings.length} date gap{dateWarnings.length > 1 ? 's' : ''} detected: {dateWarnings.map(w => w.message).join('; ')}
+              </span>
+            </div>
           )}
         </div>
       )}
