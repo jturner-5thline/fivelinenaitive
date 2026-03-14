@@ -89,6 +89,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   // ── Batch 2: Flip ± state ──
   const [flippedRows, setFlippedRows] = useState<Set<number>>(new Set());
+  const [flippedColumns, setFlippedColumns] = useState<Set<number>>(new Set());
+
+  // ── Sign-flip mode state ──
+  const [signFlipMode, setSignFlipMode] = useState(false);
+  const [signFlipSelectedRows, setSignFlipSelectedRows] = useState<Set<number>>(new Set());
+  const [signFlipSelectedCols, setSignFlipSelectedCols] = useState<Set<number>>(new Set());
 
   // ── Batch 2: Zoom state ──
   const [zoomLevel, setZoomLevel] = useState<number>(() => {
