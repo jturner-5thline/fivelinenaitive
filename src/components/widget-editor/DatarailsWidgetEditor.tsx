@@ -14,7 +14,6 @@ import {
   WidgetConfig,
   DEFAULT_WIDGET_CONFIG,
   ValueConfig,
-  FilterConfig,
   SEED_FIELDS,
 } from './widgetTypes';
 import { FieldCatalog } from './FieldCatalog';
