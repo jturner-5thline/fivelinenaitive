@@ -1517,6 +1517,33 @@ export default function Metrics() {
     setEditorOpen(true);
   };
 
+  const editorInitialConfig = useMemo<DatarailsWidgetConfig>(() => {
+    if (!editingWidget) return DEFAULT_WIDGET_CONFIG;
+
+    const persisted = editingWidget.datarailsConfig as Partial<DatarailsWidgetConfig> | undefined;
+    if (persisted) {
+      return {
+        ...DEFAULT_WIDGET_CONFIG,
+        ...persisted,
+        id: persisted.id ?? editingWidget.id,
+        name: persisted.name ?? editingWidget.title,
+      };
+    }
+
+    return {
+      ...DEFAULT_WIDGET_CONFIG,
+      id: editingWidget.id,
+      name: editingWidget.title || DEFAULT_WIDGET_CONFIG.name,
+      type: editingWidget.type === 'stat'
+        ? 'kpi'
+        : editingWidget.chartType === 'line'
+          ? 'line'
+          : editingWidget.chartType === 'bar'
+            ? 'bar'
+            : 'columnChart',
+    };
+  }, [editingWidget]);
+
   const handleSave = (widgetData: Omit<MetricWidgetConfig, 'id' | 'createdAt'>) => {
     if (editingManagementSnapshotCardId) {
       setManagementSnapshotCards(prev => ({
