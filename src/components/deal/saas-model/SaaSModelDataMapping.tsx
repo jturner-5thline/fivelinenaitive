@@ -491,6 +491,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         file_storage_path: storagePath,
         analysis_result: selectedFile.analysis,
         mapped_at: new Date().toISOString(),
+        excluded_columns: Array.from(excludedColumns),
+        flipped_rows: Array.from(flippedRows),
       }, { onConflict: 'deal_id' });
 
       const count = Object.keys(fieldMappings).length;
