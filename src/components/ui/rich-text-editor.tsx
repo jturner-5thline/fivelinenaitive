@@ -122,13 +122,19 @@ export function RichTextEditor({
         class: 'prose prose-sm max-w-none focus:outline-none min-h-[80px] px-3 py-2',
       },
       handleKeyDown: (_view, event) => {
-        // Enter without Shift saves (unless mention popup is active)
+        // Shift+Enter inserts a hard break (line break within same bullet)
+        if (event.key === 'Enter' && event.shiftKey) {
+          // Let tiptap handle Shift+Enter as a hard break (default behavior)
+          return false;
+        }
+        // Plain Enter: if in a bullet list, let tiptap create a new bullet (default behavior)
+        // If NOT in a list, toggle bullet list on so Enter creates bullets
         if (event.key === 'Enter' && !event.shiftKey) {
-          if (!mentionActiveRef.current) {
-            event.preventDefault();
-            onSaveRef.current();
-            return true;
+          if (mentionActiveRef.current) {
+            return false; // Let mention dropdown handle Enter
           }
+          // Let tiptap handle Enter normally (creates new list item in bullet list, new paragraph otherwise)
+          return false;
         }
         if (event.key === 'Escape') {
           onCancelRef.current();
