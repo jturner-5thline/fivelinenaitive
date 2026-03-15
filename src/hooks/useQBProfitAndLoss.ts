@@ -206,7 +206,7 @@ function parseQBProfitAndLoss(report: QBReport, realmId: string, reportDate: str
 }
 
 // Convert UI dateRange string to start/end date strings
-function dateRangeToDates(dateRange?: string): { start_date: string; end_date: string } | null {
+export function dateRangeToDates(dateRange?: string): { start_date: string; end_date: string } | null {
   if (!dateRange) return null;
   const now = new Date();
   let start: Date;
@@ -232,6 +232,40 @@ function dateRangeToDates(dateRange?: string): { start_date: string; end_date: s
     start_date: format(start, 'yyyy-MM-dd'),
     end_date: format(end, 'yyyy-MM-dd'),
   };
+}
+
+// Compute comparison date range based on mode and current dateRange
+export function getComparisonDateRange(
+  dateRange: string | undefined,
+  comparisonMode: 'budget' | 'prior_year' | 'prior_period'
+): { start_date: string; end_date: string } | null {
+  const dates = dateRangeToDates(dateRange);
+  if (!dates) return null;
+
+  const startDate = new Date(dates.start_date);
+  const endDate = new Date(dates.end_date);
+
+  if (comparisonMode === 'prior_year') {
+    return {
+      start_date: format(subYears(startDate, 1), 'yyyy-MM-dd'),
+      end_date: format(subYears(endDate, 1), 'yyyy-MM-dd'),
+    };
+  }
+
+  if (comparisonMode === 'prior_period') {
+    // Shift back by the same number of months
+    const diffMs = endDate.getTime() - startDate.getTime();
+    const diffMonths = Math.round(diffMs / (1000 * 60 * 60 * 24 * 30));
+    const priorEnd = subMonths(startDate, 1);
+    const priorStart = subMonths(startDate, diffMonths);
+    return {
+      start_date: format(startOfMonth(priorStart), 'yyyy-MM-dd'),
+      end_date: format(endOfMonth(priorEnd), 'yyyy-MM-dd'),
+    };
+  }
+
+  // 'budget' — no QB comparison data available
+  return null;
 }
 
 // ─── Hook ──────────────────────────────────────────────────────

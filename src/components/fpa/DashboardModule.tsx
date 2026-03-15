@@ -105,9 +105,9 @@ export function DashboardModule() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+              <SelectItem value="prior_year">vs Prior Year</SelectItem>
+                <SelectItem value="prior_period">vs Prior Period</SelectItem>
                 <SelectItem value="budget">vs Budget</SelectItem>
-                <SelectItem value="forecast">vs Forecast</SelectItem>
-                <SelectItem value="prior_year">vs Prior Year</SelectItem>
               </SelectContent>
             </Select>
           )}
