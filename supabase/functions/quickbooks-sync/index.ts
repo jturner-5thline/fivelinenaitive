@@ -294,17 +294,22 @@ serve(async (req) => {
           try {
             const data = await fetchQBData("query?query=SELECT * FROM Deposit MAXRESULTS 1000");
             const items = data.QueryResponse?.Deposit || [];
+            const now = new Date().toISOString();
+            const rows = items.map((d: any) => ({
+              user_id: user.id, realm_id: realmId, qb_id: d.Id, txn_type: "Deposit",
+              txn_date: d.TxnDate, total_amt: d.TotalAmt,
+              account_ref_id: d.DepositToAccountRef?.value,
+              account_ref_name: d.DepositToAccountRef?.name,
+              private_note: d.PrivateNote, line_items: d.Line, metadata: d,
+              synced_at: now,
+            }));
             let synced = 0;
-            for (const d of items) {
-              const { error } = await supabase.from("quickbooks_bank_transactions").upsert({
-                user_id: user.id, realm_id: realmId, qb_id: d.Id, txn_type: "Deposit",
-                txn_date: d.TxnDate, total_amt: d.TotalAmt,
-                account_ref_id: d.DepositToAccountRef?.value,
-                account_ref_name: d.DepositToAccountRef?.name,
-                private_note: d.PrivateNote, line_items: d.Line, metadata: d,
-                synced_at: new Date().toISOString(),
-              }, { onConflict: "realm_id,qb_id,txn_type" });
-              if (!error) synced++;
+            const BATCH_SIZE = 100;
+            for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+              const batch = rows.slice(i, i + BATCH_SIZE);
+              const { error } = await supabase.from("quickbooks_bank_transactions").upsert(batch, { onConflict: "realm_id,qb_id,txn_type" });
+              if (!error) synced += batch.length;
+              else console.error("[QuickBooks Sync] Bank deposit batch error:", error.message);
             }
             results.bank_deposits = { synced, errors: items.length - synced };
           } catch (e) {
@@ -318,17 +323,22 @@ serve(async (req) => {
           try {
             const data = await fetchQBData("query?query=SELECT * FROM Transfer MAXRESULTS 1000");
             const items = data.QueryResponse?.Transfer || [];
+            const now = new Date().toISOString();
+            const rows = items.map((t: any) => ({
+              user_id: user.id, realm_id: realmId, qb_id: t.Id, txn_type: "Transfer",
+              txn_date: t.TxnDate, total_amt: t.Amount,
+              account_ref_id: t.FromAccountRef?.value,
+              account_ref_name: t.FromAccountRef?.name,
+              private_note: t.PrivateNote, metadata: t,
+              synced_at: now,
+            }));
             let synced = 0;
-            for (const t of items) {
-              const { error } = await supabase.from("quickbooks_bank_transactions").upsert({
-                user_id: user.id, realm_id: realmId, qb_id: t.Id, txn_type: "Transfer",
-                txn_date: t.TxnDate, total_amt: t.Amount,
-                account_ref_id: t.FromAccountRef?.value,
-                account_ref_name: t.FromAccountRef?.name,
-                private_note: t.PrivateNote, metadata: t,
-                synced_at: new Date().toISOString(),
-              }, { onConflict: "realm_id,qb_id,txn_type" });
-              if (!error) synced++;
+            const BATCH_SIZE = 100;
+            for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+              const batch = rows.slice(i, i + BATCH_SIZE);
+              const { error } = await supabase.from("quickbooks_bank_transactions").upsert(batch, { onConflict: "realm_id,qb_id,txn_type" });
+              if (!error) synced += batch.length;
+              else console.error("[QuickBooks Sync] Bank transfer batch error:", error.message);
             }
             results.bank_transfers = { synced, errors: items.length - synced };
           } catch (e) {
