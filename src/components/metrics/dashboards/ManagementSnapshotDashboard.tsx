@@ -386,16 +386,22 @@ export function ManagementSnapshotDashboard({
     };
   };
 
+  const isHidden = (cardId: EditableManagementSnapshotCardId) => hiddenCards.includes(cardId);
+
   return (
     <div className="space-y-6">
       {/* Row 1: Revenue Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <GenericDashboardCard
-          {...getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd')}
-        />
-        <GenericDashboardCard
-          {...getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd')}
-        />
+        {!isHidden('debt-revenue') && (
+          <GenericDashboardCard
+            {...getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd')}
+          />
+        )}
+        {!isHidden('finserv-revenue') && (
+          <GenericDashboardCard
+            {...getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd')}
+          />
+        )}
 
         {/* Total Revenue Summary — static for now */}
         <Card>
@@ -413,30 +419,40 @@ export function ManagementSnapshotDashboard({
 
       {/* Row 2: Clients Signed & A/R */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <GenericDashboardCard
-          {...getCardProps('clients-signed-debt', 'Clients Signed - Debt')}
-          chartHeight={180}
-        />
-        <GenericDashboardCard
-          {...getCardProps('clients-signed-finserv', 'Clients Signed - FinServ')}
-          chartHeight={180}
-        />
-        <GenericDashboardCard
-          {...getCardProps('outstanding-ar', 'Outstanding A/R')}
-          chartHeight={180}
-        />
+        {!isHidden('clients-signed-debt') && (
+          <GenericDashboardCard
+            {...getCardProps('clients-signed-debt', 'Clients Signed - Debt')}
+            chartHeight={180}
+          />
+        )}
+        {!isHidden('clients-signed-finserv') && (
+          <GenericDashboardCard
+            {...getCardProps('clients-signed-finserv', 'Clients Signed - FinServ')}
+            chartHeight={180}
+          />
+        )}
+        {!isHidden('outstanding-ar') && (
+          <GenericDashboardCard
+            {...getCardProps('outstanding-ar', 'Outstanding A/R')}
+            chartHeight={180}
+          />
+        )}
       </div>
 
       {/* Row 3: Profit & Active Deals */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <GenericDashboardCard
-          {...getCardProps('debt-profit', 'Debt Profit')}
-          chartHeight={180}
-        />
-        <GenericDashboardCard
-          {...getCardProps('finserv-profit', 'FinServ Profit', 'hsl(var(--chart-4))')}
-          chartHeight={180}
-        />
+        {!isHidden('debt-profit') && (
+          <GenericDashboardCard
+            {...getCardProps('debt-profit', 'Debt Profit')}
+            chartHeight={180}
+          />
+        )}
+        {!isHidden('finserv-profit') && (
+          <GenericDashboardCard
+            {...getCardProps('finserv-profit', 'FinServ Profit', 'hsl(var(--chart-4))')}
+            chartHeight={180}
+          />
+        )}
         <NoPermissionCard title="Active Deals" />
       </div>
     </div>
