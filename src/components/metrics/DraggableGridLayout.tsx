@@ -1,12 +1,8 @@
-import { ReactNode, useMemo } from 'react';
-import ReactGridLayout from 'react-grid-layout';
-const { Responsive, WidthProvider } = ReactGridLayout;
+import { ReactNode, useMemo, useRef, useState, useEffect } from 'react';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { cn } from '@/lib/utils';
 import { GridLayoutItem } from '@/hooks/useGridLayout';
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface DraggableGridLayoutProps {
   layout: GridLayoutItem[];
