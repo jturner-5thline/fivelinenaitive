@@ -1577,6 +1577,11 @@ export default function Metrics() {
 
   const statWidgets = widgets.filter((w) => getWidgetDisplayType(w) === 'stat');
   const chartWidgets = widgets.filter((w) => getWidgetDisplayType(w) === 'chart');
+  const allWidgetIds = useMemo(() => widgets.map(w => w.id), [widgets]);
+  const { layout: gridLayout, saveLayout: saveGridLayout, resetLayout: resetGridLayout } = useGridLayout(
+    `metrics-${selectedDashboard}`,
+    allWidgetIds
+  );
 
   return (
     <>
