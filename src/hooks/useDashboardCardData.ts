@@ -65,6 +65,7 @@ export function useDashboardCardData(
   return useMemo<DashboardCardDataResult>(() => {
     if (hasFullConfig) {
       const data = previewData ?? [];
+      console.log('[DashboardCardData] Path A (datarailsConfig):', { dataLength: data.length, previewLoading, timeWindow });
       const keys = new Set<string>();
       for (const pt of data) {
         for (const k of Object.keys(pt)) {
@@ -78,6 +79,7 @@ export function useDashboardCardData(
         }
         return sum;
       }, 0);
+      console.log('[DashboardCardData] Path A result:', { total, seriesKeys, chartDataSample: data.slice(0, 5) });
       return { chartData: data, total, seriesKeys, isLoading: previewLoading };
     }
 
