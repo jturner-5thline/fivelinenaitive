@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -87,17 +87,26 @@ const fmtFull = (v: number) =>
 
 interface InteractivePLTableProps {
   comparisonMode: 'budget' | 'forecast' | 'prior_year';
+  dateRange?: string;
 }
 
-export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) {
+export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<string>('all');
 
   const { data: entities = [] } = useQBEntities();
-  const { data: plReports, isLoading } = useQBProfitAndLoss(selectedEntity || 'all');
+  const { data: plReports, isLoading, syncForDateRange, isSyncing } = useQBProfitAndLoss(selectedEntity || 'all', dateRange);
 
-  // Use first report or merge — for now use first
+  // Auto-sync when date range changes and no matching data exists
+  const lastSyncedRange = useRef<string | undefined>();
+  useEffect(() => {
+    if (!isLoading && plReports === null && dateRange && dateRange !== lastSyncedRange.current && !isSyncing) {
+      lastSyncedRange.current = dateRange;
+      syncForDateRange().catch(console.error);
+    }
+  }, [isLoading, plReports, dateRange, isSyncing, syncForDateRange]);
+
   const activePL = useMemo(() => {
     if (!plReports || plReports.length === 0) return null;
     if (selectedEntity !== 'all') return plReports[0];
@@ -320,15 +329,18 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {isLoading && (
+        {(isLoading || isSyncing) && (
           <div className="space-y-2">
+            {isSyncing && (
+              <p className="text-xs text-muted-foreground animate-pulse">Fetching P&L for selected date range…</p>
+            )}
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-6 w-full" />
             ))}
           </div>
         )}
 
-        {!isLoading && plTree.length === 0 && (
+        {!isLoading && !isSyncing && plTree.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <FileText className="h-8 w-8 text-muted-foreground/40 mb-3" />
             <p className="text-sm font-medium">No P&L Data Available</p>
@@ -338,7 +350,7 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
           </div>
         )}
 
-        {!isLoading && plTree.length > 0 && (
+        {!isLoading && !isSyncing && plTree.length > 0 && (
           <>
             <div className="flex justify-end gap-2 mb-1">
               <button onClick={expandAll} className="text-[10px] text-primary hover:underline">Expand All</button>
