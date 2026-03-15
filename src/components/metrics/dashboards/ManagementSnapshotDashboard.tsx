@@ -404,18 +404,11 @@ export function ManagementSnapshotDashboard({
           />
         )}
 
-        {/* Total Revenue Summary — static for now */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center">
-              <p className="text-4xl font-bold">—</p>
-              <p className="text-muted-foreground text-sm">Configure individual cards via widget editor</p>
-            </div>
-          </CardContent>
-        </Card>
+        {!isHidden('total-revenue') && (
+          <GenericDashboardCard
+            {...getCardProps('total-revenue', 'Total Revenue', 'hsl(var(--chart-2))', 'ytd')}
+          />
+        )}
       </div>
 
       {/* Row 2: Clients Signed & A/R */}
