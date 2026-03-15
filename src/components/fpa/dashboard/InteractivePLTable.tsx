@@ -98,7 +98,15 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
   const { data: entities = [] } = useQBEntities();
   const { data: plReports, isLoading, syncForDateRange, isSyncing } = useQBProfitAndLoss(selectedEntity || 'all', dateRange);
 
-  // Use first report or merge — for now use first
+  // Auto-sync when date range changes and no matching data exists
+  const lastSyncedRange = useRef<string | undefined>();
+  useEffect(() => {
+    if (!isLoading && plReports === null && dateRange && dateRange !== lastSyncedRange.current && !isSyncing) {
+      lastSyncedRange.current = dateRange;
+      syncForDateRange().catch(console.error);
+    }
+  }, [isLoading, plReports, dateRange, isSyncing, syncForDateRange]);
+
   const activePL = useMemo(() => {
     if (!plReports || plReports.length === 0) return null;
     if (selectedEntity !== 'all') return plReports[0];
