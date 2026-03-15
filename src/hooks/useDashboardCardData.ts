@@ -85,6 +85,7 @@ export function useDashboardCardData(
 
     // Fallback
     const periods = fallbackRevenue?.periods ?? [];
+    console.log('[DashboardCardData] Path B (fallback):', { periodsLength: periods.length, fallbackLoading, timeWindow, total: fallbackRevenue?.total });
     const chartData: PreviewDataPoint[] = periods.map(p => ({
       period: p.period,
       Revenue: p.amount,
@@ -95,5 +96,5 @@ export function useDashboardCardData(
       seriesKeys: ['Revenue'],
       isLoading: fallbackLoading,
     };
-  }, [hasFullConfig, previewData, previewLoading, fallbackRevenue, fallbackLoading]);
+  }, [hasFullConfig, previewData, previewLoading, fallbackRevenue, fallbackLoading, timeWindow]);
 }
