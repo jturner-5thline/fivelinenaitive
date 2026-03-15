@@ -71,7 +71,6 @@
     "@tiptap/starter-kit": "^3.14.0",
     "@tiptap/suggestion": "^3.19.0",
     "@types/dompurify": "^3.2.0",
-    "@types/react-grid-layout": "^2.1.0",
     "@xyflow/react": "^12.10.1",
     "canvas-confetti": "^1.9.4",
     "chart.js": "4.4.7",
