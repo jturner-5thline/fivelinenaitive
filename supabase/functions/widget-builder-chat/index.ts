@@ -121,7 +121,7 @@ serve(async (req) => {
                     type: "object",
                     properties: {
                       fieldId: { type: "string" },
-                      grain: { type: "string", enum: ["day", "month", "quarter", "year"] },
+                      grain: { type: "string", enum: ["day", "week", "month", "quarter", "year"] },
                       window: { type: "string", enum: ["last3Months", "ytd", "all"] },
                     },
                   },

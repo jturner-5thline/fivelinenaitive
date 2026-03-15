@@ -121,6 +121,11 @@ function generateAllPeriodKeys(start: string, end: string, grain: Grain | undefi
 
   // Align to grain boundary
   switch (grain) {
+    case 'week': {
+      const mon = getWeekMonday(current);
+      current.setTime(mon.getTime());
+      break;
+    }
     case 'month':
       current.setDate(1);
       break;
@@ -145,6 +150,9 @@ function generateAllPeriodKeys(start: string, end: string, grain: Grain | undefi
     switch (grain) {
       case 'day':
         current.setDate(current.getDate() + 1);
+        break;
+      case 'week':
+        current.setDate(current.getDate() + 7);
         break;
       case 'quarter':
         current.setMonth(current.getMonth() + 3);
