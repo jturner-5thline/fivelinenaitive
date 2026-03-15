@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Pencil, ChevronDown, Loader2 } from 'lucide-react';
+import { Lock, Pencil, ChevronDown, Loader2, Trash2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, LineChart, Bar, XAxis, YAxis, Tooltip, Legend, Line, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
@@ -168,6 +168,7 @@ interface GenericDashboardCardProps {
   entityFilter?: string | null;
   isEditMode: boolean;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
+  onDeleteCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
   chartHeight?: number;
 }
@@ -183,6 +184,7 @@ function GenericDashboardCard({
   entityFilter,
   isEditMode,
   onEditCard,
+  onDeleteCard,
   onTimeWindowChange,
   chartHeight = 200,
 }: GenericDashboardCardProps) {
@@ -192,18 +194,33 @@ function GenericDashboardCard({
     entityFilter,
   );
 
-  const renderEditAction = () => {
-    if (!isEditMode || !onEditCard) return null;
+  const renderEditActions = () => {
+    if (!isEditMode) return null;
     return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={() => onEditCard(cardId)}
-        aria-label={`Edit ${title}`}
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </Button>
+      <div className="flex items-center gap-1">
+        {onEditCard && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => onEditCard(cardId)}
+            aria-label={`Edit ${title}`}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        )}
+        {onDeleteCard && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive hover:text-destructive"
+            onClick={() => onDeleteCard(cardId)}
+            aria-label={`Delete ${title}`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
     );
   };
 
@@ -285,7 +302,7 @@ function GenericDashboardCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          {renderEditAction()}
+          {renderEditActions()}
         </div>
         <div className="flex gap-1.5 flex-wrap">
           <PeriodBadge cardId={cardId} currentWindow={timeWindow} onTimeWindowChange={onTimeWindowChange} />
@@ -309,15 +326,19 @@ function GenericDashboardCard({
 interface ManagementSnapshotDashboardProps {
   isEditMode?: boolean;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
+  onDeleteCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
   cardConfigs?: Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>;
+  hiddenCards?: EditableManagementSnapshotCardId[];
 }
 
 export function ManagementSnapshotDashboard({
   isEditMode = false,
   onEditCard,
+  onDeleteCard,
   onTimeWindowChange,
   cardConfigs = {},
+  hiddenCards = [],
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
 
@@ -360,20 +381,27 @@ export function ManagementSnapshotDashboard({
       entityFilter: cfg?.entityFilter,
       isEditMode,
       onEditCard,
+      onDeleteCard,
       onTimeWindowChange,
     };
   };
+
+  const isHidden = (cardId: EditableManagementSnapshotCardId) => hiddenCards.includes(cardId);
 
   return (
     <div className="space-y-6">
       {/* Row 1: Revenue Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <GenericDashboardCard
-          {...getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd')}
-        />
-        <GenericDashboardCard
-          {...getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd')}
-        />
+        {!isHidden('debt-revenue') && (
+          <GenericDashboardCard
+            {...getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd')}
+          />
+        )}
+        {!isHidden('finserv-revenue') && (
+          <GenericDashboardCard
+            {...getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd')}
+          />
+        )}
 
         {/* Total Revenue Summary — static for now */}
         <Card>
@@ -391,30 +419,40 @@ export function ManagementSnapshotDashboard({
 
       {/* Row 2: Clients Signed & A/R */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <GenericDashboardCard
-          {...getCardProps('clients-signed-debt', 'Clients Signed - Debt')}
-          chartHeight={180}
-        />
-        <GenericDashboardCard
-          {...getCardProps('clients-signed-finserv', 'Clients Signed - FinServ')}
-          chartHeight={180}
-        />
-        <GenericDashboardCard
-          {...getCardProps('outstanding-ar', 'Outstanding A/R')}
-          chartHeight={180}
-        />
+        {!isHidden('clients-signed-debt') && (
+          <GenericDashboardCard
+            {...getCardProps('clients-signed-debt', 'Clients Signed - Debt')}
+            chartHeight={180}
+          />
+        )}
+        {!isHidden('clients-signed-finserv') && (
+          <GenericDashboardCard
+            {...getCardProps('clients-signed-finserv', 'Clients Signed - FinServ')}
+            chartHeight={180}
+          />
+        )}
+        {!isHidden('outstanding-ar') && (
+          <GenericDashboardCard
+            {...getCardProps('outstanding-ar', 'Outstanding A/R')}
+            chartHeight={180}
+          />
+        )}
       </div>
 
       {/* Row 3: Profit & Active Deals */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <GenericDashboardCard
-          {...getCardProps('debt-profit', 'Debt Profit')}
-          chartHeight={180}
-        />
-        <GenericDashboardCard
-          {...getCardProps('finserv-profit', 'FinServ Profit', 'hsl(var(--chart-4))')}
-          chartHeight={180}
-        />
+        {!isHidden('debt-profit') && (
+          <GenericDashboardCard
+            {...getCardProps('debt-profit', 'Debt Profit')}
+            chartHeight={180}
+          />
+        )}
+        {!isHidden('finserv-profit') && (
+          <GenericDashboardCard
+            {...getCardProps('finserv-profit', 'FinServ Profit', 'hsl(var(--chart-4))')}
+            chartHeight={180}
+          />
+        )}
         <NoPermissionCard title="Active Deals" />
       </div>
     </div>
