@@ -1,4 +1,5 @@
 import { ReactNode, useMemo, useRef, useState, useEffect } from 'react';
+import { Responsive } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { cn } from '@/lib/utils';
@@ -23,16 +24,10 @@ export function DraggableGridLayout({
 }: DraggableGridLayoutProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
-  const [RGL, setRGL] = useState<{ Responsive: any } | null>(null);
-
-  useEffect(() => {
-    import('react-grid-layout').then((mod) => {
-      setRGL({ Responsive: mod.Responsive || (mod.default as any)?.Responsive });
-    });
-  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
+    setContainerWidth(containerRef.current.offsetWidth);
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerWidth(entry.contentRect.width);
@@ -48,15 +43,9 @@ export function DraggableGridLayout({
     sm: layout.map(l => ({ ...l, w: Math.min(l.w, 4), x: 0 })),
   }), [layout]);
 
-  if (!RGL?.Responsive) {
-    return <div ref={containerRef} className={cn('draggable-grid-wrapper', className)}>{children}</div>;
-  }
-
-  const ResponsiveGrid = RGL.Responsive;
-
   return (
     <div ref={containerRef} className={cn('draggable-grid-wrapper', className)}>
-      <ResponsiveGrid
+      <Responsive
         className="layout"
         layouts={layouts}
         breakpoints={{ lg: 1200, md: 900, sm: 0 }}
@@ -85,7 +74,7 @@ export function DraggableGridLayout({
         useCSSTransforms
       >
         {children}
-      </ResponsiveGrid>
+      </Responsive>
     </div>
   );
 }
