@@ -1,14 +1,15 @@
 import { ReactNode, useMemo } from 'react';
-import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
+import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { cn } from '@/lib/utils';
+import { GridLayoutItem } from '@/hooks/useGridLayout';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface DraggableGridLayoutProps {
-  layout: Layout[];
-  onLayoutChange: (layout: Layout[]) => void;
+  layout: GridLayoutItem[];
+  onLayoutChange: (layout: GridLayoutItem[]) => void;
   isEditMode: boolean;
   children: ReactNode;
   rowHeight?: number;
@@ -41,10 +42,21 @@ export function DraggableGridLayout({
         isResizable={isEditMode}
         draggableHandle=".widget-drag-handle"
         onLayoutChange={(currentLayout) => {
-          if (isEditMode) onLayoutChange(currentLayout);
+          if (isEditMode) {
+            const mapped: GridLayoutItem[] = currentLayout.map(l => ({
+              i: l.i,
+              x: l.x,
+              y: l.y,
+              w: l.w,
+              h: l.h,
+              minW: l.minW,
+              minH: l.minH,
+            }));
+            onLayoutChange(mapped);
+          }
         }}
-        margin={[16, 16]}
-        containerPadding={[0, 0]}
+        margin={[16, 16] as [number, number]}
+        containerPadding={[0, 0] as [number, number]}
         useCSSTransforms
       >
         {children}

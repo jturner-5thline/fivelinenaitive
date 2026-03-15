@@ -1,13 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Layout } from 'react-grid-layout';
+
+export interface GridLayoutItem {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  minW?: number;
+  minH?: number;
+}
 
 /**
  * Generate default grid layout from a list of widget IDs.
  * 3-column arrangement: w=4, h=2, 12-col grid.
  */
-export function generateDefaultLayout(widgetIds: string[], cols = 3, w = 4, h = 2): Layout[] {
+export function generateDefaultLayout(widgetIds: string[], cols = 3, w = 4, h = 2): GridLayoutItem[] {
   return widgetIds.map((id, i) => ({
     i: id,
     x: (i % cols) * w,
@@ -24,7 +33,7 @@ export function generateDefaultLayout(widgetIds: string[], cols = 3, w = 4, h = 
  */
 export function useGridLayout(dashboardId: string, defaultWidgetIds: string[]) {
   const { user } = useAuth();
-  const [layout, setLayout] = useState<Layout[]>(() => generateDefaultLayout(defaultWidgetIds));
+  const [layout, setLayout] = useState<GridLayoutItem[]>(() => generateDefaultLayout(defaultWidgetIds));
   const [isLoaded, setIsLoaded] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -41,12 +50,12 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[]) {
         .maybeSingle();
 
       if (data?.layout && Array.isArray(data.layout) && data.layout.length > 0) {
-        // Merge saved layout with any new widgets not in saved layout
-        const savedIds = new Set((data.layout as Layout[]).map(l => l.i));
+        const savedLayout = data.layout as GridLayoutItem[];
+        const savedIds = new Set(savedLayout.map(l => l.i));
         const newWidgets = defaultWidgetIds.filter(id => !savedIds.has(id));
-        const maxY = (data.layout as Layout[]).reduce((max, l) => Math.max(max, l.y + l.h), 0);
+        const maxY = savedLayout.reduce((max, l) => Math.max(max, l.y + l.h), 0);
 
-        const newLayouts = newWidgets.map((id, idx) => ({
+        const newLayouts: GridLayoutItem[] = newWidgets.map((id, idx) => ({
           i: id,
           x: (idx % 3) * 4,
           y: maxY + Math.floor(idx / 3) * 2,
@@ -56,7 +65,7 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[]) {
           minH: 2,
         }));
 
-        setLayout([...(data.layout as Layout[]), ...newLayouts]);
+        setLayout([...savedLayout, ...newLayouts]);
       } else {
         setLayout(generateDefaultLayout(defaultWidgetIds));
       }
@@ -65,7 +74,7 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[]) {
   }, [user, dashboardId, defaultWidgetIds.join(',')]);
 
   // Debounced save
-  const saveLayout = useCallback((newLayout: Layout[]) => {
+  const saveLayout = useCallback((newLayout: GridLayoutItem[]) => {
     setLayout(newLayout);
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
