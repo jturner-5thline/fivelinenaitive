@@ -12,6 +12,7 @@ interface Props {
   configs: ValueConfig[];
   onChange: (configs: ValueConfig[]) => void;
   realmId?: string | null;
+  entityId?: string | null;
 }
 
 const AGGS = [
