@@ -202,7 +202,7 @@ export function useQBPreviewData(config: WidgetConfig) {
   const timeWindow = config.xAxis.window;
   const showZeroPeriods = config.xAxis.showZeroPeriods ?? true;
   const hasQBValues = config.values.some(v => v.fieldId && (
-    ['f-revenue', 'f-total-revenue', 'f-amount', 'f-expenses', 'f-cogs'].includes(v.fieldId) ||
+    ['f-revenue', 'f-total-revenue', 'f-amount', 'f-expenses', 'f-cogs', 'f-net-income'].includes(v.fieldId) ||
     isQBAccountField(v.fieldId)
   ));
 
