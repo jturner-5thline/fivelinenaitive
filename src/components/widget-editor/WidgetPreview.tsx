@@ -314,12 +314,6 @@ function KpiPreview({ config, data }: { config: WidgetConfig; data?: PreviewData
     <div className="flex flex-col items-center justify-center py-12 gap-2">
       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{name}</p>
       <p className="text-4xl font-bold text-foreground">{formatted}</p>
-      {!data && (
-        <div className="flex items-center gap-1 text-xs text-primary font-medium">
-          <span>▲ 12.4%</span>
-          <span className="text-muted-foreground">vs prior period</span>
-        </div>
-      )}
     </div>
   );
 }
