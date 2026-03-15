@@ -106,6 +106,7 @@ import { useCustomMetrics } from "@/hooks/useCustomMetrics";
 import { evaluateFormula, FormulaContext } from "@/lib/customMetricEngine";
 import { SyncStatusBar } from "@/components/metrics/SyncStatusBar";
 import { getTimePeriodRange, getTimePeriodLabel, isInRange } from "@/lib/timePeriodUtils";
+import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/DatarailsLiveWidget";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Management Snapshot', isFavorite: true },
