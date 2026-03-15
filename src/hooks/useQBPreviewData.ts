@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { WidgetConfig, TimeWindow, Grain, isQBAccountField } from '@/components/widget-editor/widgetTypes';
+import { fetchNaitiveField, isNaitiveField } from '@/hooks/useNaitiveData';
 
 export interface PreviewDataPoint {
   period: string;
