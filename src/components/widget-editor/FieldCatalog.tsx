@@ -13,6 +13,12 @@ const GROUP_LABELS: Record<Field['group'], string> = {
   DateDim: 'Date Dim',
   General: 'General',
   System: 'System',
+  Pipeline: 'Pipeline',
+  DealMetrics: 'Deal Metrics',
+  Conversion: 'Conversion',
+  Timing: 'Timing',
+  Activity: 'Activity',
+  Lenders: 'Lenders',
 };
 
 const TYPE_BADGE: Record<DataType, { icon: typeof Hash; label: string; className: string }> = {
