@@ -251,6 +251,15 @@ function GenericDashboardCard({
   const renderChart = () => {
     if (isLoading) return renderLoading();
 
+    if (!chartData || chartData.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-1">
+          <p className="text-sm font-medium">No data available</p>
+          <p className="text-xs">Click to configure this widget</p>
+        </div>
+      );
+    }
+
     const dataKeys = seriesKeys.length > 0 ? seriesKeys : ['Revenue'];
 
     if (visualization === 'line') {
