@@ -39,7 +39,7 @@ function getSmartComparison(): 'budget' | 'prior_year' | 'prior_period' {
 
 export function DashboardModule() {
   const [dashboardTab, setDashboardTab] = useState('overview');
-  const [comparisonMode, setComparisonMode] = useState<'budget' | 'forecast' | 'prior_year'>(getSmartComparison);
+  const [comparisonMode, setComparisonMode] = useState<'budget' | 'prior_year' | 'prior_period'>(getSmartComparison);
   const [dateRange, setDateRange] = useState(getSmartDateRange);
   const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
   const [chartConfigOpen, setChartConfigOpen] = useState(false);
