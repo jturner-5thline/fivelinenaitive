@@ -185,7 +185,7 @@ export function DashboardModule() {
 
       {activeTab === 'pnl' && (
         <div className="space-y-4">
-          {e.plTable && <InteractivePLTable comparisonMode={comparisonMode} />}
+          {e.plTable && <InteractivePLTable comparisonMode={comparisonMode} dateRange={dateRange} />}
           <RevenueOPEXCharts chartConfig={chartConfig} visibilityConfig={c} />
         </div>
       )}
