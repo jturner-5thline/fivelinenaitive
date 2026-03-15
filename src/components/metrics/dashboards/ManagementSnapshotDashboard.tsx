@@ -184,6 +184,7 @@ function GenericDashboardCard({
   entityFilter,
   isEditMode,
   onEditCard,
+  onDeleteCard,
   onTimeWindowChange,
   chartHeight = 200,
 }: GenericDashboardCardProps) {
