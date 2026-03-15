@@ -355,6 +355,6 @@ export function useQBPreviewData(config: WidgetConfig) {
       return sorted;
     },
     enabled: !!user && hasQBValues,
-    staleTime: 60_000,
+    staleTime: 5_000,
   });
 }

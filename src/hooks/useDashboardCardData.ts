@@ -4,34 +4,20 @@ import { useQBRevenueByWindow } from '@/hooks/useQBWindowData';
 import { type WidgetConfig, type TimeWindow, DEFAULT_WIDGET_CONFIG } from '@/components/widget-editor/widgetTypes';
 
 export interface DashboardCardDataResult {
-  /** Chart data points — keys are 'period' + dynamic series labels */
   chartData: PreviewDataPoint[];
-  /** Total numeric value across all series */
   total: number;
-  /** Dynamic series keys (everything except 'period') */
   seriesKeys: string[];
   isLoading: boolean;
 }
 
-/**
- * Resolves chart data for a management-snapshot dashboard card.
- *
- * If the card has a saved datarailsConfig (i.e. was configured via the widget editor),
- * we use the exact same `useQBPreviewData` hook the editor preview uses — ensuring
- * perfect parity.
- *
- * Otherwise we fall back to the simpler `useQBRevenueByWindow` aggregation.
- */
 export function useDashboardCardData(
   datarailsConfig: Partial<WidgetConfig> | undefined | null,
   timeWindow: TimeWindow,
   entityFilter?: string | null,
 ): DashboardCardDataResult {
-  // Build a WidgetConfig from the saved datarailsConfig, patching in the
-  // current timeWindow (which may have been changed via PeriodBadge dropdown).
   const resolvedConfig = useMemo<WidgetConfig | null>(() => {
     if (!datarailsConfig || !datarailsConfig.values || datarailsConfig.values.length === 0) {
-      return null; // no datarails config → use fallback
+      return null;
     }
 
     return {
@@ -43,15 +29,16 @@ export function useDashboardCardData(
       xAxis: {
         ...DEFAULT_WIDGET_CONFIG.xAxis,
         ...(datarailsConfig.xAxis ?? {}),
-        window: timeWindow, // always use the dashboard-level window override
+        window: timeWindow,
       },
       values: datarailsConfig.values,
       filters: datarailsConfig.filters ?? [],
     } as WidgetConfig;
   }, [datarailsConfig, timeWindow, entityFilter]);
 
-  // Path A: use full datarailsConfig → same hook the editor uses
   const hasFullConfig = !!resolvedConfig;
+
+  // Path A: datarailsConfig present → same hook as editor
   const { data: previewData, isLoading: previewLoading } = useQBPreviewData(
     resolvedConfig ?? DEFAULT_WIDGET_CONFIG,
   );
