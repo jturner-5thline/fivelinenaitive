@@ -49,6 +49,7 @@ function NoPermissionCard({ title }: { title: string }) {
 export type EditableManagementSnapshotCardId =
   | 'debt-revenue'
   | 'finserv-revenue'
+  | 'total-revenue'
   | 'clients-signed-debt'
   | 'clients-signed-finserv'
   | 'outstanding-ar'
