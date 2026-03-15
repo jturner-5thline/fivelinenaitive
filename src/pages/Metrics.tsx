@@ -1541,6 +1541,23 @@ export default function Metrics() {
       return MANAGEMENT_SNAPSHOT_CARD_DEFAULTS;
     }
   });
+  const HIDDEN_CARDS_STORAGE_KEY = 'management-snapshot-hidden-cards-v1';
+  const [hiddenSnapshotCards, setHiddenSnapshotCards] = useState<EditableManagementSnapshotCardId[]>(() => {
+    try {
+      const saved = localStorage.getItem(HIDDEN_CARDS_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(hiddenSnapshotCards));
+  }, [hiddenSnapshotCards]);
+
+  const handleDeleteManagementSnapshotCard = (cardId: EditableManagementSnapshotCardId) => {
+    setHiddenSnapshotCards(prev => [...prev, cardId]);
+  };
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [widgetToDelete, setWidgetToDelete] = useState<string | null>(null);
   const [savePresetOpen, setSavePresetOpen] = useState(false);
