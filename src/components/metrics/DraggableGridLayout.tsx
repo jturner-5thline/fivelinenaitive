@@ -1,5 +1,6 @@
 import { ReactNode, useMemo } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
+import { Responsive } from 'react-grid-layout';
+import WidthProvider from 'react-grid-layout/lib/ResponsiveReactGridLayout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { cn } from '@/lib/utils';
