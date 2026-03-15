@@ -2001,6 +2001,8 @@ export default function Metrics() {
               <ManagementSnapshotDashboard
                 isEditMode={isEditMode}
                 onEditCard={handleEditManagementSnapshotCard}
+                onDeleteCard={handleDeleteManagementSnapshotCard}
+                hiddenCards={hiddenSnapshotCards}
                 onTimeWindowChange={(cardId, window) => {
                   setManagementSnapshotCards(prev => {
                     const card = prev[cardId];
