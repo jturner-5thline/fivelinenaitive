@@ -503,7 +503,7 @@ export function useQBPreviewData(config: WidgetConfig) {
 
       return sorted;
     },
-    enabled: !!user && hasQBValues,
+    enabled: !!user && (hasQBValues || hasNaitiveValues),
     staleTime: 5_000,
   });
 }
