@@ -326,15 +326,19 @@ function GenericDashboardCard({
 interface ManagementSnapshotDashboardProps {
   isEditMode?: boolean;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
+  onDeleteCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
   cardConfigs?: Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>;
+  hiddenCards?: EditableManagementSnapshotCardId[];
 }
 
 export function ManagementSnapshotDashboard({
   isEditMode = false,
   onEditCard,
+  onDeleteCard,
   onTimeWindowChange,
   cardConfigs = {},
+  hiddenCards = [],
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
 
