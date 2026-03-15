@@ -49,7 +49,7 @@ serve(async (req) => {
       });
     }
 
-    const { syncType, realmId: targetRealmId, scopes } = await req.json();
+    const { syncType, realmId: targetRealmId, scopes, start_date, end_date } = await req.json();
     const activeScopes: SyncScope[] = scopes && Array.isArray(scopes) ? scopes : [...ALL_SCOPES];
     console.log(`[QuickBooks Sync] Starting sync for user ${user.id}, realm: ${targetRealmId || "all"}, scopes: ${activeScopes.join(",")}`);
 
