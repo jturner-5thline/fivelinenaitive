@@ -329,8 +329,11 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {isLoading && (
+        {(isLoading || isSyncing) && (
           <div className="space-y-2">
+            {isSyncing && (
+              <p className="text-xs text-muted-foreground animate-pulse">Fetching P&L for selected date range…</p>
+            )}
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-6 w-full" />
             ))}
