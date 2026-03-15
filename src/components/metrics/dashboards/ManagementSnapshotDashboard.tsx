@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Pencil, ChevronDown, Loader2, Trash2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, LineChart, Bar, XAxis, YAxis, Tooltip, Legend, Line, CartesianGrid } from 'recharts';
@@ -298,8 +299,17 @@ function GenericDashboardCard({
     );
   };
 
+  const handleCardClick = () => {
+    if (!isEditMode && onEditCard) {
+      onEditCard(cardId);
+    }
+  };
+
   return (
-    <Card>
+    <Card
+      className={cn(!isEditMode && onEditCard && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all')}
+      onClick={handleCardClick}
+    >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
