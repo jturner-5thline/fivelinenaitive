@@ -1,6 +1,6 @@
 import { ReactNode, useMemo } from 'react';
-import { Responsive } from 'react-grid-layout';
-import WidthProvider from 'react-grid-layout/lib/ResponsiveReactGridLayout';
+// @ts-ignore - WidthProvider is a default export in react-grid-layout
+import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { cn } from '@/lib/utils';
