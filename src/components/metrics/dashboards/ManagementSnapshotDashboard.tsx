@@ -302,7 +302,7 @@ function GenericDashboardCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          {renderEditAction()}
+          {renderEditActions()}
         </div>
         <div className="flex gap-1.5 flex-wrap">
           <PeriodBadge cardId={cardId} currentWindow={timeWindow} onTimeWindowChange={onTimeWindowChange} />
