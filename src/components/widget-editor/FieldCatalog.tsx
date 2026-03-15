@@ -283,7 +283,27 @@ export function FieldCatalog({ selectedEntityId, onEntityChange }: FieldCatalogP
         </div>
       )}
 
-      {/* Entity selected — show back button */}
+      {/* All Entities selected — show back button */}
+      {isAllEntities && (
+        <div className="px-4 py-2 border-b border-border flex items-center gap-2">
+          <button
+            onClick={() => onEntityChange?.(null)}
+            className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Entities
+          </button>
+          <span className="text-xs text-muted-foreground">|</span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="text-xs font-semibold text-foreground truncate">
+              All Entities (Combined)
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Single entity selected — show back button */}
       {hasEntity && (
         <div className="px-4 py-2 border-b border-border flex items-center gap-2">
           <button
