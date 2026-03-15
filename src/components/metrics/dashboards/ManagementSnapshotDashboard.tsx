@@ -168,6 +168,7 @@ interface GenericDashboardCardProps {
   entityFilter?: string | null;
   isEditMode: boolean;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
+  onDeleteCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
   chartHeight?: number;
 }
