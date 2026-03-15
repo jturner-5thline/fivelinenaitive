@@ -169,6 +169,12 @@ function generateAllPeriodKeys(start: string, end: string, grain: Grain | undefi
   return results;
 }
 
+/** Fields that are computed from multiple tables */
+const COMPUTED_FIELDS = ['f-net-income'] as const;
+function isComputedField(fieldId: string): boolean {
+  return (COMPUTED_FIELDS as readonly string[]).includes(fieldId);
+}
+
 /** Determine which QB table(s) to query based on the configured value fields */
 function getRelevantFieldMapping(fieldId: string): { table: 'invoices' | 'payments' | 'expenses' | 'accounts'; amountCol: string; label: string } | null {
   // Standard seed fields
