@@ -191,7 +191,7 @@ function getRelevantFieldMapping(fieldId: string): { table: 'invoices' | 'paymen
 
 export function useQBPreviewData(config: WidgetConfig) {
   const { user } = useAuth();
-  const realmId = config.entityId;
+  const realmId = config.entityId === 'all' ? null : config.entityId;
   const grain = config.xAxis.grain;
   const timeWindow = config.xAxis.window;
   const showZeroPeriods = config.xAxis.showZeroPeriods ?? true;
