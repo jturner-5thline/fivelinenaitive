@@ -1823,10 +1823,16 @@ export default function Metrics() {
               </Button>
 
               {isEditMode && (
-                <Button size="sm" onClick={handleAdd}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Widget
-                </Button>
+                <>
+                  <Button size="sm" onClick={handleAdd}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Widget
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={resetGridLayout}>
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reset Layout
+                  </Button>
+                </>
               )}
             </div>
           </div>
