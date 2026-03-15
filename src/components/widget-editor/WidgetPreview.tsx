@@ -213,19 +213,34 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
 
   const trendLine = config.trendLine;
   const dataLabels = config.dataLabels;
+  const showPeriodTotals = dataLabels?.showPeriodTotals ?? false;
   const primaryFormat = config.values[0]?.format ?? 'currency';
 
-  // Get all numeric keys from data (excluding 'period' and internal trend keys)
+  // Get all numeric keys from data (excluding 'period' and internal keys)
   const dataKeys = data.length > 0
-    ? Object.keys(data[0]).filter(k => k !== 'period' && !k.startsWith('__trend_'))
+    ? Object.keys(data[0]).filter(k => k !== 'period' && !k.startsWith('__trend_') && k !== '__period_total')
     : valueFields;
 
-  // Enrich data with trend line values
+  // Enrich data with trend line values and period totals
   const enrichedData = useMemo(() => {
-    if (!trendLine?.enabled || dataKeys.length === 0) return data;
-    const trendValues = computeTrendLine(data, dataKeys[0], trendLine);
-    return data.map((d, i) => ({ ...d, __trend_line: trendValues[i] }));
-  }, [data, trendLine, dataKeys]);
+    let result = data;
+
+    // Add trend line
+    if (trendLine?.enabled && dataKeys.length > 0) {
+      const trendValues = computeTrendLine(data, dataKeys[0], trendLine);
+      result = result.map((d, i) => ({ ...d, __trend_line: trendValues[i] }));
+    }
+
+    // Add period totals
+    if (showPeriodTotals && dataKeys.length > 0) {
+      result = result.map(d => {
+        const total = dataKeys.reduce((sum, key) => sum + (Number(d[key]) || 0), 0);
+        return { ...d, __period_total: total };
+      });
+    }
+
+    return result;
+  }, [data, trendLine, dataKeys, showPeriodTotals]);
 
   const renderDataLabel = dataLabels?.enabled ? (props: Record<string, unknown>) => {
     const { x, y, width, value, height } = props as { x: number; y: number; width: number; value: number; height: number };
@@ -242,12 +257,51 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
     );
   } : undefined;
 
+  // Period total label — rendered on the last series in a stack, or as a summary label
+  const renderPeriodTotalLabel = showPeriodTotals ? (props: Record<string, unknown>) => {
+    const { x, y, width, value } = props as { x: number; y: number; width: number; value: number };
+    if (!value || value === 0) return null;
+    const formatted = formatCompact(value, primaryFormat);
+    return (
+      <text
+        x={(x || 0) + ((width || 0) / 2)}
+        y={Math.max(12, (y || 0) - 8)}
+        textAnchor="middle"
+        fontSize={11}
+        fontWeight={600}
+        fill="hsl(var(--foreground))"
+      >
+        {formatted}
+      </text>
+    );
+  } : undefined;
+
+  // For line charts with period totals — render as reference dots
+  const renderLinePeriodTotalLabel = showPeriodTotals ? (props: Record<string, unknown>) => {
+    const { x, y, value } = props as { x: number; y: number; value: number };
+    if (!value || value === 0) return null;
+    const formatted = formatCompact(value, primaryFormat);
+    return (
+      <text
+        x={x || 0}
+        y={Math.max(12, (y || 0) - 10)}
+        textAnchor="middle"
+        fontSize={11}
+        fontWeight={600}
+        fill="hsl(var(--foreground))"
+      >
+        {formatted}
+      </text>
+    );
+  } : undefined;
+
   const ChartComponent = isLine ? LineChart : BarChart;
   const barRadius: [number, number, number, number] = [6, 6, 0, 0];
+  const needsTopMargin = (dataLabels?.enabled || showPeriodTotals);
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <ChartComponent data={enrichedData} margin={{ top: dataLabels?.enabled ? 20 : 5, right: 20, left: 10, bottom: 5 }}>
+      <ChartComponent data={enrichedData} margin={{ top: needsTopMargin ? 24 : 5, right: 20, left: 10, bottom: 5 }}>
         <defs>
           {dataKeys.map((_, i) => {
             const [start, end] = CHART_GRADIENT_PAIRS[i % CHART_GRADIENT_PAIRS.length];
@@ -264,23 +318,33 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
         <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} />
         <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {dataKeys.map((name, i) =>
-          isLine ? (
+        {dataKeys.map((name, i) => {
+          const isLastSeries = i === dataKeys.length - 1;
+          return isLine ? (
             <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls>
               {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+              {isLastSeries && showPeriodTotals && dataKeys.length > 1 && (
+                <LabelList dataKey="__period_total" content={renderLinePeriodTotalLabel} />
+              )}
             </Line>
           ) : isStacked ? (
             <Bar key={name} dataKey={name} fill={`url(#barGrad-${i})`} stackId="stack"
               shape={(props: Record<string, unknown>) => <StackedBarShape {...props} dataKeys={dataKeys} currentKey={name} />}
             >
               {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+              {isLastSeries && showPeriodTotals && (
+                <LabelList dataKey="__period_total" content={renderPeriodTotalLabel} />
+              )}
             </Bar>
           ) : (
             <Bar key={name} dataKey={name} fill={`url(#barGrad-${i})`} radius={barRadius}>
               {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+              {isLastSeries && showPeriodTotals && dataKeys.length > 1 && (
+                <LabelList dataKey="__period_total" content={renderPeriodTotalLabel} />
+              )}
             </Bar>
-          )
-        )}
+          );
+        })}
         {trendLine?.enabled && (
           <Line type="monotone" dataKey="__trend_line" stroke={CHART_COLORS[0]} strokeWidth={2}
             strokeDasharray="6 3" strokeOpacity={0.45} dot={false} connectNulls legendType="none" />
