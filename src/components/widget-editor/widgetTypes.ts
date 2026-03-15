@@ -30,7 +30,7 @@ export interface ValueConfig {
   fieldId: string | null;
   agg: 'sum' | 'avg' | 'count';
   format: 'currency' | 'percent' | 'number';
-  breakdown?: 'total' | 'byAccount';
+  breakdown?: 'total' | 'byAccount' | 'byEntity';
   accountFilter?: string[]; // QB account IDs to include (empty = all)
 }
 

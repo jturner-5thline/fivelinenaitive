@@ -296,6 +296,55 @@ export function useQBPreviewData(config: WidgetConfig) {
           continue;
         }
 
+        // Check if this is a byEntity breakdown (All Entities mode)
+        const isByEntity = vc.breakdown === 'byEntity' && !realmId;
+
+        if (isByEntity) {
+          const tableName = mapping.table === 'invoices'
+            ? 'quickbooks_invoices'
+            : mapping.table === 'payments'
+            ? 'quickbooks_payments'
+            : 'quickbooks_expenses';
+
+          let query = supabase
+            .from(tableName)
+            .select('txn_date, total_amt, realm_id')
+            .order('txn_date', { ascending: true });
+
+          if (dateRange) {
+            query = query.gte('txn_date', dateRange.start).lte('txn_date', dateRange.end);
+          }
+
+          const { data: rows, error } = await query;
+          if (error || !rows) continue;
+
+          // Look up entity names from quickbooks_tokens
+          const realmIds = [...new Set(rows.map(r => r.realm_id))];
+          const { data: tokens } = await supabase
+            .from('quickbooks_tokens')
+            .select('realm_id, company_name')
+            .in('realm_id', realmIds);
+
+          const realmNameMap = new Map<string, string>();
+          for (const t of tokens ?? []) {
+            realmNameMap.set(t.realm_id, t.company_name || `Entity ${t.realm_id.slice(0, 8)}`);
+          }
+
+          for (const row of rows) {
+            if (!row.txn_date) continue;
+            const key = toPeriodKey(row.txn_date, grain);
+            const periodLabel = toPeriodLabel(row.txn_date, grain);
+
+            if (!periodMap.has(key)) {
+              periodMap.set(key, { period: periodLabel });
+            }
+            const point = periodMap.get(key)!;
+            const entityLabel = realmNameMap.get(row.realm_id) || row.realm_id;
+            point[entityLabel] = ((point[entityLabel] as number) || 0) + (row.total_amt ?? 0);
+          }
+          continue;
+        }
+
         // Standard time-series: invoices, payments, expenses (total mode)
         const tableName = mapping.table === 'invoices'
           ? 'quickbooks_invoices'

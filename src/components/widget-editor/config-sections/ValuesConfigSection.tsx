@@ -12,6 +12,7 @@ interface Props {
   configs: ValueConfig[];
   onChange: (configs: ValueConfig[]) => void;
   realmId?: string | null;
+  entityId?: string | null;
 }
 
 const AGGS = [
@@ -28,9 +29,10 @@ const FORMATS = [
 
 const REVENUE_FIELDS = ['f-revenue', 'f-total-revenue', 'f-amount'];
 
-export function ValuesConfigSection({ configs, onChange, realmId }: Props) {
+export function ValuesConfigSection({ configs, onChange, realmId, entityId }: Props) {
   const { data: revenueAccounts } = useQBRevenueAccounts(realmId);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const isAllEntities = entityId === 'all';
 
   const update = (idx: number, patch: Partial<ValueConfig>) => {
     const next = configs.map((c, i) => (i === idx ? { ...c, ...patch } : c));
@@ -108,6 +110,19 @@ export function ValuesConfigSection({ configs, onChange, realmId }: Props) {
                     >
                       By Account
                     </button>
+                    {isAllEntities && (
+                      <button
+                        onClick={() => update(idx, { breakdown: 'byEntity', accountFilter: [] })}
+                        className={cn(
+                          'px-2 py-0.5 rounded text-[11px] font-medium transition-colors',
+                          breakdown === 'byEntity'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        )}
+                      >
+                        By Entity
+                      </button>
+                    )}
                   </div>
                 </div>
 
