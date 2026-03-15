@@ -1458,6 +1458,7 @@ function renderStatContent(
         let configuredValue: number | undefined;
         switch (selectedFieldId) {
           case 'f-revenue':
+          case 'f-total-revenue':
             configuredValue = qbData?.totalRevenue;
             break;
           case 'f-expenses':

@@ -174,6 +174,7 @@ function getRelevantFieldMapping(fieldId: string): { table: 'invoices' | 'paymen
   // Standard seed fields
   const map: Record<string, { table: 'invoices' | 'payments' | 'expenses'; amountCol: string; label: string }> = {
     'f-revenue': { table: 'invoices', amountCol: 'total_amt', label: 'Revenue' },
+    'f-total-revenue': { table: 'invoices', amountCol: 'total_amt', label: 'Total Revenue' },
     'f-amount': { table: 'invoices', amountCol: 'total_amt', label: 'Amount' },
     'f-expenses': { table: 'expenses', amountCol: 'total_amt', label: 'Expenses' },
     'f-cogs': { table: 'expenses', amountCol: 'total_amt', label: 'COGS' },
@@ -195,7 +196,7 @@ export function useQBPreviewData(config: WidgetConfig) {
   const timeWindow = config.xAxis.window;
   const showZeroPeriods = config.xAxis.showZeroPeriods ?? true;
   const hasQBValues = config.values.some(v => v.fieldId && (
-    ['f-revenue', 'f-amount', 'f-expenses', 'f-cogs'].includes(v.fieldId) ||
+    ['f-revenue', 'f-total-revenue', 'f-amount', 'f-expenses', 'f-cogs'].includes(v.fieldId) ||
     isQBAccountField(v.fieldId)
   ));
 
@@ -240,7 +241,7 @@ export function useQBPreviewData(config: WidgetConfig) {
         // Check if this is a revenue field with byAccount breakdown
         const isByAccount = vc.breakdown === 'byAccount' && 
           mapping.table === 'invoices' && 
-          ['f-revenue', 'f-amount'].includes(vc.fieldId);
+          ['f-revenue', 'f-total-revenue', 'f-amount'].includes(vc.fieldId);
 
         if (isByAccount) {
           // Fetch invoices with metadata to parse line items
