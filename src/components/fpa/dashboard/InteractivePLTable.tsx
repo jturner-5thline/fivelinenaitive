@@ -1,17 +1,22 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  ChevronDown, ChevronRight, Maximize2, AlertTriangle, Sparkles
+  ChevronDown, ChevronRight, Maximize2, AlertTriangle, Sparkles, Building2, FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PLCommentThread, type FPAComment } from '../collaboration/PLCommentThread';
 import { InlineAnnotation, type Annotation } from '../collaboration/InlineAnnotation';
 import { PLRowQuickActions } from '../PLRowQuickActions';
 import { VarianceLegend } from '../VarianceLegend';
+import { useQBProfitAndLoss, type PLLineItem as QBPLLineItem, type ParsedPL } from '@/hooks/useQBProfitAndLoss';
+import { useQBEntities } from '@/hooks/useQBWidgetData';
 
+// ─── Legacy PLRow type for comparison columns ──────────────────
 interface PLRow {
   account: string;
   level: number;
@@ -20,102 +25,102 @@ interface PLRow {
   forecast: number;
   priorYear: number;
   isHeader: boolean;
+  isTotal?: boolean;
   children?: PLRow[];
 }
 
-const PL_TREE: PLRow[] = [
-  {
-    account: 'Revenue', level: 0, actuals: 9500, budget: 9200, forecast: 9600, priorYear: 8100, isHeader: true,
-    children: [
-      { account: 'Product Revenue', level: 1, actuals: 6800, budget: 6500, forecast: 6900, priorYear: 5600, isHeader: false,
-        children: [
-          { account: 'SaaS Subscriptions', level: 2, actuals: 4200, budget: 4000, forecast: 4300, priorYear: 3400, isHeader: false },
-          { account: 'License Revenue', level: 2, actuals: 1800, budget: 1700, forecast: 1800, priorYear: 1500, isHeader: false },
-          { account: 'Usage-Based', level: 2, actuals: 800, budget: 800, forecast: 800, priorYear: 700, isHeader: false },
-        ]
-      },
-      { account: 'Service Revenue', level: 1, actuals: 2700, budget: 2700, forecast: 2700, priorYear: 2500, isHeader: false,
-        children: [
-          { account: 'Professional Services', level: 2, actuals: 1800, budget: 1800, forecast: 1800, priorYear: 1600, isHeader: false },
-          { account: 'Support & Maintenance', level: 2, actuals: 900, budget: 900, forecast: 900, priorYear: 900, isHeader: false },
-        ]
-      },
-    ]
-  },
-  {
-    account: 'Cost of Revenue (COGS)', level: 0, actuals: -2850, budget: -3100, forecast: -2900, priorYear: -2700, isHeader: true,
-    children: [
-      { account: 'Hosting & Infrastructure', level: 1, actuals: -1200, budget: -1400, forecast: -1250, priorYear: -1100, isHeader: false },
-      { account: 'Customer Success', level: 1, actuals: -950, budget: -1000, forecast: -950, priorYear: -900, isHeader: false },
-      { account: 'Payment Processing', level: 1, actuals: -700, budget: -700, forecast: -700, priorYear: -700, isHeader: false },
-    ]
-  },
-  { account: 'Gross Profit', level: 0, actuals: 6650, budget: 6100, forecast: 6700, priorYear: 5400, isHeader: true },
-  {
-    account: 'Operating Expenses', level: 0, actuals: -5450, budget: -5200, forecast: -5500, priorYear: -4800, isHeader: true,
-    children: [
-      { account: 'Sales & Marketing', level: 1, actuals: -2100, budget: -2000, forecast: -2150, priorYear: -1800, isHeader: false,
-        children: [
-          { account: 'Headcount', level: 2, actuals: -1200, budget: -1100, forecast: -1200, priorYear: -1000, isHeader: false },
-          { account: 'Paid Acquisition', level: 2, actuals: -550, budget: -550, forecast: -600, priorYear: -500, isHeader: false },
-          { account: 'Events & Sponsorships', level: 2, actuals: -350, budget: -350, forecast: -350, priorYear: -300, isHeader: false },
-        ]
-      },
-      { account: 'Research & Development', level: 1, actuals: -1800, budget: -1750, forecast: -1800, priorYear: -1600, isHeader: false,
-        children: [
-          { account: 'Engineering Headcount', level: 2, actuals: -1400, budget: -1350, forecast: -1400, priorYear: -1200, isHeader: false },
-          { account: 'Tools & Licenses', level: 2, actuals: -250, budget: -250, forecast: -250, priorYear: -250, isHeader: false },
-          { account: 'Contractors', level: 2, actuals: -150, budget: -150, forecast: -150, priorYear: -150, isHeader: false },
-        ]
-      },
-      { account: 'General & Admin', level: 1, actuals: -1550, budget: -1450, forecast: -1550, priorYear: -1400, isHeader: false,
-        children: [
-          { account: 'Rent & Facilities', level: 2, actuals: -600, budget: -600, forecast: -600, priorYear: -550, isHeader: false },
-          { account: 'Legal & Compliance', level: 2, actuals: -400, budget: -350, forecast: -400, priorYear: -350, isHeader: false },
-          { account: 'Insurance', level: 2, actuals: -250, budget: -250, forecast: -250, priorYear: -250, isHeader: false },
-          { account: 'Other G&A', level: 2, actuals: -300, budget: -250, forecast: -300, priorYear: -250, isHeader: false },
-        ]
-      },
-    ]
-  },
-  { account: 'EBITDA', level: 0, actuals: 1200, budget: 900, forecast: 1200, priorYear: 600, isHeader: true },
-  { account: 'Net Income', level: 0, actuals: 1200, budget: 850, forecast: 1200, priorYear: 500, isHeader: true },
-];
+// ─── Convert QB P&L items to PLRow tree ────────────────────────
+function qbItemsToPLRows(items: QBPLLineItem[]): PLRow[] {
+  return items.map(item => {
+    const childRows = item.children ? qbItemsToPLRows(item.children) : undefined;
+    return {
+      account: item.name,
+      level: item.depth,
+      actuals: item.amount,
+      budget: 0,
+      forecast: 0,
+      priorYear: 0,
+      isHeader: item.isHeader || item.isTotal,
+      isTotal: item.isTotal,
+      children: childRows && childRows.length > 0 ? childRows : undefined,
+    };
+  });
+}
+
+function qbReportToPLTree(pl: ParsedPL): PLRow[] {
+  const rows: PLRow[] = [];
+  for (const section of pl.sections) {
+    const isSummaryOnly = ['GrossProfit', 'NetOperatingIncome', 'NetIncome'].includes(section.group);
+    if (isSummaryOnly) {
+      rows.push({
+        account: section.label,
+        level: 0,
+        actuals: section.amount,
+        budget: 0, forecast: 0, priorYear: 0,
+        isHeader: true,
+        isTotal: true,
+      });
+    } else {
+      const children = qbItemsToPLRows(section.items);
+      rows.push({
+        account: section.group === 'COGS' ? 'Cost of Goods Sold' : section.label.replace(/^Total /, ''),
+        level: 0,
+        actuals: section.amount,
+        budget: 0, forecast: 0, priorYear: 0,
+        isHeader: true,
+        children,
+      });
+    }
+  }
+  return rows;
+}
 
 const fmt = (v: number) => {
   const abs = Math.abs(v);
-  if (abs >= 1000) return `${v < 0 ? '-' : ''}$${(abs / 1000).toFixed(1)}M`;
-  return `${v < 0 ? '-' : ''}$${abs}K`;
+  if (abs >= 1_000_000) return `${v < 0 ? '-' : ''}$${(abs / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1000) return `${v < 0 ? '-' : ''}$${(abs / 1000).toFixed(1)}K`;
+  return `$${abs.toFixed(0)}`;
 };
 
-const variancePct = (actual: number, target: number) => {
-  if (target === 0) return 0;
-  return ((actual - target) / Math.abs(target)) * 100;
-};
+const fmtFull = (v: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v);
 
 interface InteractivePLTableProps {
   comparisonMode: 'budget' | 'forecast' | 'prior_year';
 }
 
 export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) {
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set(['Revenue', 'Operating Expenses']));
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [selectedEntity, setSelectedEntity] = useState<string>('all');
 
-  // Collaboration state (demo data — will be replaced with DB queries)
-  const [comments, setComments] = useState<Record<string, FPAComment[]>>({
-    'Hosting & Infrastructure': [
-      { id: '1', user_name: 'Jill Turner', user_initials: 'JT', content: 'This is running 14% over budget — @Paolo can you check the AWS bill?', mentions: ['Paolo'], is_resolved: false, created_at: '2h ago' },
-    ],
-    'Legal & Compliance': [
-      { id: '2', user_name: 'Franco F.', user_initials: 'FF', content: 'One-time litigation cost. Should normalize next quarter.', mentions: [], is_resolved: true, created_at: '3d ago' },
-    ],
-  });
+  const { data: entities = [] } = useQBEntities();
+  const { data: plReports, isLoading } = useQBProfitAndLoss(selectedEntity || 'all');
 
-  const [annotations, setAnnotations] = useState<Record<string, Annotation[]>>({
-    'Revenue': [
-      { id: '1', content: 'Q1 includes $200K one-time license deal', color: 'warning', is_pinned: true, user_initials: 'PP', created_at: '1d ago' },
-    ],
-  });
+  // Use first report or merge — for now use first
+  const activePL = useMemo(() => {
+    if (!plReports || plReports.length === 0) return null;
+    if (selectedEntity !== 'all') return plReports[0];
+    // For "all", use first available report
+    return plReports[0];
+  }, [plReports, selectedEntity]);
+
+  const plTree = useMemo(() => {
+    if (!activePL) return [];
+    return qbReportToPLTree(activePL);
+  }, [activePL]);
+
+  // Auto-expand top-level sections
+  const defaultExpanded = useMemo(() => {
+    return new Set(plTree.filter(r => r.children && r.children.length > 0).map(r => r.account));
+  }, [plTree]);
+
+  // Use defaultExpanded only when plTree changes
+  const effectiveExpanded = expandedRows.size > 0 ? expandedRows : defaultExpanded;
+
+  // Collaboration state
+  const [comments, setComments] = useState<Record<string, FPAComment[]>>({});
+  const [annotations, setAnnotations] = useState<Record<string, Annotation[]>>({});
 
   const handleAddComment = useCallback((targetKey: string, content: string, mentions: string[]) => {
     setComments(prev => ({
@@ -169,49 +174,42 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
 
   const toggleRow = (account: string) => {
     setExpandedRows(prev => {
-      const next = new Set(prev);
+      const next = new Set(prev.size > 0 ? prev : defaultExpanded);
       next.has(account) ? next.delete(account) : next.add(account);
       return next;
     });
   };
 
-  const getComparisonValue = (row: PLRow) => {
-    switch (comparisonMode) {
-      case 'budget': return row.budget;
-      case 'forecast': return row.forecast;
-      case 'prior_year': return row.priorYear;
-    }
+  const expandAll = () => {
+    const allKeys = new Set<string>();
+    const collect = (rows: PLRow[]) => {
+      for (const row of rows) {
+        if (row.children?.length) {
+          allKeys.add(row.account);
+          collect(row.children);
+        }
+      }
+    };
+    collect(plTree);
+    setExpandedRows(allKeys);
   };
 
-  const getComparisonLabel = () => {
-    switch (comparisonMode) {
-      case 'budget': return 'Budget';
-      case 'forecast': return 'Forecast';
-      case 'prior_year': return 'Prior Year';
-    }
-  };
+  const collapseAll = () => setExpandedRows(new Set(['__none__'])); // Force empty
 
   const renderRow = (row: PLRow, depth: number = 0): JSX.Element[] => {
     const hasChildren = row.children && row.children.length > 0;
-    const isExpanded = expandedRows.has(row.account);
-    const comparison = getComparisonValue(row);
-    const variance = row.actuals - comparison;
-    const varPct = variancePct(row.actuals, comparison);
-    
-    // Determine if variance is favorable (positive for revenue, negative for costs)
-    const isCostLine = row.actuals < 0;
-    const isFavorable = isCostLine ? variance > 0 : variance > 0; // For costs, spending less (more positive) is favorable
-    const isSignificant = Math.abs(varPct) > 5;
+    const isExpanded = effectiveExpanded.has(row.account);
+    const isTotalRow = row.isTotal;
 
     const rows: JSX.Element[] = [];
 
     rows.push(
       <TableRow
-        key={row.account}
+        key={`${depth}-${row.account}`}
         className={cn(
           "cursor-pointer hover:bg-muted/50 transition-colors group",
-          row.isHeader && "bg-muted/30 font-semibold",
-          isSignificant && !row.isHeader && "bg-amber-500/5"
+          row.isHeader && !isTotalRow && "bg-muted/30 font-semibold",
+          isTotalRow && "bg-muted/40 font-semibold border-t border-border/50",
         )}
         onClick={() => hasChildren && toggleRow(row.account)}
         onMouseEnter={() => setHoveredRow(row.account)}
@@ -224,14 +222,16 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
             ) : (
               <span className="w-3 shrink-0" />
             )}
-            <span className={cn("text-xs", row.isHeader ? "font-semibold" : depth > 1 ? "text-muted-foreground" : "")}>
+            <span className={cn(
+              "text-xs",
+              row.isHeader && !isTotalRow ? "font-semibold" : "",
+              isTotalRow ? "font-semibold border-b border-foreground/20" : "",
+              depth > 1 && !isTotalRow ? "text-muted-foreground" : "",
+            )}>
               {row.account}
             </span>
-            {isSignificant && !row.isHeader && (
-              <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
-            )}
             <div className="flex items-center gap-0.5 ml-auto shrink-0" onClick={e => e.stopPropagation()}>
-              {!row.isHeader && (
+              {!row.isHeader && !isTotalRow && (
                 <PLRowQuickActions
                   rowAccount={row.account}
                   visible={hoveredRow === row.account}
@@ -259,26 +259,12 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
             </div>
           </div>
         </TableCell>
-        <TableCell className={cn("text-xs text-right font-mono py-1.5", row.isHeader && "font-semibold")}>
-          {fmt(row.actuals)}
-        </TableCell>
-        <TableCell className="text-xs text-right font-mono text-muted-foreground py-1.5">
-          {fmt(comparison)}
-        </TableCell>
         <TableCell className={cn(
-          "text-xs text-right font-mono py-1.5",
-          variance === 0 ? '' : isFavorable ? 'text-emerald-600' : 'text-destructive'
+          "text-xs text-right font-mono py-1.5 tabular-nums",
+          row.isHeader || isTotalRow ? "font-semibold" : "",
+          row.actuals < 0 ? "text-red-600 dark:text-red-400" : "",
         )}>
-          {variance === 0 ? '—' : `${variance > 0 ? '+' : ''}${fmt(variance)}`}
-        </TableCell>
-        <TableCell className={cn(
-          "text-xs text-right font-mono py-1.5",
-          varPct === 0 ? '' : isFavorable ? 'text-emerald-600' : 'text-destructive'
-        )}>
-          {varPct === 0 ? '—' : `${varPct > 0 ? '+' : ''}${varPct.toFixed(1)}%`}
-        </TableCell>
-        <TableCell className="text-xs text-right font-mono text-muted-foreground py-1.5">
-          {fmt(row.priorYear)}
+          {row.isHeader && !isTotalRow && row.actuals === 0 ? '' : fmtFull(row.actuals)}
         </TableCell>
       </TableRow>
     );
@@ -292,18 +278,41 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
     return rows;
   };
 
+  const entityName = useMemo(() => {
+    if (selectedEntity === 'all') return 'All Entities';
+    return entities.find(e => e.realmId === selectedEntity)?.companyName || selectedEntity;
+  }, [selectedEntity, entities]);
+
   return (
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CardTitle className="text-sm">Income Statement</CardTitle>
-            <Badge variant="outline" className="text-[9px]">Feb 2026 · $K</Badge>
+            {activePL && (
+              <Badge variant="outline" className="text-[9px]">
+                {activePL.header.ReportBasis} · {activePL.periodStart} to {activePL.periodEnd}
+              </Badge>
+            )}
+            <Badge variant="secondary" className="text-[9px] gap-1">
+              <FileText className="h-2.5 w-2.5" /> QuickBooks Live
+            </Badge>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-[9px] gap-1">
-              <Sparkles className="h-2.5 w-2.5" /> 3 variances flagged
-            </Badge>
+            <Select value={selectedEntity} onValueChange={(v) => { setSelectedEntity(v); setExpandedRows(new Set()); }}>
+              <SelectTrigger className="h-7 w-[200px] text-[10px]" onClick={(e) => e.stopPropagation()}>
+                <Building2 className="h-3 w-3 mr-1 shrink-0" />
+                <SelectValue placeholder="Entity" />
+              </SelectTrigger>
+              <SelectContent onClick={(e) => e.stopPropagation()}>
+                <SelectItem value="all">All Entities</SelectItem>
+                {entities.map(entity => (
+                  <SelectItem key={entity.realmId} value={entity.realmId}>
+                    {entity.companyName || entity.realmId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
               <Maximize2 className="h-3.5 w-3.5" />
             </Button>
@@ -311,22 +320,44 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-[10px]">Account</TableHead>
-              <TableHead className="text-[10px] text-right">Actuals</TableHead>
-              <TableHead className="text-[10px] text-right">{getComparisonLabel()}</TableHead>
-              <TableHead className="text-[10px] text-right">Δ ($K)</TableHead>
-              <TableHead className="text-[10px] text-right">Δ (%)</TableHead>
-              <TableHead className="text-[10px] text-right">Prior Year</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {PL_TREE.map(row => renderRow(row)).flat()}
-          </TableBody>
-        </Table>
-        <VarianceLegend compact className="mt-3" />
+        {isLoading && (
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-6 w-full" />
+            ))}
+          </div>
+        )}
+
+        {!isLoading && plTree.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <FileText className="h-8 w-8 text-muted-foreground/40 mb-3" />
+            <p className="text-sm font-medium">No P&L Data Available</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Sync your QuickBooks data with "Profit & Loss" report enabled.
+            </p>
+          </div>
+        )}
+
+        {!isLoading && plTree.length > 0 && (
+          <>
+            <div className="flex justify-end gap-2 mb-1">
+              <button onClick={expandAll} className="text-[10px] text-primary hover:underline">Expand All</button>
+              <button onClick={collapseAll} className="text-[10px] text-muted-foreground hover:underline">Collapse</button>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-[10px]">Account</TableHead>
+                  <TableHead className="text-[10px] text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {plTree.map(row => renderRow(row)).flat()}
+              </TableBody>
+            </Table>
+            <VarianceLegend compact className="mt-3" />
+          </>
+        )}
       </CardContent>
     </Card>
   );
