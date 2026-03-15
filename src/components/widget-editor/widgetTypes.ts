@@ -46,6 +46,24 @@ export interface FormulaConfig {
   expression: string;
 }
 
+export interface ComparisonConfig {
+  enabled: boolean;
+  compareTo: 'previous' | 'yoy' | 'custom';
+  displayAs: '$' | '%' | 'both';
+  colorCode: boolean;
+}
+
+export interface TrendLineConfig {
+  enabled: boolean;
+  type: 'linear' | 'movingAvg' | 'polynomial';
+  window: number;
+}
+
+export interface DataLabelsConfig {
+  enabled: boolean;
+  position: 'above' | 'inside' | 'below';
+}
+
 export interface WidgetConfig {
   id: string;
   name: string;
@@ -57,6 +75,9 @@ export interface WidgetConfig {
   values: ValueConfig[];
   filters: FilterConfig[];
   formula?: FormulaConfig;
+  comparison?: ComparisonConfig;
+  trendLine?: TrendLineConfig;
+  dataLabels?: DataLabelsConfig;
 }
 
 // ---------- seed data ----------
