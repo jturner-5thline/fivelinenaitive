@@ -1444,68 +1444,9 @@ function renderStatContent(
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Requires QuickBooks</p></CardContent>);
 
     default: {
-      // Datarails custom KPI widgets
+      // Datarails custom KPI widgets - use live data
       if (widget.dataSource.startsWith('datarails-') && widget.datarailsConfig) {
-        const dc = widget.datarailsConfig;
-        const selectedFieldId = dc.values?.[0]?.fieldId as string | undefined;
-        const format = dc.values?.[0]?.format;
-
-        const metricLabel = selectedFieldId
-          ? (selectedFieldId.startsWith('qb-account-')
-              ? 'QB Account'
-              : selectedFieldId.replace(/^[a-z]-/, '').replace(/-/g, ' '))
-          : 'metric';
-
-        let configuredValue: number | undefined;
-        switch (selectedFieldId) {
-          case 'f-revenue':
-          case 'f-total-revenue':
-            configuredValue = qbData?.totalRevenue;
-            break;
-          case 'f-expenses':
-            configuredValue = qbData?.totalExpenses;
-            break;
-          case 'f-net-income':
-            configuredValue = qbData?.netIncome;
-            break;
-          case 'f-amount':
-            configuredValue = qbData?.totalPayments ?? qbData?.totalRevenue;
-            break;
-          case 'f-deal-amount':
-            configuredValue = dealData?.totalClosedWonValue;
-            break;
-          case 'f-pipeline-val':
-            configuredValue = dealData?.totalPipelineValue;
-            break;
-          case 'f-win-rate': {
-            const closed = dealData?.closedWonCount ?? 0;
-            const active = dealData?.activeDealsCount ?? 0;
-            const total = closed + active;
-            configuredValue = total > 0 ? (closed / total) * 100 : 0;
-            break;
-          }
-          default:
-            configuredValue = undefined;
-        }
-
-        const fallbackValue = Math.round(45000 + Math.random() * 55000);
-        const value = configuredValue ?? fallbackValue;
-
-        const displayValue = format === 'percent'
-          ? `${value.toFixed(1)}%`
-          : format === 'currency'
-            ? formatCurrency(value)
-            : Math.round(value).toLocaleString();
-
-        return (
-          <StatWidgetContent
-            title={widget.title}
-            value={displayValue}
-            subtitle={`Custom KPI · ${metricLabel}`}
-            icon="dollar"
-            color={widget.color}
-          />
-        );
+        return <DatarailsLiveStat widget={widget} />;
       }
       return (
         <CardContent className="pt-6">
