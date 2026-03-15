@@ -210,17 +210,43 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
   const isLine = config.type === 'line';
   const isStacked = config.type === 'stackedBar';
 
-  // Get all numeric keys from data (excluding 'period')
+  const trendLine = config.trendLine;
+  const dataLabels = config.dataLabels;
+  const primaryFormat = config.values[0]?.format ?? 'currency';
+
+  // Get all numeric keys from data (excluding 'period' and internal trend keys)
   const dataKeys = data.length > 0
-    ? Object.keys(data[0]).filter(k => k !== 'period')
+    ? Object.keys(data[0]).filter(k => k !== 'period' && !k.startsWith('__trend_'))
     : valueFields;
+
+  // Enrich data with trend line values
+  const enrichedData = useMemo(() => {
+    if (!trendLine?.enabled || dataKeys.length === 0) return data;
+    const trendValues = computeTrendLine(data, dataKeys[0], trendLine);
+    return data.map((d, i) => ({ ...d, __trend_line: trendValues[i] }));
+  }, [data, trendLine, dataKeys]);
+
+  const renderDataLabel = dataLabels?.enabled ? (props: Record<string, unknown>) => {
+    const { x, y, width, value, height } = props as { x: number; y: number; width: number; value: number; height: number };
+    if (value === 0 || value === undefined || value === null) return null;
+    const formatted = formatCompact(value as number, primaryFormat);
+    let labelY = y;
+    if (dataLabels.position === 'above') labelY = y - 6;
+    else if (dataLabels.position === 'inside') labelY = y + (height || 0) / 2 + 4;
+    else if (dataLabels.position === 'below') labelY = y + (height || 0) + 14;
+    return (
+      <text x={(x || 0) + ((width || 0) / 2)} y={labelY} textAnchor="middle" fontSize={10} fontWeight={500} fill="hsl(var(--foreground))">
+        {formatted}
+      </text>
+    );
+  } : undefined;
 
   const ChartComponent = isLine ? LineChart : BarChart;
   const barRadius: [number, number, number, number] = [6, 6, 0, 0];
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <ChartComponent data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+      <ChartComponent data={enrichedData} margin={{ top: dataLabels?.enabled ? 20 : 5, right: 20, left: 10, bottom: 5 }}>
         <defs>
           {dataKeys.map((_, i) => {
             const [start, end] = CHART_GRADIENT_PAIRS[i % CHART_GRADIENT_PAIRS.length];
@@ -239,23 +265,24 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {dataKeys.map((name, i) =>
           isLine ? (
-            <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls />
+            <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls>
+              {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+            </Line>
           ) : isStacked ? (
-            <Bar
-              key={name}
-              dataKey={name}
-              fill={`url(#barGrad-${i})`}
-              stackId="stack"
+            <Bar key={name} dataKey={name} fill={`url(#barGrad-${i})`} stackId="stack"
               shape={(props: Record<string, unknown>) => <StackedBarShape {...props} dataKeys={dataKeys} currentKey={name} />}
-            />
+            >
+              {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+            </Bar>
           ) : (
-            <Bar
-              key={name}
-              dataKey={name}
-              fill={`url(#barGrad-${i})`}
-              radius={barRadius}
-            />
+            <Bar key={name} dataKey={name} fill={`url(#barGrad-${i})`} radius={barRadius}>
+              {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+            </Bar>
           )
+        )}
+        {trendLine?.enabled && (
+          <Line type="monotone" dataKey="__trend_line" stroke={CHART_COLORS[0]} strokeWidth={2}
+            strokeDasharray="6 3" strokeOpacity={0.45} dot={false} connectNulls legendType="none" />
         )}
       </ChartComponent>
     </ResponsiveContainer>
