@@ -340,7 +340,7 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
           </div>
         )}
 
-        {!isLoading && plTree.length === 0 && (
+        {!isLoading && !isSyncing && plTree.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <FileText className="h-8 w-8 text-muted-foreground/40 mb-3" />
             <p className="text-sm font-medium">No P&L Data Available</p>
