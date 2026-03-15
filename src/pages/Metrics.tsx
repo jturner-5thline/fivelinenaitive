@@ -27,6 +27,9 @@ import {
 import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerformanceModelGrid";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
+import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
+import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
+import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -1574,6 +1577,11 @@ export default function Metrics() {
 
   const statWidgets = widgets.filter((w) => getWidgetDisplayType(w) === 'stat');
   const chartWidgets = widgets.filter((w) => getWidgetDisplayType(w) === 'chart');
+  const allWidgetIds = useMemo(() => widgets.map(w => w.id), [widgets]);
+  const { layout: gridLayout, saveLayout: saveGridLayout, resetLayout: resetGridLayout } = useGridLayout(
+    `metrics-${selectedDashboard}`,
+    allWidgetIds
+  );
 
   return (
     <>
@@ -1815,10 +1823,16 @@ export default function Metrics() {
               </Button>
 
               {isEditMode && (
-                <Button size="sm" onClick={handleAdd}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Widget
-                </Button>
+                <>
+                  <Button size="sm" onClick={handleAdd}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Widget
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={resetGridLayout}>
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reset Layout
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -1868,51 +1882,34 @@ export default function Metrics() {
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
           </>
 
-          {/* Editable Widgets Grid - always available */}
-          {(
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
-                {/* Stat Widgets Row */}
-                {statWidgets.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {statWidgets.map((widget) => (
-                      <SortableMetricWidget
-                        key={widget.id}
-                        widget={widget}
-                        isEditMode={isEditMode}
-                        onEdit={() => handleEdit(widget)}
-                        onDelete={() => {
-                          setWidgetToDelete(widget.id);
-                          setDeleteConfirmOpen(true);
-                        }}
-                      >
-                        {renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })}
-                      </SortableMetricWidget>
-                    ))}
+          {/* Editable Widgets Grid - react-grid-layout */}
+          {widgets.length > 0 && (
+            <DraggableGridLayout
+              layout={gridLayout}
+              onLayoutChange={saveGridLayout}
+              isEditMode={isEditMode}
+            >
+              {widgets.map((widget) => {
+                const isStat = getWidgetDisplayType(widget) === 'stat';
+                return (
+                  <div key={widget.id}>
+                    <GridWidgetCard
+                      isEditMode={isEditMode}
+                      onEdit={() => handleEdit(widget)}
+                      onDelete={() => {
+                        setWidgetToDelete(widget.id);
+                        setDeleteConfirmOpen(true);
+                      }}
+                    >
+                      {isStat
+                        ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
+                        : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                      }
+                    </GridWidgetCard>
                   </div>
-                )}
-
-                {/* Chart Widgets Grid */}
-                {chartWidgets.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-                    {chartWidgets.map((widget) => (
-                      <SortableMetricWidget
-                        key={widget.id}
-                        widget={widget}
-                        isEditMode={isEditMode}
-                        onEdit={() => handleEdit(widget)}
-                        onDelete={() => {
-                          setWidgetToDelete(widget.id);
-                          setDeleteConfirmOpen(true);
-                        }}
-                      >
-                        {renderChartContent(widget, metrics, qbMetrics, hsMetrics)}
-                      </SortableMetricWidget>
-                    ))}
-                  </div>
-                )}
-              </SortableContext>
-            </DndContext>
+                );
+              })}
+            </DraggableGridLayout>
           )}
 
           {/* Rep Performance & Pipeline Model Grid */}
