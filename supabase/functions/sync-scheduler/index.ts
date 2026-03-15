@@ -118,17 +118,36 @@ serve(async (req: Request) => {
       if (schedule.qb_enabled) {
         const lastQb = schedule.last_qb_sync ? new Date(schedule.last_qb_sync) : null;
         if (!lastQb || now.getTime() - lastQb.getTime() >= intervalMs) {
-          // Trigger QB sync via edge function
           try {
-            await fetch(`${supabaseUrl}/functions/v1/quickbooks-sync`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${supabaseServiceKey}`,
-                "x-sync-user-id": schedule.user_id,
-              },
-              body: JSON.stringify({ syncType: "all", userId: schedule.user_id }),
-            });
+            // Get user's QB tokens to find realm IDs
+            const { data: tokens } = await supabase
+              .from("quickbooks_tokens")
+              .select("realm_id")
+              .eq("user_id", schedule.user_id);
+
+            // Sync each scope separately to avoid edge function timeouts
+            const scopes = ["customers", "invoices", "payments", "expenses", "accounts", "vendors", "bills"];
+            for (const token of tokens || []) {
+              for (const scope of scopes) {
+                try {
+                  await fetch(`${supabaseUrl}/functions/v1/quickbooks-sync`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "Authorization": `Bearer ${supabaseServiceKey}`,
+                      "x-sync-user-id": schedule.user_id,
+                    },
+                    body: JSON.stringify({
+                      syncType: scope,
+                      realmId: token.realm_id,
+                      userId: schedule.user_id,
+                    }),
+                  });
+                } catch (e) {
+                  console.error(`QB ${scope} sync failed for user ${schedule.user_id}:`, e);
+                }
+              }
+            }
 
             await supabase
               .from("sync_schedule_settings")
