@@ -206,6 +206,7 @@ export function useQBPreviewData(config: WidgetConfig) {
     ['f-revenue', 'f-total-revenue', 'f-amount', 'f-expenses', 'f-cogs', 'f-net-income'].includes(v.fieldId) ||
     isQBAccountField(v.fieldId)
   ));
+  const hasNaitiveValues = config.values.some(v => v.fieldId && isNaitiveField(v.fieldId));
 
   // Build a stable key from breakdown/accountFilter config
   const valuesKey = config.values.map(v => 
