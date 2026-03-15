@@ -205,29 +205,94 @@ function parseQBProfitAndLoss(report: QBReport, realmId: string, reportDate: str
   };
 }
 
-// ─── Hook ──────────────────────────────────────────────────────
-export function useQBProfitAndLoss(realmId?: string | null) {
-  const { user } = useAuth();
+// Convert UI dateRange string to start/end date strings
+function dateRangeToDates(dateRange?: string): { start_date: string; end_date: string } | null {
+  if (!dateRange) return null;
+  const now = new Date();
+  let start: Date;
+  const end = endOfMonth(now);
 
-  return useQuery({
-    queryKey: ['qb-profit-and-loss', user?.id, realmId],
+  switch (dateRange) {
+    case '3m':
+      start = startOfMonth(subMonths(now, 2));
+      break;
+    case '6m':
+      start = startOfMonth(subMonths(now, 5));
+      break;
+    case '12m':
+      start = startOfMonth(subMonths(now, 11));
+      break;
+    case 'ytd':
+      start = startOfYear(now);
+      break;
+    default:
+      return null;
+  }
+  return {
+    start_date: format(start, 'yyyy-MM-dd'),
+    end_date: format(end, 'yyyy-MM-dd'),
+  };
+}
+
+// ─── Hook ──────────────────────────────────────────────────────
+export function useQBProfitAndLoss(realmId?: string | null, dateRange?: string) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const dates = dateRangeToDates(dateRange);
+
+  // Sync mutation: re-fetch from QuickBooks with specific date params
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      if (!dates) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const body: Record<string, string> = {
+        syncType: 'profit_and_loss',
+        ...(realmId && realmId !== 'all' ? { realmId } : {}),
+        start_date: dates.start_date,
+        end_date: dates.end_date,
+      };
+
+      const res = await supabase.functions.invoke('quickbooks-sync', { body });
+      if (res.error) throw res.error;
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qb-profit-and-loss'] });
+    },
+  });
+
+  const query = useQuery({
+    queryKey: ['qb-profit-and-loss', user?.id, realmId, dates?.start_date, dates?.end_date],
     queryFn: async () => {
-      let query = supabase
+      let q = supabase
         .from('quickbooks_reports')
         .select('*')
         .eq('report_type', 'profit_and_loss')
         .order('synced_at', { ascending: false });
 
       if (realmId && realmId !== 'all') {
-        query = query.eq('realm_id', realmId);
+        q = q.eq('realm_id', realmId);
       }
 
-      const { data, error } = await query;
+      // Filter by matching period dates if provided
+      if (dates) {
+        q = q.eq('period_start', dates.start_date).eq('period_end', dates.end_date);
+      }
+
+      const { data, error } = await q;
       if (error) throw error;
+
+      // If no matching data found for this date range, trigger a sync
+      if ((!data || data.length === 0) && dates) {
+        // Return null to show loading; the effect below will trigger sync
+        return null;
+      }
+
       if (!data || data.length === 0) return null;
 
-      if (realmId === 'all') {
-        // Group by realm, take latest for each
+      if (realmId === 'all' || !realmId) {
         const byRealm = new Map<string, typeof data[0]>();
         for (const row of data) {
           if (!byRealm.has(row.realm_id)) {
@@ -245,7 +310,6 @@ export function useQBProfitAndLoss(realmId?: string | null) {
         );
       }
 
-      // Single entity — latest report
       const row = data[0];
       return [parseQBProfitAndLoss(
         row.report_data as unknown as QBReport,
@@ -256,6 +320,12 @@ export function useQBProfitAndLoss(realmId?: string | null) {
       )];
     },
     enabled: !!user,
-    staleTime: 10_000,
+    staleTime: 30_000,
   });
+
+  return {
+    ...query,
+    syncForDateRange: syncMutation.mutateAsync,
+    isSyncing: syncMutation.isPending,
+  };
 }
