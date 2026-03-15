@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { subMonths, startOfYear, format, startOfMonth, endOfMonth } from 'date-fns';
+import { subMonths, subYears, startOfYear, format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, subQuarters } from 'date-fns';
 
 // ─── QuickBooks Report JSON types ──────────────────────────────
 interface QBColData {
