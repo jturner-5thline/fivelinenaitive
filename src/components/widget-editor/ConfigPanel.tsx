@@ -72,6 +72,18 @@ export function ConfigPanel({ config, onChange, realtime, onRealtimeToggle }: Pr
             <FiltersConfigSection config={config} onChange={onChange} />
           </Section>
 
+          <Section title="Comparison" defaultOpen={false}>
+            <ComparisonConfigSection config={config.comparison} onChange={(comparison) => onChange({ ...config, comparison })} />
+          </Section>
+
+          <Section title="Trend Line" defaultOpen={false}>
+            <TrendLineConfigSection config={config.trendLine} onChange={(trendLine) => onChange({ ...config, trendLine })} />
+          </Section>
+
+          <Section title="Display" defaultOpen={false}>
+            <DisplayConfigSection config={config.dataLabels} onChange={(dataLabels) => onChange({ ...config, dataLabels })} />
+          </Section>
+
           <Section title="Formula" defaultOpen={false}>
             <FormulaSection config={config.formula} onChange={(formula) => onChange({ ...config, formula })} />
           </Section>
