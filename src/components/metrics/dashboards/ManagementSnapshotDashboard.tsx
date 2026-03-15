@@ -381,6 +381,7 @@ export function ManagementSnapshotDashboard({
       entityFilter: cfg?.entityFilter,
       isEditMode,
       onEditCard,
+      onDeleteCard,
       onTimeWindowChange,
     };
   };
