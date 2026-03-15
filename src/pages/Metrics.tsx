@@ -1478,6 +1478,22 @@ export default function Metrics() {
     setEditorOpen(true);
   };
 
+  /** Generic handler for clicking any card in a pre-built dashboard */
+  const handlePrebuiltCardEdit = (cardTitle: string) => {
+    setEditingManagementSnapshotCardId(null);
+    setEditingWidget({
+      id: `prebuilt-${selectedDashboard}-${cardTitle.replace(/\s+/g, '-').toLowerCase()}`,
+      createdAt: new Date().toISOString(),
+      title: cardTitle,
+      type: 'chart',
+      chartType: 'bar',
+      dataSource: `datarails-prebuilt-${Date.now()}`,
+      size: 'medium',
+      color: 'hsl(var(--primary))',
+    });
+    setEditorOpen(true);
+  };
+
   const editorInitialConfig = useMemo<DatarailsWidgetConfig>(() => {
     if (!editingWidget) return DEFAULT_WIDGET_CONFIG;
 
