@@ -27,6 +27,9 @@ import {
 import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerformanceModelGrid";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
+import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
+import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
+import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
