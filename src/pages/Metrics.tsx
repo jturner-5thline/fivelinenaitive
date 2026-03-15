@@ -106,6 +106,7 @@ import { useCustomMetrics } from "@/hooks/useCustomMetrics";
 import { evaluateFormula, FormulaContext } from "@/lib/customMetricEngine";
 import { SyncStatusBar } from "@/components/metrics/SyncStatusBar";
 import { getTimePeriodRange, getTimePeriodLabel, isInRange } from "@/lib/timePeriodUtils";
+import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/DatarailsLiveWidget";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Management Snapshot', isFavorite: true },
@@ -1019,132 +1020,9 @@ function renderChartContent(
     }
 
     default: {
-      // Datarails custom widgets - render using stored config
+      // Datarails custom widgets - use live data
       if (widget.dataSource.startsWith('datarails-') && widget.datarailsConfig) {
-        const dc = widget.datarailsConfig as {
-          type?: string;
-          values?: Array<{ fieldId?: string | null; format?: string }>;
-        };
-
-        const selectedType = dc.type ?? 'bar';
-
-        // If the user chose "Metric" (KPI) view, render as a stat card, not a chart
-        if (selectedType === 'kpi') {
-          const selectedFieldId = dc.values?.[0]?.fieldId as string | undefined;
-          const fmt = dc.values?.[0]?.format;
-          const metricLabel = selectedFieldId
-            ? (selectedFieldId.startsWith('qb-account-')
-                ? 'QB Account'
-                : selectedFieldId.replace(/^[a-z]-/, '').replace(/-/g, ' '))
-            : 'metric';
-          const fallbackValue = 284350;
-          const displayValue = fmt === 'percent'
-            ? `${(fallbackValue / 1000).toFixed(1)}%`
-            : fmt === 'currency'
-              ? formatCurrency(fallbackValue)
-              : fallbackValue.toLocaleString();
-
-          return (
-            <StatWidgetContent
-              title={widget.title}
-              value={displayValue}
-              subtitle={`Custom KPI · ${metricLabel}`}
-              icon="dollar"
-              color={widget.color}
-            />
-          );
-        }
-
-        const valueNames = (dc.values || []).map((v) => v.fieldId || 'Value').filter(Boolean) as string[];
-        const chartHeight = widget.size === 'small' ? 180 : widget.size === 'medium' ? 240 : 280;
-
-        if (valueNames.length === 0) {
-          return (
-            <ChartWidgetContent title={widget.title} description="Custom widget">
-              <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
-                Add at least one value to visualize this widget
-              </div>
-            </ChartWidgetContent>
-          );
-        }
-
-        // Generate sample data for display
-        const sampleMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        const sampleData = sampleMonths.map((month, i) => {
-          const row: Record<string, string | number> = { month };
-          valueNames.forEach((name) => {
-            row[name] = Math.round(20000 + Math.random() * 80000 + i * 5000);
-          });
-          return row;
-        });
-
-        const isLine = selectedType === 'line';
-        const isStacked = selectedType === 'stackedBar';
-        const barRadius: [number, number, number, number] = [6, 6, 0, 0];
-
-        return (
-          <ChartWidgetContent title={widget.title} description="Custom widget">
-            <div style={{ height: chartHeight }}>
-              <ResponsiveContainer width="100%" height="100%">
-                {isLine ? (
-                  <LineChart data={sampleData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                    <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(value: number) => [formatCurrency(value)]} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                    <Legend />
-                    {valueNames.map((name, i) => (
-                      <Line
-                        key={name}
-                        type="monotone"
-                        dataKey={name}
-                        stroke={COLORS[i % COLORS.length]}
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                        name={name.replace('f-', '').replace(/-/g, ' ')}
-                      />
-                    ))}
-                  </LineChart>
-                ) : (
-                  <BarChart data={sampleData}>
-                    <defs>
-                      {valueNames.map((name, i) => {
-                        const [c1, c2] = [
-                          ['hsl(213, 90%, 70%)', 'hsl(213, 80%, 50%)'],
-                          ['hsl(142, 71%, 55%)', 'hsl(142, 71%, 38%)'],
-                          ['hsl(38, 92%, 58%)', 'hsl(38, 92%, 42%)'],
-                          ['hsl(270, 60%, 68%)', 'hsl(270, 60%, 48%)'],
-                          ['hsl(220, 15%, 65%)', 'hsl(220, 15%, 45%)'],
-                        ][i % 5];
-                        return (
-                          <linearGradient key={name} id={`drGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={c1} />
-                            <stop offset="100%" stopColor={c2} />
-                          </linearGradient>
-                        );
-                      })}
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                    <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(value: number) => [formatCurrency(value)]} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                    <Legend />
-                    {valueNames.map((name, i) => (
-                      <Bar
-                        key={name}
-                        dataKey={name}
-                        fill={`url(#drGrad-${i})`}
-                        name={name.replace('f-', '').replace(/-/g, ' ')}
-                        radius={barRadius}
-                        stackId={isStacked ? 'stack' : undefined}
-                      />
-                    ))}
-                  </BarChart>
-                )}
-              </ResponsiveContainer>
-            </div>
-          </ChartWidgetContent>
-        );
+        return <DatarailsLiveChart widget={widget} />;
       }
 
       return (
@@ -1443,68 +1321,9 @@ function renderStatContent(
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Requires QuickBooks</p></CardContent>);
 
     default: {
-      // Datarails custom KPI widgets
+      // Datarails custom KPI widgets - use live data
       if (widget.dataSource.startsWith('datarails-') && widget.datarailsConfig) {
-        const dc = widget.datarailsConfig;
-        const selectedFieldId = dc.values?.[0]?.fieldId as string | undefined;
-        const format = dc.values?.[0]?.format;
-
-        const metricLabel = selectedFieldId
-          ? (selectedFieldId.startsWith('qb-account-')
-              ? 'QB Account'
-              : selectedFieldId.replace(/^[a-z]-/, '').replace(/-/g, ' '))
-          : 'metric';
-
-        let configuredValue: number | undefined;
-        switch (selectedFieldId) {
-          case 'f-revenue':
-          case 'f-total-revenue':
-            configuredValue = qbData?.totalRevenue;
-            break;
-          case 'f-expenses':
-            configuredValue = qbData?.totalExpenses;
-            break;
-          case 'f-net-income':
-            configuredValue = qbData?.netIncome;
-            break;
-          case 'f-amount':
-            configuredValue = qbData?.totalPayments ?? qbData?.totalRevenue;
-            break;
-          case 'f-deal-amount':
-            configuredValue = dealData?.totalClosedWonValue;
-            break;
-          case 'f-pipeline-val':
-            configuredValue = dealData?.totalPipelineValue;
-            break;
-          case 'f-win-rate': {
-            const closed = dealData?.closedWonCount ?? 0;
-            const active = dealData?.activeDealsCount ?? 0;
-            const total = closed + active;
-            configuredValue = total > 0 ? (closed / total) * 100 : 0;
-            break;
-          }
-          default:
-            configuredValue = undefined;
-        }
-
-        const fallbackValue = Math.round(45000 + Math.random() * 55000);
-        const value = configuredValue ?? fallbackValue;
-
-        const displayValue = format === 'percent'
-          ? `${value.toFixed(1)}%`
-          : format === 'currency'
-            ? formatCurrency(value)
-            : Math.round(value).toLocaleString();
-
-        return (
-          <StatWidgetContent
-            title={widget.title}
-            value={displayValue}
-            subtitle={`Custom KPI · ${metricLabel}`}
-            icon="dollar"
-            color={widget.color}
-          />
-        );
+        return <DatarailsLiveStat widget={widget} />;
       }
       return (
         <CardContent className="pt-6">

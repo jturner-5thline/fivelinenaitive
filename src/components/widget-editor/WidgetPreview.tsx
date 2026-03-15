@@ -305,7 +305,7 @@ function KpiPreview({ config, data }: { config: WidgetConfig; data?: PreviewData
       return sum + val;
     }, 0);
   } else {
-    displayVal = format === 'percent' ? 42.7 : 284350;
+    displayVal = 0;
   }
 
   const formatted = format === 'currency' ? `$${displayVal.toLocaleString()}` : format === 'percent' ? `${displayVal.toFixed(1)}%` : displayVal.toLocaleString();
