@@ -138,7 +138,8 @@ export function FieldCatalog({ selectedEntityId, onEntityChange }: FieldCatalogP
   );
 
   const isQB = sourceFilter === 'quickbooks';
-  const hasEntity = isQB && selectedEntityId;
+  const hasEntity = isQB && selectedEntityId && selectedEntityId !== 'all';
+  const isAllEntities = isQB && selectedEntityId === 'all';
 
   // Group COA by classification
   const groupedAccounts = useMemo(() => {
