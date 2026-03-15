@@ -1,6 +1,6 @@
 import { ReactNode, useMemo } from 'react';
-// @ts-ignore - ESM export issue workaround
-import { Responsive, WidthProvider } from 'react-grid-layout/index';
+import ReactGridLayout from 'react-grid-layout';
+const { Responsive, WidthProvider } = ReactGridLayout;
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { cn } from '@/lib/utils';
