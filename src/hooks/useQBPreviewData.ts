@@ -62,12 +62,23 @@ function getDateRange(window: TimeWindow | undefined): { start: string; end: str
   }
 }
 
+/** Get the Monday of the week for a given date */
+function getWeekMonday(d: Date): Date {
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.getFullYear(), d.getMonth(), diff);
+}
+
 /** Format a date into a period label based on grain */
 function toPeriodLabel(dateStr: string, grain: Grain | undefined): string {
   const d = new Date(dateStr + 'T00:00:00');
   switch (grain) {
     case 'day':
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    case 'week': {
+      const mon = getWeekMonday(d);
+      return `Wk ${mon.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    }
     case 'quarter': {
       const q = Math.floor(d.getMonth() / 3) + 1;
       return `Q${q} ${d.getFullYear()}`;
@@ -86,6 +97,10 @@ function toPeriodKey(dateStr: string, grain: Grain | undefined): string {
   switch (grain) {
     case 'day':
       return dateStr;
+    case 'week': {
+      const mon = getWeekMonday(d);
+      return mon.toISOString().slice(0, 10);
+    }
     case 'quarter': {
       const q = Math.floor(d.getMonth() / 3) + 1;
       return `${d.getFullYear()}-Q${q}`;
@@ -106,6 +121,11 @@ function generateAllPeriodKeys(start: string, end: string, grain: Grain | undefi
 
   // Align to grain boundary
   switch (grain) {
+    case 'week': {
+      const mon = getWeekMonday(current);
+      current.setTime(mon.getTime());
+      break;
+    }
     case 'month':
       current.setDate(1);
       break;
@@ -130,6 +150,9 @@ function generateAllPeriodKeys(start: string, end: string, grain: Grain | undefi
     switch (grain) {
       case 'day':
         current.setDate(current.getDate() + 1);
+        break;
+      case 'week':
+        current.setDate(current.getDate() + 7);
         break;
       case 'quarter':
         current.setMonth(current.getMonth() + 3);
