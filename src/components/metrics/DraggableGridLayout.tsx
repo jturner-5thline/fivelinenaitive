@@ -1,5 +1,4 @@
 import { ReactNode, useMemo } from 'react';
-// @ts-ignore - WidthProvider is a default export in react-grid-layout
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -56,8 +55,8 @@ export function DraggableGridLayout({
             onLayoutChange(mapped);
           }
         }}
-        margin={[16, 16] as [number, number]}
-        containerPadding={[0, 0] as [number, number]}
+        margin={[16, 16]}
+        containerPadding={[0, 0]}
         useCSSTransforms
       >
         {children}
