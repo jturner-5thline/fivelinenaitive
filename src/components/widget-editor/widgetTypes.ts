@@ -10,7 +10,7 @@ export interface Field {
   source: FieldSource;
 }
 
-export type Grain = 'day' | 'month' | 'quarter' | 'year';
+export type Grain = 'day' | 'week' | 'month' | 'quarter' | 'year';
 
 export type TimeWindow = 'mtd' | 'lastMonth' | 'qtd' | 'lastQuarter' | 'ytd' | 'lastYear' | 'ttm' | 'last3Months' | 'last6Months' | 'last12Months' | 'all' | 'custom';
 
