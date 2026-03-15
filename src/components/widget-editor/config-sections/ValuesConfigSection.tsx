@@ -110,6 +110,19 @@ export function ValuesConfigSection({ configs, onChange, realmId, entityId }: Pr
                     >
                       By Account
                     </button>
+                    {isAllEntities && (
+                      <button
+                        onClick={() => update(idx, { breakdown: 'byEntity', accountFilter: [] })}
+                        className={cn(
+                          'px-2 py-0.5 rounded text-[11px] font-medium transition-colors',
+                          breakdown === 'byEntity'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        )}
+                      >
+                        By Entity
+                      </button>
+                    )}
                   </div>
                 </div>
 
