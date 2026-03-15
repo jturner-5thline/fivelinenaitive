@@ -1858,7 +1858,7 @@ export default function Metrics() {
           </div>
 
           {/* Dashboard Content - always show pre-built dashboards */}
-          <>
+          <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={handlePrebuiltCardEdit}>
             {selectedDashboard === 'management-snapshot' && (
               <ManagementSnapshotDashboard
                 isEditMode={isEditMode}
@@ -1900,7 +1900,7 @@ export default function Metrics() {
             {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
-          </>
+          </EditableDashboardWrapper>
 
           {/* Editable Widgets Grid - react-grid-layout */}
           {widgets.length > 0 && (
