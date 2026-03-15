@@ -350,7 +350,10 @@ serve(async (req) => {
         // ─── Reports: Profit & Loss ────────────────────────
         if (shouldSync("profit_and_loss")) {
           try {
-            const report = await fetchQBReport("ProfitAndLoss", { date_macro: "This Fiscal Year-to-date" });
+            const plParams: Record<string, string> = start_date && end_date
+              ? { start_date, end_date }
+              : { date_macro: "This Fiscal Year-to-date" };
+            const report = await fetchQBReport("ProfitAndLoss", plParams);
             await supabase.from("quickbooks_reports").insert({
               user_id: user.id, realm_id: realmId, report_type: "profit_and_loss",
               report_date: new Date().toISOString().split("T")[0],
