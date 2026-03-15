@@ -152,6 +152,14 @@ const MANAGEMENT_SNAPSHOT_CARD_DEFAULTS: Record<EditableManagementSnapshotCardId
     size: 'medium',
     color: 'hsl(var(--chart-4))',
   },
+  'total-revenue': {
+    title: 'Total Revenue',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'closed-value-12m',
+    size: 'medium',
+    color: 'hsl(var(--chart-2))',
+  },
   'clients-signed-debt': {
     title: 'Clients Signed - Debt',
     type: 'chart',
