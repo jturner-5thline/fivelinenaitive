@@ -174,6 +174,7 @@ function getRelevantFieldMapping(fieldId: string): { table: 'invoices' | 'paymen
   // Standard seed fields
   const map: Record<string, { table: 'invoices' | 'payments' | 'expenses'; amountCol: string; label: string }> = {
     'f-revenue': { table: 'invoices', amountCol: 'total_amt', label: 'Revenue' },
+    'f-total-revenue': { table: 'invoices', amountCol: 'total_amt', label: 'Total Revenue' },
     'f-amount': { table: 'invoices', amountCol: 'total_amt', label: 'Amount' },
     'f-expenses': { table: 'expenses', amountCol: 'total_amt', label: 'Expenses' },
     'f-cogs': { table: 'expenses', amountCol: 'total_amt', label: 'COGS' },
