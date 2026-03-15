@@ -28,6 +28,7 @@ import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerfo
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
+import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1477,6 +1478,22 @@ export default function Metrics() {
     setEditorOpen(true);
   };
 
+  /** Generic handler for clicking any card in a pre-built dashboard */
+  const handlePrebuiltCardEdit = (cardTitle: string) => {
+    setEditingManagementSnapshotCardId(null);
+    setEditingWidget({
+      id: `prebuilt-${selectedDashboard}-${cardTitle.replace(/\s+/g, '-').toLowerCase()}`,
+      createdAt: new Date().toISOString(),
+      title: cardTitle,
+      type: 'chart',
+      chartType: 'bar',
+      dataSource: `datarails-prebuilt-${Date.now()}`,
+      size: 'medium',
+      color: 'hsl(var(--primary))',
+    });
+    setEditorOpen(true);
+  };
+
   const editorInitialConfig = useMemo<DatarailsWidgetConfig>(() => {
     if (!editingWidget) return DEFAULT_WIDGET_CONFIG;
 
@@ -1841,7 +1858,7 @@ export default function Metrics() {
           </div>
 
           {/* Dashboard Content - always show pre-built dashboards */}
-          <>
+          <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={handlePrebuiltCardEdit}>
             {selectedDashboard === 'management-snapshot' && (
               <ManagementSnapshotDashboard
                 isEditMode={isEditMode}
@@ -1883,7 +1900,7 @@ export default function Metrics() {
             {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
-          </>
+          </EditableDashboardWrapper>
 
           {/* Editable Widgets Grid - react-grid-layout */}
           {widgets.length > 0 && (

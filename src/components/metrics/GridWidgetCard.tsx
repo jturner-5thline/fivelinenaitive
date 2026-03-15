@@ -26,8 +26,10 @@ export const GridWidgetCard = forwardRef<HTMLDivElement, GridWidgetCardProps>(
         className={cn(
           'h-full',
           isEditMode && 'ring-1 ring-dashed ring-muted-foreground/30 rounded-xl',
+          !isEditMode && onEdit && 'cursor-pointer',
           className
         )}
+        onClick={!isEditMode && onEdit ? (e) => { e.stopPropagation(); onEdit(); } : undefined}
         {...rest}
       >
         <Card className="h-full flex flex-col overflow-hidden relative group">
