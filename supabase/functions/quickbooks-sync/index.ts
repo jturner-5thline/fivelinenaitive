@@ -176,14 +176,21 @@ serve(async (req) => {
       ) {
         if (!shouldSync(scope)) return;
         try {
+          console.log(`[QuickBooks Sync] Fetching ${scope}...`);
           const data = await fetchQBData(`query?query=SELECT * FROM ${qbEntity} MAXRESULTS 1000`);
           const items: T[] = data.QueryResponse?.[qbEntity] || [];
+          console.log(`[QuickBooks Sync] Got ${items.length} ${scope} records, upserting in batches...`);
+          const now = new Date().toISOString();
+          const rows = items.map(item => ({ user_id: user.id, realm_id: realmId, ...mapFn(item), synced_at: now }));
           let synced = 0;
-          for (const item of items) {
-            const row = { user_id: user.id, realm_id: realmId, ...mapFn(item), synced_at: new Date().toISOString() };
-            const { error } = await supabase.from(tableName).upsert(row, { onConflict: conflictKey });
-            if (!error) synced++;
+          const BATCH_SIZE = 100;
+          for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+            const batch = rows.slice(i, i + BATCH_SIZE);
+            const { error, count } = await supabase.from(tableName).upsert(batch, { onConflict: conflictKey });
+            if (!error) synced += batch.length;
+            else console.error(`[QuickBooks Sync] Batch upsert error for ${scope}:`, error.message);
           }
+          console.log(`[QuickBooks Sync] ${scope}: synced ${synced}/${items.length}`);
           results[scope] = { synced, errors: items.length - synced };
         } catch (e) {
           console.error(`[QuickBooks Sync] ${scope} sync error:`, e);
