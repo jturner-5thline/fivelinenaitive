@@ -62,6 +62,7 @@ export interface TrendLineConfig {
 export interface DataLabelsConfig {
   enabled: boolean;
   position: 'above' | 'inside' | 'below';
+  showPeriodTotals?: boolean;
 }
 
 export interface WidgetConfig {

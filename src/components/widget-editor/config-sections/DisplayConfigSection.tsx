@@ -11,6 +11,7 @@ interface Props {
 const DEFAULT: DataLabelsConfig = {
   enabled: false,
   position: 'above',
+  showPeriodTotals: false,
 };
 
 const POSITION_OPTIONS = [
@@ -61,6 +62,18 @@ export function DisplayConfigSection({ config, onChange }: Props) {
           </div>
         </div>
       )}
+
+      <div className="flex items-center justify-between">
+        <Label htmlFor="show-period-totals" className="text-xs text-muted-foreground cursor-pointer">
+          Show Period Totals
+        </Label>
+        <Switch
+          id="show-period-totals"
+          checked={c.showPeriodTotals ?? false}
+          onCheckedChange={(v) => update({ showPeriodTotals: v })}
+          className="scale-75 origin-right"
+        />
+      </div>
     </div>
   );
 }
