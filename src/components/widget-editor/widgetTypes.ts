@@ -4,7 +4,7 @@ export type FieldSource = 'quickbooks' | 'hubspot' | 'naitive';
 export interface Field {
   id: string;
   name: string;
-  group: 'Financials' | 'AccountDim' | 'DateDim' | 'General' | 'System';
+  group: 'Financials' | 'AccountDim' | 'DateDim' | 'General' | 'System' | 'Pipeline' | 'DealMetrics' | 'Conversion' | 'Timing' | 'Activity' | 'Lenders';
   dataType: DataType;
   isMeasure: boolean;
   source: FieldSource;
