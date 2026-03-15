@@ -101,11 +101,57 @@ function generateMockRows(config: WidgetConfig): Record<string, string | number>
 
 function formatCell(val: string | number, format?: string): string {
   if (typeof val === 'number') {
-    if (format === 'currency') return `$${val.toLocaleString()}`;
+    if (format === 'currency') return formatCompact(val, 'currency');
     if (format === 'percent') return `${val}%`;
     return val.toLocaleString();
   }
   return String(val);
+}
+
+function formatCompact(val: number, format: string): string {
+  const abs = Math.abs(val);
+  const sign = val < 0 ? '-' : '';
+  if (format === 'currency') {
+    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+    if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(0)}k`;
+    return `${sign}$${abs.toLocaleString()}`;
+  }
+  if (format === 'percent') return `${val.toFixed(1)}%`;
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(0)}k`;
+  return val.toLocaleString();
+}
+
+/** Compute linear regression trend line data */
+function computeTrendLine(data: Record<string, string | number>[], dataKey: string, trendConfig: TrendLineConfig): (number | null)[] {
+  const values = data.map(d => (typeof d[dataKey] === 'number' ? d[dataKey] as number : null));
+
+  if (trendConfig.type === 'movingAvg') {
+    const w = trendConfig.window || 3;
+    return values.map((_, i) => {
+      if (i < w - 1) return null;
+      let sum = 0, count = 0;
+      for (let j = i - w + 1; j <= i; j++) {
+        if (values[j] !== null) { sum += values[j]!; count++; }
+      }
+      return count > 0 ? sum / count : null;
+    });
+  }
+
+  // Linear regression for 'linear' and 'polynomial' (simple linear fallback)
+  const pts: { x: number; y: number }[] = [];
+  values.forEach((v, i) => { if (v !== null) pts.push({ x: i, y: v }); });
+  if (pts.length < 2) return values.map(() => null);
+
+  const n = pts.length;
+  const sumX = pts.reduce((s, p) => s + p.x, 0);
+  const sumY = pts.reduce((s, p) => s + p.y, 0);
+  const sumXY = pts.reduce((s, p) => s + p.x * p.y, 0);
+  const sumXX = pts.reduce((s, p) => s + p.x * p.x, 0);
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  return values.map((_, i) => slope * i + intercept);
 }
 
 const isChartType = (type: string) => ['bar', 'line', 'column', 'columnChart', 'stackedBar'].includes(type);
