@@ -29,9 +29,10 @@ const FORMATS = [
 
 const REVENUE_FIELDS = ['f-revenue', 'f-total-revenue', 'f-amount'];
 
-export function ValuesConfigSection({ configs, onChange, realmId }: Props) {
+export function ValuesConfigSection({ configs, onChange, realmId, entityId }: Props) {
   const { data: revenueAccounts } = useQBRevenueAccounts(realmId);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const isAllEntities = entityId === 'all';
 
   const update = (idx: number, patch: Partial<ValueConfig>) => {
     const next = configs.map((c, i) => (i === idx ? { ...c, ...patch } : c));
