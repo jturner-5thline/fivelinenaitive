@@ -298,8 +298,17 @@ function GenericDashboardCard({
     );
   };
 
+  const handleCardClick = () => {
+    if (!isEditMode && onEditCard) {
+      onEditCard(cardId);
+    }
+  };
+
   return (
-    <Card>
+    <Card
+      className={cn(!isEditMode && onEditCard && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all')}
+      onClick={handleCardClick}
+    >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
