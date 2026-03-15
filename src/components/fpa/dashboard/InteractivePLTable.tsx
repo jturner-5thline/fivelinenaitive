@@ -350,7 +350,7 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
           </div>
         )}
 
-        {!isLoading && plTree.length > 0 && (
+        {!isLoading && !isSyncing && plTree.length > 0 && (
           <>
             <div className="flex justify-end gap-2 mb-1">
               <button onClick={expandAll} className="text-[10px] text-primary hover:underline">Expand All</button>
