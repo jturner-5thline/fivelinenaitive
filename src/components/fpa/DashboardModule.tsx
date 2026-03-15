@@ -173,7 +173,7 @@ export function DashboardModule() {
           <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
             {e.plTable && (
               <div className="xl:col-span-3">
-                <InteractivePLTable comparisonMode={comparisonMode} />
+                <InteractivePLTable comparisonMode={comparisonMode} dateRange={dateRange} />
               </div>
             )}
             <div className={e.plTable ? "xl:col-span-2 space-y-4" : "xl:col-span-5 space-y-4"}>

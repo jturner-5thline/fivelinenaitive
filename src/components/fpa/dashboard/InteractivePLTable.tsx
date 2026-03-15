@@ -96,7 +96,7 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
   const [selectedEntity, setSelectedEntity] = useState<string>('all');
 
   const { data: entities = [] } = useQBEntities();
-  const { data: plReports, isLoading } = useQBProfitAndLoss(selectedEntity || 'all');
+  const { data: plReports, isLoading, syncForDateRange, isSyncing } = useQBProfitAndLoss(selectedEntity || 'all', dateRange);
 
   // Use first report or merge — for now use first
   const activePL = useMemo(() => {
