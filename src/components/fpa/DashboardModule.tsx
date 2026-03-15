@@ -31,10 +31,10 @@ function getSmartDateRange(): string {
   return 'ytd'; // H2: year-to-date
 }
 
-function getSmartComparison(): 'budget' | 'forecast' | 'prior_year' {
+function getSmartComparison(): 'budget' | 'prior_year' | 'prior_period' {
   const month = new Date().getMonth();
   if (month >= 9) return 'budget'; // Q4: compare to next-year budget
-  return 'budget';
+  return 'prior_year';
 }
 
 export function DashboardModule() {
