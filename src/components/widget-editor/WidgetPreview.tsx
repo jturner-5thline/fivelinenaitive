@@ -1,7 +1,7 @@
-import { WidgetConfig, getField, isQBAccountField } from './widgetTypes';
+import { WidgetConfig, getField, isQBAccountField, ComparisonConfig, TrendLineConfig, DataLabelsConfig } from './widgetTypes';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { useMemo } from 'react';
 import { BarChart3, LineChart as LineChartIcon, Hash, Loader2, Database, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -101,11 +101,57 @@ function generateMockRows(config: WidgetConfig): Record<string, string | number>
 
 function formatCell(val: string | number, format?: string): string {
   if (typeof val === 'number') {
-    if (format === 'currency') return `$${val.toLocaleString()}`;
+    if (format === 'currency') return formatCompact(val, 'currency');
     if (format === 'percent') return `${val}%`;
     return val.toLocaleString();
   }
   return String(val);
+}
+
+function formatCompact(val: number, format: string): string {
+  const abs = Math.abs(val);
+  const sign = val < 0 ? '-' : '';
+  if (format === 'currency') {
+    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+    if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(0)}k`;
+    return `${sign}$${abs.toLocaleString()}`;
+  }
+  if (format === 'percent') return `${val.toFixed(1)}%`;
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(0)}k`;
+  return val.toLocaleString();
+}
+
+/** Compute linear regression trend line data */
+function computeTrendLine(data: Record<string, string | number>[], dataKey: string, trendConfig: TrendLineConfig): (number | null)[] {
+  const values = data.map(d => (typeof d[dataKey] === 'number' ? d[dataKey] as number : null));
+
+  if (trendConfig.type === 'movingAvg') {
+    const w = trendConfig.window || 3;
+    return values.map((_, i) => {
+      if (i < w - 1) return null;
+      let sum = 0, count = 0;
+      for (let j = i - w + 1; j <= i; j++) {
+        if (values[j] !== null) { sum += values[j]!; count++; }
+      }
+      return count > 0 ? sum / count : null;
+    });
+  }
+
+  // Linear regression for 'linear' and 'polynomial' (simple linear fallback)
+  const pts: { x: number; y: number }[] = [];
+  values.forEach((v, i) => { if (v !== null) pts.push({ x: i, y: v }); });
+  if (pts.length < 2) return values.map(() => null);
+
+  const n = pts.length;
+  const sumX = pts.reduce((s, p) => s + p.x, 0);
+  const sumY = pts.reduce((s, p) => s + p.y, 0);
+  const sumXY = pts.reduce((s, p) => s + p.x * p.y, 0);
+  const sumXX = pts.reduce((s, p) => s + p.x * p.x, 0);
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  return values.map((_, i) => slope * i + intercept);
 }
 
 const isChartType = (type: string) => ['bar', 'line', 'column', 'columnChart', 'stackedBar'].includes(type);
@@ -164,17 +210,43 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
   const isLine = config.type === 'line';
   const isStacked = config.type === 'stackedBar';
 
-  // Get all numeric keys from data (excluding 'period')
+  const trendLine = config.trendLine;
+  const dataLabels = config.dataLabels;
+  const primaryFormat = config.values[0]?.format ?? 'currency';
+
+  // Get all numeric keys from data (excluding 'period' and internal trend keys)
   const dataKeys = data.length > 0
-    ? Object.keys(data[0]).filter(k => k !== 'period')
+    ? Object.keys(data[0]).filter(k => k !== 'period' && !k.startsWith('__trend_'))
     : valueFields;
+
+  // Enrich data with trend line values
+  const enrichedData = useMemo(() => {
+    if (!trendLine?.enabled || dataKeys.length === 0) return data;
+    const trendValues = computeTrendLine(data, dataKeys[0], trendLine);
+    return data.map((d, i) => ({ ...d, __trend_line: trendValues[i] }));
+  }, [data, trendLine, dataKeys]);
+
+  const renderDataLabel = dataLabels?.enabled ? (props: Record<string, unknown>) => {
+    const { x, y, width, value, height } = props as { x: number; y: number; width: number; value: number; height: number };
+    if (value === 0 || value === undefined || value === null) return null;
+    const formatted = formatCompact(value as number, primaryFormat);
+    let labelY = y;
+    if (dataLabels.position === 'above') labelY = y - 6;
+    else if (dataLabels.position === 'inside') labelY = y + (height || 0) / 2 + 4;
+    else if (dataLabels.position === 'below') labelY = y + (height || 0) + 14;
+    return (
+      <text x={(x || 0) + ((width || 0) / 2)} y={labelY} textAnchor="middle" fontSize={10} fontWeight={500} fill="hsl(var(--foreground))">
+        {formatted}
+      </text>
+    );
+  } : undefined;
 
   const ChartComponent = isLine ? LineChart : BarChart;
   const barRadius: [number, number, number, number] = [6, 6, 0, 0];
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <ChartComponent data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+      <ChartComponent data={enrichedData} margin={{ top: dataLabels?.enabled ? 20 : 5, right: 20, left: 10, bottom: 5 }}>
         <defs>
           {dataKeys.map((_, i) => {
             const [start, end] = CHART_GRADIENT_PAIRS[i % CHART_GRADIENT_PAIRS.length];
@@ -193,23 +265,24 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {dataKeys.map((name, i) =>
           isLine ? (
-            <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls />
+            <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls>
+              {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+            </Line>
           ) : isStacked ? (
-            <Bar
-              key={name}
-              dataKey={name}
-              fill={`url(#barGrad-${i})`}
-              stackId="stack"
+            <Bar key={name} dataKey={name} fill={`url(#barGrad-${i})`} stackId="stack"
               shape={(props: Record<string, unknown>) => <StackedBarShape {...props} dataKeys={dataKeys} currentKey={name} />}
-            />
+            >
+              {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+            </Bar>
           ) : (
-            <Bar
-              key={name}
-              dataKey={name}
-              fill={`url(#barGrad-${i})`}
-              radius={barRadius}
-            />
+            <Bar key={name} dataKey={name} fill={`url(#barGrad-${i})`} radius={barRadius}>
+              {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+            </Bar>
           )
+        )}
+        {trendLine?.enabled && (
+          <Line type="monotone" dataKey="__trend_line" stroke={CHART_COLORS[0]} strokeWidth={2}
+            strokeDasharray="6 3" strokeOpacity={0.45} dot={false} connectNulls legendType="none" />
         )}
       </ChartComponent>
     </ResponsiveContainer>

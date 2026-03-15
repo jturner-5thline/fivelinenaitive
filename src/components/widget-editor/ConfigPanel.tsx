@@ -4,6 +4,9 @@ import { SeriesConfigSection } from './config-sections/SeriesConfigSection';
 import { ValuesConfigSection } from './config-sections/ValuesConfigSection';
 import { FiltersConfigSection } from './config-sections/FiltersConfigSection';
 import { FormulaSection } from './config-sections/FormulaSection';
+import { ComparisonConfigSection } from './config-sections/ComparisonConfigSection';
+import { TrendLineConfigSection } from './config-sections/TrendLineConfigSection';
+import { DisplayConfigSection } from './config-sections/DisplayConfigSection';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, Zap } from 'lucide-react';
@@ -67,6 +70,18 @@ export function ConfigPanel({ config, onChange, realtime, onRealtimeToggle }: Pr
 
           <Section title="Time Period">
             <FiltersConfigSection config={config} onChange={onChange} />
+          </Section>
+
+          <Section title="Comparison" defaultOpen={false}>
+            <ComparisonConfigSection config={config.comparison} onChange={(comparison) => onChange({ ...config, comparison })} />
+          </Section>
+
+          <Section title="Trend Line" defaultOpen={false}>
+            <TrendLineConfigSection config={config.trendLine} onChange={(trendLine) => onChange({ ...config, trendLine })} />
+          </Section>
+
+          <Section title="Display" defaultOpen={false}>
+            <DisplayConfigSection config={config.dataLabels} onChange={(dataLabels) => onChange({ ...config, dataLabels })} />
           </Section>
 
           <Section title="Formula" defaultOpen={false}>
