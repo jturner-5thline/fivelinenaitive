@@ -241,7 +241,7 @@ export function useQBPreviewData(config: WidgetConfig) {
         // Check if this is a revenue field with byAccount breakdown
         const isByAccount = vc.breakdown === 'byAccount' && 
           mapping.table === 'invoices' && 
-          ['f-revenue', 'f-amount'].includes(vc.fieldId);
+          ['f-revenue', 'f-total-revenue', 'f-amount'].includes(vc.fieldId);
 
         if (isByAccount) {
           // Fetch invoices with metadata to parse line items

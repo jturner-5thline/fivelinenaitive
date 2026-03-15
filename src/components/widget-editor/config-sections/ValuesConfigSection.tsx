@@ -26,7 +26,7 @@ const FORMATS = [
   { value: 'number', label: 'Number' },
 ] as const;
 
-const REVENUE_FIELDS = ['f-revenue', 'f-amount'];
+const REVENUE_FIELDS = ['f-revenue', 'f-total-revenue', 'f-amount'];
 
 export function ValuesConfigSection({ configs, onChange, realmId }: Props) {
   const { data: revenueAccounts } = useQBRevenueAccounts(realmId);

@@ -26,7 +26,7 @@ const CHART_GRADIENT_PAIRS: [string, string][] = [
 /** Check if widget config uses QB-backed fields that can pull real data */
 function hasRealDataFields(config: WidgetConfig): boolean {
   return config.values.some(v => v.fieldId && (
-    ['f-revenue', 'f-amount', 'f-expenses', 'f-cogs'].includes(v.fieldId) ||
+    ['f-revenue', 'f-total-revenue', 'f-amount', 'f-expenses', 'f-cogs'].includes(v.fieldId) ||
     isQBAccountField(v.fieldId)
   ));
 }
