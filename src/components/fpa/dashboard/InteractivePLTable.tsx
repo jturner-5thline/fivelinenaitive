@@ -87,9 +87,10 @@ const fmtFull = (v: number) =>
 
 interface InteractivePLTableProps {
   comparisonMode: 'budget' | 'forecast' | 'prior_year';
+  dateRange?: string;
 }
 
-export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) {
+export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<string>('all');
