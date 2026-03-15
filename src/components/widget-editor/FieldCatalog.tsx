@@ -216,7 +216,7 @@ export function FieldCatalog({ selectedEntityId, onEntityChange }: FieldCatalogP
       </div>
 
       {/* QuickBooks entity selector */}
-      {isQB && !hasEntity && (
+      {isQB && !hasEntity && !isAllEntities && (
         <div className="px-4 py-3 border-b border-border">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
             Select Entity
