@@ -123,12 +123,13 @@ function PeriodBadge({
           variant="outline"
           size="sm"
           className="h-6 px-2 text-xs font-medium gap-1"
+          onClick={(e) => e.stopPropagation()}
         >
           {label}
           <ChevronDown className="h-3 w-3 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-52">
+      <DropdownMenuContent align="start" className="w-52" onClick={(e) => e.stopPropagation()}>
         {WINDOW_GROUPS.map((group, gi) => (
           <div key={group.label}>
             {gi > 0 && <DropdownMenuSeparator />}
