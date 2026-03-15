@@ -23,11 +23,12 @@ const CHART_GRADIENT_PAIRS: [string, string][] = [
   ['hsl(220, 15%, 65%)', 'hsl(220, 15%, 45%)'],
 ];
 
-/** Check if widget config uses QB-backed fields that can pull real data */
+/** Check if widget config uses fields that can pull real data */
 function hasRealDataFields(config: WidgetConfig): boolean {
   return config.values.some(v => v.fieldId && (
     ['f-revenue', 'f-total-revenue', 'f-amount', 'f-expenses', 'f-cogs', 'f-net-income'].includes(v.fieldId) ||
-    isQBAccountField(v.fieldId)
+    isQBAccountField(v.fieldId) ||
+    v.fieldId.startsWith('n-')
   ));
 }
 

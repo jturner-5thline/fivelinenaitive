@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { WidgetConfig, TimeWindow, Grain, isQBAccountField } from '@/components/widget-editor/widgetTypes';
+import { fetchNaitiveField, isNaitiveField } from '@/hooks/useNaitiveData';
 
 export interface PreviewDataPoint {
   period: string;
@@ -205,6 +206,7 @@ export function useQBPreviewData(config: WidgetConfig) {
     ['f-revenue', 'f-total-revenue', 'f-amount', 'f-expenses', 'f-cogs', 'f-net-income'].includes(v.fieldId) ||
     isQBAccountField(v.fieldId)
   ));
+  const hasNaitiveValues = config.values.some(v => v.fieldId && isNaitiveField(v.fieldId));
 
   // Build a stable key from breakdown/accountFilter config
   const valuesKey = config.values.map(v => 
@@ -222,7 +224,30 @@ export function useQBPreviewData(config: WidgetConfig) {
       for (const vc of config.values) {
         if (!vc.fieldId) continue;
 
-        // Handle computed fields (e.g., Net Income = Revenue - Expenses)
+        // Handle naitive (platform) fields
+        if (isNaitiveField(vc.fieldId)) {
+          const result = await fetchNaitiveField({ fieldId: vc.fieldId, grain, dateRange });
+          if (result) {
+            // Merge breakdown data (by-stage, by-type, etc.)
+            if (result.breakdownData) {
+              for (const [key, record] of result.breakdownData) {
+                if (!periodMap.has(key)) periodMap.set(key, { period: record.period as string });
+                const point = periodMap.get(key)!;
+                for (const [k, v] of Object.entries(record)) {
+                  if (k !== 'period') point[k] = ((point[k] as number) ?? 0) + (v as number);
+                }
+              }
+            }
+            // Merge single-value / time-series data
+            for (const [key, entry] of result.data) {
+              if (!periodMap.has(key)) periodMap.set(key, { period: entry.period });
+              const point = periodMap.get(key)!;
+              point[result.label] = ((point[result.label] as number) ?? 0) + entry.value;
+            }
+          }
+          continue;
+        }
+
         if (isComputedField(vc.fieldId)) {
           if (vc.fieldId === 'f-net-income') {
             // Fetch revenue (invoices)
@@ -478,7 +503,7 @@ export function useQBPreviewData(config: WidgetConfig) {
 
       return sorted;
     },
-    enabled: !!user && hasQBValues,
+    enabled: !!user && (hasQBValues || hasNaitiveValues),
     staleTime: 5_000,
   });
 }
