@@ -67,6 +67,7 @@ export const SEED_FIELDS: Field[] = [
   { id: 'f-budget',       name: 'Budget',          group: 'Financials', dataType: 'number', isMeasure: true,  source: 'naitive' },
   { id: 'f-variance',     name: 'Variance',        group: 'Financials', dataType: 'number', isMeasure: true,  source: 'naitive' },
   { id: 'f-revenue',      name: 'Revenue',         group: 'Financials', dataType: 'number', isMeasure: true,  source: 'quickbooks' },
+  { id: 'f-total-revenue', name: 'Total Revenue',   group: 'Financials', dataType: 'number', isMeasure: true,  source: 'quickbooks' },
   { id: 'f-cogs',         name: 'COGS',            group: 'Financials', dataType: 'number', isMeasure: true,  source: 'quickbooks' },
   { id: 'f-expenses',     name: 'Expenses',        group: 'Financials', dataType: 'number', isMeasure: true,  source: 'quickbooks' },
   { id: 'f-net-income',   name: 'Net Income',      group: 'Financials', dataType: 'number', isMeasure: true,  source: 'quickbooks' },
