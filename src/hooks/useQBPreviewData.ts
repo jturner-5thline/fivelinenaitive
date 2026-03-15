@@ -169,6 +169,12 @@ function generateAllPeriodKeys(start: string, end: string, grain: Grain | undefi
   return results;
 }
 
+/** Fields that are computed from multiple tables */
+const COMPUTED_FIELDS = ['f-net-income'] as const;
+function isComputedField(fieldId: string): boolean {
+  return (COMPUTED_FIELDS as readonly string[]).includes(fieldId);
+}
+
 /** Determine which QB table(s) to query based on the configured value fields */
 function getRelevantFieldMapping(fieldId: string): { table: 'invoices' | 'payments' | 'expenses' | 'accounts'; amountCol: string; label: string } | null {
   // Standard seed fields
@@ -196,7 +202,7 @@ export function useQBPreviewData(config: WidgetConfig) {
   const timeWindow = config.xAxis.window;
   const showZeroPeriods = config.xAxis.showZeroPeriods ?? true;
   const hasQBValues = config.values.some(v => v.fieldId && (
-    ['f-revenue', 'f-total-revenue', 'f-amount', 'f-expenses', 'f-cogs'].includes(v.fieldId) ||
+    ['f-revenue', 'f-total-revenue', 'f-amount', 'f-expenses', 'f-cogs', 'f-net-income'].includes(v.fieldId) ||
     isQBAccountField(v.fieldId)
   ));
 
@@ -215,6 +221,51 @@ export function useQBPreviewData(config: WidgetConfig) {
 
       for (const vc of config.values) {
         if (!vc.fieldId) continue;
+
+        // Handle computed fields (e.g., Net Income = Revenue - Expenses)
+        if (isComputedField(vc.fieldId)) {
+          if (vc.fieldId === 'f-net-income') {
+            // Fetch revenue (invoices)
+            let revQuery = supabase
+              .from('quickbooks_invoices')
+              .select('txn_date, total_amt')
+              .order('txn_date', { ascending: true });
+            if (realmId) revQuery = revQuery.eq('realm_id', realmId);
+            if (dateRange) revQuery = revQuery.gte('txn_date', dateRange.start).lte('txn_date', dateRange.end);
+
+            // Fetch expenses
+            let expQuery = supabase
+              .from('quickbooks_expenses')
+              .select('txn_date, total_amt')
+              .order('txn_date', { ascending: true });
+            if (realmId) expQuery = expQuery.eq('realm_id', realmId);
+            if (dateRange) expQuery = expQuery.gte('txn_date', dateRange.start).lte('txn_date', dateRange.end);
+
+            const [{ data: revRows }, { data: expRows }] = await Promise.all([revQuery, expQuery]);
+
+            const label = 'Net Income';
+            // Add revenue as positive
+            for (const row of revRows ?? []) {
+              if (!row.txn_date) continue;
+              const key = toPeriodKey(row.txn_date, grain);
+              const periodLabel = toPeriodLabel(row.txn_date, grain);
+              if (!periodMap.has(key)) periodMap.set(key, { period: periodLabel });
+              const point = periodMap.get(key)!;
+              point[label] = ((point[label] as number) || 0) + (row.total_amt ?? 0);
+            }
+            // Subtract expenses
+            for (const row of expRows ?? []) {
+              if (!row.txn_date) continue;
+              const key = toPeriodKey(row.txn_date, grain);
+              const periodLabel = toPeriodLabel(row.txn_date, grain);
+              if (!periodMap.has(key)) periodMap.set(key, { period: periodLabel });
+              const point = periodMap.get(key)!;
+              point[label] = ((point[label] as number) || 0) - (row.total_amt ?? 0);
+            }
+          }
+          continue;
+        }
+
         const mapping = getRelevantFieldMapping(vc.fieldId);
         if (!mapping) continue;
 
