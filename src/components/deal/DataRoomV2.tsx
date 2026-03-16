@@ -27,7 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CircularProgress } from './data-room/CircularProgress';
 import { ChecklistTreePane } from './data-room/ChecklistTreePane';
 import { FileListPane } from './data-room/FileListPane';
-import { ContextPane } from './data-room/ContextPane';
+
 import { MappingDialog } from './data-room/MappingDialog';
 import { FilePreviewPanel } from './data-room/FilePreviewPanel';
 import { BreadcrumbTrail } from './data-room/BreadcrumbTrail';
@@ -493,10 +493,9 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
         </div>
       )}
 
-      {/* Two-column layout: Checklist with nested files (primary) + Detail Panel */}
-      <div className="grid grid-cols-[1fr_340px] gap-3 h-[640px]">
-        {/* Primary: Checklist with nested files */}
-        <div className="min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+      {/* Full-width layout: Checklist with nested files */}
+      <div className="h-[640px]">
+        <div className="h-full min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
           <ChecklistTreePane
             categories={categories}
             grouped={grouped}
@@ -520,35 +519,6 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
             allItems={allItems}
             deleteAttachment={deleteAttachment}
             onToggleItemStatus={toggleItemStatus}
-          />
-        </div>
-
-        {/* Right: Context/Detail panel */}
-        <div className="min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
-          <ContextPane
-            selectedItem={selectedItem}
-            selectedItemFiles={selectedItemFiles}
-            statusMap={statusMap}
-            progressData={progressData}
-            categories={categories}
-            allItems={allItems}
-            attachments={attachments}
-            unmappedFiles={unmappedFiles}
-            getFilesForItem={getFilesForItem}
-            mapFileToItem={mapFileToItem}
-            unmapFile={unmapFile}
-            handleUploadFiles={handleUploadFiles}
-            handleDownloadFile={handleDownloadFile}
-            setSelectedItemId={setSelectedItemId}
-            setPreviewFile={handleSetPreviewFile}
-            onExportIndex={handleExportIndex}
-            onDownloadSection={handleDownloadSection}
-            onDownloadAll={handleDownloadAll}
-            comments={comments}
-            onAddComment={addComment}
-            onDeleteComment={deleteComment}
-            getCommentsForItem={getCommentsForItem}
-            currentUserId={user?.id}
           />
         </div>
       </div>
