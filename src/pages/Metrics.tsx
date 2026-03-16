@@ -1409,6 +1409,7 @@ export default function Metrics() {
   const {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
+    resetLayout: resetSnapshotGridLayout,
   } = useGridLayout('management-snapshot-unified', unifiedLayoutIds);
 
   const [snapshotCardToDelete, setSnapshotCardToDelete] = useState<EditableManagementSnapshotCardId | null>(null);
