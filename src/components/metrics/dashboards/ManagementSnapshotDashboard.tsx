@@ -62,6 +62,8 @@ export type EditableManagementSnapshotCardId =
 
 export type WidgetSizeVariant = 'chart' | 'metric';
 
+export type KPITileLayoutVariant = 'standard' | 'compact';
+
 export type ManagementSnapshotEditableConfig = Pick<
   MetricWidgetConfig,
   'title' | 'color' | 'entityFilter' | 'comparisonPeriod'
@@ -69,6 +71,8 @@ export type ManagementSnapshotEditableConfig = Pick<
   timeWindow?: TimeWindow;
   sizeVariant?: WidgetSizeVariant;
   kpiDetailConfig?: KPIDetailCardConfig;
+  kpiTileLayout?: KPITileLayoutVariant;
+  footerLabel?: string;
 };
 
 const WINDOW_GROUPS: { label: string; options: { value: TimeWindow; label: string }[] }[] = [
