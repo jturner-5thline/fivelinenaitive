@@ -400,17 +400,17 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <CardTitle className="text-sm">Income Statement</CardTitle>
             {activePL && (
               <Badge variant="outline" className="text-[9px]">
-                {activePL.header.ReportBasis} · {activePL.periodStart} to {activePL.periodEnd}
+                {activePL.header.ReportBasis} · {currentLabel}
               </Badge>
             )}
             {hasComparison && comparisonPL && (
               <Badge variant="outline" className="text-[9px] bg-muted/50">
-                vs {comparisonPL.periodStart} to {comparisonPL.periodEnd}
+                vs {compLabel}
               </Badge>
             )}
             <Badge variant="secondary" className="text-[9px] gap-1">
@@ -418,6 +418,18 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
             </Badge>
           </div>
           <div className="flex items-center gap-2">
+            <div onClick={(e) => e.stopPropagation()}>
+              <ToggleGroup
+                type="single"
+                value={timeGrain}
+                onValueChange={(v) => { if (v) { setTimeGrain(v as TimeGrain); setExpandedRows(new Set()); } }}
+                className="bg-muted/50 rounded-md p-0.5"
+              >
+                <ToggleGroupItem value="monthly" className="px-2 py-0.5 text-[10px] h-6">Monthly</ToggleGroupItem>
+                <ToggleGroupItem value="quarterly" className="px-2 py-0.5 text-[10px] h-6">Quarterly</ToggleGroupItem>
+                <ToggleGroupItem value="annual" className="px-2 py-0.5 text-[10px] h-6">Annual</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
             <Select value={selectedEntity} onValueChange={(v) => { setSelectedEntity(v); setExpandedRows(new Set()); }}>
               <SelectTrigger className="h-7 w-[200px] text-[10px]" onClick={(e) => e.stopPropagation()}>
                 <Building2 className="h-3 w-3 mr-1 shrink-0" />
