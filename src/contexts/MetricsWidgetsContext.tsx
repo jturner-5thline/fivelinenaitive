@@ -182,16 +182,11 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
-        const { data } = await supabase
-          .from('company_settings')
-          .select('fpa_dashboard_config')
-          .eq('company_id', company.id)
-          .maybeSingle();
-        const existing = (data?.fpa_dashboard_config as Record<string, any>) || {};
-        await supabase
-          .from('company_settings')
-          .update({ fpa_dashboard_config: { ...existing, [CONFIG_KEY]: newWidgets } as any })
-          .eq('company_id', company.id);
+        await supabase.rpc('save_fpa_dashboard_config' as any, {
+          _company_id: company.id,
+          _config_key: CONFIG_KEY,
+          _config_value: newWidgets,
+        });
       } catch (err) {
         console.error('Error saving metrics widgets:', err);
       }
@@ -203,16 +198,11 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
-        const { data } = await supabase
-          .from('company_settings')
-          .select('fpa_dashboard_config')
-          .eq('company_id', company.id)
-          .maybeSingle();
-        const existing = (data?.fpa_dashboard_config as Record<string, any>) || {};
-        await supabase
-          .from('company_settings')
-          .update({ fpa_dashboard_config: { ...existing, [PRESETS_CONFIG_KEY]: newPresets } as any })
-          .eq('company_id', company.id);
+        await supabase.rpc('save_fpa_dashboard_config' as any, {
+          _company_id: company.id,
+          _config_key: PRESETS_CONFIG_KEY,
+          _config_value: newPresets,
+        });
       } catch (err) {
         console.error('Error saving metrics presets:', err);
       }

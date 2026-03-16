@@ -82,7 +82,7 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
     };
   }, [company?.id, configKey]);
 
-  // Debounced save — admin only
+  // Debounced save — uses security-definer RPC so any company member can save
   const saveConfig = useCallback((newConfig: T) => {
     setConfig(newConfig);
 
@@ -92,24 +92,14 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
     pendingSaveRef.current = true;
     saveTimerRef.current = setTimeout(async () => {
       try {
-        // Read current fpa_dashboard_config first to merge
-        const { data } = await supabase
-          .from('company_settings')
-          .select('fpa_dashboard_config')
-          .eq('company_id', company.id)
-          .maybeSingle();
-
-        const existing = (data?.fpa_dashboard_config as Record<string, any>) || {};
-        const merged = { ...existing, [configKey]: newConfig };
-
-        await supabase
-          .from('company_settings')
-          .update({ fpa_dashboard_config: merged as any })
-          .eq('company_id', company.id);
+        await supabase.rpc('save_fpa_dashboard_config' as any, {
+          _company_id: company.id,
+          _config_key: configKey,
+          _config_value: newConfig,
+        });
       } catch (err) {
         console.error('Error saving dashboard config:', err);
       } finally {
-        // Allow realtime updates again after a short delay
         setTimeout(() => { pendingSaveRef.current = false; }, 300);
       }
     }, 500);
