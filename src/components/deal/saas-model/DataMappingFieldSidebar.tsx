@@ -328,8 +328,8 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
               <Check className="h-3 w-3 mr-0.5" /> Apply
             </Button>
           )}
-          {selectedRows.size > 0 && !hasPendingAuto && (
-            <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 opacity-0 group-hover:opacity-100" onClick={() => onAssignField(field)}>Assign</Button>
+          {selectedRows.size > 0 && !hasPendingAuto && !isMapped && (
+            <span className="text-[10px] px-2 text-muted-foreground group-hover:text-primary transition-colors">Assign</span>
           )}
         </div>
       </div>
