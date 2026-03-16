@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Pencil, ChevronDown, Loader2, Trash2, Maximize2 } from 'lucide-react';
+import { Lock, Pencil, ChevronDown, Loader2, Trash2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, LineChart, Bar, XAxis, YAxis, Tooltip, Legend, Line, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
@@ -10,6 +10,8 @@ import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
 import { useDashboardCardData } from '@/hooks/useDashboardCardData';
 import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, DEFAULT_KPI_DETAIL_CARD_CONFIG } from '@/components/widget-editor/widgetTypes';
 import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
+import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
+import { type GridLayoutItem } from '@/hooks/useGridLayout';
 import {
   DropdownMenu,
   DropdownMenuContent,
