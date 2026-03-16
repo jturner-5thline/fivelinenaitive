@@ -182,6 +182,8 @@ interface GenericDashboardCardProps {
   entityFilter?: string | null;
   isEditMode: boolean;
   sizeVariant?: WidgetSizeVariant;
+  kpiTileLayout?: KPITileLayoutVariant;
+  footerLabel?: string;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onDeleteCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
