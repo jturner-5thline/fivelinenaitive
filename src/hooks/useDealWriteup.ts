@@ -135,6 +135,7 @@ export function useDealWriteup(dealId: string | undefined) {
         publish_as_anonymous: data.publishAsAnonymous,
         team: data.team as unknown as Json,
         visible_metrics: data.visibleMetrics as unknown as Json,
+        financial_column_visibility: data.financialColumnVisibility as unknown as Json,
       };
 
       if (writeup) {
