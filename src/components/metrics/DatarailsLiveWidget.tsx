@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ResponsiveContainer,
+  ComposedChart,
   BarChart,
   Bar,
   LineChart,
@@ -12,13 +13,15 @@ import {
   Legend,
   Cell,
   ReferenceLine,
+  LabelList,
 } from 'recharts';
-import { Loader2 } from 'lucide-react';
+import { Loader2, TrendingUp } from 'lucide-react';
 import { CardContent } from '@/components/ui/card';
 import { StatWidgetContent, ChartWidgetContent } from '@/components/metrics/SortableMetricWidget';
 import { useDashboardCardData } from '@/hooks/useDashboardCardData';
 import { type WidgetConfig, type TimeWindow, type NegativeStylingConfig } from '@/components/widget-editor/widgetTypes';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
+import { Button } from '@/components/ui/button';
 
 const COLORS = [
   'hsl(213, 90%, 60%)',
