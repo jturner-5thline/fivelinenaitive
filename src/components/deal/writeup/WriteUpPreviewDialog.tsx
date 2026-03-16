@@ -347,10 +347,10 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
               </div>
             </Card>
 
-            {/* ── 3. Transaction Highlights ── */}
+            {/* ── 3. Key Items ── */}
             {filteredKeyItems.length > 0 && (
               <Card data-pdf-section className="mb-6">
-                <CardHeader icon={<Shield style={{ width: 20, height: 20, color: T.primary }} />} title="Transaction Highlights" />
+                <CardHeader icon={<Shield style={{ width: 20, height: 20, color: T.primary }} />} title="Key Items" />
                 <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                   {filteredKeyItems.map(item => (
                     <div key={item.id} style={{
