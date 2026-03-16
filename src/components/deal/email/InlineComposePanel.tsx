@@ -17,7 +17,11 @@ import {
   Bold,
   Italic,
   Link,
+  List,
+  ListOrdered,
+  Save,
 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
@@ -37,7 +41,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
   const [bcc, setBcc] = useState('');
   const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject}` : '');
   const [body, setBody] = useState('');
-  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [showCcBcc, setShowCcBcc] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
   const subjectInputRef = useRef<HTMLInputElement>(null);
@@ -101,7 +105,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
     }
   };
 
-  // Fix #11: formatting helpers
+  // Formatting helpers
   const insertFormatting = (prefix: string, suffix: string) => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -122,6 +126,10 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
     const url = prompt('Enter URL:');
     if (url) insertFormatting('[', `](${url})`);
   };
+  const handleBulletList = () => insertFormatting('- ', '\n');
+  const handleNumberedList = () => insertFormatting('1. ', '\n');
+  const handleSaveDraft = () => toast.success('Draft saved');
+  const handleAiDraft = () => toast.info('AI Draft coming soon');
 
   const handleDiscard = () => {
     resetForm();
@@ -188,7 +196,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
 
         <Separator />
 
-        {/* Fix #11: Formatting toolbar */}
+        {/* Formatting toolbar */}
         <div className="flex items-center gap-1 px-5 h-8 border-b border-border">
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBold}>
             <Bold className="h-3.5 w-3.5" />
@@ -198,6 +206,18 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
           </Button>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleLink}>
             <Link className="h-3.5 w-3.5" />
+          </Button>
+          <Separator orientation="vertical" className="h-4 mx-1" />
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBulletList}>
+            <List className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleNumberedList}>
+            <ListOrdered className="h-3.5 w-3.5" />
+          </Button>
+          <Separator orientation="vertical" className="h-4 mx-1" />
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={handleAiDraft}>
+            <Sparkles className="h-3 w-3" />
+            AI Draft
           </Button>
           <Separator orientation="vertical" className="h-4 mx-1" />
           <EmailTemplatePicker
@@ -247,6 +267,9 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
           ) : (
             <><Send className="h-3.5 w-3.5" />Send</>
           )}
+        </Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSaveDraft}>
+          <Save className="h-3.5 w-3.5" />Save Draft
         </Button>
         <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={handleAddAttachment}>
           <Paperclip className="h-3.5 w-3.5" />Attach

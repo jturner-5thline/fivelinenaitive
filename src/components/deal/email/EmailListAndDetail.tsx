@@ -74,45 +74,33 @@ function AiSummaryStrip({ email }: { email: MockEmail }) {
 }
 
 // ─── Avatar with brand logo / gradient fallback ─────────────
-function hashStringToHue(str: string): number {
+// Predefined muted palette for consistent avatar colors
+const AVATAR_PALETTE = [
+  { bg: 'hsl(220, 40%, 30%)', text: 'hsl(220, 60%, 80%)' },
+  { bg: 'hsl(260, 35%, 30%)', text: 'hsl(260, 55%, 80%)' },
+  { bg: 'hsl(340, 35%, 30%)', text: 'hsl(340, 55%, 80%)' },
+  { bg: 'hsl(160, 35%, 28%)', text: 'hsl(160, 55%, 78%)' },
+  { bg: 'hsl(30, 40%, 30%)',  text: 'hsl(30, 60%, 80%)' },
+  { bg: 'hsl(190, 35%, 28%)', text: 'hsl(190, 55%, 78%)' },
+  { bg: 'hsl(280, 30%, 30%)', text: 'hsl(280, 50%, 80%)' },
+  { bg: 'hsl(10, 35%, 30%)',  text: 'hsl(10, 55%, 78%)' },
+];
+
+function hashStringToIndex(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return Math.abs(hash) % 360;
+  return Math.abs(hash) % AVATAR_PALETTE.length;
 }
 
-function EmailAvatar({ name, email, size = 'md' }: { name: string; email?: string; size?: 'sm' | 'md' }) {
-  const [imgError, setImgError] = useState(false);
-  const sizeClass = size === 'sm' ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-xs';
-
-  // Extract domain for favicon
-  const domain = email ? email.split('@')[1] : null;
-  const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null;
-
-  // Consistent gradient from email/name hash
-  const hue = hashStringToHue(email || name);
-  const gradientStyle = {
-    background: `linear-gradient(135deg, hsl(${hue}, 60%, 45%), hsl(${hue}, 60%, 30%))`,
-  };
-
-  if (faviconUrl && !imgError) {
-    return (
-      <div className={cn('rounded-full overflow-hidden shrink-0', sizeClass)}>
-        <img
-          src={faviconUrl}
-          alt={name}
-          className="h-full w-full object-cover"
-          onError={() => setImgError(true)}
-        />
-      </div>
-    );
-  }
+function EmailAvatar({ name, email }: { name: string; email?: string; size?: 'sm' | 'md' }) {
+  const palette = AVATAR_PALETTE[hashStringToIndex(email || name)];
 
   return (
     <div
-      className={cn('rounded-full flex items-center justify-center font-semibold shrink-0 text-white', sizeClass)}
-      style={gradientStyle}
+      className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+      style={{ background: palette.bg, color: palette.text }}
     >
       {name.charAt(0).toUpperCase()}
     </div>
@@ -173,7 +161,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
     >
       <div className="flex items-start gap-3 px-3 py-4 min-w-0 overflow-hidden">
         {/* Checkbox + unread dot area */}
-        <div className="relative flex items-center justify-center shrink-0" style={{ width: 40, height: 40 }}>
+        <div className="relative flex items-center justify-center shrink-0" style={{ width: 32, height: 32 }}>
           {showCheckbox ? (
             <div
               className="absolute inset-0 flex items-center justify-center z-10"
@@ -189,7 +177,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
             <>
               {/* Unread dot */}
               {isUnread && (
-                <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary z-10" />
+                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-[6px] h-[6px] rounded-full bg-primary z-10" />
               )}
               <EmailAvatar
                 name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name}
@@ -331,7 +319,7 @@ function EmailListSkeleton() {
     <div className="pt-2 pb-2 space-y-1.5 px-2">
       {Array.from({ length: 7 }).map((_, i) => (
         <div key={i} className="flex items-start gap-3 px-3 py-4 rounded-lg">
-          <div className="h-10 w-10 rounded-full bg-muted/30 animate-pulse shrink-0" />
+          <div className="h-8 w-8 rounded-full bg-muted/30 animate-pulse shrink-0" />
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-center justify-between">
               <div className="h-3.5 w-28 bg-muted/30 rounded animate-pulse" />
@@ -704,8 +692,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   return (
     <>
       <div className="flex h-full relative overflow-hidden">
-        {/* Main thread view */}
-        <div className="flex flex-col flex-1 min-w-0">
+        {/* Main thread view — lighter bg + left accent border */}
+        <div className="flex flex-col flex-1 min-w-0 bg-[hsl(var(--background)/0.6)] border-l-2 border-primary/20">
           {/* Fix #7: Sticky header toolbar — consolidated, no separate message count/sender header */}
           <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/60 backdrop-blur-sm sticky top-0 z-10 shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-8 w-8">
@@ -717,37 +705,41 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              {/* AI Assist - prominent primary button */}
               <Popover open={smartPopoverOpen} onOpenChange={setSmartPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant={smartPopoverOpen ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-1.5 text-xs">
+                  <Button variant={smartPopoverOpen ? 'default' : 'default'} size="sm" className="h-8 gap-1.5 text-xs">
                     <Sparkles className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Smart</span>
+                    AI Assist
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent side="bottom" align="end" className="w-[320px] p-0 max-h-[70vh] overflow-hidden">
                   <SmartEmailPanel thread={thread} dealId={dealId || 'general'} />
                 </PopoverContent>
               </Popover>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleReply}>
-                    <Reply className="h-3.5 w-3.5" />
-                    Reply
-                    <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">R</kbd>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">Reply (R)</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
-                    <Forward className="h-3.5 w-3.5" />
-                    <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">F</kbd>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">Forward (F)</TooltipContent>
-              </Tooltip>
               <Separator orientation="vertical" className="h-5 mx-1" />
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleReply}>
+                <Reply className="h-3.5 w-3.5" />
+                Reply
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Reply All coming soon')}>
+                <Reply className="h-3.5 w-3.5" />
+                Reply All
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
+                <Forward className="h-3.5 w-3.5" />
+                Forward
+              </Button>
+              <Separator orientation="vertical" className="h-5 mx-1" />
+              <Button
+                variant={thread.isLinked ? 'secondary' : 'outline'}
+                size="sm"
+                className="h-8 gap-1.5 text-xs shrink-0"
+                onClick={() => onToggleLink(thread.latestEmail)}
+              >
+                {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                {thread.isLinked ? 'Unlink Deal' : 'Link to Deal'}
+              </Button>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleStar(thread.latestEmail)}>
@@ -755,20 +747,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
-              </Tooltip>
-              {/* Fix #3: "Link Deal" with icon-only + tooltip, shrink-0 */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={thread.isLinked ? 'secondary' : 'outline'}
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => onToggleLink(thread.latestEmail)}
-                  >
-                    {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">{thread.isLinked ? 'Unlink from deal (L)' : 'Link to deal (L)'}</TooltipContent>
               </Tooltip>
             </div>
           </div>
