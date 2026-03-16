@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { getCategoryColorClasses } from '@/hooks/useChecklistCategories';
 import { getCategoryIcon } from '@/components/settings/CategoryIconPicker';
 import { cn } from '@/lib/utils';
@@ -64,6 +68,7 @@ export function ChecklistTreePane({
   deleteAttachment, onToggleItemStatus,
 }: ChecklistTreePaneProps) {
   const [selectedUnmapped, setSelectedUnmapped] = useState<Set<string>>(new Set());
+  const [fileToDelete, setFileToDelete] = useState<DealAttachment | null>(null);
 
   const filterItem = (item: UnifiedChecklistItem): boolean => {
     if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -212,16 +217,28 @@ export function ChecklistTreePane({
                                   <FileIcon name={file.name} className="h-3 w-3 shrink-0" />
                                   <span className="truncate flex-1">{file.name}</span>
                                   <span className="text-[9px] shrink-0">{formatBytes(file.size_bytes)}</span>
-                                  {handleDownloadFile && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-4 w-4 opacity-0 group-hover/file:opacity-100 shrink-0"
-                                      onClick={(e) => { e.stopPropagation(); handleDownloadFile(file); }}
-                                    >
-                                      <Download className="h-2.5 w-2.5" />
-                                    </Button>
-                                  )}
+                                  <div className="flex items-center gap-0.5 opacity-0 group-hover/file:opacity-100 shrink-0">
+                                    {handleDownloadFile && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-4 w-4"
+                                        onClick={(e) => { e.stopPropagation(); handleDownloadFile(file); }}
+                                      >
+                                        <Download className="h-2.5 w-2.5" />
+                                      </Button>
+                                    )}
+                                    {deleteAttachment && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-4 w-4 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={(e) => { e.stopPropagation(); setFileToDelete(file); }}
+                                      >
+                                        <Trash2 className="h-2.5 w-2.5" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -319,6 +336,32 @@ export function ChecklistTreePane({
           )}
         </div>
       </ScrollArea>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete file</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <span className="font-medium text-foreground">{fileToDelete?.name}</span>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (fileToDelete && deleteAttachment) {
+                  await deleteAttachment(fileToDelete);
+                }
+                setFileToDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
