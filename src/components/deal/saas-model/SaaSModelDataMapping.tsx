@@ -1619,6 +1619,59 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </Popover>
         </div>
         <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                {modelStartDate
+                  ? `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][modelStartDate.month - 1]} ${modelStartDate.year}`
+                  : 'Start Month'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3" align="end">
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-foreground">First month in file</p>
+                <p className="text-[10px] text-muted-foreground">Sets the starting month for the Income Statement and Balance Sheet.</p>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="text-xs h-7 px-2 rounded border border-border bg-background text-foreground flex-1"
+                    value={modelStartDate?.month ?? 1}
+                    onChange={(e) => {
+                      setModelStartDate(prev => prev ? { ...prev, month: parseInt(e.target.value) } : { month: parseInt(e.target.value), year: 2024 });
+                      setStartDateConfirmed(true);
+                    }}
+                  >
+                    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
+                      <option key={i} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    className="text-xs h-7 w-16 px-2 rounded border border-border bg-background text-foreground"
+                    value={modelStartDate?.year ?? 2024}
+                    min={2000}
+                    max={2040}
+                    onChange={(e) => {
+                      const yr = parseInt(e.target.value);
+                      if (yr >= 2000 && yr <= 2040) {
+                        setModelStartDate(prev => prev ? { ...prev, year: yr } : { month: 1, year: yr });
+                        setStartDateConfirmed(true);
+                      }
+                    }}
+                  />
+                </div>
+                {startDateConfirmed ? (
+                  <Badge variant="outline" className="text-[9px] h-5 px-2 gap-1 border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400">
+                    <Check className="h-2.5 w-2.5" /> Confirmed
+                  </Badge>
+                ) : modelStartDate ? (
+                  <Badge variant="outline" className="text-[9px] h-5 px-2 gap-1 border-blue-500/50 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <Sparkles className="h-2.5 w-2.5" /> Auto-detected from headers
+                  </Badge>
+                ) : null}
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => {
             if (selectedFile) {
               const url = URL.createObjectURL(selectedFile.file);
