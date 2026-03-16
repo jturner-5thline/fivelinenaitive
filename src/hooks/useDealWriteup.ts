@@ -251,6 +251,7 @@ export function useDealWriteup(dealId: string | undefined) {
       publishAsAnonymous: row.publish_as_anonymous || false,
       team,
       visibleMetrics: ((row as any).visible_metrics as VisibleMetrics) || { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true },
+      financialColumnVisibility: ((row as any).financial_column_visibility as FinancialColumnVisibility) || { showRevGrowth: true, showGmDelta: true, showEbitdaDelta: true },
     };
   }, []);
 
