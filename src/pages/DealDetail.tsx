@@ -105,6 +105,7 @@ import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { useUserEditedFields } from '@/hooks/useUserEditedFields';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
