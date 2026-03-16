@@ -894,11 +894,8 @@ Be concise but thorough. Only include sections with relevant content.`
 
 // ─── Extract write-up fields (deal-scoped with citations) ───────────
 
-async function handleExtractWriteUp(dealId: string) {
+async function handleExtractWriteUp(dealId: string, supabase: any, supabaseService: any) {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Pull from ALL deal-scoped sources in parallel
     const [docsResult, financialsResult, dataRoomResult, notesResult, memoResult, dealResult, flagNotesResult, lendersResult] = await Promise.all([
