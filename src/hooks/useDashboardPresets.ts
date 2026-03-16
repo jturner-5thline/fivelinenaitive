@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { toast } from '@/hooks/use-toast';
 
 export interface GridItem {
@@ -17,9 +17,9 @@ export interface GridItem {
 
 export interface WidgetConfig {
   id: string;
-  type: string; // registry key
+  type: string;
   title: string;
-  config: Record<string, any>; // widget-specific settings
+  config: Record<string, any>;
 }
 
 export interface DashboardPreset {
@@ -52,20 +52,21 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
 ];
 
 export function useDashboardPresets() {
-  const { user } = useAuth();
+  const { company, isAdmin, isOwner } = useCompany();
+  const canEdit = isAdmin || isOwner;
   const [presets, setPresets] = useState<DashboardPreset[]>([]);
   const [activePreset, setActivePreset] = useState<DashboardPreset | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchPresets = useCallback(async () => {
-    if (!user) return;
+    if (!company?.id) return;
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('dashboard_layouts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('company_id', company.id)
         .order('position', { ascending: true });
 
       if (error) throw error;
@@ -83,8 +84,7 @@ export function useDashboardPresets() {
         updated_at: d.updated_at,
       }));
 
-      if (mapped.length === 0) {
-        // Create default preset
+      if (mapped.length === 0 && canEdit) {
         const defaultPreset = await createPreset('My Dashboard', DEFAULT_GRID, DEFAULT_WIDGETS, true);
         if (defaultPreset) {
           setPresets([defaultPreset]);
@@ -99,7 +99,7 @@ export function useDashboardPresets() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [company?.id, canEdit]);
 
   useEffect(() => {
     fetchPresets();
@@ -111,20 +111,23 @@ export function useDashboardPresets() {
     widgetsConfig: WidgetConfig[] = DEFAULT_WIDGETS,
     isActive: boolean = false
   ): Promise<DashboardPreset | null> => {
-    if (!user) return null;
+    if (!company?.id || !canEdit) {
+      toast({ title: 'Permission denied', description: 'Only admins can create dashboard presets.', variant: 'destructive' });
+      return null;
+    }
     try {
-      // If setting as active, deactivate others
       if (isActive) {
         await supabase
           .from('dashboard_layouts')
           .update({ is_active: false })
-          .eq('user_id', user.id);
+          .eq('company_id', company.id);
       }
 
       const { data, error } = await supabase
         .from('dashboard_layouts')
         .insert({
-          user_id: user.id,
+          company_id: company.id,
+          user_id: (await supabase.auth.getUser()).data.user?.id,
           name,
           is_active: isActive,
           grid_config: gridConfig as any,
@@ -159,13 +162,13 @@ export function useDashboardPresets() {
       toast({ title: 'Error', description: 'Failed to create preset', variant: 'destructive' });
       return null;
     }
-  }, [user, presets.length]);
+  }, [company?.id, canEdit, presets.length]);
 
   const updatePreset = useCallback(async (
     presetId: string,
     updates: Partial<Pick<DashboardPreset, 'name' | 'description' | 'grid_config' | 'widgets_config' | 'settings'>>
   ) => {
-    if (!user) return;
+    if (!company?.id || !canEdit) return;
     setIsSaving(true);
     try {
       const dbUpdates: any = {};
@@ -179,7 +182,7 @@ export function useDashboardPresets() {
         .from('dashboard_layouts')
         .update(dbUpdates)
         .eq('id', presetId)
-        .eq('user_id', user.id);
+        .eq('company_id', company.id);
 
       if (error) throw error;
 
@@ -193,34 +196,32 @@ export function useDashboardPresets() {
     } finally {
       setIsSaving(false);
     }
-  }, [user, activePreset]);
+  }, [company?.id, canEdit, activePreset]);
 
   const switchPreset = useCallback(async (presetId: string) => {
-    if (!user) return;
+    if (!company?.id || !canEdit) return;
     try {
-      // Deactivate all
       await supabase
         .from('dashboard_layouts')
         .update({ is_active: false })
-        .eq('user_id', user.id);
+        .eq('company_id', company.id);
 
-      // Activate selected
       await supabase
         .from('dashboard_layouts')
         .update({ is_active: true })
         .eq('id', presetId)
-        .eq('user_id', user.id);
+        .eq('company_id', company.id);
 
       setPresets(prev => prev.map(p => ({ ...p, is_active: p.id === presetId })));
       setActivePreset(presets.find(p => p.id === presetId) || null);
     } catch (error) {
       console.error('Error switching preset:', error);
     }
-  }, [user, presets]);
+  }, [company?.id, canEdit, presets]);
 
   const deletePreset = useCallback(async (presetId: string) => {
-    if (!user || presets.length <= 1) {
-      toast({ title: 'Cannot delete', description: 'You must keep at least one dashboard preset.', variant: 'destructive' });
+    if (!company?.id || !canEdit || presets.length <= 1) {
+      toast({ title: 'Cannot delete', description: presets.length <= 1 ? 'You must keep at least one dashboard preset.' : 'Only admins can delete presets.', variant: 'destructive' });
       return;
     }
     try {
@@ -228,7 +229,7 @@ export function useDashboardPresets() {
         .from('dashboard_layouts')
         .delete()
         .eq('id', presetId)
-        .eq('user_id', user.id);
+        .eq('company_id', company.id);
 
       if (error) throw error;
 
@@ -236,7 +237,6 @@ export function useDashboardPresets() {
       setPresets(remaining);
 
       if (activePreset?.id === presetId) {
-        // Activate first remaining
         const next = remaining[0];
         if (next) {
           await switchPreset(next.id);
@@ -247,7 +247,7 @@ export function useDashboardPresets() {
     } catch (error) {
       console.error('Error deleting preset:', error);
     }
-  }, [user, presets, activePreset, switchPreset]);
+  }, [company?.id, canEdit, presets, activePreset, switchPreset]);
 
   const duplicatePreset = useCallback(async (presetId: string) => {
     const source = presets.find(p => p.id === presetId);
@@ -291,6 +291,7 @@ export function useDashboardPresets() {
     activePreset,
     isLoading,
     isSaving,
+    canEdit,
     createPreset,
     updatePreset,
     switchPreset,

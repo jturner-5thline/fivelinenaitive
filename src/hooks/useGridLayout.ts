@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface GridLayoutItem {
@@ -29,23 +29,25 @@ export function generateDefaultLayout(widgetIds: string[], cols = 3, w = 4, h = 
 }
 
 /**
- * Hook to persist and restore grid layouts per user + dashboard.
+ * Hook to persist and restore grid layouts per company + dashboard.
+ * All company members see the same layout; only admins can save changes.
  */
 export function useGridLayout(dashboardId: string, defaultWidgetIds: string[]) {
-  const { user } = useAuth();
+  const { company, isAdmin, isOwner } = useCompany();
+  const canEdit = isAdmin || isOwner;
   const [layout, setLayout] = useState<GridLayoutItem[]>(() => generateDefaultLayout(defaultWidgetIds));
   const [isLoaded, setIsLoaded] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load saved layout
+  // Load saved layout by company
   useEffect(() => {
-    if (!user) return;
+    if (!company?.id) return;
 
     (async () => {
       const { data } = await (supabase
         .from('dashboard_grid_layouts') as any)
         .select('layout')
-        .eq('user_id', user.id)
+        .eq('company_id', company.id)
         .eq('dashboard_id', dashboardId)
         .maybeSingle();
 
@@ -71,35 +73,37 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[]) {
       }
       setIsLoaded(true);
     })();
-  }, [user, dashboardId, defaultWidgetIds.join(',')]);
+  }, [company?.id, dashboardId, defaultWidgetIds.join(',')]);
 
-  // Debounced save
+  // Debounced save — only admins can persist
   const saveLayout = useCallback((newLayout: GridLayoutItem[]) => {
     setLayout(newLayout);
 
+    if (!canEdit) return; // non-admins can drag locally but it won't persist
+
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
-      if (!user) return;
+      if (!company?.id) return;
       await (supabase
         .from('dashboard_grid_layouts') as any)
         .upsert({
-          user_id: user.id,
+          company_id: company.id,
           dashboard_id: dashboardId,
           layout: newLayout,
-        }, { onConflict: 'user_id,dashboard_id' });
+        }, { onConflict: 'company_id,dashboard_id' });
     }, 300);
-  }, [user, dashboardId]);
+  }, [company?.id, dashboardId, canEdit]);
 
   const resetLayout = useCallback(async () => {
     const def = generateDefaultLayout(defaultWidgetIds);
     setLayout(def);
-    if (!user) return;
+    if (!company?.id || !canEdit) return;
     await (supabase
       .from('dashboard_grid_layouts') as any)
       .delete()
-      .eq('user_id', user.id)
+      .eq('company_id', company.id)
       .eq('dashboard_id', dashboardId);
-  }, [user, dashboardId, defaultWidgetIds]);
+  }, [company?.id, dashboardId, defaultWidgetIds, canEdit]);
 
-  return { layout, saveLayout, resetLayout, isLoaded };
+  return { layout, saveLayout, resetLayout, isLoaded, canEdit };
 }
