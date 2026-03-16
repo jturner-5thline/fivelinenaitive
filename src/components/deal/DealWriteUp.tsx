@@ -266,7 +266,7 @@ const WRITEUP_VIEW_MODE_KEY = 'deal-writeup-view-mode';
 
 type ViewMode = 'tabs' | 'long';
 
-export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
+export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle', markFieldEdited, isFieldEdited, editedCount = 0, editedFieldKeys = [], resetAllEditFlags }: DealWriteUpProps) => {
   const queryClient = useQueryClient();
   const { hasPageAccess } = usePageAccessFlags();
   const canPushToFlex = hasPageAccess('flex_push');
