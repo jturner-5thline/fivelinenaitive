@@ -67,11 +67,7 @@ export function KPIDetailCard({
 
   return (
     <Card
-      className={cn(
-        'h-full flex flex-col bg-card border-border overflow-hidden',
-        onClick && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all',
-      )}
-      onClick={onClick}
+      className="h-full flex flex-col bg-card border-border overflow-hidden"
     >
       <div className="widget-drag-handle cursor-grab" />
       <CardContent className={cn(

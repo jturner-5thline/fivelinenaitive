@@ -217,7 +217,6 @@ function GenericDashboardCard({
   );
 
   const renderEditActions = () => {
-    if (!isEditMode) return null;
     return (
       <div className="flex items-center gap-1">
         {onEditCard && (
@@ -225,18 +224,18 @@ function GenericDashboardCard({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => onEditCard(cardId)}
+            onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
             aria-label={`Edit ${title}`}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
         )}
-        {onDeleteCard && (
+        {isEditMode && onDeleteCard && (
           <Button
             variant="ghost"
             size="icon"
             className="h-7 w-7 text-destructive hover:text-destructive"
-            onClick={() => onDeleteCard(cardId)}
+            onClick={(e) => { e.stopPropagation(); onDeleteCard(cardId); }}
             aria-label={`Delete ${title}`}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -335,19 +334,9 @@ function GenericDashboardCard({
     );
   };
 
-  const handleCardClick = () => {
-    if (onEditCard) {
-      onEditCard(cardId);
-    }
-  };
-
   return (
     <Card
-      className={cn(
-        'h-full flex flex-col overflow-hidden',
-        onEditCard && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all',
-      )}
-      onClick={handleCardClick}
+      className="h-full flex flex-col overflow-hidden"
     >
       <CardHeader className={cn('pb-2 widget-drag-handle cursor-grab', sizeVariant === 'metric' && 'pb-1 pt-3 px-3')}>
         <div className="flex items-start justify-between gap-2">
@@ -495,7 +484,20 @@ export function ManagementSnapshotDashboard({
       className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20 bg-primary/[0.02]')}
     >
       {visibleCards.map(({ cardId, props }) => (
-        <div key={cardId}>
+        <div key={cardId} className="relative group">
+          {/* Pencil edit button for all cards */}
+          {onEditCard && (
+            <div className="absolute top-1.5 right-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
           {cardId === 'total-revenue-detail' ? (
             <KPIDetailCard
               kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
@@ -503,7 +505,6 @@ export function ManagementSnapshotDashboard({
               timeWindow={props.timeWindow}
               entityFilter={props.entityFilter}
               isEditMode={isEditMode}
-              onClick={() => onEditCard?.(cardId)}
             />
           ) : (
             <GenericDashboardCard {...props} />

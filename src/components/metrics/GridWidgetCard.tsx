@@ -26,10 +26,8 @@ export const GridWidgetCard = forwardRef<HTMLDivElement, GridWidgetCardProps>(
         className={cn(
           'h-full',
           isEditMode && 'ring-1 ring-dashed ring-muted-foreground/30 rounded-xl',
-          !isEditMode && onEdit && 'cursor-pointer',
           className
         )}
-        onClick={!isEditMode && onEdit ? (e) => { e.stopPropagation(); onEdit(); } : undefined}
         {...rest}
       >
         <Card className="h-full flex flex-col overflow-hidden relative group">
@@ -45,20 +43,18 @@ export const GridWidgetCard = forwardRef<HTMLDivElement, GridWidgetCardProps>(
           )}
 
           {/* Edit/Delete buttons */}
-          {isEditMode && (
-            <div className="absolute top-1.5 right-1.5 z-20 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              {onEdit && (
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-                  <Pencil className="h-3 w-3" />
-                </Button>
-              )}
-              {onDelete && (
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-          )}
+          <div className="absolute top-1.5 right-1.5 z-20 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {onEdit && (
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                <Pencil className="h-3 w-3" />
+              </Button>
+            )}
+            {isEditMode && onDelete && (
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
 
           {/* Widget content */}
           <div className="flex-1 overflow-hidden">
