@@ -1155,19 +1155,19 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               </TabsList>
               
               <TabsContent value="company-overview" className="mt-6">
-                <WriteUpCompanyOverviewTab dealId={dealId} data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} />
+                <WriteUpCompanyOverviewTab dealId={dealId} data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </TabsContent>
               
               <TabsContent value="financial" className="mt-6">
-                <WriteUpFinancialTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpFinancialTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </TabsContent>
               
               <TabsContent value="highlights" className="mt-6">
-                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </TabsContent>
               
               <TabsContent value="key-items" className="mt-6">
-                <WriteUpKeyItemsTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpKeyItemsTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </TabsContent>
 
               <TabsContent value="ownership" className="mt-6">
