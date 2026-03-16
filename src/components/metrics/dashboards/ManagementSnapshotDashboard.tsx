@@ -190,6 +190,7 @@ function GenericDashboardCard({
   datarailsConfig,
   entityFilter,
   isEditMode,
+  sizeVariant = 'chart',
   onEditCard,
   onDeleteCard,
   onTimeWindowChange,
