@@ -16,6 +16,7 @@ export type TimeWindow = 'mtd' | 'lastMonth' | 'qtd' | 'lastQuarter' | 'ytd' | '
 
 export interface AxisConfig {
   fieldId: string | null;
+  label?: string;
   grain?: Grain;
   window?: TimeWindow;
   showZeroPeriods?: boolean;
