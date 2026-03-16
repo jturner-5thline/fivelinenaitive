@@ -1913,6 +1913,8 @@ export default function Metrics() {
                   });
                 }}
                 cardConfigs={managementSnapshotCardConfigs}
+                cardSizes={snapshotCardSizes}
+                onCardResize={handleCardResize}
               />
             )}
             {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
