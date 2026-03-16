@@ -4308,6 +4308,11 @@ export default function DealDetail() {
                     onCancel={() => setDealInfoTab('deal-info')}
                     isSaving={isSavingWriteup}
                     autoSaveStatus={autoSaveStatus}
+                    markFieldEdited={markFieldEdited}
+                    isFieldEdited={isFieldEdited}
+                    editedCount={editedCount}
+                    editedFieldKeys={editedFieldKeys}
+                    resetAllEditFlags={resetAllEditFlags}
                   />
                 </TabsContent>
 
