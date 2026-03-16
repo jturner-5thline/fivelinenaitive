@@ -31,7 +31,7 @@ import {
   type Phase, type AnalyzedFile, type AutoMapResult, type ValidationWarning,
   KEYWORD_ALIASES, getMatchConfidence, applyMappingsToModel,
   formatCellValue, isNumericCell, detectHeaderRow, extractColumnHeaders,
-  validateDateSequence, type DateWarning,
+  validateDateSequence, type DateWarning, detectFirstMonthFromHeaders,
 } from './dataMappingUtils';
 
 interface Props {
@@ -82,6 +82,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const storedFilePathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
 
+  // ── Start date detection & override ──
+  const [modelStartDate, setModelStartDate] = useState<{ month: number; year: number } | null>(null);
+  const [startDateConfirmed, setStartDateConfirmed] = useState(false);
   // ── Batch 2: Column Exclude state ──
   const [excludedColumns, setExcludedColumns] = useState<Set<number>>(new Set());
   const [showColumnManager, setShowColumnManager] = useState(false);
@@ -548,6 +551,16 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     return validateDateSequence(detectedHeaders.headers);
   }, [detectedHeaders.headers]);
 
+  // Auto-detect start date from file headers
+  useEffect(() => {
+    if (detectedHeaders.headers.length > 0 && !startDateConfirmed) {
+      const detected = detectFirstMonthFromHeaders(detectedHeaders.headers);
+      if (detected) {
+        setModelStartDate(detected);
+      }
+    }
+  }, [detectedHeaders.headers, startDateConfirmed]);
+
   const handleSaveSettings = () => {
     updateModel(prev => ({ ...prev, settings: { ...localSettings } }));
     setSettingsSaved(true);
@@ -726,7 +739,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     if (!selectedFile || Object.keys(fieldMappings).length === 0) return;
     setIsSaving(true);
     try {
-      applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns, flippedColumns);
+      applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns, flippedColumns, modelStartDate);
       const companyId = await getCompanyId();
       if (companyId) await logPatterns(companyId, dealId);
 
@@ -754,7 +767,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       toast.success(`Saved ${count} mapped ${count === 1 ? 'field' : 'fields'} — Dashboard, IS & BS updated`);
     } catch { toast.error('Failed to save mapping progress'); }
     finally { setIsSaving(false); }
-  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage, flippedRows, flippedColumns, excludedColumns]);
+  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage, flippedRows, flippedColumns, excludedColumns, modelStartDate]);
 
   // Keep ref in sync for imperative handle
   useEffect(() => { handleSaveProgressRef.current = handleSaveProgress; }, [handleSaveProgress]);
@@ -951,9 +964,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   const handleRecalculate = useCallback(() => {
     if (!selectedFile) return;
-    applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns, flippedColumns);
+    applyMappingsToModel(fieldMappings, selectedFile, updateModel, flippedRows, excludedColumns, flippedColumns, modelStartDate);
     toast.success('Model recalculated — Dashboard, IS & BS updated');
-  }, [selectedFile, fieldMappings, updateModel, flippedRows, excludedColumns, flippedColumns]);
+  }, [selectedFile, fieldMappings, updateModel, flippedRows, excludedColumns, flippedColumns, modelStartDate]);
 
   const handleRecalculateWithLog = useCallback(async () => {
     const companyId = await getCompanyId();
@@ -1382,7 +1395,49 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
       )}
 
-      {/* Compact file summary bar */}
+      {/* Start month confirmation */}
+      {modelStartDate && (
+        <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-card/60 px-3 py-1.5">
+          <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span className="text-[10px] text-muted-foreground shrink-0">First month:</span>
+          <select
+            className="text-[10px] h-6 px-1.5 rounded border border-border bg-background text-foreground"
+            value={modelStartDate.month}
+            onChange={(e) => {
+              setModelStartDate(prev => prev ? { ...prev, month: parseInt(e.target.value) } : prev);
+              setStartDateConfirmed(true);
+            }}
+          >
+            {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
+              <option key={i} value={i + 1}>{m}</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            className="text-[10px] h-6 w-14 px-1.5 rounded border border-border bg-background text-foreground"
+            value={modelStartDate.year}
+            min={2000}
+            max={2040}
+            onChange={(e) => {
+              const yr = parseInt(e.target.value);
+              if (yr >= 2000 && yr <= 2040) {
+                setModelStartDate(prev => prev ? { ...prev, year: yr } : prev);
+                setStartDateConfirmed(true);
+              }
+            }}
+          />
+          {startDateConfirmed ? (
+            <Badge variant="outline" className="text-[8px] h-4 px-1.5 gap-1 border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400">
+              <Check className="h-2.5 w-2.5" /> Confirmed
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[8px] h-4 px-1.5 gap-1 border-blue-500/50 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              <Sparkles className="h-2.5 w-2.5" /> Auto-detected
+            </Badge>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-card/60 px-3 py-1.5">
         <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <button

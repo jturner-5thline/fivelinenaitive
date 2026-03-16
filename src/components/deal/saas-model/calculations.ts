@@ -17,13 +17,14 @@ function average(arr: number[]): number {
   return arr.reduce((s, v) => s + v, 0) / arr.length;
 }
 
-export function generateMonths(startYear = 2024): MonthEntry[] {
+export function generateMonths(startYear = 2024, startMonth = 1): MonthEntry[] {
   const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const short = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const months: MonthEntry[] = [];
   for (let i = 0; i < MONTH_COUNT; i++) {
-    const year = startYear + Math.floor(i / 12);
-    const month = i % 12;
+    const totalMonth = (startMonth - 1) + i;
+    const year = startYear + Math.floor(totalMonth / 12);
+    const month = totalMonth % 12;
     months.push({
       date: new Date(year, month, 1).toISOString(),
       label: `${short[month]} '${String(year).slice(2)}`,
