@@ -486,7 +486,7 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-[10px]">Account</TableHead>
-                    <TableHead className="text-[10px] text-right">Actuals</TableHead>
+                    <TableHead className="text-[10px] text-right">{currentLabel}</TableHead>
                     {hasComparison && <TableHead className="text-[10px] text-right">{compLabel}</TableHead>}
                     {hasComparison && <TableHead className="text-[10px] text-right">Var ($)</TableHead>}
                     {hasComparison && <TableHead className="text-[10px] text-right">Var (%)</TableHead>}
