@@ -2179,6 +2179,17 @@ export default function Metrics() {
                           </GridWidgetCard>
                         );
                       })}
+                    {isEditMode && (
+                      <Card
+                        className="border-dashed border-2 border-muted-foreground/25 hover:border-primary/50 cursor-pointer transition-colors flex items-center justify-center min-h-[200px]"
+                        onClick={handleAdd}
+                      >
+                        <CardContent className="flex flex-col items-center justify-center py-8">
+                          <Plus className="h-8 w-8 text-muted-foreground mb-2" />
+                          <span className="text-sm font-medium text-muted-foreground">Add Widget</span>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 )}
               </div>
