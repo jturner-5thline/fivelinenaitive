@@ -219,7 +219,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
     }, 500);
   }, [canEdit, company?.id]);
 
-  const addWidget = (widget: Omit<MetricWidgetConfig, 'id' | 'createdAt'>) => {
+  const addWidget = (widget: Omit<MetricWidgetConfig, 'id' | 'createdAt'>): string => {
     const newWidget: MetricWidgetConfig = {
       ...widget,
       id: `widget-${Date.now()}`,
@@ -228,6 +228,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
     const updated = [...widgets, newWidget];
     setWidgets(updated);
     persistWidgets(updated);
+    return newWidget.id;
   };
 
   const updateWidget = (id: string, updates: Partial<Omit<MetricWidgetConfig, 'id' | 'createdAt'>>) => {
