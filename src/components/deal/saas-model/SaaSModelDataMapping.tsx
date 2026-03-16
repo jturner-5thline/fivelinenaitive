@@ -551,6 +551,16 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     return validateDateSequence(detectedHeaders.headers);
   }, [detectedHeaders.headers]);
 
+  // Auto-detect start date from file headers
+  useEffect(() => {
+    if (detectedHeaders.headers.length > 0 && !startDateConfirmed) {
+      const detected = detectFirstMonthFromHeaders(detectedHeaders.headers);
+      if (detected) {
+        setModelStartDate(detected);
+      }
+    }
+  }, [detectedHeaders.headers, startDateConfirmed]);
+
   const handleSaveSettings = () => {
     updateModel(prev => ({ ...prev, settings: { ...localSettings } }));
     setSettingsSaved(true);
