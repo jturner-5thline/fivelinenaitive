@@ -65,6 +65,12 @@ export function useDealWriteup(dealId: string | undefined) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Reset state when dealId changes to prevent cross-deal data bleed
+  useEffect(() => {
+    setWriteup(null);
+    setIsLoading(true);
+  }, [dealId]);
+
   const fetchWriteup = useCallback(async () => {
     if (!dealId || !user) {
       setIsLoading(false);
