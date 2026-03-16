@@ -148,11 +148,11 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
   // Auto-sync when date range changes and no matching data exists
   const lastSyncedRange = useRef<string | undefined>();
   useEffect(() => {
-    if (!isLoading && plReports === null && dateRange && dateRange !== lastSyncedRange.current && !isSyncing) {
-      lastSyncedRange.current = dateRange;
+    if (!isLoading && plReports === null && currentDateRange && currentDateRange !== lastSyncedRange.current && !isSyncing) {
+      lastSyncedRange.current = currentDateRange;
       syncForDateRange().catch(console.error);
     }
-  }, [isLoading, plReports, dateRange, isSyncing, syncForDateRange]);
+  }, [isLoading, plReports, currentDateRange, isSyncing, syncForDateRange]);
 
   // Auto-sync comparison data
   const lastSyncedCompRange = useRef<string | undefined>();
