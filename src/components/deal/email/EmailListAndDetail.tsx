@@ -813,9 +813,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 <Sparkles className="h-3.5 w-3.5" />
                 AI Assist
               </Button>
-                <PopoverContent side="bottom" align="end" className="w-[320px] p-0 max-h-[70vh] overflow-hidden">
-                  <SmartEmailPanel thread={thread} dealId={dealId || 'general'} />
-                </PopoverContent>
               </Popover>
               <Separator orientation="vertical" className="h-5 mx-1" />
               <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleReply}>
