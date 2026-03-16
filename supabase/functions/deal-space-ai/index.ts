@@ -793,11 +793,8 @@ IMPORTANT: Output ONLY this one section. Do NOT include other sections. Use ONLY
 
 // ─── Summarize documents ────────────────────────────────────────────
 
-async function handleSummarize(dealId: string) {
+async function handleSummarize(dealId: string, supabase: any, supabaseService: any) {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: documents, error: docsError } = await supabase
       .from("deal_space_documents")
