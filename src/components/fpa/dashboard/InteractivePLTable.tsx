@@ -6,40 +6,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  ChevronDown, ChevronRight, Maximize2, AlertTriangle, Sparkles, Building2, FileText
+  ChevronDown, ChevronRight, Maximize2, Building2, FileText, TrendingUp, TrendingDown, Minus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PLCommentThread, type FPAComment } from '../collaboration/PLCommentThread';
 import { InlineAnnotation, type Annotation } from '../collaboration/InlineAnnotation';
 import { PLRowQuickActions } from '../PLRowQuickActions';
 import { VarianceLegend } from '../VarianceLegend';
-import { useQBProfitAndLoss, type PLLineItem as QBPLLineItem, type ParsedPL } from '@/hooks/useQBProfitAndLoss';
+import { useQBProfitAndLoss, getComparisonDateRange, dateRangeToDates, type PLLineItem as QBPLLineItem, type ParsedPL } from '@/hooks/useQBProfitAndLoss';
 import { useQBEntities } from '@/hooks/useQBWidgetData';
 
-// ─── Legacy PLRow type for comparison columns ──────────────────
+// ─── PLRow type ────────────────────────────────────────────────
 interface PLRow {
   account: string;
   level: number;
   actuals: number;
-  budget: number;
-  forecast: number;
-  priorYear: number;
+  comparison: number;
   isHeader: boolean;
   isTotal?: boolean;
   children?: PLRow[];
 }
 
 // ─── Convert QB P&L items to PLRow tree ────────────────────────
-function qbItemsToPLRows(items: QBPLLineItem[]): PLRow[] {
+function qbItemsToPLRows(items: QBPLLineItem[], compMap: Map<string, number>): PLRow[] {
   return items.map(item => {
-    const childRows = item.children ? qbItemsToPLRows(item.children) : undefined;
+    const childRows = item.children ? qbItemsToPLRows(item.children, compMap) : undefined;
     return {
       account: item.name,
       level: item.depth,
       actuals: item.amount,
-      budget: 0,
-      forecast: 0,
-      priorYear: 0,
+      comparison: compMap.get(item.name) ?? 0,
       isHeader: item.isHeader || item.isTotal,
       isTotal: item.isTotal,
       children: childRows && childRows.length > 0 ? childRows : undefined,
@@ -47,7 +43,7 @@ function qbItemsToPLRows(items: QBPLLineItem[]): PLRow[] {
   });
 }
 
-function qbReportToPLTree(pl: ParsedPL): PLRow[] {
+function qbReportToPLTree(pl: ParsedPL, compMap: Map<string, number>): PLRow[] {
   const rows: PLRow[] = [];
   for (const section of pl.sections) {
     const isSummaryOnly = ['GrossProfit', 'NetOperatingIncome', 'NetIncome'].includes(section.group);
@@ -56,17 +52,18 @@ function qbReportToPLTree(pl: ParsedPL): PLRow[] {
         account: section.label,
         level: 0,
         actuals: section.amount,
-        budget: 0, forecast: 0, priorYear: 0,
+        comparison: compMap.get(section.label) ?? 0,
         isHeader: true,
         isTotal: true,
       });
     } else {
-      const children = qbItemsToPLRows(section.items);
+      const label = section.group === 'COGS' ? 'Cost of Goods Sold' : section.label.replace(/^Total /, '');
+      const children = qbItemsToPLRows(section.items, compMap);
       rows.push({
-        account: section.group === 'COGS' ? 'Cost of Goods Sold' : section.label.replace(/^Total /, ''),
+        account: label,
         level: 0,
         actuals: section.amount,
-        budget: 0, forecast: 0, priorYear: 0,
+        comparison: compMap.get(label) ?? 0,
         isHeader: true,
         children,
       });
@@ -75,20 +72,45 @@ function qbReportToPLTree(pl: ParsedPL): PLRow[] {
   return rows;
 }
 
-const fmt = (v: number) => {
-  const abs = Math.abs(v);
-  if (abs >= 1_000_000) return `${v < 0 ? '-' : ''}$${(abs / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1000) return `${v < 0 ? '-' : ''}$${(abs / 1000).toFixed(1)}K`;
-  return `$${abs.toFixed(0)}`;
-};
+// Build a flat map of account name → amount from a ParsedPL for comparison lookup
+function buildComparisonMap(pl: ParsedPL | null): Map<string, number> {
+  const map = new Map<string, number>();
+  if (!pl) return map;
+
+  function walkItems(items: QBPLLineItem[]) {
+    for (const item of items) {
+      map.set(item.name, item.amount);
+      if (item.children) walkItems(item.children);
+    }
+  }
+
+  for (const section of pl.sections) {
+    const label = section.group === 'COGS' ? 'Cost of Goods Sold' : section.label.replace(/^Total /, '');
+    map.set(section.label, section.amount);
+    map.set(label, section.amount);
+    walkItems(section.items);
+  }
+  return map;
+}
 
 const fmtFull = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v);
 
+const fmtPct = (v: number) => {
+  if (!isFinite(v)) return '—';
+  return `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+};
+
 interface InteractivePLTableProps {
-  comparisonMode: 'budget' | 'forecast' | 'prior_year';
+  comparisonMode: 'budget' | 'prior_year' | 'prior_period';
   dateRange?: string;
 }
+
+const COMPARISON_LABELS: Record<string, string> = {
+  prior_year: 'Prior Year',
+  prior_period: 'Prior Period',
+  budget: 'Budget',
+};
 
 export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -97,6 +119,20 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
 
   const { data: entities = [] } = useQBEntities();
   const { data: plReports, isLoading, syncForDateRange, isSyncing } = useQBProfitAndLoss(selectedEntity || 'all', dateRange);
+
+  // Compute comparison date range
+  const compDates = useMemo(() => getComparisonDateRange(dateRange, comparisonMode), [dateRange, comparisonMode]);
+  const compDateRange = useMemo(() => {
+    if (!compDates) return undefined;
+    // We need to pass a synthetic dateRange key that maps to these dates
+    // Instead, we'll use the hook with explicit start/end via a custom key
+    return `custom_${compDates.start_date}_${compDates.end_date}`;
+  }, [compDates]);
+
+  const { data: compReports, isLoading: compLoading, syncForDateRange: syncCompRange, isSyncing: compSyncing } = useQBProfitAndLoss(
+    selectedEntity || 'all',
+    comparisonMode !== 'budget' ? compDateRange : undefined
+  );
 
   // Auto-sync when date range changes and no matching data exists
   const lastSyncedRange = useRef<string | undefined>();
@@ -107,24 +143,39 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
     }
   }, [isLoading, plReports, dateRange, isSyncing, syncForDateRange]);
 
+  // Auto-sync comparison data
+  const lastSyncedCompRange = useRef<string | undefined>();
+  useEffect(() => {
+    if (!compLoading && compReports === null && compDateRange && compDateRange !== lastSyncedCompRange.current && !compSyncing) {
+      lastSyncedCompRange.current = compDateRange;
+      syncCompRange().catch(console.error);
+    }
+  }, [compLoading, compReports, compDateRange, compSyncing, syncCompRange]);
+
   const activePL = useMemo(() => {
     if (!plReports || plReports.length === 0) return null;
-    if (selectedEntity !== 'all') return plReports[0];
-    // For "all", use first available report
     return plReports[0];
-  }, [plReports, selectedEntity]);
+  }, [plReports]);
+
+  const comparisonPL = useMemo(() => {
+    if (!compReports || compReports.length === 0) return null;
+    return compReports[0];
+  }, [compReports]);
+
+  const compMap = useMemo(() => buildComparisonMap(comparisonPL), [comparisonPL]);
 
   const plTree = useMemo(() => {
     if (!activePL) return [];
-    return qbReportToPLTree(activePL);
-  }, [activePL]);
+    return qbReportToPLTree(activePL, compMap);
+  }, [activePL, compMap]);
+
+  const hasComparison = comparisonMode !== 'budget' && comparisonPL !== null;
 
   // Auto-expand top-level sections
   const defaultExpanded = useMemo(() => {
     return new Set(plTree.filter(r => r.children && r.children.length > 0).map(r => r.account));
   }, [plTree]);
 
-  // Use defaultExpanded only when plTree changes
   const effectiveExpanded = expandedRows.size > 0 ? expandedRows : defaultExpanded;
 
   // Collaboration state
@@ -203,12 +254,16 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
     setExpandedRows(allKeys);
   };
 
-  const collapseAll = () => setExpandedRows(new Set(['__none__'])); // Force empty
+  const collapseAll = () => setExpandedRows(new Set(['__none__']));
 
   const renderRow = (row: PLRow, depth: number = 0): JSX.Element[] => {
     const hasChildren = row.children && row.children.length > 0;
     const isExpanded = effectiveExpanded.has(row.account);
     const isTotalRow = row.isTotal;
+
+    const variance = row.actuals - row.comparison;
+    const variancePct = row.comparison !== 0 ? (variance / Math.abs(row.comparison)) * 100 : 0;
+    const showValues = !(row.isHeader && !isTotalRow && row.actuals === 0);
 
     const rows: JSX.Element[] = [];
 
@@ -224,6 +279,7 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
         onMouseEnter={() => setHoveredRow(row.account)}
         onMouseLeave={() => setHoveredRow(null)}
       >
+        {/* Account name */}
         <TableCell className="py-1.5">
           <div className="flex items-center gap-1" style={{ paddingLeft: `${depth * 16}px` }}>
             {hasChildren ? (
@@ -268,13 +324,54 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
             </div>
           </div>
         </TableCell>
+
+        {/* Actuals */}
         <TableCell className={cn(
           "text-xs text-right font-mono py-1.5 tabular-nums",
           row.isHeader || isTotalRow ? "font-semibold" : "",
-          row.actuals < 0 ? "text-red-600 dark:text-red-400" : "",
+          row.actuals < 0 ? "text-destructive" : "",
         )}>
-          {row.isHeader && !isTotalRow && row.actuals === 0 ? '' : fmtFull(row.actuals)}
+          {showValues ? fmtFull(row.actuals) : ''}
         </TableCell>
+
+        {/* Comparison */}
+        {hasComparison && (
+          <TableCell className={cn(
+            "text-xs text-right font-mono py-1.5 tabular-nums text-muted-foreground",
+            row.isHeader || isTotalRow ? "font-semibold" : "",
+          )}>
+            {showValues && row.comparison !== 0 ? fmtFull(row.comparison) : showValues ? '—' : ''}
+          </TableCell>
+        )}
+
+        {/* Variance $ */}
+        {hasComparison && (
+          <TableCell className={cn(
+            "text-xs text-right font-mono py-1.5 tabular-nums",
+            row.isHeader || isTotalRow ? "font-semibold" : "",
+            showValues && row.comparison !== 0 ? (variance > 0 ? "text-emerald-600 dark:text-emerald-400" : variance < 0 ? "text-destructive" : "") : "",
+          )}>
+            {showValues && row.comparison !== 0 ? fmtFull(variance) : ''}
+          </TableCell>
+        )}
+
+        {/* Variance % */}
+        {hasComparison && (
+          <TableCell className={cn(
+            "text-xs text-right font-mono py-1.5 tabular-nums",
+            row.isHeader || isTotalRow ? "font-semibold" : "",
+          )}>
+            {showValues && row.comparison !== 0 ? (
+              <span className={cn(
+                "inline-flex items-center gap-0.5",
+                variance > 0 ? "text-emerald-600 dark:text-emerald-400" : variance < 0 ? "text-destructive" : "text-muted-foreground",
+              )}>
+                {variance > 0 ? <TrendingUp className="h-3 w-3" /> : variance < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                {fmtPct(variancePct)}
+              </span>
+            ) : ''}
+          </TableCell>
+        )}
       </TableRow>
     );
 
@@ -287,10 +384,8 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
     return rows;
   };
 
-  const entityName = useMemo(() => {
-    if (selectedEntity === 'all') return 'All Entities';
-    return entities.find(e => e.realmId === selectedEntity)?.companyName || selectedEntity;
-  }, [selectedEntity, entities]);
+  const compLabel = COMPARISON_LABELS[comparisonMode] || comparisonMode;
+  const anyLoading = isLoading || isSyncing;
 
   return (
     <Card>
@@ -301,6 +396,11 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
             {activePL && (
               <Badge variant="outline" className="text-[9px]">
                 {activePL.header.ReportBasis} · {activePL.periodStart} to {activePL.periodEnd}
+              </Badge>
+            )}
+            {hasComparison && comparisonPL && (
+              <Badge variant="outline" className="text-[9px] bg-muted/50">
+                vs {comparisonPL.periodStart} to {comparisonPL.periodEnd}
               </Badge>
             )}
             <Badge variant="secondary" className="text-[9px] gap-1">
@@ -329,10 +429,13 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {(isLoading || isSyncing) && (
+        {anyLoading && (
           <div className="space-y-2">
             {isSyncing && (
               <p className="text-xs text-muted-foreground animate-pulse">Fetching P&L for selected date range…</p>
+            )}
+            {compSyncing && (
+              <p className="text-xs text-muted-foreground animate-pulse">Fetching comparison period…</p>
             )}
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-6 w-full" />
@@ -340,7 +443,7 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
           </div>
         )}
 
-        {!isLoading && !isSyncing && plTree.length === 0 && (
+        {!anyLoading && plTree.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <FileText className="h-8 w-8 text-muted-foreground/40 mb-3" />
             <p className="text-sm font-medium">No P&L Data Available</p>
@@ -350,23 +453,28 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
           </div>
         )}
 
-        {!isLoading && !isSyncing && plTree.length > 0 && (
+        {!anyLoading && plTree.length > 0 && (
           <>
             <div className="flex justify-end gap-2 mb-1">
               <button onClick={expandAll} className="text-[10px] text-primary hover:underline">Expand All</button>
               <button onClick={collapseAll} className="text-[10px] text-muted-foreground hover:underline">Collapse</button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[10px]">Account</TableHead>
-                  <TableHead className="text-[10px] text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {plTree.map(row => renderRow(row)).flat()}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-[10px]">Account</TableHead>
+                    <TableHead className="text-[10px] text-right">Actuals</TableHead>
+                    {hasComparison && <TableHead className="text-[10px] text-right">{compLabel}</TableHead>}
+                    {hasComparison && <TableHead className="text-[10px] text-right">Var ($)</TableHead>}
+                    {hasComparison && <TableHead className="text-[10px] text-right">Var (%)</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {plTree.map(row => renderRow(row)).flat()}
+                </TableBody>
+              </Table>
+            </div>
             <VarianceLegend compact className="mt-3" />
           </>
         )}

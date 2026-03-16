@@ -31,15 +31,15 @@ function getSmartDateRange(): string {
   return 'ytd'; // H2: year-to-date
 }
 
-function getSmartComparison(): 'budget' | 'forecast' | 'prior_year' {
+function getSmartComparison(): 'budget' | 'prior_year' | 'prior_period' {
   const month = new Date().getMonth();
   if (month >= 9) return 'budget'; // Q4: compare to next-year budget
-  return 'budget';
+  return 'prior_year';
 }
 
 export function DashboardModule() {
   const [dashboardTab, setDashboardTab] = useState('overview');
-  const [comparisonMode, setComparisonMode] = useState<'budget' | 'forecast' | 'prior_year'>(getSmartComparison);
+  const [comparisonMode, setComparisonMode] = useState<'budget' | 'prior_year' | 'prior_period'>(getSmartComparison);
   const [dateRange, setDateRange] = useState(getSmartDateRange);
   const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
   const [chartConfigOpen, setChartConfigOpen] = useState(false);
@@ -105,9 +105,9 @@ export function DashboardModule() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+              <SelectItem value="prior_year">vs Prior Year</SelectItem>
+                <SelectItem value="prior_period">vs Prior Period</SelectItem>
                 <SelectItem value="budget">vs Budget</SelectItem>
-                <SelectItem value="forecast">vs Forecast</SelectItem>
-                <SelectItem value="prior_year">vs Prior Year</SelectItem>
               </SelectContent>
             </Select>
           )}
