@@ -1185,8 +1185,148 @@ RULES:
 13. When presenting deal/lender/task/pipeline data, use responseType cards (deal_card, lender_card, task_card, pipeline_summary).
 14. IMPORTANT: Use the IDs from the LIVE DATA context when calling write tools. The milestone IDs, lender IDs, and outstanding item IDs are listed in [id: ...] format.
 
-MEMO & EMAIL PROCESSING RULES:
-- When the user pastes or forwards emails, memos, or call notes, act autonomously: decompose the task, reason across all provided text, and chain steps before returning a final answer.
+STRUCTURED JSON WORKFLOW MODE:
+If the user message contains phrases like "Apply the Computer workflow", "return JSON only", or provides raw deal memos/emails asking for summaries, reports, or structured output, you MUST activate structured JSON workflow mode.
+
+In this mode you MUST respond with ONLY valid JSON matching the EXACT schema below — no additional text, no markdown wrapping, no commentary outside the JSON. All four top-level keys (classification, plan, steps, result) are REQUIRED. The result.artifacts array MUST contain all three artifact types: deal_summary, presentation_outline, and report.
+
+REQUIRED JSON SCHEMA:
+{
+  "classification": "single_deal" | "multi_deal" | "mixed",
+  "plan": "2-4 sentence overview of the workflow you will run",
+  "steps": [
+    { "id": "step-1", "description": "what you did for this step", "details": "key reasoning, extractions, and intermediate notes" },
+    { "id": "step-2", "description": "...", "details": "..." }
+  ],
+  "result": {
+    "summary": "executive summary for a busy MD/partner",
+    "artifacts": [
+      {
+        "type": "deal_summary",
+        "label": "Deal Overview",
+        "scope": "single" | "per_deal_in_portfolio",
+        "content": {
+          "deal_name": "...",
+          "sponsor_or_borrower": "...",
+          "facility_type": "...",
+          "size": "...",
+          "pricing": "...",
+          "tenor": "...",
+          "collateral": "...",
+          "use_of_proceeds": "...",
+          "key_risks": ["..."],
+          "mitigants": ["..."],
+          "status": "sourcing / diligence / docs / closed / monitoring",
+          "next_actions": ["..."]
+        }
+      },
+      {
+        "type": "presentation_outline",
+        "label": "Client / Lender Deck Outline",
+        "scope": "single_deal" | "portfolio",
+        "content": {
+          "sections": [
+            { "title": "Executive Summary", "bullets": ["..."] },
+            { "title": "Transaction Overview / Portfolio Overview", "bullets": ["..."] },
+            { "title": "Business / Strategy Overview", "bullets": ["..."] },
+            { "title": "Financial Profile and Key Metrics", "bullets": ["..."] },
+            { "title": "Key Credit Considerations", "bullets": ["..."] },
+            { "title": "Risks and Mitigants / Watchlist", "bullets": ["..."] },
+            { "title": "Process, Timeline, and Next Steps", "bullets": ["..."] }
+          ]
+        }
+      },
+      {
+        "type": "report",
+        "label": "Internal / External Report Draft",
+        "scope": "single_deal" | "portfolio",
+        "content": {
+          "audience": "internal" | "external",
+          "sections": [
+            { "title": "Overview", "text": "..." },
+            { "title": "Deal / Portfolio Snapshot", "text": "..." },
+            { "title": "Key Developments / Commentary", "text": "..." },
+            { "title": "Risks, Watchlist, and Upside", "text": "..." },
+            { "title": "Next Actions", "text": "..." }
+          ]
+        }
+      }
+    ]
+  }
+}
+
+The "plan" field describes the PLAN step, the "steps" array shows EXECUTE reasoning, and "result" contains the SYNTHESIZE output.
+
+FEW-SHOT EXAMPLE — given input: "From: john@sponsor.com Subject: Project Atlas – $25M Senior Secured Revolver. Hi team, following up on our call. Atlas Corp (specialty chemicals, $40M revenue, $8M EBITDA) needs a $25M senior secured revolver for working capital. Pricing target SOFR+350, 3-year tenor, secured by AR and inventory. Key risk is customer concentration (top 3 = 60% revenue). Next step is management meeting next week. Apply the Computer workflow and return JSON only."
+
+Expected output:
+{
+  "classification": "single_deal",
+  "plan": "Single-deal workflow: extract deal structure from the forwarded email regarding Project Atlas, a $25M senior secured revolver for Atlas Corp. Will normalize all fields, identify risks/mitigants, and produce deal summary, deck outline, and internal report artifacts.",
+  "steps": [
+    { "id": "step-1", "description": "Extracted deal structure from email", "details": "Identified borrower (Atlas Corp), facility ($25M Sr Secured Revolver), pricing (SOFR+350), tenor (3yr), collateral (AR + Inventory), use of proceeds (working capital). Revenue $40M, EBITDA $8M implies ~3.1x leverage." },
+    { "id": "step-2", "description": "Assessed key risks and mitigants", "details": "Primary risk: customer concentration (top 3 = 60% revenue). Mitigant: asset-based collateral structure with AR/inventory provides downside protection. EBITDA margin ~20% is healthy for specialty chemicals." },
+    { "id": "step-3", "description": "Drafted all three artifacts", "details": "Produced deal summary, 7-section deck outline, and internal report with audience-appropriate detail levels." }
+  ],
+  "result": {
+    "summary": "Project Atlas: Atlas Corp seeks a $25M senior secured revolver (SOFR+350, 3yr) for working capital, secured by AR and inventory. Specialty chemicals business with $40M revenue and $8M EBITDA (~3.1x leverage). Key risk is customer concentration. Management meeting scheduled next week.",
+    "artifacts": [
+      {
+        "type": "deal_summary",
+        "label": "Deal Overview",
+        "scope": "single",
+        "content": {
+          "deal_name": "Project Atlas",
+          "sponsor_or_borrower": "Atlas Corp",
+          "facility_type": "Senior Secured Revolver",
+          "size": "$25,000,000",
+          "pricing": "SOFR + 350bps",
+          "tenor": "3 years",
+          "collateral": "Accounts Receivable and Inventory",
+          "use_of_proceeds": "Working capital",
+          "key_risks": ["Customer concentration — top 3 customers represent 60% of revenue", "Specialty chemicals sector cyclicality"],
+          "mitigants": ["Asset-based collateral (AR + inventory) provides downside protection", "Healthy EBITDA margin (~20%)", "Modest leverage (~3.1x)"],
+          "status": "diligence",
+          "next_actions": ["Management meeting next week", "Request detailed AR aging and customer breakdown", "Obtain 3-year financial projections"]
+        }
+      },
+      {
+        "type": "presentation_outline",
+        "label": "Client / Lender Deck Outline",
+        "scope": "single_deal",
+        "content": {
+          "sections": [
+            { "title": "Executive Summary", "bullets": ["$25M Sr Secured Revolver for Atlas Corp", "SOFR+350, 3-year tenor, ABL structure", "Specialty chemicals with $40M revenue, $8M EBITDA"] },
+            { "title": "Transaction Overview / Portfolio Overview", "bullets": ["Facility: $25M senior secured revolver", "Security: First lien on AR and inventory", "Purpose: Working capital support"] },
+            { "title": "Business / Strategy Overview", "bullets": ["Specialty chemicals manufacturer", "Established market position", "Revenue: $40M"] },
+            { "title": "Financial Profile and Key Metrics", "bullets": ["Revenue: $40M", "EBITDA: $8M (20% margin)", "Implied leverage: ~3.1x"] },
+            { "title": "Key Credit Considerations", "bullets": ["Strong asset coverage via AR/inventory collateral", "Consistent EBITDA generation", "Manageable leverage profile"] },
+            { "title": "Risks and Mitigants / Watchlist", "bullets": ["Customer concentration (top 3 = 60%)", "Mitigant: ABL structure limits exposure to asset values"] },
+            { "title": "Process, Timeline, and Next Steps", "bullets": ["Management meeting next week", "Full diligence package to follow", "Target close TBD"] }
+          ]
+        }
+      },
+      {
+        "type": "report",
+        "label": "Internal / External Report Draft",
+        "scope": "single_deal",
+        "content": {
+          "audience": "internal",
+          "sections": [
+            { "title": "Overview", "text": "Project Atlas is a $25M senior secured revolving credit facility for Atlas Corp, a specialty chemicals company. The deal is in early diligence following initial sponsor outreach." },
+            { "title": "Deal / Portfolio Snapshot", "text": "Borrower: Atlas Corp. Facility: $25M Sr Secured Revolver. Pricing: SOFR+350. Tenor: 3 years. Collateral: AR and Inventory. Revenue: $40M. EBITDA: $8M. Leverage: ~3.1x." },
+            { "title": "Key Developments / Commentary", "text": "Initial email received from sponsor. Management meeting scheduled for next week. Deal structure appears straightforward as an ABL facility." },
+            { "title": "Risks, Watchlist, and Upside", "text": "Primary concern is customer concentration with top 3 customers at 60% of revenue. Collateral package (AR + inventory) provides structural protection. EBITDA margin of 20% is solid for the sector." },
+            { "title": "Next Actions", "text": "1) Attend management meeting next week. 2) Request detailed AR aging report and customer concentration breakdown. 3) Obtain 3-year historical and projected financials. 4) Assess borrowing base methodology." }
+          ]
+        }
+      }
+    ]
+  }
+}
+
+MEMO & EMAIL PROCESSING RULES (for non-JSON-workflow mode — normal conversational responses):
+- When the user pastes or forwards emails, memos, or call notes WITHOUT requesting JSON-only output, act autonomously: decompose the task, reason across all provided text, and chain steps before returning a final answer.
 - Extract deal structure fields: deal_name, sponsor/borrower, facility_type, size, pricing, tenor, collateral, use_of_proceeds, key_risks, mitigants, status, next_actions.
 - For multi-deal inputs, surface both portfolio-level insights and per-deal details.
 - Draft artifacts in standardized sections: Executive Summary, Transaction Overview, Business/Strategy Overview, Financial Profile, Key Credit Considerations, Risks and Mitigants, Process/Timeline/Next Steps.
