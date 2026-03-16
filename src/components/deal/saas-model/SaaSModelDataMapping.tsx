@@ -860,33 +860,122 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     }
 
     results.sort((a, b) => b.analysis.totalMatches - a.analysis.totalMatches);
-    setAnalyzedFiles(results);
+    // Merge with existing analyzed files instead of replacing
+    setAnalyzedFiles(prev => {
+      const existingNames = new Set(prev.map(f => f.file.name));
+      const newFiles = results.filter(r => !existingNames.has(r.file.name));
+      return [...prev, ...newFiles];
+    });
 
-    if (results.length === 1) {
-      setSelectedFile(results[0]);
-      setPhase('mapping');
-      setUploadStatus('Uploading to storage...');
-      setUploadProgress(70);
-      const storagePath = await persistFileToStorage(results[0].file);
-      setUploadProgress(90);
+    // Create DB records and upload each file to storage
+    setUploadStatus('Saving file records...');
+    setUploadProgress(70);
+    for (const af of results) {
+      const storagePath = await persistFileToStorage(af.file);
+      // Detect start date from headers
+      const headerRow = detectHeaderRow(af.sheets[0]?.data || []);
+      const headers = headerRow !== null ? extractColumnHeaders(af.sheets[0]?.data || [], headerRow) : [];
+      const detected = detectFirstMonthFromHeaders(headers);
+
+      const record = await upsertFile({
+        deal_id: dealId,
+        file_name: af.file.name,
+        file_size: af.file.size,
+        storage_path: storagePath,
+        statement_type: 'income_statement',
+        start_month: detected?.month ?? 1,
+        start_year: detected?.year ?? 2024,
+        month_count: headers.length || 12,
+        analysis_result: af.analysis,
+      });
+      if (record) {
+        // Tag the analyzed file with its DB id
+        (af as any)._dbFileId = record.id;
+      }
+
+      // Also save to legacy mapping table for backward compat
       if (storagePath) {
         await supabase.from('deal_saas_mappings' as any).upsert({
           deal_id: dealId,
           field_mappings: fieldMappings,
-          file_name: results[0].file.name,
-          file_size: results[0].file.size,
+          file_name: af.file.name,
+          file_size: af.file.size,
           file_storage_path: storagePath,
-          analysis_result: results[0].analysis,
+          analysis_result: af.analysis,
           mapped_at: new Date().toISOString(),
         }, { onConflict: 'deal_id' });
       }
+    }
+    setUploadProgress(90);
+
+    if (results.length === 1) {
+      setSelectedFile(results[0]);
+      setActiveFileId((results[0] as any)._dbFileId || null);
+      setPhase('mapping');
+      // Reset mapping state for this file
+      setFieldMappings({});
+      setExcludedColumns(new Set());
+      setFlippedRows(new Set());
+      setFlippedColumns(new Set());
+      setStartDateConfirmed(false);
       setUploadProgress(100);
     } else {
       setPhase('triage');
     }
     setTimeout(() => { setUploadProgress(null); setUploadStatus(''); }, 500);
     setIsProcessing(false);
-  }, [analyzeFile, persistFileToStorage, dealId, fieldMappings]);
+  }, [analyzeFile, persistFileToStorage, dealId, fieldMappings, upsertFile]);
+
+  // Switch active file in mapping view
+  const handleSwitchFile = useCallback((af: AnalyzedFile) => {
+    // Save current file's mappings before switching
+    if (activeFileId && Object.keys(fieldMappings).length > 0) {
+      saveFileMappings(
+        activeFileId,
+        fieldMappings,
+        Array.from(excludedColumns),
+        Array.from(flippedRows),
+        Array.from(flippedColumns),
+        modelStartDate?.month ?? 1,
+        modelStartDate?.year ?? 2024,
+      );
+    }
+
+    setSelectedFile(af);
+    const dbFileId = (af as any)._dbFileId || null;
+    setActiveFileId(dbFileId);
+    setActiveSheet(0);
+    setSelectedRows(new Set());
+    setAutoMapResults([]);
+    setStartDateConfirmed(false);
+
+    // Restore this file's saved mappings from DB
+    if (dbFileId) {
+      const dbFile = dbFiles.find(f => f.id === dbFileId);
+      if (dbFile && dbFile.field_mappings && Object.keys(dbFile.field_mappings).length > 0) {
+        setFieldMappings(dbFile.field_mappings as Record<string, FieldMapping[]>);
+        setExcludedColumns(new Set(dbFile.excluded_columns || []));
+        setFlippedRows(new Set(dbFile.flipped_rows || []));
+        setFlippedColumns(new Set(dbFile.flipped_columns || []));
+        if (dbFile.start_month && dbFile.start_year) {
+          setModelStartDate({ month: dbFile.start_month, year: dbFile.start_year });
+        }
+        setLastSavedCount(Object.keys(dbFile.field_mappings).length);
+      } else {
+        setFieldMappings({});
+        setExcludedColumns(new Set());
+        setFlippedRows(new Set());
+        setFlippedColumns(new Set());
+        setLastSavedCount(0);
+      }
+    } else {
+      setFieldMappings({});
+      setExcludedColumns(new Set());
+      setFlippedRows(new Set());
+      setFlippedColumns(new Set());
+      setLastSavedCount(0);
+    }
+  }, [activeFileId, fieldMappings, excludedColumns, flippedRows, flippedColumns, modelStartDate, saveFileMappings, dbFiles]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
