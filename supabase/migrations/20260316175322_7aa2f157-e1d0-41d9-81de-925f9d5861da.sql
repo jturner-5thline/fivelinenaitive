@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_writeups ADD COLUMN IF NOT EXISTS user_edited_fields jsonb DEFAULT '{}'::jsonb;
