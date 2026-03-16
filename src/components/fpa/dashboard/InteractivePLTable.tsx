@@ -13,8 +13,9 @@ import { PLCommentThread, type FPAComment } from '../collaboration/PLCommentThre
 import { InlineAnnotation, type Annotation } from '../collaboration/InlineAnnotation';
 import { PLRowQuickActions } from '../PLRowQuickActions';
 import { VarianceLegend } from '../VarianceLegend';
-import { useQBProfitAndLoss, getComparisonDateRange, dateRangeToDates, type PLLineItem as QBPLLineItem, type ParsedPL } from '@/hooks/useQBProfitAndLoss';
+import { useQBProfitAndLoss, getComparisonDateRange, getGrainPeriodDates, getGrainComparisonDates, getGrainPeriodLabel, dateRangeToDates, type PLLineItem as QBPLLineItem, type ParsedPL, type TimeGrain } from '@/hooks/useQBProfitAndLoss';
 import { useQBEntities } from '@/hooks/useQBWidgetData';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 // ─── PLRow type ────────────────────────────────────────────────
 interface PLRow {
@@ -116,18 +117,28 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<string>('all');
+  const [timeGrain, setTimeGrain] = useState<TimeGrain>('quarterly');
 
   const { data: entities = [] } = useQBEntities();
-  const { data: plReports, isLoading, syncForDateRange, isSyncing } = useQBProfitAndLoss(selectedEntity || 'all', dateRange);
 
-  // Compute comparison date range
-  const compDates = useMemo(() => getComparisonDateRange(dateRange, comparisonMode), [dateRange, comparisonMode]);
+  // Compute current and comparison period dates based on grain
+  const grainDates = useMemo(() => getGrainPeriodDates(timeGrain), [timeGrain]);
+  const grainCompDates = useMemo(() => getGrainComparisonDates(timeGrain, comparisonMode), [timeGrain, comparisonMode]);
+
+  const currentDateRange = useMemo(() => `custom_${grainDates.start_date}_${grainDates.end_date}`, [grainDates]);
   const compDateRange = useMemo(() => {
-    if (!compDates) return undefined;
-    // We need to pass a synthetic dateRange key that maps to these dates
-    // Instead, we'll use the hook with explicit start/end via a custom key
-    return `custom_${compDates.start_date}_${compDates.end_date}`;
-  }, [compDates]);
+    if (!grainCompDates) return undefined;
+    return `custom_${grainCompDates.start_date}_${grainCompDates.end_date}`;
+  }, [grainCompDates]);
+
+  // Human-readable labels
+  const currentLabel = useMemo(() => getGrainPeriodLabel(grainDates, timeGrain), [grainDates, timeGrain]);
+  const compLabel = useMemo(() => {
+    if (!grainCompDates) return COMPARISON_LABELS[comparisonMode] || comparisonMode;
+    return getGrainPeriodLabel(grainCompDates, timeGrain);
+  }, [grainCompDates, timeGrain, comparisonMode]);
+
+  const { data: plReports, isLoading, syncForDateRange, isSyncing } = useQBProfitAndLoss(selectedEntity || 'all', currentDateRange);
 
   const { data: compReports, isLoading: compLoading, syncForDateRange: syncCompRange, isSyncing: compSyncing } = useQBProfitAndLoss(
     selectedEntity || 'all',
@@ -137,11 +148,11 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
   // Auto-sync when date range changes and no matching data exists
   const lastSyncedRange = useRef<string | undefined>();
   useEffect(() => {
-    if (!isLoading && plReports === null && dateRange && dateRange !== lastSyncedRange.current && !isSyncing) {
-      lastSyncedRange.current = dateRange;
+    if (!isLoading && plReports === null && currentDateRange && currentDateRange !== lastSyncedRange.current && !isSyncing) {
+      lastSyncedRange.current = currentDateRange;
       syncForDateRange().catch(console.error);
     }
-  }, [isLoading, plReports, dateRange, isSyncing, syncForDateRange]);
+  }, [isLoading, plReports, currentDateRange, isSyncing, syncForDateRange]);
 
   // Auto-sync comparison data
   const lastSyncedCompRange = useRef<string | undefined>();
@@ -384,23 +395,22 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
     return rows;
   };
 
-  const compLabel = COMPARISON_LABELS[comparisonMode] || comparisonMode;
   const anyLoading = isLoading || isSyncing;
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <CardTitle className="text-sm">Income Statement</CardTitle>
             {activePL && (
               <Badge variant="outline" className="text-[9px]">
-                {activePL.header.ReportBasis} · {activePL.periodStart} to {activePL.periodEnd}
+                {activePL.header.ReportBasis} · {currentLabel}
               </Badge>
             )}
             {hasComparison && comparisonPL && (
               <Badge variant="outline" className="text-[9px] bg-muted/50">
-                vs {comparisonPL.periodStart} to {comparisonPL.periodEnd}
+                vs {compLabel}
               </Badge>
             )}
             <Badge variant="secondary" className="text-[9px] gap-1">
@@ -408,6 +418,18 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
             </Badge>
           </div>
           <div className="flex items-center gap-2">
+            <div onClick={(e) => e.stopPropagation()}>
+              <ToggleGroup
+                type="single"
+                value={timeGrain}
+                onValueChange={(v) => { if (v) { setTimeGrain(v as TimeGrain); setExpandedRows(new Set()); } }}
+                className="bg-muted/50 rounded-md p-0.5"
+              >
+                <ToggleGroupItem value="monthly" className="px-2 py-0.5 text-[10px] h-6">Monthly</ToggleGroupItem>
+                <ToggleGroupItem value="quarterly" className="px-2 py-0.5 text-[10px] h-6">Quarterly</ToggleGroupItem>
+                <ToggleGroupItem value="annual" className="px-2 py-0.5 text-[10px] h-6">Annual</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
             <Select value={selectedEntity} onValueChange={(v) => { setSelectedEntity(v); setExpandedRows(new Set()); }}>
               <SelectTrigger className="h-7 w-[200px] text-[10px]" onClick={(e) => e.stopPropagation()}>
                 <Building2 className="h-3 w-3 mr-1 shrink-0" />
@@ -464,7 +486,7 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-[10px]">Account</TableHead>
-                    <TableHead className="text-[10px] text-right">Actuals</TableHead>
+                    <TableHead className="text-[10px] text-right">{currentLabel}</TableHead>
                     {hasComparison && <TableHead className="text-[10px] text-right">{compLabel}</TableHead>}
                     {hasComparison && <TableHead className="text-[10px] text-right">Var ($)</TableHead>}
                     {hasComparison && <TableHead className="text-[10px] text-right">Var (%)</TableHead>}

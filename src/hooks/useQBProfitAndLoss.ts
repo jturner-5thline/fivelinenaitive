@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { subMonths, subYears, startOfYear, format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, subQuarters } from 'date-fns';
+import { subMonths, subYears, startOfYear, endOfYear, format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, subQuarters } from 'date-fns';
+
+export type TimeGrain = 'monthly' | 'quarterly' | 'annual';
 
 // ─── QuickBooks Report JSON types ──────────────────────────────
 interface QBColData {
@@ -273,6 +275,69 @@ export function getComparisonDateRange(
 
   // 'budget' — no QB comparison data available
   return null;
+}
+
+// ─── Grain-aware date computation ──────────────────────────────
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Compute current period start/end based on time grain */
+export function getGrainPeriodDates(grain: TimeGrain, now?: Date): { start_date: string; end_date: string } {
+  const d = now || new Date();
+  switch (grain) {
+    case 'monthly':
+      return { start_date: format(startOfMonth(d), 'yyyy-MM-dd'), end_date: format(endOfMonth(d), 'yyyy-MM-dd') };
+    case 'quarterly':
+      return { start_date: format(startOfQuarter(d), 'yyyy-MM-dd'), end_date: format(endOfQuarter(d), 'yyyy-MM-dd') };
+    case 'annual':
+      return { start_date: format(startOfYear(d), 'yyyy-MM-dd'), end_date: format(endOfYear(d), 'yyyy-MM-dd') };
+  }
+}
+
+/** Compute comparison period based on grain and mode */
+export function getGrainComparisonDates(
+  grain: TimeGrain,
+  comparisonMode: 'budget' | 'prior_year' | 'prior_period',
+  now?: Date
+): { start_date: string; end_date: string } | null {
+  if (comparisonMode === 'budget') return null;
+  const d = now || new Date();
+
+  if (comparisonMode === 'prior_year') {
+    const prev = subYears(d, 1);
+    return getGrainPeriodDates(grain, prev);
+  }
+
+  // prior_period
+  switch (grain) {
+    case 'monthly': {
+      const prev = subMonths(d, 1);
+      return { start_date: format(startOfMonth(prev), 'yyyy-MM-dd'), end_date: format(endOfMonth(prev), 'yyyy-MM-dd') };
+    }
+    case 'quarterly': {
+      const prev = subQuarters(d, 1);
+      return { start_date: format(startOfQuarter(prev), 'yyyy-MM-dd'), end_date: format(endOfQuarter(prev), 'yyyy-MM-dd') };
+    }
+    case 'annual': {
+      const prev = subYears(d, 1);
+      return { start_date: format(startOfYear(prev), 'yyyy-MM-dd'), end_date: format(endOfYear(prev), 'yyyy-MM-dd') };
+    }
+  }
+}
+
+/** Human-readable label for a date range + grain */
+export function getGrainPeriodLabel(dates: { start_date: string; end_date: string }, grain: TimeGrain): string {
+  const start = new Date(dates.start_date);
+  const year = start.getFullYear();
+  switch (grain) {
+    case 'monthly':
+      return `${MONTH_NAMES[start.getMonth()]} ${year}`;
+    case 'quarterly': {
+      const q = Math.floor(start.getMonth() / 3) + 1;
+      return `Q${q} ${year}`;
+    }
+    case 'annual':
+      return `FY ${year}`;
+  }
 }
 
 // ─── Hook ──────────────────────────────────────────────────────
