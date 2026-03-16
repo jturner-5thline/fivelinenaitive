@@ -446,7 +446,7 @@ export function ManagementSnapshotDashboard({
     <div className="grid grid-cols-12 gap-4 auto-rows-[60px]">
       {visibleCards.map(({ props }) => {
         const variant = props.sizeVariant || 'chart';
-        const rowSpan = sizeVariantRowSpan[variant];
+        const rowSpan = variant === 'metric' ? METRIC_H : CHART_H;
         return (
           <div
             key={props.cardId}
