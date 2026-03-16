@@ -396,7 +396,20 @@ function GenericDashboardCard({
       <CardHeader className={cn('pb-2 widget-drag-handle cursor-grab', sizeVariant === 'metric' && 'pb-1 pt-3 px-3')}>
         <div className="flex items-start justify-between gap-2">
           <CardTitle className={cn('text-sm font-medium', sizeVariant === 'metric' && 'text-xs')}>{title}</CardTitle>
-          {renderEditActions()}
+          <div className="flex items-center gap-0.5">
+            {visualization !== 'kpi' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn('h-7 w-7', showTrendLine && 'text-primary')}
+                onClick={(e) => { e.stopPropagation(); setShowTrendLine(v => !v); }}
+                aria-label="Toggle trend line"
+              >
+                <TrendingUp className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {renderEditActions()}
+          </div>
         </div>
         <div className="flex gap-1.5 flex-wrap">
           <PeriodBadge cardId={cardId} currentWindow={timeWindow} onTimeWindowChange={onTimeWindowChange} />
