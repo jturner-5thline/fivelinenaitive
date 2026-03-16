@@ -133,9 +133,11 @@ Respond ONLY with valid JSON, no markdown fences.`;
   }, [thread, dealId]);
 
   // Auto-run on mount
-  if (!hasRun && !loading) {
-    runAnalysis();
-  }
+  useEffect(() => {
+    if (!hasRun && !loading) {
+      runAnalysis();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="mx-4 mb-3 rounded-lg border border-primary/20 bg-primary/[0.03] overflow-hidden">
