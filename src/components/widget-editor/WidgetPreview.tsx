@@ -1,7 +1,7 @@
-import { WidgetConfig, getField, isQBAccountField, ComparisonConfig, TrendLineConfig, DataLabelsConfig } from './widgetTypes';
+import { WidgetConfig, getField, isQBAccountField, ComparisonConfig, TrendLineConfig, DataLabelsConfig, NegativeStylingConfig } from './widgetTypes';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList, ReferenceLine } from 'recharts';
 import { useMemo } from 'react';
 import { BarChart3, LineChart as LineChartIcon, Hash, Loader2, Database, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
