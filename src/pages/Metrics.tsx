@@ -90,6 +90,7 @@ import {
   ManagementSnapshotDashboard,
   type EditableManagementSnapshotCardId,
   type ManagementSnapshotEditableConfig,
+  type CardSizeOverride,
   IncomeBoardDashboard,
   SalesBDROIDashboard,
   SalesTeamBoardDashboard,
