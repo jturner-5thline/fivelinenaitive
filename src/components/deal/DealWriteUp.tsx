@@ -425,6 +425,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   };
 
   const updateField = <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => {
+    markFieldEdited?.(field as string);
     onChange({ ...data, [field]: value });
   };
 
