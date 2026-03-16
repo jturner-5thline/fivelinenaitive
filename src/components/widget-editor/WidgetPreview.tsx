@@ -2,7 +2,7 @@ import { WidgetConfig, getField, isQBAccountField, ComparisonConfig, TrendLineCo
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList, ReferenceLine } from 'recharts';
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { BarChart3, LineChart as LineChartIcon, Hash, Loader2, Database, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQBPreviewData, PreviewDataPoint } from '@/hooks/useQBPreviewData';
