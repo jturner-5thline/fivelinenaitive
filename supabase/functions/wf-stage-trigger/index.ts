@@ -730,7 +730,7 @@ Deno.serve(async (req: Request) => {
         const { error: logError } = await supabase.from("wf_workflows_log").insert({
           workflow_id: wfRow.id,
           workflow_name: wfDef.key,
-          owner_user_id: ownerId,
+          owner_user_id: null,
           trigger_type: "stage_change",
           deal_id: deal_id,
           org_company_id: org_company_id || deal.org_company_id,
