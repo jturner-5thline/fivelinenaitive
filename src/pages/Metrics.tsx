@@ -1368,6 +1368,60 @@ export default function Metrics() {
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [createDashboardOpen, setCreateDashboardOpen] = useState(false);
+  const [newDashboardName, setNewDashboardName] = useState('');
+
+  // Custom user-created dashboards (company-level)
+  interface CustomDashboard {
+    id: string;
+    name: string;
+    widgetIds: string[];
+    createdAt: string;
+  }
+  const {
+    config: customDashboardsConfig,
+    saveConfig: saveCustomDashboards,
+    canEdit: canEditDashboards,
+  } = useCompanyDashboardConfig<{ dashboards: CustomDashboard[] }>(
+    'custom_dashboards',
+    { dashboards: [] },
+  );
+  const customDashboards = customDashboardsConfig.dashboards || [];
+
+  const handleCreateDashboard = () => {
+    if (!newDashboardName.trim()) return;
+    const newDashboard: CustomDashboard = {
+      id: `custom-${Date.now()}`,
+      name: newDashboardName.trim(),
+      widgetIds: [],
+      createdAt: new Date().toISOString(),
+    };
+    saveCustomDashboards({ dashboards: [...customDashboards, newDashboard] });
+    setSelectedDashboard(newDashboard.id);
+    setCreateDashboardOpen(false);
+    setNewDashboardName('');
+    setIsEditMode(true);
+    toast({ title: 'Dashboard created', description: `"${newDashboard.name}" is ready. Add widgets to get started.` });
+  };
+
+  const handleDeleteCustomDashboard = (dashId: string) => {
+    saveCustomDashboards({ dashboards: customDashboards.filter(d => d.id !== dashId) });
+    if (selectedDashboard === dashId) setSelectedDashboard('management-snapshot');
+    toast({ title: 'Dashboard deleted' });
+  };
+
+  const handleRenameCustomDashboard = (dashId: string, newName: string) => {
+    saveCustomDashboards({
+      dashboards: customDashboards.map(d => d.id === dashId ? { ...d, name: newName } : d),
+    });
+  };
+
+  const isCustomDashboard = selectedDashboard.startsWith('custom-');
+  const activeCustomDashboard = customDashboards.find(d => d.id === selectedDashboard);
+  const allDashboardOptions = [
+    ...DASHBOARD_OPTIONS,
+    ...customDashboards.map(d => ({ id: d.id, name: d.name, isFavorite: false })),
+  ];
   const [editingWidget, setEditingWidget] = useState<MetricWidgetConfig | undefined>();
   const [editingManagementSnapshotCardId, setEditingManagementSnapshotCardId] = useState<EditableManagementSnapshotCardId | null>(null);
   const {
