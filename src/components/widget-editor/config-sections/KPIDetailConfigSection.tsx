@@ -2,6 +2,7 @@ import {
   KPIDetailCardConfig,
   DEFAULT_KPI_DETAIL_CARD_CONFIG,
   KPIComparisonMode,
+  KPILayoutVariant,
   SEED_FIELDS,
 } from '../widgetTypes';
 import { Label } from '@/components/ui/label';
