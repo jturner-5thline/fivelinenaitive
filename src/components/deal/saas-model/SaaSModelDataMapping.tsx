@@ -68,6 +68,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [showValidation, setShowValidation] = useState(true);
   const [expandedPreview, setExpandedPreview] = useState(false);
   const [expandedFileUrl, setExpandedFileUrl] = useState<string | null>(null);
+  const [showExpandedSidebar, setShowExpandedSidebar] = useState(false);
   const [isRestoringMappings, setIsRestoringMappings] = useState(false);
   const [flashedRows, setFlashedRows] = useState<Set<number>>(new Set());
   const [flashedFields, setFlashedFields] = useState<Set<string>>(new Set());
