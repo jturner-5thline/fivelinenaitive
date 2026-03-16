@@ -57,11 +57,14 @@ export type EditableManagementSnapshotCardId =
   | 'debt-profit'
   | 'finserv-profit';
 
+export type WidgetSizeVariant = 'chart' | 'metric';
+
 export type ManagementSnapshotEditableConfig = Pick<
   MetricWidgetConfig,
   'title' | 'color' | 'entityFilter' | 'comparisonPeriod'
 > & Partial<Pick<MetricWidgetConfig, 'type' | 'chartType' | 'datarailsConfig'>> & {
   timeWindow?: TimeWindow;
+  sizeVariant?: WidgetSizeVariant;
 };
 
 const WINDOW_GROUPS: { label: string; options: { value: TimeWindow; label: string }[] }[] = [
