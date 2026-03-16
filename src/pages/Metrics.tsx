@@ -1400,26 +1400,17 @@ export default function Metrics() {
     'debt-profit', 'finserv-profit',
   ];
 
-  const SNAPSHOT_DEFAULT_LAYOUT = useMemo(() => {
-    // Charts: 6 wide, 4 tall. Metrics: 3 wide, 2 tall.
-    const chartCards = ['debt-revenue', 'finserv-revenue', 'total-revenue', 'debt-profit', 'finserv-profit'];
-    let x = 0, y = 0;
-    return SNAPSHOT_CARD_IDS.map((id) => {
-      const isChart = chartCards.includes(id);
-      const w = isChart ? 6 : 3;
-      const h = isChart ? 4 : 2;
-      if (x + w > 12) { x = 0; y += h; }
-      const item = { i: id, x, y, w, h, minW: 2, minH: 2 };
-      x += w;
-      if (x >= 12) { x = 0; y += h; }
-      return item;
-    });
-  }, []);
+  // Unified layout IDs: snapshot cards + custom widgets in one grid
+  const unifiedLayoutIds = useMemo(() => {
+    const widgetIds = widgets.map(w => w.id);
+    return [...SNAPSHOT_CARD_IDS, ...widgetIds];
+  }, [widgets]);
 
   const {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-prebuilt', SNAPSHOT_CARD_IDS);
+    resetLayout: resetSnapshotGridLayout,
+  } = useGridLayout('management-snapshot-unified', unifiedLayoutIds);
 
   const [snapshotCardToDelete, setSnapshotCardToDelete] = useState<EditableManagementSnapshotCardId | null>(null);
   const [snapshotDeleteConfirmOpen, setSnapshotDeleteConfirmOpen] = useState(false);
@@ -1690,11 +1681,6 @@ export default function Metrics() {
   const statWidgets = widgets.filter((w) => getWidgetDisplayType(w) === 'stat');
   const chartWidgets = widgets.filter((w) => getWidgetDisplayType(w) === 'chart');
   const allWidgetIds = useMemo(() => widgets.map(w => w.id), [widgets]);
-  const { layout: gridLayout, saveLayout: saveGridLayout, resetLayout: resetGridLayout } = useGridLayout(
-    `metrics-${selectedDashboard}`,
-    allWidgetIds
-  );
-
   if (isLoading) {
     return (
       <>
@@ -1964,7 +1950,7 @@ export default function Metrics() {
                     <Plus className="h-4 w-4 mr-2" />
                     Add Widget
                   </Button>
-                  <Button size="sm" variant="outline" onClick={resetGridLayout}>
+                  <Button size="sm" variant="outline" onClick={resetSnapshotGridLayout}>
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Reset Layout
                   </Button>
@@ -2000,7 +1986,28 @@ export default function Metrics() {
                 cardConfigs={managementSnapshotCardConfigs}
                 gridLayout={snapshotGridLayout}
                 onGridLayoutChange={saveSnapshotGridLayout}
-              />
+              >
+                {widgets.map((widget) => {
+                  const isStat = getWidgetDisplayType(widget) === 'stat';
+                  return (
+                    <div key={widget.id}>
+                      <GridWidgetCard
+                        isEditMode={isEditMode}
+                        onEdit={() => handleEdit(widget)}
+                        onDelete={() => {
+                          setWidgetToDelete(widget.id);
+                          setDeleteConfirmOpen(true);
+                        }}
+                      >
+                        {isStat
+                          ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
+                          : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                        }
+                      </GridWidgetCard>
+                    </div>
+                  );
+                })}
+              </ManagementSnapshotDashboard>
             )}
             {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
@@ -2019,36 +2026,6 @@ export default function Metrics() {
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
           </EditableDashboardWrapper>
-
-          {/* Editable Widgets Grid - react-grid-layout */}
-          {widgets.length > 0 && (
-            <DraggableGridLayout
-              layout={gridLayout}
-              onLayoutChange={saveGridLayout}
-              isEditMode={isEditMode}
-            >
-              {widgets.map((widget) => {
-                const isStat = getWidgetDisplayType(widget) === 'stat';
-                return (
-                  <div key={widget.id}>
-                    <GridWidgetCard
-                      isEditMode={isEditMode}
-                      onEdit={() => handleEdit(widget)}
-                      onDelete={() => {
-                        setWidgetToDelete(widget.id);
-                        setDeleteConfirmOpen(true);
-                      }}
-                    >
-                      {isStat
-                        ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
-                        : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
-                      }
-                    </GridWidgetCard>
-                  </div>
-                );
-              })}
-            </DraggableGridLayout>
-          )}
 
         </div>
       </div>
