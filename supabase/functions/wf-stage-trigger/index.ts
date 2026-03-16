@@ -690,7 +690,7 @@ Deno.serve(async (req: Request) => {
           workflow_id: wfRow.id,
           workflow_name: wfDef.key,
           owner_user_id: ownerId,
-          trigger_type: isDealCreated ? "deal_created" : "stage_change",
+          trigger_type: "stage_change",
           deal_id: deal_id,
           org_company_id: org_company_id || deal.org_company_id,
           metadata_json: { from_stage: normalizedFromStage, to_stage: normalizedToStage, event_type, tasks_count: wfDef.tasks.length, actions_count: wfDef.actions?.length || 0 },
