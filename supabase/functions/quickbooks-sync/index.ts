@@ -370,7 +370,10 @@ serve(async (req) => {
         // ─── Reports: Balance Sheet ────────────────────────
         if (shouldSync("balance_sheet")) {
           try {
-            const report = await fetchQBReport("BalanceSheet", { date_macro: "Today" });
+            const bsParams: Record<string, string> = start_date && end_date
+              ? { start_date: end_date, end_date } // BS is point-in-time, use end_date as the "as of" date
+              : { date_macro: "Today" };
+            const report = await fetchQBReport("BalanceSheet", bsParams);
             await supabase.from("quickbooks_reports").insert({
               user_id: user.id, realm_id: realmId, report_type: "balance_sheet",
               report_date: new Date().toISOString().split("T")[0],

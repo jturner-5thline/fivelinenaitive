@@ -190,7 +190,7 @@ export function DashboardModule() {
         </div>
       )}
 
-      {activeTab === 'balance' && <BalanceCashFlow view="balance" />}
+      {activeTab === 'balance' && <BalanceCashFlow view="balance" dateRange={dateRange} comparisonMode={comparisonMode} />}
 
       {activeTab === 'cashflow' && <CashFlowManager />}
 
