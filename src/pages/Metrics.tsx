@@ -1385,6 +1385,7 @@ export default function Metrics() {
   } = useCompanyDashboardConfig<{ dashboards: CustomDashboard[] }>(
     'custom_dashboards',
     { dashboards: [] },
+    { allowAllMembers: true },
   );
   const customDashboards = customDashboardsConfig.dashboards || [];
 

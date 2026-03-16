@@ -11,9 +11,10 @@ import { useCompany } from '@/hooks/useCompany';
 export function useCompanyDashboardConfig<T extends Record<string, any>>(
   configKey: string,
   defaultValue: T,
+  options?: { allowAllMembers?: boolean },
 ) {
   const { company, isAdmin, isOwner } = useCompany();
-  const canEdit = isAdmin || isOwner;
+  const canEdit = options?.allowAllMembers ? !!company?.id : (isAdmin || isOwner);
   const [config, setConfig] = useState<T>(defaultValue);
   const [isLoaded, setIsLoaded] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
