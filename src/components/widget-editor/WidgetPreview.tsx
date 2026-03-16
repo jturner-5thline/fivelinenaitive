@@ -238,11 +238,11 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
 
   // Enrich data with trend line values and period totals
   const enrichedData = useMemo(() => {
-    let result = data;
+    let result = normalizedData;
 
     // Add trend line
     if (trendLine?.enabled && dataKeys.length > 0) {
-      const trendValues = computeTrendLine(data, dataKeys[0], trendLine);
+      const trendValues = computeTrendLine(normalizedData, dataKeys[0], trendLine);
       result = result.map((d, i) => ({ ...d, __trend_line: trendValues[i] }));
     }
 
@@ -255,7 +255,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
     }
 
     return result;
-  }, [data, trendLine, dataKeys, showPeriodTotals]);
+  }, [normalizedData, trendLine, dataKeys, showPeriodTotals]);
 
   const renderDataLabel = dataLabels?.enabled ? (props: Record<string, unknown>) => {
     const { x, y, width, value, height } = props as { x: number; y: number; width: number; value: number; height: number };
