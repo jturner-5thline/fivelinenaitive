@@ -65,16 +65,20 @@ export function useDealWriteup(dealId: string | undefined) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Reset state when dealId changes to prevent cross-deal data bleed
-  useEffect(() => {
-    setWriteup(null);
-    setIsLoading(true);
-  }, [dealId]);
+  const prevDealIdRef = useRef<string | undefined>(undefined);
 
   const fetchWriteup = useCallback(async () => {
     if (!dealId || !user) {
+      setWriteup(null);
       setIsLoading(false);
       return;
+    }
+
+    // Reset state when switching deals to prevent cross-deal data bleed
+    if (prevDealIdRef.current !== dealId) {
+      setWriteup(null);
+      setIsLoading(true);
+      prevDealIdRef.current = dealId;
     }
 
     try {
