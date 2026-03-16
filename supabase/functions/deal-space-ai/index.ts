@@ -653,11 +653,8 @@ ${FORMATTING_RULES}
 
 // ─── Generate full structured memo ──────────────────────────────────
 
-async function handleGenerateMemo(dealId: string) {
+async function handleGenerateMemo(dealId: string, supabase: any) {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const ctx = await buildDealContext(supabase, dealId);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
