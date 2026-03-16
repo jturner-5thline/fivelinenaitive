@@ -73,6 +73,7 @@ export interface DataLabelsConfig {
 
 // ──── KPI Detail Card ────
 export type KPIComparisonMode = 'vs Previous Period' | 'vs Previous Year' | 'vs Plan/Budget';
+export type KPILayoutVariant = 'full' | 'compact';
 
 export interface KPIBreakdownColumn {
   label: string;
