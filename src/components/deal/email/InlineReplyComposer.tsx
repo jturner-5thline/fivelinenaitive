@@ -20,13 +20,10 @@ import {
   Send,
   Paperclip,
   Loader2,
-  ChevronDown,
-  ChevronUp,
   X,
   Trash2,
   Maximize2,
   Minimize2,
-  GripHorizontal,
   Check,
   AlertCircle,
   Cloud,
@@ -83,20 +80,23 @@ function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
 }
 
 export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, initialDraft, onDraftChange, onFieldBlur, saveStatus = 'idle', tokenContext }: InlineReplyComposerProps) {
-  const [to, setTo] = useState(initialDraft?.to ?? replyTo.to_email);
+  const [to] = useState(initialDraft?.to ?? replyTo.to_email);
   const [cc, setCc] = useState(initialDraft?.cc ?? '');
   const [bcc, setBcc] = useState(initialDraft?.bcc ?? '');
-  const [subject, setSubject] = useState(initialDraft?.subject ?? `Re: ${replyTo.subject}`);
+  const [subject] = useState(initialDraft?.subject ?? `Re: ${replyTo.subject}`);
   const [body, setBody] = useState(initialDraft?.body ?? '');
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<string[]>(initialDraft?.attachments ?? []);
-  const [expanded, setExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(!!initialDraft?.body);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Auto-focus textarea when expanded
   useEffect(() => {
-    setTimeout(() => textareaRef.current?.focus(), 100);
-  }, []);
+    if (isExpanded) {
+      setTimeout(() => textareaRef.current?.focus(), 100);
+    }
+  }, [isExpanded]);
 
   const getCurrentDraft = useCallback((): ReplyDraft => ({
     to, cc, bcc, subject, body, attachments,
@@ -176,7 +176,6 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
     }
   }, [body]);
 
-  // Fix #11: formatting helpers
   const insertFormatting = (prefix: string, suffix: string) => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -215,142 +214,104 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
     onFieldBlur?.();
   };
 
-  const discardButton = (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        {hasContent ? (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Discard draft?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete your in-progress email. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Keep editing</AlertDialogCancel>
-                <AlertDialogAction onClick={onDiscard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Discard
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ) : (
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={onDiscard}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        )}
-      </TooltipTrigger>
-      <TooltipContent side="top" className="text-xs">Discard draft</TooltipContent>
-    </Tooltip>
-  );
+  // Collapsed state — single-line clickable bar
+  if (!isExpanded) {
+    return (
+      <div className="border-t bg-card">
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+        >
+          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">
+            {replyTo.to_name.charAt(0).toUpperCase()}
+          </div>
+          <span className="text-sm text-muted-foreground">
+            Reply to <span className="text-foreground font-medium">{replyTo.to_name}</span>
+          </span>
+          <DraftStatusIndicator status={saveStatus} />
+        </button>
+      </div>
+    );
+  }
 
+  // Expanded compose state
   return (
-    <div className={cn(
-      'border-t bg-card flex flex-col transition-all duration-200',
-      expanded ? 'max-h-[60vh]' : 'max-h-[280px]'
-    )}>
-      {/* Header bar with controls */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 cursor-default select-none">
-        <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50" />
-        <span className="text-xs font-medium text-foreground flex-1">
-          Reply to {replyTo.to_name}
+    <div className="border-t bg-card flex flex-col">
+      {/* Minimal header — recipient info + controls */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
+        <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-semibold text-primary shrink-0">
+          {replyTo.to_name.charAt(0).toUpperCase()}
+        </div>
+        <span className="text-xs text-muted-foreground flex-1">
+          To: <span className="text-foreground">{replyTo.to_name}</span>
+          <span className="text-muted-foreground/60 ml-1">&lt;{replyTo.to_email}&gt;</span>
         </span>
+
+        {/* Cc/Bcc toggle */}
+        <button
+          onClick={() => setShowCcBcc(!showCcBcc)}
+          className="text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1"
+        >
+          {showCcBcc ? 'Hide Cc/Bcc' : 'Cc/Bcc'}
+        </button>
+
         <DraftStatusIndicator status={saveStatus} />
-        {/* Fix #15: Tooltips on expand/pop-out icons */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setExpanded(!expanded)}>
-              {expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">{expanded ? 'Collapse composer' : 'Expand composer'}</TooltipContent>
-        </Tooltip>
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onPopOut(getCurrentDraft())}>
-              <Maximize2 className="h-3 w-3 rotate-90" />
+              <Maximize2 className="h-3 w-3" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">Pop out to window</TooltipContent>
+          <TooltipContent side="top" className="text-xs">Pop out</TooltipContent>
         </Tooltip>
+
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={() => hasContent ? undefined : onDiscard()}>
-              {hasContent ? (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <span className="inline-flex"><X className="h-3 w-3" /></span>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Discard draft?</AlertDialogTitle>
-                      <AlertDialogDescription>Your in-progress email will be permanently deleted.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Keep editing</AlertDialogCancel>
-                      <AlertDialogAction onClick={onDiscard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Discard</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              ) : (
-                <X className="h-3 w-3" onClick={onDiscard} />
-              )}
-            </Button>
+            {hasContent ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Discard draft?</AlertDialogTitle>
+                    <AlertDialogDescription>Your in-progress email will be permanently deleted.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                    <AlertDialogAction onClick={onDiscard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Discard</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={onDiscard}>
+                <X className="h-3 w-3" />
+              </Button>
+            )}
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">Close</TooltipContent>
         </Tooltip>
       </div>
 
-      {/* Fields */}
-      <div className="px-4 py-2 space-y-1.5 overflow-y-auto flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Label className="text-[11px] text-muted-foreground w-8 shrink-0">To</Label>
-          <Input
-            value={to}
-            onChange={e => setTo(e.target.value)}
-            onBlur={handleBlur}
-            placeholder="recipient@example.com"
-            className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent"
-          />
-          <Button variant="ghost" size="sm" className="text-[10px] text-muted-foreground h-6 px-1.5 shrink-0" onClick={() => setShowCcBcc(!showCcBcc)}>
-            Cc/Bcc {showCcBcc ? <ChevronUp className="h-2.5 w-2.5 ml-0.5" /> : <ChevronDown className="h-2.5 w-2.5 ml-0.5" />}
-          </Button>
+      {/* Cc/Bcc fields — only when toggled */}
+      {showCcBcc && (
+        <div className="px-4 py-1.5 space-y-1 border-b border-border/50">
+          <div className="flex items-center gap-2">
+            <Label className="text-[11px] text-muted-foreground w-6 shrink-0">Cc</Label>
+            <Input value={cc} onChange={e => setCc(e.target.value)} onBlur={handleBlur} placeholder="cc@example.com" className="h-6 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-[11px] text-muted-foreground w-6 shrink-0">Bcc</Label>
+            <Input value={bcc} onChange={e => setBcc(e.target.value)} onBlur={handleBlur} placeholder="bcc@example.com" className="h-6 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
+          </div>
         </div>
-        {showCcBcc && (
-          <>
-            <div className="flex items-center gap-2">
-              <Label className="text-[11px] text-muted-foreground w-8 shrink-0">Cc</Label>
-              <Input value={cc} onChange={e => setCc(e.target.value)} onBlur={handleBlur} placeholder="cc@example.com" className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-[11px] text-muted-foreground w-8 shrink-0">Bcc</Label>
-              <Input value={bcc} onChange={e => setBcc(e.target.value)} onBlur={handleBlur} placeholder="bcc@example.com" className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Fix #11: Formatting toolbar */}
-      <div className="flex items-center gap-1 px-4 h-7 border-b border-border">
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBold}>
-          <Bold className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleItalic}>
-          <Italic className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleLink}>
-          <Link className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+      )}
 
       {/* Body */}
-      <div className="px-4 flex-1 min-h-0">
+      <div className="px-4 pt-3 pb-1 flex-1 min-h-0">
         <Textarea
           ref={textareaRef}
           value={body}
@@ -358,10 +319,7 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           placeholder="Write your reply..."
-          className={cn(
-            'border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent w-full',
-            expanded ? 'min-h-[200px] h-full' : 'min-h-[80px]'
-          )}
+          className="min-h-[120px] border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent w-full"
         />
       </div>
 
@@ -382,23 +340,69 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
         </div>
       )}
 
-      {/* Footer actions */}
-      <div className="flex items-center gap-2 px-4 py-2 border-t bg-muted/20">
-        <Button onClick={handleSend} disabled={isSending} size="sm" className="gap-1.5 h-7 text-xs">
+      {/* Bottom toolbar — formatting + actions */}
+      <div className="flex items-center gap-1 px-4 py-2 border-t border-border/50">
+        {/* Formatting buttons */}
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleBold}>
+          <Bold className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleItalic}>
+          <Italic className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleLink}>
+          <Link className="h-3.5 w-3.5" />
+        </Button>
+
+        <div className="w-px h-4 bg-border mx-1" />
+
+        <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground h-7 text-xs" onClick={handleAddAttachment}>
+          <Paperclip className="h-3 w-3" />Attach
+        </Button>
+
+        <SnippetPicker onInsert={handleInsertSnippet} tokenContext={defaultTokenContext} />
+
+        <kbd className="text-[10px] bg-muted border border-border rounded px-1 py-0.5 text-muted-foreground ml-1">⌘↵</kbd>
+
+        <div className="flex-1" />
+
+        {/* Discard */}
+        {hasContent ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard draft?</AlertDialogTitle>
+                <AlertDialogDescription>This will permanently delete your in-progress email.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={onDiscard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Discard</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={onDiscard}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+
+        {/* Send — prominent teal/green */}
+        <Button
+          onClick={handleSend}
+          disabled={isSending}
+          size="sm"
+          className="gap-1.5 h-8 text-xs ml-2 bg-[hsl(160,60%,40%)] hover:bg-[hsl(160,60%,35%)] text-white shadow-sm"
+        >
           {isSending ? (
             <><Loader2 className="h-3 w-3 animate-spin" />Sending...</>
           ) : (
             <><Send className="h-3 w-3" />Send</>
           )}
         </Button>
-        <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground h-7 text-xs" onClick={handleAddAttachment}>
-          <Paperclip className="h-3 w-3" />Attach
-        </Button>
-        <SnippetPicker onInsert={handleInsertSnippet} tokenContext={defaultTokenContext} />
-        {/* Fix #12: kbd badge for shortcut hint */}
-        <kbd className="text-[10px] bg-muted border border-border rounded px-1 py-0.5 text-muted-foreground ml-1">⌘↵</kbd>
-        <div className="flex-1" />
-        {discardButton}
       </div>
 
       <PreSendAlertDialog
