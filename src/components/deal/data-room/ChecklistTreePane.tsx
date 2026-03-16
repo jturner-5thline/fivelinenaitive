@@ -336,6 +336,32 @@ export function ChecklistTreePane({
           )}
         </div>
       </ScrollArea>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete file</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <span className="font-medium text-foreground">{fileToDelete?.name}</span>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (fileToDelete && deleteAttachment) {
+                  await deleteAttachment(fileToDelete);
+                }
+                setFileToDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
