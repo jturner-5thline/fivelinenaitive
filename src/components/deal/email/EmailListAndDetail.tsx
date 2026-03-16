@@ -868,9 +868,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               onClose={() => setShowAiAssist(false)}
               onInsertReply={(text) => {
                 handleReply();
-                // Small delay to let inline composer mount
                 setTimeout(() => {
-                  setInlineDraft(prev => ({ to: getReplyTarget().to_email, toName: getReplyTarget().to_name, body: text, subject: `Re: ${thread.subject}` }));
+                  const target = getReplyTarget();
+                  setInlineDraft({ to: target.to_email, toName: target.to_name, body: text, subject: `Re: ${thread.subject}`, cc: '', bcc: '', attachments: [], threadId: thread.threadId });
+                }, 100);
                 }, 100);
               }}
             />
