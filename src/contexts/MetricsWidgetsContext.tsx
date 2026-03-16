@@ -45,7 +45,7 @@ export interface MetricsLayoutPreset {
 
 interface MetricsWidgetsContextType {
   widgets: MetricWidgetConfig[];
-  addWidget: (widget: Omit<MetricWidgetConfig, 'id' | 'createdAt'>) => void;
+  addWidget: (widget: Omit<MetricWidgetConfig, 'id' | 'createdAt'>) => string;
   updateWidget: (id: string, widget: Partial<Omit<MetricWidgetConfig, 'id' | 'createdAt'>>) => void;
   deleteWidget: (id: string) => void;
   reorderWidgets: (widgets: MetricWidgetConfig[]) => void;
