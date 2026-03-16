@@ -1998,8 +1998,8 @@ export default function Metrics() {
                   });
                 }}
                 cardConfigs={managementSnapshotCardConfigs}
-                cardSizes={snapshotCardSizes}
-                onCardResize={handleCardResize}
+                gridLayout={snapshotGridLayout}
+                onGridLayoutChange={saveSnapshotGridLayout}
               />
             )}
             {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
