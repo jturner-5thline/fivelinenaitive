@@ -178,7 +178,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
   }, [company?.id]);
 
   const persistWidgets = useCallback((newWidgets: MetricWidgetConfig[]) => {
-    if (!canEdit || !company?.id) return;
+    if (!company?.id) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
@@ -196,10 +196,10 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
         console.error('Error saving metrics widgets:', err);
       }
     }, 500);
-  }, [canEdit, company?.id]);
+  }, [company?.id]);
 
   const persistPresets = useCallback((newPresets: MetricsLayoutPreset[]) => {
-    if (!canEdit || !company?.id) return;
+    if (!company?.id) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
@@ -217,7 +217,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
         console.error('Error saving metrics presets:', err);
       }
     }, 500);
-  }, [canEdit, company?.id]);
+  }, [company?.id]);
 
   const addWidget = (widget: Omit<MetricWidgetConfig, 'id' | 'createdAt'>): string => {
     const newWidget: MetricWidgetConfig = {
