@@ -1701,7 +1701,18 @@ export default function Metrics() {
       updateWidget(editingWidget.id, widgetData);
       toast({ title: "Widget updated" });
     } else {
+      // When adding a new widget on a custom dashboard, track it
+      const newId = `widget-${Date.now()}`;
       addWidget(widgetData);
+      if (isCustomDashboard && activeCustomDashboard) {
+        saveCustomDashboards({
+          dashboards: customDashboards.map(d =>
+            d.id === activeCustomDashboard.id
+              ? { ...d, widgetIds: [...d.widgetIds, newId] }
+              : d
+          ),
+        });
+      }
       toast({ title: "Widget added" });
     }
   };
