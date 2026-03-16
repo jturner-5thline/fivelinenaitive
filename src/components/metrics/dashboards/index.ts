@@ -1,5 +1,5 @@
 export { ManagementSnapshotDashboard } from './ManagementSnapshotDashboard';
-export type { EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig, WidgetSizeVariant } from './ManagementSnapshotDashboard';
+export type { EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig, WidgetSizeVariant, CardSizeOverride } from './ManagementSnapshotDashboard';
 export { IncomeBoardDashboard } from './IncomeBoardDashboard';
 export { SalesBDROIDashboard } from './SalesBDROIDashboard';
 export { SalesTeamBoardDashboard } from './SalesTeamBoardDashboard';
