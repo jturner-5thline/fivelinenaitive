@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_TOOL_TURNS = 5;
+const MAX_TOOL_TURNS = 10;
 
 // ── Context fetchers ──────────────────────────────────────────────
 async function fetchDealContext(supabase: any, entityId: string) {
@@ -1490,7 +1490,26 @@ READ TOOLS:
       });
     }
 
-    return new Response(JSON.stringify({ error: "Too many tool turns" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Graceful fallback: force a final response without tools
+    const fallbackResponse = await fetch(AI_GATEWAY, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [...apiMessages, { role: "user", content: "Please provide your final answer now based on the information gathered so far. Do not call any more tools." }],
+        temperature: 0.3,
+        max_tokens: 2000,
+        stream: true,
+      }),
+    });
+
+    if (!fallbackResponse.ok) {
+      return new Response(JSON.stringify({ error: "Unable to generate response. Please try a simpler question." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    return new Response(fallbackResponse.body, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    });
   } catch (error) {
     console.error("copilot-chat error:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
