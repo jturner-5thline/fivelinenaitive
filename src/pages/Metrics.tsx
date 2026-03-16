@@ -1944,8 +1944,6 @@ export default function Metrics() {
             </DraggableGridLayout>
           )}
 
-          {/* Rep Performance & Pipeline Model Grid */}
-          <RepPerformanceModelGrid />
         </div>
       </div>
 
