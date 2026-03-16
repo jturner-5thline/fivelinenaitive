@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { useAutoSave, AutoSaveStatus } from '@/hooks/useAutoSave';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -114,6 +115,45 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
   const [editingHighlight, setEditingHighlight] = useState<number | null>(null);
   const [editingHurdle, setEditingHurdle] = useState<number | null>(null);
   const [editingRemedy, setEditingRemedy] = useState<number | null>(null);
+  const lastSavedMemoRef = useRef<string>('');
+
+  // --- Autosave integration ---
+  // Build the data object to auto-save (memoized to avoid unnecessary triggers)
+  const autoSaveData = useMemo(() => ({
+    narrative: localValues.narrative || null,
+    highlights: localValues.highlights || null,
+    hurdles: localValues.hurdles || null,
+    lender_notes: localValues.lender_notes || null,
+    analyst_notes: localValues.analyst_notes || null,
+    other_notes: localValues.other_notes || null,
+  }), [localValues]);
+
+  const handleAutoSave = useCallback(async (data: typeof autoSaveData): Promise<boolean> => {
+    const oldValues: Record<string, string | null> = {
+      narrative: memo?.narrative || null,
+      highlights: memo?.highlights || null,
+      hurdles: memo?.hurdles || null,
+      lender_notes: memo?.lender_notes || null,
+      analyst_notes: memo?.analyst_notes || null,
+      other_notes: memo?.other_notes || null,
+    };
+    const success = await saveMemo(data, { silent: true });
+    if (success) {
+      await logChanges(dealId, oldValues, data);
+      setHasChanges(false);
+    }
+    return success;
+  }, [saveMemo, memo, logChanges, dealId]);
+
+  // Debounce delay: adjust this value (ms) to change how long after typing before auto-save fires
+  const AUTOSAVE_DEBOUNCE_MS = 1500;
+
+  const { status: autoSaveStatus, saveNow } = useAutoSave({
+    data: autoSaveData,
+    onSave: handleAutoSave,
+    delay: AUTOSAVE_DEBOUNCE_MS,
+    enabled: isOpen && hasChanges,
+  });
 
   // Helper to convert list string to array
   const parseList = (str: string | null): string[] => {
@@ -176,6 +216,13 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
     setLocalValues(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
   };
+
+  // Save immediately on blur for any textarea field
+  const handleFieldBlur = useCallback(() => {
+    if (hasChanges) {
+      saveNow();
+    }
+  }, [hasChanges, saveNow]);
 
   const handleAddHighlight = () => {
     if (newHighlight.trim()) {
@@ -280,28 +327,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
   });
 
   const handleSave = async () => {
-    const newValues = {
-      narrative: localValues.narrative || null,
-      highlights: localValues.highlights || null,
-      hurdles: localValues.hurdles || null,
-      lender_notes: localValues.lender_notes || null,
-      analyst_notes: localValues.analyst_notes || null,
-      other_notes: localValues.other_notes || null,
-    };
-
-    // Build old values from current memo
-    const oldValues: Record<string, string | null> = {
-      narrative: memo?.narrative || null,
-      highlights: memo?.highlights || null,
-      hurdles: memo?.hurdles || null,
-      lender_notes: memo?.lender_notes || null,
-      analyst_notes: memo?.analyst_notes || null,
-      other_notes: memo?.other_notes || null,
-    };
-
-    await saveMemo(newValues);
-    await logChanges(dealId, oldValues, newValues);
-    setHasChanges(false);
+    saveNow();
   };
 
   const handleRevert = (entry: import('@/hooks/useDealMemoAuditLog').MemoAuditEntry) => {
@@ -319,11 +345,22 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
   };
 
   const handleOpenChange = (open: boolean) => {
+    // If closing and there are pending changes, save immediately
+    if (!open && hasChanges) {
+      saveNow();
+    }
     setIsOpen(open);
     if (open && hasUnreadUpdates) {
       markAsViewed();
     }
   };
+
+  // Auto-save status label
+  const autoSaveLabel = autoSaveStatus === 'pending' ? 'Unsaved changes...' 
+    : autoSaveStatus === 'saving' ? 'Saving...' 
+    : autoSaveStatus === 'saved' ? 'All changes saved'
+    : autoSaveStatus === 'error' ? 'Save failed — click to retry'
+    : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -528,6 +565,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                   <Textarea
                     value={localValues.narrative}
                     onChange={(e) => handleChange('narrative', e.target.value)}
+                    onBlur={handleFieldBlur}
                     placeholder="Describe the company, what they are looking for, and the proposed solution..."
                     className="min-h-[100px] resize-none"
                   />
@@ -751,6 +789,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                     <Textarea
                       value={localValues[section.key]}
                       onChange={(e) => handleChange(section.key, e.target.value)}
+                      onBlur={handleFieldBlur}
                       placeholder={section.placeholder}
                       className="min-h-[100px] resize-none"
                     />
@@ -764,9 +803,18 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
           )}
         </ScrollArea>
 
-        {hasChanges && (
-          <div className="px-6 py-3 border-t bg-muted/30 text-sm text-muted-foreground">
-            You have unsaved changes
+        {autoSaveLabel && (
+          <div 
+            className={`px-6 py-2 border-t text-xs flex items-center gap-2 ${
+              autoSaveStatus === 'error' ? 'bg-destructive/10 text-destructive cursor-pointer' 
+              : autoSaveStatus === 'saved' ? 'bg-success/10 text-success' 
+              : 'bg-muted/30 text-muted-foreground'
+            }`}
+            onClick={autoSaveStatus === 'error' ? saveNow : undefined}
+          >
+            {autoSaveStatus === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}
+            {autoSaveStatus === 'saved' && <Check className="h-3 w-3" />}
+            {autoSaveLabel}
           </div>
         )}
       </DialogContent>
