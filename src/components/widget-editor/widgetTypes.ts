@@ -126,6 +126,7 @@ export interface WidgetConfig {
   comparison?: ComparisonConfig;
   trendLine?: TrendLineConfig;
   dataLabels?: DataLabelsConfig;
+  negativeStyling?: NegativeStylingConfig;
   kpiDetailConfig?: KPIDetailCardConfig;
 }
 
