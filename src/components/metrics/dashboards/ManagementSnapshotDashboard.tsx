@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
 import { useDashboardCardData } from '@/hooks/useDashboardCardData';
-import { type WidgetConfig, type TimeWindow } from '@/components/widget-editor/widgetTypes';
+import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, DEFAULT_KPI_DETAIL_CARD_CONFIG } from '@/components/widget-editor/widgetTypes';
+import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
 import {
   DropdownMenu,
   DropdownMenuContent,
