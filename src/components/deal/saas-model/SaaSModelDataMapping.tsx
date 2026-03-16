@@ -84,6 +84,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const storedFilePathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
 
+  // ── Multi-file management ──
+  const { files: dbFiles, upsertFile, saveFileMappings, pushFileData, deleteFile: deleteDbFile, loadFiles: reloadDbFiles } = useFinancialFiles(dealId);
+  const [activeFileId, setActiveFileId] = useState<string | null>(null);
+
   // ── Start date detection & override ──
   const [modelStartDate, setModelStartDate] = useState<{ month: number; year: number } | null>(null);
   const [startDateConfirmed, setStartDateConfirmed] = useState(false);
