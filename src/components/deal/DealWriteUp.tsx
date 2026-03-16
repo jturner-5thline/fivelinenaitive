@@ -1000,7 +1000,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
       applyAutoFillFields(selectedFields, false);
     }
   };
-  };
 
   return (
     <Card className="w-full max-w-full">
