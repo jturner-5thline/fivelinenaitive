@@ -11,21 +11,23 @@ interface Props {
 
 export function SeriesConfigSection({ config, onChange }: Props) {
   const field = getField(config.fieldId);
+  const displayName = field?.name ?? config.label ?? config.fieldId ?? 'Unknown';
+  const hasField = !!config.fieldId;
 
   return (
     <div className="space-y-2">
-      <DropZone id="drop-series" label="Data Series" accepts="dimension" isEmpty={!field}>
-        {field && (
+      <DropZone id="drop-series" label="Data Series" accepts="dimension" isEmpty={!hasField}>
+        {hasField && (
           <div className="flex items-center justify-between w-full">
-            <span className="text-sm font-medium text-foreground">{field.name}</span>
-            <button onClick={() => onChange({ ...config, fieldId: null })} className="text-muted-foreground hover:text-destructive">
+            <span className="text-sm font-medium text-foreground">{displayName}</span>
+            <button onClick={() => onChange({ ...config, fieldId: null, label: undefined })} className="text-muted-foreground hover:text-destructive">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
       </DropZone>
 
-      {field && (
+      {hasField && (
         <div className="pl-1">
           <Label className="text-xs text-muted-foreground mb-1 block">Mode</Label>
           <div className="flex gap-1">

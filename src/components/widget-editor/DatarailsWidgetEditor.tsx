@@ -76,18 +76,21 @@ export function DatarailsWidgetEditor({
     if (!data) return;
 
     const target = over.id as string;
+    // Resolve label: QB account name or seed field name
+    const seedField = SEED_FIELDS.find(f => f.id === data.fieldId);
+    const fieldLabel = data.qbAccountName ?? seedField?.name ?? data.fieldId;
 
     if (target === 'drop-xaxis') {
       if (data.dataType === 'date' || !data.isMeasure) {
-        updateConfig({ ...config, xAxis: { ...config.xAxis, fieldId: data.fieldId } });
+        updateConfig({ ...config, xAxis: { ...config.xAxis, fieldId: data.fieldId, label: fieldLabel } });
       }
     } else if (target === 'drop-series') {
       if (!data.isMeasure) {
-        updateConfig({ ...config, series: { ...config.series, fieldId: data.fieldId } });
+        updateConfig({ ...config, series: { ...config.series, fieldId: data.fieldId, label: fieldLabel } });
       }
     } else if (target === 'drop-values') {
       if (data.isMeasure || data.dataType === 'number') {
-        const newValue: ValueConfig = { fieldId: data.fieldId, agg: 'sum', format: 'currency' };
+        const newValue: ValueConfig = { fieldId: data.fieldId, label: fieldLabel, agg: 'sum', format: 'currency' };
         updateConfig({ ...config, values: [...config.values, newValue] });
       }
     }
