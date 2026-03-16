@@ -482,13 +482,43 @@ serve(async (req) => {
   }
 
   try {
+    // ── Authentication ──────────────────────────────────────────────
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // User-scoped client for RLS-enforced data access
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Service client only for storage file downloads (not for data queries)
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
+
     const { messages, dealId, action, sectionKey, documentId, scope } = await req.json();
 
-    if (action === "summarize") return await handleSummarize(dealId);
-    if (action === "extract-writeup") return await handleExtractWriteUp(dealId);
-    if (action === "generate-memo") return await handleGenerateMemo(dealId);
-    if (action === "regenerate-section") return await handleRegenerateSection(dealId, sectionKey);
-    if (action === "extract-document") return await handleExtractDocument(dealId, documentId);
+    if (action === "summarize") return await handleSummarize(dealId, supabaseUser, supabaseService);
+    if (action === "extract-writeup") return await handleExtractWriteUp(dealId, supabaseUser, supabaseService);
+    if (action === "generate-memo") return await handleGenerateMemo(dealId, supabaseUser);
+    if (action === "regenerate-section") return await handleRegenerateSection(dealId, sectionKey, supabaseUser);
+    if (action === "extract-document") return await handleExtractDocument(dealId, supabaseUser, supabaseService, documentId);
 
     // ── Chat mode (Ask AI) ──────────────────────────────────────────
     if (!dealId || !messages || !Array.isArray(messages)) {
@@ -498,9 +528,7 @@ serve(async (req) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = supabaseUser;
     const ctx = await buildDealContext(supabase, dealId);
 
     // ── Scope-aware document filtering ──────────────────────────────
