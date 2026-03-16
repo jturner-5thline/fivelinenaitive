@@ -72,7 +72,10 @@ export function KPIDetailCard({
       )}
       onClick={onClick}
     >
-      <CardContent className="flex-1 flex flex-col justify-center p-4 gap-2">
+      <CardContent className={cn(
+        'flex-1 flex flex-col justify-center gap-2',
+        isCompact ? 'p-3' : 'p-4',
+      )}>
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -80,12 +83,18 @@ export function KPIDetailCard({
         ) : (
           <>
             {/* Header title */}
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <p className={cn(
+              'font-medium uppercase tracking-wider text-muted-foreground',
+              isCompact ? 'text-[10px]' : 'text-xs',
+            )}>
               {kpiConfig.cardTitle}
             </p>
 
             {/* Main value */}
-            <p className="text-2xl font-bold text-foreground leading-tight">
+            <p className={cn(
+              'font-bold text-foreground leading-tight',
+              isCompact ? 'text-xl' : 'text-2xl',
+            )}>
               {formatCurrency(mainTotal)}
             </p>
 
@@ -97,26 +106,29 @@ export function KPIDetailCard({
               </span>
             </div>
 
-            <Separator className="my-1" />
-
-            {/* Breakdown columns */}
-            <div className={cn(
-              'grid gap-4',
-              kpiConfig.breakdownColumns === 1 ? 'grid-cols-1 text-center' : 'grid-cols-2',
-            )}>
-              <BreakdownColumn
-                label={kpiConfig.left.label || '—'}
-                value={leftTotal}
-                pctChange={leftPctChange}
-              />
-              {kpiConfig.breakdownColumns === 2 && (
-                <BreakdownColumn
-                  label={kpiConfig.right.label || '—'}
-                  value={rightTotal}
-                  pctChange={rightPctChange}
-                />
-              )}
-            </div>
+            {/* Breakdown section — hidden in compact mode */}
+            {!isCompact && (
+              <>
+                <Separator className="my-1" />
+                <div className={cn(
+                  'grid gap-4',
+                  kpiConfig.breakdownColumns === 1 ? 'grid-cols-1 text-center' : 'grid-cols-2',
+                )}>
+                  <BreakdownColumn
+                    label={kpiConfig.left.label || '—'}
+                    value={leftTotal}
+                    pctChange={leftPctChange}
+                  />
+                  {kpiConfig.breakdownColumns === 2 && (
+                    <BreakdownColumn
+                      label={kpiConfig.right.label || '—'}
+                      value={rightTotal}
+                      pctChange={rightPctChange}
+                    />
+                  )}
+                </div>
+              </>
+            )}
           </>
         )}
       </CardContent>
