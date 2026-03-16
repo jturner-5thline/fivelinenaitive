@@ -57,11 +57,14 @@ export type EditableManagementSnapshotCardId =
   | 'debt-profit'
   | 'finserv-profit';
 
+export type WidgetSizeVariant = 'chart' | 'metric';
+
 export type ManagementSnapshotEditableConfig = Pick<
   MetricWidgetConfig,
   'title' | 'color' | 'entityFilter' | 'comparisonPeriod'
 > & Partial<Pick<MetricWidgetConfig, 'type' | 'chartType' | 'datarailsConfig'>> & {
   timeWindow?: TimeWindow;
+  sizeVariant?: WidgetSizeVariant;
 };
 
 const WINDOW_GROUPS: { label: string; options: { value: TimeWindow; label: string }[] }[] = [
@@ -170,6 +173,7 @@ interface GenericDashboardCardProps {
   datarailsConfig: Partial<WidgetConfig> | undefined | null;
   entityFilter?: string | null;
   isEditMode: boolean;
+  sizeVariant?: WidgetSizeVariant;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onDeleteCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
@@ -186,6 +190,7 @@ function GenericDashboardCard({
   datarailsConfig,
   entityFilter,
   isEditMode,
+  sizeVariant = 'chart',
   onEditCard,
   onDeleteCard,
   onTimeWindowChange,
@@ -317,12 +322,15 @@ function GenericDashboardCard({
 
   return (
     <Card
-      className={cn(!isEditMode && onEditCard && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all')}
+      className={cn(
+        'h-full flex flex-col',
+        !isEditMode && onEditCard && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all',
+      )}
       onClick={handleCardClick}
     >
-      <CardHeader className="pb-2">
+      <CardHeader className={cn('pb-2', sizeVariant === 'metric' && 'pb-1 pt-3 px-3')}>
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <CardTitle className={cn('text-sm font-medium', sizeVariant === 'metric' && 'text-xs')}>{title}</CardTitle>
           {renderEditActions()}
         </div>
         <div className="flex gap-1.5 flex-wrap">
@@ -330,9 +338,9 @@ function GenericDashboardCard({
           {entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {entityName}</Badge>}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className={cn('flex-1 min-h-0', sizeVariant === 'metric' && 'px-3 pb-3')}>
         {visualization === 'kpi' ? renderKPI() : (
-          <div style={{ height: chartHeight }}>
+          <div className="h-full">
             {renderChart()}
           </div>
         )}
@@ -389,8 +397,10 @@ export function ManagementSnapshotDashboard({
     fallbackTitle: string,
     fallbackColor: string = 'hsl(var(--primary))',
     fallbackWindow: TimeWindow = 'ytd',
+    fallbackSizeVariant: WidgetSizeVariant = 'chart',
   ): GenericDashboardCardProps => {
     const cfg = cardConfigs[cardId];
+    const variant = cfg?.sizeVariant || fallbackSizeVariant;
     return {
       cardId,
       title: cfg?.title || fallbackTitle,
@@ -401,74 +411,54 @@ export function ManagementSnapshotDashboard({
       datarailsConfig: cfg?.datarailsConfig as Partial<WidgetConfig> | undefined,
       entityFilter: cfg?.entityFilter,
       isEditMode,
+      sizeVariant: variant,
       onEditCard,
       onDeleteCard,
       onTimeWindowChange,
+      chartHeight: variant === 'metric' ? 100 : 200,
     };
   };
 
   const isHidden = (cardId: EditableManagementSnapshotCardId) => hiddenCards.includes(cardId);
 
+  const CHART_H = 4;
+  const METRIC_H = 2;
+
+  type CardEntry = {
+    cardId: EditableManagementSnapshotCardId;
+    props: GenericDashboardCardProps;
+  };
+
+  const allCards: CardEntry[] = [
+    { cardId: 'debt-revenue', props: getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd', 'chart') },
+    { cardId: 'finserv-revenue', props: getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd', 'chart') },
+    { cardId: 'total-revenue', props: getCardProps('total-revenue', 'Total Revenue', 'hsl(var(--chart-2))', 'ytd', 'chart') },
+    { cardId: 'clients-signed-debt', props: getCardProps('clients-signed-debt', 'Clients Signed - Debt', 'hsl(var(--primary))', 'ytd', 'metric') },
+    { cardId: 'clients-signed-finserv', props: getCardProps('clients-signed-finserv', 'Clients Signed - FinServ', 'hsl(var(--chart-4))', 'ytd', 'metric') },
+    { cardId: 'outstanding-ar', props: getCardProps('outstanding-ar', 'Outstanding A/R', 'hsl(var(--primary))', 'ytd', 'metric') },
+    { cardId: 'debt-profit', props: getCardProps('debt-profit', 'Debt Profit', 'hsl(var(--primary))', 'ytd', 'chart') },
+    { cardId: 'finserv-profit', props: getCardProps('finserv-profit', 'FinServ Profit', 'hsl(var(--chart-4))', 'ytd', 'chart') },
+  ];
+
+  const visibleCards = allCards.filter(c => !isHidden(c.cardId));
+
   return (
-    <div className="space-y-6">
-      {/* Row 1: Revenue Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {!isHidden('debt-revenue') && (
-          <GenericDashboardCard
-            {...getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd')}
-          />
-        )}
-        {!isHidden('finserv-revenue') && (
-          <GenericDashboardCard
-            {...getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd')}
-          />
-        )}
-
-        {!isHidden('total-revenue') && (
-          <GenericDashboardCard
-            {...getCardProps('total-revenue', 'Total Revenue', 'hsl(var(--chart-2))', 'ytd')}
-          />
-        )}
-      </div>
-
-      {/* Row 2: Clients Signed & A/R */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {!isHidden('clients-signed-debt') && (
-          <GenericDashboardCard
-            {...getCardProps('clients-signed-debt', 'Clients Signed - Debt')}
-            chartHeight={180}
-          />
-        )}
-        {!isHidden('clients-signed-finserv') && (
-          <GenericDashboardCard
-            {...getCardProps('clients-signed-finserv', 'Clients Signed - FinServ')}
-            chartHeight={180}
-          />
-        )}
-        {!isHidden('outstanding-ar') && (
-          <GenericDashboardCard
-            {...getCardProps('outstanding-ar', 'Outstanding A/R')}
-            chartHeight={180}
-          />
-        )}
-      </div>
-
-      {/* Row 3: Profit & Active Deals */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {!isHidden('debt-profit') && (
-          <GenericDashboardCard
-            {...getCardProps('debt-profit', 'Debt Profit')}
-            chartHeight={180}
-          />
-        )}
-        {!isHidden('finserv-profit') && (
-          <GenericDashboardCard
-            {...getCardProps('finserv-profit', 'FinServ Profit', 'hsl(var(--chart-4))')}
-            chartHeight={180}
-          />
-        )}
-        
-      </div>
+    <div className="grid grid-cols-12 gap-4 auto-rows-[60px]">
+      {visibleCards.map(({ props }) => {
+        const variant = props.sizeVariant || 'chart';
+        const rowSpan = variant === 'metric' ? METRIC_H : CHART_H;
+        return (
+          <div
+            key={props.cardId}
+            className={cn(
+              variant === 'chart' ? 'col-span-12 md:col-span-6' : 'col-span-6 md:col-span-3',
+            )}
+            style={{ gridRow: `span ${rowSpan}` }}
+          >
+            <GenericDashboardCard {...props} />
+          </div>
+        );
+      })}
     </div>
   );
 }
