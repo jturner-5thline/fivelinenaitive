@@ -215,7 +215,10 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
       const ebitda = parseNum(fy.ebitda);
       const gm = parsePct(fy.gross_margin);
       return { year: fy.year, revenue: rev, ebitda, grossMargin: gm };
-    }).filter(d => d.year);
+    }).filter(d => d.year).sort((a, b) => {
+      const parseYear = (y: string) => { const m = y.match(/(\d{4})/); return m ? parseInt(m[1], 10) : 0; };
+      return parseYear(a.year) - parseYear(b.year);
+    });
   }, [data.financialYears]);
 
   // Compute margins and YoY changes
