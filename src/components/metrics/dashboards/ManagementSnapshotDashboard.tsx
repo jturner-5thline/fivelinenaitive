@@ -467,7 +467,7 @@ export function ManagementSnapshotDashboard({
             chartHeight={180}
           />
         )}
-        <NoPermissionCard title="Active Deals" />
+        
       </div>
     </div>
   );
