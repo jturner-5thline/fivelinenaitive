@@ -1387,8 +1387,20 @@ export default function Metrics() {
     localStorage.setItem(HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(hiddenSnapshotCards));
   }, [hiddenSnapshotCards]);
 
+  const [snapshotCardToDelete, setSnapshotCardToDelete] = useState<EditableManagementSnapshotCardId | null>(null);
+  const [snapshotDeleteConfirmOpen, setSnapshotDeleteConfirmOpen] = useState(false);
+
   const handleDeleteManagementSnapshotCard = (cardId: EditableManagementSnapshotCardId) => {
-    setHiddenSnapshotCards(prev => [...prev, cardId]);
+    setSnapshotCardToDelete(cardId);
+    setSnapshotDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteSnapshotCard = () => {
+    if (snapshotCardToDelete) {
+      setHiddenSnapshotCards(prev => [...prev, snapshotCardToDelete]);
+    }
+    setSnapshotDeleteConfirmOpen(false);
+    setSnapshotCardToDelete(null);
   };
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [widgetToDelete, setWidgetToDelete] = useState<string | null>(null);
@@ -1993,6 +2005,24 @@ export default function Metrics() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Snapshot Card Delete Confirmation */}
+      <AlertDialog open={snapshotDeleteConfirmOpen} onOpenChange={setSnapshotDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Widget</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this widget? You can restore it later from the layout settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteSnapshotCard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
