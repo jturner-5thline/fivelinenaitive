@@ -1271,27 +1271,6 @@ REQUIRED MARKDOWN STRUCTURE:
 1. ...
 2. ...
 
----
-
-<details><summary>Structured JSON (for system use)</summary>
-
-\`\`\`json
-{
-  "classification": "single_deal" | "multi_deal" | "mixed",
-  "plan": "...",
-  "steps": [...],
-  "result": {
-    "summary": "...",
-    "artifacts": [
-      { "type": "deal_summary", "label": "Deal Overview", "scope": "single", "content": { "deal_name": "...", "sponsor_or_borrower": "...", "facility_type": "...", "size": "...", "pricing": "...", "tenor": "...", "collateral": "...", "use_of_proceeds": "...", "key_risks": [...], "mitigants": [...], "status": "...", "next_actions": [...] } },
-      { "type": "presentation_outline", "label": "Client / Lender Deck Outline", "scope": "single_deal", "content": { "sections": [...] } },
-      { "type": "report", "label": "Internal / External Report Draft", "scope": "single_deal", "content": { "audience": "internal", "sections": [...] } }
-    ]
-  }
-}
-\`\`\`
-
-</details>
 
 FEW-SHOT EXAMPLE — given input: "From: john@sponsor.com Subject: Project Atlas – $25M Senior Secured Revolver. Hi team, following up on our call. Atlas Corp (specialty chemicals, $40M revenue, $8M EBITDA) needs a $25M senior secured revolver for working capital. Pricing target SOFR+350, 3-year tenor, secured by AR and inventory. Key risk is customer concentration (top 3 = 60% revenue). Next step is management meeting next week."
 
