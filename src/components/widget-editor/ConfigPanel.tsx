@@ -86,6 +86,10 @@ export function ConfigPanel({ config, onChange, realtime, onRealtimeToggle }: Pr
             <DisplayConfigSection config={config.dataLabels} onChange={(dataLabels) => onChange({ ...config, dataLabels })} />
           </Section>
 
+          <Section title="Negative Styling" defaultOpen={false}>
+            <NegativeStylingConfigSection config={config.negativeStyling} onChange={(negativeStyling) => onChange({ ...config, negativeStyling })} />
+          </Section>
+
           <Section title="Formula" defaultOpen={false}>
             <FormulaSection config={config.formula} onChange={(formula) => onChange({ ...config, formula })} />
           </Section>
