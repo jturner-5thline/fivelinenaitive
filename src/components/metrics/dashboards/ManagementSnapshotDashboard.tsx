@@ -385,12 +385,9 @@ interface ManagementSnapshotDashboardProps {
   onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
   cardConfigs?: Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>;
   hiddenCards?: EditableManagementSnapshotCardId[];
-  cardSizes?: Partial<Record<EditableManagementSnapshotCardId, CardSizeOverride>>;
-  onCardResize?: (cardId: EditableManagementSnapshotCardId, size: CardSizeOverride) => void;
+  gridLayout: GridLayoutItem[];
+  onGridLayoutChange: (layout: GridLayoutItem[]) => void;
 }
-
-const ROW_HEIGHT = 60;
-const GAP = 16;
 
 export function ManagementSnapshotDashboard({
   isEditMode = false,
@@ -399,15 +396,10 @@ export function ManagementSnapshotDashboard({
   onTimeWindowChange,
   cardConfigs = {},
   hiddenCards = [],
-  cardSizes = {},
-  onCardResize,
+  gridLayout,
+  onGridLayoutChange,
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [resizingId, setResizingId] = useState<string | null>(null);
-  const [resizePreview, setResizePreview] = useState<{ w: number; h: number } | null>(null);
-  const resizePreviewRef = useRef<{ w: number; h: number } | null>(null);
-  resizePreviewRef.current = resizePreview;
 
   const resolveEntityName = (entityFilter?: string) => {
     if (!entityFilter || entityFilter === 'all') return null;
@@ -461,9 +453,6 @@ export function ManagementSnapshotDashboard({
 
   const isHidden = (cardId: EditableManagementSnapshotCardId) => hiddenCards.includes(cardId);
 
-  const CHART_H = 4;
-  const METRIC_H = 2;
-
   type CardEntry = {
     cardId: EditableManagementSnapshotCardId;
     props: GenericDashboardCardProps;
@@ -494,104 +483,30 @@ export function ManagementSnapshotDashboard({
 
   const visibleCards = allCards.filter(c => !isHidden(c.cardId));
 
-  const handleResizeStart = useCallback((e: React.MouseEvent, cardId: EditableManagementSnapshotCardId, currentW: number, currentH: number) => {
-    if (!isEditMode || !gridRef.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    setResizingId(cardId);
-    const startX = e.clientX;
-    const startY = e.clientY;
-
-    const gridRect = gridRef.current.getBoundingClientRect();
-    const colWidth = (gridRect.width - GAP * 11) / 12;
-
-    const onMouseMove = (ev: MouseEvent) => {
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
-      const newW = Math.max(2, Math.min(12, Math.round(currentW + dx / (colWidth + GAP))));
-      const newH = Math.max(1, Math.min(12, Math.round(currentH + dy / (ROW_HEIGHT + GAP))));
-      setResizePreview({ w: newW, h: newH });
-    };
-
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      setResizingId(null);
-      setTimeout(() => {
-        const final = resizePreviewRef.current;
-        if (final && onCardResize) {
-          onCardResize(cardId, final);
-        }
-        setResizePreview(null);
-      }, 0);
-    };
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }, [isEditMode, onCardResize]);
-
   return (
-    <div ref={gridRef} className={cn(
-      "grid grid-cols-12 gap-4 auto-rows-[60px]",
-      isEditMode && "p-2 rounded-xl border-2 border-dashed border-primary/20 bg-primary/[0.02]"
-    )}>
-      {visibleCards.map(({ cardId, props }) => {
-        const variant = props.sizeVariant || 'chart';
-        const defaultW = variant === 'metric' ? 3 : 6;
-        const defaultH = variant === 'metric' ? METRIC_H : CHART_H;
-        const sizeOverride = cardSizes[cardId];
-        const isResizing = resizingId === cardId;
-        const colSpan = Math.min(isResizing && resizePreview ? resizePreview.w : (sizeOverride?.w ?? defaultW), 12);
-        const rowSpan = isResizing && resizePreview ? resizePreview.h : (sizeOverride?.h ?? defaultH);
-
-        return (
-          <div
-            key={cardId}
-            className={cn(
-              'relative group',
-              isEditMode && 'ring-1 ring-primary/30 rounded-lg border border-dashed border-primary/20',
-              isResizing && 'ring-2 ring-primary z-10',
-            )}
-            style={{
-              gridColumn: `span ${colSpan}`,
-              gridRow: `span ${rowSpan}`,
-              transition: isResizing ? 'none' : 'all 0.15s ease',
-            }}
-          >
-            {/* Resize handle */}
-            {isEditMode && (
-              <div
-                className="absolute bottom-0 right-0 z-10 w-5 h-5 cursor-se-resize flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
-                onMouseDown={(e) => handleResizeStart(e, cardId, sizeOverride?.w ?? defaultW, sizeOverride?.h ?? defaultH)}
-              >
-                <Maximize2 className="h-3 w-3 text-muted-foreground rotate-90" />
-              </div>
-            )}
-
-            {/* Size indicator while resizing */}
-            {isResizing && resizePreview && (
-              <div className="absolute top-1 left-1 z-20 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded font-mono">
-                {resizePreview.w}×{resizePreview.h}
-              </div>
-            )}
-
-            {/* Render KPI Detail Card or Generic Card */}
-            {cardId === 'total-revenue-detail' ? (
-              <KPIDetailCard
-                kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
-                datarailsConfig={props.datarailsConfig}
-                timeWindow={props.timeWindow}
-                entityFilter={props.entityFilter}
-                isEditMode={isEditMode}
-                onClick={() => !isEditMode && onEditCard?.(cardId)}
-              />
-            ) : (
-              <GenericDashboardCard {...props} />
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <DraggableGridLayout
+      layout={gridLayout}
+      onLayoutChange={onGridLayoutChange}
+      isEditMode={isEditMode}
+      rowHeight={60}
+      className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20 bg-primary/[0.02]')}
+    >
+      {visibleCards.map(({ cardId, props }) => (
+        <div key={cardId}>
+          {cardId === 'total-revenue-detail' ? (
+            <KPIDetailCard
+              kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
+              datarailsConfig={props.datarailsConfig}
+              timeWindow={props.timeWindow}
+              entityFilter={props.entityFilter}
+              isEditMode={isEditMode}
+              onClick={() => onEditCard?.(cardId)}
+            />
+          ) : (
+            <GenericDashboardCard {...props} />
+          )}
+        </div>
+      ))}
+    </DraggableGridLayout>
   );
 }
