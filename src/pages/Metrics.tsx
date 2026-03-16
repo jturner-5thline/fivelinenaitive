@@ -2009,6 +2009,24 @@ export default function Metrics() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Snapshot Card Delete Confirmation */}
+      <AlertDialog open={snapshotDeleteConfirmOpen} onOpenChange={setSnapshotDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Widget</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this widget? You can restore it later from the layout settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteSnapshotCard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Save Preset Dialog */}
       <Dialog open={savePresetOpen} onOpenChange={setSavePresetOpen}>
         <DialogContent>
