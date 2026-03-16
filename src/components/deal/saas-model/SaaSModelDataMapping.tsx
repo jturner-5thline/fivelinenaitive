@@ -1457,12 +1457,56 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       {renderSettingsSection()}
 
       {/* Header */}
-      <div>
-        <h3 className="text-sm font-semibold">Map your financial fields</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Connect each row from your upload to a standard model field. Use search & filters in the sidebar.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">Map your financial fields</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Connect each row from your upload to a standard model field. Use search & filters in the sidebar.
+          </p>
+        </div>
+        {analyzedFiles.length > 1 && (
+          <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 cursor-pointer hover:bg-muted/50" onClick={() => setPhase('triage')}>
+            <FileSpreadsheet className="h-3 w-3" /> {analyzedFiles.length} files uploaded
+          </Badge>
+        )}
       </div>
+
+      {/* Multi-file selector tabs */}
+      {analyzedFiles.length > 1 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {analyzedFiles.map((af, idx) => {
+            const isActive = selectedFile === af;
+            const dbFile = dbFiles.find(f => f.file_name === af.file.name);
+            const isPushed = dbFile?.pushed_at;
+            return (
+              <button
+                key={idx}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium border transition-colors shrink-0",
+                  isActive
+                    ? "bg-primary/10 border-primary/30 text-primary"
+                    : "bg-card border-border/30 text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                onClick={() => {
+                  if (!isActive) handleSwitchFile(af);
+                }}
+              >
+                <FileSpreadsheet className="h-3 w-3" />
+                <span className="truncate max-w-[120px]">{af.file.name}</span>
+                {isPushed && <Check className="h-3 w-3 text-emerald-500" />}
+              </button>
+            );
+          })}
+          <button
+            className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[10px] text-muted-foreground hover:text-foreground border border-dashed border-border/30 hover:border-primary/30 transition-colors shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-3 w-3" /> Add file
+          </button>
+          <input ref={fileInputRef} type="file" className="hidden" accept=".xlsx,.xls,.csv" multiple
+            onChange={e => e.target.files && handleFilesSelected(e.target.files)} />
+        </div>
+      )}
 
       {/* File info + detected headers */}
       <div className="flex items-center gap-3 rounded-lg border border-border/30 bg-muted/10 px-3 py-2">
