@@ -4902,6 +4902,7 @@ export type Database = {
           total_equity_raised: string | null
           updated_at: string
           use_of_funds: string | null
+          user_edited_fields: Json | null
           user_id: string
           visible_metrics: Json | null
           year_founded: string | null
@@ -4945,6 +4946,7 @@ export type Database = {
           total_equity_raised?: string | null
           updated_at?: string
           use_of_funds?: string | null
+          user_edited_fields?: Json | null
           user_id: string
           visible_metrics?: Json | null
           year_founded?: string | null
@@ -4988,6 +4990,7 @@ export type Database = {
           total_equity_raised?: string | null
           updated_at?: string
           use_of_funds?: string | null
+          user_edited_fields?: Json | null
           user_id?: string
           visible_metrics?: Json | null
           year_founded?: string | null

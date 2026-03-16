@@ -105,6 +105,7 @@ import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { useUserEditedFields } from '@/hooks/useUserEditedFields';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
@@ -797,6 +798,9 @@ export default function DealDetail() {
     enabled: dealInfoTab === 'deal-writeup' && !isLoadingWriteup,
   });
   
+  // Track per-field user edits for write protection
+  const { markFieldEdited, isFieldEdited, editedCount, editedFieldKeys, resetAllFlags: resetAllEditFlags } = useUserEditedFields(id);
+
   // Track if writeup has been initialized to prevent overwriting user edits
   const writeupInitializedRef = useRef<string | null>(null);
   
@@ -4304,6 +4308,11 @@ export default function DealDetail() {
                     onCancel={() => setDealInfoTab('deal-info')}
                     isSaving={isSavingWriteup}
                     autoSaveStatus={autoSaveStatus}
+                    markFieldEdited={markFieldEdited}
+                    isFieldEdited={isFieldEdited}
+                    editedCount={editedCount}
+                    editedFieldKeys={editedFieldKeys}
+                    resetAllEditFlags={resetAllEditFlags}
                   />
                 </TabsContent>
 

@@ -51,6 +51,8 @@ import { WriteUpKeyItemsTab } from './writeup/WriteUpKeyItemsTab';
 import { WriteUpOwnershipTab } from './writeup/WriteUpOwnershipTab';
 import { WriteUpAutoFillDialog } from './WriteUpAutoFillDialog';
 import { WriteUpPreviewDialog } from './writeup/WriteUpPreviewDialog';
+import { OverwriteProtectionDialog } from './writeup/OverwriteProtectionDialog';
+import { UserEditedFieldWrapper } from './writeup/UserEditedFieldWrapper';
 
 export interface KeyItem {
   id: string;
@@ -166,6 +168,11 @@ interface DealWriteUpProps {
   onCancel: () => void;
   isSaving?: boolean;
   autoSaveStatus?: AutoSaveStatus;
+  markFieldEdited?: (field: string) => void;
+  isFieldEdited?: (field: string) => boolean;
+  editedCount?: number;
+  editedFieldKeys?: string[];
+  resetAllEditFlags?: () => void;
 }
 
 const AutoSaveIndicator = ({ status }: { status: AutoSaveStatus }) => {
@@ -261,7 +268,7 @@ const WRITEUP_VIEW_MODE_KEY = 'deal-writeup-view-mode';
 
 type ViewMode = 'tabs' | 'long';
 
-export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
+export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle', markFieldEdited, isFieldEdited, editedCount = 0, editedFieldKeys = [], resetAllEditFlags }: DealWriteUpProps) => {
   const queryClient = useQueryClient();
   const { hasPageAccess } = usePageAccessFlags();
   const canPushToFlex = hasPageAccess('flex_push');
@@ -329,6 +336,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   // AI Memo generation
   const { isGenerating: isMemoGenerating, isRegenerating, memoContent, memoSections, generateFullMemo, regenerateSection } = useDealSpaceMemo(dealId);
   const [showMemoDialog, setShowMemoDialog] = useState(false);
+  
+  // Overwrite protection
+  const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
+  const [pendingAutoFillAction, setPendingAutoFillAction] = useState<(() => void) | null>(null);
   
   // View mode state: 'tabs', 'long', or 'carousel'
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -420,6 +431,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   };
 
   const updateField = <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => {
+    markFieldEdited?.(field as string);
     onChange({ ...data, [field]: value });
   };
 
@@ -941,21 +953,27 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     }
   };
 
-  const handleApplyAutoFill = (selectedFields: ExtractedWriteUpField[]) => {
+  const applyAutoFillFields = (selectedFields: ExtractedWriteUpField[], skipEdited: boolean) => {
     const newData = { ...data };
     const appliedFieldNames = new Set<string>();
     const citations: Record<string, any[]> = {};
 
     for (const field of selectedFields) {
       const fieldName = field.field as keyof DealWriteUpData;
+      // Skip user-edited fields if requested
+      if (skipEdited && isFieldEdited?.(fieldName)) continue;
       if (fieldName in newData) {
         (newData as Record<string, unknown>)[fieldName] = field.value;
         appliedFieldNames.add(fieldName);
-        // Store citations for persistent display
         if ((field as any).sources && (field as any).sources.length > 0) {
           citations[fieldName] = (field as any).sources;
         }
       }
+    }
+
+    if (!skipEdited) {
+      // "Overwrite all" resets edit flags
+      resetAllEditFlags?.();
     }
 
     onChange(newData);
@@ -963,9 +981,26 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     setFieldCitations(prev => ({ ...prev, ...citations }));
     clearExtractedFields();
     
-    toast.success(`Auto-filled ${selectedFields.length} field${selectedFields.length !== 1 ? 's' : ''}`, {
-      description: 'Review the highlighted fields — hover citation chips to see sources',
+    toast.success(`Auto-filled ${appliedFieldNames.size} field${appliedFieldNames.size !== 1 ? 's' : ''}`, {
+      description: skipEdited && editedCount > 0
+        ? `Skipped ${editedCount} manually edited field${editedCount !== 1 ? 's' : ''}`
+        : 'Review the highlighted fields — hover citation chips to see sources',
     });
+  };
+
+  const handleApplyAutoFill = (selectedFields: ExtractedWriteUpField[]) => {
+    // Check if any selected fields are user-edited
+    const editedIncoming = selectedFields.filter(f => isFieldEdited?.(f.field as string));
+    
+    if (editedIncoming.length > 0) {
+      // Show overwrite protection dialog
+      setPendingAutoFillAction(() => () => applyAutoFillFields(selectedFields, false));
+      setShowOverwriteDialog(true);
+      // Store fields for "keep edits" path
+      (window as any).__pendingAutoFillFields = selectedFields;
+    } else {
+      applyAutoFillFields(selectedFields, false);
+    }
   };
 
   return (
@@ -1120,19 +1155,19 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               </TabsList>
               
               <TabsContent value="company-overview" className="mt-6">
-                <WriteUpCompanyOverviewTab dealId={dealId} data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} />
+                <WriteUpCompanyOverviewTab dealId={dealId} data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </TabsContent>
               
               <TabsContent value="financial" className="mt-6">
-                <WriteUpFinancialTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpFinancialTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </TabsContent>
               
               <TabsContent value="highlights" className="mt-6">
-                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </TabsContent>
               
               <TabsContent value="key-items" className="mt-6">
-                <WriteUpKeyItemsTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpKeyItemsTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </TabsContent>
 
               <TabsContent value="ownership" className="mt-6">
@@ -1148,7 +1183,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Company Overview</h4>
                 </div>
-                <WriteUpCompanyOverviewTab dealId={dealId} data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} />
+              <WriteUpCompanyOverviewTab dealId={dealId} data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </div>
               
               {/* Financial Section */}
@@ -1156,7 +1191,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Financial</h4>
                 </div>
-                <WriteUpFinancialTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpFinancialTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </div>
               
               {/* Company Highlights Section */}
@@ -1164,7 +1199,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Company Highlights</h4>
                 </div>
-                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </div>
               
               {/* Key Items Section */}
@@ -1172,7 +1207,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Key Items</h4>
                 </div>
-                <WriteUpKeyItemsTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpKeyItemsTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </div>
 
               {/* Ownership Section */}
@@ -1586,6 +1621,29 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Overwrite Protection Dialog */}
+      <OverwriteProtectionDialog
+        open={showOverwriteDialog}
+        onOpenChange={setShowOverwriteDialog}
+        editedFieldCount={editedCount}
+        onKeepEdits={() => {
+          setShowOverwriteDialog(false);
+          const fields = (window as any).__pendingAutoFillFields;
+          if (fields) {
+            applyAutoFillFields(fields, true);
+            delete (window as any).__pendingAutoFillFields;
+          }
+        }}
+        onOverwriteAll={() => {
+          setShowOverwriteDialog(false);
+          if (pendingAutoFillAction) {
+            pendingAutoFillAction();
+            setPendingAutoFillAction(null);
+          }
+          delete (window as any).__pendingAutoFillFields;
+        }}
+      />
 
     </Card>
   );

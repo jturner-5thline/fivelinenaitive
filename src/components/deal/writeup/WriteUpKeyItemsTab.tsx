@@ -27,6 +27,7 @@ interface WriteUpKeyItemsTabProps {
   data: DealWriteUpData;
   updateField: <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => void;
   changedFields?: Set<string>;
+  isFieldEdited?: (field: string) => boolean;
 }
 
 function SortableKeyItem({
