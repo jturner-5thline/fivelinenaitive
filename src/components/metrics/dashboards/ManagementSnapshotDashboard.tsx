@@ -287,6 +287,10 @@ function GenericDashboardCard({
     }
 
     const dataKeys = seriesKeys.length > 0 ? seriesKeys : ['Revenue'];
+    const neg = (datarailsConfig as any)?.negativeStyling as NegativeStylingConfig | undefined;
+    const negEnabled = neg?.enableNegativeStyling ?? false;
+    const negThreshold = neg?.negativeThreshold ?? 0;
+    const negColor = neg?.negativeColor ?? 'hsl(0, 72%, 51%)';
 
     if (visualization === 'line') {
       return (
@@ -297,16 +301,46 @@ function GenericDashboardCard({
             <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
             <Tooltip formatter={(value: number) => formatCurrency(value)} />
             <Legend />
-            {dataKeys.map((key, i) => (
-              <Line
-                key={key}
-                type="monotone"
-                dataKey={key}
-                stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                name={key}
-                strokeWidth={2}
-              />
-            ))}
+            {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
+            {dataKeys.map((key, i) => {
+              const lineColor = CHART_COLORS[i % CHART_COLORS.length];
+              if (negEnabled) {
+                return (
+                  <Line
+                    key={key}
+                    type="monotone"
+                    dataKey={key}
+                    stroke={lineColor}
+                    name={key}
+                    strokeWidth={2}
+                    dot={(dotProps: any) => {
+                      const val = dotProps.payload?.[key];
+                      const isBelowThreshold = typeof val === 'number' && val < negThreshold;
+                      return (
+                        <circle
+                          key={`dot-${dotProps.index}`}
+                          cx={dotProps.cx}
+                          cy={dotProps.cy}
+                          r={3}
+                          fill={isBelowThreshold ? negColor : lineColor}
+                          stroke={isBelowThreshold ? negColor : lineColor}
+                        />
+                      );
+                    }}
+                  />
+                );
+              }
+              return (
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={lineColor}
+                  name={key}
+                  strokeWidth={2}
+                />
+              );
+            })}
           </LineChart>
         </ResponsiveContainer>
       );
@@ -315,10 +349,19 @@ function GenericDashboardCard({
     return (
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData}>
+          <defs>
+            {negEnabled && (
+              <linearGradient id={`negGrad-${cardId}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(0, 72%, 60%)" />
+                <stop offset="100%" stopColor={negColor} />
+              </linearGradient>
+            )}
+          </defs>
           <XAxis dataKey="period" tick={{ fontSize: 10 }} />
           <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
           <Tooltip formatter={(value: number) => formatCurrency(value)} />
           <Legend />
+          {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
           {dataKeys.map((key, i) => (
             <Bar
               key={key}
@@ -326,8 +369,19 @@ function GenericDashboardCard({
               stackId={visualization === 'stackedBar' ? `${cardId}-stack` : undefined}
               fill={i === 0 ? color : CHART_COLORS[i % CHART_COLORS.length]}
               name={key}
-              radius={visualization !== 'stackedBar' ? [4, 4, 0, 0] : undefined}
-            />
+              radius={visualization !== 'stackedBar' ? [4, 4, 0, 0] as any : undefined}
+            >
+              {negEnabled && chartData.map((entry: any, idx: number) => {
+                const val = entry[key];
+                const isBelowThreshold = typeof val === 'number' && val < negThreshold;
+                return (
+                  <Cell
+                    key={`cell-${idx}`}
+                    fill={isBelowThreshold ? `url(#negGrad-${cardId})` : (i === 0 ? color : CHART_COLORS[i % CHART_COLORS.length])}
+                  />
+                );
+              })}
+            </Bar>
           ))}
         </BarChart>
       </ResponsiveContainer>
