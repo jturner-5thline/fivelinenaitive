@@ -395,7 +395,6 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
     return rows;
   };
 
-  const compLabel = COMPARISON_LABELS[comparisonMode] || comparisonMode;
   const anyLoading = isLoading || isSyncing;
 
   return (
