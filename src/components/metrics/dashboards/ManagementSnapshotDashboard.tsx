@@ -336,7 +336,7 @@ function GenericDashboardCard({
   };
 
   const handleCardClick = () => {
-    if (!isEditMode && onEditCard) {
+    if (onEditCard) {
       onEditCard(cardId);
     }
   };
@@ -344,12 +344,12 @@ function GenericDashboardCard({
   return (
     <Card
       className={cn(
-        'h-full flex flex-col',
-        !isEditMode && onEditCard && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all',
+        'h-full flex flex-col overflow-hidden',
+        onEditCard && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all',
       )}
       onClick={handleCardClick}
     >
-      <CardHeader className={cn('pb-2', sizeVariant === 'metric' && 'pb-1 pt-3 px-3')}>
+      <CardHeader className={cn('pb-2 widget-drag-handle cursor-grab', sizeVariant === 'metric' && 'pb-1 pt-3 px-3')}>
         <div className="flex items-start justify-between gap-2">
           <CardTitle className={cn('text-sm font-medium', sizeVariant === 'metric' && 'text-xs')}>{title}</CardTitle>
           {renderEditActions()}
