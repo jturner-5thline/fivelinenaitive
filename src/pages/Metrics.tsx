@@ -1453,6 +1453,7 @@ export default function Metrics() {
         chartType: card.chartType,
         datarailsConfig: card.datarailsConfig,
         timeWindow: (card.datarailsConfig as any)?.xAxis?.window || undefined,
+        kpiDetailConfig: (card as any).kpiDetailConfig || undefined,
       };
       return acc;
     }, {} as Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>);
