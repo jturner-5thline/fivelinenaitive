@@ -1950,7 +1950,7 @@ export default function Metrics() {
                     <Plus className="h-4 w-4 mr-2" />
                     Add Widget
                   </Button>
-                  <Button size="sm" variant="outline" onClick={resetGridLayout}>
+                  <Button size="sm" variant="outline" onClick={resetSnapshotGridLayout}>
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Reset Layout
                   </Button>
