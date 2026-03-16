@@ -88,6 +88,7 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
     if (!canEdit || !company?.id) return;
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    pendingSaveRef.current = true;
     saveTimerRef.current = setTimeout(async () => {
       try {
         // Read current fpa_dashboard_config first to merge
@@ -106,6 +107,9 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
           .eq('company_id', company.id);
       } catch (err) {
         console.error('Error saving dashboard config:', err);
+      } finally {
+        // Allow realtime updates again after a short delay
+        setTimeout(() => { pendingSaveRef.current = false; }, 300);
       }
     }, 500);
   }, [canEdit, company?.id, configKey]);
