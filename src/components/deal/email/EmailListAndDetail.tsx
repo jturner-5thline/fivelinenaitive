@@ -692,8 +692,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   return (
     <>
       <div className="flex h-full relative overflow-hidden">
-        {/* Main thread view */}
-        <div className="flex flex-col flex-1 min-w-0">
+        {/* Main thread view — lighter bg + left accent border */}
+        <div className="flex flex-col flex-1 min-w-0 bg-[hsl(var(--background)/0.6)] border-l-2 border-primary/20">
           {/* Fix #7: Sticky header toolbar — consolidated, no separate message count/sender header */}
           <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/60 backdrop-blur-sm sticky top-0 z-10 shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-8 w-8">

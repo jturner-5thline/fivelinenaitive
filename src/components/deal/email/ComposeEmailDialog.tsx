@@ -40,7 +40,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const [bcc, setBcc] = useState('');
   const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject}` : '');
   const [body, setBody] = useState('');
-  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [showCcBcc, setShowCcBcc] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
   const subjectInputRef = useRef<HTMLInputElement>(null);

@@ -268,6 +268,9 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
             <><Send className="h-3.5 w-3.5" />Send</>
           )}
         </Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSaveDraft}>
+          <Save className="h-3.5 w-3.5" />Save Draft
+        </Button>
         <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={handleAddAttachment}>
           <Paperclip className="h-3.5 w-3.5" />Attach
         </Button>
