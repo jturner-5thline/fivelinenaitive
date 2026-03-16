@@ -2375,6 +2375,40 @@ export default function Metrics() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create New Dashboard Dialog */}
+      <Dialog open={createDashboardOpen} onOpenChange={setCreateDashboardOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Dashboard</DialogTitle>
+            <DialogDescription>
+              Create a blank dashboard where you can add custom widgets.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Dashboard name"
+              value={newDashboardName}
+              onChange={(e) => setNewDashboardName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newDashboardName.trim()) {
+                  handleCreateDashboard();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCreateDashboardOpen(false); setNewDashboardName(''); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateDashboard} disabled={!newDashboardName.trim()}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Dashboard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
