@@ -45,6 +45,7 @@ import {
   X,
   Rss,
   Keyboard,
+  FolderOpen,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -79,13 +80,12 @@ interface DealEmailsTabProps {
 type ViewFilter = 'all' | 'unread' | 'needs_response';
 type ChipFilter = 'recent' | 'important' | 'attachments' | null;
 
-// Search filter state
 interface SearchFilters {
   sender: string;
   dateRange: 'all' | 'today' | 'this_week' | 'this_month';
   hasAttachments: boolean;
   responseStatus: 'all' | 'needs_response' | 'responded';
-  dealAssociation: string; // deal name or 'all'
+  dealAssociation: string;
 }
 
 interface SidebarSection {
@@ -104,30 +104,18 @@ interface SidebarItem {
   filterFn: (e: MockEmail) => boolean;
 }
 
-// Fix #13: check if email is auto-reply or newsletter
 function isAutoReplyOrNewsletter(email: MockEmail): boolean {
   const subjectLower = email.subject.toLowerCase();
   const fromLower = email.from_email.toLowerCase();
-
-  // Subject patterns
-  const autoSubjectPatterns = [
-    'out of office', 'auto-reply', 'automatic reply',
-  ];
+  const autoSubjectPatterns = ['out of office', 'auto-reply', 'automatic reply'];
   if (autoSubjectPatterns.some(p => subjectLower.includes(p))) return true;
-
-  // Re: + calendar keywords
   if (subjectLower.startsWith('re:')) {
     const calendarKeywords = ['invitation', '1:1', 'meeting', 'calendar'];
     if (calendarKeywords.some(k => subjectLower.includes(k))) return true;
   }
-
-  // Sender patterns
   const senderPatterns = ['noreply', 'no-reply', 'newsletter', 'mailer', 'notifications'];
   if (senderPatterns.some(p => fromLower.includes(p))) return true;
-
-  // List-Unsubscribe check (if present in labels)
   if (email.labels.some(l => l.toLowerCase() === 'list-unsubscribe' || l.toLowerCase() === 'newsletter')) return true;
-
   return false;
 }
 
@@ -135,16 +123,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const navigate = useNavigate();
   const [emails, setEmails] = useState<MockEmail[]>(() => {
     const source = externalEmails || initialMockEmails;
-    // Fix #13: suppress needs_response on auto-replies/newsletters
     return source.map(e => isAutoReplyOrNewsletter(e) ? { ...e, needs_response: false } : e);
   });
 
-  // Sync external emails when they change
   useEffect(() => {
     if (externalEmails) {
       setEmails(externalEmails.map(e => isAutoReplyOrNewsletter(e) ? { ...e, needs_response: false } : e));
     }
   }, [externalEmails]);
+
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [activeItemId, setActiveItemId] = useState<string>('all_inbox');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
@@ -152,15 +139,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
-  // Fix #10: compose inline instead of dialog
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeReplyTo, setComposeReplyTo] = useState<{ subject: string; to_email: string; to_name: string; threadId: string } | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
-  // Fix #17: keyboard shortcuts popover
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  // Search filters
   const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);
-  // Selection state for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     sender: '',
@@ -179,7 +162,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const countByCategory = (cat: EmailCategory) => emails.filter(e => e.category === cat).length;
   const countByDeal = (dealName: string) => emails.filter(e => e.deal_name === dealName).length;
 
-  // Get unique deal names
   const activeDealNames = useMemo(() => {
     const names = new Set<string>();
     emails.forEach(e => {
@@ -192,47 +174,29 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     'CloudSync Inc': 'bg-emerald-500',
     'TechFlow Solutions': 'bg-amber-500',
     'NextWave Wireless': 'bg-destructive',
-    'DataCore Systems': 'bg-primary',
+    'DataCore Systems': 'bg-[hsl(var(--outlook-blue))]',
     'VelocityPay': 'bg-purple-500',
   };
 
-  // Fix #6: compute section email counts for collapsed groups
-  const sectionEmailCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    const computeForItems = (items: SidebarItem[]) =>
-      items.reduce((acc, item) => acc + emails.filter(item.filterFn).length, 0);
+  // Favorites = pinned items at top
+  const favoritesSection: SidebarSection = {
+    title: 'Favorites',
+    defaultOpen: true,
+    items: [
+      { id: 'all_inbox', label: 'Inbox', icon: Inbox, count: unreadCount || undefined, filterFn: e => e.folder === 'inbox' },
+      { id: 'sent', label: 'Sent Items', icon: Send, filterFn: e => e.folder === 'sent' },
+      { id: 'drafts', label: 'Drafts', icon: FileEdit, count: emails.filter(e => e.folder === 'drafts').length || undefined, filterFn: e => e.folder === 'drafts' },
+    ],
+  };
 
-    return {
-      'Other': computeForItems([
-        { id: '', label: '', icon: null, filterFn: e => e.category === 'prospect' },
-        { id: '', label: '', icon: null, filterFn: e => e.category === 'lender' },
-        { id: '', label: '', icon: null, filterFn: e => e.category === 'newsletter' },
-        { id: '', label: '', icon: null, filterFn: e => e.category === 'conference' },
-        { id: '', label: '', icon: null, filterFn: e => e.category === 'partnership' },
-      ]),
-      'Internal Process': computeForItems([
-        { id: '', label: '', icon: null, filterFn: e => e.category === 'internal' && !!e.deal_name },
-        { id: '', label: '', icon: null, filterFn: e => e.category === 'internal' && !e.deal_name },
-      ]),
-      'Closed Deals / Archived': computeForItems([
-        { id: '', label: '', icon: null, filterFn: e => e.category === 'closed_won' },
-        { id: '', label: '', icon: null, filterFn: e => e.category === 'closed_lost' },
-        { id: '', label: '', icon: null, filterFn: e => e.category === 'archive' },
-      ]),
-    };
-  }, [emails]);
-
-  const sidebarSections: (SidebarSection & { isDealFilter?: boolean })[] = [
+  const foldersSections: (SidebarSection & { isDealFilter?: boolean })[] = [
     {
-      title: 'Views',
+      title: 'Folders',
       defaultOpen: true,
       items: [
-        { id: 'all_inbox', label: 'All Inbox', icon: Inbox, count: emails.filter(e => e.folder === 'inbox').length, filterFn: e => e.folder === 'inbox' },
         { id: 'needs_response', label: 'Needs Response', icon: AlertTriangle, count: needsResponseCount || undefined, filterFn: e => e.needs_response && e.folder === 'inbox' },
-        { id: 'starred', label: 'Starred', icon: Star, count: starredCount || undefined, filterFn: e => e.is_starred },
+        { id: 'starred', label: 'Flagged', icon: Star, count: starredCount || undefined, filterFn: e => e.is_starred },
         { id: 'follow_up', label: 'Follow Up', icon: Clock, count: followUpCount || undefined, filterFn: e => e.is_follow_up && e.folder === 'inbox' },
-        { id: 'drafts', label: 'Drafts', icon: FileEdit, count: emails.filter(e => e.folder === 'drafts').length || undefined, filterFn: e => e.folder === 'drafts' },
-        { id: 'sent', label: 'Sent Items', icon: Send, count: emails.filter(e => e.folder === 'sent').length || undefined, filterFn: e => e.folder === 'sent' },
         { id: 'newsletters', label: 'Newsletters', icon: Rss, count: countByCategory('newsletter') || undefined, filterFn: e => e.category === 'newsletter' },
       ],
     },
@@ -245,52 +209,43 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         label: name,
         icon: Briefcase,
         count: countByDeal(name) || undefined,
-        indicatorColor: dealIndicatorColors[name] || 'bg-primary',
+        indicatorColor: dealIndicatorColors[name] || 'bg-[hsl(var(--outlook-blue))]',
         filterFn: (e: MockEmail) => e.deal_name === name,
       })),
     },
     {
-      title: 'Other',
+      title: 'Categories',
       defaultOpen: false,
       isDealFilter: true,
       items: [
-        { id: 'cat_prospect', label: 'Prospects', emoji: '🎯', icon: Target, count: countByCategory('prospect') || undefined, filterFn: e => e.category === 'prospect' },
-        { id: 'cat_lender', label: 'Lenders', emoji: '🏦', icon: Landmark, count: countByCategory('lender') || undefined, filterFn: e => e.category === 'lender' },
-        { id: 'cat_conference', label: 'Conferences/Events', emoji: '🎪', icon: Calendar, count: countByCategory('conference') || undefined, filterFn: e => e.category === 'conference' },
-        { id: 'cat_partnership', label: 'Partnerships', emoji: '🤝', icon: Handshake, count: countByCategory('partnership') || undefined, filterFn: e => e.category === 'partnership' },
+        { id: 'cat_prospect', label: 'Prospects', icon: Target, count: countByCategory('prospect') || undefined, filterFn: e => e.category === 'prospect' },
+        { id: 'cat_lender', label: 'Lenders', icon: Landmark, count: countByCategory('lender') || undefined, filterFn: e => e.category === 'lender' },
+        { id: 'cat_conference', label: 'Conferences', icon: Calendar, count: countByCategory('conference') || undefined, filterFn: e => e.category === 'conference' },
+        { id: 'cat_partnership', label: 'Partnerships', icon: Handshake, count: countByCategory('partnership') || undefined, filterFn: e => e.category === 'partnership' },
       ],
     },
     {
-      title: 'Internal Process',
+      title: 'Archive',
       defaultOpen: false,
       isDealFilter: true,
       items: [
-        { id: 'cat_internal_deal', label: 'Deal Management', emoji: '📋', icon: BarChart3, count: emails.filter(e => e.category === 'internal' && e.deal_name).length || undefined, filterFn: e => e.category === 'internal' && !!e.deal_name },
-        { id: 'cat_internal_all', label: 'All Hands', emoji: '👥', icon: Users, count: emails.filter(e => e.category === 'internal' && !e.deal_name).length || undefined, filterFn: e => e.category === 'internal' && !e.deal_name },
-      ],
-    },
-    {
-      title: 'Closed Deals / Archived',
-      defaultOpen: false,
-      isDealFilter: true,
-      items: [
-        { id: 'cat_closed_won', label: 'Successfully Closed', emoji: '✅', icon: CheckCircle2, count: countByCategory('closed_won') || undefined, filterFn: e => e.category === 'closed_won' },
-        { id: 'cat_closed_lost', label: 'Closed Lost', emoji: '❌', icon: XCircle, count: countByCategory('closed_lost') || undefined, filterFn: e => e.category === 'closed_lost' },
-        { id: 'cat_archive', label: 'Archive', emoji: '📦', icon: Package, count: countByCategory('archive') || undefined, filterFn: e => e.category === 'archive' },
+        { id: 'cat_closed_won', label: 'Closed Won', icon: CheckCircle2, count: countByCategory('closed_won') || undefined, filterFn: e => e.category === 'closed_won' },
+        { id: 'cat_closed_lost', label: 'Closed Lost', icon: XCircle, count: countByCategory('closed_lost') || undefined, filterFn: e => e.category === 'closed_lost' },
+        { id: 'cat_archive', label: 'Archive', icon: Package, count: countByCategory('archive') || undefined, filterFn: e => e.category === 'archive' },
       ],
     },
   ];
 
-  // Find active sidebar item
+  const allSections = [favoritesSection, ...foldersSections];
+
   const activeItem = useMemo(() => {
-    for (const section of sidebarSections) {
+    for (const section of allSections) {
       const found = section.items.find(i => i.id === activeItemId);
       if (found) return found;
     }
-    return sidebarSections[0].items[0];
-  }, [activeItemId, sidebarSections]);
+    return favoritesSection.items[0];
+  }, [activeItemId, allSections]);
 
-  // Active search filter chips for display
   const activeFilterChips = useMemo(() => {
     const chips: { key: string; label: string }[] = [];
     if (searchFilters.sender) chips.push({ key: 'sender', label: `From: ${searchFilters.sender}` });
@@ -308,20 +263,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     }));
   };
 
-  // Filter emails
   const filteredEmails = useMemo(() => {
     let filtered = emails.filter(activeItem.filterFn);
-
-    // View filter
     if (viewFilter === 'unread') filtered = filtered.filter(e => !e.is_read);
     if (viewFilter === 'needs_response') filtered = filtered.filter(e => e.needs_response);
-
-    // Chip filter
     if (chipFilter === 'recent') filtered = filtered.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
     if (chipFilter === 'important') filtered = filtered.filter(e => e.is_starred || e.labels.includes('Important'));
     if (chipFilter === 'attachments') filtered = filtered.filter(e => e.has_attachments);
-
-    // Search filters
     if (searchFilters.sender) {
       const s = searchFilters.sender.toLowerCase();
       filtered = filtered.filter(e => e.from_name.toLowerCase().includes(s) || e.from_email.toLowerCase().includes(s));
@@ -338,16 +286,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (searchFilters.responseStatus === 'needs_response') filtered = filtered.filter(e => e.needs_response);
     if (searchFilters.responseStatus === 'responded') filtered = filtered.filter(e => !e.needs_response);
     if (searchFilters.dealAssociation !== 'all') filtered = filtered.filter(e => e.deal_name === searchFilters.dealAssociation);
-
-    // Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        e =>
-          e.subject.toLowerCase().includes(q) ||
-          e.from_name.toLowerCase().includes(q) ||
-          e.from_email.toLowerCase().includes(q) ||
-          e.snippet.toLowerCase().includes(q)
+        e => e.subject.toLowerCase().includes(q) || e.from_name.toLowerCase().includes(q) || e.from_email.toLowerCase().includes(q) || e.snippet.toLowerCase().includes(q)
       );
     }
     return filtered;
@@ -360,20 +302,12 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [emails, selectedThread]);
 
   const handleToggleLink = (email: MockEmail) => {
-    setEmails(prev =>
-      prev.map(e =>
-        e.id === email.id ? { ...e, is_linked_to_deal: !e.is_linked_to_deal } : e
-      )
-    );
+    setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_linked_to_deal: !e.is_linked_to_deal } : e));
     toast.success(email.is_linked_to_deal ? 'Email unlinked from deal' : 'Email linked to deal');
   };
 
   const handleToggleStar = (email: MockEmail) => {
-    setEmails(prev =>
-      prev.map(e =>
-        e.id === email.id ? { ...e, is_starred: !e.is_starred } : e
-      )
-    );
+    setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_starred: !e.is_starred } : e));
   };
 
   const handleRefresh = async () => {
@@ -393,7 +327,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     setCollapsedSections(prev => ({ ...prev, [title]: !prev[title] }));
   };
 
-  // ─── Bulk action handlers ───────────────────────────
   const handleBulkMarkRead = useCallback(() => {
     setEmails(prev => prev.map(e => {
       const threads = groupEmailsByThread([e]);
@@ -416,11 +349,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   const handleBulkArchive = useCallback(() => {
     const idsToArchive = new Set<string>();
-    const allThreads = groupEmailsByThread(emails);
-    allThreads.forEach(t => {
-      if (selectedIds.has(t.threadId)) {
-        t.emails.forEach(e => idsToArchive.add(e.id));
-      }
+    const allThreadsLocal = groupEmailsByThread(emails);
+    allThreadsLocal.forEach(t => {
+      if (selectedIds.has(t.threadId)) t.emails.forEach(e => idsToArchive.add(e.id));
     });
     setEmails(prev => prev.filter(e => !idsToArchive.has(e.id)));
     toast.success(`${selectedIds.size} archived`);
@@ -429,18 +360,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   const handleBulkDelete = useCallback(() => {
     const idsToDelete = new Set<string>();
-    const allThreads = groupEmailsByThread(emails);
-    allThreads.forEach(t => {
-      if (selectedIds.has(t.threadId)) {
-        t.emails.forEach(e => idsToDelete.add(e.id));
-      }
+    const allThreadsLocal = groupEmailsByThread(emails);
+    allThreadsLocal.forEach(t => {
+      if (selectedIds.has(t.threadId)) t.emails.forEach(e => idsToDelete.add(e.id));
     });
     setEmails(prev => prev.filter(e => !idsToDelete.has(e.id)));
     toast.success(`${selectedIds.size} deleted`);
     setSelectedIds(new Set());
   }, [selectedIds, emails]);
 
-  // Single email actions for context menu
   const handleMarkRead = useCallback((email: MockEmail) => {
     setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_read: true } : e));
   }, []);
@@ -459,11 +387,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     toast.success('Deleted');
   }, []);
 
-  // Auto-mark-read when selecting a thread
   const handleSelectThread = useCallback((thread: EmailThread) => {
     setSelectedThread(thread);
     setComposeOpen(false);
-    // Auto mark unread emails in thread as read
     if (thread.hasUnread) {
       const unreadIds = new Set(thread.emails.filter(e => !e.is_read).map(e => e.id));
       setEmails(prev => prev.map(e => unreadIds.has(e.id) ? { ...e, is_read: true } : e));
@@ -475,7 +401,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     return section.defaultOpen ?? false;
   };
 
-  // Active label
   const activeLabel = activeItem?.label || 'Inbox';
 
   const handleComposeSend = useCallback(async (emailData: Omit<MockEmail, 'id' | 'threadId'>) => {
@@ -499,14 +424,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     setEmails(prev => [newEmail, ...prev]);
   }, [onGmailSend, composeReplyTo]);
 
-  // Fix #16: Stats counts
   const responseCount = filteredEmails.filter(e => e.needs_response).length;
   const filteredUnread = filteredEmails.filter(e => !e.is_read).length;
 
-  // Threads for keyboard navigation
   const allThreads = useMemo(() => groupEmailsByThread(filteredEmails), [filteredEmails]);
 
-  // Response queue for command center
   const responseQueue = useMemo(() => {
     return emails
       .filter(e => e.needs_response && e.folder === 'inbox')
@@ -516,7 +438,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Skip if typing in an input
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
 
@@ -592,58 +513,67 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     return () => window.removeEventListener('keydown', handler);
   }, [allThreads, selectedThread, handleToggleStar]);
 
+  // Render sidebar item
+  const renderSidebarItem = (item: SidebarItem, isDealSection?: boolean) => {
+    const isActive = activeItemId === item.id;
+    return (
+      <button
+        key={item.id}
+        onClick={() => {
+          setActiveItemId(item.id);
+          setSelectedThread(null);
+          setViewFilter('all');
+          setChipFilter(null);
+        }}
+        className={cn(
+          'w-full flex items-center gap-2 text-left transition-all duration-100 px-3 py-1.5 border-l-2',
+          isActive
+            ? 'border-l-[hsl(var(--outlook-blue))] bg-[hsl(var(--outlook-blue)/0.1)] text-foreground font-medium'
+            : 'border-l-transparent text-muted-foreground hover:bg-[hsl(var(--foreground)/0.04)] hover:text-foreground'
+        )}
+      >
+        {item.indicatorColor ? (
+          <span className={cn('w-2 h-2 rounded-full shrink-0', item.indicatorColor)} />
+        ) : (
+          <item.icon className="h-3.5 w-3.5 shrink-0" />
+        )}
+        <span className="flex-1 truncate text-[12px]">{item.label}</span>
+        {item.count != null && item.count > 0 && (
+          <span className={cn(
+            'text-[10px] font-semibold tabular-nums min-w-[18px] text-center',
+            item.id === 'needs_response' || (item.id === 'all_inbox' && item.count > 0)
+              ? 'text-[hsl(var(--outlook-blue))] font-bold'
+              : 'text-muted-foreground'
+          )}>
+            {item.count}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
-    <Card className="overflow-hidden w-full max-w-full h-full flex flex-col">
-      {/* Top toolbar */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/20">
+    <Card className="overflow-hidden w-full max-w-full h-full flex flex-col border-0 rounded-none">
+      {/* Outlook-style top toolbar */}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b bg-[hsl(var(--email-toolbar-bg))]">
+        {/* New mail — outlined, Outlook style */}
         <Button
-          variant="gradient"
+          variant="outline"
           size="sm"
-          className="gap-1.5 text-xs h-9 px-5 shadow-[0_0_12px_hsl(var(--primary)/0.3)] hover:scale-[1.02] transition-transform duration-150"
+          className="gap-1.5 text-xs h-8 px-4 border-[hsl(var(--outlook-blue)/0.4)] text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue)/0.08)]"
           onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
         >
           <PenSquare className="h-3.5 w-3.5" />
           New mail
         </Button>
-        <Separator orientation="vertical" className="h-5 mx-1" />
-
-        {/* Fix #2: Only show Reply/Delete/Archive when a thread is selected */}
-        {currentThread && (
-          <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground" onClick={() => toast.info('Reply coming soon')}>
-                  Reply
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Reply (R)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => toast.info('Delete coming soon')}>
-                  Delete
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Delete</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => toast.info('Archive coming soon')}>
-                  Archive
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Archive</TooltipContent>
-            </Tooltip>
-          </>
-        )}
 
         <div className="flex-1" />
 
         {/* Keyboard shortcuts help */}
         <Popover open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Keyboard className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Keyboard className="h-3.5 w-3.5" />
             </Button>
           </PopoverTrigger>
           <PopoverContent side="bottom" align="end" className="w-64 p-3">
@@ -655,7 +585,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 { key: 'O', desc: 'Open email' },
                 { key: 'R', desc: 'Reply' },
                 { key: 'E', desc: 'Archive' },
-                { key: 'S', desc: 'Toggle star' },
+                { key: 'S', desc: 'Toggle flag' },
                 { key: 'C', desc: 'Compose' },
                 { key: 'Esc', desc: 'Back to inbox' },
                 { key: '?', desc: 'This help' },
@@ -671,13 +601,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIntelligenceOpen(true)}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIntelligenceOpen(true)}>
               <Settings2 className="h-3.5 w-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">Email Intelligence Settings</TooltipContent>
         </Tooltip>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={effectiveRefreshing}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRefresh} disabled={effectiveRefreshing}>
           <RefreshCw className={cn('h-3.5 w-3.5', effectiveRefreshing && 'animate-spin')} />
         </Button>
         {!externalEmails && <Badge variant="secondary" className="text-[10px] h-5">Mock</Badge>}
@@ -687,17 +617,61 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="flex h-full overflow-hidden max-w-full">
-          {/* ─── Left: Grouped sidebar ─── */}
-          <div className="border-r flex-shrink-0 w-[220px] flex flex-col bg-background/80">
-            <div className="p-2">
+          {/* ─── Left: Outlook-style folder sidebar ─── */}
+          <div className="border-r flex-shrink-0 w-[200px] flex flex-col bg-[hsl(var(--email-sidebar-bg))]">
+            <ScrollArea className="flex-1">
+              <div className="py-1">
+                {/* Favorites */}
+                <div className="mb-1">
+                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    Favorites
+                  </div>
+                  {favoritesSection.items.map(item => renderSidebarItem(item))}
+                </div>
+
+                <div className="mx-3 my-1 border-t border-border/30" />
+
+                {/* Folder sections */}
+                {foldersSections.map((section) => {
+                  const isOpen = isSectionOpen(section);
+                  return (
+                    <div key={section.title} className="mb-0.5">
+                      <button
+                        onClick={() => toggleSection(section.title)}
+                        className="w-full flex items-center gap-1 px-3 py-1.5 text-left hover:bg-[hsl(var(--foreground)/0.03)]"
+                      >
+                        {isOpen ? (
+                          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                        ) : (
+                          <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                        )}
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 flex-1">
+                          {section.title}
+                        </span>
+                      </button>
+                      {isOpen && section.items.map(item => renderSidebarItem(item, section.isDealFilter))}
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* ─── Middle: Email list ─── */}
+          <div className={cn(
+            'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-[hsl(var(--email-list-bg))]',
+            (currentThread || composeOpen) ? 'hidden md:flex md:w-[340px]' : 'flex-1 md:w-[340px]'
+          )}>
+            {/* Search bar — full-width, flat, Outlook style */}
+            <div className="px-2 py-1.5 border-b border-border/30">
               <div className="relative flex gap-1">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    placeholder="Search emails..."
+                    placeholder="Search mail"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-7 h-7 text-xs bg-muted/30 border-border/50"
+                    className="pl-8 h-8 text-xs bg-[hsl(var(--foreground)/0.04)] border-border/40 rounded"
                   />
                 </div>
                 <Popover open={searchFiltersOpen} onOpenChange={setSearchFiltersOpen}>
@@ -705,14 +679,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     <Button
                       variant={activeFilterChips.length > 0 ? 'secondary' : 'ghost'}
                       size="icon"
-                      className={cn('h-7 w-7 shrink-0', activeFilterChips.length > 0 && 'text-primary')}
+                      className={cn('h-8 w-8 shrink-0', activeFilterChips.length > 0 && 'text-[hsl(var(--outlook-blue))]')}
                     >
-                      <Filter className="h-3 w-3" />
+                      <Filter className="h-3.5 w-3.5" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent side="bottom" align="start" className="w-64 p-3 space-y-3">
                     <p className="text-xs font-semibold">Filters</p>
-                    {/* Sender */}
                     <div>
                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sender</label>
                       <Input
@@ -722,7 +695,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                         className="h-7 text-xs mt-1"
                       />
                     </div>
-                    {/* Date Range */}
                     <div>
                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Date Range</label>
                       <div className="flex flex-wrap gap-1 mt-1">
@@ -731,9 +703,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                             key={dr}
                             onClick={() => setSearchFilters(prev => ({ ...prev, dateRange: dr }))}
                             className={cn(
-                              'px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+                              'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
                               searchFilters.dateRange === dr
-                                ? 'bg-primary text-primary-foreground border-primary'
+                                ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
                                 : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
                             )}
                           >
@@ -742,22 +714,20 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                         ))}
                       </div>
                     </div>
-                    {/* Has Attachments */}
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Has Attachments</label>
                       <button
                         onClick={() => setSearchFilters(prev => ({ ...prev, hasAttachments: !prev.hasAttachments }))}
                         className={cn(
-                          'px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+                          'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
                           searchFilters.hasAttachments
-                            ? 'bg-primary text-primary-foreground border-primary'
+                            ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
                             : 'bg-muted/30 border-border/50 text-muted-foreground'
                         )}
                       >
                         {searchFilters.hasAttachments ? 'Yes' : 'Any'}
                       </button>
                     </div>
-                    {/* Response Status */}
                     <div>
                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Response Status</label>
                       <div className="flex flex-wrap gap-1 mt-1">
@@ -766,9 +736,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                             key={rs}
                             onClick={() => setSearchFilters(prev => ({ ...prev, responseStatus: rs }))}
                             className={cn(
-                              'px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+                              'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
                               searchFilters.responseStatus === rs
-                                ? 'bg-primary text-primary-foreground border-primary'
+                                ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
                                 : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
                             )}
                           >
@@ -777,7 +747,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                         ))}
                       </div>
                     </div>
-                    {/* Deal Association */}
                     {activeDealNames.length > 0 && (
                       <div>
                         <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Deal</label>
@@ -785,9 +754,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                           <button
                             onClick={() => setSearchFilters(prev => ({ ...prev, dealAssociation: 'all' }))}
                             className={cn(
-                              'px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+                              'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
                               searchFilters.dealAssociation === 'all'
-                                ? 'bg-primary text-primary-foreground border-primary'
+                                ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
                                 : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
                             )}
                           >
@@ -798,9 +767,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                               key={name}
                               onClick={() => setSearchFilters(prev => ({ ...prev, dealAssociation: name }))}
                               className={cn(
-                                'px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+                                'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
                                 searchFilters.dealAssociation === name
-                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
                                   : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
                               )}
                             >
@@ -824,107 +793,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 </Popover>
               </div>
             </div>
-            <ScrollArea className="flex-1">
-              <div className="px-1 pb-2">
-                {sidebarSections.map((section, sectionIdx) => {
-                  const isOpen = isSectionOpen(section);
-                  const sectionCount = (sectionEmailCounts as any)[section.title] as number | undefined;
-                  const isDealFilter = (section as any).isDealFilter;
-                  // Add divider before deal filter sections
-                  const isFirstDealSection = isDealFilter && (sectionIdx === 0 || !(sidebarSections[sectionIdx - 1] as any).isDealFilter);
-                  return (
-                    <div key={section.title}>
-                      {isFirstDealSection && (
-                        <div className="mx-2 my-3">
-                          <div className="border-t border-border/30" />
-                          <span className="block text-[9px] uppercase tracking-[0.15em] font-bold text-muted-foreground/40 mt-2 px-1">Deal Filters</span>
-                        </div>
-                      )}
-                      <div className="mb-1">
-                        <button
-                          onClick={() => toggleSection(section.title)}
-                          className="w-full flex items-center gap-1 px-2 pt-3 pb-1 text-left"
-                        >
-                          {isOpen ? (
-                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                          ) : (
-                            <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                          )}
-                          <span className={cn(
-                            'uppercase tracking-widest font-semibold flex-1',
-                            isDealFilter
-                              ? 'text-[9px] text-muted-foreground/40'
-                              : 'text-[10px] text-muted-foreground/60'
-                          )}>
-                            {section.title}
-                          </span>
-                          {!isOpen && sectionCount != null && sectionCount > 0 && (
-                            <span className="text-[10px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 min-w-[20px] text-center bg-muted text-muted-foreground">
-                              {sectionCount}
-                            </span>
-                          )}
-                        </button>
-                        {isOpen && (
-                          <div className="space-y-0.5 mt-0.5">
-                            {section.items.map(item => {
-                              const isActive = activeItemId === item.id;
-                              return (
-                                <button
-                                  key={item.id}
-                                  onClick={() => {
-                                    setActiveItemId(item.id);
-                                    setSelectedThread(null);
-                                    setViewFilter('all');
-                                    setChipFilter(null);
-                                  }}
-                                  className={cn(
-                                    'w-full flex items-center gap-2 rounded-r-md text-left transition-all duration-120 px-2.5 py-1.5 relative border-l-[3px]',
-                                    isActive
-                                      ? 'border-l-primary bg-primary/10 text-foreground shadow-[inset_0_0_12px_-4px_hsl(var(--primary)/0.3)]'
-                                      : 'border-l-transparent text-muted-foreground hover:border-l-primary/50 hover:bg-primary/5 hover:text-foreground'
-                                  )}
-                                >
-                                  {item.indicatorColor ? (
-                                    <span className={cn('w-2 h-2 rounded-full shrink-0', item.indicatorColor)} />
-                                  ) : item.emoji ? (
-                                    <span className="text-xs shrink-0">{item.emoji}</span>
-                                  ) : (
-                                    <item.icon className={cn('shrink-0', isDealFilter ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
-                                  )}
-                                  <span className={cn('flex-1 truncate', isDealFilter ? 'text-[11px]' : 'text-xs')}>{item.label}</span>
-                                  {item.count != null && item.count > 0 && (
-                                    <span className={cn(
-                                      'text-[10px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 min-w-[20px] text-center',
-                                      item.id === 'needs_response' && item.count > 0
-                                        ? 'bg-destructive text-destructive-foreground'
-                                        : 'bg-muted text-muted-foreground'
-                                    )}>
-                                      {item.count}
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </div>
 
-          {/* ─── Middle: Email list with view tabs ─── */}
-          <div className={cn(
-            'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-background/60',
-            (currentThread || composeOpen) ? 'hidden md:flex md:w-[380px]' : 'flex-1 md:w-[380px]'
-          )}>
-            {/* Header with title + stat pills OR bulk action bar */}
-            <div className="border-b">
+            {/* Header with label + bulk actions */}
+            <div className="border-b border-border/30">
               {selectedIds.size > 0 ? (
-                /* ─── Bulk Action Toolbar ─── */
-                <div className="flex items-center gap-2 px-3 py-2 bg-primary/5">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[hsl(var(--outlook-blue)/0.05)]">
                   <Checkbox
                     checked={selectedIds.size === groupEmailsByThread(filteredEmails).length}
                     onCheckedChange={(checked) => {
@@ -935,107 +808,64 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                         setSelectedIds(new Set());
                       }
                     }}
-                    className="h-4 w-4"
+                    className="h-3.5 w-3.5"
                   />
-                  <span className="text-xs font-medium text-foreground">
-                    {selectedIds.size} selected
-                  </span>
-                  <Separator orientation="vertical" className="h-4 mx-1" />
-                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleBulkMarkRead}>
-                    <MailOpen className="h-3 w-3" /> Mark Read
+                  <span className="text-[11px] font-medium text-foreground">{selectedIds.size} selected</span>
+                  <div className="flex-1" />
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={handleBulkMarkRead}>
+                    <MailOpen className="h-3 w-3" /> Read
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleBulkMarkUnread}>
-                    <Mail className="h-3 w-3" /> Mark Unread
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleBulkArchive}>
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={handleBulkArchive}>
                     <Archive className="h-3 w-3" /> Archive
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={handleBulkDelete}>
-                    <Trash2 className="h-3 w-3" /> Delete
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive" onClick={handleBulkDelete}>
+                    <Trash2 className="h-3 w-3" />
                   </Button>
-                  <div className="flex-1" />
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedIds(new Set())}>
                     <X className="h-3 w-3" />
                   </Button>
                 </div>
               ) : (
-                <>
-              <div className="flex items-center justify-between px-3 py-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm font-semibold truncate">{activeLabel}</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
-                      {filteredEmails.length} total
-                    </span>
+                <div className="flex items-center justify-between px-3 py-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[13px] font-semibold truncate">{activeLabel}</span>
                     {filteredUnread > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
-                        {filteredUnread} unread
-                      </span>
-                    )}
-                    {responseCount > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">
-                        {responseCount} need response
-                      </span>
+                      <span className="text-[10px] text-[hsl(var(--outlook-blue))] font-semibold">{filteredUnread}</span>
                     )}
                   </div>
-                </div>
-              </div>
-              {/* View filter toggles */}
-              <div className="flex items-center gap-1 px-3 pb-2">
-                <div className="flex gap-1 flex-1">
-                  {(['all', 'unread', 'needs_response'] as ViewFilter[]).map(vf => (
-                    <button
-                      key={vf}
-                      onClick={() => setViewFilter(vf)}
-                      className={cn(
-                        'px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
-                        viewFilter === vf
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                      )}
-                    >
-                      {vf === 'all' ? 'All' : vf === 'unread' ? 'Unread' : 'Needs Response'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Filter chips - pill-shaped */}
-              <div className="flex gap-1.5 px-3 pb-2">
-                {([
-                  { id: 'recent' as ChipFilter, label: '🕐 Recent' },
-                  { id: 'important' as ChipFilter, label: '⭐ Important' },
-                  { id: 'attachments' as ChipFilter, label: '📎 Attachments' },
-                ]).map(chip => (
-                  <button
-                    key={chip.id}
-                    onClick={() => setChipFilter(chipFilter === chip.id ? null : chip.id)}
-                    className={cn(
-                      'px-2.5 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
-                      chipFilter === chip.id
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-muted/20 border-border/50 text-muted-foreground hover:border-primary/30 hover:text-foreground'
-                    )}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
-              {/* Active search filter chips */}
-              {activeFilterChips.length > 0 && (
-                <div className="flex flex-wrap gap-1 px-3 pb-2">
-                  {activeFilterChips.map(chip => (
-                    <span key={chip.key} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                      {chip.label}
-                      <button onClick={() => removeFilter(chip.key)} className="hover:text-foreground">
-                        <X className="h-2.5 w-2.5" />
+                  <div className="flex gap-0.5">
+                    {(['all', 'unread', 'needs_response'] as ViewFilter[]).map(vf => (
+                      <button
+                        key={vf}
+                        onClick={() => setViewFilter(vf)}
+                        className={cn(
+                          'px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
+                          viewFilter === vf
+                            ? 'bg-[hsl(var(--outlook-blue))] text-white'
+                            : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                        )}
+                      >
+                        {vf === 'all' ? 'All' : vf === 'unread' ? 'Unread' : 'Action'}
                       </button>
-                    </span>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              )}
-                </>
               )}
             </div>
+
+            {/* Active filter chips */}
+            {activeFilterChips.length > 0 && (
+              <div className="flex flex-wrap gap-1 px-3 py-1.5 border-b border-border/30">
+                {activeFilterChips.map(chip => (
+                  <span key={chip.key} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-[hsl(var(--outlook-blue)/0.1)] text-[hsl(var(--outlook-blue))] border border-[hsl(var(--outlook-blue)/0.2)]">
+                    {chip.label}
+                    <button onClick={() => removeFilter(chip.key)} className="hover:text-foreground">
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Email list */}
             <div className="flex-1 min-h-0 overflow-auto">
@@ -1055,9 +885,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             </div>
           </div>
 
-          {/* ─── Right: Reading pane / Compose / Command Center ─── */}
+          {/* ─── Right: Reading pane / Compose ─── */}
           <div className={cn(
-            'flex-1 flex flex-col min-w-0 overflow-hidden w-0 bg-background/40',
+            'flex-1 flex flex-col min-w-0 overflow-hidden w-0 bg-[hsl(var(--email-reading-bg))]',
             !currentThread && !composeOpen ? 'hidden md:flex' : 'flex'
           )}>
             {composeOpen ? (
@@ -1095,26 +925,25 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 }}
               />
             ) : (
-              /* ─── Inbox Command Center ─── */
+              /* Inbox Command Center */
               <ScrollArea className="flex-1">
                 <div className="p-6 space-y-6 max-w-2xl mx-auto">
-                  {/* Summary stat cards */}
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-lg bg-muted/20 border border-border/30 p-4">
+                    <div className="rounded border border-border/30 p-4 bg-card/40">
                       <div className="flex items-center gap-2 mb-2">
                         <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Total Emails</span>
+                        <span className="text-xs text-muted-foreground">Total</span>
                       </div>
                       <p className="text-2xl font-bold text-foreground">{filteredEmails.length}</p>
                     </div>
-                    <div className="rounded-lg bg-muted/20 border border-border/30 p-4">
+                    <div className="rounded border border-border/30 p-4 bg-card/40">
                       <div className="flex items-center gap-2 mb-2">
                         <MailOpen className="h-4 w-4 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">Unread</span>
                       </div>
                       <p className="text-2xl font-bold text-foreground">{filteredUnread}</p>
                     </div>
-                    <div className="rounded-lg bg-amber-500/[0.08] border border-amber-500/20 p-4">
+                    <div className="rounded border border-amber-500/20 p-4 bg-amber-500/[0.04]">
                       <div className="flex items-center gap-2 mb-2">
                         <AlertTriangle className="h-4 w-4 text-amber-400" />
                         <span className="text-xs text-amber-400/80">Needs Response</span>
@@ -1123,16 +952,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     </div>
                   </div>
 
-                  {/* Priority Response Queue */}
                   <div>
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Priority Response Queue</h3>
                     {responseQueue.length === 0 ? (
-                      <div className="rounded-lg bg-muted/10 border border-border/20 p-4 text-center">
+                      <div className="rounded border border-border/20 p-4 text-center bg-card/30">
                         <CheckCircle2 className="h-5 w-5 text-emerald-400 mx-auto mb-1.5" />
-                        <p className="text-xs text-muted-foreground">All caught up — no responses needed!</p>
+                        <p className="text-xs text-muted-foreground">All caught up!</p>
                       </div>
                     ) : (
-                      <div className="space-y-1">
+                      <div className="space-y-0.5">
                         {responseQueue.slice(0, 6).map(email => {
                           const thread = allThreads.find(t => t.emails.some(e => e.id === email.id));
                           return (
@@ -1144,7 +972,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                                   setComposeOpen(false);
                                 }
                               }}
-                              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/20 transition-colors text-left group"
+                              className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-muted/20 transition-colors text-left group"
                             >
                               <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
                               <div className="min-w-0 flex-1">
@@ -1160,39 +988,21 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                             </button>
                           );
                         })}
-                        {responseQueue.length > 6 && (
-                          <button
-                            onClick={() => { setActiveItemId('needs_response'); setViewFilter('all'); }}
-                            className="w-full text-center text-[11px] text-primary hover:text-primary/80 py-1.5 transition-colors"
-                          >
-                            View all {responseQueue.length} →
-                          </button>
-                        )}
                       </div>
                     )}
                   </div>
 
-                  {/* Upcoming Tasks placeholder */}
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Upcoming Tasks & Milestones</h3>
-                    <div className="rounded-lg bg-muted/10 border border-border/20 p-4 text-center">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-400 mx-auto mb-1.5" />
-                      <p className="text-xs text-muted-foreground">No tasks due today ✓</p>
-                    </div>
-                  </div>
-
-                  {/* Quick Actions */}
                   <div>
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Quick Actions</h3>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="gap-1.5 text-xs"
+                        className="gap-1.5 text-xs border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]"
                         onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
                       >
                         <PenSquare className="h-3 w-3" />
-                        Compose Email
+                        Compose
                       </Button>
                       <Button
                         variant="outline"
@@ -1201,7 +1011,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                         onClick={() => navigate('/deals')}
                       >
                         <Briefcase className="h-3 w-3" />
-                        Go to Pipeline
+                        Pipeline
                       </Button>
                       <Button
                         variant="outline"
@@ -1210,7 +1020,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                         onClick={() => navigate('/integrations')}
                       >
                         <Calendar className="h-3 w-3" />
-                        View Calendar
+                        Calendar
                       </Button>
                     </div>
                   </div>
