@@ -186,12 +186,25 @@ function CopilotAssistantContent({ content }: { content: string }) {
           <ReactMarkdown
             key={i}
             components={{
+              h1: ({ children }) => <h1 style={{ fontSize: 16, fontWeight: 700, margin: '12px 0 6px 0', lineHeight: 1.3 }}>{children}</h1>,
+              h2: ({ children }) => <h2 style={{ fontSize: 14, fontWeight: 700, margin: '10px 0 4px 0', lineHeight: 1.3 }}>{children}</h2>,
+              h3: ({ children }) => <h3 style={{ fontSize: 13, fontWeight: 600, margin: '8px 0 3px 0', lineHeight: 1.3 }}>{children}</h3>,
+              h4: ({ children }) => <h4 style={{ fontSize: 12, fontWeight: 600, margin: '6px 0 2px 0', lineHeight: 1.3 }}>{children}</h4>,
               p: ({ children }) => <p style={{ margin: '0 0 8px 0' }}>{children}</p>,
               strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
               em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
               ul: ({ children }) => <ul style={{ margin: '4px 0', paddingLeft: 20 }}>{children}</ul>,
               ol: ({ children }) => <ol style={{ margin: '4px 0', paddingLeft: 20 }}>{children}</ol>,
               li: ({ children }) => <li style={{ margin: '2px 0' }}>{children}</li>,
+              hr: () => <hr style={{ border: 'none', borderTop: '1px solid hsl(var(--border))', margin: '10px 0' }} />,
+              table: ({ children }) => (
+                <div style={{ overflowX: 'auto', margin: '6px 0' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>{children}</table>
+                </div>
+              ),
+              thead: ({ children }) => <thead style={{ borderBottom: '1px solid hsl(var(--border))' }}>{children}</thead>,
+              th: ({ children }) => <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 600, fontSize: 11 }}>{children}</th>,
+              td: ({ children }) => <td style={{ padding: '3px 8px', borderBottom: '1px solid hsl(var(--border) / 0.3)', fontSize: 12 }}>{children}</td>,
               a: ({ href, children }) => (
                 <a
                   href={href || '#'}
