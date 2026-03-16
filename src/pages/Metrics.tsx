@@ -1387,8 +1387,20 @@ export default function Metrics() {
     localStorage.setItem(HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(hiddenSnapshotCards));
   }, [hiddenSnapshotCards]);
 
+  const [snapshotCardToDelete, setSnapshotCardToDelete] = useState<EditableManagementSnapshotCardId | null>(null);
+  const [snapshotDeleteConfirmOpen, setSnapshotDeleteConfirmOpen] = useState(false);
+
   const handleDeleteManagementSnapshotCard = (cardId: EditableManagementSnapshotCardId) => {
-    setHiddenSnapshotCards(prev => [...prev, cardId]);
+    setSnapshotCardToDelete(cardId);
+    setSnapshotDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteSnapshotCard = () => {
+    if (snapshotCardToDelete) {
+      setHiddenSnapshotCards(prev => [...prev, snapshotCardToDelete]);
+    }
+    setSnapshotDeleteConfirmOpen(false);
+    setSnapshotCardToDelete(null);
   };
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [widgetToDelete, setWidgetToDelete] = useState<string | null>(null);
