@@ -448,6 +448,8 @@ export function ManagementSnapshotDashboard({
       entityFilter: cfg?.entityFilter,
       isEditMode,
       sizeVariant: variant,
+      kpiTileLayout: cfg?.kpiTileLayout || 'standard',
+      footerLabel: cfg?.footerLabel,
       onEditCard,
       onDeleteCard,
       onTimeWindowChange,
