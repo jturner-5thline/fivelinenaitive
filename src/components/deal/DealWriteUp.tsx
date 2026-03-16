@@ -114,6 +114,7 @@ export interface DealWriteUpData {
   publishAsAnonymous: boolean;
   team: TeamMember[];
   visibleMetrics: VisibleMetrics;
+  financialColumnVisibility: FinancialColumnVisibility;
 }
 
 export interface VisibleMetrics {
