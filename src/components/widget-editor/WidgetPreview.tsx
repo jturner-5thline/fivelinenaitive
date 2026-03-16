@@ -332,16 +332,51 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
         {dataKeys.map((name, i) => {
           const isLastSeries = i === dataKeys.length - 1;
           return isLine ? (
-            <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls>
-              {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
-              {isLastSeries && showPeriodTotals && dataKeys.length > 1 && (
-                <LabelList dataKey="__period_total" content={renderLinePeriodTotalLabel} />
-              )}
-            </Line>
+            negEnabled ? (
+              <React.Fragment key={name}>
+                <Line
+                  type="monotone"
+                  dataKey={(entry: any) => {
+                    const v = entry[name];
+                    return typeof v === 'number' && v >= negThreshold ? v : undefined;
+                  }}
+                  stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  connectNulls={false}
+                  name={name}
+                />
+                <Line
+                  type="monotone"
+                  dataKey={(entry: any) => {
+                    const v = entry[name];
+                    return typeof v === 'number' && v < negThreshold ? v : undefined;
+                  }}
+                  stroke={negColor}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: negColor }}
+                  connectNulls={false}
+                  name={`${name} (neg)`}
+                  legendType="none"
+                />
+              </React.Fragment>
+            ) : (
+              <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls>
+                {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+                {isLastSeries && showPeriodTotals && dataKeys.length > 1 && (
+                  <LabelList dataKey="__period_total" content={renderLinePeriodTotalLabel} />
+                )}
+              </Line>
+            )
           ) : isStacked ? (
             <Bar key={name} dataKey={name} fill={`url(#barGrad-${i})`} stackId="stack"
               shape={(props: Record<string, unknown>) => <StackedBarShape {...props} dataKeys={dataKeys} currentKey={name} />}
             >
+              {negEnabled && enrichedData.map((entry: any, idx: number) => {
+                const val = entry[name];
+                const isBelowThreshold = typeof val === 'number' && val < negThreshold;
+                return <Cell key={`cell-${idx}`} fill={isBelowThreshold ? 'url(#barGrad-negative)' : `url(#barGrad-${i})`} />;
+              })}
               {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
               {isLastSeries && showPeriodTotals && (
                 <LabelList dataKey="__period_total" content={renderPeriodTotalLabel} />
@@ -349,6 +384,11 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
             </Bar>
           ) : (
             <Bar key={name} dataKey={name} fill={`url(#barGrad-${i})`} radius={barRadius}>
+              {negEnabled && enrichedData.map((entry: any, idx: number) => {
+                const val = entry[name];
+                const isBelowThreshold = typeof val === 'number' && val < negThreshold;
+                return <Cell key={`cell-${idx}`} fill={isBelowThreshold ? 'url(#barGrad-negative)' : `url(#barGrad-${i})`} />;
+              })}
               {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
               {isLastSeries && showPeriodTotals && dataKeys.length > 1 && (
                 <LabelList dataKey="__period_total" content={renderPeriodTotalLabel} />
