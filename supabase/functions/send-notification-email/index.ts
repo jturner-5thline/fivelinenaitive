@@ -9,6 +9,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface ChangeDetail {
+  field: string;
+  old?: string;
+  new?: string;
+}
+
 interface NotificationPayload {
   type: 'deal_created' | 'deal_updated' | 'stage_changed' | 'lender_added' | 'lender_updated' | 'milestone_added' | 'milestone_completed' | 'milestone_missed' | 'new_suggestions' | 'flex_lender_sync';
   user_id: string;
@@ -21,31 +27,113 @@ interface NotificationPayload {
   metadata?: Record<string, unknown>;
   suggestion_count?: number;
   agent_suggestion_count?: number;
-  // For flex_lender_sync
+  changed_by?: string;
+  changes?: ChangeDetail[];
   sync_request_type?: 'new_lender' | 'update_existing' | 'merge_conflict';
   sync_count?: number;
+}
+
+// Build a human-readable summary from changes
+function buildChangeSummary(data: NotificationPayload): string {
+  const lines: string[] = [];
+  const actor = data.changed_by || 'Someone';
+
+  // Base message
+  switch (data.type) {
+    case 'lender_added':
+      lines.push(`${actor} added lender "${data.lender_name}" to deal "${data.deal_name}".`);
+      break;
+    case 'lender_updated':
+      lines.push(`${actor} updated lender "${data.lender_name}" on deal "${data.deal_name}".`);
+      break;
+    case 'deal_created':
+      lines.push(`${actor} created a new deal "${data.deal_name}".`);
+      break;
+    case 'stage_changed':
+      lines.push(`${actor} moved deal "${data.deal_name}" from "${data.old_value}" to "${data.new_value}".`);
+      break;
+    case 'deal_updated':
+      lines.push(`${actor} updated deal "${data.deal_name}".`);
+      break;
+    default:
+      return '';
+  }
+
+  return lines.join(' ');
+}
+
+// Build HTML table for change details
+function buildChangesHtml(changes?: ChangeDetail[]): string {
+  if (!changes || changes.length === 0) return '';
+
+  let rows = '';
+  for (const c of changes) {
+    if (c.old && c.new) {
+      rows += `
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #666; font-weight: 600; font-size: 14px; white-space: nowrap;">${c.field}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #999; font-size: 14px; text-decoration: line-through;">${c.old}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #1a1a1a; font-size: 14px; font-weight: 500;">${c.new}</td>
+        </tr>`;
+    } else if (c.new) {
+      rows += `
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #666; font-weight: 600; font-size: 14px; white-space: nowrap;">${c.field}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #999; font-size: 14px;">—</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #1a1a1a; font-size: 14px; font-weight: 500;">${c.new}</td>
+        </tr>`;
+    }
+  }
+
+  return `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 16px 0 24px 0; border: 1px solid #eee; border-radius: 8px; border-collapse: collapse;">
+      <thead>
+        <tr style="background-color: #f9f9f9;">
+          <th style="padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 0.5px; border-bottom: 1px solid #eee;">Field</th>
+          <th style="padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 0.5px; border-bottom: 1px solid #eee;">Before</th>
+          <th style="padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 0.5px; border-bottom: 1px solid #eee;">After</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>`;
+}
+
+// Build plain-text version of changes
+function buildChangesText(changes?: ChangeDetail[]): string {
+  if (!changes || changes.length === 0) return '';
+  let text = '\nWhat changed:\n';
+  for (const c of changes) {
+    if (c.old && c.new) {
+      text += `  • ${c.field}: ${c.old} → ${c.new}\n`;
+    } else if (c.new) {
+      text += `  • ${c.field}: ${c.new}\n`;
+    }
+  }
+  return text;
 }
 
 const notificationTemplates: Record<string, { subject: string; getMessage: (data: NotificationPayload) => string }> = {
   deal_created: {
     subject: 'New Deal Created',
-    getMessage: (data) => `A new deal "${data.deal_name}" has been created.`,
+    getMessage: (data) => buildChangeSummary(data) || `A new deal "${data.deal_name}" has been created.`,
   },
   deal_updated: {
     subject: 'Deal Updated',
-    getMessage: (data) => `Deal "${data.deal_name}" has been updated.`,
+    getMessage: (data) => buildChangeSummary(data) || `Deal "${data.deal_name}" has been updated.`,
   },
   stage_changed: {
     subject: 'Deal Stage Changed',
-    getMessage: (data) => `Deal "${data.deal_name}" stage changed from "${data.old_value}" to "${data.new_value}".`,
+    getMessage: (data) => buildChangeSummary(data) || `Deal "${data.deal_name}" stage changed from "${data.old_value}" to "${data.new_value}".`,
   },
   lender_added: {
     subject: 'New Lender Added',
-    getMessage: (data) => `Lender "${data.lender_name}" has been added to deal "${data.deal_name}".`,
+    getMessage: (data) => buildChangeSummary(data) || `Lender "${data.lender_name}" has been added to deal "${data.deal_name}".`,
   },
   lender_updated: {
     subject: 'Lender Updated',
-    getMessage: (data) => `Lender "${data.lender_name}" on deal "${data.deal_name}" has been updated.`,
+    getMessage: (data) => buildChangeSummary(data) || `Lender "${data.lender_name}" on deal "${data.deal_name}" has been updated.`,
   },
   milestone_added: {
     subject: 'New Milestone Added',
@@ -76,10 +164,10 @@ const notificationTemplates: Record<string, { subject: string; getMessage: (data
     subject: 'New Lender Sync Requests from Flex',
     getMessage: (data) => {
       const count = data.sync_count || 1;
-      const typeLabel = data.sync_request_type === 'new_lender' 
-        ? 'new lender' 
-        : data.sync_request_type === 'merge_conflict' 
-          ? 'merge conflict' 
+      const typeLabel = data.sync_request_type === 'new_lender'
+        ? 'new lender'
+        : data.sync_request_type === 'merge_conflict'
+          ? 'merge conflict'
           : 'update';
       if (count === 1) {
         return `A ${typeLabel} request for "${data.lender_name}" has been received from Flex and is awaiting your review.`;
@@ -89,8 +177,6 @@ const notificationTemplates: Record<string, { subject: string; getMessage: (data
   },
 };
 
-// Map notification types to their corresponding email preference columns
-// Users can disable email notifications for specific types in their settings
 const preferenceMap: Record<string, string> = {
   deal_created: 'deal_updates_email',
   deal_updated: 'deal_updates_email',
@@ -100,7 +186,7 @@ const preferenceMap: Record<string, string> = {
   milestone_added: 'deal_updates_email',
   milestone_completed: 'deal_updates_email',
   milestone_missed: 'deal_updates_email',
-  new_suggestions: 'email_notifications', // Use global email setting
+  new_suggestions: 'email_notifications',
   flex_lender_sync: 'lender_updates_email',
 };
 
@@ -116,9 +202,8 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const payload: NotificationPayload = await req.json();
-    console.log("Processing notification:", payload);
+    console.log("Processing notification:", payload.type, "changed_by:", payload.changed_by);
 
-    // Get user profile and email
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(payload.user_id);
     if (userError || !userData.user?.email) {
       console.log("User not found or no email:", userError);
@@ -128,7 +213,6 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check user notification preferences
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('*')
@@ -143,7 +227,6 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check if email notifications are enabled globally and for this type
     const preferenceKey = preferenceMap[payload.type];
     const profileData = profile as Record<string, any>;
     if (!profileData.email_notifications || (preferenceKey && !profileData[preferenceKey])) {
@@ -164,14 +247,16 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const message = template.getMessage(payload);
+    const changesHtml = buildChangesHtml(payload.changes);
+    const changesText = buildChangesText(payload.changes);
     const appUrl = "https://fivelinenaitive.lovable.app";
     const dealUrl = payload.deal_id ? `${appUrl}/deal/${payload.deal_id}` : null;
     let actionUrl: string | null = dealUrl;
     let actionLabel = 'View Deal';
-    
+
     if (payload.type === 'new_suggestions') {
-      actionUrl = payload.agent_suggestion_count && payload.agent_suggestion_count > 0 
-        ? `${appUrl}/agents` 
+      actionUrl = payload.agent_suggestion_count && payload.agent_suggestion_count > 0
+        ? `${appUrl}/agents`
         : `${appUrl}/workflows`;
       actionLabel = 'View Recommendations';
     } else if (payload.type === 'flex_lender_sync') {
@@ -179,16 +264,21 @@ const handler = async (req: Request): Promise<Response> => {
       actionLabel = 'Review Sync Requests';
     }
 
+    // Build actor badge
+    const actorHtml = payload.changed_by
+      ? `<p style="color: #888; font-size: 13px; margin: 0 0 16px 0;">By: <strong style="color: #555;">${payload.changed_by}</strong> · ${new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>`
+      : '';
+
     const emailResponse = await resend.emails.send({
       from: "naitive <noreply@updates.naitive.co>",
       reply_to: "support@naitive.co",
       to: [userData.user.email],
-      subject: `naitive: ${template.subject}`,
+      subject: `naitive: ${template.subject}${payload.deal_name ? ` – ${payload.deal_name}` : ''}`,
       headers: {
         "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
-      text: `${template.subject}\n\n${message}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnaitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
+      text: `${template.subject}\n\n${message}${payload.changed_by ? `\nBy: ${payload.changed_by}` : ''}${changesText}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnaitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
       html: `
         <!DOCTYPE html>
         <html lang="en">
@@ -200,7 +290,6 @@ const handler = async (req: Request): Promise<Response> => {
           <title>${template.subject}</title>
         </head>
         <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-          <!-- Preheader text -->
           <div style="display: none; max-height: 0; overflow: hidden;">
             ${message.substring(0, 100)}...
             &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
@@ -208,11 +297,13 @@ const handler = async (req: Request): Promise<Response> => {
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f5f5f5;">
             <tr>
               <td align="center" style="padding: 40px 20px;">
-                <table role="presentation" width="500" cellspacing="0" cellpadding="0" border="0" style="max-width: 500px; background: #ffffff; border-radius: 8px;">
+                <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width: 560px; background: #ffffff; border-radius: 8px;">
                   <tr>
                     <td style="padding: 40px;">
-                      <h1 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 0 0 24px 0; line-height: 1.3;">${template.subject}</h1>
-                      <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">${message}</p>
+                      <h1 style="color: #1a1a1a; font-size: 22px; font-weight: 600; margin: 0 0 8px 0; line-height: 1.3;">${template.subject}</h1>
+                      ${actorHtml}
+                      <p style="color: #4a4a4a; font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">${message}</p>
+                      ${changesHtml}
                       ${actionUrl ? `
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                           <tr>
