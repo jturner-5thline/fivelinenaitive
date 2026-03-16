@@ -719,7 +719,7 @@ Deno.serve(async (req: Request) => {
             created_by_id: ownerId,
             workflow_owner_id: ownerId,
             workflow_key: wfDef.key,
-            trigger_source: isDealCreated ? "deal_created" : "stage_change",
+            trigger_source: "stage_change",
             is_recurring: taskDef.isRecurring || false,
             recurrence_rule_json: taskDef.recurrenceRuleJson || null,
             due_at: dueAt,
