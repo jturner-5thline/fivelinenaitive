@@ -482,13 +482,43 @@ serve(async (req) => {
   }
 
   try {
+    // ── Authentication ──────────────────────────────────────────────
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // User-scoped client for RLS-enforced data access
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Service client only for storage file downloads (not for data queries)
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
+
     const { messages, dealId, action, sectionKey, documentId, scope } = await req.json();
 
-    if (action === "summarize") return await handleSummarize(dealId);
-    if (action === "extract-writeup") return await handleExtractWriteUp(dealId);
-    if (action === "generate-memo") return await handleGenerateMemo(dealId);
-    if (action === "regenerate-section") return await handleRegenerateSection(dealId, sectionKey);
-    if (action === "extract-document") return await handleExtractDocument(dealId, documentId);
+    if (action === "summarize") return await handleSummarize(dealId, supabaseUser, supabaseService);
+    if (action === "extract-writeup") return await handleExtractWriteUp(dealId, supabaseUser, supabaseService);
+    if (action === "generate-memo") return await handleGenerateMemo(dealId, supabaseUser);
+    if (action === "regenerate-section") return await handleRegenerateSection(dealId, sectionKey, supabaseUser);
+    if (action === "extract-document") return await handleExtractDocument(dealId, supabaseUser, supabaseService, documentId);
 
     // ── Chat mode (Ask AI) ──────────────────────────────────────────
     if (!dealId || !messages || !Array.isArray(messages)) {
@@ -498,9 +528,7 @@ serve(async (req) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = supabaseUser;
     const ctx = await buildDealContext(supabase, dealId);
 
     // ── Scope-aware document filtering ──────────────────────────────
@@ -625,11 +653,8 @@ ${FORMATTING_RULES}
 
 // ─── Generate full structured memo ──────────────────────────────────
 
-async function handleGenerateMemo(dealId: string) {
+async function handleGenerateMemo(dealId: string, supabase: any) {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const ctx = await buildDealContext(supabase, dealId);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -682,16 +707,12 @@ IMPORTANT: Use ONLY the data provided. If a data point is missing, write "Not av
 
 // ─── Regenerate a single section ────────────────────────────────────
 
-async function handleRegenerateSection(dealId: string, sectionKey: string) {
+async function handleRegenerateSection(dealId: string, sectionKey: string, supabase: any) {
   try {
     if (!sectionKey) throw new Error("sectionKey is required");
     
     const section = MEMO_SECTIONS.find(s => s.key === sectionKey);
     if (!section) throw new Error(`Unknown section: ${sectionKey}`);
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const ctx = await buildDealContext(supabase, dealId);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -772,11 +793,8 @@ IMPORTANT: Output ONLY this one section. Do NOT include other sections. Use ONLY
 
 // ─── Summarize documents ────────────────────────────────────────────
 
-async function handleSummarize(dealId: string) {
+async function handleSummarize(dealId: string, supabase: any, supabaseService: any) {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: documents, error: docsError } = await supabase
       .from("deal_space_documents")
@@ -794,7 +812,7 @@ async function handleSummarize(dealId: string) {
     const allContents: string[] = [];
     for (const doc of documents) {
       try {
-        const { data: fileData, error: downloadError } = await supabase.storage.from("deal-space").download(doc.file_path);
+        const { data: fileData, error: downloadError } = await supabaseService.storage.from("deal-space").download(doc.file_path);
         if (downloadError) continue;
         const extracted = await extractContent(fileData, doc.name);
         if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
@@ -876,11 +894,8 @@ Be concise but thorough. Only include sections with relevant content.`
 
 // ─── Extract write-up fields (deal-scoped with citations) ───────────
 
-async function handleExtractWriteUp(dealId: string) {
+async function handleExtractWriteUp(dealId: string, supabase: any, supabaseService: any) {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Pull from ALL deal-scoped sources in parallel
     const [docsResult, financialsResult, dataRoomResult, notesResult, memoResult, dealResult, flagNotesResult, lendersResult] = await Promise.all([
@@ -911,7 +926,7 @@ async function handleExtractWriteUp(dealId: string) {
     for (const doc of allUploadedDocs) {
       try {
         const bucket = documents.find(d => d.id === doc.id) || financials.find(d => d.id === doc.id) ? "deal-space" : "deal-attachments";
-        const { data: fileData, error: downloadError } = await supabase.storage.from(bucket).download(doc.file_path);
+        const { data: fileData, error: downloadError } = await supabaseService.storage.from(bucket).download(doc.file_path);
         if (downloadError) continue;
         const extracted = await extractContent(fileData, doc.name);
         if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
@@ -1172,11 +1187,8 @@ Return ONLY a valid JSON array.`
 
 // ─── Extract structured document data (full schema) ─────────────────
 
-async function handleExtractDocument(dealId: string, documentId?: string) {
+async function handleExtractDocument(dealId: string, supabase: any, supabaseService: any, documentId?: string) {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Determine which documents to process
     let docsToProcess: { id: string; name: string; file_path: string; content_type: string; bucket: string }[] = [];
@@ -1210,7 +1222,7 @@ async function handleExtractDocument(dealId: string, documentId?: string) {
     const docContents: { name: string; text: string; pageCount?: number }[] = [];
     for (const doc of docsToProcess) {
       try {
-        const { data: fileData, error: downloadError } = await supabase.storage.from(doc.bucket).download(doc.file_path);
+        const { data: fileData, error: downloadError } = await supabaseService.storage.from(doc.bucket).download(doc.file_path);
         if (downloadError) continue;
         const extracted = await extractContent(fileData, doc.name);
         if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
