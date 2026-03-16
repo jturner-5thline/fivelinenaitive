@@ -6,7 +6,33 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Stage-triggered workflow definitions: stage -> array of { workflowKey, tasks, actions }
+// ===== Stage name normalization =====
+// Main deals table uses kebab-case (e.g. "pre-credit-needs")
+// Workflow definitions use snake_case (e.g. "pre_credit_needs")
+function normalizeStage(stage: string | null): string | null {
+  if (!stage) return null;
+  return stage.replace(/-/g, "_");
+}
+
+// Map main deals table stage names (kebab-case) to wf_deal_stage enum values (snake_case)
+const DEALS_TO_WF_STAGE: Record<string, string> = {
+  "ndaneeds-list-sent": "nda_needs_list_sent",
+  "pre-credit-needs": "pre_credit_needs",
+  "initial-lender-review": "initial_lender_review",
+  "initial-feedback": "initial_feedback_call",
+  "write-up-pending": "write_up_pending",
+  "submitted-to-lenders": "submitted_to_lenders",
+  "lenders-in-review": "lenders_in_review",
+  "terms-issued": "terms_issued_analysis",
+  "in-due-diligence": "due_diligence_client",
+  "agreement-pending": "agreement_pending",
+  "final-credit-items": "final_credit_items",
+  "client-strategy-review": "client_strategy_review",
+  "funded-invoiced": "funded_naitive",
+  "closed-won": "funded_naitive",
+  "closed-lost": "not_moving_forward",
+  "on-hold": "nda_needs_list_sent",
+};
 const STAGE_WORKFLOWS: Record<
   string,
   Array<{
@@ -25,6 +51,24 @@ const STAGE_WORKFLOWS: Record<
     }>;
   }>
 > = {
+  // === NEW DEAL ENTRY (fires on deal creation or initial pipeline entry) ===
+  "__deal_created": [
+    {
+      key: "deal_active_followup_task",
+      tasks: [
+        {
+          title: "Follow up until materials received",
+          assigneeRole: "manager",
+          dueOffsetDays: 3,
+          isRecurring: true,
+          recurrenceRuleJson: { interval: 3, unit: "days", stopOn: "materials_added" },
+        },
+      ],
+      actions: [
+        { type: "send_notification", config: { template: "workflow_task_assigned", message: "New deal entered pipeline – recurring follow-up created" } },
+      ],
+    },
+  ],
   pre_credit_needs: [
     {
       key: "analyst_prepare_model_memo",
@@ -51,6 +95,19 @@ const STAGE_WORKFLOWS: Record<
       ],
     },
   ],
+  initial_feedback: [
+    {
+      key: "initial_feedback_entry",
+      tasks: [
+        { title: "Complete initial feedback call and prep agenda", assigneeRole: "manager", dueOffsetDays: 3 },
+      ],
+      actions: [
+        { type: "create_calendar_event", config: { summary_template: "Initial Feedback Call – {deal_name}", durationMinutes: 30, offsetDays: 2 } },
+        { type: "send_notification", config: { template: "workflow_task_assigned", message: "Feedback call scheduled" } },
+      ],
+    },
+  ],
+  // Keep old key for backward compat with wf_deals
   initial_feedback_call: [
     {
       key: "initial_feedback_entry",
@@ -199,6 +256,30 @@ const STAGE_WORKFLOWS: Record<
       ],
     },
   ],
+  terms_issued: [
+    {
+      key: "terms_issued_analysis",
+      tasks: [
+        { title: "Review Terms and prep Terms Analysis", assigneeRole: "analyst", dueOffsetDays: 5 },
+        { title: "Call to review terms with client", assigneeRole: "manager", dueOffsetDays: 5 },
+      ],
+      actions: [
+        { type: "create_calendar_event", config: { summary_template: "Terms Review Call – {deal_name}", durationMinutes: 45, offsetDays: 3 } },
+        { type: "send_notification", config: { template: "terms_issued", message: "Terms issued – review needed" } },
+      ],
+    },
+    {
+      key: "terms_issued_payment",
+      tasks: [
+        { title: "Send milestone invoice", assigneeRole: "manager", dueOffsetDays: 3 },
+        { title: "Re-Intro to Jen for controller intro", assigneeRole: "manager", dueOffsetDays: 3 },
+      ],
+      actions: [
+        { type: "send_email", config: { template: "milestone_invoice", subject: "Milestone Invoice: {deal_name}" } },
+      ],
+    },
+  ],
+  // Keep old split stages for backward compat with wf_deals
   terms_issued_analysis: [
     {
       key: "terms_issued_analysis",
@@ -224,6 +305,22 @@ const STAGE_WORKFLOWS: Record<
       ],
     },
   ],
+  in_due_diligence: [
+    {
+      key: "due_diligence_client_flow",
+      tasks: [
+        { title: "Set educational call with client", assigneeRole: "manager", dueOffsetDays: 5 },
+        { title: "Set follow-up emails to lender and client", assigneeRole: "manager", dueOffsetDays: 5 },
+        { title: "Inform Ops and team once ready", assigneeRole: "manager", dueOffsetDays: 5 },
+        { title: "Check if marketing case; ask for feedback", assigneeRole: "manager", dueOffsetDays: 5 },
+      ],
+      actions: [
+        { type: "create_calendar_event", config: { summary_template: "Due Diligence Educational Call – {deal_name}", durationMinutes: 60, offsetDays: 3 } },
+        { type: "send_notification", config: { template: "due_diligence_started", message: "Due diligence phase started" } },
+      ],
+    },
+  ],
+  // Keep old key for backward compat
   due_diligence_client: [
     {
       key: "due_diligence_client_flow",
@@ -248,6 +345,32 @@ const STAGE_WORKFLOWS: Record<
       ],
     },
   ],
+  funded_invoiced: [
+    {
+      key: "funded_payment_workflow",
+      tasks: [
+        { title: "Send final fee invoice", assigneeRole: "manager", dueOffsetDays: 3 },
+        { title: "Re-Intro to Jen for controller intro", assigneeRole: "manager", dueOffsetDays: 3 },
+      ],
+      actions: [
+        { type: "send_email", config: { template: "final_invoice", subject: "Final Fee Invoice: {deal_name}" } },
+      ],
+    },
+    {
+      key: "funded_feedback_testimonials",
+      tasks: [
+        { title: "Send email intro for Chandler feedback/testimonial", assigneeRole: "manager", dueOffsetDays: 3 },
+      ],
+      actions: [
+        { type: "send_email", config: { template: "feedback_request", subject: "Feedback Request: {deal_name}" } },
+      ],
+    },
+    {
+      key: "funded_lender_review",
+      tasks: [{ title: "Rate lenders on performance dimensions", assigneeRole: "manager", dueOffsetDays: 5 }],
+    },
+  ],
+  // Keep old split keys for backward compat with wf_deals
   funded_payment: [
     {
       key: "funded_payment_workflow",
@@ -287,7 +410,6 @@ async function createCalendarEvent(
   config: Record<string, unknown>
 ) {
   try {
-    // Get the owner's calendar token
     const { data: token } = await supabase
       .from("calendar_tokens")
       .select("access_token, refresh_token, expires_at")
@@ -299,7 +421,6 @@ async function createCalendarEvent(
       return;
     }
 
-    // Check if token is expired and refresh if needed
     let accessToken = token.access_token;
     if (new Date(token.expires_at) <= new Date()) {
       const clientId = Deno.env.get("GOOGLE_CALENDAR_CLIENT_ID");
@@ -340,7 +461,7 @@ async function createCalendarEvent(
     const durationMinutes = (config.durationMinutes as number) || 30;
 
     const startTime = new Date(Date.now() + offsetDays * 86400000);
-    startTime.setHours(10, 0, 0, 0); // Default 10am
+    startTime.setHours(10, 0, 0, 0);
     const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
 
     const eventBody = {
@@ -447,45 +568,118 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { deal_id, from_stage, to_stage, org_company_id } = await req.json();
+    const { deal_id, from_stage, to_stage, org_company_id, event_type } = await req.json();
 
     if (!deal_id || !to_stage) {
+      console.error("[wf-stage-trigger] Missing deal_id or to_stage");
       return new Response(JSON.stringify({ error: "Missing deal_id or to_stage" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log(`[wf-stage-trigger] Deal ${deal_id}: ${from_stage} → ${to_stage}`);
+    const normalizedToStage = normalizeStage(to_stage);
+    const normalizedFromStage = normalizeStage(from_stage);
+    const isDealCreated = event_type === "deal_created";
 
-    // Get the deal with role IDs
-    const { data: deal, error: dealError } = await supabase
+    console.log(`[wf-stage-trigger] ===== WORKFLOW TRIGGER =====`);
+    console.log(`[wf-stage-trigger] Deal: ${deal_id}`);
+    console.log(`[wf-stage-trigger] Event: ${event_type || 'stage_change'}`);
+    console.log(`[wf-stage-trigger] Raw stages: ${from_stage} → ${to_stage}`);
+    console.log(`[wf-stage-trigger] Normalized: ${normalizedFromStage} → ${normalizedToStage}`);
+
+    // Try to get deal from wf_deals first (workflow system), then fall back to main deals table
+    let deal: any = null;
+    let dealName = "Unknown Deal";
+
+    const { data: wfDeal } = await supabase
       .from("wf_deals")
       .select("*")
       .eq("id", deal_id)
-      .single();
+      .maybeSingle();
 
-    if (dealError || !deal) {
-      console.error("Deal not found:", dealError);
-      return new Response(JSON.stringify({ error: "Deal not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (wfDeal) {
+      deal = wfDeal;
+      dealName = wfDeal.name || "Unknown Deal";
+      console.log(`[wf-stage-trigger] Found deal in wf_deals: ${dealName}`);
+    } else {
+      // Fall back to main deals table
+      const { data: mainDeal } = await supabase
+        .from("deals")
+        .select("id, company, stage, status, user_id, company_id")
+        .eq("id", deal_id)
+        .maybeSingle();
+
+      if (!mainDeal) {
+        console.error(`[wf-stage-trigger] Deal ${deal_id} not found in either table`);
+        return new Response(JSON.stringify({ error: "Deal not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      dealName = mainDeal.company || "Unknown Deal";
+      console.log(`[wf-stage-trigger] Found deal in main deals table: ${dealName}`);
+
+      // Use deal owner as default manager
+      const managerId = mainDeal.user_id;
+      const analystId: string | null = null;
+      const opsId: string | null = null;
+
+      // Map the main deals stage to a wf_deal_stage enum value
+      const wfStage = DEALS_TO_WF_STAGE[mainDeal.stage] || "nda_needs_list_sent";
+      console.log(`[wf-stage-trigger] Mapping main deals stage "${mainDeal.stage}" → wf_deal_stage "${wfStage}"`);
+
+      // Auto-create a wf_deals record so tasks and logs can reference it
+      const { error: syncError } = await supabase.from("wf_deals").upsert({
+        id: mainDeal.id,
+        name: mainDeal.company || "Unknown Deal",
+        company_name: mainDeal.company,
+        stage: wfStage,
+        manager_id: null, // wf_users FK - can't use auth user IDs directly
+        analyst_id: null,
+        ops_id: null,
+        org_company_id: org_company_id || mainDeal.company_id,
+      }, { onConflict: "id" });
+
+      if (syncError) {
+        console.error(`[wf-stage-trigger] Failed to sync deal to wf_deals:`, syncError);
+        // Continue anyway - tasks will fail but we still log the attempt
+      } else {
+        console.log(`[wf-stage-trigger] ✅ Synced deal to wf_deals table`);
+      }
+
+      deal = {
+        id: mainDeal.id,
+        name: mainDeal.company,
+        stage: mainDeal.stage,
+        manager_id: managerId,
+        analyst_id: analystId,
+        ops_id: opsId,
+        org_company_id: org_company_id || mainDeal.company_id,
+      };
+
+      console.log(`[wf-stage-trigger] Resolved roles - manager: ${managerId}, analyst: ${analystId}, ops: ${opsId}`);
     }
 
-    // Get deal name from the main deals table
-    let dealName = deal.name || "Unknown Deal";
-    const { data: mainDeal } = await supabase
-      .from("deals")
-      .select("company")
-      .eq("id", deal_id)
-      .maybeSingle();
-    if (mainDeal?.company) dealName = mainDeal.company;
+    // Determine which workflow sets to check
+    const workflowSets: Array<{ stageKey: string; workflows: typeof STAGE_WORKFLOWS[string] }> = [];
 
-    // Find workflows for this stage
-    const stageWorkflows = STAGE_WORKFLOWS[to_stage];
-    if (!stageWorkflows || stageWorkflows.length === 0) {
-      console.log(`No workflows defined for stage: ${to_stage}`);
+    // If this is a new deal creation, add __deal_created workflows
+    if (isDealCreated && STAGE_WORKFLOWS["__deal_created"]) {
+      workflowSets.push({ stageKey: "__deal_created", workflows: STAGE_WORKFLOWS["__deal_created"] });
+      console.log(`[wf-stage-trigger] Adding __deal_created workflows (${STAGE_WORKFLOWS["__deal_created"].length} definitions)`);
+    }
+
+    // Add stage-specific workflows
+    if (normalizedToStage && STAGE_WORKFLOWS[normalizedToStage]) {
+      workflowSets.push({ stageKey: normalizedToStage, workflows: STAGE_WORKFLOWS[normalizedToStage] });
+      console.log(`[wf-stage-trigger] Adding stage workflows for "${normalizedToStage}" (${STAGE_WORKFLOWS[normalizedToStage].length} definitions)`);
+    }
+
+    if (workflowSets.length === 0) {
+      console.log(`[wf-stage-trigger] No workflows defined for stage: ${normalizedToStage} (raw: ${to_stage})`);
+      console.log(`[wf-stage-trigger] Available stages: ${Object.keys(STAGE_WORKFLOWS).join(', ')}`);
       return new Response(JSON.stringify({ message: "No workflows for this stage", workflows_run: 0 }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -493,121 +687,172 @@ Deno.serve(async (req: Request) => {
     }
 
     let workflowsRun = 0;
+    let workflowsSkipped = 0;
     let tasksCreated = 0;
     let actionsExecuted = 0;
 
-    for (const wfDef of stageWorkflows) {
-      // Check if workflow is active in DB
-      const { data: wfRow } = await supabase
-        .from("wf_workflows")
-        .select("id, is_active, default_owner_user_id, default_owner_role")
-        .eq("key", wfDef.key)
-        .maybeSingle();
+    for (const { stageKey, workflows } of workflowSets) {
+      for (const wfDef of workflows) {
+        console.log(`[wf-stage-trigger] Checking workflow: ${wfDef.key} (stage: ${stageKey})`);
 
-      if (!wfRow || !wfRow.is_active) {
-        console.log(`Workflow ${wfDef.key} is inactive, skipping`);
-        continue;
-      }
+        // Check if workflow is active in DB
+        const { data: wfRow } = await supabase
+          .from("wf_workflows")
+          .select("id, is_active, default_owner_user_id, default_owner_role")
+          .eq("key", wfDef.key)
+          .maybeSingle();
 
-      // Resolve owner
-      let ownerId = wfRow.default_owner_user_id;
-      if (!ownerId) {
-        const role = wfRow.default_owner_role || "manager";
-        if (role === "manager") ownerId = deal.manager_id;
-        else if (role === "analyst") ownerId = deal.analyst_id;
-        else if (role === "ops") ownerId = deal.ops_id;
-      }
+        if (!wfRow) {
+          console.log(`[wf-stage-trigger] ⚠️ Workflow "${wfDef.key}" NOT FOUND in wf_workflows table – skipping`);
+          workflowsSkipped++;
+          continue;
+        }
 
-      // Log the workflow run
-      await supabase.from("wf_workflows_log").insert({
-        workflow_id: wfRow.id,
-        workflow_name: wfDef.key,
-        owner_user_id: ownerId,
-        trigger_type: "stage_change",
-        deal_id: deal_id,
-        org_company_id: org_company_id || deal.org_company_id,
-        metadata_json: { from_stage, to_stage, tasks_count: wfDef.tasks.length, actions_count: wfDef.actions?.length || 0 },
-      });
+        if (!wfRow.is_active) {
+          console.log(`[wf-stage-trigger] ⏸️ Workflow "${wfDef.key}" is INACTIVE (is_active=false) – skipping`);
+          workflowsSkipped++;
+          continue;
+        }
 
-      // Create tasks
-      for (const taskDef of wfDef.tasks) {
-        const assigneeId =
-          taskDef.assigneeRole === "manager" ? deal.manager_id :
-          taskDef.assigneeRole === "analyst" ? deal.analyst_id :
-          taskDef.assigneeRole === "ops" ? deal.ops_id : null;
+        console.log(`[wf-stage-trigger] ✅ Workflow "${wfDef.key}" is ACTIVE – executing...`);
 
-        const dueAt = new Date(Date.now() + taskDef.dueOffsetDays * 86400000).toISOString();
+        // Resolve owner
+        let ownerId = wfRow.default_owner_user_id;
+        if (!ownerId) {
+          const role = wfRow.default_owner_role || "manager";
+          if (role === "manager") ownerId = deal.manager_id;
+          else if (role === "analyst") ownerId = deal.analyst_id;
+          else if (role === "ops") ownerId = deal.ops_id;
+        }
+        console.log(`[wf-stage-trigger] Owner resolved: ${ownerId} (role: ${wfRow.default_owner_role})`);
 
-        const { error: taskError } = await supabase.from("wf_tasks").insert({
-          deal_id,
-          title: taskDef.title,
-          status: "open",
-          assignee_id: assigneeId,
-          created_by_id: ownerId,
-          workflow_owner_id: ownerId,
-          workflow_key: wfDef.key,
-          trigger_source: "stage_change",
-          is_recurring: taskDef.isRecurring || false,
-          recurrence_rule_json: taskDef.recurrenceRuleJson || null,
-          due_at: dueAt,
+        // Log the workflow run
+        const { error: logError } = await supabase.from("wf_workflows_log").insert({
+          workflow_id: wfRow.id,
+          workflow_name: wfDef.key,
+          owner_user_id: null,
+          trigger_type: "stage_change",
+          deal_id: deal_id,
           org_company_id: org_company_id || deal.org_company_id,
+          metadata_json: { from_stage: normalizedFromStage, to_stage: normalizedToStage, event_type, tasks_count: wfDef.tasks.length, actions_count: wfDef.actions?.length || 0 },
         });
 
-        if (taskError) {
-          console.error(`Failed to create task "${taskDef.title}":`, taskError);
-        } else {
-          tasksCreated++;
+        if (logError) {
+          console.error(`[wf-stage-trigger] Failed to log workflow run:`, logError);
         }
-      }
 
-      // Execute actions (Phase 3: live integrations)
-      if (wfDef.actions) {
-        for (const action of wfDef.actions) {
-          try {
-            const primaryAssigneeRole = wfDef.tasks[0]?.assigneeRole || "manager";
-            const primaryAssigneeId =
-              primaryAssigneeRole === "manager" ? deal.manager_id :
-              primaryAssigneeRole === "analyst" ? deal.analyst_id :
-              primaryAssigneeRole === "ops" ? deal.ops_id : ownerId;
+        // Create tasks
+        for (const taskDef of wfDef.tasks) {
+          // wf_tasks.assignee_id references wf_users, not auth.users
+          // For deals from the main table, we can't use auth user IDs directly
+          // Try to find a matching wf_user, otherwise set to null
+          let assigneeWfUserId: string | null = null;
+          const rawAssigneeId =
+            taskDef.assigneeRole === "manager" ? deal.manager_id :
+            taskDef.assigneeRole === "analyst" ? deal.analyst_id :
+            taskDef.assigneeRole === "ops" ? deal.ops_id : null;
 
-            switch (action.type) {
-              case "create_calendar_event":
-                await createCalendarEvent(supabase, primaryAssigneeId || ownerId, dealName, action.config);
-                actionsExecuted++;
-                break;
+          if (rawAssigneeId) {
+            // Check if this ID exists in wf_users
+            const { data: wfUser } = await supabase
+              .from("wf_users")
+              .select("id")
+              .eq("id", rawAssigneeId)
+              .maybeSingle();
+            assigneeWfUserId = wfUser?.id || null;
+          }
 
-              case "send_email":
-                await sendWorkflowEmail(supabaseUrl, primaryAssigneeId || ownerId, deal_id, dealName, action.config);
-                actionsExecuted++;
-                break;
+          // Same for owner
+          let ownerWfUserId: string | null = null;
+          if (ownerId) {
+            const { data: wfOwner } = await supabase
+              .from("wf_users")
+              .select("id")
+              .eq("id", ownerId)
+              .maybeSingle();
+            ownerWfUserId = wfOwner?.id || null;
+          }
 
-              case "send_notification":
-                await sendInAppNotification(supabaseUrl, primaryAssigneeId || ownerId, deal_id, dealName, action.config);
-                actionsExecuted++;
-                break;
-            }
-          } catch (actionErr) {
-            console.error(`[action] Failed ${action.type} for ${wfDef.key}:`, actionErr);
+          const dueAt = new Date(Date.now() + taskDef.dueOffsetDays * 86400000).toISOString();
+
+          console.log(`[wf-stage-trigger] Creating task: "${taskDef.title}" → assignee: ${assigneeWfUserId || 'null (no wf_user match)'} (${taskDef.assigneeRole}), due: ${dueAt}`);
+
+          const { error: taskError } = await supabase.from("wf_tasks").insert({
+            deal_id,
+            title: taskDef.title,
+            status: "open",
+            assignee_id: assigneeWfUserId,
+            created_by_id: ownerWfUserId,
+            workflow_owner_id: ownerWfUserId,
+            workflow_key: wfDef.key,
+            trigger_source: "stage_change",
+            is_recurring: taskDef.isRecurring || false,
+            recurrence_rule_json: taskDef.recurrenceRuleJson || null,
+            due_at: dueAt,
+            org_company_id: org_company_id || deal.org_company_id,
+          });
+
+          if (taskError) {
+            console.error(`[wf-stage-trigger] ❌ Failed to create task "${taskDef.title}":`, taskError);
+          } else {
+            tasksCreated++;
+            console.log(`[wf-stage-trigger] ✅ Task created: "${taskDef.title}"`);
           }
         }
-      }
 
-      // Move stage if defined
-      if (wfDef.moveTo) {
-        await supabase.from("wf_deals").update({ stage: wfDef.moveTo }).eq("id", deal_id);
-      }
+        // Execute actions
+        if (wfDef.actions) {
+          for (const action of wfDef.actions) {
+            try {
+              const primaryAssigneeRole = wfDef.tasks[0]?.assigneeRole || "manager";
+              const primaryAssigneeId =
+                primaryAssigneeRole === "manager" ? deal.manager_id :
+                primaryAssigneeRole === "analyst" ? deal.analyst_id :
+                primaryAssigneeRole === "ops" ? deal.ops_id : ownerId;
 
-      workflowsRun++;
+              console.log(`[wf-stage-trigger] Executing action: ${action.type} for ${wfDef.key}`);
+
+              switch (action.type) {
+                case "create_calendar_event":
+                  await createCalendarEvent(supabase, primaryAssigneeId || ownerId, dealName, action.config);
+                  actionsExecuted++;
+                  break;
+
+                case "send_email":
+                  await sendWorkflowEmail(supabaseUrl, primaryAssigneeId || ownerId, deal_id, dealName, action.config);
+                  actionsExecuted++;
+                  break;
+
+                case "send_notification":
+                  await sendInAppNotification(supabaseUrl, primaryAssigneeId || ownerId, deal_id, dealName, action.config);
+                  actionsExecuted++;
+                  break;
+              }
+            } catch (actionErr) {
+              console.error(`[wf-stage-trigger] ❌ Action failed ${action.type} for ${wfDef.key}:`, actionErr);
+            }
+          }
+        }
+
+        // Move stage if defined
+        if (wfDef.moveTo) {
+          console.log(`[wf-stage-trigger] Moving deal stage to: ${wfDef.moveTo}`);
+          await supabase.from("wf_deals").update({ stage: wfDef.moveTo }).eq("id", deal_id);
+        }
+
+        workflowsRun++;
+      }
     }
 
-    console.log(`[wf-stage-trigger] Completed: ${workflowsRun} workflows, ${tasksCreated} tasks, ${actionsExecuted} actions`);
+    console.log(`[wf-stage-trigger] ===== SUMMARY =====`);
+    console.log(`[wf-stage-trigger] Workflows run: ${workflowsRun}, Skipped: ${workflowsSkipped}, Tasks created: ${tasksCreated}, Actions executed: ${actionsExecuted}`);
 
     return new Response(
-      JSON.stringify({ success: true, workflows_run: workflowsRun, tasks_created: tasksCreated, actions_executed: actionsExecuted }),
+      JSON.stringify({ success: true, workflows_run: workflowsRun, workflows_skipped: workflowsSkipped, tasks_created: tasksCreated, actions_executed: actionsExecuted }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[wf-stage-trigger] Error:", err);
+    console.error("[wf-stage-trigger] ❌ Unhandled error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
