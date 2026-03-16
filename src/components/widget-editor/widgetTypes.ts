@@ -71,6 +71,12 @@ export interface DataLabelsConfig {
   showPeriodTotals?: boolean;
 }
 
+export interface NegativeStylingConfig {
+  enableNegativeStyling: boolean;
+  negativeThreshold: number;
+  negativeColor: string; // HSL string
+}
+
 // ──── KPI Detail Card ────
 export type KPIComparisonMode = 'vs Previous Period' | 'vs Previous Year' | 'vs Plan/Budget';
 export type KPILayoutVariant = 'full' | 'compact';
