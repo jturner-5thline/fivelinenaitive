@@ -226,6 +226,13 @@ export function dateRangeToDates(dateRange?: string): { start_date: string; end_
       start = startOfYear(now);
       break;
     default:
+      // Support custom_YYYY-MM-DD_YYYY-MM-DD format
+      if (dateRange.startsWith('custom_')) {
+        const parts = dateRange.replace('custom_', '').split('_');
+        if (parts.length === 2) {
+          return { start_date: parts[0], end_date: parts[1] };
+        }
+      }
       return null;
   }
   return {
