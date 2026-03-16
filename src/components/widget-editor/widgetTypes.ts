@@ -28,6 +28,8 @@ export interface SeriesConfig {
   mode: 'single' | 'many';
 }
 
+export type ValueCombineOp = '+' | '-' | '*' | '/';
+
 export interface ValueConfig {
   fieldId: string | null;
   label?: string; // Persisted display name (for QB accounts or custom labels)
@@ -35,6 +37,7 @@ export interface ValueConfig {
   format: 'currency' | 'percent' | 'number';
   breakdown?: 'total' | 'byAccount' | 'byEntity';
   accountFilter?: string[]; // QB account IDs to include (empty = all)
+  combineOp?: ValueCombineOp; // How to combine with previous value (first value has none)
 }
 
 export interface FilterConfig {

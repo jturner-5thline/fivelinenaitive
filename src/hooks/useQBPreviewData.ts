@@ -210,7 +210,7 @@ export function useQBPreviewData(config: WidgetConfig) {
 
   // Build a stable key from breakdown/accountFilter config
   const valuesKey = config.values.map(v => 
-    `${v.fieldId}|${v.breakdown ?? 'total'}|${(v.accountFilter ?? []).sort().join(',')}`
+    `${v.fieldId}|${v.agg}|${v.breakdown ?? 'total'}|${(v.accountFilter ?? []).sort().join(',')}|${v.combineOp ?? ''}`
   ).join(';');
 
   return useQuery({
@@ -456,6 +456,61 @@ export function useQBPreviewData(config: WidgetConfig) {
           }
           const point = periodMap.get(key)!;
           point[label] = ((point[label] as number) || 0) + (row.total_amt ?? 0);
+        }
+      }
+
+      // ─── Combine values with arithmetic operators if configured ───
+      const hasCombineOps = config.values.some(v => v.combineOp);
+      if (hasCombineOps && config.values.length >= 2) {
+        // Build ordered label list matching config.values
+        const valueLabels = config.values.map(vc => {
+          if (!vc.fieldId) return null;
+          if (isQBAccountField(vc.fieldId)) {
+            // For QB accounts, look up the label stored in config or from existing data
+            return vc.label ?? vc.fieldId;
+          }
+          if (isComputedField(vc.fieldId)) {
+            if (vc.fieldId === 'f-net-income') return 'Net Income';
+          }
+          const mapping = getRelevantFieldMapping(vc.fieldId);
+          return mapping?.label ?? vc.label ?? vc.fieldId;
+        });
+
+        // Build a combined label from the formula
+        const combinedLabel = config.values.map((vc, i) => {
+          const name = valueLabels[i] ?? '?';
+          if (i === 0) return name;
+          const sym = vc.combineOp === '+' ? ' + ' : vc.combineOp === '-' ? ' − ' : vc.combineOp === '*' ? ' × ' : vc.combineOp === '/' ? ' ÷ ' : ' + ';
+          return `${sym}${name}`;
+        }).join('');
+
+        // For each period, compute the combined value
+        for (const point of periodMap.values()) {
+          let result: number | null = null;
+          for (let i = 0; i < config.values.length; i++) {
+            const label = valueLabels[i];
+            if (!label) continue;
+            const val = (point[label] as number) ?? 0;
+            const op = config.values[i].combineOp;
+
+            if (result === null) {
+              result = val;
+            } else {
+              switch (op) {
+                case '+': result += val; break;
+                case '-': result -= val; break;
+                case '*': result *= val; break;
+                case '/': result = val !== 0 ? result / val : 0; break;
+                default: result += val; break;
+              }
+            }
+          }
+
+          // Remove individual value labels, keep only combined
+          for (const label of valueLabels) {
+            if (label && label !== combinedLabel) delete point[label];
+          }
+          point[combinedLabel] = result ?? 0;
         }
       }
 
