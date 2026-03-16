@@ -812,7 +812,7 @@ async function handleSummarize(dealId: string, supabase: any, supabaseService: a
     const allContents: string[] = [];
     for (const doc of documents) {
       try {
-        const { data: fileData, error: downloadError } = await supabase.storage.from("deal-space").download(doc.file_path);
+        const { data: fileData, error: downloadError } = await supabaseService.storage.from("deal-space").download(doc.file_path);
         if (downloadError) continue;
         const extracted = await extractContent(fileData, doc.name);
         if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
