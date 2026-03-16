@@ -1183,7 +1183,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Company Overview</h4>
                 </div>
-                <WriteUpCompanyOverviewTab dealId={dealId} data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} />
+              <WriteUpCompanyOverviewTab dealId={dealId} data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </div>
               
               {/* Financial Section */}
@@ -1191,7 +1191,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Financial</h4>
                 </div>
-                <WriteUpFinancialTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpFinancialTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </div>
               
               {/* Company Highlights Section */}
@@ -1199,7 +1199,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Company Highlights</h4>
                 </div>
-                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </div>
               
               {/* Key Items Section */}
@@ -1207,7 +1207,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Key Items</h4>
                 </div>
-                <WriteUpKeyItemsTab data={data} updateField={updateField} changedFields={changedFields} />
+                <WriteUpKeyItemsTab data={data} updateField={updateField} changedFields={changedFields} isFieldEdited={isFieldEdited} />
               </div>
 
               {/* Ownership Section */}
