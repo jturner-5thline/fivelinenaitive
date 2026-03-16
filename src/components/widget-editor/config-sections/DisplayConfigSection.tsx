@@ -12,6 +12,7 @@ const DEFAULT: DataLabelsConfig = {
   enabled: false,
   position: 'above',
   showPeriodTotals: false,
+  allowNegative: false,
 };
 
 const POSITION_OPTIONS = [
@@ -29,6 +30,19 @@ export function DisplayConfigSection({ config, onChange }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* Allow Negative Values */}
+      <div className="flex items-center justify-between">
+        <Label htmlFor="allow-negative" className="text-xs text-muted-foreground cursor-pointer">
+          Allow Negative Values
+        </Label>
+        <Switch
+          id="allow-negative"
+          checked={c.allowNegative ?? false}
+          onCheckedChange={(v) => update({ allowNegative: v })}
+          className="scale-75 origin-right"
+        />
+      </div>
+
       <div className="flex items-center justify-between">
         <Label htmlFor="show-data-labels" className="text-xs text-muted-foreground cursor-pointer">
           Show Data Labels
