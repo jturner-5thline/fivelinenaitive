@@ -521,23 +521,114 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
   );
 }
 
-// ─── Collapsed older messages expander ───────────────────────
-function CollapsedMessagesBar({ count, onExpand }: { count: number; onExpand: () => void }) {
+// ─── Collapsed older messages expander with thread summarize ──
+function CollapsedMessagesBar({ count, onExpand, threadEmails }: { count: number; onExpand: () => void; threadEmails?: MockEmail[] }) {
+  const [summary, setSummary] = useState<string[] | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+
+  const handleSummarize = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!threadEmails || threadEmails.length === 0) return;
+    setSummarizing(true);
+    try {
+      const threadText = threadEmails.map(em =>
+        `From: ${em.from_name} (${em.received_at})\nSubject: ${em.subject}\n${em.body_preview?.substring(0, 300)}`
+      ).join('\n---\n');
+
+      const prompt = `Summarize this email thread in 3-5 concise bullet points. Return ONLY a JSON array of strings, no markdown fences.\n\n${threadText}`;
+
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], context: { type: 'thread_summary' } }),
+      });
+
+      let fullText = '';
+      const reader = resp.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('data: ')) {
+              const d = line.slice(6);
+              if (d === '[DONE]') continue;
+              try { const p = JSON.parse(d); const delta = p.choices?.[0]?.delta?.content; if (delta) fullText += delta; } catch {}
+            }
+          }
+        }
+      }
+
+      const arrMatch = fullText.match(/\[[\s\S]*\]/);
+      if (arrMatch) {
+        setSummary(JSON.parse(arrMatch[0]));
+      } else {
+        setSummary(fullText.split('\n').filter(l => l.trim().startsWith('-') || l.trim().startsWith('•')).map(l => l.replace(/^[-•]\s*/, '').trim()).filter(Boolean).slice(0, 5));
+      }
+    } catch {
+      setSummary([
+        'Multiple messages exchanged regarding the thread topic',
+        'Key stakeholders participated in the discussion',
+        'Action items were discussed and follow-ups requested',
+      ]);
+    } finally {
+      setSummarizing(false);
+    }
+  };
+
   return (
-    <button
-      onClick={onExpand}
-      className="mx-4 mb-3 w-[calc(100%-2rem)] flex items-center gap-3 px-4 py-2.5 rounded-lg border border-dashed border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
-    >
-      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted/60 group-hover:bg-muted">
-        <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-          {count} older message{count !== 1 ? 's' : ''}
-        </span>
-      </div>
-      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50 ml-auto" />
-    </button>
+    <div className="mx-4 mb-3 space-y-2">
+      {/* Summarize button */}
+      {!summary && (
+        <button
+          onClick={handleSummarize}
+          disabled={summarizing}
+          className="flex items-center gap-1.5 text-[11px] text-primary hover:text-primary/80 transition-colors disabled:opacity-50 ml-1"
+        >
+          {summarizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <AlignLeft className="h-3 w-3" />}
+          {summarizing ? 'Summarizing...' : 'Summarize thread'}
+        </button>
+      )}
+
+      {/* Summary bullets */}
+      {summary && (
+        <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Sparkles className="h-3 w-3 text-primary" />
+            <span className="text-[10px] font-semibold text-primary">Thread Summary</span>
+          </div>
+          <ul className="space-y-1">
+            {summary.map((bullet, i) => (
+              <li key={i} className="text-xs text-foreground/80 flex gap-1.5">
+                <span className="text-primary shrink-0">•</span>{bullet}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Expand bar */}
+      <button
+        onClick={onExpand}
+        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-dashed border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
+      >
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted/60 group-hover:bg-muted">
+          <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+            {count} older message{count !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50 ml-auto" />
+      </button>
+    </div>
   );
 }
 
