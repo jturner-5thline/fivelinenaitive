@@ -813,7 +813,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 <Sparkles className="h-3.5 w-3.5" />
                 AI Assist
               </Button>
-              </Popover>
               <Separator orientation="vertical" className="h-5 mx-1" />
               <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleReply}>
                 <Reply className="h-3.5 w-3.5" />
@@ -828,15 +827,28 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 Forward
               </Button>
               <Separator orientation="vertical" className="h-5 mx-1" />
-              <Button
-                variant={thread.isLinked ? 'secondary' : 'outline'}
-                size="sm"
-                className="h-8 gap-1.5 text-xs shrink-0"
-                onClick={() => onToggleLink(thread.latestEmail)}
-              >
-                {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                {thread.isLinked ? 'Unlink Deal' : 'Link to Deal'}
-              </Button>
+              <LinkToDealPopover
+                trigger={
+                  <Button
+                    variant={linkedDealName ? 'secondary' : 'outline'}
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs shrink-0"
+                  >
+                    {linkedDealName ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                    {linkedDealName ? `Linked: ${linkedDealName}` : 'Link to Deal'}
+                  </Button>
+                }
+                currentDealName={linkedDealName}
+                isLinked={!!linkedDealName}
+                onLinkDeal={(id, name) => {
+                  setLinkedDealName(name);
+                  onToggleLink(thread.latestEmail);
+                }}
+                onUnlink={() => {
+                  setLinkedDealName(undefined);
+                  onToggleLink(thread.latestEmail);
+                }}
+              />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleStar(thread.latestEmail)}>
