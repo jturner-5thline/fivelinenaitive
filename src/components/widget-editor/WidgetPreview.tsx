@@ -213,6 +213,10 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
 
   const trendLine = config.trendLine;
   const dataLabels = config.dataLabels;
+  const neg = config.negativeStyling;
+  const negEnabled = neg?.enableNegativeStyling ?? false;
+  const negThreshold = neg?.negativeThreshold ?? 0;
+  const negColor = neg?.negativeColor ?? 'hsl(0, 72%, 51%)';
   const showPeriodTotals = dataLabels?.showPeriodTotals ?? false;
   const primaryFormat = config.values[0]?.format ?? 'currency';
 
