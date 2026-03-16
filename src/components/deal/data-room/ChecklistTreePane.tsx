@@ -68,6 +68,7 @@ export function ChecklistTreePane({
   deleteAttachment, onToggleItemStatus,
 }: ChecklistTreePaneProps) {
   const [selectedUnmapped, setSelectedUnmapped] = useState<Set<string>>(new Set());
+  const [fileToDelete, setFileToDelete] = useState<DealAttachment | null>(null);
 
   const filterItem = (item: UnifiedChecklistItem): boolean => {
     if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
