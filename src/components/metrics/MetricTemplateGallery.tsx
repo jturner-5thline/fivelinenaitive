@@ -46,6 +46,7 @@ const METRIC_TEMPLATES: MetricTemplate[] = [
   { id: 'tpl-qb-ap-aging', name: 'AP Aging', description: 'Payables by aging bucket', category: 'quickbooks', type: 'chart', chartType: 'bar', dataSource: 'qb-ap-aging', defaultSize: 'medium', defaultColor: 'hsl(var(--primary))', icon: 'chart' },
   { id: 'tpl-qb-rev-vs-exp', name: 'Revenue vs Expenses', description: 'Monthly revenue, expenses and payments', category: 'quickbooks', type: 'chart', chartType: 'composed', dataSource: 'qb-revenue-vs-expenses', defaultSize: 'large', defaultColor: 'hsl(var(--primary))', icon: 'chart' },
   { id: 'tpl-qb-exp-cat', name: 'Expenses by Category', description: 'Top expense categories', category: 'quickbooks', type: 'chart', chartType: 'bar', dataSource: 'qb-expense-by-category', defaultSize: 'medium', defaultColor: 'hsl(var(--primary))', icon: 'chart' },
+  { id: 'tpl-qb-revenue-detail', name: 'Total Revenue Detail', description: 'KPI detail card with Debt & FinServ breakdown', category: 'quickbooks', type: 'stat', dataSource: 'qb-total-revenue-detail', defaultSize: 'small', defaultColor: 'hsl(var(--chart-2))', icon: 'dollar' },
 
   // HubSpot
   { id: 'tpl-hs-deals', name: 'Total Deals', description: 'All HubSpot-synced deals', category: 'hubspot', type: 'stat', dataSource: 'hs-total-deals', defaultSize: 'small', defaultColor: 'hsl(var(--chart-4))', icon: 'pipeline' },
