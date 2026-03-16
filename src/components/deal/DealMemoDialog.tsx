@@ -803,9 +803,18 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
           )}
         </ScrollArea>
 
-        {hasChanges && (
-          <div className="px-6 py-3 border-t bg-muted/30 text-sm text-muted-foreground">
-            You have unsaved changes
+        {autoSaveLabel && (
+          <div 
+            className={`px-6 py-2 border-t text-xs flex items-center gap-2 ${
+              autoSaveStatus === 'error' ? 'bg-destructive/10 text-destructive cursor-pointer' 
+              : autoSaveStatus === 'saved' ? 'bg-success/10 text-success' 
+              : 'bg-muted/30 text-muted-foreground'
+            }`}
+            onClick={autoSaveStatus === 'error' ? saveNow : undefined}
+          >
+            {autoSaveStatus === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}
+            {autoSaveStatus === 'saved' && <Check className="h-3 w-3" />}
+            {autoSaveLabel}
           </div>
         )}
       </DialogContent>
