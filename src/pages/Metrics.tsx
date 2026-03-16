@@ -2012,6 +2012,24 @@ export default function Metrics() {
                   );
                 })}
               </ManagementSnapshotDashboard>
+            )}
+            {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
+            {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
+            {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
+            {selectedDashboard === 'weekly-cashflow' && <WeeklyCashflowDashboard />}
+            {selectedDashboard === 'harvest-monthly-tracking' && <HarvestMonthlyTrackingDashboard />}
+            {selectedDashboard === 'flor-sales-commission' && <SalesCommissionBoardDashboard ownerName="Flor" />}
+            {selectedDashboard === 'james-sales-commission' && <SalesCommissionBoardDashboard ownerName="James Turner" />}
+            {selectedDashboard === 'niki-sales-commission' && <SalesCommissionBoardDashboard ownerName="Niki Heikali" />}
+            {selectedDashboard === 'paz-sales-commission' && <SalesCommissionBoardDashboard ownerName="Paz" />}
+            {selectedDashboard === 'chandler-sales-commission' && <ChandlerSalesCommissionDashboard />}
+            {selectedDashboard === 'consolidated-debt-pipeline' && <ConsolidatedDebtPipelineDashboard />}
+            {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
+            {selectedDashboard === 'deal-stage-timeline' && <DealStageTimelineDashboard />}
+            {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
+            {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
+            {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
+          </EditableDashboardWrapper>
 
         </div>
       </div>
