@@ -743,22 +743,47 @@ Deno.serve(async (req: Request) => {
 
         // Create tasks
         for (const taskDef of wfDef.tasks) {
-          const assigneeId =
+          // wf_tasks.assignee_id references wf_users, not auth.users
+          // For deals from the main table, we can't use auth user IDs directly
+          // Try to find a matching wf_user, otherwise set to null
+          let assigneeWfUserId: string | null = null;
+          const rawAssigneeId =
             taskDef.assigneeRole === "manager" ? deal.manager_id :
             taskDef.assigneeRole === "analyst" ? deal.analyst_id :
             taskDef.assigneeRole === "ops" ? deal.ops_id : null;
 
+          if (rawAssigneeId) {
+            // Check if this ID exists in wf_users
+            const { data: wfUser } = await supabase
+              .from("wf_users")
+              .select("id")
+              .eq("id", rawAssigneeId)
+              .maybeSingle();
+            assigneeWfUserId = wfUser?.id || null;
+          }
+
+          // Same for owner
+          let ownerWfUserId: string | null = null;
+          if (ownerId) {
+            const { data: wfOwner } = await supabase
+              .from("wf_users")
+              .select("id")
+              .eq("id", ownerId)
+              .maybeSingle();
+            ownerWfUserId = wfOwner?.id || null;
+          }
+
           const dueAt = new Date(Date.now() + taskDef.dueOffsetDays * 86400000).toISOString();
 
-          console.log(`[wf-stage-trigger] Creating task: "${taskDef.title}" → assignee: ${assigneeId} (${taskDef.assigneeRole}), due: ${dueAt}`);
+          console.log(`[wf-stage-trigger] Creating task: "${taskDef.title}" → assignee: ${assigneeWfUserId || 'null (no wf_user match)'} (${taskDef.assigneeRole}), due: ${dueAt}`);
 
           const { error: taskError } = await supabase.from("wf_tasks").insert({
             deal_id,
             title: taskDef.title,
             status: "open",
-            assignee_id: assigneeId,
-            created_by_id: ownerId,
-            workflow_owner_id: ownerId,
+            assignee_id: assigneeWfUserId,
+            created_by_id: ownerWfUserId,
+            workflow_owner_id: ownerWfUserId,
             workflow_key: wfDef.key,
             trigger_source: "stage_change",
             is_recurring: taskDef.isRecurring || false,
