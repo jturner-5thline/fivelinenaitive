@@ -705,37 +705,41 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              {/* AI Assist - prominent primary button */}
               <Popover open={smartPopoverOpen} onOpenChange={setSmartPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant={smartPopoverOpen ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-1.5 text-xs">
+                  <Button variant={smartPopoverOpen ? 'default' : 'default'} size="sm" className="h-8 gap-1.5 text-xs">
                     <Sparkles className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Smart</span>
+                    AI Assist
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent side="bottom" align="end" className="w-[320px] p-0 max-h-[70vh] overflow-hidden">
                   <SmartEmailPanel thread={thread} dealId={dealId || 'general'} />
                 </PopoverContent>
               </Popover>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleReply}>
-                    <Reply className="h-3.5 w-3.5" />
-                    Reply
-                    <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">R</kbd>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">Reply (R)</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
-                    <Forward className="h-3.5 w-3.5" />
-                    <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">F</kbd>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">Forward (F)</TooltipContent>
-              </Tooltip>
               <Separator orientation="vertical" className="h-5 mx-1" />
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleReply}>
+                <Reply className="h-3.5 w-3.5" />
+                Reply
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Reply All coming soon')}>
+                <Reply className="h-3.5 w-3.5" />
+                Reply All
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
+                <Forward className="h-3.5 w-3.5" />
+                Forward
+              </Button>
+              <Separator orientation="vertical" className="h-5 mx-1" />
+              <Button
+                variant={thread.isLinked ? 'secondary' : 'outline'}
+                size="sm"
+                className="h-8 gap-1.5 text-xs shrink-0"
+                onClick={() => onToggleLink(thread.latestEmail)}
+              >
+                {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                {thread.isLinked ? 'Unlink Deal' : 'Link to Deal'}
+              </Button>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleStar(thread.latestEmail)}>
@@ -743,20 +747,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
-              </Tooltip>
-              {/* Fix #3: "Link Deal" with icon-only + tooltip, shrink-0 */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={thread.isLinked ? 'secondary' : 'outline'}
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => onToggleLink(thread.latestEmail)}
-                  >
-                    {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">{thread.isLinked ? 'Unlink from deal (L)' : 'Link to deal (L)'}</TooltipContent>
               </Tooltip>
             </div>
           </div>
