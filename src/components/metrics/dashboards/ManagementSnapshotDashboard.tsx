@@ -556,7 +556,19 @@ export function ManagementSnapshotDashboard({
               </div>
             )}
 
-            <GenericDashboardCard {...props} />
+            {/* Render KPI Detail Card or Generic Card */}
+            {cardId === 'total-revenue-detail' ? (
+              <KPIDetailCard
+                kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
+                datarailsConfig={props.datarailsConfig}
+                timeWindow={props.timeWindow}
+                entityFilter={props.entityFilter}
+                isEditMode={isEditMode}
+                onClick={() => !isEditMode && onEditCard?.(cardId)}
+              />
+            ) : (
+              <GenericDashboardCard {...props} />
+            )}
           </div>
         );
       })}
