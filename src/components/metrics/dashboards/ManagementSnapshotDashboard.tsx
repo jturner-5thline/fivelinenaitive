@@ -347,9 +347,17 @@ function GenericDashboardCard({
       );
     }
 
+    // Compute cumulative trend data
+    const trendData = showTrendLine ? chartData.map((entry: any) => {
+      const total = dataKeys.reduce((sum: number, key: string) => sum + (Number(entry[key]) || 0), 0);
+      return { ...entry, __trendLine: total };
+    }) : chartData;
+
+    const trendLineColor = '#94A3B8';
+
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData}>
+        <ComposedChart data={trendData}>
           <defs>
             {negEnabled && (
               <linearGradient id={`negGrad-${cardId}`} x1="0" y1="0" x2="0" y2="1">
@@ -359,20 +367,22 @@ function GenericDashboardCard({
             )}
           </defs>
           <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-          <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+          <YAxis yAxisId="left" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+          {showTrendLine && <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />}
           <Tooltip formatter={(value: number) => formatCurrency(value)} />
           <Legend />
-          {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
+          {negEnabled && <ReferenceLine yAxisId="left" y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
           {dataKeys.map((key, i) => (
             <Bar
               key={key}
+              yAxisId="left"
               dataKey={key}
               stackId={visualization === 'stackedBar' ? `${cardId}-stack` : undefined}
               fill={i === 0 ? color : CHART_COLORS[i % CHART_COLORS.length]}
               name={key}
               radius={visualization !== 'stackedBar' ? [4, 4, 0, 0] as any : undefined}
             >
-              {negEnabled && chartData.map((entry: any, idx: number) => {
+              {negEnabled && trendData.map((entry: any, idx: number) => {
                 const val = entry[key];
                 const isBelowThreshold = typeof val === 'number' && val < negThreshold;
                 return (
@@ -384,7 +394,25 @@ function GenericDashboardCard({
               })}
             </Bar>
           ))}
-        </BarChart>
+          {showTrendLine && (
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="__trendLine"
+              stroke={trendLineColor}
+              strokeWidth={2}
+              dot={{ r: 4, fill: trendLineColor }}
+              name="Trend"
+            >
+              <LabelList
+                dataKey="__trendLine"
+                position="top"
+                formatter={(value: number) => formatCurrency(value)}
+                style={{ fontSize: 9, fill: trendLineColor, fontWeight: 600 }}
+              />
+            </Line>
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
     );
   };
