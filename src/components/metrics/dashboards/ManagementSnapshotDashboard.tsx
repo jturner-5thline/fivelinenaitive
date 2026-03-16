@@ -250,17 +250,24 @@ function GenericDashboardCard({
     </div>
   );
 
+  const isCompactTile = kpiTileLayout === 'compact';
+
   const renderKPI = () => (
-    <div className={`h-[${chartHeight}px] flex flex-col items-center justify-center gap-2`} style={{ height: chartHeight }}>
+    <div className="flex flex-col items-center justify-center gap-1 h-full" style={{ minHeight: chartHeight }}>
       {isLoading ? (
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       ) : (
         <>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{title}</p>
-          <p className="text-4xl font-bold text-foreground">
+          <p className={cn('uppercase tracking-wide text-muted-foreground', isCompactTile ? 'text-[10px]' : 'text-xs')}>{title}</p>
+          <p className={cn('font-bold text-foreground', isCompactTile ? 'text-2xl' : 'text-4xl')}>
             {formatCurrency(total)}
           </p>
-          <p className="text-xs text-muted-foreground">{WINDOW_LABEL_MAP[timeWindow] || timeWindow}</p>
+          {!isCompactTile && (
+            <p className="text-xs text-muted-foreground">{WINDOW_LABEL_MAP[timeWindow] || timeWindow}</p>
+          )}
+          {isCompactTile && footerLabel && (
+            <p className="text-[9px] text-muted-foreground/60 text-center mt-0.5">{footerLabel}</p>
+          )}
         </>
       )}
     </div>
