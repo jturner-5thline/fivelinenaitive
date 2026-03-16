@@ -860,6 +860,22 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </div>
           </div>
 
+          {/* AI Assist inline panel */}
+          {showAiAssist && (
+            <AiAssistInlinePanel
+              thread={thread}
+              dealId={dealId}
+              onClose={() => setShowAiAssist(false)}
+              onInsertReply={(text) => {
+                handleReply();
+                // Small delay to let inline composer mount
+                setTimeout(() => {
+                  setInlineDraft(prev => ({ to: getReplyTarget().to_email, toName: getReplyTarget().to_name, body: text, subject: `Re: ${thread.subject}` }));
+                }, 100);
+              }}
+            />
+          )}
+
           {/* Thread content - scrollable */}
           <ScrollArea className="flex-1">
             <div className="py-3 space-y-0">
