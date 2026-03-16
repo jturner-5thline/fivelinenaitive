@@ -210,7 +210,7 @@ export function useQBPreviewData(config: WidgetConfig) {
 
   // Build a stable key from breakdown/accountFilter config
   const valuesKey = config.values.map(v => 
-    `${v.fieldId}|${v.breakdown ?? 'total'}|${(v.accountFilter ?? []).sort().join(',')}`
+    `${v.fieldId}|${v.agg}|${v.breakdown ?? 'total'}|${(v.accountFilter ?? []).sort().join(',')}|${v.combineOp ?? ''}`
   ).join(';');
 
   return useQuery({
