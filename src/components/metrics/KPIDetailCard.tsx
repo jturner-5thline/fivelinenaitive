@@ -69,10 +69,11 @@ export function KPIDetailCard({
     <Card
       className={cn(
         'h-full flex flex-col bg-card border-border overflow-hidden',
-        !isEditMode && onClick && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all',
+        onClick && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all',
       )}
       onClick={onClick}
     >
+      <div className="widget-drag-handle cursor-grab" />
       <CardContent className={cn(
         'flex-1 flex flex-col justify-center gap-2',
         isCompact ? 'p-3' : 'p-4',
