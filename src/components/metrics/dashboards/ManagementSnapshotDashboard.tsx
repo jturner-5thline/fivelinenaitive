@@ -217,7 +217,6 @@ function GenericDashboardCard({
   );
 
   const renderEditActions = () => {
-    if (!isEditMode) return null;
     return (
       <div className="flex items-center gap-1">
         {onEditCard && (
@@ -225,18 +224,18 @@ function GenericDashboardCard({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => onEditCard(cardId)}
+            onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
             aria-label={`Edit ${title}`}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
         )}
-        {onDeleteCard && (
+        {isEditMode && onDeleteCard && (
           <Button
             variant="ghost"
             size="icon"
             className="h-7 w-7 text-destructive hover:text-destructive"
-            onClick={() => onDeleteCard(cardId)}
+            onClick={(e) => { e.stopPropagation(); onDeleteCard(cardId); }}
             aria-label={`Delete ${title}`}
           >
             <Trash2 className="h-3.5 w-3.5" />
