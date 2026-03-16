@@ -73,6 +73,7 @@ export interface DataLabelsConfig {
 
 // ──── KPI Detail Card ────
 export type KPIComparisonMode = 'vs Previous Period' | 'vs Previous Year' | 'vs Plan/Budget';
+export type KPILayoutVariant = 'full' | 'compact';
 
 export interface KPIBreakdownColumn {
   label: string;
@@ -86,6 +87,7 @@ export interface KPIDetailCardConfig {
   comparisonMode: KPIComparisonMode;
   comparisonSourceField: string | null;
   breakdownColumns: 1 | 2;
+  layoutVariant: KPILayoutVariant;
   left: KPIBreakdownColumn;
   right: KPIBreakdownColumn;
 }
@@ -96,6 +98,7 @@ export const DEFAULT_KPI_DETAIL_CARD_CONFIG: KPIDetailCardConfig = {
   comparisonMode: 'vs Previous Period',
   comparisonSourceField: null,
   breakdownColumns: 2,
+  layoutVariant: 'full',
   left: { label: '', valueField: null, varianceField: null },
   right: { label: '', valueField: null, varianceField: null },
 };
