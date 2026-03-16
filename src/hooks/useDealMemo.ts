@@ -48,8 +48,8 @@ export function useDealMemo(dealId: string | undefined) {
     fetchMemo();
   }, [fetchMemo]);
 
-  const saveMemo = useCallback(async (updates: Partial<Omit<DealMemo, 'id' | 'deal_id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>>) => {
-    if (!dealId || !user) return;
+  const saveMemo = useCallback(async (updates: Partial<Omit<DealMemo, 'id' | 'deal_id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>>, options?: { silent?: boolean }): Promise<boolean> => {
+    if (!dealId || !user) return false;
 
     setIsSaving(true);
     try {
@@ -79,14 +79,20 @@ export function useDealMemo(dealId: string | undefined) {
       }
 
       await fetchMemo();
-      toast({ title: 'Saved', description: 'Memo updated successfully' });
+      if (!options?.silent) {
+        toast({ title: 'Saved', description: 'Memo updated successfully' });
+      }
+      return true;
     } catch (error) {
       console.error('Error saving memo:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save memo',
-        variant: 'destructive',
-      });
+      if (!options?.silent) {
+        toast({
+          title: 'Error',
+          description: 'Failed to save memo',
+          variant: 'destructive',
+        });
+      }
+      return false;
     } finally {
       setIsSaving(false);
     }
