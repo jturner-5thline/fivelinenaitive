@@ -1,8 +1,8 @@
-import { WidgetConfig, getField, isQBAccountField, ComparisonConfig, TrendLineConfig, DataLabelsConfig } from './widgetTypes';
+import { WidgetConfig, getField, isQBAccountField, ComparisonConfig, TrendLineConfig, DataLabelsConfig, NegativeStylingConfig } from './widgetTypes';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList } from 'recharts';
-import { useMemo } from 'react';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList, ReferenceLine } from 'recharts';
+import React, { useMemo } from 'react';
 import { BarChart3, LineChart as LineChartIcon, Hash, Loader2, Database, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQBPreviewData, PreviewDataPoint } from '@/hooks/useQBPreviewData';
@@ -213,6 +213,10 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
 
   const trendLine = config.trendLine;
   const dataLabels = config.dataLabels;
+  const neg = config.negativeStyling;
+  const negEnabled = neg?.enableNegativeStyling ?? false;
+  const negThreshold = neg?.negativeThreshold ?? 0;
+  const negColor = neg?.negativeColor ?? 'hsl(0, 72%, 51%)';
   const showPeriodTotals = dataLabels?.showPeriodTotals ?? false;
   const primaryFormat = config.values[0]?.format ?? 'currency';
 
@@ -312,25 +316,67 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
               </linearGradient>
             );
           })}
+          {negEnabled && (
+            <linearGradient id="barGrad-negative" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="hsl(0, 72%, 60%)" stopOpacity={0.95} />
+              <stop offset="100%" stopColor={negColor} stopOpacity={0.85} />
+            </linearGradient>
+          )}
         </defs>
         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
         <XAxis dataKey="period" tick={{ fontSize: 11 }} label={{ value: xLabel, position: 'insideBottom', offset: -2, fontSize: 11 }} />
         <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} />
         <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
+        {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
         {dataKeys.map((name, i) => {
           const isLastSeries = i === dataKeys.length - 1;
           return isLine ? (
-            <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls>
-              {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
-              {isLastSeries && showPeriodTotals && dataKeys.length > 1 && (
-                <LabelList dataKey="__period_total" content={renderLinePeriodTotalLabel} />
-              )}
-            </Line>
+            negEnabled ? (
+              <React.Fragment key={name}>
+                <Line
+                  type="monotone"
+                  dataKey={(entry: any) => {
+                    const v = entry[name];
+                    return typeof v === 'number' && v >= negThreshold ? v : undefined;
+                  }}
+                  stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  connectNulls={false}
+                  name={name}
+                />
+                <Line
+                  type="monotone"
+                  dataKey={(entry: any) => {
+                    const v = entry[name];
+                    return typeof v === 'number' && v < negThreshold ? v : undefined;
+                  }}
+                  stroke={negColor}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: negColor }}
+                  connectNulls={false}
+                  name={`${name} (neg)`}
+                  legendType="none"
+                />
+              </React.Fragment>
+            ) : (
+              <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls>
+                {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
+                {isLastSeries && showPeriodTotals && dataKeys.length > 1 && (
+                  <LabelList dataKey="__period_total" content={renderLinePeriodTotalLabel} />
+                )}
+              </Line>
+            )
           ) : isStacked ? (
             <Bar key={name} dataKey={name} fill={`url(#barGrad-${i})`} stackId="stack"
               shape={(props: Record<string, unknown>) => <StackedBarShape {...props} dataKeys={dataKeys} currentKey={name} />}
             >
+              {negEnabled && enrichedData.map((entry: any, idx: number) => {
+                const val = entry[name];
+                const isBelowThreshold = typeof val === 'number' && val < negThreshold;
+                return <Cell key={`cell-${idx}`} fill={isBelowThreshold ? 'url(#barGrad-negative)' : `url(#barGrad-${i})`} />;
+              })}
               {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
               {isLastSeries && showPeriodTotals && (
                 <LabelList dataKey="__period_total" content={renderPeriodTotalLabel} />
@@ -338,6 +384,11 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
             </Bar>
           ) : (
             <Bar key={name} dataKey={name} fill={`url(#barGrad-${i})`} radius={barRadius}>
+              {negEnabled && enrichedData.map((entry: any, idx: number) => {
+                const val = entry[name];
+                const isBelowThreshold = typeof val === 'number' && val < negThreshold;
+                return <Cell key={`cell-${idx}`} fill={isBelowThreshold ? 'url(#barGrad-negative)' : `url(#barGrad-${i})`} />;
+              })}
               {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
               {isLastSeries && showPeriodTotals && dataKeys.length > 1 && (
                 <LabelList dataKey="__period_total" content={renderPeriodTotalLabel} />
