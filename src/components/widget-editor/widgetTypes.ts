@@ -28,6 +28,7 @@ export interface SeriesConfig {
 
 export interface ValueConfig {
   fieldId: string | null;
+  label?: string; // Persisted display name (for QB accounts or custom labels)
   agg: 'sum' | 'avg' | 'count';
   format: 'currency' | 'percent' | 'number';
   breakdown?: 'total' | 'byAccount' | 'byEntity';
