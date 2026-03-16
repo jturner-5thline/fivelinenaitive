@@ -201,6 +201,8 @@ function GenericDashboardCard({
   entityFilter,
   isEditMode,
   sizeVariant = 'chart',
+  kpiTileLayout = 'standard',
+  footerLabel,
   onEditCard,
   onDeleteCard,
   onTimeWindowChange,
