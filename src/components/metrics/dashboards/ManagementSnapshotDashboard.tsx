@@ -387,6 +387,8 @@ interface ManagementSnapshotDashboardProps {
   hiddenCards?: EditableManagementSnapshotCardId[];
   gridLayout: GridLayoutItem[];
   onGridLayoutChange: (layout: GridLayoutItem[]) => void;
+  /** Additional widget elements (custom widgets) to include in the same grid */
+  children?: React.ReactNode;
 }
 
 export function ManagementSnapshotDashboard({
@@ -398,6 +400,7 @@ export function ManagementSnapshotDashboard({
   hiddenCards = [],
   gridLayout,
   onGridLayoutChange,
+  children,
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
 
