@@ -82,6 +82,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const storedFilePathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
 
+  // ── Start date detection & override ──
+  const [modelStartDate, setModelStartDate] = useState<{ month: number; year: number } | null>(null);
+  const [startDateConfirmed, setStartDateConfirmed] = useState(false);
   // ── Batch 2: Column Exclude state ──
   const [excludedColumns, setExcludedColumns] = useState<Set<number>>(new Set());
   const [showColumnManager, setShowColumnManager] = useState(false);
