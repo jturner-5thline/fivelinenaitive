@@ -64,30 +64,55 @@ interface WriteUpPreviewDialogProps {
 function fmtCurrency(value: string | undefined): string {
   if (!value) return '—';
   const upper = value.toUpperCase();
+  const isNegative = value.startsWith('(') || value.startsWith('-');
   const hasMM = upper.includes('MM') || upper.includes('M');
   const hasK = upper.includes('K');
-  const cleaned = value.replace(/[^0-9.-]/g, '');
+  const cleaned = value.replace(/[^0-9.]/g, '');
   const num = parseFloat(cleaned);
   if (isNaN(num)) return value;
+  const absNum = num;
+  const sign = isNegative ? '-' : '';
   // If value was already expressed in MM (e.g. "$7.49MM" → num=7.49), format as $X.XMM
-  if (hasMM && Math.abs(num) < 1_000) return `$${num.toFixed(1)}MM`;
-  if (hasK && Math.abs(num) < 1_000_000) return `$${num.toFixed(1)}K`;
+  if (hasMM && absNum < 1_000) return `${sign}$${absNum.toFixed(1)}MM`;
+  if (hasK && absNum < 1_000_000) return `${sign}$${absNum.toFixed(1)}K`;
   // Raw large numbers
-  if (Math.abs(num) >= 1_000_000) return `$${(num / 1_000_000).toFixed(1)}MM`;
-  if (Math.abs(num) >= 1_000) return `$${(num / 1_000).toFixed(1)}K`;
-  return `$${num.toLocaleString()}`;
+  if (absNum >= 1_000_000) return `${sign}$${(absNum / 1_000_000).toFixed(1)}MM`;
+  if (absNum >= 1_000) return `${sign}$${(absNum / 1_000).toFixed(1)}K`;
+  return `${sign}$${absNum.toLocaleString()}`;
 }
 
 function parseNum(v: string | undefined): number | null {
   if (!v) return null;
-  const n = parseFloat(v.replace(/[^0-9.-]/g, ''));
-  return isNaN(n) ? null : n;
+  const isNegative = v.startsWith('(') || v.startsWith('-') || (v.includes('(') && v.includes(')'));
+  const cleaned = v.replace(/[^0-9.]/g, '');
+  const n = parseFloat(cleaned);
+  if (isNaN(n)) return null;
+  return isNegative ? -n : n;
 }
 
 function parsePct(v: string | undefined): number | null {
   if (!v) return null;
   const n = parseFloat(v.replace(/[^0-9.-]/g, ''));
   return isNaN(n) ? null : n;
+}
+
+/** Convert plain text with bullet prefixes (- or *) into HTML list */
+function renderBulletText(text: string): React.ReactNode {
+  if (!text) return '—';
+  const lines = text.split('\n').filter(l => l.trim());
+  const hasBullets = lines.some(l => /^\s*[-*•]\s/.test(l));
+  if (!hasBullets) {
+    return <span style={{ whiteSpace: 'pre-wrap' }}>{text}</span>;
+  }
+  return (
+    <ul style={{ margin: 0, paddingLeft: 20, listStyleType: 'disc' }}>
+      {lines.map((line, i) => (
+        <li key={i} style={{ fontSize: 14, color: T.mutedFg, lineHeight: 1.6 }}>
+          {line.replace(/^\s*[-*•]\s*/, '')}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /* ── Reusable sub-components ── */
