@@ -926,7 +926,7 @@ async function handleExtractWriteUp(dealId: string, supabase: any, supabaseServi
     for (const doc of allUploadedDocs) {
       try {
         const bucket = documents.find(d => d.id === doc.id) || financials.find(d => d.id === doc.id) ? "deal-space" : "deal-attachments";
-        const { data: fileData, error: downloadError } = await supabase.storage.from(bucket).download(doc.file_path);
+        const { data: fileData, error: downloadError } = await supabaseService.storage.from(bucket).download(doc.file_path);
         if (downloadError) continue;
         const extracted = await extractContent(fileData, doc.name);
         if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
