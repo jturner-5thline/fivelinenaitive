@@ -27,7 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CircularProgress } from './data-room/CircularProgress';
 import { ChecklistTreePane } from './data-room/ChecklistTreePane';
 import { FileListPane } from './data-room/FileListPane';
-import { ContextPane } from './data-room/ContextPane';
+
 import { MappingDialog } from './data-room/MappingDialog';
 import { FilePreviewPanel } from './data-room/FilePreviewPanel';
 import { BreadcrumbTrail } from './data-room/BreadcrumbTrail';
