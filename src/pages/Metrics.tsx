@@ -1920,6 +1920,39 @@ export default function Metrics() {
                       );
                     })}
 
+                    {/* Custom dashboards */}
+                    {customDashboards.length > 0 && <DropdownMenuSeparator />}
+                    {customDashboards.map((dash) => (
+                      <DropdownMenuSub key={dash.id}>
+                        <div className="flex items-center">
+                          <DropdownMenuItem
+                            className={cn(
+                              "flex-1 flex items-center justify-between py-2",
+                              selectedDashboard === dash.id && "bg-accent"
+                            )}
+                            onClick={() => setSelectedDashboard(dash.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <LayoutDashboard className="h-4 w-4 text-chart-4" />
+                              <span>{dash.name}</span>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuSubTrigger className="h-7 w-7 p-0 flex items-center justify-center">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </DropdownMenuSubTrigger>
+                        </div>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeleteCustomDashboard(dash.id)}
+                          >
+                            <TrashIcon className="h-3.5 w-3.5 mr-2" />
+                            Delete Dashboard
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    ))}
+
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="flex items-center gap-2 text-primary"
@@ -1928,7 +1961,10 @@ export default function Metrics() {
                       <FolderPlus className="h-4 w-4" />
                       <span>New Folder</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="flex items-center gap-2 text-primary">
+                    <DropdownMenuItem
+                      className="flex items-center gap-2 text-primary"
+                      onClick={() => setCreateDashboardOpen(true)}
+                    >
                       <Plus className="h-4 w-4" />
                       <span>Create New Dashboard</span>
                     </DropdownMenuItem>
