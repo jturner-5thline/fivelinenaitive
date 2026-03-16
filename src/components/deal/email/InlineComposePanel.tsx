@@ -105,7 +105,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
     }
   };
 
-  // Fix #11: formatting helpers
+  // Formatting helpers
   const insertFormatting = (prefix: string, suffix: string) => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -126,6 +126,10 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
     const url = prompt('Enter URL:');
     if (url) insertFormatting('[', `](${url})`);
   };
+  const handleBulletList = () => insertFormatting('- ', '\n');
+  const handleNumberedList = () => insertFormatting('1. ', '\n');
+  const handleSaveDraft = () => toast.success('Draft saved');
+  const handleAiDraft = () => toast.info('AI Draft coming soon');
 
   const handleDiscard = () => {
     resetForm();
