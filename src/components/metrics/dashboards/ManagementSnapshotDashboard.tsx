@@ -322,12 +322,15 @@ function GenericDashboardCard({
 
   return (
     <Card
-      className={cn(!isEditMode && onEditCard && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all')}
+      className={cn(
+        'h-full flex flex-col',
+        !isEditMode && onEditCard && 'cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all',
+      )}
       onClick={handleCardClick}
     >
-      <CardHeader className="pb-2">
+      <CardHeader className={cn('pb-2', sizeVariant === 'metric' && 'pb-1 pt-3 px-3')}>
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <CardTitle className={cn('text-sm font-medium', sizeVariant === 'metric' && 'text-xs')}>{title}</CardTitle>
           {renderEditActions()}
         </div>
         <div className="flex gap-1.5 flex-wrap">
@@ -335,9 +338,9 @@ function GenericDashboardCard({
           {entityName && <Badge variant="secondary" className="w-fit text-xs">Entity: {entityName}</Badge>}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className={cn('flex-1 min-h-0', sizeVariant === 'metric' && 'px-3 pb-3')}>
         {visualization === 'kpi' ? renderKPI() : (
-          <div style={{ height: chartHeight }}>
+          <div className="h-full">
             {renderChart()}
           </div>
         )}
