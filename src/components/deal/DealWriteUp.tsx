@@ -166,6 +166,11 @@ interface DealWriteUpProps {
   onCancel: () => void;
   isSaving?: boolean;
   autoSaveStatus?: AutoSaveStatus;
+  markFieldEdited?: (field: string) => void;
+  isFieldEdited?: (field: string) => boolean;
+  editedCount?: number;
+  editedFieldKeys?: string[];
+  resetAllEditFlags?: () => void;
 }
 
 const AutoSaveIndicator = ({ status }: { status: AutoSaveStatus }) => {
