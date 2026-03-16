@@ -1438,9 +1438,8 @@ export default function Metrics() {
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renameFolderName, setRenameFolderName] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem(MANAGEMENT_SNAPSHOT_STORAGE_KEY, JSON.stringify(managementSnapshotCards));
-  }, [managementSnapshotCards]);
+
+
 
   const managementSnapshotCardConfigs = useMemo<Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>>(() => {
     return (Object.keys(managementSnapshotCards) as EditableManagementSnapshotCardId[]).reduce((acc, key) => {
