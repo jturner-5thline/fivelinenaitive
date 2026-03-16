@@ -13,8 +13,9 @@ import { PLCommentThread, type FPAComment } from '../collaboration/PLCommentThre
 import { InlineAnnotation, type Annotation } from '../collaboration/InlineAnnotation';
 import { PLRowQuickActions } from '../PLRowQuickActions';
 import { VarianceLegend } from '../VarianceLegend';
-import { useQBProfitAndLoss, getComparisonDateRange, dateRangeToDates, type PLLineItem as QBPLLineItem, type ParsedPL } from '@/hooks/useQBProfitAndLoss';
+import { useQBProfitAndLoss, getComparisonDateRange, getGrainPeriodDates, getGrainComparisonDates, getGrainPeriodLabel, dateRangeToDates, type PLLineItem as QBPLLineItem, type ParsedPL, type TimeGrain } from '@/hooks/useQBProfitAndLoss';
 import { useQBEntities } from '@/hooks/useQBWidgetData';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 // ─── PLRow type ────────────────────────────────────────────────
 interface PLRow {
