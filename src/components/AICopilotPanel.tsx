@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useNavigate } from 'react-router-dom';
 import { useCopilotStore } from '@/stores/copilotStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -185,6 +186,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
         return (
           <ReactMarkdown
             key={i}
+            remarkPlugins={[remarkGfm]}
             components={{
               h1: ({ children }) => <h1 style={{ fontSize: 16, fontWeight: 700, margin: '12px 0 6px 0', lineHeight: 1.3 }}>{children}</h1>,
               h2: ({ children }) => <h2 style={{ fontSize: 14, fontWeight: 700, margin: '10px 0 4px 0', lineHeight: 1.3 }}>{children}</h2>,
