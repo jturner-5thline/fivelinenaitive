@@ -196,10 +196,10 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
         console.error('Error saving metrics widgets:', err);
       }
     }, 500);
-  }, [canEdit, company?.id]);
+  }, [company?.id]);
 
   const persistPresets = useCallback((newPresets: MetricsLayoutPreset[]) => {
-    if (!canEdit || !company?.id) return;
+    if (!company?.id) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
