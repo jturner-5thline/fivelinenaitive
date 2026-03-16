@@ -74,45 +74,33 @@ function AiSummaryStrip({ email }: { email: MockEmail }) {
 }
 
 // ─── Avatar with brand logo / gradient fallback ─────────────
-function hashStringToHue(str: string): number {
+// Predefined muted palette for consistent avatar colors
+const AVATAR_PALETTE = [
+  { bg: 'hsl(220, 40%, 30%)', text: 'hsl(220, 60%, 80%)' },
+  { bg: 'hsl(260, 35%, 30%)', text: 'hsl(260, 55%, 80%)' },
+  { bg: 'hsl(340, 35%, 30%)', text: 'hsl(340, 55%, 80%)' },
+  { bg: 'hsl(160, 35%, 28%)', text: 'hsl(160, 55%, 78%)' },
+  { bg: 'hsl(30, 40%, 30%)',  text: 'hsl(30, 60%, 80%)' },
+  { bg: 'hsl(190, 35%, 28%)', text: 'hsl(190, 55%, 78%)' },
+  { bg: 'hsl(280, 30%, 30%)', text: 'hsl(280, 50%, 80%)' },
+  { bg: 'hsl(10, 35%, 30%)',  text: 'hsl(10, 55%, 78%)' },
+];
+
+function hashStringToIndex(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return Math.abs(hash) % 360;
+  return Math.abs(hash) % AVATAR_PALETTE.length;
 }
 
-function EmailAvatar({ name, email, size = 'md' }: { name: string; email?: string; size?: 'sm' | 'md' }) {
-  const [imgError, setImgError] = useState(false);
-  const sizeClass = size === 'sm' ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-xs';
-
-  // Extract domain for favicon
-  const domain = email ? email.split('@')[1] : null;
-  const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null;
-
-  // Consistent gradient from email/name hash
-  const hue = hashStringToHue(email || name);
-  const gradientStyle = {
-    background: `linear-gradient(135deg, hsl(${hue}, 60%, 45%), hsl(${hue}, 60%, 30%))`,
-  };
-
-  if (faviconUrl && !imgError) {
-    return (
-      <div className={cn('rounded-full overflow-hidden shrink-0', sizeClass)}>
-        <img
-          src={faviconUrl}
-          alt={name}
-          className="h-full w-full object-cover"
-          onError={() => setImgError(true)}
-        />
-      </div>
-    );
-  }
+function EmailAvatar({ name, email }: { name: string; email?: string; size?: 'sm' | 'md' }) {
+  const palette = AVATAR_PALETTE[hashStringToIndex(email || name)];
 
   return (
     <div
-      className={cn('rounded-full flex items-center justify-center font-semibold shrink-0 text-white', sizeClass)}
-      style={gradientStyle}
+      className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+      style={{ background: palette.bg, color: palette.text }}
     >
       {name.charAt(0).toUpperCase()}
     </div>
