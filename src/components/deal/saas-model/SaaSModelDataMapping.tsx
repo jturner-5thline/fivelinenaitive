@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter, Eraser, ArrowUpDown, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter, Eraser, ArrowUpDown, PanelRightOpen, PanelRightClose, Calendar } from 'lucide-react';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -1395,48 +1395,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
       )}
 
-      {/* Start month confirmation */}
-      {modelStartDate && (
-        <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-card/60 px-3 py-1.5">
-          <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          <span className="text-[10px] text-muted-foreground shrink-0">First month:</span>
-          <select
-            className="text-[10px] h-6 px-1.5 rounded border border-border bg-background text-foreground"
-            value={modelStartDate.month}
-            onChange={(e) => {
-              setModelStartDate(prev => prev ? { ...prev, month: parseInt(e.target.value) } : prev);
-              setStartDateConfirmed(true);
-            }}
-          >
-            {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
-              <option key={i} value={i + 1}>{m}</option>
-            ))}
-          </select>
-          <input
-            type="number"
-            className="text-[10px] h-6 w-14 px-1.5 rounded border border-border bg-background text-foreground"
-            value={modelStartDate.year}
-            min={2000}
-            max={2040}
-            onChange={(e) => {
-              const yr = parseInt(e.target.value);
-              if (yr >= 2000 && yr <= 2040) {
-                setModelStartDate(prev => prev ? { ...prev, year: yr } : prev);
-                setStartDateConfirmed(true);
-              }
-            }}
-          />
-          {startDateConfirmed ? (
-            <Badge variant="outline" className="text-[8px] h-4 px-1.5 gap-1 border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400">
-              <Check className="h-2.5 w-2.5" /> Confirmed
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-[8px] h-4 px-1.5 gap-1 border-blue-500/50 bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <Sparkles className="h-2.5 w-2.5" /> Auto-detected
-            </Badge>
-          )}
-        </div>
-      )}
 
       <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-card/60 px-3 py-1.5">
         <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1661,6 +1619,59 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </Popover>
         </div>
         <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                {modelStartDate
+                  ? `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][modelStartDate.month - 1]} ${modelStartDate.year}`
+                  : 'Start Month'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3" align="end">
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-foreground">First month in file</p>
+                <p className="text-[10px] text-muted-foreground">Sets the starting month for the Income Statement and Balance Sheet.</p>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="text-xs h-7 px-2 rounded border border-border bg-background text-foreground flex-1"
+                    value={modelStartDate?.month ?? 1}
+                    onChange={(e) => {
+                      setModelStartDate(prev => prev ? { ...prev, month: parseInt(e.target.value) } : { month: parseInt(e.target.value), year: 2024 });
+                      setStartDateConfirmed(true);
+                    }}
+                  >
+                    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
+                      <option key={i} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    className="text-xs h-7 w-16 px-2 rounded border border-border bg-background text-foreground"
+                    value={modelStartDate?.year ?? 2024}
+                    min={2000}
+                    max={2040}
+                    onChange={(e) => {
+                      const yr = parseInt(e.target.value);
+                      if (yr >= 2000 && yr <= 2040) {
+                        setModelStartDate(prev => prev ? { ...prev, year: yr } : { month: 1, year: yr });
+                        setStartDateConfirmed(true);
+                      }
+                    }}
+                  />
+                </div>
+                {startDateConfirmed ? (
+                  <Badge variant="outline" className="text-[9px] h-5 px-2 gap-1 border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400">
+                    <Check className="h-2.5 w-2.5" /> Confirmed
+                  </Badge>
+                ) : modelStartDate ? (
+                  <Badge variant="outline" className="text-[9px] h-5 px-2 gap-1 border-blue-500/50 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <Sparkles className="h-2.5 w-2.5" /> Auto-detected from headers
+                  </Badge>
+                ) : null}
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => {
             if (selectedFile) {
               const url = URL.createObjectURL(selectedFile.file);
