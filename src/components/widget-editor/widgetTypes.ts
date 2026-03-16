@@ -71,10 +71,39 @@ export interface DataLabelsConfig {
   showPeriodTotals?: boolean;
 }
 
+// ──── KPI Detail Card ────
+export type KPIComparisonMode = 'vs Previous Period' | 'vs Previous Year' | 'vs Plan/Budget';
+
+export interface KPIBreakdownColumn {
+  label: string;
+  valueField: string | null;
+  varianceField: string | null;
+}
+
+export interface KPIDetailCardConfig {
+  cardTitle: string;
+  mainValueField: string | null;
+  comparisonMode: KPIComparisonMode;
+  comparisonSourceField: string | null;
+  breakdownColumns: 1 | 2;
+  left: KPIBreakdownColumn;
+  right: KPIBreakdownColumn;
+}
+
+export const DEFAULT_KPI_DETAIL_CARD_CONFIG: KPIDetailCardConfig = {
+  cardTitle: 'KPI Detail',
+  mainValueField: null,
+  comparisonMode: 'vs Previous Period',
+  comparisonSourceField: null,
+  breakdownColumns: 2,
+  left: { label: '', valueField: null, varianceField: null },
+  right: { label: '', valueField: null, varianceField: null },
+};
+
 export interface WidgetConfig {
   id: string;
   name: string;
-  type: 'table' | 'columnChart' | 'kpi' | 'bar' | 'line' | 'column' | 'stackedBar';
+  type: 'table' | 'columnChart' | 'kpi' | 'bar' | 'line' | 'column' | 'stackedBar' | 'kpiDetail';
   datasetId: string;
   entityId?: string | null;
   xAxis: AxisConfig;
@@ -85,6 +114,7 @@ export interface WidgetConfig {
   comparison?: ComparisonConfig;
   trendLine?: TrendLineConfig;
   dataLabels?: DataLabelsConfig;
+  kpiDetailConfig?: KPIDetailCardConfig;
 }
 
 // ---------- seed data ----------

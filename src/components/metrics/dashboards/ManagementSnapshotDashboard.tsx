@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
 import { useDashboardCardData } from '@/hooks/useDashboardCardData';
-import { type WidgetConfig, type TimeWindow } from '@/components/widget-editor/widgetTypes';
+import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, DEFAULT_KPI_DETAIL_CARD_CONFIG } from '@/components/widget-editor/widgetTypes';
+import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +53,7 @@ export type EditableManagementSnapshotCardId =
   | 'debt-revenue'
   | 'finserv-revenue'
   | 'total-revenue'
+  | 'total-revenue-detail'
   | 'clients-signed-debt'
   | 'clients-signed-finserv'
   | 'outstanding-ar'
@@ -66,6 +68,7 @@ export type ManagementSnapshotEditableConfig = Pick<
 > & Partial<Pick<MetricWidgetConfig, 'type' | 'chartType' | 'datarailsConfig'>> & {
   timeWindow?: TimeWindow;
   sizeVariant?: WidgetSizeVariant;
+  kpiDetailConfig?: KPIDetailCardConfig;
 };
 
 const WINDOW_GROUPS: { label: string; options: { value: TimeWindow; label: string }[] }[] = [
@@ -447,10 +450,21 @@ export function ManagementSnapshotDashboard({
     props: GenericDashboardCardProps;
   };
 
+  const TOTAL_REVENUE_DETAIL_KPI: KPIDetailCardConfig = {
+    cardTitle: 'Total Revenue',
+    mainValueField: 'f-total-revenue',
+    comparisonMode: 'vs Previous Period',
+    comparisonSourceField: null,
+    breakdownColumns: 2,
+    left: { label: 'Debt Revenue', valueField: 'f-revenue', varianceField: null },
+    right: { label: 'FinServ Revenue', valueField: 'f-revenue', varianceField: null },
+  };
+
   const allCards: CardEntry[] = [
     { cardId: 'debt-revenue', props: getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd', 'chart') },
     { cardId: 'finserv-revenue', props: getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd', 'chart') },
     { cardId: 'total-revenue', props: getCardProps('total-revenue', 'Total Revenue', 'hsl(var(--chart-2))', 'ytd', 'chart') },
+    { cardId: 'total-revenue-detail', props: getCardProps('total-revenue-detail', 'Total Revenue Detail', 'hsl(var(--chart-2))', 'ytd', 'metric') },
     { cardId: 'clients-signed-debt', props: getCardProps('clients-signed-debt', 'Clients Signed - Debt', 'hsl(var(--primary))', 'ytd', 'metric') },
     { cardId: 'clients-signed-finserv', props: getCardProps('clients-signed-finserv', 'Clients Signed - FinServ', 'hsl(var(--chart-4))', 'ytd', 'metric') },
     { cardId: 'outstanding-ar', props: getCardProps('outstanding-ar', 'Outstanding A/R', 'hsl(var(--primary))', 'ytd', 'metric') },
@@ -542,7 +556,19 @@ export function ManagementSnapshotDashboard({
               </div>
             )}
 
-            <GenericDashboardCard {...props} />
+            {/* Render KPI Detail Card or Generic Card */}
+            {cardId === 'total-revenue-detail' ? (
+              <KPIDetailCard
+                kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
+                datarailsConfig={props.datarailsConfig}
+                timeWindow={props.timeWindow}
+                entityFilter={props.entityFilter}
+                isEditMode={isEditMode}
+                onClick={() => !isEditMode && onEditCard?.(cardId)}
+              />
+            ) : (
+              <GenericDashboardCard {...props} />
+            )}
           </div>
         );
       })}
