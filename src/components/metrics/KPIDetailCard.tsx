@@ -57,8 +57,8 @@ export function KPIDetailCard({
     entityFilter,
   );
 
-  const isLoading = mainLoading || (!isCompact && (leftLoading || (kpiConfig.breakdownColumns === 2 && rightLoading)));
   const isCompact = kpiConfig.layoutVariant === 'compact';
+  const isLoading = mainLoading || (!isCompact && (leftLoading || (kpiConfig.breakdownColumns === 2 && rightLoading)));
 
   // Compute comparison percentage (simplified: use the proportion of sub-metrics)
   const mainPctChange = mainTotal !== 0 ? computeSimplePctChange(mainTotal) : 0;
