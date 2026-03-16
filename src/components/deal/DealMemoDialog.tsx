@@ -565,6 +565,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                   <Textarea
                     value={localValues.narrative}
                     onChange={(e) => handleChange('narrative', e.target.value)}
+                    onBlur={handleFieldBlur}
                     placeholder="Describe the company, what they are looking for, and the proposed solution..."
                     className="min-h-[100px] resize-none"
                   />
