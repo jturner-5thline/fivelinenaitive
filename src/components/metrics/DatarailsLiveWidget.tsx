@@ -22,6 +22,7 @@ import { useDashboardCardData } from '@/hooks/useDashboardCardData';
 import { type WidgetConfig, type TimeWindow, type NegativeStylingConfig } from '@/components/widget-editor/widgetTypes';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const COLORS = [
   'hsl(213, 90%, 60%)',
