@@ -603,30 +603,10 @@ Deno.serve(async (req: Request) => {
       dealName = mainDeal.company || "Unknown Deal";
       console.log(`[wf-stage-trigger] Found deal in main deals table: ${dealName}`);
 
-      // Resolve manager/analyst/ops from profiles based on display names
-      let managerId = mainDeal.user_id; // Default to deal owner
-      let analystId: string | null = null;
-      let opsId: string | null = null;
-
-      // Try to resolve manager from manager_display_name
-      if (mainDeal.manager_display_name) {
-        const { data: managerProfile } = await supabase
-          .from("profiles")
-          .select("user_id")
-          .eq("display_name", mainDeal.manager_display_name)
-          .maybeSingle();
-        if (managerProfile) managerId = managerProfile.user_id;
-      }
-
-      // Try to resolve owner as a fallback
-      if (mainDeal.owner_display_name && !managerId) {
-        const { data: ownerProfile } = await supabase
-          .from("profiles")
-          .select("user_id")
-          .eq("display_name", mainDeal.owner_display_name)
-          .maybeSingle();
-        if (ownerProfile) managerId = ownerProfile.user_id;
-      }
+      // Use deal owner as default manager
+      const managerId = mainDeal.user_id;
+      const analystId: string | null = null;
+      const opsId: string | null = null;
 
       deal = {
         id: mainDeal.id,
