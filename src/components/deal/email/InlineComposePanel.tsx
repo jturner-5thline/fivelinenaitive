@@ -129,7 +129,8 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
   const handleBulletList = () => insertFormatting('- ', '\n');
   const handleNumberedList = () => insertFormatting('1. ', '\n');
   const handleSaveDraft = () => toast.success('Draft saved');
-  const handleAiDraft = () => toast.info('AI Draft coming soon');
+
+  // AI Draft handler - replaced by AiDraftPopover
 
   const handleDiscard = () => {
     resetForm();
