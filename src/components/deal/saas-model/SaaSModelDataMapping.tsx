@@ -32,7 +32,9 @@ import {
   KEYWORD_ALIASES, getMatchConfidence, applyMappingsToModel,
   formatCellValue, isNumericCell, detectHeaderRow, extractColumnHeaders,
   validateDateSequence, type DateWarning, detectFirstMonthFromHeaders,
+  extractMappedDataRows,
 } from './dataMappingUtils';
+import { useFinancialFiles, type FinancialFileRecord } from '@/hooks/useFinancialFiles';
 
 interface Props {
   dealId: string;
