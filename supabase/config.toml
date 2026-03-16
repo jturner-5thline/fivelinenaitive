@@ -191,3 +191,6 @@ verify_jwt = false
 
 [functions.analysis-chat]
 verify_jwt = false
+
+[functions.generate-ux-insights]
+verify_jwt = false
