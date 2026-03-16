@@ -213,7 +213,6 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
 
   const trendLine = config.trendLine;
   const dataLabels = config.dataLabels;
-  const allowNegative = dataLabels?.allowNegative ?? false;
   const showPeriodTotals = dataLabels?.showPeriodTotals ?? false;
   const primaryFormat = config.values[0]?.format ?? 'currency';
 
@@ -222,27 +221,13 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
     ? Object.keys(data[0]).filter(k => k !== 'period' && !k.startsWith('__trend_') && k !== '__period_total')
     : valueFields;
 
-  // If allowNegative is off, force all numeric values to be absolute
-  const normalizedData = useMemo(() => {
-    if (allowNegative) return data;
-    return data.map(row => {
-      const newRow = { ...row };
-      for (const key of dataKeys) {
-        if (typeof newRow[key] === 'number') {
-          newRow[key] = Math.abs(newRow[key] as number);
-        }
-      }
-      return newRow;
-    });
-  }, [data, allowNegative, dataKeys]);
-
   // Enrich data with trend line values and period totals
   const enrichedData = useMemo(() => {
-    let result = normalizedData;
+    let result = data;
 
     // Add trend line
     if (trendLine?.enabled && dataKeys.length > 0) {
-      const trendValues = computeTrendLine(normalizedData, dataKeys[0], trendLine);
+      const trendValues = computeTrendLine(data, dataKeys[0], trendLine);
       result = result.map((d, i) => ({ ...d, __trend_line: trendValues[i] }));
     }
 
@@ -255,7 +240,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
     }
 
     return result;
-  }, [normalizedData, trendLine, dataKeys, showPeriodTotals]);
+  }, [data, trendLine, dataKeys, showPeriodTotals]);
 
   const renderDataLabel = dataLabels?.enabled ? (props: Record<string, unknown>) => {
     const { x, y, width, value, height } = props as { x: number; y: number; width: number; value: number; height: number };
@@ -330,15 +315,8 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
         </defs>
         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
         <XAxis dataKey="period" tick={{ fontSize: 11 }} label={{ value: xLabel, position: 'insideBottom', offset: -2, fontSize: 11 }} />
-        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => {
-          const abs = Math.abs(v);
-          const sign = v < 0 ? '-' : '';
-          return abs >= 1000 ? `${sign}$${(abs / 1000).toFixed(0)}k` : `${sign}$${abs}`;
-        }} />
-        <Tooltip formatter={(value: number) => {
-          const sign = value < 0 ? '-' : '';
-          return `${sign}$${Math.abs(value).toLocaleString()}`;
-        }} />
+        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} />
+        <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {dataKeys.map((name, i) => {
           const isLastSeries = i === dataKeys.length - 1;

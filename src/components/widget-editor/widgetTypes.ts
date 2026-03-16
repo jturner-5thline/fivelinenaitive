@@ -69,7 +69,6 @@ export interface DataLabelsConfig {
   enabled: boolean;
   position: 'above' | 'inside' | 'below';
   showPeriodTotals?: boolean;
-  allowNegative?: boolean;
 }
 
 // ──── KPI Detail Card ────

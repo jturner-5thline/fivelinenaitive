@@ -92,33 +92,17 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
     values?: Array<{ fieldId?: string | null; format?: string }>;
     xAxis?: { window?: TimeWindow };
     entityId?: string;
-    dataLabels?: { allowNegative?: boolean };
   } | undefined;
 
   const selectedType = dc?.type ?? 'bar';
   const timeWindow: TimeWindow = dc?.xAxis?.window ?? 'ytd';
   const valueNames = (dc?.values || []).map(v => v.fieldId || 'Value').filter(Boolean) as string[];
-  const allowNegative = dc?.dataLabels?.allowNegative ?? false;
 
-  const { chartData: rawChartData, seriesKeys, isLoading } = useDashboardCardData(
+  const { chartData, seriesKeys, isLoading } = useDashboardCardData(
     dc as Partial<WidgetConfig> | undefined,
     timeWindow,
     dc?.entityId,
   );
-
-  // Apply allowNegative: when off, take Math.abs of all numeric values
-  const chartData = useMemo(() => {
-    if (allowNegative) return rawChartData;
-    return rawChartData.map(row => {
-      const newRow = { ...row };
-      for (const key of Object.keys(newRow)) {
-        if (key !== 'period' && typeof newRow[key] === 'number') {
-          newRow[key] = Math.abs(newRow[key] as number);
-        }
-      }
-      return newRow;
-    });
-  }, [rawChartData, allowNegative]);
 
   const chartHeight = widget.size === 'small' ? 180 : widget.size === 'medium' ? 240 : 280;
 
