@@ -394,8 +394,10 @@ export function ManagementSnapshotDashboard({
     fallbackTitle: string,
     fallbackColor: string = 'hsl(var(--primary))',
     fallbackWindow: TimeWindow = 'ytd',
+    fallbackSizeVariant: WidgetSizeVariant = 'chart',
   ): GenericDashboardCardProps => {
     const cfg = cardConfigs[cardId];
+    const variant = cfg?.sizeVariant || fallbackSizeVariant;
     return {
       cardId,
       title: cfg?.title || fallbackTitle,
@@ -406,9 +408,11 @@ export function ManagementSnapshotDashboard({
       datarailsConfig: cfg?.datarailsConfig as Partial<WidgetConfig> | undefined,
       entityFilter: cfg?.entityFilter,
       isEditMode,
+      sizeVariant: variant,
       onEditCard,
       onDeleteCard,
       onTimeWindowChange,
+      chartHeight: variant === 'metric' ? 100 : 200,
     };
   };
 
