@@ -217,16 +217,28 @@ export function ChecklistTreePane({
                                   <FileIcon name={file.name} className="h-3 w-3 shrink-0" />
                                   <span className="truncate flex-1">{file.name}</span>
                                   <span className="text-[9px] shrink-0">{formatBytes(file.size_bytes)}</span>
-                                  {handleDownloadFile && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-4 w-4 opacity-0 group-hover/file:opacity-100 shrink-0"
-                                      onClick={(e) => { e.stopPropagation(); handleDownloadFile(file); }}
-                                    >
-                                      <Download className="h-2.5 w-2.5" />
-                                    </Button>
-                                  )}
+                                  <div className="flex items-center gap-0.5 opacity-0 group-hover/file:opacity-100 shrink-0">
+                                    {handleDownloadFile && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-4 w-4"
+                                        onClick={(e) => { e.stopPropagation(); handleDownloadFile(file); }}
+                                      >
+                                        <Download className="h-2.5 w-2.5" />
+                                      </Button>
+                                    )}
+                                    {deleteAttachment && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-4 w-4 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={(e) => { e.stopPropagation(); setFileToDelete(file); }}
+                                      >
+                                        <Trash2 className="h-2.5 w-2.5" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
