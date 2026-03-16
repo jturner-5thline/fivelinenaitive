@@ -21,6 +21,7 @@ import {
   ChevronRight,
   ChevronUp,
   Reply,
+  ReplyAll,
   Forward,
   AlertCircle,
   CheckCircle2,
@@ -36,6 +37,10 @@ import {
   Link as LinkIcon,
   Loader2,
   AlignLeft,
+  Trash2,
+  Flag,
+  Pin,
+  FolderInput,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
@@ -68,8 +73,8 @@ function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }
 function AiSummaryStrip({ email }: { email: MockEmail }) {
   if (!email.ai_summary) return null;
   return (
-    <div className="flex items-start gap-2 px-4 py-2.5 rounded-lg bg-primary/5 border border-primary/10">
-      <Sparkles className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+    <div className="flex items-start gap-2 px-4 py-2.5 rounded-lg bg-[hsl(var(--outlook-blue)/0.08)] border border-[hsl(var(--outlook-blue)/0.15)]">
+      <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--outlook-blue))] mt-0.5 shrink-0" />
       <div className="flex items-center gap-2 flex-wrap min-w-0">
         <p className="text-xs text-foreground/80 leading-relaxed">{email.ai_summary}</p>
         <SentimentBadge sentiment={email.ai_sentiment} />
@@ -78,17 +83,16 @@ function AiSummaryStrip({ email }: { email: MockEmail }) {
   );
 }
 
-// ─── Avatar with brand logo / gradient fallback ─────────────
-// Predefined muted palette for consistent avatar colors
+// ─── Outlook-style 2-letter square avatar ─────────────
 const AVATAR_PALETTE = [
-  { bg: 'hsl(220, 40%, 30%)', text: 'hsl(220, 60%, 80%)' },
-  { bg: 'hsl(260, 35%, 30%)', text: 'hsl(260, 55%, 80%)' },
-  { bg: 'hsl(340, 35%, 30%)', text: 'hsl(340, 55%, 80%)' },
-  { bg: 'hsl(160, 35%, 28%)', text: 'hsl(160, 55%, 78%)' },
-  { bg: 'hsl(30, 40%, 30%)',  text: 'hsl(30, 60%, 80%)' },
-  { bg: 'hsl(190, 35%, 28%)', text: 'hsl(190, 55%, 78%)' },
-  { bg: 'hsl(280, 30%, 30%)', text: 'hsl(280, 50%, 80%)' },
-  { bg: 'hsl(10, 35%, 30%)',  text: 'hsl(10, 55%, 78%)' },
+  { bg: 'hsl(213, 70%, 45%)', text: '#fff' },
+  { bg: 'hsl(340, 55%, 45%)', text: '#fff' },
+  { bg: 'hsl(160, 50%, 38%)', text: '#fff' },
+  { bg: 'hsl(30, 55%, 45%)', text: '#fff' },
+  { bg: 'hsl(260, 45%, 45%)', text: '#fff' },
+  { bg: 'hsl(190, 50%, 40%)', text: '#fff' },
+  { bg: 'hsl(10, 50%, 45%)', text: '#fff' },
+  { bg: 'hsl(280, 40%, 45%)', text: '#fff' },
 ];
 
 function hashStringToIndex(str: string): number {
@@ -99,20 +103,27 @@ function hashStringToIndex(str: string): number {
   return Math.abs(hash) % AVATAR_PALETTE.length;
 }
 
-function EmailAvatar({ name, email }: { name: string; email?: string; size?: 'sm' | 'md' }) {
-  const palette = AVATAR_PALETTE[hashStringToIndex(email || name)];
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function EmailAvatar({ name, email: emailAddr, size = 'sm' }: { name: string; email?: string; size?: 'sm' | 'md' }) {
+  const palette = AVATAR_PALETTE[hashStringToIndex(emailAddr || name)];
+  const dim = size === 'md' ? 'h-9 w-9 text-xs' : 'h-6 w-6 text-[10px]';
 
   return (
     <div
-      className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+      className={cn('rounded flex items-center justify-center font-semibold shrink-0', dim)}
       style={{ background: palette.bg, color: palette.text }}
     >
-      {name.charAt(0).toUpperCase()}
+      {getInitials(name)}
     </div>
   );
 }
 
-// ─── Thread List Item (Card style) ───────────────────────────
+// ─── Thread List Item (Outlook compact) ──────────────────────
 interface ThreadListItemProps {
   thread: EmailThread;
   isSelected: boolean;
@@ -133,40 +144,26 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
   const threadCount = thread.emails.length;
   const isUnread = thread.hasUnread;
-  const isUrgent = thread.needsResponse;
   const showCheckbox = hovered || isChecked;
 
   const rowContent = (
     <div
       className={cn(
-        'group relative cursor-pointer transition-all duration-150 mx-0 mr-2 mb-1.5 border-l-[3px] overflow-hidden',
-        // Selected state (clicked to read)
+        'group relative cursor-pointer transition-all duration-100 border-l-2',
+        // Selected: thin blue left border, very subtle bg
         isSelected
-          ? 'bg-primary/[0.06] border-l-primary rounded-r-lg shadow-[inset_0_0_12px_-4px_hsl(var(--primary)/0.2)]'
-          : 'rounded-lg',
-        // Checked state (checkbox selected for bulk)
-        isChecked && !isSelected && 'bg-primary/[0.04]',
-        // Unread: slightly brighter background
-        !isSelected && !isChecked && isUnread && 'bg-muted/[0.08]',
-        // Unread left border (when not selected)
-        !isSelected && isUnread && 'border-l-primary',
-        // Read: no border accent
-        !isSelected && !isUnread && !isUrgent && 'border-l-transparent',
-        // Urgency: needs response border when not unread
-        !isSelected && isUrgent && !isUnread && 'border-l-amber-500',
-        // Urgency row tint
-        isUrgent && !isSelected && !isChecked && 'bg-destructive/[0.06]',
-        // Default + hover
-        !isSelected && !isUrgent && !isChecked && 'hover:bg-[rgba(255,255,255,0.04)]',
-        isUrgent && !isSelected && !isChecked && 'hover:bg-destructive/[0.08]',
+          ? 'border-l-[hsl(var(--outlook-blue))] bg-[hsl(var(--outlook-blue)/0.08)]'
+          : 'border-l-transparent',
+        // Hover
+        !isSelected && 'hover:bg-[hsl(var(--foreground)/0.04)]',
       )}
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="flex items-start gap-3 px-3 py-4 min-w-0 overflow-hidden">
-        {/* Checkbox + unread dot area */}
-        <div className="relative flex items-center justify-center shrink-0" style={{ width: 32, height: 32 }}>
+      <div className="flex items-start gap-2.5 px-3 py-2 min-w-0">
+        {/* Checkbox or avatar area */}
+        <div className="relative flex items-center justify-center shrink-0 mt-0.5" style={{ width: 24, height: 24 }}>
           {showCheckbox ? (
             <div
               className="absolute inset-0 flex items-center justify-center z-10"
@@ -180,9 +177,8 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
             </div>
           ) : (
             <>
-              {/* Unread dot */}
               {isUnread && (
-                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-[6px] h-[6px] rounded-full bg-primary z-10" />
+                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-[6px] h-[6px] rounded-full bg-[hsl(var(--outlook-blue))] z-10" />
               )}
               <EmailAvatar
                 name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name}
@@ -192,112 +188,65 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           )}
         </div>
         
-        <div className="min-w-0 flex-1 overflow-hidden">
-          {/* Row 1: Sender + timestamp */}
-          <div className="flex items-center justify-between gap-2 mb-0.5">
-            <div className="flex items-center gap-2 min-w-0">
+        <div className="min-w-0 flex-1">
+          {/* Row 1: Sender + date on same line */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
               <span className={cn(
-                'text-sm truncate',
+                'text-[13px] truncate',
                 isUnread ? 'font-bold text-foreground' : 'font-normal text-foreground/70'
               )}>
                 {displayName}
               </span>
               {threadCount > 1 && (
-                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full font-medium shrink-0">
-                  {threadCount}
+                <span className="text-[10px] text-muted-foreground font-medium shrink-0">
+                  [{threadCount}]
                 </span>
               )}
             </div>
-            {/* Timestamp - hidden on hover to make room for actions */}
             <span className={cn(
-              'text-[11px] text-muted-foreground shrink-0 transition-opacity duration-150',
-              hovered ? 'opacity-0' : 'opacity-100'
+              'text-[11px] shrink-0 transition-opacity duration-100',
+              hovered ? 'opacity-0' : 'opacity-100',
+              isUnread ? 'text-[hsl(var(--outlook-blue))] font-medium' : 'text-muted-foreground'
             )}>
               {formatDistanceToNow(new Date(latest.received_at), { addSuffix: false })}
             </span>
           </div>
 
-          {/* Row 2: Badges */}
-          <div className="flex items-center gap-1.5 mb-0.5 overflow-hidden">
-            {thread.dealName && (
-              <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-primary/10 text-primary border-primary/20">
-                💼 {thread.dealName}
-              </Badge>
-            )}
-            {!thread.dealName && thread.category === 'prospect' && (
-              <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                🎯 Prospect
-              </Badge>
-            )}
-            {isUrgent && (
-              <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-amber-500/10 text-amber-400 border-amber-500/20">
-                ⏰ Response Due
-              </Badge>
-            )}
-          </div>
-          
-          {/* Row 3: Subject */}
+          {/* Row 2: Subject (bold if unread) */}
           <p className={cn(
-            'text-[13px] truncate',
+            'text-[12px] truncate leading-tight',
             isUnread ? 'text-foreground font-semibold' : 'text-foreground/60 font-normal'
           )}>
             {thread.subject}
           </p>
           
-          {/* Row 4: Snippet - single line, higher contrast */}
-          <p className={cn(
-            'text-xs truncate mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis',
-            isUnread ? 'text-muted-foreground/80' : 'text-muted-foreground/50'
-          )}>
-            {latest.snippet}
-          </p>
-          
-          {/* Row 5: Meta badges */}
-          <div className="flex items-center gap-1.5 mt-2">
-            {thread.isLinked && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="secondary" className="text-[10px] h-[18px] px-1.5 gap-0.5">
-                    <Link2 className="h-2.5 w-2.5" /> Deal linked
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">This thread is associated with a deal in your pipeline</TooltipContent>
-              </Tooltip>
+          {/* Row 3: Preview text + deal pill */}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {thread.dealName && (
+              <Badge variant="outline" className="text-[9px] h-[16px] px-1 gap-0.5 bg-[hsl(var(--outlook-blue)/0.1)] text-[hsl(var(--outlook-blue))] border-[hsl(var(--outlook-blue)/0.2)] shrink-0">
+                {thread.dealName}
+              </Badge>
             )}
-            {thread.hasAttachments && (
-              <Paperclip className="h-3 w-3 text-muted-foreground" />
-            )}
+            <p className="text-[11px] text-muted-foreground/60 truncate">
+              {latest.snippet}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Hover quick actions - slide in over timestamp area */}
+      {/* Hover actions: flag, delete, pin */}
       {hovered && (
-        <div className="absolute right-2 top-3 flex items-center gap-0.5 bg-background/95 backdrop-blur-sm border rounded-md shadow-md px-1 py-0.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={(e) => { e.stopPropagation(); onArchive?.(latest); }} className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted transition-colors">
-                <Archive className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Archive</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={(e) => { e.stopPropagation(); toast.info('Snooze coming soon'); }} className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted transition-colors">
-                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Snooze</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={(e) => { e.stopPropagation(); onToggleStar(latest); }} className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted transition-colors">
-                <Star className={cn('h-3.5 w-3.5', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
-          </Tooltip>
+        <div className="absolute right-2 top-1.5 flex items-center gap-0">
+          <button onClick={(e) => { e.stopPropagation(); onToggleStar(latest); }} className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted/60 transition-colors">
+            <Flag className={cn('h-3 w-3', thread.isStarred ? 'fill-[hsl(var(--outlook-blue))] text-[hsl(var(--outlook-blue))]' : 'text-muted-foreground')} />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onDelete?.(latest); }} className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted/60 transition-colors">
+            <Trash2 className="h-3 w-3 text-muted-foreground" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onArchive?.(latest); }} className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted/60 transition-colors">
+            <Pin className="h-3 w-3 text-muted-foreground" />
+          </button>
         </div>
       )}
     </div>
@@ -321,17 +270,17 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
 // ─── Email List Skeleton ─────────────────────────────────────
 function EmailListSkeleton() {
   return (
-    <div className="pt-2 pb-2 space-y-1.5 px-2">
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-3 px-3 py-4 rounded-lg">
-          <div className="h-8 w-8 rounded-full bg-muted/30 animate-pulse shrink-0" />
-          <div className="flex-1 min-w-0 space-y-2">
+    <div className="space-y-0">
+      {Array.from({ length: 10 }).map((_, i) => (
+        <div key={i} className="flex items-start gap-2.5 px-3 py-2 border-l-2 border-transparent">
+          <div className="h-6 w-6 rounded bg-muted/30 animate-pulse shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 space-y-1.5">
             <div className="flex items-center justify-between">
-              <div className="h-3.5 w-28 bg-muted/30 rounded animate-pulse" />
-              <div className="h-3 w-12 bg-muted/20 rounded animate-pulse" />
+              <div className="h-3 w-24 bg-muted/30 rounded animate-pulse" />
+              <div className="h-2.5 w-10 bg-muted/20 rounded animate-pulse" />
             </div>
-            <div className="h-3.5 w-3/4 bg-muted/25 rounded animate-pulse" />
-            <div className="h-3 w-full bg-muted/15 rounded animate-pulse" />
+            <div className="h-3 w-3/4 bg-muted/25 rounded animate-pulse" />
+            <div className="h-2.5 w-full bg-muted/15 rounded animate-pulse" />
           </div>
         </div>
       ))}
@@ -381,7 +330,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
 
    return (
     <ScrollArea className="h-full w-full">
-      <div className="pt-2 pb-2 overflow-hidden">
+      <div className="divide-y divide-border/30">
         {threads.map((thread) => (
           <ThreadListItem
             key={thread.threadId}
@@ -445,18 +394,16 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
 
   return (
     <div ref={messageRef} className={cn(
-      'rounded-lg border transition-all duration-150 mx-4 mb-3',
-      expanded
-        ? 'bg-card/60 border-border/50 shadow-sm'
-        : 'bg-card/30 border-border/30 hover:bg-muted/30 hover:border-border/50'
+      'border-b border-border/30 transition-all duration-100',
+      expanded ? 'bg-card/40' : 'hover:bg-[hsl(var(--foreground)/0.02)]'
     )}>
       <button
         onClick={toggleExpand}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left"
+        className="w-full flex items-center gap-3 px-5 py-2.5 text-left"
       >
-        <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="sm" />
+        <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="md" />
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className={cn('text-sm truncate', isLatest ? 'font-semibold' : 'font-medium text-foreground/80')}>
+          <span className={cn('text-[13px] truncate', isLatest ? 'font-semibold' : 'font-medium text-foreground/80')}>
             {displayName}
           </span>
           {!expanded && (
@@ -467,12 +414,12 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
           <span className="text-[11px] text-muted-foreground">
             {format(new Date(email.received_at), 'MMM d, h:mm a')}
           </span>
-          {expanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
         </div>
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 pl-[60px]">
+        <div className="px-5 pb-4 pl-[64px]">
           <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
             {email.has_attachments && <Paperclip className="h-3 w-3" />}
@@ -508,7 +455,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
           )}
           {email.has_attachments && (
             <div className="mt-3 flex gap-2">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/20 text-sm hover:bg-muted/40 transition-colors cursor-pointer">
+              <div className="flex items-center gap-2 px-3 py-2 rounded border bg-muted/20 text-sm hover:bg-muted/40 transition-colors cursor-pointer">
                 <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-foreground/80">document.pdf</span>
                 <span className="text-[11px] text-muted-foreground">2.4 MB</span>
@@ -583,13 +530,13 @@ function CollapsedMessagesBar({ count, onExpand, threadEmails }: { count: number
   };
 
   return (
-    <div className="mx-4 mb-3 space-y-2">
+    <div className="space-y-2">
       {/* Summarize button */}
       {!summary && (
         <button
           onClick={handleSummarize}
           disabled={summarizing}
-          className="flex items-center gap-1.5 text-[11px] text-primary hover:text-primary/80 transition-colors disabled:opacity-50 ml-1"
+          className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--outlook-blue))] hover:text-[hsl(var(--outlook-blue)/0.8)] transition-colors disabled:opacity-50 px-5 py-1"
         >
           {summarizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <AlignLeft className="h-3 w-3" />}
           {summarizing ? 'Summarizing...' : 'Summarize thread'}
@@ -598,15 +545,15 @@ function CollapsedMessagesBar({ count, onExpand, threadEmails }: { count: number
 
       {/* Summary bullets */}
       {summary && (
-        <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
+        <div className="mx-5 rounded border border-[hsl(var(--outlook-blue)/0.2)] bg-[hsl(var(--outlook-blue)/0.04)] p-3">
           <div className="flex items-center gap-1.5 mb-2">
-            <Sparkles className="h-3 w-3 text-primary" />
-            <span className="text-[10px] font-semibold text-primary">Thread Summary</span>
+            <Sparkles className="h-3 w-3 text-[hsl(var(--outlook-blue))]" />
+            <span className="text-[10px] font-semibold text-[hsl(var(--outlook-blue))]">Thread Summary</span>
           </div>
           <ul className="space-y-1">
             {summary.map((bullet, i) => (
               <li key={i} className="text-xs text-foreground/80 flex gap-1.5">
-                <span className="text-primary shrink-0">•</span>{bullet}
+                <span className="text-[hsl(var(--outlook-blue))] shrink-0">•</span>{bullet}
               </li>
             ))}
           </ul>
@@ -616,17 +563,13 @@ function CollapsedMessagesBar({ count, onExpand, threadEmails }: { count: number
       {/* Expand bar */}
       <button
         onClick={onExpand}
-        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-dashed border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
+        className="w-full flex items-center gap-3 px-5 py-2 border-y border-border/30 bg-muted/10 hover:bg-muted/20 transition-all group"
       >
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted/60 group-hover:bg-muted">
-          <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-            {count} older message{count !== 1 ? 's' : ''}
-          </span>
-        </div>
-        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50 ml-auto" />
+        <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-[12px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+          {count} older message{count !== 1 ? 's' : ''}
+        </span>
+        <ChevronDown className="h-3 w-3 text-muted-foreground/50 ml-auto" />
       </button>
     </div>
   );
@@ -787,77 +730,136 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     return () => window.removeEventListener('keydown', handler);
   }, [thread, onToggleLink, handleReply]);
 
+  const latest = thread.latestEmail;
+  const senderName = latest.from_name === 'You' ? latest.to_name : latest.from_name;
+  const senderEmail = latest.from_name === 'You' ? latest.to_email : latest.from_email;
+
   return (
     <>
       <div className="flex h-full relative overflow-hidden">
-        {/* Main thread view — lighter bg + left accent border */}
-        <div className="flex flex-col flex-1 min-w-0 bg-[hsl(var(--background)/0.6)] border-l-2 border-primary/20">
-          {/* Fix #7: Sticky header toolbar — consolidated, no separate message count/sender header */}
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/60 backdrop-blur-sm sticky top-0 z-10 shrink-0">
-            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-8 w-8">
+        <div className="flex flex-col flex-1 min-w-0 bg-[hsl(var(--email-reading-bg))]">
+          {/* Outlook-style command bar */}
+          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b bg-[hsl(var(--email-toolbar-bg))] shrink-0">
+            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold truncate">{thread.subject}</h3>
-            </div>
 
-            <div className="flex items-center gap-1 shrink-0">
-              {/* AI Assist - prominent primary button */}
-              <Button
-                variant={showAiAssist ? 'default' : 'default'}
-                size="sm"
-                className="h-8 gap-1.5 text-xs"
-                onClick={() => setShowAiAssist(!showAiAssist)}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                AI Assist
-              </Button>
-              <Separator orientation="vertical" className="h-5 mx-1" />
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleReply}>
-                <Reply className="h-3.5 w-3.5" />
-                Reply
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Reply All coming soon')}>
-                <Reply className="h-3.5 w-3.5" />
-                Reply All
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
-                <Forward className="h-3.5 w-3.5" />
-                Forward
-              </Button>
-              <Separator orientation="vertical" className="h-5 mx-1" />
-              <LinkToDealPopover
-                trigger={
-                  <Button
-                    variant={linkedDealName ? 'secondary' : 'outline'}
-                    size="sm"
-                    className="h-8 gap-1.5 text-xs shrink-0"
-                  >
-                    {linkedDealName ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                    {linkedDealName ? `Linked: ${linkedDealName}` : 'Link to Deal'}
-                  </Button>
-                }
-                currentDealName={linkedDealName}
-                isLinked={!!linkedDealName}
-                onLinkDeal={(id, name) => {
-                  setLinkedDealName(name);
-                  onToggleLink(thread.latestEmail);
-                }}
-                onUnlink={() => {
-                  setLinkedDealName(undefined);
-                  onToggleLink(thread.latestEmail);
-                }}
-              />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleStar(thread.latestEmail)}>
-                    <Star className={cn('h-4 w-4', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
-              </Tooltip>
-            </div>
+            {/* Command bar buttons with icons + labels */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={handleReply} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                  <Reply className="h-4 w-4 text-foreground/70" />
+                  <span className="text-[10px] text-foreground/60">Reply</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Reply (R)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => toast.info('Reply All coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                  <ReplyAll className="h-4 w-4 text-foreground/70" />
+                  <span className="text-[10px] text-foreground/60">Reply All</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Reply All</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => toast.info('Forward coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                  <Forward className="h-4 w-4 text-foreground/70" />
+                  <span className="text-[10px] text-foreground/60">Forward</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Forward (F)</TooltipContent>
+            </Tooltip>
+
+            <div className="w-px h-8 bg-border/50 mx-1" />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => toast.info('Delete coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                  <Trash2 className="h-4 w-4 text-foreground/70" />
+                  <span className="text-[10px] text-foreground/60">Delete</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Delete</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => toast.info('Archive coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                  <Archive className="h-4 w-4 text-foreground/70" />
+                  <span className="text-[10px] text-foreground/60">Archive</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Archive</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => onToggleStar(latest)} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                  <Flag className={cn('h-4 w-4', thread.isStarred ? 'fill-[hsl(var(--outlook-blue))] text-[hsl(var(--outlook-blue))]' : 'text-foreground/70')} />
+                  <span className="text-[10px] text-foreground/60">Flag</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Flag</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => toast.info('Move coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                  <FolderInput className="h-4 w-4 text-foreground/70" />
+                  <span className="text-[10px] text-foreground/60">Move</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Move to folder</TooltipContent>
+            </Tooltip>
+
+            <div className="w-px h-8 bg-border/50 mx-1" />
+
+            {/* Custom actions: AI Assist + Link to Deal — Outlook command bar style */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowAiAssist(!showAiAssist)}
+                  className={cn(
+                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border',
+                    showAiAssist
+                      ? 'bg-[hsl(var(--outlook-blue)/0.1)] border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]'
+                      : 'border-transparent hover:bg-muted/40'
+                  )}
+                >
+                  <Sparkles className={cn('h-4 w-4', showAiAssist ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/70')} />
+                  <span className={cn('text-[10px]', showAiAssist ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/60')}>AI Assist</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">AI-powered email analysis</TooltipContent>
+            </Tooltip>
+
+            <LinkToDealPopover
+              trigger={
+                <button
+                  className={cn(
+                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border',
+                    linkedDealName
+                      ? 'bg-[hsl(var(--outlook-blue)/0.1)] border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]'
+                      : 'border-transparent hover:bg-muted/40'
+                  )}
+                >
+                  {linkedDealName ? <Unlink className="h-4 w-4 text-[hsl(var(--outlook-blue))]" /> : <Link2 className="h-4 w-4 text-foreground/70" />}
+                  <span className={cn('text-[10px]', linkedDealName ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/60')}>
+                    {linkedDealName ? 'Linked' : 'Link Deal'}
+                  </span>
+                </button>
+              }
+              currentDealName={linkedDealName}
+              isLinked={!!linkedDealName}
+              onLinkDeal={(id, name) => {
+                setLinkedDealName(name);
+                onToggleLink(thread.latestEmail);
+              }}
+              onUnlink={() => {
+                setLinkedDealName(undefined);
+                onToggleLink(thread.latestEmail);
+              }}
+            />
           </div>
 
           {/* AI Assist inline panel */}
@@ -876,32 +878,56 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             />
           )}
 
+          {/* Outlook-style reading pane header: subject + sender info */}
+          <div className="px-5 pt-4 pb-3 border-b border-border/30">
+            {/* Large subject heading */}
+            <h2 className="text-lg font-semibold text-foreground leading-tight mb-3">{thread.subject}</h2>
+            
+            {/* Sender info block */}
+            <div className="flex items-start gap-3">
+              <EmailAvatar name={senderName} email={senderEmail} size="md" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">{senderName}</span>
+                  <span className="text-xs text-muted-foreground">&lt;{senderEmail}&gt;</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {format(new Date(latest.received_at), 'EEEE, MMMM d, yyyy h:mm a')}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  To: <span className="text-foreground/70">me</span>
+                  {linkedDealName && (
+                    <span className="ml-2 text-[hsl(var(--outlook-blue))]">• Linked to: {linkedDealName}</span>
+                  )}
+                </div>
+              </div>
+              {/* Thread count indicator */}
+              {totalMessages > 1 && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  <span>{totalMessages} messages</span>
+                  <button
+                    onClick={isFullyExpanded ? handleCollapseAll : handleExpandAll}
+                    className="ml-1 hover:text-foreground transition-colors"
+                  >
+                    {isFullyExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Thread content - scrollable */}
           <ScrollArea className="flex-1">
-            <div className="py-3 space-y-0">
-              <div className="mx-4 mb-3 flex items-center justify-between">
+            <div className="py-2 space-y-0">
+              <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
 
               {/* Thread labels */}
-              <div className="mx-4 mb-3">
+              <div className="px-5 mb-2">
                 <ThreadLabelsBar threadId={thread.threadId} />
               </div>
-
-              {/* Expand/Collapse all control for long threads */}
-              {shouldAutoCollapse && (
-                <div className="mx-4 mb-2 flex items-center justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
-                    onClick={isFullyExpanded ? handleCollapseAll : handleExpandAll}
-                  >
-                    <ChevronsUpDown className="h-3 w-3" />
-                    {isFullyExpanded ? 'Collapse thread' : 'Expand all'}
-                  </Button>
-                </div>
-              )}
 
               {/* Messages */}
               {thread.emails.slice(0, shouldAutoCollapse && !olderExpanded ? VISIBLE_RECENT : undefined).map((email, idx) => (
@@ -944,12 +970,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
               {/* Resume draft banner */}
               {showResumeBanner && !replyTo && !popOutDraft && (
-                <div className="mx-4 mb-3">
+                <div className="px-5 mb-3">
                   <button
                     onClick={handleResumeDraft}
-                    className="w-full flex items-center gap-2 px-4 py-3 rounded-lg border border-primary/30 bg-primary/5 text-foreground hover:bg-primary/10 transition-all"
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded border border-[hsl(var(--outlook-blue)/0.3)] bg-[hsl(var(--outlook-blue)/0.05)] text-foreground hover:bg-[hsl(var(--outlook-blue)/0.1)] transition-all"
                   >
-                    <FileText className="h-4 w-4 text-primary" />
+                    <FileText className="h-4 w-4 text-[hsl(var(--outlook-blue))]" />
                     <span className="text-sm font-medium">Resume draft</span>
                     <span className="text-xs text-muted-foreground ml-1">— You have an unsaved reply for this thread</span>
                     <kbd className="ml-auto text-[10px] bg-muted px-1.5 py-0.5 rounded">R</kbd>
@@ -959,10 +985,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
               {/* Reply prompt at bottom */}
               {!replyTo && !popOutDraft && !showResumeBanner && (
-                <div className="mx-4 mb-3">
+                <div className="px-5 mb-3">
                   <button
                     onClick={handleReply}
-                    className="w-full flex items-center gap-2 px-4 py-3 rounded-lg border border-dashed border-border/50 text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground transition-all"
+                    className="w-full flex items-center gap-2 px-4 py-3 border border-border/40 text-muted-foreground hover:border-[hsl(var(--outlook-blue)/0.3)] hover:bg-[hsl(var(--outlook-blue)/0.04)] hover:text-foreground transition-all"
                   >
                     <Reply className="h-4 w-4" />
                     <span className="text-sm">Click to reply...</span>
@@ -973,19 +999,21 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </div>
           </ScrollArea>
 
-          {/* Inline reply composer - anchored at bottom */}
+          {/* Inline reply — Outlook style with blue separator */}
           {replyTo && (
-            <InlineReplyComposer
-              replyTo={replyTo}
-              onSend={handleSendFromComposer}
-              onDiscard={handleDiscard}
-              onPopOut={handlePopOut}
-              initialDraft={inlineDraft}
-              onDraftChange={handleDraftChange}
-              onFieldBlur={handleFieldBlur}
-              saveStatus={saveStatus}
-              tokenContext={snippetTokenContext}
-            />
+            <div className="border-t-2 border-[hsl(var(--outlook-blue))]">
+              <InlineReplyComposer
+                replyTo={replyTo}
+                onSend={handleSendFromComposer}
+                onDiscard={handleDiscard}
+                onPopOut={handlePopOut}
+                initialDraft={inlineDraft}
+                onDraftChange={handleDraftChange}
+                onFieldBlur={handleFieldBlur}
+                saveStatus={saveStatus}
+                tokenContext={snippetTokenContext}
+              />
+            </div>
           )}
         </div>
       </div>
