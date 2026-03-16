@@ -28,6 +28,7 @@ import { MockEmail } from './mockEmailData';
 import { usePreSendChecks } from './usePreSendChecks';
 import { PreSendAlertDialog } from './PreSendAlertDialog';
 import { EmailTemplatePicker } from './EmailTemplatePicker';
+import { AiDraftPopover } from './AiDraftPopover';
 
 interface InlineComposePanelProps {
   onSend: (email: Omit<MockEmail, 'id' | 'threadId'>) => void | Promise<void>;

@@ -922,7 +922,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
               {/* Collapsed older messages bar */}
               {hiddenCount > 0 && (
-                <CollapsedMessagesBar count={hiddenCount} onExpand={() => setOlderExpanded(true)} />
+                <CollapsedMessagesBar count={hiddenCount} onExpand={() => setOlderExpanded(true)} threadEmails={thread.emails} />
               )}
 
               {/* Older messages */}
