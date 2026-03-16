@@ -28,6 +28,7 @@ import { MockEmail } from './mockEmailData';
 import { usePreSendChecks } from './usePreSendChecks';
 import { PreSendAlertDialog } from './PreSendAlertDialog';
 import { EmailTemplatePicker } from './EmailTemplatePicker';
+import { AiDraftPopover } from './AiDraftPopover';
 
 interface InlineComposePanelProps {
   onSend: (email: Omit<MockEmail, 'id' | 'threadId'>) => void | Promise<void>;
@@ -129,7 +130,8 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
   const handleBulletList = () => insertFormatting('- ', '\n');
   const handleNumberedList = () => insertFormatting('1. ', '\n');
   const handleSaveDraft = () => toast.success('Draft saved');
-  const handleAiDraft = () => toast.info('AI Draft coming soon');
+
+  // AI Draft handler - replaced by AiDraftPopover
 
   const handleDiscard = () => {
     resetForm();
@@ -215,10 +217,17 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
             <ListOrdered className="h-3.5 w-3.5" />
           </Button>
           <Separator orientation="vertical" className="h-4 mx-1" />
-          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={handleAiDraft}>
-            <Sparkles className="h-3 w-3" />
-            AI Draft
-          </Button>
+          <AiDraftPopover
+            trigger={
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1">
+                <Sparkles className="h-3 w-3" />
+                AI Draft
+              </Button>
+            }
+            onDraftGenerated={(draft) => setBody(draft)}
+            currentSubject={subject}
+            currentTo={to}
+          />
           <Separator orientation="vertical" className="h-4 mx-1" />
           <EmailTemplatePicker
             onInsert={(templateSubject, templateBody) => {
