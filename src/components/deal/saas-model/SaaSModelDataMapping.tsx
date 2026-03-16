@@ -768,12 +768,35 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         flipped_columns: Array.from(flippedColumns),
       }, { onConflict: 'deal_id' });
 
+      // ── Multi-file: save per-file mappings and push financial data ──
+      if (activeFileId) {
+        await saveFileMappings(
+          activeFileId,
+          fieldMappings,
+          Array.from(excludedColumns),
+          Array.from(flippedRows),
+          Array.from(flippedColumns),
+          modelStartDate?.month ?? 1,
+          modelStartDate?.year ?? 2024,
+        );
+
+        // Extract and push data rows to deal_financial_data
+        const dataRows = extractMappedDataRows(
+          fieldMappings, selectedFile,
+          modelStartDate?.month ?? 1, modelStartDate?.year ?? 2024,
+          flippedRows, excludedColumns, flippedColumns,
+        );
+        if (dataRows.length > 0) {
+          await pushFileData(activeFileId, dataRows);
+        }
+      }
+
       const count = Object.keys(fieldMappings).length;
       setLastSavedCount(count);
       toast.success(`Saved ${count} mapped ${count === 1 ? 'field' : 'fields'} — Dashboard, IS & BS updated`);
     } catch { toast.error('Failed to save mapping progress'); }
     finally { setIsSaving(false); }
-  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage, flippedRows, flippedColumns, excludedColumns, modelStartDate]);
+  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage, flippedRows, flippedColumns, excludedColumns, modelStartDate, activeFileId, saveFileMappings, pushFileData]);
 
   // Keep ref in sync for imperative handle
   useEffect(() => { handleSaveProgressRef.current = handleSaveProgress; }, [handleSaveProgress]);
