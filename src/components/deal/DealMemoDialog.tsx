@@ -327,28 +327,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
   });
 
   const handleSave = async () => {
-    const newValues = {
-      narrative: localValues.narrative || null,
-      highlights: localValues.highlights || null,
-      hurdles: localValues.hurdles || null,
-      lender_notes: localValues.lender_notes || null,
-      analyst_notes: localValues.analyst_notes || null,
-      other_notes: localValues.other_notes || null,
-    };
-
-    // Build old values from current memo
-    const oldValues: Record<string, string | null> = {
-      narrative: memo?.narrative || null,
-      highlights: memo?.highlights || null,
-      hurdles: memo?.hurdles || null,
-      lender_notes: memo?.lender_notes || null,
-      analyst_notes: memo?.analyst_notes || null,
-      other_notes: memo?.other_notes || null,
-    };
-
-    await saveMemo(newValues);
-    await logChanges(dealId, oldValues, newValues);
-    setHasChanges(false);
+    saveNow();
   };
 
   const handleRevert = (entry: import('@/hooks/useDealMemoAuditLog').MemoAuditEntry) => {
@@ -366,11 +345,22 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
   };
 
   const handleOpenChange = (open: boolean) => {
+    // If closing and there are pending changes, save immediately
+    if (!open && hasChanges) {
+      saveNow();
+    }
     setIsOpen(open);
     if (open && hasUnreadUpdates) {
       markAsViewed();
     }
   };
+
+  // Auto-save status label
+  const autoSaveLabel = autoSaveStatus === 'pending' ? 'Unsaved changes...' 
+    : autoSaveStatus === 'saving' ? 'Saving...' 
+    : autoSaveStatus === 'saved' ? 'All changes saved'
+    : autoSaveStatus === 'error' ? 'Save failed — click to retry'
+    : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
