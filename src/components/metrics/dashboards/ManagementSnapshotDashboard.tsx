@@ -210,6 +210,7 @@ function GenericDashboardCard({
   onTimeWindowChange,
   chartHeight = 200,
 }: GenericDashboardCardProps) {
+  const [showTrendLine, setShowTrendLine] = useState(false);
   const { chartData, total, seriesKeys, isLoading } = useDashboardCardData(
     datarailsConfig,
     timeWindow,
