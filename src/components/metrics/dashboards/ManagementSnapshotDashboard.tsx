@@ -173,6 +173,7 @@ interface GenericDashboardCardProps {
   datarailsConfig: Partial<WidgetConfig> | undefined | null;
   entityFilter?: string | null;
   isEditMode: boolean;
+  sizeVariant?: WidgetSizeVariant;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onDeleteCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
