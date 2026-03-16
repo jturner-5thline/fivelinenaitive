@@ -2,6 +2,7 @@
 import type { MappingFieldName, FieldMapping } from './types';
 import { IS_FIELDS, BS_FIELDS } from './types';
 import { formatUSD } from '@/lib/formatters/currency';
+import { generateMonths } from './calculations';
 
 export type Phase = 'upload' | 'triage' | 'mapping';
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
