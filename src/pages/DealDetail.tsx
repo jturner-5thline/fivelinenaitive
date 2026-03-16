@@ -803,6 +803,14 @@ export default function DealDetail() {
 
   // Track if writeup has been initialized to prevent overwriting user edits
   const writeupInitializedRef = useRef<string | null>(null);
+
+  // Reset writeup state immediately when deal ID changes to prevent cross-deal data bleed
+  useEffect(() => {
+    if (writeupInitializedRef.current && writeupInitializedRef.current !== id) {
+      setDealWriteUpData(getEmptyDealWriteUpData());
+      writeupInitializedRef.current = null;
+    }
+  }, [id]);
   
   // Initialize deal write-up data from saved writeup or existing deal data - only once per deal
   useEffect(() => {
