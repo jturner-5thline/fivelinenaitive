@@ -2116,6 +2116,62 @@ export default function Metrics() {
             {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
+
+            {/* Custom user-created dashboards */}
+            {isCustomDashboard && activeCustomDashboard && (
+              <div className="space-y-6">
+                {widgets.filter(w => {
+                  // Show widgets that belong to this custom dashboard
+                  return activeCustomDashboard.widgetIds.includes(w.id);
+                }).length === 0 ? (
+                  // Empty state
+                  <Card className="border-dashed">
+                    <CardContent className="flex flex-col items-center justify-center py-20">
+                      <div className="rounded-full bg-muted p-4 mb-4">
+                        <LayoutDashboard className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-1">
+                        {activeCustomDashboard.name}
+                      </h3>
+                      <p className="text-muted-foreground text-sm mb-6 text-center max-w-md">
+                        This dashboard is empty. Add widgets to start building your custom view.
+                      </p>
+                      <div className="flex gap-3">
+                        <Button onClick={() => { setIsEditMode(true); handleAdd(); }}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Your First Widget
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  // Render widgets that belong to this dashboard
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {widgets
+                      .filter(w => activeCustomDashboard.widgetIds.includes(w.id))
+                      .map((widget) => {
+                        const isStat = getWidgetDisplayType(widget) === 'stat';
+                        return (
+                          <GridWidgetCard
+                            key={widget.id}
+                            isEditMode={isEditMode}
+                            onEdit={() => handleEdit(widget)}
+                            onDelete={() => {
+                              setWidgetToDelete(widget.id);
+                              setDeleteConfirmOpen(true);
+                            }}
+                          >
+                            {isStat
+                              ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
+                              : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                            }
+                          </GridWidgetCard>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            )}
           </EditableDashboardWrapper>
 
         </div>
