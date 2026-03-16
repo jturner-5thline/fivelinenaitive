@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
+import { AiAssistInlinePanel } from './AiAssistInlinePanel';
+import { LinkToDealPopover } from './LinkToDealPopover';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -32,6 +34,8 @@ import {
   Bold,
   Italic,
   Link as LinkIcon,
+  Loader2,
+  AlignLeft,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
@@ -39,6 +43,7 @@ import { InlineReplyComposer, type ReplyDraft } from './InlineReplyComposer';
 import { PopOutComposer } from './PopOutComposer';
 import { useEmailDraft, useUnsavedDraftGuard } from '@/hooks/useEmailDraft';
 import { EmailContextMenu } from './EmailContextMenu';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
