@@ -514,8 +514,15 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                           </defs>
                           <XAxis dataKey="year" tick={{ fontSize: 11, fill: T.mutedFg }} axisLine={false} tickLine={false} />
                           <YAxis tick={{ fontSize: 10, fill: T.mutedFg }} axisLine={false} tickLine={false}
-                            tickFormatter={v => v >= 1e6 ? `$${(v/1e6).toFixed(0)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}K` : `$${v}`} width={50} />
-                          <Area type="monotone" dataKey="ebitda" stroke={T.green} fill="url(#ebitdaGrad)" strokeWidth={2} dot={{ r: 3, fill: T.green }} />
+                            tickFormatter={v => {
+                              const abs = Math.abs(v);
+                              const sign = v < 0 ? '-' : '';
+                              if (abs >= 1e6) return `${sign}$${(abs/1e6).toFixed(0)}M`;
+                              if (abs >= 1e3) return `${sign}$${(abs/1e3).toFixed(0)}K`;
+                              return `${sign}$${abs}`;
+                            }} width={55} domain={['auto', 'auto']} />
+                          {chartData.some(d => d.ebitda !== null && d.ebitda < 0) && <ReferenceLine y={0} stroke={T.cardBorder} strokeDasharray="3 3" />}
+                          <Area type="monotone" dataKey="ebitda" stroke={T.green} fill="url(#ebitdaGrad)" strokeWidth={2} dot={{ r: 3, fill: T.green }} baseValue={0} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
