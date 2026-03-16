@@ -88,6 +88,7 @@ export interface KPIDetailCardConfig {
   comparisonSourceField: string | null;
   breakdownColumns: 1 | 2;
   layoutVariant: KPILayoutVariant;
+  footerLabel?: string;
   left: KPIBreakdownColumn;
   right: KPIBreakdownColumn;
 }
@@ -99,6 +100,7 @@ export const DEFAULT_KPI_DETAIL_CARD_CONFIG: KPIDetailCardConfig = {
   comparisonSourceField: null,
   breakdownColumns: 2,
   layoutVariant: 'full',
+  footerLabel: '',
   left: { label: '', valueField: null, varianceField: null },
   right: { label: '', valueField: null, varianceField: null },
 };
