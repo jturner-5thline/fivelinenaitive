@@ -872,7 +872,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   const target = getReplyTarget();
                   setInlineDraft({ to: target.to_email, toName: target.to_name, body: text, subject: `Re: ${thread.subject}`, cc: '', bcc: '', attachments: [], threadId: thread.threadId });
                 }, 100);
-                }, 100);
               }}
             />
           )}
