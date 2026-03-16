@@ -213,6 +213,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
 
   const trendLine = config.trendLine;
   const dataLabels = config.dataLabels;
+  const allowNegative = dataLabels?.allowNegative ?? false;
   const showPeriodTotals = dataLabels?.showPeriodTotals ?? false;
   const primaryFormat = config.values[0]?.format ?? 'currency';
 
@@ -220,6 +221,20 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
   const dataKeys = data.length > 0
     ? Object.keys(data[0]).filter(k => k !== 'period' && !k.startsWith('__trend_') && k !== '__period_total')
     : valueFields;
+
+  // If allowNegative is off, force all numeric values to be absolute
+  const normalizedData = useMemo(() => {
+    if (allowNegative) return data;
+    return data.map(row => {
+      const newRow = { ...row };
+      for (const key of dataKeys) {
+        if (typeof newRow[key] === 'number') {
+          newRow[key] = Math.abs(newRow[key] as number);
+        }
+      }
+      return newRow;
+    });
+  }, [data, allowNegative, dataKeys]);
 
   // Enrich data with trend line values and period totals
   const enrichedData = useMemo(() => {
