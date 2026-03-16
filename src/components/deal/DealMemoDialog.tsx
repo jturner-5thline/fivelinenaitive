@@ -115,6 +115,45 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
   const [editingHighlight, setEditingHighlight] = useState<number | null>(null);
   const [editingHurdle, setEditingHurdle] = useState<number | null>(null);
   const [editingRemedy, setEditingRemedy] = useState<number | null>(null);
+  const lastSavedMemoRef = useRef<string>('');
+
+  // --- Autosave integration ---
+  // Build the data object to auto-save (memoized to avoid unnecessary triggers)
+  const autoSaveData = useMemo(() => ({
+    narrative: localValues.narrative || null,
+    highlights: localValues.highlights || null,
+    hurdles: localValues.hurdles || null,
+    lender_notes: localValues.lender_notes || null,
+    analyst_notes: localValues.analyst_notes || null,
+    other_notes: localValues.other_notes || null,
+  }), [localValues]);
+
+  const handleAutoSave = useCallback(async (data: typeof autoSaveData): Promise<boolean> => {
+    const oldValues: Record<string, string | null> = {
+      narrative: memo?.narrative || null,
+      highlights: memo?.highlights || null,
+      hurdles: memo?.hurdles || null,
+      lender_notes: memo?.lender_notes || null,
+      analyst_notes: memo?.analyst_notes || null,
+      other_notes: memo?.other_notes || null,
+    };
+    const success = await saveMemo(data, { silent: true });
+    if (success) {
+      await logChanges(dealId, oldValues, data);
+      setHasChanges(false);
+    }
+    return success;
+  }, [saveMemo, memo, logChanges, dealId]);
+
+  // Debounce delay: adjust this value (ms) to change how long after typing before auto-save fires
+  const AUTOSAVE_DEBOUNCE_MS = 1500;
+
+  const { status: autoSaveStatus, saveNow } = useAutoSave({
+    data: autoSaveData,
+    onSave: handleAutoSave,
+    delay: AUTOSAVE_DEBOUNCE_MS,
+    enabled: isOpen && hasChanges,
+  });
 
   // Helper to convert list string to array
   const parseList = (str: string | null): string[] => {
@@ -177,6 +216,13 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
     setLocalValues(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
   };
+
+  // Save immediately on blur for any textarea field
+  const handleFieldBlur = useCallback(() => {
+    if (hasChanges) {
+      saveNow();
+    }
+  }, [hasChanges, saveNow]);
 
   const handleAddHighlight = () => {
     if (newHighlight.trim()) {
