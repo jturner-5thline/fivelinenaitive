@@ -1540,7 +1540,11 @@ export default function Metrics() {
     'total-revenue': {
       type: 'bar',
       xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
-      values: [{ fieldId: 'f-total-revenue', label: 'Total Revenue', agg: 'sum', format: 'currency' }],
+      values: [
+        { fieldId: 'f-total-revenue', label: 'Total Revenue', agg: 'sum', format: 'currency' },
+        { fieldId: 'f-revenue', label: 'Debt Revenue', agg: 'sum', format: 'currency' },
+        { fieldId: 'f-revenue', label: 'FinServ Revenue', agg: 'sum', format: 'currency' },
+      ],
     },
     'debt-revenue': {
       type: 'bar',
