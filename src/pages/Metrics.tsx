@@ -1368,6 +1368,60 @@ export default function Metrics() {
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [createDashboardOpen, setCreateDashboardOpen] = useState(false);
+  const [newDashboardName, setNewDashboardName] = useState('');
+
+  // Custom user-created dashboards (company-level)
+  interface CustomDashboard {
+    id: string;
+    name: string;
+    widgetIds: string[];
+    createdAt: string;
+  }
+  const {
+    config: customDashboardsConfig,
+    saveConfig: saveCustomDashboards,
+    canEdit: canEditDashboards,
+  } = useCompanyDashboardConfig<{ dashboards: CustomDashboard[] }>(
+    'custom_dashboards',
+    { dashboards: [] },
+  );
+  const customDashboards = customDashboardsConfig.dashboards || [];
+
+  const handleCreateDashboard = () => {
+    if (!newDashboardName.trim()) return;
+    const newDashboard: CustomDashboard = {
+      id: `custom-${Date.now()}`,
+      name: newDashboardName.trim(),
+      widgetIds: [],
+      createdAt: new Date().toISOString(),
+    };
+    saveCustomDashboards({ dashboards: [...customDashboards, newDashboard] });
+    setSelectedDashboard(newDashboard.id);
+    setCreateDashboardOpen(false);
+    setNewDashboardName('');
+    setIsEditMode(true);
+    toast({ title: 'Dashboard created', description: `"${newDashboard.name}" is ready. Add widgets to get started.` });
+  };
+
+  const handleDeleteCustomDashboard = (dashId: string) => {
+    saveCustomDashboards({ dashboards: customDashboards.filter(d => d.id !== dashId) });
+    if (selectedDashboard === dashId) setSelectedDashboard('management-snapshot');
+    toast({ title: 'Dashboard deleted' });
+  };
+
+  const handleRenameCustomDashboard = (dashId: string, newName: string) => {
+    saveCustomDashboards({
+      dashboards: customDashboards.map(d => d.id === dashId ? { ...d, name: newName } : d),
+    });
+  };
+
+  const isCustomDashboard = selectedDashboard.startsWith('custom-');
+  const activeCustomDashboard = customDashboards.find(d => d.id === selectedDashboard);
+  const allDashboardOptions = [
+    ...DASHBOARD_OPTIONS,
+    ...customDashboards.map(d => ({ id: d.id, name: d.name, isFavorite: false })),
+  ];
   const [editingWidget, setEditingWidget] = useState<MetricWidgetConfig | undefined>();
   const [editingManagementSnapshotCardId, setEditingManagementSnapshotCardId] = useState<EditableManagementSnapshotCardId | null>(null);
   const {
@@ -1647,7 +1701,17 @@ export default function Metrics() {
       updateWidget(editingWidget.id, widgetData);
       toast({ title: "Widget updated" });
     } else {
-      addWidget(widgetData);
+      const newId = addWidget(widgetData);
+      // When adding a new widget on a custom dashboard, track it
+      if (isCustomDashboard && activeCustomDashboard) {
+        saveCustomDashboards({
+          dashboards: customDashboards.map(d =>
+            d.id === activeCustomDashboard.id
+              ? { ...d, widgetIds: [...d.widgetIds, newId] }
+              : d
+          ),
+        });
+      }
       toast({ title: "Widget added" });
     }
   };
@@ -1724,7 +1788,7 @@ export default function Metrics() {
                       <div className="flex items-center gap-2">
                         <LayoutDashboard className="h-6 w-6 text-primary" />
                         <h1 className="text-3xl font-bold tracking-tight">
-                          {DASHBOARD_OPTIONS.find(d => d.id === selectedDashboard)?.name || 'Dashboard'}
+                          {allDashboardOptions.find(d => d.id === selectedDashboard)?.name || 'Dashboard'}
                         </h1>
                         <ChevronDown className="h-5 w-5 text-muted-foreground" />
                       </div>
@@ -1866,6 +1930,39 @@ export default function Metrics() {
                       );
                     })}
 
+                    {/* Custom dashboards */}
+                    {customDashboards.length > 0 && <DropdownMenuSeparator />}
+                    {customDashboards.map((dash) => (
+                      <DropdownMenuSub key={dash.id}>
+                        <div className="flex items-center">
+                          <DropdownMenuItem
+                            className={cn(
+                              "flex-1 flex items-center justify-between py-2",
+                              selectedDashboard === dash.id && "bg-accent"
+                            )}
+                            onClick={() => setSelectedDashboard(dash.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <LayoutDashboard className="h-4 w-4 text-chart-4" />
+                              <span>{dash.name}</span>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuSubTrigger className="h-7 w-7 p-0 flex items-center justify-center">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </DropdownMenuSubTrigger>
+                        </div>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeleteCustomDashboard(dash.id)}
+                          >
+                            <TrashIcon className="h-3.5 w-3.5 mr-2" />
+                            Delete Dashboard
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    ))}
+
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="flex items-center gap-2 text-primary"
@@ -1874,7 +1971,10 @@ export default function Metrics() {
                       <FolderPlus className="h-4 w-4" />
                       <span>New Folder</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="flex items-center gap-2 text-primary">
+                    <DropdownMenuItem
+                      className="flex items-center gap-2 text-primary"
+                      onClick={() => setCreateDashboardOpen(true)}
+                    >
                       <Plus className="h-4 w-4" />
                       <span>Create New Dashboard</span>
                     </DropdownMenuItem>
@@ -2026,6 +2126,62 @@ export default function Metrics() {
             {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
+
+            {/* Custom user-created dashboards */}
+            {isCustomDashboard && activeCustomDashboard && (
+              <div className="space-y-6">
+                {widgets.filter(w => {
+                  // Show widgets that belong to this custom dashboard
+                  return activeCustomDashboard.widgetIds.includes(w.id);
+                }).length === 0 ? (
+                  // Empty state
+                  <Card className="border-dashed">
+                    <CardContent className="flex flex-col items-center justify-center py-20">
+                      <div className="rounded-full bg-muted p-4 mb-4">
+                        <LayoutDashboard className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-1">
+                        {activeCustomDashboard.name}
+                      </h3>
+                      <p className="text-muted-foreground text-sm mb-6 text-center max-w-md">
+                        This dashboard is empty. Add widgets to start building your custom view.
+                      </p>
+                      <div className="flex gap-3">
+                        <Button onClick={() => { setIsEditMode(true); handleAdd(); }}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Your First Widget
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  // Render widgets that belong to this dashboard
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {widgets
+                      .filter(w => activeCustomDashboard.widgetIds.includes(w.id))
+                      .map((widget) => {
+                        const isStat = getWidgetDisplayType(widget) === 'stat';
+                        return (
+                          <GridWidgetCard
+                            key={widget.id}
+                            isEditMode={isEditMode}
+                            onEdit={() => handleEdit(widget)}
+                            onDelete={() => {
+                              setWidgetToDelete(widget.id);
+                              setDeleteConfirmOpen(true);
+                            }}
+                          >
+                            {isStat
+                              ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
+                              : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                            }
+                          </GridWidgetCard>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            )}
           </EditableDashboardWrapper>
 
         </div>
@@ -2215,6 +2371,40 @@ export default function Metrics() {
               disabled={!renameFolderName.trim()}
             >
               Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create New Dashboard Dialog */}
+      <Dialog open={createDashboardOpen} onOpenChange={setCreateDashboardOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Dashboard</DialogTitle>
+            <DialogDescription>
+              Create a blank dashboard where you can add custom widgets.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Dashboard name"
+              value={newDashboardName}
+              onChange={(e) => setNewDashboardName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newDashboardName.trim()) {
+                  handleCreateDashboard();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCreateDashboardOpen(false); setNewDashboardName(''); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateDashboard} disabled={!newDashboardName.trim()}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Dashboard
             </Button>
           </DialogFooter>
         </DialogContent>
