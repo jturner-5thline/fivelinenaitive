@@ -7,6 +7,7 @@ import { FormulaSection } from './config-sections/FormulaSection';
 import { ComparisonConfigSection } from './config-sections/ComparisonConfigSection';
 import { TrendLineConfigSection } from './config-sections/TrendLineConfigSection';
 import { DisplayConfigSection } from './config-sections/DisplayConfigSection';
+import { NegativeStylingConfigSection } from './config-sections/NegativeStylingConfigSection';
 import { KPIDetailConfigSection } from './config-sections/KPIDetailConfigSection';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
