@@ -78,6 +78,21 @@ export function useFPADashboardConfig() {
   const [config, setConfig] = useState<FPADashboardConfig>(DEFAULT_FPA_CONFIG);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const pendingSaveRef = useRef(false);
+
+  const applyFromRow = useCallback((row: Record<string, any> | null) => {
+    if (row?.fpa_dashboard_config && typeof row.fpa_dashboard_config === 'object') {
+      const saved = row.fpa_dashboard_config as Record<string, any>;
+      setConfig({
+        tabs: { ...DEFAULT_FPA_CONFIG.tabs, ...saved.tabs },
+        charts: { ...DEFAULT_FPA_CONFIG.charts, ...saved.charts },
+        elements: { ...DEFAULT_FPA_CONFIG.elements, ...saved.elements },
+        scenarios: { ...DEFAULT_FPA_CONFIG.scenarios, ...saved.scenarios },
+      });
+    } else {
+      setConfig(DEFAULT_FPA_CONFIG);
+    }
+  }, []);
 
   const fetchConfig = useCallback(async () => {
     if (!company?.id) {
@@ -94,28 +109,43 @@ export function useFPADashboardConfig() {
         .maybeSingle();
 
       if (error) throw error;
-
-      if (data?.fpa_dashboard_config && typeof data.fpa_dashboard_config === 'object') {
-        const saved = data.fpa_dashboard_config as Record<string, any>;
-        setConfig({
-          tabs: { ...DEFAULT_FPA_CONFIG.tabs, ...saved.tabs },
-          charts: { ...DEFAULT_FPA_CONFIG.charts, ...saved.charts },
-          elements: { ...DEFAULT_FPA_CONFIG.elements, ...saved.elements },
-          scenarios: { ...DEFAULT_FPA_CONFIG.scenarios, ...saved.scenarios },
-        });
-      } else {
-        setConfig(DEFAULT_FPA_CONFIG);
-      }
+      applyFromRow(data);
     } catch (error) {
       console.error('Error fetching FPA dashboard config:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [company?.id]);
+  }, [company?.id, applyFromRow]);
 
   useEffect(() => {
     fetchConfig();
   }, [fetchConfig]);
+
+  // Realtime subscription — push config changes to all company members
+  useEffect(() => {
+    if (!company?.id) return;
+
+    const channel = supabase
+      .channel(`fpa-dashboard-config-${company.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'company_settings',
+          filter: `company_id=eq.${company.id}`,
+        },
+        (payload) => {
+          if (pendingSaveRef.current) return;
+          applyFromRow(payload.new as Record<string, any>);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [company?.id, applyFromRow]);
 
   const saveConfig = useCallback(async (newConfig: FPADashboardConfig) => {
     if (!company?.id || !isAdmin) {
