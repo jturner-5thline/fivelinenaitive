@@ -1778,7 +1778,7 @@ export default function Metrics() {
                       <div className="flex items-center gap-2">
                         <LayoutDashboard className="h-6 w-6 text-primary" />
                         <h1 className="text-3xl font-bold tracking-tight">
-                          {DASHBOARD_OPTIONS.find(d => d.id === selectedDashboard)?.name || 'Dashboard'}
+                          {allDashboardOptions.find(d => d.id === selectedDashboard)?.name || 'Dashboard'}
                         </h1>
                         <ChevronDown className="h-5 w-5 text-muted-foreground" />
                       </div>
