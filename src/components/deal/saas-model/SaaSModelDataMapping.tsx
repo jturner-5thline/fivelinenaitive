@@ -1395,48 +1395,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
       )}
 
-      {/* Start month confirmation */}
-      {modelStartDate && (
-        <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-card/60 px-3 py-1.5">
-          <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          <span className="text-[10px] text-muted-foreground shrink-0">First month:</span>
-          <select
-            className="text-[10px] h-6 px-1.5 rounded border border-border bg-background text-foreground"
-            value={modelStartDate.month}
-            onChange={(e) => {
-              setModelStartDate(prev => prev ? { ...prev, month: parseInt(e.target.value) } : prev);
-              setStartDateConfirmed(true);
-            }}
-          >
-            {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
-              <option key={i} value={i + 1}>{m}</option>
-            ))}
-          </select>
-          <input
-            type="number"
-            className="text-[10px] h-6 w-14 px-1.5 rounded border border-border bg-background text-foreground"
-            value={modelStartDate.year}
-            min={2000}
-            max={2040}
-            onChange={(e) => {
-              const yr = parseInt(e.target.value);
-              if (yr >= 2000 && yr <= 2040) {
-                setModelStartDate(prev => prev ? { ...prev, year: yr } : prev);
-                setStartDateConfirmed(true);
-              }
-            }}
-          />
-          {startDateConfirmed ? (
-            <Badge variant="outline" className="text-[8px] h-4 px-1.5 gap-1 border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400">
-              <Check className="h-2.5 w-2.5" /> Confirmed
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-[8px] h-4 px-1.5 gap-1 border-blue-500/50 bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <Sparkles className="h-2.5 w-2.5" /> Auto-detected
-            </Badge>
-          )}
-        </div>
-      )}
 
       <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-card/60 px-3 py-1.5">
         <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
