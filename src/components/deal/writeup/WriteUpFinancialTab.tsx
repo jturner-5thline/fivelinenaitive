@@ -48,6 +48,7 @@ interface WriteUpFinancialTabProps {
   data: DealWriteUpData;
   updateField: <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => void;
   changedFields?: Set<string>;
+  isFieldEdited?: (field: string) => boolean;
 }
 
 // Format currency value - revenue in $X.XXMM format
