@@ -319,7 +319,7 @@ function EmailListSkeleton() {
     <div className="pt-2 pb-2 space-y-1.5 px-2">
       {Array.from({ length: 7 }).map((_, i) => (
         <div key={i} className="flex items-start gap-3 px-3 py-4 rounded-lg">
-          <div className="h-10 w-10 rounded-full bg-muted/30 animate-pulse shrink-0" />
+          <div className="h-8 w-8 rounded-full bg-muted/30 animate-pulse shrink-0" />
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-center justify-between">
               <div className="h-3.5 w-28 bg-muted/30 rounded animate-pulse" />
