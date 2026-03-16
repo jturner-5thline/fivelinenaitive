@@ -23,6 +23,7 @@ export interface MetricTemplate {
 const METRIC_TEMPLATES: MetricTemplate[] = [
   // Platform
   { id: 'tpl-active-pipeline', name: 'Active Pipeline', description: 'Total value of active deals', category: 'platform', type: 'stat', dataSource: 'active-pipeline', defaultSize: 'small', defaultColor: 'hsl(var(--primary))', icon: 'dollar' },
+  { id: 'tpl-compact-kpi', name: 'Compact KPI Tile', description: 'Minimal KPI tile with optional footer label', category: 'platform', type: 'stat', dataSource: 'compact-kpi-tile', defaultSize: 'small', defaultColor: 'hsl(var(--primary))', icon: 'dollar' },
   { id: 'tpl-closed-won', name: 'Closed Won', description: 'All-time closed deal value', category: 'platform', type: 'stat', dataSource: 'closed-won', defaultSize: 'small', defaultColor: 'hsl(var(--success))', icon: 'trending-up' },
   { id: 'tpl-total-fees', name: 'Total Fees', description: 'Fees earned across all deals', category: 'platform', type: 'stat', dataSource: 'total-fees', defaultSize: 'small', defaultColor: 'hsl(var(--chart-2))', icon: 'dollar' },
   { id: 'tpl-avg-deal', name: 'Average Deal Size', description: 'Mean deal value', category: 'platform', type: 'stat', dataSource: 'avg-deal-size', defaultSize: 'small', defaultColor: 'hsl(var(--chart-4))', icon: 'dollar' },

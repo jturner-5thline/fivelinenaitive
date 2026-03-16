@@ -62,6 +62,8 @@ export type EditableManagementSnapshotCardId =
 
 export type WidgetSizeVariant = 'chart' | 'metric';
 
+export type KPITileLayoutVariant = 'standard' | 'compact';
+
 export type ManagementSnapshotEditableConfig = Pick<
   MetricWidgetConfig,
   'title' | 'color' | 'entityFilter' | 'comparisonPeriod'
@@ -69,6 +71,8 @@ export type ManagementSnapshotEditableConfig = Pick<
   timeWindow?: TimeWindow;
   sizeVariant?: WidgetSizeVariant;
   kpiDetailConfig?: KPIDetailCardConfig;
+  kpiTileLayout?: KPITileLayoutVariant;
+  footerLabel?: string;
 };
 
 const WINDOW_GROUPS: { label: string; options: { value: TimeWindow; label: string }[] }[] = [
@@ -178,6 +182,8 @@ interface GenericDashboardCardProps {
   entityFilter?: string | null;
   isEditMode: boolean;
   sizeVariant?: WidgetSizeVariant;
+  kpiTileLayout?: KPITileLayoutVariant;
+  footerLabel?: string;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onDeleteCard?: (cardId: EditableManagementSnapshotCardId) => void;
   onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
@@ -195,6 +201,8 @@ function GenericDashboardCard({
   entityFilter,
   isEditMode,
   sizeVariant = 'chart',
+  kpiTileLayout = 'standard',
+  footerLabel,
   onEditCard,
   onDeleteCard,
   onTimeWindowChange,
@@ -242,17 +250,24 @@ function GenericDashboardCard({
     </div>
   );
 
+  const isCompactTile = kpiTileLayout === 'compact';
+
   const renderKPI = () => (
-    <div className={`h-[${chartHeight}px] flex flex-col items-center justify-center gap-2`} style={{ height: chartHeight }}>
+    <div className="flex flex-col items-center justify-center gap-1 h-full" style={{ minHeight: chartHeight }}>
       {isLoading ? (
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       ) : (
         <>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{title}</p>
-          <p className="text-4xl font-bold text-foreground">
+          <p className={cn('uppercase tracking-wide text-muted-foreground', isCompactTile ? 'text-[10px]' : 'text-xs')}>{title}</p>
+          <p className={cn('font-bold text-foreground', isCompactTile ? 'text-2xl' : 'text-4xl')}>
             {formatCurrency(total)}
           </p>
-          <p className="text-xs text-muted-foreground">{WINDOW_LABEL_MAP[timeWindow] || timeWindow}</p>
+          {!isCompactTile && (
+            <p className="text-xs text-muted-foreground">{WINDOW_LABEL_MAP[timeWindow] || timeWindow}</p>
+          )}
+          {isCompactTile && footerLabel && (
+            <p className="text-[9px] text-muted-foreground/60 text-center mt-0.5">{footerLabel}</p>
+          )}
         </>
       )}
     </div>
@@ -433,6 +448,8 @@ export function ManagementSnapshotDashboard({
       entityFilter: cfg?.entityFilter,
       isEditMode,
       sizeVariant: variant,
+      kpiTileLayout: cfg?.kpiTileLayout || 'standard',
+      footerLabel: cfg?.footerLabel,
       onEditCard,
       onDeleteCard,
       onTimeWindowChange,
