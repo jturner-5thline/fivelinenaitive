@@ -1535,17 +1535,80 @@ export default function Metrics() {
     setEditorOpen(true);
   };
 
+  // Map management snapshot card IDs to sensible default editor configs
+  const SNAPSHOT_CARD_SEED_CONFIGS: Record<string, Partial<DatarailsWidgetConfig>> = {
+    'total-revenue': {
+      type: 'bar',
+      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
+      values: [{ fieldId: 'f-total-revenue', label: 'Total Revenue', agg: 'sum', format: 'currency' }],
+    },
+    'debt-revenue': {
+      type: 'bar',
+      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
+      series: { fieldId: null, mode: 'single' },
+      values: [{ fieldId: 'f-revenue', label: 'Debt Revenue', agg: 'sum', format: 'currency' }],
+    },
+    'finserv-revenue': {
+      type: 'bar',
+      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
+      values: [{ fieldId: 'f-revenue', label: 'FinServ Revenue', agg: 'sum', format: 'currency' }],
+    },
+    'total-revenue-detail': {
+      type: 'kpi',
+      values: [{ fieldId: 'f-total-revenue', label: 'Total Revenue', agg: 'sum', format: 'currency' }],
+      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
+    },
+    'clients-signed-debt': {
+      type: 'kpi',
+      values: [{ fieldId: 'n-closed-won-count', label: 'Clients Signed - Debt', agg: 'sum', format: 'number' }],
+      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
+    },
+    'clients-signed-finserv': {
+      type: 'kpi',
+      values: [{ fieldId: 'n-closed-won-count', label: 'Clients Signed - FinServ', agg: 'sum', format: 'number' }],
+      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
+    },
+    'outstanding-ar': {
+      type: 'kpi',
+      values: [{ fieldId: 'f-amount', label: 'Outstanding A/R', agg: 'sum', format: 'currency' }],
+      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
+    },
+    'debt-profit': {
+      type: 'bar',
+      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
+      values: [{ fieldId: 'f-net-income', label: 'Debt Profit', agg: 'sum', format: 'currency' }],
+    },
+    'finserv-profit': {
+      type: 'bar',
+      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
+      values: [{ fieldId: 'f-net-income', label: 'FinServ Profit', agg: 'sum', format: 'currency' }],
+    },
+  };
+
   const editorInitialConfig = useMemo<DatarailsWidgetConfig>(() => {
     if (!editingWidget) return DEFAULT_WIDGET_CONFIG;
 
     const persisted = editingWidget.datarailsConfig as Partial<DatarailsWidgetConfig> | undefined;
-    if (persisted) {
+    if (persisted && Object.keys(persisted).length > 0) {
       return {
         ...DEFAULT_WIDGET_CONFIG,
         ...persisted,
         id: persisted.id ?? editingWidget.id,
         name: persisted.name ?? editingWidget.title,
       };
+    }
+
+    // For management snapshot cards, seed with meaningful defaults
+    if (editingManagementSnapshotCardId) {
+      const seed = SNAPSHOT_CARD_SEED_CONFIGS[editingManagementSnapshotCardId];
+      if (seed) {
+        return {
+          ...DEFAULT_WIDGET_CONFIG,
+          ...seed,
+          id: editingWidget.id,
+          name: editingWidget.title || DEFAULT_WIDGET_CONFIG.name,
+        };
+      }
     }
 
     return {
@@ -1560,7 +1623,7 @@ export default function Metrics() {
             ? 'bar'
             : 'columnChart',
     };
-  }, [editingWidget]);
+  }, [editingWidget, editingManagementSnapshotCardId]);
 
   const handleSave = (widgetData: Omit<MetricWidgetConfig, 'id' | 'createdAt'>) => {
     if (editingManagementSnapshotCardId) {
