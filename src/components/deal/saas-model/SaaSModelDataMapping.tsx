@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter, Eraser, ArrowUpDown } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter, Eraser, ArrowUpDown, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -68,6 +68,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [showValidation, setShowValidation] = useState(true);
   const [expandedPreview, setExpandedPreview] = useState(false);
   const [expandedFileUrl, setExpandedFileUrl] = useState<string | null>(null);
+  const [showExpandedSidebar, setShowExpandedSidebar] = useState(false);
   const [isRestoringMappings, setIsRestoringMappings] = useState(false);
   const [flashedRows, setFlashedRows] = useState<Set<number>>(new Set());
   const [flashedFields, setFlashedFields] = useState<Set<string>>(new Set());
@@ -2089,6 +2090,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       <Dialog open={expandedPreview} onOpenChange={(open) => {
         if (!open) {
           setExpandedPreview(false);
+          setShowExpandedSidebar(false);
           if (expandedFileUrl) { URL.revokeObjectURL(expandedFileUrl); setExpandedFileUrl(null); }
         }
       }}>
@@ -2098,84 +2100,184 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <DialogTitle className="truncate max-w-[500px] text-base">
                 {selectedFile?.file.name}
               </DialogTitle>
-              <Button variant="ghost" size="icon" onClick={() => { setExpandedPreview(false); if (expandedFileUrl) { URL.revokeObjectURL(expandedFileUrl); setExpandedFileUrl(null); } }}>
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1.5">
+                {selectedRows.size > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">{selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected</Badge>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={showExpandedSidebar ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs"
+                      onClick={() => setShowExpandedSidebar(prev => !prev)}
+                    >
+                      {showExpandedSidebar ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
+                      Field Mapping
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{showExpandedSidebar ? 'Hide' : 'Show'} field mapping panel</TooltipContent>
+                </Tooltip>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setExpandedPreview(false); setShowExpandedSidebar(false); if (expandedFileUrl) { URL.revokeObjectURL(expandedFileUrl); setExpandedFileUrl(null); } }}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </DialogHeader>
-          <div className="flex-1 min-h-0 min-w-0 overflow-auto p-2">
-            {selectedFile && (() => {
-              const expSheet = selectedFile.sheets[activeSheet];
-              if (!expSheet) return null;
-              return (
-                <table className="w-max text-[11px] border-collapse">
-                  <thead className="sticky top-0 z-20 bg-muted">
-                    <tr>
-                      <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted">#</th>
-                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[200px] min-w-[200px] border-r-2 border-r-border/50 font-semibold bg-muted" style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>Account Name</th>
-                      {Array.from({ length: Math.min((expSheet.data[0]?.length || 0) - 1, 49) }, (_, i) => {
-                        const colIdx = i + 1;
-                        if (excludedColumns.has(colIdx)) return null;
-                        const isColFlipped = flippedColumns.has(colIdx);
+          <div className="flex-1 min-h-0 flex">
+            {/* Table area */}
+            <div className={cn("flex-1 min-w-0 overflow-auto p-2 transition-all", showExpandedSidebar && "border-r border-border/30")}>
+              {selectedFile && (() => {
+                const expSheet = selectedFile.sheets[activeSheet];
+                if (!expSheet) return null;
+                return (
+                  <table className="w-max text-[11px] border-collapse">
+                    <thead className="sticky top-0 z-20 bg-muted">
+                      <tr>
+                        <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted">#</th>
+                        <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[200px] min-w-[200px] border-r-2 border-r-border/50 font-semibold bg-muted" style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>Account Name</th>
+                        {Array.from({ length: Math.min((expSheet.data[0]?.length || 0) - 1, 49) }, (_, i) => {
+                          const colIdx = i + 1;
+                          if (excludedColumns.has(colIdx)) return null;
+                          const isColFlipped = flippedColumns.has(colIdx);
+                          return (
+                            <th key={colIdx} className={cn(
+                              "py-1.5 px-2 text-right text-muted-foreground min-w-[90px] border-r border-border/10 font-normal",
+                              isColFlipped && "bg-amber-500/10",
+                            )}>
+                              <div className="flex items-center gap-1 justify-end">
+                                {isColFlipped && <span className="text-[8px] font-bold text-amber-500">±</span>}
+                                <span className="text-[8px] text-muted-foreground/40">
+                                  {String.fromCharCode(65 + (colIdx % 26))}{colIdx >= 26 ? String.fromCharCode(65 + Math.floor(colIdx / 26) - 1) : ''}
+                                </span>
+                              </div>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expSheet.data.map((row, rowIdx) => {
+                        const isFlipped = flippedRows.has(rowIdx);
+                        const isSelected = selectedRows.has(rowIdx);
                         return (
-                          <th key={colIdx} className={cn(
-                            "py-1.5 px-2 text-right text-muted-foreground min-w-[90px] border-r border-border/10 font-normal",
-                            isColFlipped && "bg-amber-500/10",
-                          )}>
-                            <div className="flex items-center gap-1 justify-end">
-                              {isColFlipped && <span className="text-[8px] font-bold text-amber-500">±</span>}
-                              <span className="text-[8px] text-muted-foreground/40">
-                                {String.fromCharCode(65 + (colIdx % 26))}{colIdx >= 26 ? String.fromCharCode(65 + Math.floor(colIdx / 26) - 1) : ''}
-                              </span>
-                            </div>
-                          </th>
+                          <tr
+                            key={rowIdx}
+                            className={cn(
+                              "border-b border-border/5 cursor-pointer transition-colors",
+                              isSelected
+                                ? "bg-primary/10 hover:bg-primary/15"
+                                : rowIdx % 2 === 0 ? "bg-transparent hover:bg-muted/10" : "bg-muted/5 hover:bg-muted/15"
+                            )}
+                            onClick={(e) => {
+                              setSelectedRows(prev => {
+                                const next = new Set(prev);
+                                if (e.shiftKey && lastClickedRowRef.current !== null) {
+                                  const start = Math.min(lastClickedRowRef.current, rowIdx);
+                                  const end = Math.max(lastClickedRowRef.current, rowIdx);
+                                  for (let i = start; i <= end; i++) next.add(i);
+                                } else if (e.metaKey || e.ctrlKey) {
+                                  next.has(rowIdx) ? next.delete(rowIdx) : next.add(rowIdx);
+                                } else {
+                                  if (next.has(rowIdx) && next.size === 1) {
+                                    next.delete(rowIdx);
+                                  } else {
+                                    next.clear();
+                                    next.add(rowIdx);
+                                  }
+                                }
+                                lastClickedRowRef.current = rowIdx;
+                                return next;
+                              });
+                            }}
+                          >
+                            <td className={cn(
+                              "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
+                              isSelected ? "bg-primary/10" : "bg-card"
+                            )}>
+                              <div className="flex items-center justify-center gap-0.5">
+                                {rowIdx + 1}
+                                {isFlipped && <span className="text-[8px] font-bold text-amber-500">±</span>}
+                              </div>
+                            </td>
+                            <td className={cn(
+                              "sticky left-8 z-10 py-1 px-2 w-[200px] min-w-[200px] border-r-2 border-r-border/50 font-medium",
+                              isSelected ? "bg-primary/10" : "bg-card"
+                            )} style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>
+                              <span className="truncate">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
+                            </td>
+                            {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
+                              const actualCol = colIdx + 1;
+                              if (excludedColumns.has(actualCol)) return null;
+                              const cellVal = row[actualCol];
+                              const isNum = isNumericCell(cellVal);
+                              const isColFlipped = flippedColumns.has(actualCol);
+                              const shouldFlip = isFlipped !== isColFlipped;
+                              let displayVal = cellVal;
+                              if (shouldFlip && isNum && cellVal !== null && cellVal !== undefined) {
+                                const numVal = typeof cellVal === 'number' ? cellVal : parseFloat(String(cellVal).replace(/[,$]/g, ''));
+                                if (!isNaN(numVal)) displayVal = -numVal;
+                              }
+                              return (
+                                <td key={actualCol} className={cn(
+                                  "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
+                                  isNum ? "text-right" : "text-left",
+                                  isColFlipped && "bg-amber-500/5",
+                                )}>
+                                  {formatCellValue(displayVal)}
+                                </td>
+                              );
+                            })}
+                          </tr>
                         );
                       })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {expSheet.data.map((row, rowIdx) => {
-                      const isFlipped = flippedRows.has(rowIdx);
-                      return (
-                        <tr key={rowIdx} className={cn("border-b border-border/5", rowIdx % 2 === 0 ? "bg-transparent" : "bg-muted/5")}>
-                          <td className="sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20 bg-card">
-                            <div className="flex items-center justify-center gap-0.5">
-                              {rowIdx + 1}
-                              {isFlipped && <span className="text-[8px] font-bold text-amber-500">±</span>}
-                            </div>
-                          </td>
-                          <td className="sticky left-8 z-10 py-1 px-2 w-[200px] min-w-[200px] border-r-2 border-r-border/50 font-medium bg-card" style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>
-                            <span className="truncate">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
-                          </td>
-                          {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
-                            const actualCol = colIdx + 1;
-                            if (excludedColumns.has(actualCol)) return null;
-                            const cellVal = row[actualCol];
-                            const isNum = isNumericCell(cellVal);
-                            const isColFlipped = flippedColumns.has(actualCol);
-                            const shouldFlip = isFlipped !== isColFlipped;
-                            let displayVal = cellVal;
-                            if (shouldFlip && isNum && cellVal !== null && cellVal !== undefined) {
-                              const numVal = typeof cellVal === 'number' ? cellVal : parseFloat(String(cellVal).replace(/[,$]/g, ''));
-                              if (!isNaN(numVal)) displayVal = -numVal;
-                            }
-                            return (
-                              <td key={actualCol} className={cn(
-                                "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
-                                isNum ? "text-right" : "text-left",
-                                isColFlipped && "bg-amber-500/5",
-                              )}>
-                                {formatCellValue(displayVal)}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              );
-            })()}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+            {/* Field Mapping Drawer */}
+            {showExpandedSidebar && (
+              <div className="w-[320px] flex-shrink-0 overflow-y-auto bg-card/80 backdrop-blur-sm animate-in slide-in-from-right-5 duration-200">
+                <DataMappingFieldSidebar
+                  fieldMappings={fieldMappings}
+                  selectedRows={selectedRows}
+                  autoMapResults={autoMapResults}
+                  suggestions={suggestions}
+                  mappedCount={mappedCount}
+                  lastSavedCount={lastSavedCount}
+                  hasUnsavedMappings={hasUnsavedMappings}
+                  isSaving={isSaving}
+                  selectedFile={selectedFile}
+                  activeSheet={activeSheet}
+                  flashedFields={flashedFields}
+                  pendingAutoMaps={pendingAutoMaps}
+                  draggingRowIdx={draggingRowIdx}
+                  onAssignField={handleAssignField}
+                  onRemoveMapping={handleRemoveMapping}
+                  onAcceptSuggestion={handleAcceptSuggestion}
+                  onSaveProgress={handleSaveProgress}
+                  onClearAllMappings={handleClearAllMappings}
+                  onDeselectRows={() => setSelectedRows(new Set())}
+                  onAcceptAutoMap={handleAcceptAutoMap}
+                  onRejectAutoMap={handleRejectAutoMap}
+                  onAcceptAllAutoMaps={handleAcceptAllAutoMaps}
+                  onAutoMap={handleAutoMap}
+                  onDropAssign={(fieldName, rowIdx) => {
+                    if (!selectedFile) return;
+                    const s = selectedFile.sheets[activeSheet];
+                    const label = String(s.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`);
+                    const before = { ...fieldMappings };
+                    setFieldMappings(prev => {
+                      const next = { ...prev, [fieldName]: [...(prev[fieldName] || []), { sheet: s.name, rowIdx, label }] };
+                      pushAction({ type: 'assign', description: `${label} → ${fieldName}`, before, after: next });
+                      return next;
+                    });
+                    triggerFlash([rowIdx], fieldName);
+                  }}
+                />
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
