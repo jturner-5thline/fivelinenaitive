@@ -88,6 +88,10 @@ export function ConfigPanel({ config, onChange, realtime, onRealtimeToggle }: Pr
           <Section title="Formula" defaultOpen={false}>
             <FormulaSection config={config.formula} onChange={(formula) => onChange({ ...config, formula })} />
           </Section>
+
+          <Section title="KPI Detail Card" defaultOpen={false}>
+            <KPIDetailConfigSection config={config.kpiDetailConfig} onChange={(kpiDetailConfig) => onChange({ ...config, kpiDetailConfig })} />
+          </Section>
         </div>
       </ScrollArea>
     </div>
