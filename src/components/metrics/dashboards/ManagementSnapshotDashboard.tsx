@@ -2,8 +2,8 @@ import { useState, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Pencil, ChevronDown, Loader2, Trash2 } from 'lucide-react';
-import { ResponsiveContainer, BarChart, LineChart, Bar, XAxis, YAxis, Tooltip, Legend, Line, CartesianGrid, Cell, ReferenceLine } from 'recharts';
+import { Lock, Pencil, ChevronDown, Loader2, Trash2, TrendingUp } from 'lucide-react';
+import { ResponsiveContainer, ComposedChart, BarChart, LineChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Cell, ReferenceLine, LabelList } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
@@ -210,6 +210,7 @@ function GenericDashboardCard({
   onTimeWindowChange,
   chartHeight = 200,
 }: GenericDashboardCardProps) {
+  const [showTrendLine, setShowTrendLine] = useState(false);
   const { chartData, total, seriesKeys, isLoading } = useDashboardCardData(
     datarailsConfig,
     timeWindow,
@@ -346,9 +347,17 @@ function GenericDashboardCard({
       );
     }
 
+    // Compute cumulative trend data
+    const trendData = showTrendLine ? chartData.map((entry: any) => {
+      const total = dataKeys.reduce((sum: number, key: string) => sum + (Number(entry[key]) || 0), 0);
+      return { ...entry, __trendLine: total };
+    }) : chartData;
+
+    const trendLineColor = '#94A3B8';
+
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData}>
+        <ComposedChart data={trendData}>
           <defs>
             {negEnabled && (
               <linearGradient id={`negGrad-${cardId}`} x1="0" y1="0" x2="0" y2="1">
@@ -358,20 +367,22 @@ function GenericDashboardCard({
             )}
           </defs>
           <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-          <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+          <YAxis yAxisId="left" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+          {showTrendLine && <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />}
           <Tooltip formatter={(value: number) => formatCurrency(value)} />
           <Legend />
-          {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
+          {negEnabled && <ReferenceLine yAxisId="left" y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
           {dataKeys.map((key, i) => (
             <Bar
               key={key}
+              yAxisId="left"
               dataKey={key}
               stackId={visualization === 'stackedBar' ? `${cardId}-stack` : undefined}
               fill={i === 0 ? color : CHART_COLORS[i % CHART_COLORS.length]}
               name={key}
               radius={visualization !== 'stackedBar' ? [4, 4, 0, 0] as any : undefined}
             >
-              {negEnabled && chartData.map((entry: any, idx: number) => {
+              {negEnabled && trendData.map((entry: any, idx: number) => {
                 const val = entry[key];
                 const isBelowThreshold = typeof val === 'number' && val < negThreshold;
                 return (
@@ -383,7 +394,25 @@ function GenericDashboardCard({
               })}
             </Bar>
           ))}
-        </BarChart>
+          {showTrendLine && (
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="__trendLine"
+              stroke={trendLineColor}
+              strokeWidth={2}
+              dot={{ r: 4, fill: trendLineColor }}
+              name="Trend"
+            >
+              <LabelList
+                dataKey="__trendLine"
+                position="top"
+                formatter={(value: number) => formatCurrency(value)}
+                style={{ fontSize: 9, fill: trendLineColor, fontWeight: 600 }}
+              />
+            </Line>
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
     );
   };
@@ -395,7 +424,20 @@ function GenericDashboardCard({
       <CardHeader className={cn('pb-2 widget-drag-handle cursor-grab', sizeVariant === 'metric' && 'pb-1 pt-3 px-3')}>
         <div className="flex items-start justify-between gap-2">
           <CardTitle className={cn('text-sm font-medium', sizeVariant === 'metric' && 'text-xs')}>{title}</CardTitle>
-          {renderEditActions()}
+          <div className="flex items-center gap-0.5">
+            {visualization !== 'kpi' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn('h-7 w-7', showTrendLine && 'text-primary')}
+                onClick={(e) => { e.stopPropagation(); setShowTrendLine(v => !v); }}
+                aria-label="Toggle trend line"
+              >
+                <TrendingUp className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {renderEditActions()}
+          </div>
         </div>
         <div className="flex gap-1.5 flex-wrap">
           <PeriodBadge cardId={cardId} currentWindow={timeWindow} onTimeWindowChange={onTimeWindowChange} />

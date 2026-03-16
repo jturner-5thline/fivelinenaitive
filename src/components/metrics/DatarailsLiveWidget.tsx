@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ResponsiveContainer,
+  ComposedChart,
   BarChart,
   Bar,
   LineChart,
@@ -12,13 +13,16 @@ import {
   Legend,
   Cell,
   ReferenceLine,
+  LabelList,
 } from 'recharts';
-import { Loader2 } from 'lucide-react';
+import { Loader2, TrendingUp } from 'lucide-react';
 import { CardContent } from '@/components/ui/card';
 import { StatWidgetContent, ChartWidgetContent } from '@/components/metrics/SortableMetricWidget';
 import { useDashboardCardData } from '@/hooks/useDashboardCardData';
 import { type WidgetConfig, type TimeWindow, type NegativeStylingConfig } from '@/components/widget-editor/widgetTypes';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const COLORS = [
   'hsl(213, 90%, 60%)',
@@ -98,6 +102,7 @@ interface DatarailsLiveChartProps {
 }
 
 export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
+  const [showTrendLine, setShowTrendLine] = useState(false);
   const dc = widget.datarailsConfig as {
     type?: string;
     values?: Array<{ fieldId?: string | null; format?: string }>;
@@ -146,9 +151,27 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
   const isLine = selectedType === 'line';
   const isStacked = selectedType === 'stackedBar';
   const barRadius: [number, number, number, number] = [6, 6, 0, 0];
+  const trendLineColor = '#94A3B8';
+
+  const trendData = showTrendLine ? chartData.map((entry: any) => {
+    const total = dataKeys.reduce((sum: number, key: string) => sum + (Number(entry[key]) || 0), 0);
+    return { ...entry, __trendLine: total };
+  }) : chartData;
+
+  const trendLineToggle = !isLine ? (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn('h-6 w-6', showTrendLine && 'text-primary')}
+      onClick={(e) => { e.stopPropagation(); setShowTrendLine(v => !v); }}
+      aria-label="Toggle trend line"
+    >
+      <TrendingUp className="h-3.5 w-3.5" />
+    </Button>
+  ) : null;
 
   return (
-    <ChartWidgetContent title={widget.title} description="Custom widget">
+    <ChartWidgetContent title={widget.title} description="Custom widget" footer={trendLineToggle}>
       <div style={{ height: chartHeight }}>
         <ResponsiveContainer width="100%" height="100%">
           {isLine ? (
@@ -195,7 +218,7 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
               })}
             </LineChart>
           ) : (
-            <BarChart data={chartData}>
+            <ComposedChart data={trendData}>
               <defs>
                 {dataKeys.map((name, i) => {
                   const [c1, c2] = [
@@ -221,7 +244,8 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="period" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-              <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
+              <YAxis yAxisId="left" tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
+              {showTrendLine && <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />}
               <Tooltip
                 formatter={(value: number) => [formatCurrency(value)]}
                 contentStyle={{
@@ -231,17 +255,18 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
                 }}
               />
               <Legend />
-              {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
+              {negEnabled && <ReferenceLine yAxisId="left" y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
               {dataKeys.map((name, i) => (
                 <Bar
                   key={name}
+                  yAxisId="left"
                   dataKey={name}
                   fill={`url(#drGrad-live-${i})`}
                   name={name.replace('f-', '').replace(/-/g, ' ')}
                   radius={barRadius}
                   stackId={isStacked ? 'stack' : undefined}
                 >
-                  {negEnabled && chartData.map((entry: any, idx: number) => {
+                  {negEnabled && trendData.map((entry: any, idx: number) => {
                     const val = entry[name];
                     const isBelowThreshold = typeof val === 'number' && val < negThreshold;
                     return (
@@ -253,7 +278,25 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
                   })}
                 </Bar>
               ))}
-            </BarChart>
+              {showTrendLine && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="__trendLine"
+                  stroke={trendLineColor}
+                  strokeWidth={2}
+                  dot={{ r: 4, fill: trendLineColor }}
+                  name="Trend"
+                >
+                  <LabelList
+                    dataKey="__trendLine"
+                    position="top"
+                    formatter={(value: number) => formatCurrency(value)}
+                    style={{ fontSize: 9, fill: trendLineColor, fontWeight: 600 }}
+                  />
+                </Line>
+              )}
+            </ComposedChart>
           )}
         </ResponsiveContainer>
       </div>
