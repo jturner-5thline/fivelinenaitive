@@ -197,9 +197,10 @@ interface WriteUpCompanyOverviewTabProps {
   updateField: <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => void;
   onChange?: (data: DealWriteUpData) => void;
   changedFields?: Set<string>;
+  isFieldEdited?: (field: string) => boolean;
 }
 
-export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange, changedFields }: WriteUpCompanyOverviewTabProps) {
+export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange, changedFields, isFieldEdited }: WriteUpCompanyOverviewTabProps) {
   const { dealTypes: dealTypeOptions } = useDealTypes();
   const { lenders: masterLenders } = useMasterLenders();
   const [locationSearch, setLocationSearch] = useState('');
