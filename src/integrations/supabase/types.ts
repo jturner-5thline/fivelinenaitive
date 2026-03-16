@@ -2765,6 +2765,7 @@ export type Database = {
       }
       dashboard_grid_layouts: {
         Row: {
+          company_id: string | null
           created_at: string
           dashboard_id: string
           id: string
@@ -2773,6 +2774,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           dashboard_id: string
           id?: string
@@ -2781,6 +2783,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           dashboard_id?: string
           id?: string
@@ -2788,10 +2791,19 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_grid_layouts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dashboard_layouts: {
         Row: {
+          company_id: string | null
           created_at: string
           description: string | null
           grid_config: Json
@@ -2805,6 +2817,7 @@ export type Database = {
           widgets_config: Json
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           description?: string | null
           grid_config?: Json
@@ -2818,6 +2831,7 @@ export type Database = {
           widgets_config?: Json
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           description?: string | null
           grid_config?: Json
@@ -2830,7 +2844,15 @@ export type Database = {
           user_id?: string
           widgets_config?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_layouts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       data_room_audit_log: {
         Row: {
