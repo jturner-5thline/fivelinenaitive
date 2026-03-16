@@ -330,8 +330,15 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
         </defs>
         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
         <XAxis dataKey="period" tick={{ fontSize: 11 }} label={{ value: xLabel, position: 'insideBottom', offset: -2, fontSize: 11 }} />
-        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} />
-        <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => {
+          const abs = Math.abs(v);
+          const sign = v < 0 ? '-' : '';
+          return abs >= 1000 ? `${sign}$${(abs / 1000).toFixed(0)}k` : `${sign}$${abs}`;
+        }} />
+        <Tooltip formatter={(value: number) => {
+          const sign = value < 0 ? '-' : '';
+          return `${sign}$${Math.abs(value).toLocaleString()}`;
+        }} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {dataKeys.map((name, i) => {
           const isLastSeries = i === dataKeys.length - 1;
