@@ -341,7 +341,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                   </div>
                   <div>
                     <span style={{ fontSize: 14, fontWeight: 600, color: T.fg }}>Use of Proceeds</span>
-                    <p style={{ fontSize: 14, color: T.mutedFg, marginTop: 6 }}>{data.useOfFunds || '—'}</p>
+                    <div style={{ fontSize: 14, color: T.mutedFg, marginTop: 6 }}>{renderBulletText(data.useOfFunds)}</div>
                   </div>
                 </div>
               </div>
