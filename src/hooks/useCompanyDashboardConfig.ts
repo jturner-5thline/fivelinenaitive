@@ -6,6 +6,7 @@ import { useCompany } from '@/hooks/useCompany';
  * Hook to persist dashboard widget configs (snapshot cards, hidden cards, custom widgets)
  * at the company level via company_settings.fpa_dashboard_config.
  * All company members see the same config; only admins can save changes.
+ * Subscribes to realtime updates so non-admin users see changes instantly.
  */
 export function useCompanyDashboardConfig<T extends Record<string, any>>(
   configKey: string,
@@ -16,6 +17,8 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
   const [config, setConfig] = useState<T>(defaultValue);
   const [isLoaded, setIsLoaded] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track locally-pending saves so we don't overwrite our own optimistic update
+  const pendingSaveRef = useRef(false);
 
   // Load from company_settings.fpa_dashboard_config[configKey]
   useEffect(() => {
@@ -47,6 +50,37 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
     })();
   }, [company?.id, configKey]);
 
+  // Realtime subscription — push config changes to all company members
+  useEffect(() => {
+    if (!company?.id) return;
+
+    const channel = supabase
+      .channel(`company-dashboard-config-${configKey}-${company.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'company_settings',
+          filter: `company_id=eq.${company.id}`,
+        },
+        (payload) => {
+          // Skip if we have a pending save (avoid echo)
+          if (pendingSaveRef.current) return;
+
+          const fpaConfig = (payload.new as any)?.fpa_dashboard_config as Record<string, any> | null;
+          if (fpaConfig && fpaConfig[configKey] !== undefined) {
+            setConfig({ ...defaultValue, ...fpaConfig[configKey] });
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [company?.id, configKey]);
+
   // Debounced save — admin only
   const saveConfig = useCallback((newConfig: T) => {
     setConfig(newConfig);
@@ -54,6 +88,7 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
     if (!canEdit || !company?.id) return;
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    pendingSaveRef.current = true;
     saveTimerRef.current = setTimeout(async () => {
       try {
         // Read current fpa_dashboard_config first to merge
@@ -72,6 +107,9 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
           .eq('company_id', company.id);
       } catch (err) {
         console.error('Error saving dashboard config:', err);
+      } finally {
+        // Allow realtime updates again after a short delay
+        setTimeout(() => { pendingSaveRef.current = false; }, 300);
       }
     }, 500);
   }, [canEdit, company?.id, configKey]);
