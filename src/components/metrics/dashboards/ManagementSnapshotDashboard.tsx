@@ -68,6 +68,7 @@ export type ManagementSnapshotEditableConfig = Pick<
 > & Partial<Pick<MetricWidgetConfig, 'type' | 'chartType' | 'datarailsConfig'>> & {
   timeWindow?: TimeWindow;
   sizeVariant?: WidgetSizeVariant;
+  kpiDetailConfig?: KPIDetailCardConfig;
 };
 
 const WINDOW_GROUPS: { label: string; options: { value: TimeWindow; label: string }[] }[] = [
