@@ -165,6 +165,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   publishAsAnonymous: false,
   team: [],
   visibleMetrics: { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true },
+  financialColumnVisibility: { showRevGrowth: true, showGmDelta: true, showEbitdaDelta: true },
 });
 
 interface DealWriteUpProps {
