@@ -24,6 +24,7 @@ export interface AxisConfig {
 
 export interface SeriesConfig {
   fieldId: string | null;
+  label?: string;
   mode: 'single' | 'many';
 }
 
