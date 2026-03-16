@@ -418,66 +418,56 @@ export function ManagementSnapshotDashboard({
 
   const isHidden = (cardId: EditableManagementSnapshotCardId) => hiddenCards.includes(cardId);
 
+  const CHART_H = 4; // grid rows for chart
+  const METRIC_H = 2; // grid rows for metric (half chart height)
+  const CHART_W = 6; // columns for chart (2 per row)
+  const METRIC_W = 3; // columns for metric (4 per row)
+
+  const sizeVariantClasses: Record<WidgetSizeVariant, string> = {
+    chart: `col-span-12 md:col-span-${CHART_W}`,
+    metric: `col-span-6 md:col-span-${METRIC_W}`,
+  };
+
+  const sizeVariantRowSpan: Record<WidgetSizeVariant, number> = {
+    chart: CHART_H,
+    metric: METRIC_H,
+  };
+
+  type CardEntry = {
+    cardId: EditableManagementSnapshotCardId;
+    props: GenericDashboardCardProps;
+  };
+
+  const allCards: CardEntry[] = [
+    { cardId: 'debt-revenue', props: getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd', 'chart') },
+    { cardId: 'finserv-revenue', props: getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd', 'chart') },
+    { cardId: 'total-revenue', props: getCardProps('total-revenue', 'Total Revenue', 'hsl(var(--chart-2))', 'ytd', 'chart') },
+    { cardId: 'clients-signed-debt', props: getCardProps('clients-signed-debt', 'Clients Signed - Debt', 'hsl(var(--primary))', 'ytd', 'metric') },
+    { cardId: 'clients-signed-finserv', props: getCardProps('clients-signed-finserv', 'Clients Signed - FinServ', 'hsl(var(--chart-4))', 'ytd', 'metric') },
+    { cardId: 'outstanding-ar', props: getCardProps('outstanding-ar', 'Outstanding A/R', 'hsl(var(--primary))', 'ytd', 'metric') },
+    { cardId: 'debt-profit', props: getCardProps('debt-profit', 'Debt Profit', 'hsl(var(--primary))', 'ytd', 'chart') },
+    { cardId: 'finserv-profit', props: getCardProps('finserv-profit', 'FinServ Profit', 'hsl(var(--chart-4))', 'ytd', 'chart') },
+  ];
+
+  const visibleCards = allCards.filter(c => !isHidden(c.cardId));
+
   return (
-    <div className="space-y-6">
-      {/* Row 1: Revenue Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {!isHidden('debt-revenue') && (
-          <GenericDashboardCard
-            {...getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd')}
-          />
-        )}
-        {!isHidden('finserv-revenue') && (
-          <GenericDashboardCard
-            {...getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd')}
-          />
-        )}
-
-        {!isHidden('total-revenue') && (
-          <GenericDashboardCard
-            {...getCardProps('total-revenue', 'Total Revenue', 'hsl(var(--chart-2))', 'ytd')}
-          />
-        )}
-      </div>
-
-      {/* Row 2: Clients Signed & A/R */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {!isHidden('clients-signed-debt') && (
-          <GenericDashboardCard
-            {...getCardProps('clients-signed-debt', 'Clients Signed - Debt')}
-            chartHeight={180}
-          />
-        )}
-        {!isHidden('clients-signed-finserv') && (
-          <GenericDashboardCard
-            {...getCardProps('clients-signed-finserv', 'Clients Signed - FinServ')}
-            chartHeight={180}
-          />
-        )}
-        {!isHidden('outstanding-ar') && (
-          <GenericDashboardCard
-            {...getCardProps('outstanding-ar', 'Outstanding A/R')}
-            chartHeight={180}
-          />
-        )}
-      </div>
-
-      {/* Row 3: Profit & Active Deals */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {!isHidden('debt-profit') && (
-          <GenericDashboardCard
-            {...getCardProps('debt-profit', 'Debt Profit')}
-            chartHeight={180}
-          />
-        )}
-        {!isHidden('finserv-profit') && (
-          <GenericDashboardCard
-            {...getCardProps('finserv-profit', 'FinServ Profit', 'hsl(var(--chart-4))')}
-            chartHeight={180}
-          />
-        )}
-        
-      </div>
+    <div className="grid grid-cols-12 gap-4 auto-rows-[60px]">
+      {visibleCards.map(({ props }) => {
+        const variant = props.sizeVariant || 'chart';
+        const rowSpan = sizeVariantRowSpan[variant];
+        return (
+          <div
+            key={props.cardId}
+            className={cn(
+              variant === 'chart' ? 'col-span-12 md:col-span-6' : 'col-span-6 md:col-span-3',
+            )}
+            style={{ gridRow: `span ${rowSpan}` }}
+          >
+            <GenericDashboardCard {...props} />
+          </div>
+        );
+      })}
     </div>
   );
 }
