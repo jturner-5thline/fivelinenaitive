@@ -117,18 +117,28 @@ export function InteractivePLTable({ comparisonMode, dateRange }: InteractivePLT
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<string>('all');
+  const [timeGrain, setTimeGrain] = useState<TimeGrain>('quarterly');
 
   const { data: entities = [] } = useQBEntities();
-  const { data: plReports, isLoading, syncForDateRange, isSyncing } = useQBProfitAndLoss(selectedEntity || 'all', dateRange);
 
-  // Compute comparison date range
-  const compDates = useMemo(() => getComparisonDateRange(dateRange, comparisonMode), [dateRange, comparisonMode]);
+  // Compute current and comparison period dates based on grain
+  const grainDates = useMemo(() => getGrainPeriodDates(timeGrain), [timeGrain]);
+  const grainCompDates = useMemo(() => getGrainComparisonDates(timeGrain, comparisonMode), [timeGrain, comparisonMode]);
+
+  const currentDateRange = useMemo(() => `custom_${grainDates.start_date}_${grainDates.end_date}`, [grainDates]);
   const compDateRange = useMemo(() => {
-    if (!compDates) return undefined;
-    // We need to pass a synthetic dateRange key that maps to these dates
-    // Instead, we'll use the hook with explicit start/end via a custom key
-    return `custom_${compDates.start_date}_${compDates.end_date}`;
-  }, [compDates]);
+    if (!grainCompDates) return undefined;
+    return `custom_${grainCompDates.start_date}_${grainCompDates.end_date}`;
+  }, [grainCompDates]);
+
+  // Human-readable labels
+  const currentLabel = useMemo(() => getGrainPeriodLabel(grainDates, timeGrain), [grainDates, timeGrain]);
+  const compLabel = useMemo(() => {
+    if (!grainCompDates) return COMPARISON_LABELS[comparisonMode] || comparisonMode;
+    return getGrainPeriodLabel(grainCompDates, timeGrain);
+  }, [grainCompDates, timeGrain, comparisonMode]);
+
+  const { data: plReports, isLoading, syncForDateRange, isSyncing } = useQBProfitAndLoss(selectedEntity || 'all', currentDateRange);
 
   const { data: compReports, isLoading: compLoading, syncForDateRange: syncCompRange, isSyncing: compSyncing } = useQBProfitAndLoss(
     selectedEntity || 'all',
