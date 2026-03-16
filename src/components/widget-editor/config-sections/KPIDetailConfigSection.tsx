@@ -44,6 +44,30 @@ export function KPIDetailConfigSection({ config, onChange }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* Layout Variant */}
+      <div>
+        <Label className="text-xs text-muted-foreground mb-1.5 block">Layout</Label>
+        <div className="flex gap-1">
+          {([
+            { value: 'full' as KPILayoutVariant, label: 'Full (with breakdowns)' },
+            { value: 'compact' as KPILayoutVariant, label: 'Compact' },
+          ]).map(o => (
+            <button
+              key={o.value}
+              onClick={() => update({ layoutVariant: o.value })}
+              className={cn(
+                'px-2.5 py-1 rounded text-xs font-medium transition-colors',
+                c.layoutVariant === o.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Card Title */}
       <div>
         <Label className="text-xs text-muted-foreground mb-1.5 block">Card Title</Label>
