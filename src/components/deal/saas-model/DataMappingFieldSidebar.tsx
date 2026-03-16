@@ -239,7 +239,12 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
       onClick={() => {
         const idx = visibleFields.indexOf(field);
         if (idx >= 0) setFocusedFieldIdx(idx);
+        // If rows are selected and field is unmapped, assign immediately on click
+        if (selectedRows.size > 0 && !isMapped && !hasPendingAuto) {
+          onAssignField(field);
+        }
       }}
+      style={{ cursor: selectedRows.size > 0 && !isMapped && !hasPendingAuto ? 'pointer' : undefined }}
       onDragOver={e => {
         if (draggingRowIdx === null || isMapped) return;
         e.preventDefault();
@@ -323,8 +328,8 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
               <Check className="h-3 w-3 mr-0.5" /> Apply
             </Button>
           )}
-          {selectedRows.size > 0 && !hasPendingAuto && (
-            <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 opacity-0 group-hover:opacity-100" onClick={() => onAssignField(field)}>Assign</Button>
+          {selectedRows.size > 0 && !hasPendingAuto && !isMapped && (
+            <span className="text-[10px] px-2 text-muted-foreground group-hover:text-primary transition-colors">Assign</span>
           )}
         </div>
       </div>
