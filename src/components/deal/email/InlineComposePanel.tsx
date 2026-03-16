@@ -196,7 +196,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
 
         <Separator />
 
-        {/* Fix #11: Formatting toolbar */}
+        {/* Formatting toolbar */}
         <div className="flex items-center gap-1 px-5 h-8 border-b border-border">
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBold}>
             <Bold className="h-3.5 w-3.5" />
@@ -206,6 +206,18 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
           </Button>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleLink}>
             <Link className="h-3.5 w-3.5" />
+          </Button>
+          <Separator orientation="vertical" className="h-4 mx-1" />
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBulletList}>
+            <List className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleNumberedList}>
+            <ListOrdered className="h-3.5 w-3.5" />
+          </Button>
+          <Separator orientation="vertical" className="h-4 mx-1" />
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={handleAiDraft}>
+            <Sparkles className="h-3 w-3" />
+            AI Draft
           </Button>
           <Separator orientation="vertical" className="h-4 mx-1" />
           <EmailTemplatePicker
