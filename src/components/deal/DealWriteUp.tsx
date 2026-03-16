@@ -123,6 +123,12 @@ export interface VisibleMetrics {
   gross_margins: boolean;
 }
 
+export interface FinancialColumnVisibility {
+  showRevGrowth: boolean;
+  showGmDelta: boolean;
+  showEbitdaDelta: boolean;
+}
+
 export interface DealDataForWriteUp {
   company?: string;
   dealTypes?: string[] | null;
