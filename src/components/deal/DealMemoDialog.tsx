@@ -789,6 +789,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                     <Textarea
                       value={localValues[section.key]}
                       onChange={(e) => handleChange(section.key, e.target.value)}
+                      onBlur={handleFieldBlur}
                       placeholder={section.placeholder}
                       className="min-h-[100px] resize-none"
                     />
