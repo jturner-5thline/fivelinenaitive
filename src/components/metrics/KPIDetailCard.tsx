@@ -4,12 +4,23 @@ import { Loader2 } from 'lucide-react';
 import { useDashboardCardData } from '@/hooks/useDashboardCardData';
 import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, DEFAULT_WIDGET_CONFIG } from '@/components/widget-editor/widgetTypes';
 import { Separator } from '@/components/ui/separator';
+import { useQBRevenueByWindow } from '@/hooks/useQBWindowData';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(1)}k`;
   return `$${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
+
+/** Map a TimeWindow to the "previous" period for comparison */
+function getPriorWindow(tw: TimeWindow): TimeWindow {
+  switch (tw) {
+    case 'mtd': return 'lastMonth';
+    case 'qtd': return 'lastQuarter';
+    case 'ytd': return 'lastYear';
+    default: return 'lastYear';
+  }
+}
 
 interface KPIDetailCardProps {
   kpiConfig: KPIDetailCardConfig;
@@ -32,38 +43,44 @@ export function KPIDetailCard({
   isEditMode,
   onClick,
 }: KPIDetailCardProps) {
-  // Main value data
-  const { total: mainTotal, isLoading: mainLoading } = useDashboardCardData(
-    datarailsConfig,
-    timeWindow,
-    entityFilter,
+  // Resolve entity for main value (uses card-level entityFilter or 'all')
+  const mainEntityId = entityFilter && entityFilter !== 'all' ? entityFilter : null;
+
+  // Main value — current period
+  const { data: mainCurrent, isLoading: mainCurrentLoading } = useQBRevenueByWindow(timeWindow, mainEntityId);
+  // Main value — prior period for comparison
+  const priorWindow = getPriorWindow(timeWindow);
+  const { data: mainPrior, isLoading: mainPriorLoading } = useQBRevenueByWindow(priorWindow, mainEntityId);
+
+  // Left breakdown — use entity from kpiConfig.left.entityId
+  const leftEntityId = kpiConfig.left.entityId || mainEntityId;
+  const { data: leftCurrent, isLoading: leftCurrentLoading } = useQBRevenueByWindow(timeWindow, leftEntityId);
+  const { data: leftPrior, isLoading: leftPriorLoading } = useQBRevenueByWindow(priorWindow, leftEntityId);
+
+  // Right breakdown — use entity from kpiConfig.right.entityId
+  const rightEntityId = kpiConfig.right.entityId || mainEntityId;
+  const { data: rightCurrent, isLoading: rightCurrentLoading } = useQBRevenueByWindow(
+    kpiConfig.breakdownColumns === 2 ? timeWindow : 'ytd', // only fetch if needed
+    kpiConfig.breakdownColumns === 2 ? rightEntityId : '__skip__',
+  );
+  const { data: rightPrior, isLoading: rightPriorLoading } = useQBRevenueByWindow(
+    kpiConfig.breakdownColumns === 2 ? priorWindow : 'ytd',
+    kpiConfig.breakdownColumns === 2 ? rightEntityId : '__skip__',
   );
 
-  // Left breakdown
-  const leftConfig = buildValueConfig(kpiConfig.left.valueField, datarailsConfig);
-  const { total: leftTotal, isLoading: leftLoading } = useDashboardCardData(
-    leftConfig,
-    timeWindow,
-    entityFilter,
-  );
-
-  // Right breakdown (only if 2 columns)
-  const rightConfig = kpiConfig.breakdownColumns === 2
-    ? buildValueConfig(kpiConfig.right.valueField, datarailsConfig)
-    : null;
-  const { total: rightTotal, isLoading: rightLoading } = useDashboardCardData(
-    rightConfig,
-    timeWindow,
-    entityFilter,
-  );
+  const mainTotal = mainCurrent?.total ?? 0;
+  const leftTotal = leftCurrent?.total ?? 0;
+  const rightTotal = rightCurrent?.total ?? 0;
 
   const isCompact = kpiConfig.layoutVariant === 'compact';
-  const isLoading = mainLoading || (!isCompact && (leftLoading || (kpiConfig.breakdownColumns === 2 && rightLoading)));
+  const isLoading = mainCurrentLoading || mainPriorLoading ||
+    (!isCompact && (leftCurrentLoading || leftPriorLoading ||
+      (kpiConfig.breakdownColumns === 2 && (rightCurrentLoading || rightPriorLoading))));
 
-  // Compute comparison percentage (simplified: use the proportion of sub-metrics)
-  const mainPctChange = mainTotal !== 0 ? computeSimplePctChange(mainTotal) : 0;
-  const leftPctChange = leftTotal !== 0 ? computeSimplePctChange(leftTotal) : 0;
-  const rightPctChange = rightTotal !== 0 ? computeSimplePctChange(rightTotal) : 0;
+  // Real period-over-period percentage change
+  const mainPctChange = computePctChange(mainTotal, mainPrior?.total ?? 0);
+  const leftPctChange = computePctChange(leftTotal, leftPrior?.total ?? 0);
+  const rightPctChange = computePctChange(rightTotal, rightPrior?.total ?? 0);
 
   return (
     <Card
@@ -151,7 +168,8 @@ function BreakdownColumn({ label, value, pctChange }: { label: string; value: nu
   );
 }
 
-function VarianceBadge({ value }: { value: number }) {
+function VarianceBadge({ value }: { value: number | null }) {
+  if (value === null) return null;
   const isPositive = value >= 0;
   return (
     <span className={cn(
@@ -163,21 +181,8 @@ function VarianceBadge({ value }: { value: number }) {
   );
 }
 
-/** Build a minimal datarails config for a single value field, inheriting base config */
-function buildValueConfig(
-  fieldId: string | null | undefined,
-  baseConfig?: Partial<WidgetConfig> | null,
-): Partial<WidgetConfig> | null {
-  if (!fieldId) return baseConfig ?? null;
-  return {
-    ...(baseConfig || {}),
-    values: [{ fieldId, agg: 'sum' as const, format: 'currency' as const, label: fieldId }],
-  };
-}
-
-/** Simple placeholder for period-over-period change (simulated) */
-function computeSimplePctChange(_total: number): number {
-  // In a real implementation this would compare current vs prior period
-  // For now returns a small positive/negative based on the value
-  return (Math.random() - 0.4) * 20;
+/** Compute real period-over-period percentage change */
+function computePctChange(current: number, prior: number): number | null {
+  if (prior === 0) return current > 0 ? 100 : null;
+  return ((current - prior) / Math.abs(prior)) * 100;
 }

@@ -79,6 +79,7 @@ export interface KPIBreakdownColumn {
   label: string;
   valueField: string | null;
   varianceField: string | null;
+  entityId?: string | null;
 }
 
 export interface KPIDetailCardConfig {
