@@ -166,6 +166,13 @@ const MANAGEMENT_SNAPSHOT_CARD_DEFAULTS: Record<EditableManagementSnapshotCardId
     size: 'medium',
     color: 'hsl(var(--chart-2))',
   },
+  'total-revenue-detail': {
+    title: 'Total Revenue Detail',
+    type: 'stat',
+    dataSource: 'qb-total-revenue',
+    size: 'small',
+    color: 'hsl(var(--chart-2))',
+  },
   'clients-signed-debt': {
     title: 'Clients Signed - Debt',
     type: 'chart',
