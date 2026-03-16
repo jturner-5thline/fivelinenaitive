@@ -1187,11 +1187,8 @@ Return ONLY a valid JSON array.`
 
 // ─── Extract structured document data (full schema) ─────────────────
 
-async function handleExtractDocument(dealId: string, documentId?: string) {
+async function handleExtractDocument(dealId: string, supabase: any, supabaseService: any, documentId?: string) {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Determine which documents to process
     let docsToProcess: { id: string; name: string; file_path: string; content_type: string; bucket: string }[] = [];
