@@ -1394,23 +1394,32 @@ export default function Metrics() {
     localStorage.setItem(HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(hiddenSnapshotCards));
   }, [hiddenSnapshotCards]);
 
-  const CARD_SIZES_STORAGE_KEY = 'management-snapshot-card-sizes-v1';
-  const [snapshotCardSizes, setSnapshotCardSizes] = useState<Partial<Record<EditableManagementSnapshotCardId, CardSizeOverride>>>(() => {
-    try {
-      const saved = localStorage.getItem(CARD_SIZES_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
+  const SNAPSHOT_CARD_IDS: EditableManagementSnapshotCardId[] = [
+    'debt-revenue', 'finserv-revenue', 'total-revenue', 'total-revenue-detail',
+    'clients-signed-debt', 'clients-signed-finserv', 'outstanding-ar',
+    'debt-profit', 'finserv-profit',
+  ];
 
-  useEffect(() => {
-    localStorage.setItem(CARD_SIZES_STORAGE_KEY, JSON.stringify(snapshotCardSizes));
-  }, [snapshotCardSizes]);
+  const SNAPSHOT_DEFAULT_LAYOUT = useMemo(() => {
+    // Charts: 6 wide, 4 tall. Metrics: 3 wide, 2 tall.
+    const chartCards = ['debt-revenue', 'finserv-revenue', 'total-revenue', 'debt-profit', 'finserv-profit'];
+    let x = 0, y = 0;
+    return SNAPSHOT_CARD_IDS.map((id) => {
+      const isChart = chartCards.includes(id);
+      const w = isChart ? 6 : 3;
+      const h = isChart ? 4 : 2;
+      if (x + w > 12) { x = 0; y += h; }
+      const item = { i: id, x, y, w, h, minW: 2, minH: 2 };
+      x += w;
+      if (x >= 12) { x = 0; y += h; }
+      return item;
+    });
+  }, []);
 
-  const handleCardResize = (cardId: EditableManagementSnapshotCardId, size: CardSizeOverride) => {
-    setSnapshotCardSizes(prev => ({ ...prev, [cardId]: size }));
-  };
+  const {
+    layout: snapshotGridLayout,
+    saveLayout: saveSnapshotGridLayout,
+  } = useGridLayout('management-snapshot-prebuilt', SNAPSHOT_CARD_IDS);
 
   const [snapshotCardToDelete, setSnapshotCardToDelete] = useState<EditableManagementSnapshotCardId | null>(null);
   const [snapshotDeleteConfirmOpen, setSnapshotDeleteConfirmOpen] = useState(false);
