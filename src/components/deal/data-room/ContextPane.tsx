@@ -53,64 +53,37 @@ export function ContextPane({
   comments, onAddComment, onDeleteComment, getCommentsForItem, currentUserId,
 }: ContextPaneProps) {
 
+  if (!selectedItem) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-4 text-center text-muted-foreground">
+        <Eye className="h-8 w-8 mb-2 opacity-30" />
+        <p className="text-xs">Select a checklist item to view details</p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col">
       <div className="p-2 border-b bg-muted/30 flex items-center justify-between">
-        <span className="text-xs font-semibold">
-          {selectedItem ? 'Item Details' : 'Room Summary'}
-        </span>
-        {!selectedItem && (
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onExportIndex}>
-                  <FileDown className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Export checklist index (CSV)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDownloadAll}>
-                  <Download className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Download all files (ZIP)</TooltipContent>
-            </Tooltip>
-          </div>
-        )}
+        <span className="text-xs font-semibold">Item Details</span>
       </div>
       <ScrollArea className="flex-1">
         <div className="p-3">
-          {selectedItem ? (
-            <ItemDetailView
-              item={selectedItem}
-              files={selectedItemFiles}
-              statusMap={statusMap}
-              unmappedFiles={unmappedFiles}
-              mapFileToItem={mapFileToItem}
-              unmapFile={unmapFile}
-              handleUploadFiles={handleUploadFiles}
-              handleDownloadFile={handleDownloadFile}
-              setPreviewFile={setPreviewFile}
-              comments={comments || []}
-              onAddComment={onAddComment}
-              onDeleteComment={onDeleteComment}
-              currentUserId={currentUserId}
-            />
-          ) : (
-            <RoomSummaryView
-              progressData={progressData}
-              categories={categories}
-              allItems={allItems}
-              attachments={attachments}
-              unmappedFiles={unmappedFiles}
-              statusMap={statusMap}
-              getFilesForItem={getFilesForItem}
-              setSelectedItemId={setSelectedItemId}
-              onDownloadSection={onDownloadSection}
-            />
-          )}
+          <ItemDetailView
+            item={selectedItem}
+            files={selectedItemFiles}
+            statusMap={statusMap}
+            unmappedFiles={unmappedFiles}
+            mapFileToItem={mapFileToItem}
+            unmapFile={unmapFile}
+            handleUploadFiles={handleUploadFiles}
+            handleDownloadFile={handleDownloadFile}
+            setPreviewFile={setPreviewFile}
+            comments={comments || []}
+            onAddComment={onAddComment}
+            onDeleteComment={onDeleteComment}
+            currentUserId={currentUserId}
+          />
         </div>
       </ScrollArea>
     </div>
