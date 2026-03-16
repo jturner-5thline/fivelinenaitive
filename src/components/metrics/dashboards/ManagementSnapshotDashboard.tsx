@@ -421,20 +421,8 @@ export function ManagementSnapshotDashboard({
 
   const isHidden = (cardId: EditableManagementSnapshotCardId) => hiddenCards.includes(cardId);
 
-  const CHART_H = 4; // grid rows for chart
-  const METRIC_H = 2; // grid rows for metric (half chart height)
-  const CHART_W = 6; // columns for chart (2 per row)
-  const METRIC_W = 3; // columns for metric (4 per row)
-
-  const sizeVariantClasses: Record<WidgetSizeVariant, string> = {
-    chart: `col-span-12 md:col-span-${CHART_W}`,
-    metric: `col-span-6 md:col-span-${METRIC_W}`,
-  };
-
-  const sizeVariantRowSpan: Record<WidgetSizeVariant, number> = {
-    chart: CHART_H,
-    metric: METRIC_H,
-  };
+  const CHART_H = 4;
+  const METRIC_H = 2;
 
   type CardEntry = {
     cardId: EditableManagementSnapshotCardId;
