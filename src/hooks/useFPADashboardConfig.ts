@@ -153,6 +153,7 @@ export function useFPADashboardConfig() {
       return false;
     }
 
+    pendingSaveRef.current = true;
     setIsSaving(true);
     try {
       // Check if settings row exists
