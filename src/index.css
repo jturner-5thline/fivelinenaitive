@@ -171,6 +171,13 @@
     --gradient-accent: linear-gradient(135deg, hsl(213 90% 75%), hsl(213 80% 60%));
     --gradient-hero: linear-gradient(180deg, #0A0C14 0%, #080A10 100%);
 
+    /* Email / Outlook tokens — dark mode */
+    --outlook-blue: 207 90% 54%;
+    --email-sidebar-bg: 0 0% 14%;
+    --email-list-bg: 0 0% 16%;
+    --email-reading-bg: 0 0% 11%;
+    --email-toolbar-bg: 0 0% 13%;
+
     --font-sans: Figtree, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
     --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
     --font-mono: "Cascadia Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
