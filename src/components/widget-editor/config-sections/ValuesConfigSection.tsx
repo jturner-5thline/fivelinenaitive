@@ -62,7 +62,7 @@ export function ValuesConfigSection({ configs, onChange, realmId, entityId }: Pr
         return (
           <div key={idx} className="rounded-lg border border-border bg-secondary/30 p-2.5 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">{field?.name ?? 'Unknown'}</span>
+              <span className="text-sm font-medium text-foreground">{field?.name ?? vc.label ?? 'Unknown'}</span>
               <button onClick={() => remove(idx)} className="text-muted-foreground hover:text-destructive">
                 <X className="h-3.5 w-3.5" />
               </button>

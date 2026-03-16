@@ -16,6 +16,7 @@ export type TimeWindow = 'mtd' | 'lastMonth' | 'qtd' | 'lastQuarter' | 'ytd' | '
 
 export interface AxisConfig {
   fieldId: string | null;
+  label?: string;
   grain?: Grain;
   window?: TimeWindow;
   showZeroPeriods?: boolean;
@@ -23,11 +24,13 @@ export interface AxisConfig {
 
 export interface SeriesConfig {
   fieldId: string | null;
+  label?: string;
   mode: 'single' | 'many';
 }
 
 export interface ValueConfig {
   fieldId: string | null;
+  label?: string; // Persisted display name (for QB accounts or custom labels)
   agg: 'sum' | 'avg' | 'count';
   format: 'currency' | 'percent' | 'number';
   breakdown?: 'total' | 'byAccount' | 'byEntity';
