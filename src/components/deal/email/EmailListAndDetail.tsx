@@ -804,13 +804,15 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
             <div className="flex items-center gap-1 shrink-0">
               {/* AI Assist - prominent primary button */}
-              <Popover open={smartPopoverOpen} onOpenChange={setSmartPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant={smartPopoverOpen ? 'default' : 'default'} size="sm" className="h-8 gap-1.5 text-xs">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    AI Assist
-                  </Button>
-                </PopoverTrigger>
+              <Button
+                variant={showAiAssist ? 'default' : 'default'}
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => setShowAiAssist(!showAiAssist)}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                AI Assist
+              </Button>
                 <PopoverContent side="bottom" align="end" className="w-[320px] p-0 max-h-[70vh] overflow-hidden">
                   <SmartEmailPanel thread={thread} dealId={dealId || 'general'} />
                 </PopoverContent>
