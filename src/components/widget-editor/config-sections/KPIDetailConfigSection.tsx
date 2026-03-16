@@ -100,41 +100,46 @@ export function KPIDetailConfigSection({ config, onChange }: Props) {
         </Select>
       </div>
 
-      {/* Breakdown Columns Toggle */}
-      <div>
-        <Label className="text-xs text-muted-foreground mb-1.5 block">Breakdown Columns</Label>
-        <div className="flex gap-1">
-          {([1, 2] as const).map(n => (
-            <button
-              key={n}
-              onClick={() => update({ breakdownColumns: n })}
-              className={cn(
-                'px-3 py-1 rounded text-xs font-medium transition-colors',
-                c.breakdownColumns === n
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-              )}
-            >
-              {n} Column{n > 1 ? 's' : ''}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Breakdown sections — only shown for full layout */}
+      {c.layoutVariant !== 'compact' && (
+        <>
+          {/* Breakdown Columns Toggle */}
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">Breakdown Columns</Label>
+            <div className="flex gap-1">
+              {([1, 2] as const).map(n => (
+                <button
+                  key={n}
+                  onClick={() => update({ breakdownColumns: n })}
+                  className={cn(
+                    'px-3 py-1 rounded text-xs font-medium transition-colors',
+                    c.breakdownColumns === n
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+                  )}
+                >
+                  {n} Column{n > 1 ? 's' : ''}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Left Column */}
-      <div className="space-y-2 rounded-md border border-border p-2">
-        <Label className="text-xs font-semibold text-muted-foreground">{c.breakdownColumns === 1 ? 'Breakdown' : 'Left Column'}</Label>
-        <Input className="h-7 text-xs" value={c.left.label} onChange={e => update({ left: { ...c.left, label: e.target.value } })} placeholder="Label" />
-        <FieldSelect value={c.left.valueField} onChange={v => update({ left: { ...c.left, valueField: v } })} placeholder="Value field" />
-      </div>
+          {/* Left Column */}
+          <div className="space-y-2 rounded-md border border-border p-2">
+            <Label className="text-xs font-semibold text-muted-foreground">{c.breakdownColumns === 1 ? 'Breakdown' : 'Left Column'}</Label>
+            <Input className="h-7 text-xs" value={c.left.label} onChange={e => update({ left: { ...c.left, label: e.target.value } })} placeholder="Label" />
+            <FieldSelect value={c.left.valueField} onChange={v => update({ left: { ...c.left, valueField: v } })} placeholder="Value field" />
+          </div>
 
-      {/* Right Column */}
-      {c.breakdownColumns === 2 && (
-        <div className="space-y-2 rounded-md border border-border p-2">
-          <Label className="text-xs font-semibold text-muted-foreground">Right Column</Label>
-          <Input className="h-7 text-xs" value={c.right.label} onChange={e => update({ right: { ...c.right, label: e.target.value } })} placeholder="Label" />
-          <FieldSelect value={c.right.valueField} onChange={v => update({ right: { ...c.right, valueField: v } })} placeholder="Value field" />
-        </div>
+          {/* Right Column */}
+          {c.breakdownColumns === 2 && (
+            <div className="space-y-2 rounded-md border border-border p-2">
+              <Label className="text-xs font-semibold text-muted-foreground">Right Column</Label>
+              <Input className="h-7 text-xs" value={c.right.label} onChange={e => update({ right: { ...c.right, label: e.target.value } })} placeholder="Label" />
+              <FieldSelect value={c.right.valueField} onChange={v => update({ right: { ...c.right, valueField: v } })} placeholder="Value field" />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
