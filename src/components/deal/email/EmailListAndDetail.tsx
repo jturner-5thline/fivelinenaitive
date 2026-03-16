@@ -161,7 +161,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
     >
       <div className="flex items-start gap-3 px-3 py-4 min-w-0 overflow-hidden">
         {/* Checkbox + unread dot area */}
-        <div className="relative flex items-center justify-center shrink-0" style={{ width: 40, height: 40 }}>
+        <div className="relative flex items-center justify-center shrink-0" style={{ width: 32, height: 32 }}>
           {showCheckbox ? (
             <div
               className="absolute inset-0 flex items-center justify-center z-10"
@@ -177,7 +177,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
             <>
               {/* Unread dot */}
               {isUnread && (
-                <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary z-10" />
+                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-[6px] h-[6px] rounded-full bg-primary z-10" />
               )}
               <EmailAvatar
                 name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name}
