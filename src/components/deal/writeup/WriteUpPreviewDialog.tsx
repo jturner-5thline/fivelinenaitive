@@ -677,7 +677,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                   {data.existingDebtDetails && (
                     <div style={{ background: T.secondaryBg, borderRadius: T.radius, padding: 16, marginTop: 12 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: T.fg, marginBottom: 4 }}>Existing Debt</div>
-                      <p style={{ fontSize: 14, color: T.mutedFg, lineHeight: 1.6 }}>{data.existingDebtDetails}</p>
+                      <div style={{ fontSize: 14, color: T.mutedFg, lineHeight: 1.6 }}>{renderBulletText(data.existingDebtDetails)}</div>
                     </div>
                   )}
 
