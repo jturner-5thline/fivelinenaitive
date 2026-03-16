@@ -588,7 +588,7 @@ Deno.serve(async (req: Request) => {
       // Fall back to main deals table
       const { data: mainDeal } = await supabase
         .from("deals")
-        .select("id, company, stage, status, user_id, company_id, manager_display_name, owner_display_name")
+        .select("id, company, stage, status, user_id, company_id")
         .eq("id", deal_id)
         .maybeSingle();
 
