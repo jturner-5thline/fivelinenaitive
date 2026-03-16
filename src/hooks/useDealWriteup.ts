@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { DealWriteUpData, KeyItem, CompanyHighlight, FinancialYear, FinancialComment, TeamMember, VisibleMetrics } from '@/components/deal/DealWriteUp';
+import { DealWriteUpData, KeyItem, CompanyHighlight, FinancialYear, FinancialComment, TeamMember, VisibleMetrics, FinancialColumnVisibility } from '@/components/deal/DealWriteUp';
 import { Json } from '@/integrations/supabase/types';
 
 // Format stored currency values like "$2000000" → "$2.00MM"
