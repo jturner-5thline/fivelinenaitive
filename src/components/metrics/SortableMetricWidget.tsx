@@ -110,19 +110,21 @@ export function StatWidgetContent({ title, value, subtitle, icon, color }: StatW
   const Icon = iconMap[icon];
   
   return (
-    <CardContent className="pt-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold text-foreground">{value}</p>
+    <CardContent className="h-full flex items-center justify-center pt-6">
+      <div className="text-center">
+        <div className="flex items-center justify-center gap-3">
+          <div>
+            <p className="text-sm text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold text-foreground">{value}</p>
+          </div>
+          <div className="p-2 rounded-full" style={{ backgroundColor: `${color}20` }}>
+            <Icon className="h-5 w-5" style={{ color }} />
+          </div>
         </div>
-        <div className="p-2 rounded-full" style={{ backgroundColor: `${color}20` }}>
-          <Icon className="h-5 w-5" style={{ color }} />
-        </div>
+        {subtitle && (
+          <p className="text-xs text-muted-foreground mt-2">{subtitle}</p>
+        )}
       </div>
-      {subtitle && (
-        <p className="text-xs text-muted-foreground mt-2">{subtitle}</p>
-      )}
     </CardContent>
   );
 }
