@@ -1990,55 +1990,28 @@ export default function Metrics() {
                 cardConfigs={managementSnapshotCardConfigs}
                 gridLayout={snapshotGridLayout}
                 onGridLayoutChange={saveSnapshotGridLayout}
-              />
-            )}
-            {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
-            {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
-            {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
-            {selectedDashboard === 'weekly-cashflow' && <WeeklyCashflowDashboard />}
-            {selectedDashboard === 'harvest-monthly-tracking' && <HarvestMonthlyTrackingDashboard />}
-            {selectedDashboard === 'flor-sales-commission' && <SalesCommissionBoardDashboard ownerName="Flor" />}
-            {selectedDashboard === 'james-sales-commission' && <SalesCommissionBoardDashboard ownerName="James Turner" />}
-            {selectedDashboard === 'niki-sales-commission' && <SalesCommissionBoardDashboard ownerName="Niki Heikali" />}
-            {selectedDashboard === 'paz-sales-commission' && <SalesCommissionBoardDashboard ownerName="Paz" />}
-            {selectedDashboard === 'chandler-sales-commission' && <ChandlerSalesCommissionDashboard />}
-            {selectedDashboard === 'consolidated-debt-pipeline' && <ConsolidatedDebtPipelineDashboard />}
-            {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
-            {selectedDashboard === 'deal-stage-timeline' && <DealStageTimelineDashboard />}
-            {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
-            {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
-            {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
-          </EditableDashboardWrapper>
-
-          {/* Editable Widgets Grid - react-grid-layout */}
-          {widgets.length > 0 && (
-            <DraggableGridLayout
-              layout={gridLayout}
-              onLayoutChange={saveGridLayout}
-              isEditMode={isEditMode}
-            >
-              {widgets.map((widget) => {
-                const isStat = getWidgetDisplayType(widget) === 'stat';
-                return (
-                  <div key={widget.id}>
-                    <GridWidgetCard
-                      isEditMode={isEditMode}
-                      onEdit={() => handleEdit(widget)}
-                      onDelete={() => {
-                        setWidgetToDelete(widget.id);
-                        setDeleteConfirmOpen(true);
-                      }}
-                    >
-                      {isStat
-                        ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
-                        : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
-                      }
-                    </GridWidgetCard>
-                  </div>
-                );
-              })}
-            </DraggableGridLayout>
-          )}
+              >
+                {widgets.map((widget) => {
+                  const isStat = getWidgetDisplayType(widget) === 'stat';
+                  return (
+                    <div key={widget.id}>
+                      <GridWidgetCard
+                        isEditMode={isEditMode}
+                        onEdit={() => handleEdit(widget)}
+                        onDelete={() => {
+                          setWidgetToDelete(widget.id);
+                          setDeleteConfirmOpen(true);
+                        }}
+                      >
+                        {isStat
+                          ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
+                          : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                        }
+                      </GridWidgetCard>
+                    </div>
+                  );
+                })}
+              </ManagementSnapshotDashboard>
 
         </div>
       </div>
