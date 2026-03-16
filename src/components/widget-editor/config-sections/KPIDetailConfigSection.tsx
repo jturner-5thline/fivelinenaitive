@@ -100,6 +100,19 @@ export function KPIDetailConfigSection({ config, onChange }: Props) {
         </Select>
       </div>
 
+      {/* Footer label — only shown for compact layout */}
+      {c.layoutVariant === 'compact' && (
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1.5 block">Footer label (optional)</Label>
+          <Input
+            className="h-8 text-xs"
+            value={c.footerLabel ?? ''}
+            onChange={e => update({ footerLabel: e.target.value })}
+            placeholder="e.g. Debt + FinServ Revenue"
+          />
+        </div>
+      )}
+
       {/* Breakdown sections — only shown for full layout */}
       {c.layoutVariant !== 'compact' && (
         <>

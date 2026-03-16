@@ -107,6 +107,13 @@ export function KPIDetailCard({
               </span>
             </div>
 
+            {/* Optional footer label — compact mode only */}
+            {isCompact && kpiConfig.footerLabel && (
+              <p className="text-[9px] text-muted-foreground/60 text-center mt-1">
+                {kpiConfig.footerLabel}
+              </p>
+            )}
+
             {/* Breakdown section — hidden in compact mode */}
             {!isCompact && (
               <>
