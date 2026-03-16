@@ -185,6 +185,7 @@ export function useFPADashboardConfig() {
       return false;
     } finally {
       setIsSaving(false);
+      setTimeout(() => { pendingSaveRef.current = false; }, 300);
     }
   }, [company?.id, isAdmin]);
 
