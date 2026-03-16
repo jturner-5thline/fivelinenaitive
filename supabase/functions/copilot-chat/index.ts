@@ -1193,7 +1193,7 @@ Your response MUST be beautifully formatted markdown text. Write like an experie
 
 1. Start with a one-line classification and plan summary in italics.
 2. Present the deal analysis using clear markdown sections with headers, bold key terms, bullet lists, and tables where appropriate.
-3. At the very end, include the structured JSON metadata in a collapsed code block for downstream system parsing.
+3. Do NOT include any JSON, code blocks, or structured data in the response. The response should be clean, human-readable markdown only.
 
 REQUIRED MARKDOWN STRUCTURE:
 
