@@ -17,7 +17,11 @@ import {
   Bold,
   Italic,
   Link,
+  List,
+  ListOrdered,
+  Save,
 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
