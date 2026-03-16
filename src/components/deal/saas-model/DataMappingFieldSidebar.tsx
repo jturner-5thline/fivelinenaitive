@@ -239,7 +239,12 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
       onClick={() => {
         const idx = visibleFields.indexOf(field);
         if (idx >= 0) setFocusedFieldIdx(idx);
+        // If rows are selected and field is unmapped, assign immediately on click
+        if (selectedRows.size > 0 && !isMapped && !hasPendingAuto) {
+          onAssignField(field);
+        }
       }}
+      style={{ cursor: selectedRows.size > 0 && !isMapped && !hasPendingAuto ? 'pointer' : undefined }}
       onDragOver={e => {
         if (draggingRowIdx === null || isMapped) return;
         e.preventDefault();
