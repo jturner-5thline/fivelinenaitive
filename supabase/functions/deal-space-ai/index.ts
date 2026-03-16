@@ -707,16 +707,12 @@ IMPORTANT: Use ONLY the data provided. If a data point is missing, write "Not av
 
 // ─── Regenerate a single section ────────────────────────────────────
 
-async function handleRegenerateSection(dealId: string, sectionKey: string) {
+async function handleRegenerateSection(dealId: string, sectionKey: string, supabase: any) {
   try {
     if (!sectionKey) throw new Error("sectionKey is required");
     
     const section = MEMO_SECTIONS.find(s => s.key === sectionKey);
     if (!section) throw new Error(`Unknown section: ${sectionKey}`);
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const ctx = await buildDealContext(supabase, dealId);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
