@@ -162,6 +162,20 @@ export function isNumericCell(val: unknown): boolean {
   return !isNaN(parsed) && str.match(/^[\s$(-]*[\d,.]+[\s)]*$/) !== null;
 }
 
+/**
+ * Detect the first month/year from column headers of the uploaded file.
+ * Returns { month, year } or null if not detectable.
+ */
+export function detectFirstMonthFromHeaders(headers: string[]): { month: number; year: number } | null {
+  for (const h of headers) {
+    const parsed = parseDateFromHeader(h);
+    if (parsed && parsed.month && parsed.year) {
+      return { month: parsed.month, year: parsed.year };
+    }
+  }
+  return null;
+}
+
 export function applyMappingsToModel(
   fieldMappings: Record<string, FieldMapping[]>,
   selectedFile: AnalyzedFile,
@@ -169,9 +183,16 @@ export function applyMappingsToModel(
   flippedRows?: Set<number>,
   excludedColumns?: Set<number>,
   flippedColumns?: Set<number>,
+  startDate?: { month: number; year: number } | null,
 ) {
   updateModel(prev => {
     const updated = { ...prev };
+
+    // Update months timeline if a start date is provided
+    if (startDate) {
+      updated.months = generateMonths(startDate.year, startDate.month);
+    }
+
     Object.entries(fieldMappings).forEach(([fieldName, mappings]) => {
       const path = getFieldPath(fieldName as MappingFieldName);
       if (!path.length) return;
