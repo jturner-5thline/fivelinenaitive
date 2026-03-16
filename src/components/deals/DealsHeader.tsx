@@ -24,7 +24,7 @@ export function DealsHeader() {
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="relative flex h-14 sm:h-16 items-center justify-between pl-3 pr-3 sm:pr-6 gap-2 min-w-0">
         <div className="flex items-center gap-2 shrink-0 min-w-0">
-          <Link to="/" className="flex items-center gap-2 shrink-0">
+          <Link to="/deals" className="flex items-center gap-2 shrink-0">
             <Logo className="h-[85px]" />
           </Link>
           <DemoModeBadge />
