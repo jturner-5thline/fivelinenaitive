@@ -626,6 +626,29 @@ Deno.serve(async (req: Request) => {
       const analystId: string | null = null;
       const opsId: string | null = null;
 
+      // Map the main deals stage to a wf_deal_stage enum value
+      const wfStage = DEALS_TO_WF_STAGE[mainDeal.stage] || "nda_needs_list_sent";
+      console.log(`[wf-stage-trigger] Mapping main deals stage "${mainDeal.stage}" → wf_deal_stage "${wfStage}"`);
+
+      // Auto-create a wf_deals record so tasks and logs can reference it
+      const { error: syncError } = await supabase.from("wf_deals").upsert({
+        id: mainDeal.id,
+        name: mainDeal.company || "Unknown Deal",
+        company_name: mainDeal.company,
+        stage: wfStage,
+        manager_id: null, // wf_users FK - can't use auth user IDs directly
+        analyst_id: null,
+        ops_id: null,
+        org_company_id: org_company_id || mainDeal.company_id,
+      }, { onConflict: "id" });
+
+      if (syncError) {
+        console.error(`[wf-stage-trigger] Failed to sync deal to wf_deals:`, syncError);
+        // Continue anyway - tasks will fail but we still log the attempt
+      } else {
+        console.log(`[wf-stage-trigger] ✅ Synced deal to wf_deals table`);
+      }
+
       deal = {
         id: mainDeal.id,
         name: mainDeal.company,
