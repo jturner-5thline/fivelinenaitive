@@ -1,15 +1,14 @@
-import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
-  ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown,
-  DollarSign, BarChart3, Percent, Clock, ChevronRight, Info
+  ArrowUpRight, ArrowDownRight, ChevronRight, Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   ResponsiveContainer, AreaChart, Area
 } from 'recharts';
+import { useQBKPIData } from '@/hooks/useQBKPIData';
 
 export interface KPI {
   id: string;
@@ -25,22 +24,29 @@ export interface KPI {
 }
 
 const KPI_TOOLTIPS: Record<string, string> = {
-  revenue: 'Total top-line revenue from all streams. Includes recurring, one-time, and service revenue before any deductions.',
-  'gross-margin': 'Revenue minus COGS as a percentage. Measures production efficiency — higher is better. Target: >65%.',
-  opex: 'Total operating expenses including payroll, rent, marketing, and G&A. Excludes COGS and interest.',
-  ebitda: 'Earnings Before Interest, Taxes, Depreciation & Amortization. Key profitability proxy used by lenders.',
-  runway: 'Months of operations remaining at current net burn rate. Below 12 months signals urgency.',
-  burn: 'Monthly net cash outflow (expenses minus revenue). Decreasing burn is positive for runway.',
+  revenue: 'Total top-line revenue from all streams (QuickBooks invoices). Current month accrual basis.',
+  'gross-margin': 'Revenue minus COGS as a percentage. Sourced from QuickBooks P&L report.',
+  opex: 'Total operating expenses from QuickBooks. Excludes COGS and interest.',
+  ebitda: 'Revenue minus OPEX (simplified EBITDA proxy from QuickBooks data).',
+  runway: 'Months of operations remaining at current net burn rate. Computed from cash balance ÷ net burn.',
+  burn: 'Monthly net cash outflow (expenses minus revenue). Decreasing burn is positive.',
 };
 
-const KPIS: KPI[] = [
-  { id: 'revenue', label: 'Total Revenue', value: '$9.5M', change: '+6.2%', trend: 'up', isPositive: true, period: 'MoM', detail: '$8.94M → $9.5M', sparkline: [7800, 8200, 8500, 8700, 8940, 9500], category: 'revenue' },
-  { id: 'gross-margin', label: 'Gross Margin', value: '70.0%', change: '+5.3pp', trend: 'up', isPositive: true, period: 'MoM', detail: '63.3% → 70.0%', sparkline: [62, 63, 64, 63, 63.3, 70], category: 'margin' },
-  { id: 'opex', label: 'Total OPEX', value: '$5.45M', change: '+2.1%', trend: 'up', isPositive: false, period: 'MoM', detail: '$5.34M → $5.45M', sparkline: [5000, 5100, 5200, 5250, 5340, 5450], category: 'cost' },
-  { id: 'ebitda', label: 'EBITDA', value: '$1.2M', change: '+18.4%', trend: 'up', isPositive: true, period: 'MoM', detail: '$1.01M → $1.2M', sparkline: [700, 750, 850, 900, 1010, 1200], category: 'margin' },
-  { id: 'runway', label: 'Cash Runway', value: '22 mo', change: '-4.3%', trend: 'down', isPositive: false, period: 'MoM', detail: '23 → 22 months', sparkline: [26, 25, 24, 24, 23, 22], category: 'operational' },
-  { id: 'burn', label: 'Net Burn', value: '$320K', change: '-12.3%', trend: 'down', isPositive: true, period: 'MoM', detail: '$365K → $320K', sparkline: [420, 400, 380, 370, 365, 320], category: 'cost' },
-];
+const fmtCurrency = (v: number): string => {
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `${v < 0 ? '-' : ''}$${(abs / 1_000_000).toFixed(1)}MM`;
+  if (abs >= 1_000) return `${v < 0 ? '-' : ''}$${(abs / 1_000).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
+};
+
+const fmtPct = (v: number): string => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+const fmtPp = (v: number): string => `${v >= 0 ? '+' : ''}${v.toFixed(1)}pp`;
+
+function computeChange(current: number, previous: number): { change: string; pct: number } {
+  if (previous === 0) return { change: '—', pct: 0 };
+  const pct = ((current - previous) / Math.abs(previous)) * 100;
+  return { change: fmtPct(pct), pct };
+}
 
 interface KPICardsProps {
   onKPIClick?: (kpi: KPI) => void;
@@ -48,10 +54,115 @@ interface KPICardsProps {
 }
 
 export function KPICards({ onKPIClick, selectedKPI }: KPICardsProps) {
+  const { data, isLoading } = useQBKPIData();
+
+  if (isLoading || !data) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}>
+            <CardContent className="p-3 space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-3 w-24" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  const revChange = computeChange(data.totalRevenue, data.prevRevenue);
+  const opexChange = computeChange(data.totalOpex, data.prevOpex);
+  const ebitdaChange = computeChange(data.ebitda, data.prevEbitda);
+  const burnChange = computeChange(data.netBurn, data.prevNetBurn);
+  const runwayChange = computeChange(data.runwayMonths, data.prevRunwayMonths);
+  const marginDiff = data.grossMarginPct - data.prevGrossMarginPct;
+
+  const kpis: KPI[] = [
+    {
+      id: 'revenue',
+      label: 'Total Revenue',
+      value: fmtCurrency(data.totalRevenue),
+      change: revChange.change,
+      trend: revChange.pct >= 0 ? 'up' : 'down',
+      isPositive: revChange.pct >= 0,
+      period: 'MoM',
+      detail: `${fmtCurrency(data.prevRevenue)} → ${fmtCurrency(data.totalRevenue)}`,
+      sparkline: data.revenueSparkline,
+      category: 'revenue',
+    },
+    {
+      id: 'gross-margin',
+      label: 'Gross Margin',
+      value: `${data.grossMarginPct.toFixed(1)}%`,
+      change: fmtPp(marginDiff),
+      trend: marginDiff >= 0 ? 'up' : 'down',
+      isPositive: marginDiff >= 0,
+      period: 'MoM',
+      detail: `${data.prevGrossMarginPct.toFixed(1)}% → ${data.grossMarginPct.toFixed(1)}%`,
+      sparkline: data.revenueSparkline.map((r, i) => {
+        const e = data.opexSparkline[i] || 0;
+        return r > 0 ? ((r - e) / r) * 100 : 0;
+      }),
+      category: 'margin',
+    },
+    {
+      id: 'opex',
+      label: 'Total OPEX',
+      value: fmtCurrency(data.totalOpex),
+      change: opexChange.change,
+      trend: opexChange.pct >= 0 ? 'up' : 'down',
+      isPositive: opexChange.pct <= 0, // lower opex is positive
+      period: 'MoM',
+      detail: `${fmtCurrency(data.prevOpex)} → ${fmtCurrency(data.totalOpex)}`,
+      sparkline: data.opexSparkline,
+      category: 'cost',
+    },
+    {
+      id: 'ebitda',
+      label: 'EBITDA',
+      value: fmtCurrency(data.ebitda),
+      change: ebitdaChange.change,
+      trend: ebitdaChange.pct >= 0 ? 'up' : 'down',
+      isPositive: ebitdaChange.pct >= 0,
+      period: 'MoM',
+      detail: `${fmtCurrency(data.prevEbitda)} → ${fmtCurrency(data.ebitda)}`,
+      sparkline: data.ebitdaSparkline,
+      category: 'margin',
+    },
+    {
+      id: 'runway',
+      label: 'Cash Runway',
+      value: data.runwayMonths >= 999 ? '∞' : `${data.runwayMonths} mo`,
+      change: runwayChange.change,
+      trend: runwayChange.pct >= 0 ? 'up' : 'down',
+      isPositive: runwayChange.pct >= 0,
+      period: 'MoM',
+      detail: data.prevRunwayMonths >= 999
+        ? `∞ → ${data.runwayMonths >= 999 ? '∞' : data.runwayMonths + ' months'}`
+        : `${data.prevRunwayMonths} → ${data.runwayMonths >= 999 ? '∞' : data.runwayMonths + ' months'}`,
+      sparkline: [0, 0, 0, 0, 0, data.runwayMonths >= 999 ? 100 : data.runwayMonths],
+      category: 'operational',
+    },
+    {
+      id: 'burn',
+      label: 'Net Burn',
+      value: fmtCurrency(data.netBurn),
+      change: burnChange.change,
+      trend: burnChange.pct >= 0 ? 'up' : 'down',
+      isPositive: burnChange.pct <= 0, // lower burn is positive
+      period: 'MoM',
+      detail: `${fmtCurrency(data.prevNetBurn)} → ${fmtCurrency(data.netBurn)}`,
+      sparkline: data.burnSparkline,
+      category: 'cost',
+    },
+  ];
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" role="list" aria-label="Key Performance Indicators">
-      {KPIS.map((kpi) => {
-        const sparkData = kpi.sparkline.map((v, i) => ({ v }));
+      {kpis.map((kpi) => {
+        const sparkData = kpi.sparkline.map((v) => ({ v }));
         const sparkColor = kpi.isPositive ? 'hsl(var(--chart-2))' : 'hsl(var(--chart-5))';
         const isSelected = selectedKPI === kpi.id;
 
@@ -89,7 +200,7 @@ export function KPICards({ onKPIClick, selectedKPI }: KPICardsProps) {
                   <div className="flex items-center gap-1 mt-1">
                     <span className={cn(
                       "text-[10px] font-medium flex items-center gap-0.5",
-                      kpi.isPositive ? 'text-emerald-600' : 'text-amber-600'
+                      kpi.isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
                     )}>
                       {kpi.trend === 'up' ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
                       {kpi.change}
