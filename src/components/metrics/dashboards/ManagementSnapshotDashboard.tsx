@@ -510,6 +510,7 @@ export function ManagementSnapshotDashboard({
           )}
         </div>
       ))}
+      {children}
     </DraggableGridLayout>
   );
 }
