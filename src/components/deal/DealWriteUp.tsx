@@ -1622,6 +1622,29 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         </DialogContent>
       </Dialog>
 
+      {/* Overwrite Protection Dialog */}
+      <OverwriteProtectionDialog
+        open={showOverwriteDialog}
+        onOpenChange={setShowOverwriteDialog}
+        editedFieldCount={editedCount}
+        onKeepEdits={() => {
+          setShowOverwriteDialog(false);
+          const fields = (window as any).__pendingAutoFillFields;
+          if (fields) {
+            applyAutoFillFields(fields, true);
+            delete (window as any).__pendingAutoFillFields;
+          }
+        }}
+        onOverwriteAll={() => {
+          setShowOverwriteDialog(false);
+          if (pendingAutoFillAction) {
+            pendingAutoFillAction();
+            setPendingAutoFillAction(null);
+          }
+          delete (window as any).__pendingAutoFillFields;
+        }}
+      />
+
     </Card>
   );
 };
