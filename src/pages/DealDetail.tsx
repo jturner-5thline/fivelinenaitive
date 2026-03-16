@@ -798,6 +798,9 @@ export default function DealDetail() {
     enabled: dealInfoTab === 'deal-writeup' && !isLoadingWriteup,
   });
   
+  // Track per-field user edits for write protection
+  const { markFieldEdited, isFieldEdited, editedCount, editedFieldKeys, resetAllFlags: resetAllEditFlags } = useUserEditedFields(id);
+
   // Track if writeup has been initialized to prevent overwriting user edits
   const writeupInitializedRef = useRef<string | null>(null);
   
