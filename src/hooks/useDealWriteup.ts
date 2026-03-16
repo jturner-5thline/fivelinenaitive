@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { DealWriteUpData, KeyItem, CompanyHighlight, FinancialYear, FinancialComment, TeamMember, VisibleMetrics } from '@/components/deal/DealWriteUp';
+import { DealWriteUpData, KeyItem, CompanyHighlight, FinancialYear, FinancialComment, TeamMember, VisibleMetrics, FinancialColumnVisibility } from '@/components/deal/DealWriteUp';
 import { Json } from '@/integrations/supabase/types';
 
 // Format stored currency values like "$2000000" → "$2.00MM"
@@ -135,6 +135,7 @@ export function useDealWriteup(dealId: string | undefined) {
         publish_as_anonymous: data.publishAsAnonymous,
         team: data.team as unknown as Json,
         visible_metrics: data.visibleMetrics as unknown as Json,
+        financial_column_visibility: data.financialColumnVisibility as unknown as Json,
       };
 
       if (writeup) {
@@ -250,6 +251,7 @@ export function useDealWriteup(dealId: string | undefined) {
       publishAsAnonymous: row.publish_as_anonymous || false,
       team,
       visibleMetrics: ((row as any).visible_metrics as VisibleMetrics) || { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true },
+      financialColumnVisibility: ((row as any).financial_column_visibility as FinancialColumnVisibility) || { showRevGrowth: true, showGmDelta: true, showEbitdaDelta: true },
     };
   }, []);
 

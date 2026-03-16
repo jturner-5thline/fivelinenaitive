@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_writeups ADD COLUMN IF NOT EXISTS financial_column_visibility jsonb DEFAULT '{"showRevGrowth": true, "showGmDelta": true, "showEbitdaDelta": true}'::jsonb;

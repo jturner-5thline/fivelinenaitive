@@ -64,30 +64,55 @@ interface WriteUpPreviewDialogProps {
 function fmtCurrency(value: string | undefined): string {
   if (!value) return '—';
   const upper = value.toUpperCase();
+  const isNegative = value.startsWith('(') || value.startsWith('-');
   const hasMM = upper.includes('MM') || upper.includes('M');
   const hasK = upper.includes('K');
-  const cleaned = value.replace(/[^0-9.-]/g, '');
+  const cleaned = value.replace(/[^0-9.]/g, '');
   const num = parseFloat(cleaned);
   if (isNaN(num)) return value;
+  const absNum = num;
+  const sign = isNegative ? '-' : '';
   // If value was already expressed in MM (e.g. "$7.49MM" → num=7.49), format as $X.XMM
-  if (hasMM && Math.abs(num) < 1_000) return `$${num.toFixed(1)}MM`;
-  if (hasK && Math.abs(num) < 1_000_000) return `$${num.toFixed(1)}K`;
+  if (hasMM && absNum < 1_000) return `${sign}$${absNum.toFixed(1)}MM`;
+  if (hasK && absNum < 1_000_000) return `${sign}$${absNum.toFixed(1)}K`;
   // Raw large numbers
-  if (Math.abs(num) >= 1_000_000) return `$${(num / 1_000_000).toFixed(1)}MM`;
-  if (Math.abs(num) >= 1_000) return `$${(num / 1_000).toFixed(1)}K`;
-  return `$${num.toLocaleString()}`;
+  if (absNum >= 1_000_000) return `${sign}$${(absNum / 1_000_000).toFixed(1)}MM`;
+  if (absNum >= 1_000) return `${sign}$${(absNum / 1_000).toFixed(1)}K`;
+  return `${sign}$${absNum.toLocaleString()}`;
 }
 
 function parseNum(v: string | undefined): number | null {
   if (!v) return null;
-  const n = parseFloat(v.replace(/[^0-9.-]/g, ''));
-  return isNaN(n) ? null : n;
+  const isNegative = v.startsWith('(') || v.startsWith('-') || (v.includes('(') && v.includes(')'));
+  const cleaned = v.replace(/[^0-9.]/g, '');
+  const n = parseFloat(cleaned);
+  if (isNaN(n)) return null;
+  return isNegative ? -n : n;
 }
 
 function parsePct(v: string | undefined): number | null {
   if (!v) return null;
   const n = parseFloat(v.replace(/[^0-9.-]/g, ''));
   return isNaN(n) ? null : n;
+}
+
+/** Convert plain text with bullet prefixes (- or *) into HTML list */
+function renderBulletText(text: string): React.ReactNode {
+  if (!text) return '—';
+  const lines = text.split('\n').filter(l => l.trim());
+  const hasBullets = lines.some(l => /^\s*[-*•]\s/.test(l));
+  if (!hasBullets) {
+    return <span style={{ whiteSpace: 'pre-wrap' }}>{text}</span>;
+  }
+  return (
+    <ul style={{ margin: 0, paddingLeft: 20, listStyleType: 'disc' }}>
+      {lines.map((line, i) => (
+        <li key={i} style={{ fontSize: 14, color: T.mutedFg, lineHeight: 1.6 }}>
+          {line.replace(/^\s*[-*•]\s*/, '')}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /* ── Reusable sub-components ── */
@@ -316,16 +341,16 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                   </div>
                   <div>
                     <span style={{ fontSize: 14, fontWeight: 600, color: T.fg }}>Use of Proceeds</span>
-                    <p style={{ fontSize: 14, color: T.mutedFg, marginTop: 6 }}>{data.useOfFunds || '—'}</p>
+                    <div style={{ fontSize: 14, color: T.mutedFg, marginTop: 6 }}>{renderBulletText(data.useOfFunds)}</div>
                   </div>
                 </div>
               </div>
             </Card>
 
-            {/* ── 3. Transaction Highlights ── */}
+            {/* ── 3. Key Items ── */}
             {filteredKeyItems.length > 0 && (
               <Card data-pdf-section className="mb-6">
-                <CardHeader icon={<Shield style={{ width: 20, height: 20, color: T.primary }} />} title="Transaction Highlights" />
+                <CardHeader icon={<Shield style={{ width: 20, height: 20, color: T.primary }} />} title="Key Items" />
                 <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                   {filteredKeyItems.map(item => (
                     <div key={item.id} style={{
@@ -489,8 +514,15 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                           </defs>
                           <XAxis dataKey="year" tick={{ fontSize: 11, fill: T.mutedFg }} axisLine={false} tickLine={false} />
                           <YAxis tick={{ fontSize: 10, fill: T.mutedFg }} axisLine={false} tickLine={false}
-                            tickFormatter={v => v >= 1e6 ? `$${(v/1e6).toFixed(0)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}K` : `$${v}`} width={50} />
-                          <Area type="monotone" dataKey="ebitda" stroke={T.green} fill="url(#ebitdaGrad)" strokeWidth={2} dot={{ r: 3, fill: T.green }} />
+                            tickFormatter={v => {
+                              const abs = Math.abs(v);
+                              const sign = v < 0 ? '-' : '';
+                              if (abs >= 1e6) return `${sign}$${(abs/1e6).toFixed(0)}M`;
+                              if (abs >= 1e3) return `${sign}$${(abs/1e3).toFixed(0)}K`;
+                              return `${sign}$${abs}`;
+                            }} width={55} domain={['auto', 'auto']} />
+                          {chartData.some(d => d.ebitda !== null && d.ebitda < 0) && <ReferenceLine y={0} stroke={T.cardBorder} strokeDasharray="3 3" />}
+                          <Area type="monotone" dataKey="ebitda" stroke={T.green} fill="url(#ebitdaGrad)" strokeWidth={2} dot={{ r: 3, fill: T.green }} baseValue={0} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -652,7 +684,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                   {data.existingDebtDetails && (
                     <div style={{ background: T.secondaryBg, borderRadius: T.radius, padding: 16, marginTop: 12 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: T.fg, marginBottom: 4 }}>Existing Debt</div>
-                      <p style={{ fontSize: 14, color: T.mutedFg, lineHeight: 1.6 }}>{data.existingDebtDetails}</p>
+                      <div style={{ fontSize: 14, color: T.mutedFg, lineHeight: 1.6 }}>{renderBulletText(data.existingDebtDetails)}</div>
                     </div>
                   )}
 
@@ -760,25 +792,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
               </Card>
             )}
 
-            {/* ── 11. Key Items (below Ownership) ── */}
-            {filteredKeyItems.length > 0 && (
-              <Card data-pdf-section className="mb-6">
-                <CardHeader icon={<Target style={{ width: 20, height: 20, color: T.primary }} />} title="Key Items" />
-                <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-                  {filteredKeyItems.map((item, idx) => (
-                    <div key={item.id} style={{
-                      padding: 16, borderRadius: T.radius, background: T.secondaryBg50,
-                      border: `1px solid ${T.cardBorder}`,
-                    }}>
-                      <div style={{ fontSize: 16, fontWeight: 600, color: T.fg }}>{item.title}</div>
-                      {item.description && (
-                        <p style={{ fontSize: 14, color: T.mutedFg, lineHeight: 1.6, marginTop: 4 }}>{item.description}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
+            {/* Duplicate Key Items section removed — already rendered in section 3 above */}
 
             {/* ── Disclaimer ── */}
             {disclaimer && disclaimer.trim() && (

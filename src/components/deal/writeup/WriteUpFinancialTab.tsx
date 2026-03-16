@@ -220,10 +220,15 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
     }
   };
 
-  // Column visibility toggles
-  const [showRevGrowth, setShowRevGrowth] = useState(true);
-  const [showGmDelta, setShowGmDelta] = useState(true);
-  const [showEbitdaDelta, setShowEbitdaDelta] = useState(true);
+  // Column visibility toggles - persisted via data.financialColumnVisibility
+  const colVis = data.financialColumnVisibility || { showRevGrowth: true, showGmDelta: true, showEbitdaDelta: true };
+  const showRevGrowth = colVis.showRevGrowth;
+  const showGmDelta = colVis.showGmDelta;
+  const showEbitdaDelta = colVis.showEbitdaDelta;
+  
+  const setShowRevGrowth = (v: boolean) => updateField('financialColumnVisibility', { ...colVis, showRevGrowth: v });
+  const setShowGmDelta = (v: boolean) => updateField('financialColumnVisibility', { ...colVis, showGmDelta: v });
+  const setShowEbitdaDelta = (v: boolean) => updateField('financialColumnVisibility', { ...colVis, showEbitdaDelta: v });
   
   // Fixed column widths (not resizable)
   const columnWidths = {
