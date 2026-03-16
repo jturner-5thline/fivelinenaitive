@@ -72,6 +72,7 @@ import { DatarailsWidgetEditor } from "@/components/widget-editor/DatarailsWidge
 import { DEFAULT_WIDGET_CONFIG, WidgetConfig as DatarailsWidgetConfig } from "@/components/widget-editor/widgetTypes";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useCompanyDashboardConfig } from "@/hooks/useCompanyDashboardConfig";
 import { useDashboardFolders } from "@/contexts/DashboardFoldersContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -1369,30 +1370,31 @@ export default function Metrics() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWidget, setEditingWidget] = useState<MetricWidgetConfig | undefined>();
   const [editingManagementSnapshotCardId, setEditingManagementSnapshotCardId] = useState<EditableManagementSnapshotCardId | null>(null);
-  const [managementSnapshotCards, setManagementSnapshotCards] = useState<Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState>>(() => {
-    const saved = localStorage.getItem(MANAGEMENT_SNAPSHOT_STORAGE_KEY);
-    if (!saved) return MANAGEMENT_SNAPSHOT_CARD_DEFAULTS;
+  const {
+    config: managementSnapshotCards,
+    saveConfig: saveManagementSnapshotCards,
+    canEdit: canEditSnapshotCards,
+  } = useCompanyDashboardConfig<Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState>>(
+    'snapshot_card_configs',
+    MANAGEMENT_SNAPSHOT_CARD_DEFAULTS,
+  );
+  const setManagementSnapshotCards = (updater: React.SetStateAction<Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState>>) => {
+    const newVal = typeof updater === 'function' ? updater(managementSnapshotCards) : updater;
+    saveManagementSnapshotCards(newVal);
+  };
 
-    try {
-      const parsed = JSON.parse(saved) as Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState>>;
-      return { ...MANAGEMENT_SNAPSHOT_CARD_DEFAULTS, ...parsed };
-    } catch {
-      return MANAGEMENT_SNAPSHOT_CARD_DEFAULTS;
-    }
-  });
-  const HIDDEN_CARDS_STORAGE_KEY = 'management-snapshot-hidden-cards-v1';
-  const [hiddenSnapshotCards, setHiddenSnapshotCards] = useState<EditableManagementSnapshotCardId[]>(() => {
-    try {
-      const saved = localStorage.getItem(HIDDEN_CARDS_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem(HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(hiddenSnapshotCards));
-  }, [hiddenSnapshotCards]);
+  const {
+    config: hiddenSnapshotCardsConfig,
+    saveConfig: saveHiddenSnapshotCards,
+  } = useCompanyDashboardConfig<{ items: EditableManagementSnapshotCardId[] }>(
+    'hidden_snapshot_cards',
+    { items: [] },
+  );
+  const hiddenSnapshotCards = hiddenSnapshotCardsConfig.items;
+  const setHiddenSnapshotCards = (updater: React.SetStateAction<EditableManagementSnapshotCardId[]>) => {
+    const newVal = typeof updater === 'function' ? updater(hiddenSnapshotCards) : updater;
+    saveHiddenSnapshotCards({ items: newVal });
+  };
 
   const SNAPSHOT_CARD_IDS: EditableManagementSnapshotCardId[] = [
     'debt-revenue', 'finserv-revenue', 'total-revenue', 'total-revenue-detail',
@@ -1436,9 +1438,8 @@ export default function Metrics() {
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renameFolderName, setRenameFolderName] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem(MANAGEMENT_SNAPSHOT_STORAGE_KEY, JSON.stringify(managementSnapshotCards));
-  }, [managementSnapshotCards]);
+
+
 
   const managementSnapshotCardConfigs = useMemo<Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>>(() => {
     return (Object.keys(managementSnapshotCards) as EditableManagementSnapshotCardId[]).reduce((acc, key) => {

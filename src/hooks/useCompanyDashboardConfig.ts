@@ -1,0 +1,80 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
+
+/**
+ * Hook to persist dashboard widget configs (snapshot cards, hidden cards, custom widgets)
+ * at the company level via company_settings.fpa_dashboard_config.
+ * All company members see the same config; only admins can save changes.
+ */
+export function useCompanyDashboardConfig<T extends Record<string, any>>(
+  configKey: string,
+  defaultValue: T,
+) {
+  const { company, isAdmin, isOwner } = useCompany();
+  const canEdit = isAdmin || isOwner;
+  const [config, setConfig] = useState<T>(defaultValue);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load from company_settings.fpa_dashboard_config[configKey]
+  useEffect(() => {
+    if (!company?.id) return;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('company_settings')
+          .select('fpa_dashboard_config')
+          .eq('company_id', company.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error loading dashboard config:', error);
+          setIsLoaded(true);
+          return;
+        }
+
+        const fpaConfig = (data?.fpa_dashboard_config as Record<string, any>) || {};
+        if (fpaConfig[configKey] !== undefined) {
+          setConfig({ ...defaultValue, ...fpaConfig[configKey] });
+        }
+      } catch (err) {
+        console.error('Error loading dashboard config:', err);
+      } finally {
+        setIsLoaded(true);
+      }
+    })();
+  }, [company?.id, configKey]);
+
+  // Debounced save — admin only
+  const saveConfig = useCallback((newConfig: T) => {
+    setConfig(newConfig);
+
+    if (!canEdit || !company?.id) return;
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        // Read current fpa_dashboard_config first to merge
+        const { data } = await supabase
+          .from('company_settings')
+          .select('fpa_dashboard_config')
+          .eq('company_id', company.id)
+          .maybeSingle();
+
+        const existing = (data?.fpa_dashboard_config as Record<string, any>) || {};
+        const merged = { ...existing, [configKey]: newConfig };
+
+        await supabase
+          .from('company_settings')
+          .update({ fpa_dashboard_config: merged as any })
+          .eq('company_id', company.id);
+      } catch (err) {
+        console.error('Error saving dashboard config:', err);
+      }
+    }, 500);
+  }, [canEdit, company?.id, configKey]);
+
+  return { config, saveConfig, isLoaded, canEdit };
+}

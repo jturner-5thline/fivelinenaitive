@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 
 export type MetricWidgetType = 'stat' | 'chart';
 export type MetricChartType = 'bar' | 'line' | 'pie' | 'area' | 'composed' | 'waterfall' | 'gauge' | 'bullet' | 'treemap' | 'funnel' | 'radar' | 'heatmap' | 'forecast';
@@ -27,10 +29,10 @@ export interface MetricWidgetConfig {
   dataSource: string;
   size: MetricWidgetSize;
   color: string;
-  entityFilter?: string; // QB realm_id or 'all'
+  entityFilter?: string;
   comparisonPeriod?: ComparisonPeriod;
   timePeriod?: TimePeriod;
-  datarailsConfig?: Record<string, any>; // Full Datarails widget editor config for custom widgets
+  datarailsConfig?: Record<string, any>;
   createdAt: string;
 }
 
@@ -79,7 +81,6 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'performance-radar', label: 'Performance Radar', type: 'chart' },
   { id: 'activity-heatmap', label: 'Activity Heatmap', type: 'chart' },
   { id: 'revenue-forecast', label: 'Revenue Forecast', type: 'chart' },
-  // QuickBooks data sources
   { id: 'qb-total-revenue', label: 'QB: Total Revenue', type: 'stat' },
   { id: 'qb-accounts-receivable', label: 'QB: Accounts Receivable', type: 'stat' },
   { id: 'qb-total-payments', label: 'QB: Total Payments', type: 'stat' },
@@ -102,7 +103,6 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'qb-payment-methods', label: 'QB: Payment Methods', type: 'chart' },
   { id: 'qb-revenue-vs-payments', label: 'QB: Revenue vs Payments', type: 'chart' },
   { id: 'qb-revenue-vs-expenses', label: 'QB: Revenue vs Expenses', type: 'chart' },
-  // HubSpot data sources
   { id: 'hs-total-deals', label: 'HS: Total Deals', type: 'stat' },
   { id: 'hs-total-deal-value', label: 'HS: Total Deal Value', type: 'stat' },
   { id: 'hs-deals-won', label: 'HS: Deals Won', type: 'stat' },
@@ -115,7 +115,6 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'hs-deals-by-owner', label: 'HS: Deals by Owner', type: 'chart' },
   { id: 'hs-deal-value-trend', label: 'HS: Deal Value Trend', type: 'chart' },
   { id: 'hs-contacts-by-source', label: 'HS: Contacts by Source', type: 'chart' },
-  // Cross-source
   { id: 'xs-revenue-per-deal', label: 'Cross: Revenue per Deal Signed', type: 'stat' },
   { id: 'xs-ar-per-active-deal', label: 'Cross: AR per Active Deal', type: 'stat' },
   { id: 'xs-collection-rate-by-entity', label: 'Cross: Collection Rate', type: 'stat' },
@@ -140,27 +139,85 @@ const DEFAULT_WIDGETS: MetricWidgetConfig[] = [
   { id: 'chart-10', title: 'Pipeline Stage Breakdown', type: 'chart', chartType: 'composed', dataSource: 'stage-breakdown', size: 'full', color: 'hsl(var(--primary))', createdAt: new Date().toISOString() },
 ];
 
-const STORAGE_KEY = 'metrics-widgets';
-const PRESETS_STORAGE_KEY = 'metrics-presets';
+const CONFIG_KEY = 'metrics_widgets';
+const PRESETS_CONFIG_KEY = 'metrics_presets';
 
 export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
-  const [widgets, setWidgets] = useState<MetricWidgetConfig[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : DEFAULT_WIDGETS;
-  });
+  const { company, isAdmin, isOwner } = useCompany();
+  const canEdit = isAdmin || isOwner;
+  const [widgets, setWidgets] = useState<MetricWidgetConfig[]>(DEFAULT_WIDGETS);
+  const [presets, setPresets] = useState<MetricsLayoutPreset[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [presets, setPresets] = useState<MetricsLayoutPreset[]>(() => {
-    const saved = localStorage.getItem(PRESETS_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
-
+  // Load from company_settings
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets));
-  }, [widgets]);
+    if (!company?.id) return;
 
-  useEffect(() => {
-    localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
-  }, [presets]);
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('company_settings')
+          .select('fpa_dashboard_config')
+          .eq('company_id', company.id)
+          .maybeSingle();
+
+        const fpaConfig = (data?.fpa_dashboard_config as Record<string, any>) || {};
+        if (fpaConfig[CONFIG_KEY] && Array.isArray(fpaConfig[CONFIG_KEY]) && fpaConfig[CONFIG_KEY].length > 0) {
+          setWidgets(fpaConfig[CONFIG_KEY]);
+        }
+        if (fpaConfig[PRESETS_CONFIG_KEY] && Array.isArray(fpaConfig[PRESETS_CONFIG_KEY])) {
+          setPresets(fpaConfig[PRESETS_CONFIG_KEY]);
+        }
+      } catch (err) {
+        console.error('Error loading metrics widgets config:', err);
+      } finally {
+        setIsLoaded(true);
+      }
+    })();
+  }, [company?.id]);
+
+  const persistWidgets = useCallback((newWidgets: MetricWidgetConfig[]) => {
+    if (!canEdit || !company?.id) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from('company_settings')
+          .select('fpa_dashboard_config')
+          .eq('company_id', company.id)
+          .maybeSingle();
+        const existing = (data?.fpa_dashboard_config as Record<string, any>) || {};
+        await supabase
+          .from('company_settings')
+          .update({ fpa_dashboard_config: { ...existing, [CONFIG_KEY]: newWidgets } as any })
+          .eq('company_id', company.id);
+      } catch (err) {
+        console.error('Error saving metrics widgets:', err);
+      }
+    }, 500);
+  }, [canEdit, company?.id]);
+
+  const persistPresets = useCallback((newPresets: MetricsLayoutPreset[]) => {
+    if (!canEdit || !company?.id) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from('company_settings')
+          .select('fpa_dashboard_config')
+          .eq('company_id', company.id)
+          .maybeSingle();
+        const existing = (data?.fpa_dashboard_config as Record<string, any>) || {};
+        await supabase
+          .from('company_settings')
+          .update({ fpa_dashboard_config: { ...existing, [PRESETS_CONFIG_KEY]: newPresets } as any })
+          .eq('company_id', company.id);
+      } catch (err) {
+        console.error('Error saving metrics presets:', err);
+      }
+    }, 500);
+  }, [canEdit, company?.id]);
 
   const addWidget = (widget: Omit<MetricWidgetConfig, 'id' | 'createdAt'>) => {
     const newWidget: MetricWidgetConfig = {
@@ -168,23 +225,31 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
       id: `widget-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
-    setWidgets(prev => [...prev, newWidget]);
+    const updated = [...widgets, newWidget];
+    setWidgets(updated);
+    persistWidgets(updated);
   };
 
   const updateWidget = (id: string, updates: Partial<Omit<MetricWidgetConfig, 'id' | 'createdAt'>>) => {
-    setWidgets(prev => prev.map(w => w.id === id ? { ...w, ...updates } : w));
+    const updated = widgets.map(w => w.id === id ? { ...w, ...updates } : w);
+    setWidgets(updated);
+    persistWidgets(updated);
   };
 
   const deleteWidget = (id: string) => {
-    setWidgets(prev => prev.filter(w => w.id !== id));
+    const updated = widgets.filter(w => w.id !== id);
+    setWidgets(updated);
+    persistWidgets(updated);
   };
 
   const reorderWidgets = (newWidgets: MetricWidgetConfig[]) => {
     setWidgets(newWidgets);
+    persistWidgets(newWidgets);
   };
 
   const resetToDefaults = () => {
     setWidgets(DEFAULT_WIDGETS);
+    persistWidgets(DEFAULT_WIDGETS);
   };
 
   const savePreset = (name: string) => {
@@ -194,18 +259,23 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
       widgets: [...widgets],
       createdAt: new Date().toISOString(),
     };
-    setPresets(prev => [...prev, newPreset]);
+    const updated = [...presets, newPreset];
+    setPresets(updated);
+    persistPresets(updated);
   };
 
   const loadPreset = (id: string) => {
     const preset = presets.find(p => p.id === id);
     if (preset) {
       setWidgets(preset.widgets);
+      persistWidgets(preset.widgets);
     }
   };
 
   const deletePreset = (id: string) => {
-    setPresets(prev => prev.filter(p => p.id !== id));
+    const updated = presets.filter(p => p.id !== id);
+    setPresets(updated);
+    persistPresets(updated);
   };
 
   return (
