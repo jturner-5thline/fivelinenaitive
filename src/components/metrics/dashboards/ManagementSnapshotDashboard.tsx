@@ -450,10 +450,21 @@ export function ManagementSnapshotDashboard({
     props: GenericDashboardCardProps;
   };
 
+  const TOTAL_REVENUE_DETAIL_KPI: KPIDetailCardConfig = {
+    cardTitle: 'Total Revenue',
+    mainValueField: 'f-total-revenue',
+    comparisonMode: 'vs Previous Period',
+    comparisonSourceField: null,
+    breakdownColumns: 2,
+    left: { label: 'Debt Revenue', valueField: 'f-revenue', varianceField: null },
+    right: { label: 'FinServ Revenue', valueField: 'f-revenue', varianceField: null },
+  };
+
   const allCards: CardEntry[] = [
     { cardId: 'debt-revenue', props: getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd', 'chart') },
     { cardId: 'finserv-revenue', props: getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd', 'chart') },
     { cardId: 'total-revenue', props: getCardProps('total-revenue', 'Total Revenue', 'hsl(var(--chart-2))', 'ytd', 'chart') },
+    { cardId: 'total-revenue-detail', props: getCardProps('total-revenue-detail', 'Total Revenue Detail', 'hsl(var(--chart-2))', 'ytd', 'metric') },
     { cardId: 'clients-signed-debt', props: getCardProps('clients-signed-debt', 'Clients Signed - Debt', 'hsl(var(--primary))', 'ytd', 'metric') },
     { cardId: 'clients-signed-finserv', props: getCardProps('clients-signed-finserv', 'Clients Signed - FinServ', 'hsl(var(--chart-4))', 'ytd', 'metric') },
     { cardId: 'outstanding-ar', props: getCardProps('outstanding-ar', 'Outstanding A/R', 'hsl(var(--primary))', 'ytd', 'metric') },
