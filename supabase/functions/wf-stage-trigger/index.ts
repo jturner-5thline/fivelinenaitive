@@ -14,7 +14,25 @@ function normalizeStage(stage: string | null): string | null {
   return stage.replace(/-/g, "_");
 }
 
-// Stage-triggered workflow definitions: normalized_stage -> array of { workflowKey, tasks, actions }
+// Map main deals table stage names (kebab-case) to wf_deal_stage enum values (snake_case)
+const DEALS_TO_WF_STAGE: Record<string, string> = {
+  "ndaneeds-list-sent": "nda_needs_list_sent",
+  "pre-credit-needs": "pre_credit_needs",
+  "initial-lender-review": "initial_lender_review",
+  "initial-feedback": "initial_feedback_call",
+  "write-up-pending": "write_up_pending",
+  "submitted-to-lenders": "submitted_to_lenders",
+  "lenders-in-review": "lenders_in_review",
+  "terms-issued": "terms_issued_analysis",
+  "in-due-diligence": "due_diligence_client",
+  "agreement-pending": "agreement_pending",
+  "final-credit-items": "final_credit_items",
+  "client-strategy-review": "client_strategy_review",
+  "funded-invoiced": "funded_naitive",
+  "closed-won": "funded_naitive",
+  "closed-lost": "not_moving_forward",
+  "on-hold": "nda_needs_list_sent",
+};
 const STAGE_WORKFLOWS: Record<
   string,
   Array<{
