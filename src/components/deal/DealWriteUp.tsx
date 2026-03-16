@@ -51,6 +51,8 @@ import { WriteUpKeyItemsTab } from './writeup/WriteUpKeyItemsTab';
 import { WriteUpOwnershipTab } from './writeup/WriteUpOwnershipTab';
 import { WriteUpAutoFillDialog } from './WriteUpAutoFillDialog';
 import { WriteUpPreviewDialog } from './writeup/WriteUpPreviewDialog';
+import { OverwriteProtectionDialog } from './writeup/OverwriteProtectionDialog';
+import { UserEditedFieldWrapper } from './writeup/UserEditedFieldWrapper';
 
 export interface KeyItem {
   id: string;
