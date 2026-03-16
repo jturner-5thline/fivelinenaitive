@@ -335,6 +335,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const { isGenerating: isMemoGenerating, isRegenerating, memoContent, memoSections, generateFullMemo, regenerateSection } = useDealSpaceMemo(dealId);
   const [showMemoDialog, setShowMemoDialog] = useState(false);
   
+  // Overwrite protection
+  const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
+  const [pendingAutoFillAction, setPendingAutoFillAction] = useState<(() => void) | null>(null);
+  
   // View mode state: 'tabs', 'long', or 'carousel'
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     try {
