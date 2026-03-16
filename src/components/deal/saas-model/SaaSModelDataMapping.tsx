@@ -32,7 +32,9 @@ import {
   KEYWORD_ALIASES, getMatchConfidence, applyMappingsToModel,
   formatCellValue, isNumericCell, detectHeaderRow, extractColumnHeaders,
   validateDateSequence, type DateWarning, detectFirstMonthFromHeaders,
+  extractMappedDataRows,
 } from './dataMappingUtils';
+import { useFinancialFiles, type FinancialFileRecord } from '@/hooks/useFinancialFiles';
 
 interface Props {
   dealId: string;
@@ -81,6 +83,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storedFilePathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
+
+  // ── Multi-file management ──
+  const { files: dbFiles, upsertFile, saveFileMappings, pushFileData, deleteFile: deleteDbFile, loadFiles: reloadDbFiles } = useFinancialFiles(dealId);
+  const [activeFileId, setActiveFileId] = useState<string | null>(null);
 
   // ── Start date detection & override ──
   const [modelStartDate, setModelStartDate] = useState<{ month: number; year: number } | null>(null);
@@ -762,12 +768,35 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         flipped_columns: Array.from(flippedColumns),
       }, { onConflict: 'deal_id' });
 
+      // ── Multi-file: save per-file mappings and push financial data ──
+      if (activeFileId) {
+        await saveFileMappings(
+          activeFileId,
+          fieldMappings,
+          Array.from(excludedColumns),
+          Array.from(flippedRows),
+          Array.from(flippedColumns),
+          modelStartDate?.month ?? 1,
+          modelStartDate?.year ?? 2024,
+        );
+
+        // Extract and push data rows to deal_financial_data
+        const dataRows = extractMappedDataRows(
+          fieldMappings, selectedFile,
+          modelStartDate?.month ?? 1, modelStartDate?.year ?? 2024,
+          flippedRows, excludedColumns, flippedColumns,
+        );
+        if (dataRows.length > 0) {
+          await pushFileData(activeFileId, dataRows);
+        }
+      }
+
       const count = Object.keys(fieldMappings).length;
       setLastSavedCount(count);
       toast.success(`Saved ${count} mapped ${count === 1 ? 'field' : 'fields'} — Dashboard, IS & BS updated`);
     } catch { toast.error('Failed to save mapping progress'); }
     finally { setIsSaving(false); }
-  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage, flippedRows, flippedColumns, excludedColumns, modelStartDate]);
+  }, [selectedFile, fieldMappings, updateModel, getCompanyId, logPatterns, dealId, persistFileToStorage, flippedRows, flippedColumns, excludedColumns, modelStartDate, activeFileId, saveFileMappings, pushFileData]);
 
   // Keep ref in sync for imperative handle
   useEffect(() => { handleSaveProgressRef.current = handleSaveProgress; }, [handleSaveProgress]);
@@ -854,33 +883,122 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     }
 
     results.sort((a, b) => b.analysis.totalMatches - a.analysis.totalMatches);
-    setAnalyzedFiles(results);
+    // Merge with existing analyzed files instead of replacing
+    setAnalyzedFiles(prev => {
+      const existingNames = new Set(prev.map(f => f.file.name));
+      const newFiles = results.filter(r => !existingNames.has(r.file.name));
+      return [...prev, ...newFiles];
+    });
 
-    if (results.length === 1) {
-      setSelectedFile(results[0]);
-      setPhase('mapping');
-      setUploadStatus('Uploading to storage...');
-      setUploadProgress(70);
-      const storagePath = await persistFileToStorage(results[0].file);
-      setUploadProgress(90);
+    // Create DB records and upload each file to storage
+    setUploadStatus('Saving file records...');
+    setUploadProgress(70);
+    for (const af of results) {
+      const storagePath = await persistFileToStorage(af.file);
+      // Detect start date from headers
+      const headerRow = detectHeaderRow(af.sheets[0]?.data || []);
+      const headers = headerRow !== null ? extractColumnHeaders(af.sheets[0]?.data || [], headerRow) : [];
+      const detected = detectFirstMonthFromHeaders(headers);
+
+      const record = await upsertFile({
+        deal_id: dealId,
+        file_name: af.file.name,
+        file_size: af.file.size,
+        storage_path: storagePath,
+        statement_type: 'income_statement',
+        start_month: detected?.month ?? 1,
+        start_year: detected?.year ?? 2024,
+        month_count: headers.length || 12,
+        analysis_result: af.analysis,
+      });
+      if (record) {
+        // Tag the analyzed file with its DB id
+        (af as any)._dbFileId = record.id;
+      }
+
+      // Also save to legacy mapping table for backward compat
       if (storagePath) {
         await supabase.from('deal_saas_mappings' as any).upsert({
           deal_id: dealId,
           field_mappings: fieldMappings,
-          file_name: results[0].file.name,
-          file_size: results[0].file.size,
+          file_name: af.file.name,
+          file_size: af.file.size,
           file_storage_path: storagePath,
-          analysis_result: results[0].analysis,
+          analysis_result: af.analysis,
           mapped_at: new Date().toISOString(),
         }, { onConflict: 'deal_id' });
       }
+    }
+    setUploadProgress(90);
+
+    if (results.length === 1) {
+      setSelectedFile(results[0]);
+      setActiveFileId((results[0] as any)._dbFileId || null);
+      setPhase('mapping');
+      // Reset mapping state for this file
+      setFieldMappings({});
+      setExcludedColumns(new Set());
+      setFlippedRows(new Set());
+      setFlippedColumns(new Set());
+      setStartDateConfirmed(false);
       setUploadProgress(100);
     } else {
       setPhase('triage');
     }
     setTimeout(() => { setUploadProgress(null); setUploadStatus(''); }, 500);
     setIsProcessing(false);
-  }, [analyzeFile, persistFileToStorage, dealId, fieldMappings]);
+  }, [analyzeFile, persistFileToStorage, dealId, fieldMappings, upsertFile]);
+
+  // Switch active file in mapping view
+  const handleSwitchFile = useCallback((af: AnalyzedFile) => {
+    // Save current file's mappings before switching
+    if (activeFileId && Object.keys(fieldMappings).length > 0) {
+      saveFileMappings(
+        activeFileId,
+        fieldMappings,
+        Array.from(excludedColumns),
+        Array.from(flippedRows),
+        Array.from(flippedColumns),
+        modelStartDate?.month ?? 1,
+        modelStartDate?.year ?? 2024,
+      );
+    }
+
+    setSelectedFile(af);
+    const dbFileId = (af as any)._dbFileId || null;
+    setActiveFileId(dbFileId);
+    setActiveSheet(0);
+    setSelectedRows(new Set());
+    setAutoMapResults([]);
+    setStartDateConfirmed(false);
+
+    // Restore this file's saved mappings from DB
+    if (dbFileId) {
+      const dbFile = dbFiles.find(f => f.id === dbFileId);
+      if (dbFile && dbFile.field_mappings && Object.keys(dbFile.field_mappings).length > 0) {
+        setFieldMappings(dbFile.field_mappings as Record<string, FieldMapping[]>);
+        setExcludedColumns(new Set(dbFile.excluded_columns || []));
+        setFlippedRows(new Set(dbFile.flipped_rows || []));
+        setFlippedColumns(new Set(dbFile.flipped_columns || []));
+        if (dbFile.start_month && dbFile.start_year) {
+          setModelStartDate({ month: dbFile.start_month, year: dbFile.start_year });
+        }
+        setLastSavedCount(Object.keys(dbFile.field_mappings).length);
+      } else {
+        setFieldMappings({});
+        setExcludedColumns(new Set());
+        setFlippedRows(new Set());
+        setFlippedColumns(new Set());
+        setLastSavedCount(0);
+      }
+    } else {
+      setFieldMappings({});
+      setExcludedColumns(new Set());
+      setFlippedRows(new Set());
+      setFlippedColumns(new Set());
+      setLastSavedCount(0);
+    }
+  }, [activeFileId, fieldMappings, excludedColumns, flippedRows, flippedColumns, modelStartDate, saveFileMappings, dbFiles]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -1339,12 +1457,56 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       {renderSettingsSection()}
 
       {/* Header */}
-      <div>
-        <h3 className="text-sm font-semibold">Map your financial fields</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Connect each row from your upload to a standard model field. Use search & filters in the sidebar.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">Map your financial fields</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Connect each row from your upload to a standard model field. Use search & filters in the sidebar.
+          </p>
+        </div>
+        {analyzedFiles.length > 1 && (
+          <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 cursor-pointer hover:bg-muted/50" onClick={() => setPhase('triage')}>
+            <FileSpreadsheet className="h-3 w-3" /> {analyzedFiles.length} files uploaded
+          </Badge>
+        )}
       </div>
+
+      {/* Multi-file selector tabs */}
+      {analyzedFiles.length > 1 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {analyzedFiles.map((af, idx) => {
+            const isActive = selectedFile === af;
+            const dbFile = dbFiles.find(f => f.file_name === af.file.name);
+            const isPushed = dbFile?.pushed_at;
+            return (
+              <button
+                key={idx}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium border transition-colors shrink-0",
+                  isActive
+                    ? "bg-primary/10 border-primary/30 text-primary"
+                    : "bg-card border-border/30 text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                onClick={() => {
+                  if (!isActive) handleSwitchFile(af);
+                }}
+              >
+                <FileSpreadsheet className="h-3 w-3" />
+                <span className="truncate max-w-[120px]">{af.file.name}</span>
+                {isPushed && <Check className="h-3 w-3 text-emerald-500" />}
+              </button>
+            );
+          })}
+          <button
+            className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[10px] text-muted-foreground hover:text-foreground border border-dashed border-border/30 hover:border-primary/30 transition-colors shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-3 w-3" /> Add file
+          </button>
+          <input ref={fileInputRef} type="file" className="hidden" accept=".xlsx,.xls,.csv" multiple
+            onChange={e => e.target.files && handleFilesSelected(e.target.files)} />
+        </div>
+      )}
 
       {/* File info + detected headers */}
       <div className="flex items-center gap-3 rounded-lg border border-border/30 bg-muted/10 px-3 py-2">

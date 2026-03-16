@@ -145,6 +145,80 @@ export function getFieldPath(fieldName: MappingFieldName): string[] {
   return map[fieldName] || [];
 }
 
+/**
+ * Convert a field path array to an account key string for storage.
+ * e.g. ['revenue', 'recurring'] => 'revenue.recurring'
+ */
+export function fieldPathToAccountKey(path: string[]): string {
+  return path.join('.');
+}
+
+/**
+ * Extract mapped values from a file with month alignment.
+ * Returns array of { year_month, account_key, account_label, value } for DB storage.
+ */
+export function extractMappedDataRows(
+  fieldMappings: Record<string, FieldMapping[]>,
+  selectedFile: AnalyzedFile,
+  startMonth: number,
+  startYear: number,
+  flippedRows?: Set<number>,
+  excludedColumns?: Set<number>,
+  flippedColumns?: Set<number>,
+): Array<{ year_month: string; account_key: string; account_label: string; value: number }> {
+  const rows: Array<{ year_month: string; account_key: string; account_label: string; value: number }> = [];
+
+  Object.entries(fieldMappings).forEach(([fieldName, mappings]) => {
+    const path = getFieldPath(fieldName as MappingFieldName);
+    if (!path.length) return;
+    const accountKey = fieldPathToAccountKey(path);
+
+    const sheet = selectedFile.sheets.find(s => s.name === mappings[0]?.sheet) || selectedFile.sheets[0];
+    const numCols = Math.min(24, (sheet.data[0]?.length || 1) - 1);
+
+    // Collect values per column slot
+    const values: number[] = new Array(24).fill(0);
+    mappings.forEach(m => {
+      const row = sheet.data[m.rowIdx];
+      if (!row) return;
+      const rowMultiplier = flippedRows?.has(m.rowIdx) ? -1 : 1;
+      let colSlot = 0;
+      for (let c = 1; c <= numCols && colSlot < 24; c++) {
+        if (excludedColumns?.has(c)) continue;
+        const colMultiplier = flippedColumns?.has(c) ? -1 : 1;
+        const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '0').replace(/[,$]/g, ''));
+        if (!isNaN(val)) values[colSlot] += val * rowMultiplier * colMultiplier;
+        colSlot++;
+      }
+    });
+
+    // Map each column slot to a year_month
+    let totalSlots = 0;
+    for (let c = 1; c <= numCols; c++) {
+      if (excludedColumns?.has(c)) continue;
+      totalSlots++;
+    }
+
+    for (let i = 0; i < totalSlots && i < 24; i++) {
+      const totalMonthIdx = (startMonth - 1) + i;
+      const year = startYear + Math.floor(totalMonthIdx / 12);
+      const month = (totalMonthIdx % 12) + 1;
+      const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
+
+      if (values[i] !== 0) {
+        rows.push({
+          year_month: yearMonth,
+          account_key: accountKey,
+          account_label: fieldName,
+          value: Math.round(values[i] * 100) / 100,
+        });
+      }
+    }
+  });
+
+  return rows;
+}
+
 export function formatCellValue(val: unknown): string {
   if (val === null || val === undefined) return '';
   if (typeof val === 'number') return formatUSD(val);

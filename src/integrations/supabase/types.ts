@@ -3474,6 +3474,142 @@ export type Database = {
           },
         ]
       }
+      deal_financial_data: {
+        Row: {
+          account_key: string
+          account_label: string
+          company_id: string | null
+          deal_id: string
+          id: string
+          pushed_at: string
+          source_file_id: string
+          value: number
+          year_month: string
+        }
+        Insert: {
+          account_key: string
+          account_label: string
+          company_id?: string | null
+          deal_id: string
+          id?: string
+          pushed_at?: string
+          source_file_id: string
+          value?: number
+          year_month: string
+        }
+        Update: {
+          account_key?: string
+          account_label?: string
+          company_id?: string | null
+          deal_id?: string
+          id?: string
+          pushed_at?: string
+          source_file_id?: string
+          value?: number
+          year_month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_financial_data_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_financial_data_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_financial_data_source_file_id_fkey"
+            columns: ["source_file_id"]
+            isOneToOne: false
+            referencedRelation: "deal_financial_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_financial_files: {
+        Row: {
+          analysis_result: Json | null
+          company_id: string | null
+          created_at: string
+          deal_id: string
+          excluded_columns: Json | null
+          field_mappings: Json | null
+          file_name: string
+          file_size: number | null
+          flipped_columns: Json | null
+          flipped_rows: Json | null
+          id: string
+          month_count: number
+          pushed_at: string | null
+          start_month: number
+          start_year: number
+          statement_type: string
+          storage_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          analysis_result?: Json | null
+          company_id?: string | null
+          created_at?: string
+          deal_id: string
+          excluded_columns?: Json | null
+          field_mappings?: Json | null
+          file_name: string
+          file_size?: number | null
+          flipped_columns?: Json | null
+          flipped_rows?: Json | null
+          id?: string
+          month_count?: number
+          pushed_at?: string | null
+          start_month?: number
+          start_year?: number
+          statement_type?: string
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          analysis_result?: Json | null
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string
+          excluded_columns?: Json | null
+          field_mappings?: Json | null
+          file_name?: string
+          file_size?: number | null
+          flipped_columns?: Json | null
+          flipped_rows?: Json | null
+          id?: string
+          month_count?: number
+          pushed_at?: string | null
+          start_month?: number
+          start_year?: number
+          statement_type?: string
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_financial_files_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_financial_files_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_flag_notes: {
         Row: {
           created_at: string

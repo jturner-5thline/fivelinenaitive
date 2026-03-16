@@ -259,7 +259,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           <SaaSModelDashboard model={model} annotations={annotationHook} />
         </TabsContent>
         <TabsContent value="income-statement" className="mt-4">
-          <SaaSModelIncomeStatement model={model} />
+          <SaaSModelIncomeStatement model={model} dealId={dealId} />
         </TabsContent>
         <TabsContent value="balance-sheet" className="mt-4">
           <SaaSModelBalanceSheet model={model} />
