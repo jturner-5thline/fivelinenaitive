@@ -1400,26 +1400,16 @@ export default function Metrics() {
     'debt-profit', 'finserv-profit',
   ];
 
-  const SNAPSHOT_DEFAULT_LAYOUT = useMemo(() => {
-    // Charts: 6 wide, 4 tall. Metrics: 3 wide, 2 tall.
-    const chartCards = ['debt-revenue', 'finserv-revenue', 'total-revenue', 'debt-profit', 'finserv-profit'];
-    let x = 0, y = 0;
-    return SNAPSHOT_CARD_IDS.map((id) => {
-      const isChart = chartCards.includes(id);
-      const w = isChart ? 6 : 3;
-      const h = isChart ? 4 : 2;
-      if (x + w > 12) { x = 0; y += h; }
-      const item = { i: id, x, y, w, h, minW: 2, minH: 2 };
-      x += w;
-      if (x >= 12) { x = 0; y += h; }
-      return item;
-    });
-  }, []);
+  // Unified layout IDs: snapshot cards + custom widgets in one grid
+  const unifiedLayoutIds = useMemo(() => {
+    const widgetIds = widgets.map(w => w.id);
+    return [...SNAPSHOT_CARD_IDS, ...widgetIds];
+  }, [widgets]);
 
   const {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-prebuilt', SNAPSHOT_CARD_IDS);
+  } = useGridLayout('management-snapshot-unified', unifiedLayoutIds);
 
   const [snapshotCardToDelete, setSnapshotCardToDelete] = useState<EditableManagementSnapshotCardId | null>(null);
   const [snapshotDeleteConfirmOpen, setSnapshotDeleteConfirmOpen] = useState(false);
