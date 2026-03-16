@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -210,11 +210,28 @@ function GenericDashboardCard({
   onTimeWindowChange,
   chartHeight = 200,
 }: GenericDashboardCardProps) {
-  const { chartData, total, seriesKeys, isLoading } = useDashboardCardData(
+  const allowNegative = (datarailsConfig as any)?.dataLabels?.allowNegative ?? false;
+  const { chartData: rawChartData, total: rawTotal, seriesKeys, isLoading } = useDashboardCardData(
     datarailsConfig,
     timeWindow,
     entityFilter,
   );
+
+  // Apply allowNegative: when off, force all numeric chart values to absolute
+  const chartData = useMemo(() => {
+    if (allowNegative) return rawChartData;
+    return rawChartData.map(row => {
+      const newRow = { ...row };
+      for (const key of Object.keys(newRow)) {
+        if (key !== 'period' && typeof newRow[key] === 'number') {
+          newRow[key] = Math.abs(newRow[key] as number);
+        }
+      }
+      return newRow;
+    });
+  }, [rawChartData, allowNegative]);
+
+  const total = allowNegative ? rawTotal : Math.abs(rawTotal);
 
   const renderEditActions = () => {
     return (
