@@ -538,7 +538,7 @@ export function useDealsDatabase() {
       setDeals(prev => [newDeal, ...prev]);
       
       // Create default milestones for the new deal
-      await createDefaultMilestones(newDeal.id, userId);
+      await createDefaultMilestones(newDeal.id, userId, memberData?.company_id || undefined);
       
       // Trigger new_deal workflow
       triggerWorkflow('new_deal', {
