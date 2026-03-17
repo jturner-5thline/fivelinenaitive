@@ -1665,6 +1665,50 @@ export type Database = {
           },
         ]
       }
+      company_features: {
+        Row: {
+          agreement_icon_visible: boolean
+          company_id: string
+          created_at: string
+          deal_memo_enabled: boolean
+          id: string
+          sample_deal_on_signup: boolean
+          timeline_view_enabled: boolean
+          updated_at: string
+          workflows_enabled: boolean
+        }
+        Insert: {
+          agreement_icon_visible?: boolean
+          company_id: string
+          created_at?: string
+          deal_memo_enabled?: boolean
+          id?: string
+          sample_deal_on_signup?: boolean
+          timeline_view_enabled?: boolean
+          updated_at?: string
+          workflows_enabled?: boolean
+        }
+        Update: {
+          agreement_icon_visible?: boolean
+          company_id?: string
+          created_at?: string
+          deal_memo_enabled?: boolean
+          id?: string
+          sample_deal_on_signup?: boolean
+          timeline_view_enabled?: boolean
+          updated_at?: string
+          workflows_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_features_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_invitations: {
         Row: {
           accepted_at: string | null

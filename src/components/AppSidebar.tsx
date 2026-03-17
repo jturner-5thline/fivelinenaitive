@@ -1,4 +1,5 @@
 import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, UserPen, SlidersHorizontal, Contact, Building2 } from "lucide-react";
+import { useCompanyFeatures } from "@/hooks/useCompanyFeatures";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
@@ -53,7 +54,7 @@ const menuItems = [
   { title: "Finance", url: "/finance", icon: DollarSign, featureKey: "finance" },
   
   
-  { title: "Workflows", url: "/wf", icon: Workflow, featureKey: null },
+  { title: "Workflows", url: "/wf", icon: Workflow, featureKey: null, companyFeature: 'workflows_enabled' as const },
 ];
 
 const footerItems = [
@@ -71,6 +72,7 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminRole();
   const { hasPageAccess, isPageBeta, isLoading: isAccessLoading } = usePageAccessFlags();
+  const { features: companyFeatures } = useCompanyFeatures();
   const { data: routingTasks = [] } = useClaapRoutingTasks();
   const meetingTaskCount = routingTasks.length;
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
@@ -80,9 +82,13 @@ export function AppSidebar() {
   const iconSrc = resolvedTheme === "dark" ? naitiveIconDark : naitiveIconLight;
   
   // Filter menu items based on feature access — while loading, only show items with no feature gate
-  const visibleMenuItems = menuItems.filter(item => 
-    item.featureKey === null || (!isAccessLoading && hasPageAccess(item.featureKey))
-  );
+  const visibleMenuItems = menuItems.filter(item => {
+    // Check page-level feature flag access
+    if (item.featureKey !== null && (isAccessLoading || !hasPageAccess(item.featureKey))) return false;
+    // Check company-level feature flag
+    if ('companyFeature' in item && item.companyFeature && !companyFeatures[item.companyFeature]) return false;
+    return true;
+  });
   
   const visibleFooterItems = footerItems.filter(item =>
     item.featureKey === null || (!isAccessLoading && hasPageAccess(item.featureKey))

@@ -12,7 +12,7 @@ import {
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
-  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay
+  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -40,6 +40,7 @@ import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel"
 import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequestsPanel";
 import { FeedbackWidgetToggle } from "@/components/admin/FeedbackWidgetToggle";
 import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
+import { CompanyFeaturesPanel } from "@/components/admin/CompanyFeaturesPanel";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -53,6 +54,7 @@ const usersSubPages = [
 
 const accessSubPages = [
   { id: "pages", label: "Page Access", icon: Layout },
+  { id: "company-features", label: "Company Features", icon: ToggleRight },
   { id: "permissions", label: "User Permissions", icon: Shield },
   { id: "notifications-admin", label: "Notifications", icon: Bell },
   { id: "announcements", label: "Announcements", icon: Megaphone },
@@ -231,6 +233,21 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent><PageAccessPanel /></CardContent>
+          </Card>
+        );
+      case "company-features":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ToggleRight className="h-5 w-5" />
+                Company Feature Configuration
+              </CardTitle>
+              <CardDescription>
+                Toggle features on/off for individual companies. 5th Line always has full access.
+              </CardDescription>
+            </CardHeader>
+            <CardContent><CompanyFeaturesPanel /></CardContent>
           </Card>
         );
       case "notifications-admin":

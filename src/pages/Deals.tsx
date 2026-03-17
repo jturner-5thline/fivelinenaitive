@@ -12,6 +12,7 @@ import { DealsPipelineView } from '@/components/deals/DealsPipelineView';
 import { DealsTimelineView } from '@/components/deals/DealsTimelineView';
 import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
+import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
 import { PipelineSelector } from '@/components/deals/PipelineSelector';
@@ -65,6 +66,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function Dashboard() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
+  const { features: companyFeatures } = useCompanyFeatures();
 
   // Deal size confirmation — match stage labels (case-insensitive) for 5th Line only
   const DEAL_SIZE_CONFIRM_STAGE_LABELS = ['proposal issued', 'terms issued', 'in diligence', 'in due diligence'];
@@ -84,11 +86,11 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline' | 'timeline'>(() => {
     if (defaultView) {
       const m = defaultView.config.viewMode;
-      if (m === 'timeline' && !is5thLine) return 'grid';
+      if (m === 'timeline' && !companyFeatures.timeline_view_enabled) return 'grid';
       return m;
     }
     const stored = localStorage.getItem('deals-view-mode');
-    if (stored === 'timeline' && !is5thLine) return 'grid';
+    if (stored === 'timeline' && !companyFeatures.timeline_view_enabled) return 'grid';
     return (stored === 'grid' || stored === 'list' || stored === 'pipeline' || stored === 'timeline') ? stored : 'grid';
   });
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
@@ -578,7 +580,7 @@ export default function Dashboard() {
                         Pipeline
                       </div>
                     </SelectItem>
-                    {is5thLine && (
+                    {companyFeatures.timeline_view_enabled && (
                       <SelectItem value="timeline">
                         <div className="flex items-center gap-2">
                           <ChartGantt className="h-4 w-4" />

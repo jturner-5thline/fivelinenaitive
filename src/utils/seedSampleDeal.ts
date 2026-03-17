@@ -17,16 +17,29 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
       return false; // User already has deals
     }
 
+    // Check company_features flag for sample_deal_on_signup
+    if (companyId) {
+      const { data: features } = await (supabase as any)
+        .from('company_features')
+        .select('sample_deal_on_signup')
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+      if (features && features.sample_deal_on_signup === false) {
+        return false; // Company has sample deals disabled
+      }
+    }
+
     const now = new Date();
 
     // Create a single sample deal
     const { data: deal, error: dealError } = await supabase
       .from('deals')
       .insert({
-        company: 'Acme Corp (Sample)',
+        company: 'Acme Industries (Sample)',
         value: 5000000,
         status: 'active',
-        stage: 'Due Diligence',
+        stage: 'Initial Review',
         engagement_type: 'Retained',
         deal_type: 'Growth Capital',
         manager: 'You',

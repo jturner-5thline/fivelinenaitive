@@ -9,6 +9,7 @@ import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
 import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
 import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
+import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -497,6 +498,7 @@ export default function DealDetail() {
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
   const { company, members } = useCompany();
+  const { features: companyFeatures } = useCompanyFeatures();
   const { scoreConfig } = useLenderScoreConfig();
   const teamMembers = useTeamMembers();
   const mentionUsers = useMemo(() => teamMembers, [teamMembers]);
@@ -2518,8 +2520,12 @@ export default function DealDetail() {
               {/* Tab Navigation */}
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}>
                 <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden flex-nowrap">
-                  <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
-                  <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
+                  {companyFeatures.agreement_icon_visible && (
+                    <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
+                  )}
+                  {companyFeatures.deal_memo_enabled && (
+                    <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
+                  )}
                   <HintTooltip
                     hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
                     visible={isHintVisible('deal-tabs')}
