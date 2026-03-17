@@ -132,12 +132,17 @@ export function useAllActivities(options: UseAllActivitiesOptions | number = 20)
         async (payload) => {
           const newActivity = payload.new as ActivityLogWithDeal;
           
-          // Fetch the deal name for the new activity
+          // Check if the deal is active (not archived/in_development)
           const { data: dealData } = await supabase
             .from('deals')
-            .select('company')
+            .select('company, status')
             .eq('id', newActivity.deal_id)
             .maybeSingle();
+          
+          // Skip notifications for archived/in_development deals
+          if (!dealData || dealData.status === 'archived' || dealData.status === 'in_development') {
+            return;
+          }
           
           newActivity.deal_name = dealData?.company;
           
