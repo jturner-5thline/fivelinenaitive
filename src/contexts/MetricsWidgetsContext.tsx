@@ -202,14 +202,17 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
 
   const persistPresets = useCallback((newPresets: MetricsLayoutPreset[]) => {
     if (!company?.id) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
+    if (presetsSaveTimerRef.current) clearTimeout(presetsSaveTimerRef.current);
+    presetsSaveTimerRef.current = setTimeout(async () => {
       try {
-        await supabase.rpc('save_fpa_dashboard_config' as any, {
+        const { error } = await supabase.rpc('save_fpa_dashboard_config' as any, {
           _company_id: company.id,
           _config_key: PRESETS_CONFIG_KEY,
           _config_value: newPresets,
         });
+        if (error) {
+          console.error('Error saving metrics presets:', error);
+        }
       } catch (err) {
         console.error('Error saving metrics presets:', err);
       }
