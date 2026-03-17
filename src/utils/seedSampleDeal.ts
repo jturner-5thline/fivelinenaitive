@@ -36,10 +36,10 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
     const { data: deal, error: dealError } = await supabase
       .from('deals')
       .insert({
-        company: 'Acme Corp (Sample)',
+        company: 'Acme Industries (Sample)',
         value: 5000000,
         status: 'active',
-        stage: 'Due Diligence',
+        stage: 'Initial Review',
         engagement_type: 'Retained',
         deal_type: 'Growth Capital',
         manager: 'You',
