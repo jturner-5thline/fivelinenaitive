@@ -41,10 +41,11 @@ export function useAllActivities(options: UseAllActivitiesOptions | number = 20)
     
     const offset = pageNum * limit;
     
-    // First fetch activity logs
+    // First fetch activity logs, joining to deals to filter out archived/in_development
     const { data: activityData, error: activityError } = await supabase
       .from('activity_logs')
-      .select('*')
+      .select('*, deals!inner(status)')
+      .not('deals.status', 'in', '("archived","in_development")')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -84,7 +85,7 @@ export function useAllActivities(options: UseAllActivitiesOptions | number = 20)
     // Map deal names to activities
     const dealNameMap = new Map(dealsData?.map(d => [d.id, d.company]) || []);
     
-    const activitiesWithDeals: ActivityLogWithDeal[] = activityData.map(activity => ({
+    const activitiesWithDeals: ActivityLogWithDeal[] = activityData.map(({ deals: _d, ...activity }) => ({
       ...activity,
       deal_name: dealNameMap.get(activity.deal_id),
     }));
@@ -131,12 +132,17 @@ export function useAllActivities(options: UseAllActivitiesOptions | number = 20)
         async (payload) => {
           const newActivity = payload.new as ActivityLogWithDeal;
           
-          // Fetch the deal name for the new activity
+          // Check if the deal is active (not archived/in_development)
           const { data: dealData } = await supabase
             .from('deals')
-            .select('company')
+            .select('company, status')
             .eq('id', newActivity.deal_id)
             .maybeSingle();
+          
+          // Skip notifications for archived/in_development deals
+          if (!dealData || dealData.status === 'archived' || dealData.status === 'in_development') {
+            return;
+          }
           
           newActivity.deal_name = dealData?.company;
           
