@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 
 export type MilestoneTimingType = 'from_creation' | 'after_previous';
 
@@ -12,75 +14,140 @@ export interface DefaultMilestone {
 
 interface DefaultMilestonesContextType {
   defaultMilestones: DefaultMilestone[];
-  addDefaultMilestone: (milestone: Omit<DefaultMilestone, 'id' | 'position'>) => void;
-  updateDefaultMilestone: (id: string, updates: Partial<Omit<DefaultMilestone, 'id'>>) => void;
-  deleteDefaultMilestone: (id: string) => void;
-  reorderDefaultMilestones: (milestones: DefaultMilestone[]) => void;
+  isLoading: boolean;
+  addDefaultMilestone: (milestone: Omit<DefaultMilestone, 'id' | 'position'>) => Promise<void>;
+  updateDefaultMilestone: (id: string, updates: Partial<Omit<DefaultMilestone, 'id'>>) => Promise<void>;
+  deleteDefaultMilestone: (id: string) => Promise<void>;
+  reorderDefaultMilestones: (milestones: DefaultMilestone[]) => Promise<void>;
 }
 
 const DefaultMilestonesContext = createContext<DefaultMilestonesContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'default-deal-milestones';
-
-const DEFAULT_MILESTONES: DefaultMilestone[] = [
-  { id: 'kick-off', title: 'Kick-off Call', daysFromCreation: 3, timingType: 'from_creation', position: 0 },
-  { id: 'due-diligence', title: 'Due Diligence Complete', daysFromCreation: 14, timingType: 'from_creation', position: 1 },
-  { id: 'term-sheet', title: 'Term Sheet Received', daysFromCreation: 30, timingType: 'from_creation', position: 2 },
-];
+function mapRow(row: any): DefaultMilestone {
+  return {
+    id: row.id,
+    title: row.title,
+    daysFromCreation: row.days_from_creation,
+    timingType: (row.timing_type as MilestoneTimingType) || 'from_creation',
+    position: row.position,
+  };
+}
 
 export function DefaultMilestonesProvider({ children }: { children: ReactNode }) {
-  const [defaultMilestones, setDefaultMilestones] = useState<DefaultMilestone[]>(() => {
+  const { company } = useCompany();
+  const [defaultMilestones, setDefaultMilestones] = useState<DefaultMilestone[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const companyId = company?.id;
+
+  const fetchMilestones = useCallback(async () => {
+    if (!companyId) {
+      setDefaultMilestones([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Migrate old milestones without timingType
-        return parsed.map((m: any) => ({
-          ...m,
-          timingType: m.timingType || 'from_creation'
-        }));
-      }
+      const { data, error } = await supabase
+        .from('default_milestones' as any)
+        .select('*')
+        .eq('company_id', companyId)
+        .order('position', { ascending: true });
+
+      if (error) throw error;
+      setDefaultMilestones((data || []).map(mapRow));
     } catch (error) {
       console.error('Failed to load default milestones:', error);
+    } finally {
+      setIsLoading(false);
     }
-    return DEFAULT_MILESTONES;
-  });
+  }, [companyId]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultMilestones));
-    } catch (error) {
-      console.error('Failed to save default milestones:', error);
+    fetchMilestones();
+  }, [fetchMilestones]);
+
+  const addDefaultMilestone = async (milestone: Omit<DefaultMilestone, 'id' | 'position'>) => {
+    if (!companyId) return;
+
+    const maxPosition = defaultMilestones.length > 0
+      ? Math.max(...defaultMilestones.map(m => m.position))
+      : -1;
+
+    const { error } = await supabase
+      .from('default_milestones' as any)
+      .insert({
+        company_id: companyId,
+        title: milestone.title,
+        days_from_creation: milestone.daysFromCreation,
+        timing_type: milestone.timingType || 'from_creation',
+        position: maxPosition + 1,
+      });
+
+    if (error) {
+      console.error('Failed to add milestone:', error);
+      return;
     }
-  }, [defaultMilestones]);
-
-  const addDefaultMilestone = (milestone: Omit<DefaultMilestone, 'id' | 'position'>) => {
-    const newId = `milestone-${Date.now()}`;
-    const maxPosition = Math.max(...defaultMilestones.map(m => m.position), -1);
-    setDefaultMilestones(prev => [
-      ...prev,
-      { ...milestone, id: newId, position: maxPosition + 1, timingType: milestone.timingType || 'from_creation' }
-    ]);
+    await fetchMilestones();
   };
 
-  const updateDefaultMilestone = (id: string, updates: Partial<Omit<DefaultMilestone, 'id'>>) => {
-    setDefaultMilestones(prev =>
-      prev.map(m => (m.id === id ? { ...m, ...updates } : m))
+  const updateDefaultMilestone = async (id: string, updates: Partial<Omit<DefaultMilestone, 'id'>>) => {
+    const dbUpdates: Record<string, any> = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.daysFromCreation !== undefined) dbUpdates.days_from_creation = updates.daysFromCreation;
+    if (updates.timingType !== undefined) dbUpdates.timing_type = updates.timingType;
+    if (updates.position !== undefined) dbUpdates.position = updates.position;
+
+    const { error } = await supabase
+      .from('default_milestones' as any)
+      .update(dbUpdates)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Failed to update milestone:', error);
+      return;
+    }
+    await fetchMilestones();
+  };
+
+  const deleteDefaultMilestone = async (id: string) => {
+    const { error } = await supabase
+      .from('default_milestones' as any)
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Failed to delete milestone:', error);
+      return;
+    }
+    await fetchMilestones();
+  };
+
+  const reorderDefaultMilestones = async (milestones: DefaultMilestone[]) => {
+    // Optimistic update
+    setDefaultMilestones(milestones.map((m, i) => ({ ...m, position: i })));
+
+    // Batch update positions
+    const updates = milestones.map((m, index) =>
+      supabase
+        .from('default_milestones' as any)
+        .update({ position: index })
+        .eq('id', m.id)
     );
-  };
 
-  const deleteDefaultMilestone = (id: string) => {
-    setDefaultMilestones(prev => prev.filter(m => m.id !== id));
-  };
-
-  const reorderDefaultMilestones = (milestones: DefaultMilestone[]) => {
-    setDefaultMilestones(milestones.map((m, index) => ({ ...m, position: index })));
+    try {
+      await Promise.all(updates);
+    } catch (error) {
+      console.error('Failed to reorder milestones:', error);
+      await fetchMilestones(); // Revert on error
+    }
   };
 
   return (
     <DefaultMilestonesContext.Provider
       value={{
         defaultMilestones,
+        isLoading,
         addDefaultMilestone,
         updateDefaultMilestone,
         deleteDefaultMilestone,

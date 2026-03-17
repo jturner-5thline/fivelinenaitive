@@ -41,27 +41,35 @@ async function triggerWebhookSync(
 interface DefaultMilestone {
   id: string;
   title: string;
-  daysFromCreation: number;
-  timingType?: MilestoneTimingType;
+  days_from_creation: number | null;
+  timing_type?: MilestoneTimingType;
   position: number;
 }
 
-// Get default milestones from localStorage
-function getDefaultMilestones(): DefaultMilestone[] {
+// Fetch default milestones from the company-scoped DB table
+async function getDefaultMilestonesForCompany(companyId: string): Promise<DefaultMilestone[]> {
   try {
-    const stored = localStorage.getItem('default-deal-milestones');
-    if (stored) {
-      return JSON.parse(stored);
+    const { data, error } = await supabase
+      .from('default_milestones' as any)
+      .select('id, title, days_from_creation, timing_type, position')
+      .eq('company_id', companyId)
+      .order('position', { ascending: true });
+
+    if (error) {
+      console.error('Failed to load default milestones:', error);
+      return [];
     }
+    return (data || []) as unknown as DefaultMilestone[];
   } catch (error) {
     console.error('Failed to load default milestones:', error);
+    return [];
   }
-  return [];
 }
 
 // Create default milestones for a new deal
-async function createDefaultMilestones(dealId: string, userId: string) {
-  const defaultMilestones = getDefaultMilestones();
+async function createDefaultMilestones(dealId: string, userId: string, companyId?: string) {
+  if (!companyId) return;
+  const defaultMilestones = await getDefaultMilestonesForCompany(companyId);
   if (defaultMilestones.length === 0) return;
 
   const now = new Date();
