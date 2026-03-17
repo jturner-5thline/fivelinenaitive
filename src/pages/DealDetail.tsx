@@ -3260,7 +3260,10 @@ export default function DealDetail() {
                             <div key={id} className="space-y-6">
                               <OutstandingItems
                                 items={outstandingItems}
-                                lenderNames={deal.lenders?.map(l => l.name) || []}
+                                lenderNames={deal.lenders?.filter(l => {
+                                  const stageConfig = configuredStages.find(s => s.id === l.stage);
+                                  return stageConfig?.group !== 'passed';
+                                }).map(l => l.name) || []}
                                 companyName={company?.name}
                                 onAdd={addOutstandingItem}
                                 onUpdate={updateOutstandingItem}
