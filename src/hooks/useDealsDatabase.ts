@@ -93,7 +93,7 @@ async function createDefaultMilestones(dealId: string, userId: string, companyId
     }
     
     // For "from creation" or first milestone, calculate from deal creation
-    const dueDate = m.daysFromCreation !== null ? addDays(now, m.daysFromCreation) : null;
+    const dueDate = m.days_from_creation !== null ? addDays(now, m.days_from_creation) : null;
     return {
       deal_id: dealId,
       user_id: userId,
