@@ -5194,6 +5194,47 @@ export type Database = {
           },
         ]
       }
+      default_milestones: {
+        Row: {
+          company_id: string
+          created_at: string
+          days_from_creation: number | null
+          id: string
+          position: number
+          timing_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          days_from_creation?: number | null
+          id?: string
+          position?: number
+          timing_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          days_from_creation?: number | null
+          id?: string
+          position?: number
+          timing_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "default_milestones_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diligence_report_comments: {
         Row: {
           content: string
