@@ -1713,7 +1713,7 @@ export default function Metrics() {
           ),
         });
       }
-      toast({ title: "Widget added" });
+      toast({ title: "Widget added successfully", description: widgetData.title });
     }
   };
 
