@@ -54,7 +54,7 @@ const menuItems = [
   { title: "Finance", url: "/finance", icon: DollarSign, featureKey: "finance" },
   
   
-  { title: "Workflows", url: "/wf", icon: Workflow, featureKey: null },
+  { title: "Workflows", url: "/wf", icon: Workflow, featureKey: null, companyFeature: 'workflows_enabled' as const },
 ];
 
 const footerItems = [
