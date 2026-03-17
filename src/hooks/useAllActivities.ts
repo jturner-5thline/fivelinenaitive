@@ -85,7 +85,7 @@ export function useAllActivities(options: UseAllActivitiesOptions | number = 20)
     // Map deal names to activities
     const dealNameMap = new Map(dealsData?.map(d => [d.id, d.company]) || []);
     
-    const activitiesWithDeals: ActivityLogWithDeal[] = activityData.map(activity => ({
+    const activitiesWithDeals: ActivityLogWithDeal[] = activityData.map(({ deals: _d, ...activity }) => ({
       ...activity,
       deal_name: dealNameMap.get(activity.deal_id),
     }));
