@@ -41,27 +41,35 @@ async function triggerWebhookSync(
 interface DefaultMilestone {
   id: string;
   title: string;
-  daysFromCreation: number;
-  timingType?: MilestoneTimingType;
+  days_from_creation: number | null;
+  timing_type?: MilestoneTimingType;
   position: number;
 }
 
-// Get default milestones from localStorage
-function getDefaultMilestones(): DefaultMilestone[] {
+// Fetch default milestones from the company-scoped DB table
+async function getDefaultMilestonesForCompany(companyId: string): Promise<DefaultMilestone[]> {
   try {
-    const stored = localStorage.getItem('default-deal-milestones');
-    if (stored) {
-      return JSON.parse(stored);
+    const { data, error } = await supabase
+      .from('default_milestones' as any)
+      .select('id, title, days_from_creation, timing_type, position')
+      .eq('company_id', companyId)
+      .order('position', { ascending: true });
+
+    if (error) {
+      console.error('Failed to load default milestones:', error);
+      return [];
     }
+    return (data || []) as unknown as DefaultMilestone[];
   } catch (error) {
     console.error('Failed to load default milestones:', error);
+    return [];
   }
-  return [];
 }
 
 // Create default milestones for a new deal
-async function createDefaultMilestones(dealId: string, userId: string) {
-  const defaultMilestones = getDefaultMilestones();
+async function createDefaultMilestones(dealId: string, userId: string, companyId?: string) {
+  if (!companyId) return;
+  const defaultMilestones = await getDefaultMilestonesForCompany(companyId);
   if (defaultMilestones.length === 0) return;
 
   const now = new Date();
@@ -69,7 +77,7 @@ async function createDefaultMilestones(dealId: string, userId: string) {
   
   // Calculate due dates based on timing type
   const milestonesToInsert = sortedMilestones.map((m, index) => {
-    const timingType = m.timingType || 'from_creation';
+    const timingType = m.timing_type || 'from_creation';
     
     // For "after previous" milestones (except the first one), set due date as null
     // The due date will be set when the previous milestone is completed
@@ -85,7 +93,7 @@ async function createDefaultMilestones(dealId: string, userId: string) {
     }
     
     // For "from creation" or first milestone, calculate from deal creation
-    const dueDate = m.daysFromCreation !== null ? addDays(now, m.daysFromCreation) : null;
+    const dueDate = m.days_from_creation !== null ? addDays(now, m.days_from_creation) : null;
     return {
       deal_id: dealId,
       user_id: userId,
@@ -530,7 +538,7 @@ export function useDealsDatabase() {
       setDeals(prev => [newDeal, ...prev]);
       
       // Create default milestones for the new deal
-      await createDefaultMilestones(newDeal.id, userId);
+      await createDefaultMilestones(newDeal.id, userId, memberData?.company_id || undefined);
       
       // Trigger new_deal workflow
       triggerWorkflow('new_deal', {
