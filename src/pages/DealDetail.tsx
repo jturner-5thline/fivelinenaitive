@@ -498,6 +498,7 @@ export default function DealDetail() {
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
   const { company, members } = useCompany();
+  const { features: companyFeatures } = useCompanyFeatures();
   const { scoreConfig } = useLenderScoreConfig();
   const teamMembers = useTeamMembers();
   const mentionUsers = useMemo(() => teamMembers, [teamMembers]);

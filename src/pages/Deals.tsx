@@ -66,7 +66,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function Dashboard() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
-  // Company-level feature flags are imported below
+  const { features: companyFeatures } = useCompanyFeatures();
 
   // Deal size confirmation — match stage labels (case-insensitive) for 5th Line only
   const DEAL_SIZE_CONFIRM_STAGE_LABELS = ['proposal issued', 'terms issued', 'in diligence', 'in due diligence'];
