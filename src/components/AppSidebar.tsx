@@ -72,6 +72,7 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminRole();
   const { hasPageAccess, isPageBeta, isLoading: isAccessLoading } = usePageAccessFlags();
+  const { features: companyFeatures } = useCompanyFeatures();
   const { data: routingTasks = [] } = useClaapRoutingTasks();
   const meetingTaskCount = routingTasks.length;
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
