@@ -1,18 +1,20 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 
 interface LenderSearchInputProps {
   lenderNames: string[];
   existingLenderNames: string[];
   onAddLender: (name: string) => void;
+  isLoadingLenders?: boolean;
 }
 
 export function LenderSearchInput({ 
   lenderNames, 
   existingLenderNames, 
-  onAddLender 
+  onAddLender,
+  isLoadingLenders = false,
 }: LenderSearchInputProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -25,11 +27,10 @@ export function LenderSearchInput({
   // Filter lenders: ONLY include if name contains the search query (case-insensitive)
   const filteredLenderNames = useMemo(() => {
     const trimmedQuery = searchQuery.trim();
-    // Require at least 2 characters to start filtering
     if (trimmedQuery.length < 2) return [];
 
     const queryLower = trimmedQuery.toLowerCase();
-    const limit = 15; // Reduced limit for cleaner results
+    const limit = 15;
     const matches: { name: string; score: number; coverage: number; isExisting: boolean }[] = [];
 
     for (const name of lenderNames) {
@@ -39,10 +40,8 @@ export function LenderSearchInput({
       const nameNoSpaces = nameLower.replace(/\s+/g, '');
       const queryNoSpaces = queryLower.replace(/\s+/g, '');
       
-      // STRICT: Only include if name contains the search text (ignoring spaces)
       if (!nameNoSpaces.includes(queryNoSpaces)) continue;
 
-      // Score: prefix match = 0, word-start match = 1, substring = 2
       let score: number;
       if (nameLower.startsWith(queryLower)) {
         score = 0;
@@ -53,15 +52,11 @@ export function LenderSearchInput({
       }
 
       const coverage = queryLower.length / nameLower.length;
-
       matches.push({ name, score, coverage, isExisting });
     }
 
-    // Sort: non-existing first, then by score/position/length/coverage
     matches.sort((a, b) => {
-      // Existing lenders go to the bottom
       if (a.isExisting !== b.isExisting) return a.isExisting ? 1 : -1;
-      
       if (a.score !== b.score) return a.score - b.score;
 
       const aLower = a.name.toLowerCase();
@@ -82,13 +77,12 @@ export function LenderSearchInput({
     return matches.slice(0, limit).map(m => ({ name: m.name, isExisting: m.isExisting }));
   }, [lenderNames, existingLenderNamesSet, searchQuery]);
 
-  // Check if a name already exists (exact match)
   const isLenderAlreadyAdded = useCallback((name: string) => {
     return existingLenderNamesSet.has(name.trim());
   }, [existingLenderNamesSet]);
 
   const handleAddLender = useCallback((name: string) => {
-    if (isLenderAlreadyAdded(name)) return; // Prevent duplicates
+    if (isLenderAlreadyAdded(name)) return;
     onAddLender(name);
     setSearchQuery('');
     setIsOpen(false);
@@ -107,12 +101,10 @@ export function LenderSearchInput({
     }
   }, [searchQuery, filteredLenderNames, handleAddLender, isLenderAlreadyAdded]);
 
-  // Check if current search query matches an existing lender
   const isDuplicateQuery = useMemo(() => {
     return searchQuery.trim() && isLenderAlreadyAdded(searchQuery.trim());
   }, [searchQuery, isLenderAlreadyAdded]);
 
-  // Highlight matching text in lender name
   const highlightMatch = useCallback((name: string) => {
     if (!searchQuery.trim()) return name;
     const searchLower = searchQuery.toLowerCase();
@@ -130,14 +122,16 @@ export function LenderSearchInput({
     );
   }, [searchQuery]);
 
+  const hasQuery = searchQuery.trim().length >= 2;
+  const noResults = hasQuery && filteredLenderNames.length === 0 && !isDuplicateQuery;
+
   return (
     <Popover open={isOpen && shouldShowDropdown} onOpenChange={(open) => {
-      // Only allow closing via our explicit handlers, not Radix internal events
       if (!open) return;
       setIsOpen(open);
     }}>
       <PopoverTrigger asChild>
-        <div className="w-56 ml-2">
+        <div className="relative w-56 ml-2">
           <Input
             placeholder="Type 2+ chars to search lenders..."
             value={searchQuery}
@@ -149,6 +143,9 @@ export function LenderSearchInput({
             onKeyDown={handleKeyDown}
             className="h-8 text-sm"
           />
+          {isLoadingLenders && hasQuery && (
+            <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+          )}
         </div>
       </PopoverTrigger>
       <PopoverContent 
@@ -160,6 +157,24 @@ export function LenderSearchInput({
         {filteredLenderNames.length > 0 && (
           <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-border bg-muted/30">
             {filteredLenderNames.length} match{filteredLenderNames.length !== 1 ? 'es' : ''} for "{searchQuery.trim()}"
+            {isLoadingLenders && (
+              <span className="ml-1 inline-flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                loading more…
+              </span>
+            )}
+          </div>
+        )}
+        {noResults && (
+          <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+            {isLoadingLenders ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Searching lenders…
+              </span>
+            ) : (
+              'No lenders found'
+            )}
           </div>
         )}
         {filteredLenderNames.map((item, idx) => (

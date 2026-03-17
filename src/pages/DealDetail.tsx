@@ -3382,6 +3382,7 @@ export default function DealDetail() {
                         lenderNames={lenderNames}
                         existingLenderNames={existingLenderNames}
                         onAddLender={addLender}
+                        isLoadingLenders={masterLendersLoading || masterLendersLoadingMore}
                       />
                       <LenderDirectoryDialog
                         existingLenderNames={existingLenderNames}
