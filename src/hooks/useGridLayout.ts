@@ -38,6 +38,35 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[]) {
   const [layout, setLayout] = useState<GridLayoutItem[]>(() => generateDefaultLayout(defaultWidgetIds));
   const [isLoaded, setIsLoaded] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevWidgetIdsRef = useRef<string>(defaultWidgetIds.join(','));
+
+  // Synchronously merge any new widget IDs into the current layout
+  // so react-grid-layout renders them immediately (no async wait).
+  const widgetIdsKey = defaultWidgetIds.join(',');
+  if (widgetIdsKey !== prevWidgetIdsRef.current) {
+    prevWidgetIdsRef.current = widgetIdsKey;
+    const currentIds = new Set(layout.map(l => l.i));
+    const newIds = defaultWidgetIds.filter(id => !currentIds.has(id));
+    if (newIds.length > 0) {
+      const maxY = layout.reduce((max, l) => Math.max(max, l.y + l.h), 0);
+      const newItems: GridLayoutItem[] = newIds.map((id, idx) => ({
+        i: id,
+        x: (idx % 3) * 4,
+        y: maxY + Math.floor(idx / 3) * 2,
+        w: 4,
+        h: 2,
+        minW: 3,
+        minH: 2,
+      }));
+      setLayout(prev => [...prev, ...newItems]);
+    }
+    // Also remove layout items for widgets that no longer exist
+    const validIds = new Set(defaultWidgetIds);
+    const hasStale = layout.some(l => !validIds.has(l.i));
+    if (hasStale) {
+      setLayout(prev => prev.filter(l => validIds.has(l.i)));
+    }
+  }
 
   // Load saved layout by company
   useEffect(() => {
@@ -73,7 +102,7 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[]) {
       }
       setIsLoaded(true);
     })();
-  }, [company?.id, dashboardId, defaultWidgetIds.join(',')]);
+  }, [company?.id, dashboardId, widgetIdsKey]);
 
   // Debounced save — only admins can persist
   const saveLayout = useCallback((newLayout: GridLayoutItem[]) => {

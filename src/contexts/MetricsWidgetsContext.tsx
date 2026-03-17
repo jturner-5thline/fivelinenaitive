@@ -148,7 +148,8 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
   const [widgets, setWidgets] = useState<MetricWidgetConfig[]>(DEFAULT_WIDGETS);
   const [presets, setPresets] = useState<MetricsLayoutPreset[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const widgetsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presetsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load from company_settings
   useEffect(() => {
@@ -178,15 +179,21 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
   }, [company?.id]);
 
   const persistWidgets = useCallback((newWidgets: MetricWidgetConfig[]) => {
-    if (!company?.id) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
+    if (!company?.id) {
+      console.warn('[MetricsWidgets] Cannot persist: no company ID');
+      return;
+    }
+    if (widgetsSaveTimerRef.current) clearTimeout(widgetsSaveTimerRef.current);
+    widgetsSaveTimerRef.current = setTimeout(async () => {
       try {
-        await supabase.rpc('save_fpa_dashboard_config' as any, {
+        const { error } = await supabase.rpc('save_fpa_dashboard_config' as any, {
           _company_id: company.id,
           _config_key: CONFIG_KEY,
           _config_value: newWidgets,
         });
+        if (error) {
+          console.error('Error saving metrics widgets:', error);
+        }
       } catch (err) {
         console.error('Error saving metrics widgets:', err);
       }
@@ -195,14 +202,17 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
 
   const persistPresets = useCallback((newPresets: MetricsLayoutPreset[]) => {
     if (!company?.id) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
+    if (presetsSaveTimerRef.current) clearTimeout(presetsSaveTimerRef.current);
+    presetsSaveTimerRef.current = setTimeout(async () => {
       try {
-        await supabase.rpc('save_fpa_dashboard_config' as any, {
+        const { error } = await supabase.rpc('save_fpa_dashboard_config' as any, {
           _company_id: company.id,
           _config_key: PRESETS_CONFIG_KEY,
           _config_value: newPresets,
         });
+        if (error) {
+          console.error('Error saving metrics presets:', error);
+        }
       } catch (err) {
         console.error('Error saving metrics presets:', err);
       }
