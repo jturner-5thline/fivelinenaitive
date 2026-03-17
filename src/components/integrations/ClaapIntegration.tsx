@@ -1,17 +1,20 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Video, ExternalLink, Lock } from 'lucide-react';
+import { Video, ExternalLink, Lock, FlaskConical, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const ALLOWED_EMAIL = 'jturner@5thline.co';
 
 export function ClaapIntegration() {
   const { user } = useAuth();
   const { integrations, createIntegration, toggleIntegration, isLoading } = useIntegrations();
+  const [testingWebhook, setTestingWebhook] = useState(false);
   
   const claapIntegration = integrations.find(i => i.type === 'claap');
   const isEnabled = claapIntegration?.status === 'connected';
@@ -19,26 +22,75 @@ export function ClaapIntegration() {
 
   const handleToggle = async (enabled: boolean) => {
     if (!claapIntegration) {
-      // Create the integration first
       await createIntegration.mutateAsync({
         name: 'Claap',
         type: 'claap',
         config: {},
       });
-      // Then enable it if needed
       if (enabled) {
         // The integration is created as disconnected, need to toggle it
-        // This will happen after the mutation completes and refetch
       }
     } else {
       await toggleIntegration.mutateAsync({ id: claapIntegration.id, enabled });
     }
   };
 
+  const handleSendTestWebhook = async () => {
+    setTestingWebhook(true);
+    try {
+      const mockPayload = {
+        event: 'recording.completed',
+        data: {
+          id: `test-${Date.now()}`,
+          title: 'Test Company <> 5th Line Financing Review',
+          url: 'https://app.claap.io/test-recording',
+          videoUrl: 'https://app.claap.io/test-recording/video',
+          durationSeconds: 1800,
+          createdAt: new Date().toISOString(),
+          recorder: {
+            email: user?.email || 'test@5thline.co',
+            name: 'Test User',
+          },
+          meeting: {
+            participants: [
+              { name: 'Test User', email: user?.email || 'test@5thline.co', attended: true },
+              { name: 'External Contact', email: 'contact@testcompany.com', attended: true },
+            ],
+            startingAt: new Date(Date.now() - 1800000).toISOString(),
+            endingAt: new Date().toISOString(),
+          },
+        },
+      };
+
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/claap-webhook`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(mockPayload),
+        }
+      );
+
+      const result = await response.json();
+      
+      if (result.ok) {
+        toast.success('Test webhook sent successfully', {
+          description: `Meeting ID: ${result.meeting_id} | Status: ${result.status} | Tasks: ${result.tasks_created || 0}`,
+        });
+      } else {
+        toast.error('Test webhook failed', { description: result.error || 'Unknown error' });
+      }
+    } catch (err: any) {
+      toast.error('Failed to send test webhook', { description: err.message });
+    } finally {
+      setTestingWebhook(false);
+    }
+  };
+
   // Auto-create integration if it doesn't exist when toggling on
   useEffect(() => {
     if (!claapIntegration && createIntegration.isSuccess) {
-      // Integration was just created, now enable it
       const newIntegration = integrations.find(i => i.type === 'claap');
       if (newIntegration && newIntegration.status !== 'connected') {
         toggleIntegration.mutate({ id: newIntegration.id, enabled: true });
@@ -132,7 +184,22 @@ export function ClaapIntegration() {
         )}
 
         {isEnabled && (
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            {canManage && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSendTestWebhook}
+                disabled={testingWebhook}
+              >
+                {testingWebhook ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FlaskConical className="h-4 w-4 mr-2" />
+                )}
+                Send Test Webhook
+              </Button>
+            )}
             <Button variant="outline" size="sm" asChild>
               <a href="https://app.claap.io" target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4 mr-2" />

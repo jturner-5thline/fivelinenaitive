@@ -207,9 +207,11 @@ export function useClaapRoutingTasks() {
 
 export function useClaapResolveTask() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ taskId, resolvedData }: { taskId: string; resolvedData: Record<string, any> }) => {
+      // 1. Complete the routing task
       const { error } = await supabase
         .from('claap_routing_tasks')
         .update({
@@ -219,10 +221,70 @@ export function useClaapResolveTask() {
         })
         .eq('id', taskId);
       if (error) throw error;
+
+      // 2. If a deal_id was resolved, link recording + update meeting
+      const dealId = resolvedData?.deal_id;
+      if (dealId) {
+        // Get the meeting info for this task
+        const { data: taskData } = await supabase
+          .from('claap_routing_tasks')
+          .select('meeting_id')
+          .eq('id', taskId)
+          .single();
+
+        if (taskData?.meeting_id) {
+          // Get meeting details
+          const { data: meeting } = await supabase
+            .from('claap_meetings')
+            .select('claap_id, title, recording_url, duration_seconds, organizer_email')
+            .eq('id', taskData.meeting_id)
+            .single();
+
+          if (meeting) {
+            // Update meeting with deal_id and status
+            await supabase
+              .from('claap_meetings')
+              .update({ deal_id: dealId, status: 'routed' } as any)
+              .eq('id', taskData.meeting_id);
+
+            // Insert into deal_claap_recordings
+            await supabase
+              .from('deal_claap_recordings')
+              .upsert({
+                deal_id: dealId,
+                recording_id: meeting.claap_id,
+                recording_title: meeting.title,
+                recording_url: meeting.recording_url,
+                thumbnail_url: null,
+                duration_seconds: meeting.duration_seconds,
+                recorder_name: null,
+                recorder_email: meeting.organizer_email,
+                linked_by: user?.id || null,
+                notes: 'Auto-linked by Claap routing engine',
+              } as any, { onConflict: 'deal_id,recording_id' });
+
+            // Log activity
+            await supabase
+              .from('activity_logs')
+              .insert({
+                deal_id: dealId,
+                activity_type: 'claap_recording_linked',
+                description: `Claap recording linked: ${meeting.title || 'Untitled recording'}`,
+                user_id: user?.id || null,
+                metadata: {
+                  claap_id: meeting.claap_id,
+                  recording_url: meeting.recording_url,
+                  source: 'routing_task_resolution',
+                },
+              } as any);
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['claap-routing-tasks'] });
       queryClient.invalidateQueries({ queryKey: ['claap-meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['deal-claap-recordings'] });
     },
   });
 }

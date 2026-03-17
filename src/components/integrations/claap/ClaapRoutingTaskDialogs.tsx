@@ -281,7 +281,7 @@ export function DealDisambiguationDialog({ task, open, onOpenChange }: {
       { taskId: task.id, resolvedData: { deal_id: selectedDealId } },
       {
         onSuccess: () => {
-          toast.success('Meeting attached to deal');
+          toast.success('Meeting linked to deal and recording added to Data Room');
           onOpenChange(false);
         },
       }
