@@ -235,6 +235,21 @@ const Admin = () => {
             <CardContent><PageAccessPanel /></CardContent>
           </Card>
         );
+      case "company-features":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ToggleRight className="h-5 w-5" />
+                Company Feature Configuration
+              </CardTitle>
+              <CardDescription>
+                Toggle features on/off for individual companies. 5th Line always has full access.
+              </CardDescription>
+            </CardHeader>
+            <CardContent><CompanyFeaturesPanel /></CardContent>
+          </Card>
+        );
       case "notifications-admin":
         return (
           <Card>
