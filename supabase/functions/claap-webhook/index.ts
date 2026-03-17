@@ -413,6 +413,43 @@ Deno.serve(async (req) => {
       .update(updateData)
       .eq("id", meetingId);
 
+    // Auto-insert into deal_claap_recordings when deal is resolved
+    if (resolvedDealId && finalStatus === "routed") {
+      const linkedBy = organizerUserId || fallbackAdminUserId || null;
+
+      // Insert into deal_claap_recordings (ignore conflict if already linked)
+      await supabaseAdmin
+        .from("deal_claap_recordings")
+        .upsert({
+          deal_id: resolvedDealId,
+          recording_id: claapId,
+          recording_title: data.title || null,
+          recording_url: data.url || data.videoUrl || null,
+          thumbnail_url: null,
+          duration_seconds: data.durationSeconds || null,
+          recorder_name: data.recorder?.name || null,
+          recorder_email: data.recorder?.email || null,
+          linked_by: linkedBy,
+          notes: "Auto-linked by Claap routing engine",
+        }, { onConflict: "deal_id,recording_id" });
+
+      // Log activity on the deal timeline
+      await supabaseAdmin
+        .from("activity_logs")
+        .insert({
+          deal_id: resolvedDealId,
+          activity_type: "claap_recording_linked",
+          description: `Claap recording linked: ${data.title || "Untitled recording"}`,
+          user_id: linkedBy,
+          user_display_name: data.recorder?.name || null,
+          metadata: {
+            claap_id: claapId,
+            recording_url: data.url || data.videoUrl || null,
+            source: "claap_webhook_auto",
+          },
+        });
+    }
+
     // ==========================================
     // CREATE ROUTING TASKS
     // ==========================================
