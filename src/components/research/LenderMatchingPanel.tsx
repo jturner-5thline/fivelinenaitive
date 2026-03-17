@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Sparkles, 
@@ -16,10 +17,13 @@ import {
   Building2,
   MapPin,
   DollarSign,
-  Briefcase
+  Briefcase,
+  Zap
 } from 'lucide-react';
 import { usePerplexityResearch, ResearchResult } from '@/hooks/usePerplexityResearch';
+import { useDeepResearch, DeepResearchResult } from '@/hooks/useDeepResearch';
 import { formatDistanceToNow } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
 
 interface LenderMatchingPanelProps {
   companyName?: string;
@@ -28,6 +32,7 @@ interface LenderMatchingPanelProps {
   dealType?: string;
   location?: string;
   existingLenders?: string[];
+  dealId?: string;
 }
 
 export function LenderMatchingPanel({
@@ -37,9 +42,12 @@ export function LenderMatchingPanel({
   dealType = '',
   location = '',
   existingLenders = [],
+  dealId,
 }: LenderMatchingPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [result, setResult] = useState<ResearchResult | null>(null);
+  const [deepResult, setDeepResult] = useState<DeepResearchResult | null>(null);
+  const [useDeepMode, setUseDeepMode] = useState(false);
   const [formData, setFormData] = useState({
     companyName,
     industry,
@@ -49,23 +57,38 @@ export function LenderMatchingPanel({
     revenueRange: '',
   });
   
-  const { getLenderMatching, isLoading } = usePerplexityResearch();
+  const { getLenderMatching, isLoading: isStandardLoading } = usePerplexityResearch();
+  const { runLenderMatching, isLoading: isDeepLoading } = useDeepResearch();
+  
+  const isLoading = isStandardLoading || isDeepLoading;
+  const activeResult = useDeepMode ? deepResult : result;
 
   const handleSearch = async () => {
     if (!formData.companyName || !formData.industry) return;
     
-    const data = await getLenderMatching({
-      companyName: formData.companyName,
-      industry: formData.industry,
-      dealValue: formData.dealValue,
-      dealType: formData.dealType,
-      location: formData.location,
-      revenueRange: formData.revenueRange,
-      existingLenders,
-    });
-    
-    if (data) {
-      setResult(data);
+    if (useDeepMode) {
+      const data = await runLenderMatching({
+        companyName: formData.companyName,
+        industry: formData.industry,
+        dealValue: formData.dealValue,
+        dealType: formData.dealType,
+        location: formData.location,
+        revenueRange: formData.revenueRange,
+        existingLenders,
+        dealId,
+      });
+      if (data) setDeepResult(data);
+    } else {
+      const data = await getLenderMatching({
+        companyName: formData.companyName,
+        industry: formData.industry,
+        dealValue: formData.dealValue,
+        dealType: formData.dealType,
+        location: formData.location,
+        revenueRange: formData.revenueRange,
+        existingLenders,
+      });
+      if (data) setResult(data);
     }
   };
 
@@ -80,7 +103,14 @@ export function LenderMatchingPanel({
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
                 <CardTitle className="text-lg">AI Lender Matching</CardTitle>
-                <Badge variant="secondary" className="text-xs">Perplexity</Badge>
+                {useDeepMode ? (
+                  <Badge className="text-xs bg-amber-500/15 text-amber-600 border-amber-500/30">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Deep Research
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">Perplexity</Badge>
+                )}
               </div>
               <ChevronDown className={`h-5 w-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </div>
@@ -89,6 +119,18 @@ export function LenderMatchingPanel({
         
         <CollapsibleContent>
           <CardContent className="space-y-4">
+            {/* Deep Research Toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-500" />
+                <div>
+                  <p className="text-sm font-medium">Deep Research Mode</p>
+                  <p className="text-xs text-muted-foreground">Multi-step Agent API with 10x more sources & analysis</p>
+                </div>
+              </div>
+              <Switch checked={useDeepMode} onCheckedChange={setUseDeepMode} />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="company">Company Name</Label>
@@ -198,15 +240,23 @@ export function LenderMatchingPanel({
               {isLoading ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Finding Lenders...
+                  {useDeepMode ? 'Running Deep Research...' : 'Finding Lenders...'}
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Find Matching Lenders
+                  {useDeepMode ? <Zap className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  {useDeepMode ? 'Deep Research Lenders' : 'Find Matching Lenders'}
                 </>
               )}
             </Button>
+
+            {isLoading && useDeepMode && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                <p className="text-xs text-muted-foreground text-center">
+                  Deep research performs multi-step analysis across 10+ sources. This may take 30–60 seconds.
+                </p>
+              </div>
+            )}
             
             {isLoading && (
               <div className="space-y-3">
@@ -216,38 +266,53 @@ export function LenderMatchingPanel({
               </div>
             )}
             
-            {result && !isLoading && (
+            {activeResult && !isLoading && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>Last updated {formatDistanceToNow(new Date(result.timestamp))} ago</span>
+                  <div className="flex items-center gap-2">
+                    <span>Last updated {formatDistanceToNow(new Date(activeResult.timestamp))} ago</span>
+                    {useDeepMode && deepResult?.usage && (
+                      <Badge variant="outline" className="text-xs">
+                        {(deepResult.usage as any)?.cost?.total_cost 
+                          ? `$${((deepResult.usage as any).cost.total_cost).toFixed(3)}`
+                          : deepResult.model}
+                      </Badge>
+                    )}
+                  </div>
                   <Button variant="ghost" size="sm" onClick={handleRefresh}>
                     <RefreshCw className="h-4 w-4 mr-1" />
                     Refresh
                   </Button>
                 </div>
                 
-                <ScrollArea className="h-[400px] rounded-md border p-4">
-                  <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                    {result.content}
+                <ScrollArea className="h-[500px] rounded-md border p-4">
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown>{activeResult.content}</ReactMarkdown>
                   </div>
                 </ScrollArea>
                 
-                {result.citations.length > 0 && (
+                {activeResult.citations.length > 0 && (
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Sources</Label>
+                    <Label className="text-sm font-medium">Sources ({activeResult.citations.length})</Label>
                     <div className="flex flex-wrap gap-2">
-                      {result.citations.slice(0, 5).map((url, idx) => (
-                        <a
-                          key={idx}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          {new URL(url).hostname}
-                        </a>
-                      ))}
+                      {activeResult.citations.slice(0, 8).map((url, idx) => {
+                        try {
+                          return (
+                            <a
+                              key={idx}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              {new URL(url).hostname}
+                            </a>
+                          );
+                        } catch {
+                          return null;
+                        }
+                      })}
                     </div>
                   </div>
                 )}
