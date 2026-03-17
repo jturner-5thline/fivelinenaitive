@@ -82,9 +82,13 @@ export function AppSidebar() {
   const iconSrc = resolvedTheme === "dark" ? naitiveIconDark : naitiveIconLight;
   
   // Filter menu items based on feature access — while loading, only show items with no feature gate
-  const visibleMenuItems = menuItems.filter(item => 
-    item.featureKey === null || (!isAccessLoading && hasPageAccess(item.featureKey))
-  );
+  const visibleMenuItems = menuItems.filter(item => {
+    // Check page-level feature flag access
+    if (item.featureKey !== null && (isAccessLoading || !hasPageAccess(item.featureKey))) return false;
+    // Check company-level feature flag
+    if ('companyFeature' in item && item.companyFeature && !companyFeatures[item.companyFeature]) return false;
+    return true;
+  });
   
   const visibleFooterItems = footerItems.filter(item =>
     item.featureKey === null || (!isAccessLoading && hasPageAccess(item.featureKey))

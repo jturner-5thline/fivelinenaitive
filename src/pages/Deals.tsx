@@ -579,7 +579,7 @@ export default function Dashboard() {
                         Pipeline
                       </div>
                     </SelectItem>
-                    {is5thLine && (
+                    {companyFeatures.timeline_view_enabled && (
                       <SelectItem value="timeline">
                         <div className="flex items-center gap-2">
                           <ChartGantt className="h-4 w-4" />
