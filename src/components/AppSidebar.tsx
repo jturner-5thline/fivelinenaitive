@@ -1,4 +1,5 @@
 import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, UserPen, SlidersHorizontal, Contact, Building2 } from "lucide-react";
+import { useCompanyFeatures } from "@/hooks/useCompanyFeatures";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
