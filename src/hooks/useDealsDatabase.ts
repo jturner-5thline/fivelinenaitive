@@ -77,7 +77,7 @@ async function createDefaultMilestones(dealId: string, userId: string, companyId
   
   // Calculate due dates based on timing type
   const milestonesToInsert = sortedMilestones.map((m, index) => {
-    const timingType = m.timingType || 'from_creation';
+    const timingType = m.timing_type || 'from_creation';
     
     // For "after previous" milestones (except the first one), set due date as null
     // The due date will be set when the previous milestone is completed
