@@ -12,6 +12,7 @@ import { DealsPipelineView } from '@/components/deals/DealsPipelineView';
 import { DealsTimelineView } from '@/components/deals/DealsTimelineView';
 import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
+import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
 import { PipelineSelector } from '@/components/deals/PipelineSelector';
