@@ -86,11 +86,11 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline' | 'timeline'>(() => {
     if (defaultView) {
       const m = defaultView.config.viewMode;
-      if (m === 'timeline' && !is5thLine) return 'grid';
+      if (m === 'timeline' && !companyFeatures.timeline_view_enabled) return 'grid';
       return m;
     }
     const stored = localStorage.getItem('deals-view-mode');
-    if (stored === 'timeline' && !is5thLine) return 'grid';
+    if (stored === 'timeline' && !companyFeatures.timeline_view_enabled) return 'grid';
     return (stored === 'grid' || stored === 'list' || stored === 'pipeline' || stored === 'timeline') ? stored : 'grid';
   });
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);

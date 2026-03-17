@@ -54,6 +54,7 @@ const usersSubPages = [
 
 const accessSubPages = [
   { id: "pages", label: "Page Access", icon: Layout },
+  { id: "company-features", label: "Company Features", icon: ToggleRight },
   { id: "permissions", label: "User Permissions", icon: Shield },
   { id: "notifications-admin", label: "Notifications", icon: Bell },
   { id: "announcements", label: "Announcements", icon: Megaphone },
