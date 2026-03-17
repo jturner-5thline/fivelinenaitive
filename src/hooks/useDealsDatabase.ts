@@ -619,6 +619,28 @@ export function useDealsDatabase() {
 
       if (error) throw error;
       
+      // Auto-dismiss notifications when deal moves to archived or in_development
+      if (updates.status && ['archived', 'in_development'].includes(updates.status)) {
+        // Mark all activity_logs-based notifications as seen by updating localStorage
+        const lastReadKey = 'latest-updates-last-read-at';
+        const now = new Date().toISOString();
+        localStorage.setItem(lastReadKey, now);
+        
+        // Also mark deal-specific updates as seen
+        const seenKey = `deal_updates_seen_${dealId}`;
+        localStorage.setItem(seenKey, now);
+        
+        // Dismiss flex_info_notifications for this deal
+        supabase
+          .from('flex_info_notifications')
+          .update({ status: 'dismissed' })
+          .eq('deal_id', dealId)
+          .in('status', ['pending', 'read'])
+          .then(({ error: dismissError }) => {
+            if (dismissError) console.error('Error dismissing notifications:', dismissError);
+          });
+      }
+
       // Trigger workflows for stage changes
       if (updates.stage && previousDeal && previousDeal.stage !== updates.stage) {
         triggerWorkflow('deal_stage_change', {

@@ -41,10 +41,11 @@ export function useAllActivities(options: UseAllActivitiesOptions | number = 20)
     
     const offset = pageNum * limit;
     
-    // First fetch activity logs
+    // First fetch activity logs, joining to deals to filter out archived/in_development
     const { data: activityData, error: activityError } = await supabase
       .from('activity_logs')
-      .select('*')
+      .select('*, deals!inner(status)')
+      .not('deals.status', 'in', '("archived","in_development")')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 

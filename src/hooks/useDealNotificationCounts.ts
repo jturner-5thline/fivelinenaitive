@@ -17,10 +17,23 @@ export function useDealNotificationCounts(dealIds: string[]) {
     }
 
     try {
+      // Filter out notifications for archived/in_development deals
+      const { data: activeDeals } = await supabase
+        .from('deals')
+        .select('id')
+        .in('id', dealIds)
+        .not('status', 'in', '("archived","in_development")');
+
+      const activeDealIds = (activeDeals || []).map(d => d.id);
+      if (activeDealIds.length === 0) {
+        setFlexCounts({});
+        return;
+      }
+
       const { data, error } = await supabase
         .from('flex_info_notifications')
         .select('deal_id, status')
-        .in('deal_id', dealIds)
+        .in('deal_id', activeDealIds)
         .in('status', ['pending', 'read']);
 
       if (error) {
