@@ -40,6 +40,7 @@ import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel"
 import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequestsPanel";
 import { FeedbackWidgetToggle } from "@/components/admin/FeedbackWidgetToggle";
 import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
+import { CompanyFeaturesPanel } from "@/components/admin/CompanyFeaturesPanel";
 
 // Sub-page configurations
 const usersSubPages = [
