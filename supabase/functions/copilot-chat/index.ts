@@ -1096,27 +1096,13 @@ serve(async (req) => {
 
     const { message, context, history } = body;
 
-    // Fetch user profile
+    // Lightweight profile fetch only — all other data is lazy-loaded via tools
     const { data: profile } = await supabaseUser.from("profiles").select("display_name, email").eq("user_id", userId).single();
     const userName = profile?.display_name || profile?.email || "User";
 
-    // Fetch context-specific data
-    let contextData = "";
     const page = context?.page || "unknown";
     const entityType = context?.entityType;
     const entityId = context?.entityId;
-
-    try {
-      if (entityType === "deal" && entityId) contextData = await fetchDealContext(supabaseUser, entityId);
-      else if (page.includes("deals") || page.includes("pipeline")) contextData = await fetchDealsListContext(supabaseUser, userId);
-      else if (page.includes("task")) contextData = await fetchTasksContext(supabaseUser, userId);
-      else if (page.includes("lender")) contextData = await fetchLendersContext(supabaseUser);
-      else contextData = await fetchDashboardContext(supabaseUser, userId);
-    } catch (e) {
-      console.error("Context fetch error:", e);
-      contextData = "Unable to fetch context data.";
-    }
-
     const activeTab = context?.activeTab || null;
     const banners = context?.banners || [];
 
@@ -1125,12 +1111,20 @@ serve(async (req) => {
 CURRENT CONTEXT:
 - Page: ${page}
 - Active Tab: ${activeTab || "None"}
-- Entity: ${context?.entityDetails ? JSON.stringify(context.entityDetails) : "None"}
+- Entity: ${entityType === "deal" && entityId ? `Deal (ID: ${entityId}) — use get_deal tool to fetch details` : "None"}
+- Entity Details: ${context?.entityDetails ? JSON.stringify(context.entityDetails) : "None"}
 - User: ${userName} (${context?.userRole || "member"})
 ${banners.length > 0 ? `\nACTIVE ALERTS/BANNERS ON PAGE:\n${banners.map((b: string) => `⚠️ ${b}`).join('\n')}` : ''}
 
-LIVE DATA:
-${contextData}
+DATA ACCESS — IMPORTANT:
+You do NOT have pre-loaded data. Always use your tools to fetch current information before answering:
+- Deal details → get_deal (with deal_id or search)
+- Pipeline overview → get_pipeline_summary
+- Tasks → get_tasks
+- Lenders on a deal → get_deal_lenders
+- Deal health → get_deal_health
+- Activity history → get_activity_log
+${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
 
