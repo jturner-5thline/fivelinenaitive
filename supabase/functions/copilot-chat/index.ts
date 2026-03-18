@@ -375,6 +375,30 @@ const tools = [
   },
 ];
 
+// ── Tool selection by context ──────────────────────────────────
+function selectTools(page: string, entityType?: string) {
+  // On deal pages, include all tools for full functionality
+  if (entityType === "deal") return tools;
+
+  const coreNames = new Set([
+    "get_deal", "search_deals", "get_pipeline_summary", "get_activity_log",
+    "draft_email", "create_task", "get_tasks",
+  ]);
+
+  if (page.includes("lender")) {
+    ["get_deal_lenders", "search_lenders", "update_lender_status"].forEach(n => coreNames.add(n));
+  } else if (page.includes("deals") || page.includes("pipeline")) {
+    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items"].forEach(n => coreNames.add(n));
+  } else if (page.includes("task")) {
+    // Tasks page: core + task tools only
+  } else {
+    // Dashboard and other pages: core + some deal read tools
+    ["get_deal_lenders", "get_deal_health"].forEach(n => coreNames.add(n));
+  }
+
+  return tools.filter(t => coreNames.has(t.function.name));
+}
+
 // ── Tool executors ──────────────────────────────────────────────
 async function executeTool(supabase: any, name: string, args: any, userId: string): Promise<any> {
   switch (name) {
