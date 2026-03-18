@@ -78,6 +78,7 @@ const settingsSubPages = [
 const productEnhancementSubPages = [
   { id: "enhancement", label: "UX Analytics", icon: Lightbulb },
   { id: "feedback", label: "Feedback", icon: MessageSquare },
+  { id: "ai-training", label: "AI Training", icon: Brain },
 ];
 
 const supportSubPages = [
