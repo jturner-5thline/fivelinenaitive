@@ -1426,6 +1426,22 @@ READ TOOLS:
 
     const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
+    // ── Helper: convert already-fetched content into an SSE stream ──
+    function contentToSSE(content: string): ReadableStream {
+      const encoder = new TextEncoder();
+      return new ReadableStream({
+        start(controller) {
+          // Send content in a single SSE chunk matching OpenAI format
+          const chunk = {
+            choices: [{ delta: { content }, index: 0, finish_reason: null }],
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+          controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+          controller.close();
+        },
+      });
+    }
+
     // ── Multi-turn tool calling loop ──
     for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
       const response = await fetch(AI_GATEWAY, {
@@ -1437,7 +1453,6 @@ READ TOOLS:
           tools,
           temperature: 0.3,
           max_tokens: 2000,
-          ...(turn === 0 ? {} : { stream: false }),
         }),
       });
 
@@ -1470,7 +1485,16 @@ READ TOOLS:
         continue;
       }
 
-      // No tool calls — stream the final answer
+      // No tool calls — return the content we already have as SSE
+      // This eliminates the previous double-call pattern (saves 3-5s)
+      const content = msg.content || "";
+      if (content) {
+        return new Response(contentToSSE(content), {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+        });
+      }
+
+      // Edge case: no content AND no tool calls — make one final streaming call
       const finalResponse = await fetch(AI_GATEWAY, {
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
