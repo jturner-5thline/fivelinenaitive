@@ -1011,6 +1011,56 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
   }
 }
 
+// ── Stream parser: forwards content deltas to client, collects tool calls ──
+async function consumeToolStream(
+  response: Response,
+  writer: WritableStreamDefaultWriter<Uint8Array>,
+  encoder: TextEncoder
+): Promise<{ content: string; toolCalls: any[] }> {
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let content = "";
+  const tcMap = new Map<number, { id: string; type: string; function: { name: string; arguments: string } }>();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf("\n")) !== -1) {
+      let line = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 1);
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (!line.startsWith("data: ")) continue;
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === "[DONE]") continue;
+      try {
+        const p = JSON.parse(jsonStr);
+        const delta = p.choices?.[0]?.delta;
+        if (!delta) continue;
+        // Forward content deltas to client immediately
+        if (delta.content) {
+          content += delta.content;
+          await writer.write(encoder.encode(line + "\n\n"));
+        }
+        // Collect tool call deltas
+        if (delta.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const i = tc.index ?? 0;
+            if (!tcMap.has(i)) tcMap.set(i, { id: "", type: "function", function: { name: "", arguments: "" } });
+            const e = tcMap.get(i)!;
+            if (tc.id) e.id = tc.id;
+            if (tc.function?.name) e.function.name = tc.function.name;
+            if (tc.function?.arguments) e.function.arguments += tc.function.arguments;
+          }
+        }
+      } catch { /* partial JSON, skip */ }
+    }
+  }
+  return { content, toolCalls: Array.from(tcMap.values()).filter(tc => tc.function.name) };
+}
+
 // ── Main handler ──────────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") {
