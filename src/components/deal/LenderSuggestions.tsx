@@ -41,7 +41,7 @@ export function LenderSuggestions({
   const [showOnlyHighScore, setShowOnlyHighScore] = useState(false);
   
   const { matches } = useLenderMatching(masterLenders, criteria, {
-    minScore: -10, // Allow some warnings but filter out worst matches
+    minScore: 30,
     maxResults: 100,
     excludeNames: existingLenderNames,
   });
