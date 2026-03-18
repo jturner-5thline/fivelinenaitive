@@ -401,6 +401,21 @@ const Admin = () => {
         );
       case "enhancement":
         return <UXRecommendationsPanel />;
+      case "ai-training":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                AI Training & Rules
+              </CardTitle>
+              <CardDescription>
+                Manage organization-wide rules that customize how naitive AI responds. Rules can be added manually, from thumbs-down corrections, or via /teach commands in the chat.
+              </CardDescription>
+            </CardHeader>
+            <CardContent><AIRulesPanel /></CardContent>
+          </Card>
+        );
       case "client-viewer":
         return <ClientAccountViewer />;
       default:

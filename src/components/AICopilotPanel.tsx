@@ -473,6 +473,53 @@ export function AICopilotPanel() {
 
   // Core function that processes a single message (no guard on isProcessing)
   const processMessage = useCallback(async (text: string) => {
+    // Handle /teach or /remember commands
+    const teachMatch = text.match(/^\/(teach|remember)\s+(.+)$/is);
+    if (teachMatch) {
+      isProcessingRef.current = true;
+      setProcessing(true);
+      try {
+        const ruleText = teachMatch[2].trim();
+        // Get user's company
+        const { data: member } = await supabase
+          .from('company_members')
+          .select('company_id')
+          .eq('user_id', user!.id)
+          .limit(1)
+          .single();
+        if (!member) throw new Error('No company found');
+
+        const { error } = await supabase.from('copilot_user_preferences').insert({
+          organization_id: member.company_id,
+          rule_text: ruleText,
+          category: 'behavior',
+          source: 'chat_command',
+          created_by: user!.id,
+        });
+        if (error) throw error;
+        addMessage({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: `✅ **Rule saved!** I'll remember this going forward:\n\n> ${ruleText}\n\nYou can manage all AI rules from the Admin → AI Training page.`,
+          timestamp: new Date(),
+        });
+        const allMsgs = useCopilotStore.getState().messages;
+        await saveConversation(allMsgs);
+      } catch (err: any) {
+        addMessage({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: `Sorry, I couldn't save that rule: ${err.message || 'Unknown error'}`,
+          timestamp: new Date(),
+        });
+      } finally {
+        isProcessingRef.current = false;
+        setProcessing(false);
+        drainQueue();
+      }
+      return;
+    }
+
     isProcessingRef.current = true;
     setProcessing(true);
 
