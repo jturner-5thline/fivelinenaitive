@@ -12,7 +12,7 @@ import {
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
-  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight
+  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
