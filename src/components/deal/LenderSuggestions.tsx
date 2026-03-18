@@ -41,7 +41,7 @@ export function LenderSuggestions({
   const [showOnlyHighScore, setShowOnlyHighScore] = useState(false);
   
   const { matches } = useLenderMatching(masterLenders, criteria, {
-    minScore: -10, // Allow some warnings but filter out worst matches
+    minScore: 30,
     maxResults: 100,
     excludeNames: existingLenderNames,
   });
@@ -79,7 +79,7 @@ export function LenderSuggestions({
     
     // High score filter
     if (showOnlyHighScore) {
-      filtered = filtered.filter(m => m.score >= 25);
+      filtered = filtered.filter(m => m.combinedScore >= 70);
     }
     
     return filtered;
@@ -92,11 +92,11 @@ export function LenderSuggestions({
     const possible: LenderMatch[] = [];
     
     filteredMatches.forEach(match => {
-      if (match.score >= 40) {
+      if (match.combinedScore >= 70) {
         excellent.push(match);
-      } else if (match.score >= 20) {
+      } else if (match.combinedScore >= 50) {
         good.push(match);
-      } else if (match.score >= 0) {
+      } else if (match.combinedScore >= 30) {
         possible.push(match);
       }
     });

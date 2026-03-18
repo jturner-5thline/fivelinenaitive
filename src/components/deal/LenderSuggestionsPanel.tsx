@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { ClipboardList, ArrowLeft, AlertCircle } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
@@ -14,35 +14,18 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { LenderSuggestionsContent } from './LenderSuggestionsContent';
 import { LenderCriteriaSurvey } from './LenderCriteriaSurvey';
 import { DealCriteria } from '@/hooks/useLenderMatching';
+import { useDealEnrichedCriteria } from '@/hooks/useDealEnrichedCriteria';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
 import { useLenderMatching } from '@/hooks/useLenderMatching';
 import { useDealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
 
-// Helper to determine which filtering criteria are missing (in priority order)
 function getMissingCriteria(criteria: DealCriteria): string[] {
   const missing: string[] = [];
-  
-  // Priority 1: Deal Size
-  if (!criteria.dealValue && !criteria.capitalAsk) {
-    missing.push('Deal Size');
-  }
-  // Priority 2: Deal Type
-  if (!criteria.dealTypes || criteria.dealTypes.length === 0) {
-    missing.push('Deal Type');
-  }
-  // Priority 3: Cash-burn OK
-  if (criteria.cashBurnOk === undefined) {
-    missing.push('Cash-burn OK');
-  }
-  // Priority 4: Industry
-  if (!criteria.industry) {
-    missing.push('Industry');
-  }
-  // Priority 5: Sponsorship
-  if (!criteria.sponsorship) {
-    missing.push('Sponsorship');
-  }
-  
+  if (!criteria.dealValue && !criteria.capitalAsk) missing.push('Deal Size');
+  if (!criteria.dealTypes || criteria.dealTypes.length === 0) missing.push('Deal Type');
+  if (criteria.cashBurnOk === undefined) missing.push('Cash-burn OK');
+  if (!criteria.industry) missing.push('Industry');
+  if (!criteria.sponsorship) missing.push('Sponsorship');
   return missing;
 }
 
@@ -65,50 +48,48 @@ export function LenderSuggestionsPanel({
 }: LenderSuggestionsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
+
+  // Use enriched criteria when dialog is open
+  const { criteria: enrichedCriteria, autoDetected, refetch: refetchEnriched } = useDealEnrichedCriteria(dealId);
   const { criteria: savedCriteria, refetch: refetchCriteria } = useDealMatchingCriteria(dealId);
-  
-  // Merge initial criteria with saved criteria (saved takes priority)
-  const enhancedCriteria = useMemo<DealCriteria>(() => ({
+
+  // Merge: enriched takes all data, but manual saved criteria overrides
+  const finalCriteria = useMemo<DealCriteria>(() => ({
+    ...enrichedCriteria,
     ...initialCriteria,
-    cashBurnOk: savedCriteria.cashBurnOk ?? initialCriteria.cashBurnOk,
-    industry: savedCriteria.industry || initialCriteria.industry,
-    sponsorship: savedCriteria.sponsorship || initialCriteria.sponsorship,
-  }), [initialCriteria, savedCriteria]);
-  
+    // Saved/manual criteria wins over everything
+    cashBurnOk: savedCriteria.cashBurnOk ?? enrichedCriteria.cashBurnOk ?? initialCriteria.cashBurnOk,
+    industry: savedCriteria.industry || enrichedCriteria.industry || initialCriteria.industry,
+    sponsorship: savedCriteria.sponsorship || enrichedCriteria.sponsorship || initialCriteria.sponsorship,
+    // Keep enriched rich-text fields
+    companyDescription: enrichedCriteria.companyDescription,
+    dealNotes: enrichedCriteria.dealNotes,
+    existingLenderFeedback: enrichedCriteria.existingLenderFeedback,
+    revenue: enrichedCriteria.revenue || initialCriteria.revenue,
+  }), [initialCriteria, enrichedCriteria, savedCriteria]);
+
   const { lenders: masterLenders } = useMasterLenders();
-  
-  const { matches } = useLenderMatching(masterLenders, enhancedCriteria, {
-    minScore: -10,
+  const { matches } = useLenderMatching(masterLenders, finalCriteria, {
+    minScore: 30,
     maxResults: 100,
     excludeNames: existingLenderNames,
   });
-  
-  const excellentCount = matches.filter(m => m.score >= 50).length;
-  const goodCount = matches.filter(m => m.score >= 25 && m.score < 50).length;
-  const totalMatches = matches.filter(m => m.score >= 0).length;
-  
-  // Check for missing criteria that affect filtering
-  const missingCriteria = useMemo(() => getMissingCriteria(enhancedCriteria), [enhancedCriteria]);
-  const hasMissingCriteria = missingCriteria.length > 0;
-  
-  const handleAddLender = (name: string) => {
-    onAddLender(name);
-  };
 
-  const handleAddMultipleLenders = (names: string[]) => {
-    if (onAddMultipleLenders) {
-      onAddMultipleLenders(names);
-    } else {
-      names.forEach(name => onAddLender(name));
-    }
-  };
+  const topCount = matches.filter(m => m.tier === 'top').length;
+  const strongCount = matches.filter(m => m.tier === 'strong').length;
+  const totalMatches = matches.length;
+  const missingCriteria = useMemo(() => getMissingCriteria(finalCriteria), [finalCriteria]);
+  const hasMissingCriteria = missingCriteria.length > 0;
 
   const handleSurveyComplete = (_criteria: DealCriteria) => {
     refetchCriteria();
+    refetchEnriched();
     setShowSurvey(false);
   };
-  const handleOpenSurvey = () => {
-    setShowSurvey(true);
+
+  const handleAddMultipleLenders = (names: string[]) => {
+    if (onAddMultipleLenders) onAddMultipleLenders(names);
+    else names.forEach(name => onAddLender(name));
   };
 
   const hasNoLenders = existingLenderNames.length === 0;
@@ -148,8 +129,8 @@ export function LenderSuggestionsPanel({
             <p>View lender suggestions based on deal criteria</p>
             {totalMatches > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
-                {excellentCount > 0 && `${excellentCount} excellent, `}
-                {goodCount > 0 && `${goodCount} good matches`}
+                {topCount > 0 && `${topCount} top, `}
+                {strongCount > 0 && `${strongCount} strong matches`}
               </p>
             )}
           </TooltipContent>
@@ -161,12 +142,7 @@ export function LenderSuggestionsPanel({
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {showSurvey && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 mr-1"
-                  onClick={() => setShowSurvey(false)}
-                >
+                <Button variant="ghost" size="icon" className="h-8 w-8 mr-1" onClick={() => setShowSurvey(false)}>
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
@@ -187,9 +163,9 @@ export function LenderSuggestionsPanel({
                     <Button
                       variant={hasMissingCriteria ? "destructive" : "default"}
                       size="sm"
-                      onClick={handleOpenSurvey}
-                      className={hasMissingCriteria 
-                        ? "gap-1.5 border-l-4 border-l-red-400" 
+                      onClick={() => setShowSurvey(true)}
+                      className={hasMissingCriteria
+                        ? "gap-1.5 border-l-4 border-l-red-400"
                         : "gap-1.5 bg-primary/90 hover:bg-primary"
                       }
                     >
@@ -198,8 +174,8 @@ export function LenderSuggestionsPanel({
                       ) : (
                         <ClipboardList className="h-3.5 w-3.5" />
                       )}
-                      {hasMissingCriteria 
-                        ? `Complete Criteria (${missingCriteria.length} missing)` 
+                      {hasMissingCriteria
+                        ? `Complete Criteria (${missingCriteria.length} missing)`
                         : 'Refine Criteria'
                       }
                     </Button>
@@ -208,9 +184,7 @@ export function LenderSuggestionsPanel({
                     <TooltipContent side="bottom" className="max-w-xs">
                       <p className="font-medium">Missing criteria for accurate matching:</p>
                       <ul className="text-xs mt-1 space-y-0.5">
-                        {missingCriteria.map(c => (
-                          <li key={c}>• {c}</li>
-                        ))}
+                        {missingCriteria.map(c => <li key={c}>• {c}</li>)}
                       </ul>
                     </TooltipContent>
                   )}
@@ -225,19 +199,20 @@ export function LenderSuggestionsPanel({
             <div className="py-4 h-full">
               <LenderCriteriaSurvey
                 dealId={dealId}
-                initialCriteria={enhancedCriteria}
+                initialCriteria={finalCriteria}
                 onComplete={handleSurveyComplete}
                 onSkip={() => setShowSurvey(false)}
               />
             </div>
           ) : (
             <LenderSuggestionsContent
-              criteria={enhancedCriteria}
+              criteria={finalCriteria}
               existingLenderNames={existingLenderNames}
-              onAddLender={handleAddLender}
+              onAddLender={onAddLender}
               onAddMultipleLenders={handleAddMultipleLenders}
               onClose={() => setIsOpen(false)}
               onNavigateToCriteria={onNavigateToCriteria}
+              autoDetected={autoDetected}
             />
           )}
         </div>
@@ -246,7 +221,7 @@ export function LenderSuggestionsPanel({
   );
 }
 
-// Floating action button variant for quick access
+// FAB variant
 export function LenderSuggestionsFAB({
   dealId,
   criteria,
@@ -256,50 +231,49 @@ export function LenderSuggestionsFAB({
 }: LenderSuggestionsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
+  const { criteria: enrichedCriteria, autoDetected, refetch: refetchEnriched } = useDealEnrichedCriteria(dealId);
   const { criteria: savedCriteriaFAB, refetch: refetchCriteriaFAB } = useDealMatchingCriteria(dealId);
   const { lenders: masterLenders } = useMasterLenders();
-  
-  const enhancedCriteria = useMemo<DealCriteria>(() => ({
+
+  const finalCriteria = useMemo<DealCriteria>(() => ({
+    ...enrichedCriteria,
     ...criteria,
-    cashBurnOk: savedCriteriaFAB.cashBurnOk ?? criteria.cashBurnOk,
-    industry: savedCriteriaFAB.industry || criteria.industry,
-    sponsorship: savedCriteriaFAB.sponsorship || criteria.sponsorship,
-  }), [criteria, savedCriteriaFAB]);
-  
-  const { matches } = useLenderMatching(masterLenders, enhancedCriteria, {
-    minScore: 25,
+    cashBurnOk: savedCriteriaFAB.cashBurnOk ?? enrichedCriteria.cashBurnOk ?? criteria.cashBurnOk,
+    industry: savedCriteriaFAB.industry || enrichedCriteria.industry || criteria.industry,
+    sponsorship: savedCriteriaFAB.sponsorship || enrichedCriteria.sponsorship || criteria.sponsorship,
+    companyDescription: enrichedCriteria.companyDescription,
+    dealNotes: enrichedCriteria.dealNotes,
+    existingLenderFeedback: enrichedCriteria.existingLenderFeedback,
+    revenue: enrichedCriteria.revenue || criteria.revenue,
+  }), [criteria, enrichedCriteria, savedCriteriaFAB]);
+
+  const { matches } = useLenderMatching(masterLenders, finalCriteria, {
+    minScore: 30,
     maxResults: 100,
     excludeNames: existingLenderNames,
   });
-  
+
   const matchCount = matches.length;
-  
-  // Check for missing criteria that affect filtering
-  const missingCriteriaFAB = useMemo(() => getMissingCriteria(enhancedCriteria), [enhancedCriteria]);
+  const missingCriteriaFAB = useMemo(() => getMissingCriteria(finalCriteria), [finalCriteria]);
   const hasMissingCriteriaFAB = missingCriteriaFAB.length > 0;
 
   if (matchCount === 0) return null;
 
   const handleAddMultipleLenders = (names: string[]) => {
-    if (onAddMultipleLenders) {
-      onAddMultipleLenders(names);
-    } else {
-      names.forEach(name => onAddLender(name));
-    }
+    if (onAddMultipleLenders) onAddMultipleLenders(names);
+    else names.forEach(name => onAddLender(name));
   };
 
-  const handleSurveyComplete = (_newCriteria: DealCriteria) => {
+  const handleSurveyComplete = () => {
     refetchCriteriaFAB();
+    refetchEnriched();
     setShowSurvey(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button
-          size="icon"
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-40 bg-primary hover:bg-primary/90"
-        >
+        <Button size="icon" className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-40 bg-primary hover:bg-primary/90">
           <Sparkles className="h-6 w-6" />
           {matchCount > 0 && (
             <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-medium">
@@ -308,18 +282,12 @@ export function LenderSuggestionsFAB({
           )}
         </Button>
       </DialogTrigger>
-
       <DialogContent className="max-w-4xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {showSurvey && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 mr-1"
-                  onClick={() => setShowSurvey(false)}
-                >
+                <Button variant="ghost" size="icon" className="h-8 w-8 mr-1" onClick={() => setShowSurvey(false)}>
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
@@ -328,9 +296,7 @@ export function LenderSuggestionsFAB({
                 {showSurvey ? 'Refine Your Search' : 'Suggested Lenders'}
               </span>
               {!showSurvey && matchCount > 0 && (
-                <Badge variant="secondary" className="font-normal">
-                  {matchCount} matches
-                </Badge>
+                <Badge variant="secondary" className="font-normal">{matchCount} matches</Badge>
               )}
             </div>
             {!showSurvey && (
@@ -341,29 +307,17 @@ export function LenderSuggestionsFAB({
                       variant={hasMissingCriteriaFAB ? "destructive" : "default"}
                       size="sm"
                       onClick={() => setShowSurvey(true)}
-                      className={hasMissingCriteriaFAB 
-                        ? "gap-1.5 border-l-4 border-l-red-400" 
-                        : "gap-1.5 bg-primary/90 hover:bg-primary"
-                      }
+                      className={hasMissingCriteriaFAB ? "gap-1.5 border-l-4 border-l-red-400" : "gap-1.5 bg-primary/90 hover:bg-primary"}
                     >
-                      {hasMissingCriteriaFAB ? (
-                        <AlertCircle className="h-3.5 w-3.5 animate-bounce [animation-iteration-count:3] [animation-duration:0.4s]" />
-                      ) : (
-                        <ClipboardList className="h-3.5 w-3.5" />
-                      )}
-                      {hasMissingCriteriaFAB 
-                        ? `Complete Criteria (${missingCriteriaFAB.length} missing)` 
-                        : 'Refine Criteria'
-                      }
+                      {hasMissingCriteriaFAB ? <AlertCircle className="h-3.5 w-3.5" /> : <ClipboardList className="h-3.5 w-3.5" />}
+                      {hasMissingCriteriaFAB ? `Complete Criteria (${missingCriteriaFAB.length} missing)` : 'Refine Criteria'}
                     </Button>
                   </TooltipTrigger>
                   {hasMissingCriteriaFAB && (
                     <TooltipContent side="bottom" className="max-w-xs">
-                      <p className="font-medium">Missing criteria for accurate matching:</p>
+                      <p className="font-medium">Missing criteria:</p>
                       <ul className="text-xs mt-1 space-y-0.5">
-                        {missingCriteriaFAB.map(c => (
-                          <li key={c}>• {c}</li>
-                        ))}
+                        {missingCriteriaFAB.map(c => <li key={c}>• {c}</li>)}
                       </ul>
                     </TooltipContent>
                   )}
@@ -372,24 +326,19 @@ export function LenderSuggestionsFAB({
             )}
           </DialogTitle>
         </DialogHeader>
-
         <div className="flex-1 overflow-hidden px-6">
           {showSurvey ? (
             <div className="py-4 h-full">
-              <LenderCriteriaSurvey
-                dealId={dealId}
-                initialCriteria={enhancedCriteria}
-                onComplete={handleSurveyComplete}
-                onSkip={() => setShowSurvey(false)}
-              />
+              <LenderCriteriaSurvey dealId={dealId} initialCriteria={finalCriteria} onComplete={handleSurveyComplete} onSkip={() => setShowSurvey(false)} />
             </div>
           ) : (
             <LenderSuggestionsContent
-              criteria={enhancedCriteria}
+              criteria={finalCriteria}
               existingLenderNames={existingLenderNames}
               onAddLender={onAddLender}
               onAddMultipleLenders={handleAddMultipleLenders}
               onClose={() => setIsOpen(false)}
+              autoDetected={autoDetected}
             />
           )}
         </div>

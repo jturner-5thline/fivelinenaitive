@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
-import { ChevronDown, Plus, Search, Building2, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, CheckSquare, Brain, Ban, Loader2 } from 'lucide-react';
+import { ChevronDown, Plus, Search, Building2, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, CheckSquare, Brain, Ban, Loader2, Sparkles, Zap } from 'lucide-react';
 import { CopyableText } from '@/components/ui/CopyableText';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,12 +20,23 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useMasterLenders, MasterLender } from '@/hooks/useMasterLenders';
-import { useLenderMatching, LenderMatch, DealCriteria } from '@/hooks/useLenderMatching';
-import { countCriteriaMatches, dealCriteriaToFilterInput, DealFilterInput } from '@/utils/lenderEligibilityFilter';
+import { useLenderMatching, LenderMatch, DealCriteria, MatchTier } from '@/hooks/useLenderMatching';
+import { useSemanticLenderMatching } from '@/hooks/useSemanticLenderMatching';
 import { LenderWarningBadge } from './LenderWarningBadge';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { toast } from 'sonner';
+
+// ─── Tier config ──────────────────────────────────────────────────────────────
+
+const TIER_CONFIG: Record<MatchTier, { label: string; colorClass: string; icon: string }> = {
+  top: { label: 'Top Match', colorClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300', icon: '🏆' },
+  strong: { label: 'Strong Match', colorClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300', icon: '💪' },
+  possible: { label: 'Possible Match', colorClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300', icon: '🔍' },
+  weak: { label: 'Other', colorClass: 'bg-muted text-muted-foreground', icon: '📋' },
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 interface LenderSuggestionsContentProps {
   criteria: DealCriteria;
@@ -34,6 +45,7 @@ interface LenderSuggestionsContentProps {
   onAddMultipleLenders?: (lenderNames: string[]) => void;
   onNavigateToCriteria?: () => void;
   onClose?: () => void;
+  autoDetected?: Record<string, boolean>;
 }
 
 export function LenderSuggestionsContent({
@@ -43,28 +55,23 @@ export function LenderSuggestionsContent({
   onAddMultipleLenders,
   onNavigateToCriteria,
   onClose,
+  autoDetected = {},
 }: LenderSuggestionsContentProps) {
   const { lenders: masterLenders, loading, updateLender } = useMasterLenders();
   const [searchQuery, setSearchQuery] = useState('');
   const [lenderTypeFilter, setLenderTypeFilter] = useState<string>('all');
-  const [showOnlyHighScore, setShowOnlyHighScore] = useState(false);
   const [selectedLenders, setSelectedLenders] = useState<Set<string>>(new Set());
-  const [tierFilters, setTierFilters] = useState<Set<string>>(new Set());
+  const [tierFilter, setTierFilter] = useState<MatchTier | 'all'>('all');
   const [showLearningWarnings, setShowLearningWarnings] = useState(true);
   const [detailLender, setDetailLender] = useState<MasterLender | null>(null);
-  const [otherSectionExpanded, setOtherSectionExpanded] = useState(false);
+  const [weakSectionExpanded, setWeakSectionExpanded] = useState(false);
 
   const detailLenderInfo = useMemo(() => {
     if (!detailLender) return null;
     return {
       id: detailLender.id,
       name: detailLender.name,
-      contact: {
-        name: detailLender.contact_name || '',
-        title: '',
-        email: detailLender.email || '',
-        phone: '',
-      },
+      contact: { name: detailLender.contact_name || '', title: '', email: detailLender.email || '', phone: '' },
       preferences: [],
       website: undefined,
       description: undefined,
@@ -80,217 +87,140 @@ export function LenderSuggestionsContent({
       tier: detailLender.tier,
     };
   }, [detailLender]);
-  
-  const { matches, learningEnabled } = useLenderMatching(masterLenders, criteria, {
-    minScore: -10,
+
+  // Phase 1: Rule-based matching
+  const { matches: ruleMatches, learningEnabled } = useLenderMatching(masterLenders, criteria, {
+    minScore: 30,
     maxResults: 100,
     excludeNames: existingLenderNames,
     enableLearning: true,
   });
 
-  const dealFilterInput = useMemo(() => dealCriteriaToFilterInput(criteria), [criteria]);
+  // Phase 2: Semantic AI enhancement (non-blocking)
+  const hasRichContext = !!(criteria.companyDescription || criteria.dealNotes?.length || criteria.existingLenderFeedback?.length);
+  const { enhancedMatches: matches, isSemanticLoading, hasSemanticData } = useSemanticLenderMatching(
+    ruleMatches,
+    criteria,
+    hasRichContext
+  );
 
-  const existingNamesSet = useMemo(() => 
-    new Set(existingLenderNames.map(n => n.toLowerCase().trim())), 
+  const existingNamesSet = useMemo(
+    () => new Set(existingLenderNames.map(n => n.toLowerCase().trim())),
     [existingLenderNames]
   );
-  // Get unique lender types for filter
+
   const lenderTypes = useMemo(() => {
     const types = new Set<string>();
-    matches.forEach(m => {
-      if (m.lender.lender_type) {
-        types.add(m.lender.lender_type);
-      }
-    });
+    matches.forEach(m => { if (m.lender.lender_type) types.add(m.lender.lender_type); });
     return Array.from(types).sort();
   }, [matches]);
-  
-  // Filter matches based on search and filters
-  const filteredMatches = useMemo(() => {
+
+  // Group by score-based tier
+  const groupedByTier = useMemo(() => {
+    const groups: Record<MatchTier, LenderMatch[]> = { top: [], strong: [], possible: [], weak: [] };
     let filtered = matches;
-    
+
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase();
       filtered = filtered.filter(m =>
-        m.lender.name.toLowerCase().includes(query) ||
-        m.lender.lender_type?.toLowerCase().includes(query) ||
-        m.lender.loan_types?.some(lt => lt.toLowerCase().includes(query)) ||
-        m.lender.industries?.some(i => i.toLowerCase().includes(query))
+        m.lender.name.toLowerCase().includes(q) ||
+        m.lender.lender_type?.toLowerCase().includes(q) ||
+        m.lender.loan_types?.some(lt => lt.toLowerCase().includes(q)) ||
+        m.lender.industries?.some(i => i.toLowerCase().includes(q))
       );
     }
-    
     if (lenderTypeFilter !== 'all') {
       filtered = filtered.filter(m => m.lender.lender_type === lenderTypeFilter);
     }
-    
-    // Fix #4: Use threshold of 75 instead of 25
-    if (showOnlyHighScore) {
-      filtered = filtered.filter(m => m.score >= 75);
+    if (tierFilter !== 'all') {
+      filtered = filtered.filter(m => m.tier === tierFilter);
     }
-    
-    if (tierFilters.size > 0) {
-      filtered = filtered.filter(m => {
-        const tier = m.lender.tier?.toUpperCase();
-        if (tier && ['T1', 'T2', 'T3'].includes(tier)) {
-          return tierFilters.has(tier);
-        }
-        return tierFilters.has('?');
-      });
+
+    for (const m of filtered) {
+      groups[m.tier].push(m);
     }
-    
-    return filtered;
-  }, [matches, searchQuery, lenderTypeFilter, showOnlyHighScore, tierFilters]);
-  
-  // Group by tier
-  const groupedByTier = useMemo(() => {
-    const t1: LenderMatch[] = [];
-    const t2: LenderMatch[] = [];
-    const t3: LenderMatch[] = [];
-    const other: LenderMatch[] = [];
-    
-    filteredMatches.forEach(match => {
-      const tier = match.lender.tier?.toUpperCase();
-      if (tier === 'T1') {
-        t1.push(match);
-      } else if (tier === 'T2') {
-        t2.push(match);
-      } else if (tier === 'T3') {
-        t3.push(match);
-      } else {
-        other.push(match);
-      }
-    });
-    
-    t1.sort((a, b) => b.score - a.score);
-    t2.sort((a, b) => b.score - a.score);
-    t3.sort((a, b) => b.score - a.score);
-    other.sort((a, b) => b.score - a.score);
-    
-    return { t1, t2, t3, other };
-  }, [filteredMatches]);
 
-  // Determine which tier columns to show
-  const visibleTierColumns = useMemo(() => {
-    const cols: { key: string; label: string; matches: typeof groupedByTier.t1; colorClass: string }[] = [];
-    if (groupedByTier.t1.length > 0) cols.push({ key: 'T1', label: 'Tier 1', matches: groupedByTier.t1, colorClass: 'bg-[#d1fae5] text-[#047857]' });
-    if (groupedByTier.t2.length > 0) cols.push({ key: 'T2', label: 'Tier 2', matches: groupedByTier.t2, colorClass: 'bg-[#d0e7ff] text-[#1d4ed8]' });
-    if (groupedByTier.t3.length > 0) cols.push({ key: 'T3', label: 'Tier 3', matches: groupedByTier.t3, colorClass: 'bg-[#fef3c7] text-[#b45309]' });
-    return cols;
-  }, [groupedByTier]);
+    // Sort within each tier by combined score
+    for (const tier of Object.keys(groups) as MatchTier[]) {
+      groups[tier].sort((a, b) => b.combinedScore - a.combinedScore);
+    }
 
-  const singleTierFlat = visibleTierColumns.length === 1;
+    return groups;
+  }, [matches, searchQuery, lenderTypeFilter, tierFilter]);
 
-  const gridColsClass = useMemo(() => {
-    const count = visibleTierColumns.length;
-    if (count <= 1) return 'grid-cols-1';
-    if (count === 2) return 'grid-cols-1 md:grid-cols-2';
-    return 'grid-cols-1 md:grid-cols-3';
-  }, [visibleTierColumns]);
-  
-  // Fix #7: Use filteredMatches.length for the count
-  const totalMatches = filteredMatches.length;
+  const totalVisible = Object.values(groupedByTier).reduce((sum, arr) => sum + arr.length, 0);
+  const mainTiers: MatchTier[] = ['top', 'strong', 'possible'];
+  const mainMatches = mainTiers.flatMap(t => groupedByTier[t]);
 
   const handleToggleLender = (lenderId: string) => {
     setSelectedLenders(prev => {
       const next = new Set(prev);
-      if (next.has(lenderId)) {
-        next.delete(lenderId);
-      } else {
-        next.add(lenderId);
-      }
+      next.has(lenderId) ? next.delete(lenderId) : next.add(lenderId);
       return next;
     });
   };
 
-  // Fix #11: Only select visible/expanded lenders
   const handleSelectAll = () => {
-    const selectableLenders = [
-      ...groupedByTier.t1,
-      ...groupedByTier.t2,
-      ...groupedByTier.t3,
-      ...(otherSectionExpanded ? groupedByTier.other : []),
-    ];
-    const allIds = selectableLenders
+    const allIds = [...mainMatches, ...(weakSectionExpanded ? groupedByTier.weak : [])]
       .filter(m => !existingNamesSet.has(m.lender.name.toLowerCase().trim()))
       .map(m => m.lender.id);
     setSelectedLenders(new Set(allIds));
   };
 
-  const handleClearSelection = () => {
-    setSelectedLenders(new Set());
-  };
-
   const handleAddSelected = () => {
-    const selectedNames = filteredMatches
+    const names = matches
       .filter(m => selectedLenders.has(m.lender.id) && !existingNamesSet.has(m.lender.name.toLowerCase().trim()))
       .map(m => m.lender.name);
-    
-    if (onAddMultipleLenders) {
-      onAddMultipleLenders(selectedNames);
-    } else {
-      selectedNames.forEach(name => onAddLender(name));
-    }
+    if (onAddMultipleLenders) onAddMultipleLenders(names);
+    else names.forEach(name => onAddLender(name));
     setSelectedLenders(new Set());
   };
 
-  // Fix #6: Handle clicking the "Complete Criteria" button to navigate
-  const handleNavigateToCriteria = () => {
-    if (onClose) onClose();
-    if (onNavigateToCriteria) onNavigateToCriteria();
-  };
-  
-  const isReady = !loading && masterLenders.length > 0 && matches.length > 0;
-  
+  const isReady = !loading && masterLenders.length > 0;
+
   if (!isReady) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="text-sm text-muted-foreground">
-          {loading ? 'Loading lender database...' : masterLenders.length === 0 ? 'Loading lender database...' : 'Analyzing matches...'}
-        </span>
+        <span className="text-sm text-muted-foreground">Loading lender database...</span>
       </div>
     );
   }
-  
+
   const formatDealSize = (value: number | undefined, capitalAsk: string | undefined): string | null => {
     if (capitalAsk) return capitalAsk;
     if (!value) return null;
-    if (value >= 1000000) {
-      const millions = value / 1000000;
-      return `$${millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)}MM`;
-    }
-    if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
-    }
-    return `$${value}`;
+    return value >= 1000000
+      ? `$${(value / 1000000) % 1 === 0 ? (value / 1000000).toFixed(0) : (value / 1000000).toFixed(1)}MM`
+      : value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`;
   };
 
   const dealSizeDisplay = formatDealSize(criteria.dealValue, criteria.capitalAsk);
-
-  // Count selectable lenders for Select All label
-  const selectableCount = [
-    ...groupedByTier.t1,
-    ...groupedByTier.t2,
-    ...groupedByTier.t3,
-    ...(otherSectionExpanded ? groupedByTier.other : []),
-  ].filter(m => !existingNamesSet.has(m.lender.name.toLowerCase().trim())).length;
+  const selectableCount = [...mainMatches, ...(weakSectionExpanded ? groupedByTier.weak : [])]
+    .filter(m => !existingNamesSet.has(m.lender.name.toLowerCase().trim())).length;
 
   return (
     <div className="flex flex-col h-full py-4">
-      {/* Criteria Summary */}
+      {/* Criteria Summary with Auto-detected badges */}
       <div className="mb-4">
-        <p className="text-xs text-muted-foreground mb-2">Matching criteria (priority order):</p>
+        <p className="text-xs text-muted-foreground mb-2">Matching criteria:</p>
         <div className="flex flex-wrap gap-1.5">
           {dealSizeDisplay && (
             <Badge className="text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
-              <DollarSign className="h-3 w-3 mr-1" />
-              Deal Size: {dealSizeDisplay}
+              <DollarSign className="h-3 w-3 mr-1" />Deal Size: {dealSizeDisplay}
             </Badge>
           )}
           {criteria.dealTypes && criteria.dealTypes.length > 0 && (
             <Badge className="text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800">
-              Type: {dealTypeIdsToLabels(criteria.dealTypes.slice(0, 2)).join(', ')}
-              {criteria.dealTypes.length > 2 && ` +${criteria.dealTypes.length - 2}`}
+              Type: {dealTypeIdsToLabels(criteria.dealTypes.slice(0, 2)).join(', ')}{criteria.dealTypes.length > 2 && ` +${criteria.dealTypes.length - 2}`}
+            </Badge>
+          )}
+          {criteria.industry && (
+            <Badge className="text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800 gap-1">
+              <Building2 className="h-3 w-3" />{criteria.industry}
+              {autoDetected?.industry && (
+                <span className="text-[9px] opacity-70 ml-0.5 bg-purple-200 dark:bg-purple-800 rounded px-1">Auto</span>
+              )}
             </Badge>
           )}
           {criteria.cashBurnOk !== undefined && (
@@ -298,15 +228,24 @@ export function LenderSuggestionsContent({
               Cash Burn: {criteria.cashBurnOk ? 'OK' : 'No'}
             </Badge>
           )}
-          {criteria.industry && (
-            <Badge className="text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800">
-              <Building2 className="h-3 w-3 mr-1" />
-              {criteria.industry}
-            </Badge>
-          )}
           {criteria.sponsorship && (
             <Badge className="text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-200 dark:border-rose-800">
-              Sponsorship: {criteria.sponsorship}
+              {criteria.sponsorship}
+            </Badge>
+          )}
+          {criteria.revenue && (
+            <Badge className="text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200 dark:border-teal-800">
+              Revenue: ${(criteria.revenue / 1000000).toFixed(1)}M
+            </Badge>
+          )}
+          {hasSemanticData && (
+            <Badge className="text-xs font-medium bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300 border-violet-200 dark:border-violet-800 gap-1">
+              <Sparkles className="h-3 w-3" />AI Enhanced
+            </Badge>
+          )}
+          {isSemanticLoading && (
+            <Badge variant="outline" className="text-xs gap-1 animate-pulse">
+              <Loader2 className="h-3 w-3 animate-spin" />Analyzing...
             </Badge>
           )}
         </div>
@@ -316,249 +255,133 @@ export function LenderSuggestionsContent({
       <div className="flex items-center gap-2 mb-4 min-w-0">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search lenders..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
+          <Input placeholder="Search lenders..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-8 h-8 text-sm" />
           {searchQuery && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
-              onClick={() => setSearchQuery('')}
-            >
+            <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setSearchQuery('')}>
               <X className="h-3 w-3" />
             </Button>
           )}
         </div>
-        
         <Select value={lenderTypeFilter} onValueChange={setLenderTypeFilter}>
-          <SelectTrigger className="h-8 text-xs w-[130px] shrink-0">
-            <Filter className="h-3 w-3 mr-1" />
-            <SelectValue placeholder="Lender Type" />
-          </SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-[130px] shrink-0"><Filter className="h-3 w-3 mr-1" /><SelectValue placeholder="Lender Type" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            {lenderTypes.map(type => (
-              <SelectItem key={type} value={type}>{type}</SelectItem>
-            ))}
+            {lenderTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
           </SelectContent>
         </Select>
-        
-        <Button
-          variant={showOnlyHighScore ? "default" : "outline"}
-          size="sm"
-          className="h-8 text-xs shrink-0 whitespace-nowrap"
-          onClick={() => setShowOnlyHighScore(!showOnlyHighScore)}
-        >
-          <CheckCircle2 className="h-3 w-3 mr-1" />
-          Top Matches
-        </Button>
       </div>
-      
+
+      {/* Tier filter buttons */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {selectedLenders.size > 0 ? (
+          <div className="flex items-center gap-2 w-full p-2 bg-primary/10 rounded-lg border border-primary/20">
+            <CheckSquare className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium flex-1">{selectedLenders.size} selected</span>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedLenders(new Set())}>Clear</Button>
+            <Button size="sm" className="h-7 text-xs" onClick={handleAddSelected}><Plus className="h-3 w-3 mr-1" />Add Selected</Button>
+          </div>
+        ) : (
+          <>
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleSelectAll}>
+              <CheckSquare className="h-3 w-3 mr-1" />Select All ({selectableCount})
+            </Button>
+            <div className="h-4 w-px bg-border" />
+            {(['all', 'top', 'strong', 'possible', 'weak'] as const).map(tier => (
+              <Button
+                key={tier}
+                variant={tierFilter === tier ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs px-2.5"
+                onClick={() => setTierFilter(tier)}
+              >
+                {tier === 'all' ? 'All' : TIER_CONFIG[tier].label}
+                {tier !== 'all' && ` (${groupedByTier[tier].length})`}
+              </Button>
+            ))}
+          </>
+        )}
+      </div>
+
       {/* Learning Toggle */}
       {learningEnabled && (
         <div className="flex items-center gap-2 text-xs mb-4">
           <Brain className="h-3.5 w-3.5 text-primary" />
-          <Label htmlFor="show-warnings" className="text-xs font-normal cursor-pointer">
-            Show learning insights
-          </Label>
-          <Switch
-            id="show-warnings"
-            checked={showLearningWarnings}
-            onCheckedChange={setShowLearningWarnings}
-            className="scale-75"
-          />
+          <Label htmlFor="show-warnings" className="text-xs font-normal cursor-pointer">Show learning insights</Label>
+          <Switch id="show-warnings" checked={showLearningWarnings} onCheckedChange={setShowLearningWarnings} className="scale-75" />
         </div>
       )}
 
-      {/* Selection Actions Bar */}
-      {selectedLenders.size > 0 && (
-        <div className="flex items-center gap-2 mb-3 p-2 bg-primary/10 rounded-lg border border-primary/20">
-          <CheckSquare className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium flex-1">
-            {selectedLenders.size} selected
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={handleClearSelection}
-          >
-            Clear
-          </Button>
-          <Button
-            size="sm"
-            className="h-7 text-xs"
-            onClick={handleAddSelected}
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Add Selected
-          </Button>
-        </div>
-      )}
-
-      {/* Select All / Tier Filters */}
-      {totalMatches > 0 && selectedLenders.size === 0 && (
-        <div className="flex items-center gap-2 mb-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={handleSelectAll}
-          >
-            <CheckSquare className="h-3 w-3 mr-1" />
-            Select All ({selectableCount})
-          </Button>
-          <div className="h-4 w-px bg-border" />
-          {(['T1', 'T2', 'T3'] as const).map((tier) => (
-            <Button
-              key={tier}
-              variant={tierFilters.has(tier) ? 'default' : 'outline'}
-              size="sm"
-              className="h-7 text-xs px-2.5"
-              onClick={() => {
-                setTierFilters(prev => {
-                  const next = new Set(prev);
-                  if (next.has(tier)) {
-                    next.delete(tier);
-                  } else {
-                    next.add(tier);
-                  }
-                  return next;
-                });
-              }}
-              title={`Filter by ${tier}`}
-            >
-              {tier}
-            </Button>
-          ))}
-          {/* Fix #8: Tooltip on ? button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={tierFilters.has('?') ? 'default' : 'outline'}
-                  size="sm"
-                  className="h-7 text-xs px-2.5"
-                  onClick={() => {
-                    setTierFilters(prev => {
-                      const next = new Set(prev);
-                      if (next.has('?')) {
-                        next.delete('?');
-                      } else {
-                        next.add('?');
-                      }
-                      return next;
-                    });
-                  }}
-                >
-                  ?
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Show lenders with no tier assigned</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )}
-      
       <ScrollArea className="flex-1 -mx-6 px-6">
-        {totalMatches === 0 ? (
+        {totalVisible === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-sm">
             No matching lenders found. Try adjusting the deal criteria or filters.
           </div>
-        ) : singleTierFlat ? (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Badge className={visibleTierColumns[0].colorClass}>{visibleTierColumns[0].label}</Badge>
-              <span className="text-xs text-muted-foreground">({visibleTierColumns[0].matches.length} lenders)</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pb-4">
-              {visibleTierColumns[0].matches.map(match => (
-                <LenderMatchCard
-                  key={match.lender.id}
-                  match={match}
-                  isSelected={selectedLenders.has(match.lender.id)}
-                  onToggle={() => handleToggleLender(match.lender.id)}
-                  onAdd={() => onAddLender(match.lender.name)}
-                  onViewDetail={() => setDetailLender(match.lender)}
-                  badgeVariant="secondary"
-                  compact
-                  showLearningWarnings={showLearningWarnings}
-                  dealFilterInput={dealFilterInput}
-                  isAlreadyAdded={existingNamesSet.has(match.lender.name.toLowerCase().trim())}
-                />
-              ))}
-            </div>
-          </div>
         ) : (
-          <div className={`grid ${gridColsClass} gap-4 pb-4`}>
-            {visibleTierColumns.map(col => (
-              <TierColumn
-                key={col.key}
-                tier={col.key}
-                label={col.label}
-                matches={col.matches}
-                selectedLenders={selectedLenders}
-                onToggleLender={handleToggleLender}
-                onAddLender={onAddLender}
-                onViewDetail={setDetailLender}
-                colorClass={col.colorClass}
-                showLearningWarnings={showLearningWarnings}
-                dealFilterInput={dealFilterInput}
-                existingNamesSet={existingNamesSet}
-              />
-            ))}
-          </div>
-        )}
-        
-        {/* Other/Untiered lenders shown below grid if any */}
-        {groupedByTier.other.length > 0 && (
-          <div className="mt-4 pb-4">
-            <Collapsible open={otherSectionExpanded} onOpenChange={setOtherSectionExpanded}>
-              {/* Fix #10: stopPropagation on CollapsibleTrigger */}
-              <CollapsibleTrigger 
-                className="flex items-center justify-between w-full mb-2 group"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center gap-2">
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Other / Untiered</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {groupedByTier.other.length}
-                  </Badge>
+          <>
+            {mainTiers.map(tier => {
+              const tierMatches = groupedByTier[tier];
+              if (tierMatches.length === 0) return null;
+              const config = TIER_CONFIG[tier];
+              return (
+                <div key={tier} className="mb-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm">{config.icon}</span>
+                    <Badge className={config.colorClass}>{config.label}</Badge>
+                    <span className="text-xs text-muted-foreground">({tierMatches.length})</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {tierMatches.map(match => (
+                      <LenderMatchCard
+                        key={match.lender.id}
+                        match={match}
+                        isSelected={selectedLenders.has(match.lender.id)}
+                        onToggle={() => handleToggleLender(match.lender.id)}
+                        onAdd={() => onAddLender(match.lender.name)}
+                        onViewDetail={() => setDetailLender(match.lender)}
+                        showLearningWarnings={showLearningWarnings}
+                        isAlreadyAdded={existingNamesSet.has(match.lender.name.toLowerCase().trim())}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {groupedByTier.other.map(match => (
-                    <LenderMatchCard
-                      key={match.lender.id}
-                      match={match}
-                      isSelected={selectedLenders.has(match.lender.id)}
-                      onToggle={() => handleToggleLender(match.lender.id)}
-                      onAdd={() => onAddLender(match.lender.name)}
-                      onViewDetail={() => setDetailLender(match.lender)}
-                      badgeVariant="secondary"
-                      compact
-                      showLearningWarnings={showLearningWarnings}
-                      dealFilterInput={dealFilterInput}
-                      isAlreadyAdded={existingNamesSet.has(match.lender.name.toLowerCase().trim())}
-                    />
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
+              );
+            })}
+
+            {/* Weak tier in collapsible */}
+            {groupedByTier.weak.length > 0 && (
+              <div className="mt-2 pb-4">
+                <Collapsible open={weakSectionExpanded} onOpenChange={setWeakSectionExpanded}>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full mb-2 group" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{TIER_CONFIG.weak.icon}</span>
+                      <span className="text-sm font-medium">Other Matches</span>
+                      <Badge variant="secondary" className="text-xs">{groupedByTier.weak.length}</Badge>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {groupedByTier.weak.map(match => (
+                        <LenderMatchCard
+                          key={match.lender.id}
+                          match={match}
+                          isSelected={selectedLenders.has(match.lender.id)}
+                          onToggle={() => handleToggleLender(match.lender.id)}
+                          onAdd={() => onAddLender(match.lender.name)}
+                          onViewDetail={() => setDetailLender(match.lender)}
+                          showLearningWarnings={showLearningWarnings}
+                          isAlreadyAdded={existingNamesSet.has(match.lender.name.toLowerCase().trim())}
+                        />
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            )}
+          </>
         )}
       </ScrollArea>
 
-      {/* Lender Detail Dialog */}
       <LenderDetailDialog
         lender={detailLenderInfo}
         open={!!detailLender}
@@ -593,60 +416,7 @@ export function LenderSuggestionsContent({
   );
 }
 
-interface TierColumnProps {
-  tier: string;
-  label: string;
-  matches: LenderMatch[];
-  selectedLenders: Set<string>;
-  onToggleLender: (lenderId: string) => void;
-  onAddLender: (name: string) => void;
-  onViewDetail: (lender: MasterLender) => void;
-  colorClass: string;
-  showLearningWarnings?: boolean;
-  dealFilterInput?: DealFilterInput;
-  existingNamesSet: Set<string>;
-}
-
-function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onAddLender, onViewDetail, colorClass, showLearningWarnings, dealFilterInput, existingNamesSet }: TierColumnProps) {
-  const selectedCount = matches.filter(m => selectedLenders.has(m.lender.id)).length;
-  
-  return (
-    <div className="flex flex-col h-full">
-      <div className={cn("rounded-t-lg px-3 py-2 flex items-center justify-between", colorClass)}>
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">{label}</span>
-          <Badge variant="secondary" className="text-xs bg-background/80">
-            {selectedCount > 0 ? `${selectedCount}/${matches.length}` : matches.length}
-          </Badge>
-        </div>
-      </div>
-      
-      <div className="flex-1 border border-t-0 rounded-b-lg bg-muted/20 p-2 space-y-2 min-h-[200px] max-h-[400px] overflow-y-auto">
-        {matches.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-xs">
-            No {label} lenders match criteria
-          </div>
-        ) : (
-          matches.map(match => (
-            <LenderMatchCard
-              key={match.lender.id}
-              match={match}
-              isSelected={selectedLenders.has(match.lender.id)}
-              onToggle={() => onToggleLender(match.lender.id)}
-              onAdd={() => onAddLender(match.lender.name)}
-              onViewDetail={() => onViewDetail(match.lender)}
-              badgeVariant="default"
-              compact
-              showLearningWarnings={showLearningWarnings}
-              dealFilterInput={dealFilterInput}
-              isAlreadyAdded={existingNamesSet.has(match.lender.name.toLowerCase().trim())}
-            />
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
+// ─── Lender Match Card ────────────────────────────────────────────────────────
 
 interface LenderMatchCardProps {
   match: LenderMatch;
@@ -654,26 +424,22 @@ interface LenderMatchCardProps {
   onToggle: () => void;
   onAdd: () => void;
   onViewDetail?: () => void;
-  badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
-  compact?: boolean;
   showLearningWarnings?: boolean;
-  dealFilterInput?: DealFilterInput;
   isAlreadyAdded?: boolean;
 }
 
-function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, badgeVariant, compact = false, showLearningWarnings = true, dealFilterInput, isAlreadyAdded = false }: LenderMatchCardProps) {
-  const { lender, matchReasons, warnings, score, learningWarnings } = match;
+function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, showLearningWarnings = true, isAlreadyAdded = false }: LenderMatchCardProps) {
+  const { lender, matchReasons, warnings, combinedScore, matchPercent, tier, semanticBonus, semanticReason, semanticLoading, learningWarnings } = match;
 
-  const criteriaMatch = useMemo(() => {
-    if (!dealFilterInput) return null;
-    return countCriteriaMatches(dealFilterInput, lender);
-  }, [dealFilterInput, lender]);
-  
+  const tierConfig = TIER_CONFIG[tier];
+
+  // Pick top 3 match reasons as chips
+  const topReasons = matchReasons.slice(0, 3);
+
   return (
     <div
       className={cn(
-        "border rounded-lg transition-colors group cursor-pointer relative",
-        compact ? "p-2" : "p-3",
+        "border rounded-lg transition-colors group cursor-pointer relative p-2.5",
         isAlreadyAdded
           ? "bg-primary/5 border-primary/30 opacity-75"
           : "bg-card hover:bg-muted/30",
@@ -681,48 +447,45 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
       )}
       onClick={() => onViewDetail?.()}
     >
-      {/* Already added indicator */}
+      {/* Already added */}
       {isAlreadyAdded && (
         <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary">
-          <CheckCircle2 className="h-3 w-3" />
-          Added
+          <CheckCircle2 className="h-3 w-3" />Added
         </div>
       )}
-      {/* Fix #5: Criteria match badge - show only evaluated criteria, hide if specifiedCount is 0 */}
-      {criteriaMatch && criteriaMatch.specifiedCount > 0 && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className={cn(
-                "absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                criteriaMatch.passed === criteriaMatch.specifiedCount
-                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
-                  : criteriaMatch.passed >= criteriaMatch.specifiedCount * 0.6
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400"
-                  : "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400"
-              )}>
-                <CheckCircle2 className="h-3 w-3" />
-                {criteriaMatch.passed}/{criteriaMatch.specifiedCount}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="text-xs">
-              <p className="font-medium mb-1">{criteriaMatch.passed}/{criteriaMatch.specifiedCount} evaluated criteria matched</p>
-              {criteriaMatch.passedFilters.map(f => (
-                <div key={f} className="flex items-center gap-1 text-emerald-600">
-                  <CheckCircle2 className="h-3 w-3" /> {f.replace('_', ' ')}
-                </div>
-              ))}
-              {criteriaMatch.failedFilters.map(f => (
-                <div key={f} className="flex items-center gap-1 text-destructive">
-                  <Ban className="h-3 w-3" /> {f.replace('_', ' ')}
-                </div>
-              ))}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
+
+      {/* Match percentage badge */}
+      <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+        {semanticBonus > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex items-center gap-0.5 text-[10px] text-violet-600 dark:text-violet-400">
+                  <Sparkles className="h-3 w-3" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="text-xs max-w-[200px]">
+                <p className="font-medium">AI Enhanced (+{semanticBonus}pts)</p>
+                {semanticReason && <p className="mt-1 text-muted-foreground">{semanticReason}</p>}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        {semanticLoading && (
+          <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+        )}
+        <div className={cn(
+          "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+          tier === 'top' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
+            : tier === 'strong' ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400"
+            : tier === 'possible' ? "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400"
+            : "bg-muted text-muted-foreground"
+        )}>
+          {matchPercent}%
+        </div>
+      </div>
+
       <div className={cn("flex items-start gap-2", isAlreadyAdded && "mt-4")}>
-        {/* Fix #9: Always render Checkbox for non-added lenders */}
         {!isAlreadyAdded && (
           <Checkbox
             checked={isSelected}
@@ -732,47 +495,44 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
           />
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <span className={cn("font-medium truncate", compact ? "text-xs" : "text-sm")}>
-              {lender.name}
-            </span>
-            <Badge 
-              variant={score >= 50 ? "default" : score >= 25 ? "secondary" : "outline"} 
-              className="text-[9px] py-0 px-1 shrink-0"
-            >
-              {score}
-            </Badge>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="font-medium text-xs truncate">{lender.name}</span>
             {showLearningWarnings && learningWarnings && learningWarnings.length > 0 && (
               <LenderWarningBadge warnings={learningWarnings} showDetails size="sm" />
             )}
           </div>
-          
-          
-          {!compact && (lender.contact_name || lender.email) && (
-            <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-              {lender.contact_name && <span className="truncate">{lender.contact_name}</span>}
-              {lender.contact_name && lender.email && <span>·</span>}
-              {lender.email && (
-                <CopyableText text={lender.email} href={`mailto:${lender.email}`} className="hover:text-primary" />
-              )}
+
+          {/* Top match reasons as chips */}
+          {topReasons.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-1">
+              {topReasons.map((reason, i) => (
+                <span key={i} className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border">
+                  {reason}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Warnings */}
+          {warnings.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {warnings.slice(0, 2).map((w, i) => (
+                <span key={i} className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+                  <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />{w}
+                </span>
+              ))}
             </div>
           )}
         </div>
-        
+
         {!isAlreadyAdded && (
           <Button
             variant="ghost"
             size="icon"
-            className={cn(
-              "shrink-0 opacity-0 group-hover:opacity-100 transition-opacity",
-              compact ? "h-6 w-6" : "h-7 w-7"
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAdd();
-            }}
+            className="shrink-0 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => { e.stopPropagation(); onAdd(); }}
           >
-            <Plus className={compact ? "h-3 w-3" : "h-4 w-4"} />
+            <Plus className="h-3 w-3" />
           </Button>
         )}
       </div>
