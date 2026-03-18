@@ -1417,113 +1417,101 @@ READ TOOLS:
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const selectedTools = selectTools(page, entityType);
 
-    // ── Helper: convert already-fetched content into an SSE stream ──
-    function contentToSSE(content: string): ReadableStream {
-      const encoder = new TextEncoder();
-      return new ReadableStream({
-        start(controller) {
-          // Send content in a single SSE chunk matching OpenAI format
-          const chunk = {
-            choices: [{ delta: { content }, index: 0, finish_reason: null }],
-          };
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-          controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-          controller.close();
-        },
-      });
-    }
+    // ── Streaming tool loop ──
+    // Opens a response stream immediately so the client sees tokens as they arrive,
+    // even during multi-turn tool execution.
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
 
-    // ── Multi-turn tool calling loop ──
-    for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
-      const response = await fetch(AI_GATEWAY, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: apiMessages,
-          tools,
-          temperature: 0.3,
-          max_tokens: 2000,
-        }),
-      });
+    (async () => {
+      try {
+        for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
+          const response = await fetch(AI_GATEWAY, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "google/gemini-3-flash-preview",
+              messages: apiMessages,
+              tools: selectedTools,
+              temperature: 0.3,
+              max_tokens: 2000,
+              stream: true,
+            }),
+          });
 
-      if (!response.ok) {
-        if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        if (response.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        const errText = await response.text();
-        console.error("AI gateway error:", response.status, errText);
-        throw new Error("AI gateway error");
-      }
+          if (!response.ok) {
+            const errMsg = response.status === 429
+              ? "Rate limit exceeded. Please try again later."
+              : response.status === 402
+              ? "AI credits exhausted. Please add credits to continue."
+              : "I'm having trouble right now. Please try again.";
+            const chunk = { choices: [{ delta: { content: errMsg }, index: 0, finish_reason: "stop" }] };
+            await writer.write(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+            break;
+          }
 
-      const data = await response.json();
-      const choice = data.choices?.[0];
-      if (!choice) throw new Error("No choice in response");
+          // Parse stream: forward content deltas to client, collect tool calls
+          const { content, toolCalls } = await consumeToolStream(response, writer, encoder);
 
-      const msg = choice.message;
+          if (toolCalls.length > 0) {
+            // Add assistant message with tool calls to conversation
+            apiMessages.push({ role: "assistant", content: content || null, tool_calls: toolCalls });
 
-      if (msg.tool_calls && msg.tool_calls.length > 0) {
-        apiMessages.push(msg);
+            // Execute all tool calls
+            for (const tc of toolCalls) {
+              let args: any = {};
+              try {
+                args = typeof tc.function.arguments === "string"
+                  ? JSON.parse(tc.function.arguments)
+                  : tc.function.arguments;
+              } catch { /* empty args */ }
+              const result = await executeTool(supabaseUser, tc.function.name, args, userId);
+              apiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+            }
+            continue; // Next turn
+          }
 
-        for (const tc of msg.tool_calls) {
-          let args: any = {};
-          try {
-            args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-          } catch { /* empty args */ }
-
-          const result = await executeTool(supabaseUser, tc.function.name, args, userId);
-          apiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+          // No tool calls — content already streamed to client via consumeToolStream
+          break;
         }
-        continue;
+
+        // Graceful fallback: if we exhausted MAX_TOOL_TURNS with the last message
+        // being a tool result, force a final response
+        const lastMsg = apiMessages[apiMessages.length - 1];
+        if (lastMsg?.role === "tool") {
+          const fallbackResp = await fetch(AI_GATEWAY, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "google/gemini-3-flash-preview",
+              messages: [...apiMessages, { role: "user", content: "Please provide your final answer now based on the information gathered so far. Do not call any more tools." }],
+              temperature: 0.3,
+              max_tokens: 2000,
+              stream: true,
+            }),
+          });
+          if (fallbackResp.ok) {
+            await consumeToolStream(fallbackResp, writer, encoder);
+          }
+        }
+      } catch (e) {
+        console.error("Stream loop error:", e);
+        try {
+          const errChunk = { choices: [{ delta: { content: "An error occurred. Please try again." }, index: 0, finish_reason: "stop" }] };
+          await writer.write(encoder.encode(`data: ${JSON.stringify(errChunk)}\n\n`));
+        } catch { /* writer may be closed */ }
+      } finally {
+        try {
+          await writer.write(encoder.encode(`data: [DONE]\n\n`));
+          await writer.close();
+        } catch { /* already closed */ }
       }
+    })();
 
-      // No tool calls — return the content we already have as SSE
-      // This eliminates the previous double-call pattern (saves 3-5s)
-      const content = msg.content || "";
-      if (content) {
-        return new Response(contentToSSE(content), {
-          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-        });
-      }
-
-      // Edge case: no content AND no tool calls — make one final streaming call
-      const finalResponse = await fetch(AI_GATEWAY, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: apiMessages,
-          temperature: 0.3,
-          max_tokens: 2000,
-          stream: true,
-        }),
-      });
-
-      if (!finalResponse.ok) throw new Error("AI stream error");
-
-      return new Response(finalResponse.body, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-      });
-    }
-
-    // Graceful fallback: force a final response without tools
-    const fallbackResponse = await fetch(AI_GATEWAY, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [...apiMessages, { role: "user", content: "Please provide your final answer now based on the information gathered so far. Do not call any more tools." }],
-        temperature: 0.3,
-        max_tokens: 2000,
-        stream: true,
-      }),
-    });
-
-    if (!fallbackResponse.ok) {
-      return new Response(JSON.stringify({ error: "Unable to generate response. Please try a simpler question." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    return new Response(fallbackResponse.body, {
+    return new Response(readable, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {
