@@ -17,6 +17,7 @@ import { CopilotLenderCard } from '@/components/copilot/CopilotLenderCard';
 import { CopilotTaskCard } from '@/components/copilot/CopilotTaskCard';
 import { CopilotPipelineSummary } from '@/components/copilot/CopilotPipelineSummary';
 import { CopilotProactiveNudge } from '@/components/copilot/CopilotProactiveNudge';
+import { CopilotCorrectionPopover } from '@/components/copilot/CopilotCorrectionPopover';
 import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 import { useIsMobile } from '@/hooks/use-mobile';
 
