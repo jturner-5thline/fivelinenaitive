@@ -9,83 +9,7 @@ const corsHeaders = {
 
 const MAX_TOOL_TURNS = 10;
 
-// ── Context fetchers ──────────────────────────────────────────────
-async function fetchDealContext(supabase: any, entityId: string) {
-  const [dealRes, lendersRes, milestonesRes, activityRes, tasksRes, outstandingRes] = await Promise.all([
-    supabase.from("deals").select("*").eq("id", entityId).single(),
-    supabase.from("deal_lenders").select("id, name, stage, notes, tracking_status, created_at").eq("deal_id", entityId).order("created_at", { ascending: false }),
-    supabase.from("deal_milestones").select("id, title, completed, due_date, created_at").eq("deal_id", entityId).order("due_date", { ascending: true }),
-    supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(10),
-    supabase.from("tasks").select("id, title, status, priority, due_date").eq("deal_id", entityId).in("status", ["todo", "in_progress"]).order("due_date", { ascending: true }),
-    supabase.from("outstanding_items").select("id, description, status, priority, assigned_to, due_date, eta, notes, lender_id").eq("deal_id", entityId).order("position", { ascending: true }),
-  ]);
-  const deal = dealRes.data;
-  if (!deal) return "Deal not found.";
-  const lenders = lendersRes.data || [];
-  const milestones = milestonesRes.data || [];
-  const activities = activityRes.data || [];
-  const tasks = tasksRes.data || [];
-  const outstanding = outstandingRes.data || [];
-  return `DEAL: ${deal.company}\nValue: $${deal.value?.toLocaleString() || "N/A"} | Stage: ${deal.stage || "N/A"} | Status: ${deal.status || "N/A"}\nType: ${deal.deal_type || "N/A"} | Created: ${deal.created_at?.slice(0, 10)}\nNotes: ${deal.notes || "None"}\nNarrative: ${deal.narrative || "None"}\n\nLENDERS (${lenders.length}):\n${lenders.map((l: any) => `- ${l.name} | Stage: ${l.stage || "N/A"} | Status: ${l.tracking_status || "N/A"} [id: ${l.id}]`).join("\n") || "None"}\n\nMILESTONES (${milestones.length}):\n${milestones.map((m: any) => `- [${m.completed ? "✓" : "○"}] ${m.title} (due: ${m.due_date || "N/A"}) [id: ${m.id}]`).join("\n") || "None"}\n\nOUTSTANDING ITEMS (${outstanding.length}):\n${outstanding.map((o: any) => `- [${o.status}] ${o.description} | Priority: ${o.priority} | Due: ${o.due_date || "N/A"} | Assigned: ${o.assigned_to || "N/A"} [id: ${o.id}]`).join("\n") || "None"}\n\nRECENT ACTIVITY (${activities.length}):\n${activities.map((a: any) => `- ${a.created_at?.slice(0, 10)}: ${a.description} (${a.activity_type})`).join("\n") || "None"}\n\nOPEN TASKS (${tasks.length}):\n${tasks.map((t: any) => `- [${t.priority}] ${t.title} (due: ${t.due_date || "N/A"})`).join("\n") || "None"}`;
-}
-
-async function fetchDealsListContext(supabase: any, _userId: string) {
-  const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status, updated_at").order("updated_at", { ascending: false }).limit(200);
-  if (!deals || deals.length === 0) return "No deals found.";
-  const stageCounts: Record<string, number> = {};
-  let totalValue = 0;
-  const now = Date.now();
-  const staleDays = 14 * 24 * 60 * 60 * 1000;
-  const staleDeals: string[] = [];
-  for (const d of deals) {
-    stageCounts[d.stage || "Unknown"] = (stageCounts[d.stage || "Unknown"] || 0) + 1;
-    totalValue += d.value || 0;
-    if (d.updated_at && now - new Date(d.updated_at).getTime() > staleDays) staleDeals.push(d.company);
-  }
-  return `PIPELINE SUMMARY:\nTotal Deals: ${deals.length} | Total Value: $${totalValue.toLocaleString()}\n\nBY STAGE:\n${Object.entries(stageCounts).map(([s, c]) => `- ${s}: ${c}`).join("\n")}\n\nSTALE DEALS (no activity 14+ days): ${staleDeals.length}\n${staleDeals.slice(0, 10).map((n) => `- ${n}`).join("\n") || "None"}`;
-}
-
-async function fetchTasksContext(supabase: any, userId: string) {
-  const { data: tasks } = await supabase.from("tasks").select("id, title, status, priority, due_date").eq("assigned_to", userId).in("status", ["todo", "in_progress"]).order("due_date", { ascending: true }).limit(50);
-  if (!tasks || tasks.length === 0) return "No open tasks.";
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const overdue = tasks.filter((t: any) => t.due_date && t.due_date < todayStr);
-  const dueToday = tasks.filter((t: any) => t.due_date === todayStr);
-  return `YOUR TASKS (${tasks.length}):\nOverdue: ${overdue.length} | Due Today: ${dueToday.length}\n\n${tasks.map((t: any) => `- [${t.priority}] ${t.title} | Status: ${t.status} | Due: ${t.due_date || "N/A"}`).join("\n")}`;
-}
-
-async function fetchDashboardContext(supabase: any, userId: string) {
-  const [dealsRes, tasksRes, activityRes] = await Promise.all([
-    supabase.from("deals").select("id, company, value, stage, status").limit(500),
-    supabase.from("tasks").select("id, title, status, priority, due_date").eq("assigned_to", userId).in("status", ["todo", "in_progress"]).order("due_date", { ascending: true }).limit(50),
-    supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name").order("created_at", { ascending: false }).limit(5),
-  ]);
-  const deals = dealsRes.data || [];
-  const tasks = tasksRes.data || [];
-  const activities = activityRes.data || [];
-  const activeDeals = deals.filter((d: any) => d.status === "active");
-  const pipelineValue = deals.reduce((sum: number, d: any) => sum + (d.value || 0), 0);
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const overdueTasks = tasks.filter((t: any) => t.due_date && t.due_date < todayStr);
-  const dueTodayTasks = tasks.filter((t: any) => t.due_date === todayStr);
-  return `DASHBOARD:\nActive Deals: ${activeDeals.length} | Pipeline Value: $${pipelineValue.toLocaleString()}\nOpen Tasks: ${tasks.length} | Overdue: ${overdueTasks.length} | Due Today: ${dueTodayTasks.length}\n\nRECENT ACTIVITY:\n${activities.map((a: any) => `- ${a.created_at?.slice(0, 10)}: ${a.description}`).join("\n") || "None"}`;
-}
-
-async function fetchLendersContext(supabase: any) {
-  const { data: lenders } = await supabase.from("deal_lenders").select("name, stage, tracking_status, deal_id").limit(500);
-  if (!lenders || lenders.length === 0) return "No lender data.";
-  const lenderMap: Record<string, { count: number; stages: Record<string, number> }> = {};
-  for (const l of lenders) {
-    const name = l.name || "Unknown";
-    if (!lenderMap[name]) lenderMap[name] = { count: 0, stages: {} };
-    lenderMap[name].count++;
-    const stage = l.stage || "Unknown";
-    lenderMap[name].stages[stage] = (lenderMap[name].stages[stage] || 0) + 1;
-  }
-  const sorted = Object.entries(lenderMap).sort((a, b) => b[1].count - a[1].count).slice(0, 20);
-  return `LENDER STATS (${Object.keys(lenderMap).length} unique lenders, ${lenders.length} total relationships):\n\nTOP LENDERS:\n${sorted.map(([name, data]) => `- ${name}: ${data.count} deals (${Object.entries(data.stages).map(([s, c]) => `${s}: ${c}`).join(", ")})`).join("\n")}`;
-}
+// Context fetchers removed — data is now lazy-loaded via tool calls
 
 // ── Tool definitions ──────────────────────────────────────────────
 const tools = [
@@ -450,6 +374,30 @@ const tools = [
     },
   },
 ];
+
+// ── Tool selection by context ──────────────────────────────────
+function selectTools(page: string, entityType?: string) {
+  // On deal pages, include all tools for full functionality
+  if (entityType === "deal") return tools;
+
+  const coreNames = new Set([
+    "get_deal", "search_deals", "get_pipeline_summary", "get_activity_log",
+    "draft_email", "create_task", "get_tasks",
+  ]);
+
+  if (page.includes("lender")) {
+    ["get_deal_lenders", "search_lenders", "update_lender_status"].forEach(n => coreNames.add(n));
+  } else if (page.includes("deals") || page.includes("pipeline")) {
+    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items"].forEach(n => coreNames.add(n));
+  } else if (page.includes("task")) {
+    // Tasks page: core + task tools only
+  } else {
+    // Dashboard and other pages: core + some deal read tools
+    ["get_deal_lenders", "get_deal_health"].forEach(n => coreNames.add(n));
+  }
+
+  return tools.filter(t => coreNames.has(t.function.name));
+}
 
 // ── Tool executors ──────────────────────────────────────────────
 async function executeTool(supabase: any, name: string, args: any, userId: string): Promise<any> {
@@ -1063,6 +1011,56 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
   }
 }
 
+// ── Stream parser: forwards content deltas to client, collects tool calls ──
+async function consumeToolStream(
+  response: Response,
+  writer: WritableStreamDefaultWriter<Uint8Array>,
+  encoder: TextEncoder
+): Promise<{ content: string; toolCalls: any[] }> {
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let content = "";
+  const tcMap = new Map<number, { id: string; type: string; function: { name: string; arguments: string } }>();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf("\n")) !== -1) {
+      let line = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 1);
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (!line.startsWith("data: ")) continue;
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === "[DONE]") continue;
+      try {
+        const p = JSON.parse(jsonStr);
+        const delta = p.choices?.[0]?.delta;
+        if (!delta) continue;
+        // Forward content deltas to client immediately
+        if (delta.content) {
+          content += delta.content;
+          await writer.write(encoder.encode(line + "\n\n"));
+        }
+        // Collect tool call deltas
+        if (delta.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const i = tc.index ?? 0;
+            if (!tcMap.has(i)) tcMap.set(i, { id: "", type: "function", function: { name: "", arguments: "" } });
+            const e = tcMap.get(i)!;
+            if (tc.id) e.id = tc.id;
+            if (tc.function?.name) e.function.name = tc.function.name;
+            if (tc.function?.arguments) e.function.arguments += tc.function.arguments;
+          }
+        }
+      } catch { /* partial JSON, skip */ }
+    }
+  }
+  return { content, toolCalls: Array.from(tcMap.values()).filter(tc => tc.function.name) };
+}
+
 // ── Main handler ──────────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -1098,27 +1096,13 @@ serve(async (req) => {
 
     const { message, context, history } = body;
 
-    // Fetch user profile
+    // Lightweight profile fetch only — all other data is lazy-loaded via tools
     const { data: profile } = await supabaseUser.from("profiles").select("display_name, email").eq("user_id", userId).single();
     const userName = profile?.display_name || profile?.email || "User";
 
-    // Fetch context-specific data
-    let contextData = "";
     const page = context?.page || "unknown";
     const entityType = context?.entityType;
     const entityId = context?.entityId;
-
-    try {
-      if (entityType === "deal" && entityId) contextData = await fetchDealContext(supabaseUser, entityId);
-      else if (page.includes("deals") || page.includes("pipeline")) contextData = await fetchDealsListContext(supabaseUser, userId);
-      else if (page.includes("task")) contextData = await fetchTasksContext(supabaseUser, userId);
-      else if (page.includes("lender")) contextData = await fetchLendersContext(supabaseUser);
-      else contextData = await fetchDashboardContext(supabaseUser, userId);
-    } catch (e) {
-      console.error("Context fetch error:", e);
-      contextData = "Unable to fetch context data.";
-    }
-
     const activeTab = context?.activeTab || null;
     const banners = context?.banners || [];
 
@@ -1127,12 +1111,20 @@ serve(async (req) => {
 CURRENT CONTEXT:
 - Page: ${page}
 - Active Tab: ${activeTab || "None"}
-- Entity: ${context?.entityDetails ? JSON.stringify(context.entityDetails) : "None"}
+- Entity: ${entityType === "deal" && entityId ? `Deal (ID: ${entityId}) — use get_deal tool to fetch details` : "None"}
+- Entity Details: ${context?.entityDetails ? JSON.stringify(context.entityDetails) : "None"}
 - User: ${userName} (${context?.userRole || "member"})
 ${banners.length > 0 ? `\nACTIVE ALERTS/BANNERS ON PAGE:\n${banners.map((b: string) => `⚠️ ${b}`).join('\n')}` : ''}
 
-LIVE DATA:
-${contextData}
+DATA ACCESS — IMPORTANT:
+You do NOT have pre-loaded data. Always use your tools to fetch current information before answering:
+- Deal details → get_deal (with deal_id or search)
+- Pipeline overview → get_pipeline_summary
+- Tasks → get_tasks
+- Lenders on a deal → get_deal_lenders
+- Deal health → get_deal_health
+- Activity history → get_activity_log
+${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
 
@@ -1425,113 +1417,101 @@ READ TOOLS:
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const selectedTools = selectTools(page, entityType);
 
-    // ── Helper: convert already-fetched content into an SSE stream ──
-    function contentToSSE(content: string): ReadableStream {
-      const encoder = new TextEncoder();
-      return new ReadableStream({
-        start(controller) {
-          // Send content in a single SSE chunk matching OpenAI format
-          const chunk = {
-            choices: [{ delta: { content }, index: 0, finish_reason: null }],
-          };
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-          controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-          controller.close();
-        },
-      });
-    }
+    // ── Streaming tool loop ──
+    // Opens a response stream immediately so the client sees tokens as they arrive,
+    // even during multi-turn tool execution.
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
 
-    // ── Multi-turn tool calling loop ──
-    for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
-      const response = await fetch(AI_GATEWAY, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: apiMessages,
-          tools,
-          temperature: 0.3,
-          max_tokens: 2000,
-        }),
-      });
+    (async () => {
+      try {
+        for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
+          const response = await fetch(AI_GATEWAY, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "google/gemini-3-flash-preview",
+              messages: apiMessages,
+              tools: selectedTools,
+              temperature: 0.3,
+              max_tokens: 2000,
+              stream: true,
+            }),
+          });
 
-      if (!response.ok) {
-        if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        if (response.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        const errText = await response.text();
-        console.error("AI gateway error:", response.status, errText);
-        throw new Error("AI gateway error");
-      }
+          if (!response.ok) {
+            const errMsg = response.status === 429
+              ? "Rate limit exceeded. Please try again later."
+              : response.status === 402
+              ? "AI credits exhausted. Please add credits to continue."
+              : "I'm having trouble right now. Please try again.";
+            const chunk = { choices: [{ delta: { content: errMsg }, index: 0, finish_reason: "stop" }] };
+            await writer.write(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+            break;
+          }
 
-      const data = await response.json();
-      const choice = data.choices?.[0];
-      if (!choice) throw new Error("No choice in response");
+          // Parse stream: forward content deltas to client, collect tool calls
+          const { content, toolCalls } = await consumeToolStream(response, writer, encoder);
 
-      const msg = choice.message;
+          if (toolCalls.length > 0) {
+            // Add assistant message with tool calls to conversation
+            apiMessages.push({ role: "assistant", content: content || null, tool_calls: toolCalls });
 
-      if (msg.tool_calls && msg.tool_calls.length > 0) {
-        apiMessages.push(msg);
+            // Execute all tool calls
+            for (const tc of toolCalls) {
+              let args: any = {};
+              try {
+                args = typeof tc.function.arguments === "string"
+                  ? JSON.parse(tc.function.arguments)
+                  : tc.function.arguments;
+              } catch { /* empty args */ }
+              const result = await executeTool(supabaseUser, tc.function.name, args, userId);
+              apiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+            }
+            continue; // Next turn
+          }
 
-        for (const tc of msg.tool_calls) {
-          let args: any = {};
-          try {
-            args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-          } catch { /* empty args */ }
-
-          const result = await executeTool(supabaseUser, tc.function.name, args, userId);
-          apiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+          // No tool calls — content already streamed to client via consumeToolStream
+          break;
         }
-        continue;
+
+        // Graceful fallback: if we exhausted MAX_TOOL_TURNS with the last message
+        // being a tool result, force a final response
+        const lastMsg = apiMessages[apiMessages.length - 1];
+        if (lastMsg?.role === "tool") {
+          const fallbackResp = await fetch(AI_GATEWAY, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "google/gemini-3-flash-preview",
+              messages: [...apiMessages, { role: "user", content: "Please provide your final answer now based on the information gathered so far. Do not call any more tools." }],
+              temperature: 0.3,
+              max_tokens: 2000,
+              stream: true,
+            }),
+          });
+          if (fallbackResp.ok) {
+            await consumeToolStream(fallbackResp, writer, encoder);
+          }
+        }
+      } catch (e) {
+        console.error("Stream loop error:", e);
+        try {
+          const errChunk = { choices: [{ delta: { content: "An error occurred. Please try again." }, index: 0, finish_reason: "stop" }] };
+          await writer.write(encoder.encode(`data: ${JSON.stringify(errChunk)}\n\n`));
+        } catch { /* writer may be closed */ }
+      } finally {
+        try {
+          await writer.write(encoder.encode(`data: [DONE]\n\n`));
+          await writer.close();
+        } catch { /* already closed */ }
       }
+    })();
 
-      // No tool calls — return the content we already have as SSE
-      // This eliminates the previous double-call pattern (saves 3-5s)
-      const content = msg.content || "";
-      if (content) {
-        return new Response(contentToSSE(content), {
-          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-        });
-      }
-
-      // Edge case: no content AND no tool calls — make one final streaming call
-      const finalResponse = await fetch(AI_GATEWAY, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: apiMessages,
-          temperature: 0.3,
-          max_tokens: 2000,
-          stream: true,
-        }),
-      });
-
-      if (!finalResponse.ok) throw new Error("AI stream error");
-
-      return new Response(finalResponse.body, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-      });
-    }
-
-    // Graceful fallback: force a final response without tools
-    const fallbackResponse = await fetch(AI_GATEWAY, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [...apiMessages, { role: "user", content: "Please provide your final answer now based on the information gathered so far. Do not call any more tools." }],
-        temperature: 0.3,
-        max_tokens: 2000,
-        stream: true,
-      }),
-    });
-
-    if (!fallbackResponse.ok) {
-      return new Response(JSON.stringify({ error: "Unable to generate response. Please try a simpler question." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    return new Response(fallbackResponse.body, {
+    return new Response(readable, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {
