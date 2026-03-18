@@ -257,6 +257,7 @@ function formatRelativeDate(dateStr: string) {
 function MessageActions({ msg, conversationId }: { msg: { id: string; content: string; metadata?: Record<string, any> }; conversationId: string | null }) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(msg.metadata?.feedback ?? null);
+  const [showCorrection, setShowCorrection] = useState(false);
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -271,6 +272,14 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
   const handleFeedback = async (type: 'up' | 'down') => {
     const next = feedback === type ? null : type;
     setFeedback(next);
+    
+    // Show correction popover on thumbs-down
+    if (type === 'down' && next === 'down') {
+      setShowCorrection(true);
+    } else {
+      setShowCorrection(false);
+    }
+    
     if (!conversationId) return;
     try {
       const { data } = await supabase.from('copilot_conversations').select('messages').eq('id', conversationId).single();
@@ -299,9 +308,18 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
       <button onClick={() => handleFeedback('up')} aria-label="Helpful" title="Helpful" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: feedback === 'up' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))', display: 'flex', opacity: feedback === 'up' ? 1 : 0.7 }}>
         <ThumbsUp size={13} />
       </button>
-      <button onClick={() => handleFeedback('down')} aria-label="Not helpful" title="Not helpful" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: feedback === 'down' ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))', display: 'flex', opacity: feedback === 'down' ? 1 : 0.7 }}>
-        <ThumbsDown size={13} />
-      </button>
+      <div style={{ position: 'relative' }}>
+        <button onClick={() => handleFeedback('down')} aria-label="Not helpful" title="Not helpful" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: feedback === 'down' ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))', display: 'flex', opacity: feedback === 'down' ? 1 : 0.7 }}>
+          <ThumbsDown size={13} />
+        </button>
+        {showCorrection && (
+          <CopilotCorrectionPopover
+            originalResponse={msg.content}
+            onClose={() => setShowCorrection(false)}
+            onSaved={() => setFeedback('down')}
+          />
+        )}
+      </div>
     </div>
   );
 }
