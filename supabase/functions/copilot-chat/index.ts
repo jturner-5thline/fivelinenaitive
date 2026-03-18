@@ -1100,6 +1100,29 @@ serve(async (req) => {
     const { data: profile } = await supabaseUser.from("profiles").select("display_name, email").eq("user_id", userId).single();
     const userName = profile?.display_name || profile?.email || "User";
 
+    // Get user's company for org preferences
+    const { data: memberData } = await supabaseUser.from("company_members").select("company_id").eq("user_id", userId).limit(1).single();
+    const companyId = memberData?.company_id;
+
+    // Fetch active org preferences/rules
+    let orgPreferencesSection = "";
+    if (companyId) {
+      const { data: prefs } = await supabaseAdmin.from("copilot_user_preferences")
+        .select("rule_text, category")
+        .eq("organization_id", companyId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: true });
+      if (prefs && prefs.length > 0) {
+        const rules = prefs.map((p: any) => `- [${p.category}] ${p.rule_text}`);
+        if (rules.length <= 15) {
+          orgPreferencesSection = `\n\nORGANIZATION PREFERENCES (follow these rules strictly):\n${rules.join("\n")}`;
+        } else {
+          // Summarize: show first 12 + count remaining
+          orgPreferencesSection = `\n\nORGANIZATION PREFERENCES (follow these rules strictly — ${rules.length} total):\n${rules.slice(0, 12).join("\n")}\n- ...and ${rules.length - 12} more rules (apply them all consistently)`;
+        }
+      }
+    }
+
     const page = context?.page || "unknown";
     const entityType = context?.entityType;
     const entityId = context?.entityId;
@@ -1405,7 +1428,8 @@ WRITE ACTION TOOLS:
 - create_task: Create a task (needs confirmation)
 
 READ TOOLS:
-- get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health`;
+- get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health
+${orgPreferencesSection}`;
 
     const apiMessages: any[] = [
       { role: "system", content: systemPrompt },

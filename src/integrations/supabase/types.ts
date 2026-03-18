@@ -2483,6 +2483,56 @@ export type Database = {
           },
         ]
       }
+      copilot_user_preferences: {
+        Row: {
+          category: Database["public"]["Enums"]["copilot_preference_category"]
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          organization_id: string
+          original_ai_response: string | null
+          rule_text: string
+          source: Database["public"]["Enums"]["copilot_preference_source"]
+          updated_at: string
+          user_correction: string | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["copilot_preference_category"]
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          original_ai_response?: string | null
+          rule_text: string
+          source?: Database["public"]["Enums"]["copilot_preference_source"]
+          updated_at?: string
+          user_correction?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["copilot_preference_category"]
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          original_ai_response?: string | null
+          rule_text?: string
+          source?: Database["public"]["Enums"]["copilot_preference_source"]
+          updated_at?: string
+          user_correction?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copilot_user_preferences_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_companies: {
         Row: {
           additional_domains: string[] | null
@@ -14118,6 +14168,12 @@ export type Database = {
         | "bad_data"
         | "converted"
         | "closed"
+      copilot_preference_category:
+        | "formatting"
+        | "terminology"
+        | "behavior"
+        | "domain_knowledge"
+      copilot_preference_source: "manual" | "thumbs_down" | "chat_command"
       crm_company_lifecycle:
         | "target"
         | "engaged"
@@ -14391,6 +14447,13 @@ export const Constants = {
         "converted",
         "closed",
       ],
+      copilot_preference_category: [
+        "formatting",
+        "terminology",
+        "behavior",
+        "domain_knowledge",
+      ],
+      copilot_preference_source: ["manual", "thumbs_down", "chat_command"],
       crm_company_lifecycle: [
         "target",
         "engaged",

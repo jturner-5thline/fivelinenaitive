@@ -17,6 +17,7 @@ import { CopilotLenderCard } from '@/components/copilot/CopilotLenderCard';
 import { CopilotTaskCard } from '@/components/copilot/CopilotTaskCard';
 import { CopilotPipelineSummary } from '@/components/copilot/CopilotPipelineSummary';
 import { CopilotProactiveNudge } from '@/components/copilot/CopilotProactiveNudge';
+import { CopilotCorrectionPopover } from '@/components/copilot/CopilotCorrectionPopover';
 import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -257,6 +258,7 @@ function formatRelativeDate(dateStr: string) {
 function MessageActions({ msg, conversationId }: { msg: { id: string; content: string; metadata?: Record<string, any> }; conversationId: string | null }) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(msg.metadata?.feedback ?? null);
+  const [showCorrection, setShowCorrection] = useState(false);
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -271,6 +273,14 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
   const handleFeedback = async (type: 'up' | 'down') => {
     const next = feedback === type ? null : type;
     setFeedback(next);
+    
+    // Show correction popover on thumbs-down
+    if (type === 'down' && next === 'down') {
+      setShowCorrection(true);
+    } else {
+      setShowCorrection(false);
+    }
+    
     if (!conversationId) return;
     try {
       const { data } = await supabase.from('copilot_conversations').select('messages').eq('id', conversationId).single();
@@ -299,9 +309,18 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
       <button onClick={() => handleFeedback('up')} aria-label="Helpful" title="Helpful" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: feedback === 'up' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))', display: 'flex', opacity: feedback === 'up' ? 1 : 0.7 }}>
         <ThumbsUp size={13} />
       </button>
-      <button onClick={() => handleFeedback('down')} aria-label="Not helpful" title="Not helpful" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: feedback === 'down' ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))', display: 'flex', opacity: feedback === 'down' ? 1 : 0.7 }}>
-        <ThumbsDown size={13} />
-      </button>
+      <div style={{ position: 'relative' }}>
+        <button onClick={() => handleFeedback('down')} aria-label="Not helpful" title="Not helpful" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, color: feedback === 'down' ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))', display: 'flex', opacity: feedback === 'down' ? 1 : 0.7 }}>
+          <ThumbsDown size={13} />
+        </button>
+        {showCorrection && (
+          <CopilotCorrectionPopover
+            originalResponse={msg.content}
+            onClose={() => setShowCorrection(false)}
+            onSaved={() => setFeedback('down')}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -454,6 +473,53 @@ export function AICopilotPanel() {
 
   // Core function that processes a single message (no guard on isProcessing)
   const processMessage = useCallback(async (text: string) => {
+    // Handle /teach or /remember commands
+    const teachMatch = text.match(/^\/(teach|remember)\s+(.+)$/is);
+    if (teachMatch) {
+      isProcessingRef.current = true;
+      setProcessing(true);
+      try {
+        const ruleText = teachMatch[2].trim();
+        // Get user's company
+        const { data: member } = await supabase
+          .from('company_members')
+          .select('company_id')
+          .eq('user_id', user!.id)
+          .limit(1)
+          .single();
+        if (!member) throw new Error('No company found');
+
+        const { error } = await supabase.from('copilot_user_preferences').insert({
+          organization_id: member.company_id,
+          rule_text: ruleText,
+          category: 'behavior',
+          source: 'chat_command',
+          created_by: user!.id,
+        });
+        if (error) throw error;
+        addMessage({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: `✅ **Rule saved!** I'll remember this going forward:\n\n> ${ruleText}\n\nYou can manage all AI rules from the Admin → AI Training page.`,
+          timestamp: new Date(),
+        });
+        const allMsgs = useCopilotStore.getState().messages;
+        await saveConversation(allMsgs);
+      } catch (err: any) {
+        addMessage({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: `Sorry, I couldn't save that rule: ${err.message || 'Unknown error'}`,
+          timestamp: new Date(),
+        });
+      } finally {
+        isProcessingRef.current = false;
+        setProcessing(false);
+        drainQueue();
+      }
+      return;
+    }
+
     isProcessingRef.current = true;
     setProcessing(true);
 

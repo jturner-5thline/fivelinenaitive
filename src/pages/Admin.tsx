@@ -12,7 +12,7 @@ import {
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
-  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight
+  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -41,6 +41,7 @@ import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequests
 import { FeedbackWidgetToggle } from "@/components/admin/FeedbackWidgetToggle";
 import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
 import { CompanyFeaturesPanel } from "@/components/admin/CompanyFeaturesPanel";
+import { AIRulesPanel } from "@/components/admin/AIRulesPanel";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -77,6 +78,7 @@ const settingsSubPages = [
 const productEnhancementSubPages = [
   { id: "enhancement", label: "UX Analytics", icon: Lightbulb },
   { id: "feedback", label: "Feedback", icon: MessageSquare },
+  { id: "ai-training", label: "AI Training", icon: Brain },
 ];
 
 const supportSubPages = [
@@ -399,6 +401,21 @@ const Admin = () => {
         );
       case "enhancement":
         return <UXRecommendationsPanel />;
+      case "ai-training":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                AI Training & Rules
+              </CardTitle>
+              <CardDescription>
+                Manage organization-wide rules that customize how naitive AI responds. Rules can be added manually, from thumbs-down corrections, or via /teach commands in the chat.
+              </CardDescription>
+            </CardHeader>
+            <CardContent><AIRulesPanel /></CardContent>
+          </Card>
+        );
       case "client-viewer":
         return <ClientAccountViewer />;
       default:
