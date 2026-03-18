@@ -1428,7 +1428,8 @@ WRITE ACTION TOOLS:
 - create_task: Create a task (needs confirmation)
 
 READ TOOLS:
-- get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health`;
+- get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health
+${orgPreferencesSection}`;
 
     const apiMessages: any[] = [
       { role: "system", content: systemPrompt },
