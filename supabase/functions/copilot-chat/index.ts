@@ -1100,6 +1100,29 @@ serve(async (req) => {
     const { data: profile } = await supabaseUser.from("profiles").select("display_name, email").eq("user_id", userId).single();
     const userName = profile?.display_name || profile?.email || "User";
 
+    // Get user's company for org preferences
+    const { data: memberData } = await supabaseUser.from("company_members").select("company_id").eq("user_id", userId).limit(1).single();
+    const companyId = memberData?.company_id;
+
+    // Fetch active org preferences/rules
+    let orgPreferencesSection = "";
+    if (companyId) {
+      const { data: prefs } = await supabaseAdmin.from("copilot_user_preferences")
+        .select("rule_text, category")
+        .eq("organization_id", companyId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: true });
+      if (prefs && prefs.length > 0) {
+        const rules = prefs.map((p: any) => `- [${p.category}] ${p.rule_text}`);
+        if (rules.length <= 15) {
+          orgPreferencesSection = `\n\nORGANIZATION PREFERENCES (follow these rules strictly):\n${rules.join("\n")}`;
+        } else {
+          // Summarize: show first 12 + count remaining
+          orgPreferencesSection = `\n\nORGANIZATION PREFERENCES (follow these rules strictly — ${rules.length} total):\n${rules.slice(0, 12).join("\n")}\n- ...and ${rules.length - 12} more rules (apply them all consistently)`;
+        }
+      }
+    }
+
     const page = context?.page || "unknown";
     const entityType = context?.entityType;
     const entityId = context?.entityId;
