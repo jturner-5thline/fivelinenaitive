@@ -41,6 +41,7 @@ import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequests
 import { FeedbackWidgetToggle } from "@/components/admin/FeedbackWidgetToggle";
 import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
 import { CompanyFeaturesPanel } from "@/components/admin/CompanyFeaturesPanel";
+import { AIRulesPanel } from "@/components/admin/AIRulesPanel";
 
 // Sub-page configurations
 const usersSubPages = [
