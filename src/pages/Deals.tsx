@@ -199,6 +199,23 @@ export default function Dashboard() {
 
   // Filter deals by active pipeline (include unassigned deals in the default pipeline)
   const activePipelineIsDefault = activePipelineId && pipelines.find(p => p.id === activePipelineId)?.isDefault;
+  
+  // DEBUG: Log pipeline filtering state
+  useEffect(() => {
+    if (!isLoading && allDeals.length > 0) {
+      const pipelineIds = [...new Set(allDeals.map(d => d.pipelineId))];
+      console.log('[PIPELINE DEBUG] activePipelineId:', activePipelineId);
+      console.log('[PIPELINE DEBUG] activePipelineIsDefault:', activePipelineIsDefault);
+      console.log('[PIPELINE DEBUG] allDeals count:', allDeals.length);
+      console.log('[PIPELINE DEBUG] unique pipelineIds on deals:', pipelineIds);
+      console.log('[PIPELINE DEBUG] pipelines:', pipelines.map(p => ({ id: p.id, name: p.name, isDefault: p.isDefault })));
+      const matching = allDeals.filter(d => d.pipelineId === activePipelineId);
+      console.log('[PIPELINE DEBUG] deals matching activePipelineId:', matching.length);
+      console.log('[PIPELINE DEBUG] allFilteredDeals count:', allFilteredDeals.length);
+      console.log('[PIPELINE DEBUG] filters:', filters);
+    }
+  }, [isLoading, allDeals, activePipelineId, activePipelineIsDefault, pipelines, allFilteredDeals, filters]);
+  
   const dealsInSelectedPipeline = useMemo(() => {
     if (!activePipelineId) return allDeals;
     return allDeals.filter(deal => 
