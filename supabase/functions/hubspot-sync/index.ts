@@ -90,12 +90,12 @@ async function getDeals(limit: number = 100, after?: string): Promise<any> {
   return hubspotRequest(endpoint);
 }
 
-// Fetch ALL deals with pagination (up to 1000 to avoid timeout)
+// Fetch ALL deals with full cursor-based pagination (no artificial cap)
 async function getAllDeals(): Promise<any> {
   const allResults: any[] = [];
   let after: string | undefined = undefined;
   let pageCount = 0;
-  const maxPages = 10; // 10 pages * 100 = up to 1000 deals
+  const maxPages = 100; // Safety limit: 100 pages * 100 = up to 10,000 deals
 
   do {
     const response = await getDeals(100, after);
@@ -105,6 +105,10 @@ async function getAllDeals(): Promise<any> {
     after = response.paging?.next?.after;
     pageCount++;
   } while (after && pageCount < maxPages);
+
+  if (pageCount >= maxPages) {
+    console.warn(`Hit max pagination limit (${maxPages} pages). There may be more deals not fetched.`);
+  }
 
   console.log(`Fetched ${allResults.length} total deals across ${pageCount} pages`);
 
@@ -718,11 +722,16 @@ async function getAnalyticsSummary(): Promise<any> {
   const openTasks = tasks.results?.filter((t: any) => t.properties?.hs_task_status !== 'COMPLETED')?.length || 0;
   const openTickets = tickets.results?.filter((t: any) => t.properties?.hs_pipeline_stage !== 'closed')?.length || 0;
   
+  // Use HubSpot's reported total (from paging metadata) for accurate counts
+  const reportedDealTotal = deals.total || deals.results?.length || 0;
+  const reportedContactTotal = contacts.total || contacts.results?.length || 0;
+  const reportedCompanyTotal = companies.total || companies.results?.length || 0;
+
   return {
     summary: {
-      totalContacts: contacts.results?.length || 0,
-      totalDeals: deals.results?.length || 0,
-      totalCompanies: companies.results?.length || 0,
+      totalContacts: reportedContactTotal,
+      totalDeals: reportedDealTotal,
+      totalCompanies: reportedCompanyTotal,
       totalOwners: owners.results?.length || 0,
       totalDealsValue,
       openDeals,
