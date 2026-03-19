@@ -5,6 +5,7 @@ import { useBDRoiStore } from './useBDRoiStore';
 import { QUARTERS_16, PARTNER_EXPENSE_LABELS } from './bdRoiData';
 import { rollingSum, ytdSum, allTimeSum, safeDiv } from './bdRoiFormulas';
 import { BDFinancialTable, type TableSection } from './BDFinancialTable';
+import { getVisibleIndices } from './QuarterFilter';
 
 function buildComputedRows(data: typeof import('./bdRoiData').INITIAL_PARTNER_DATA, Q: number) {
   const totalExpenses = Array.from({ length: Q }, (_, i) =>
