@@ -32,7 +32,7 @@ interface Props {
   visibleIndices?: number[];
 }
 
-export function BDFinancialTable({ sections, quarters, compact }: Props) {
+export function BDFinancialTable({ sections, quarters, compact, visibleIndices }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowKey: string; col: number } | null>(null);
   const [editValue, setEditValue] = useState('');
