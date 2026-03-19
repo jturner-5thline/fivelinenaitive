@@ -5,6 +5,7 @@ import { useBDRoiStore } from './useBDRoiStore';
 import { QUARTERS_12 } from './bdRoiData';
 import { rollingSum, ytdSum, allTimeSum, safeDiv } from './bdRoiFormulas';
 import { BDFinancialTable, type TableSection } from './BDFinancialTable';
+import { getVisibleIndices } from './QuarterFilter';
 
 function buildBankComputed(data: typeof import('./bdRoiData').INITIAL_BANK_DATA) {
   const Q = 12;
