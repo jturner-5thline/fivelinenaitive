@@ -68,9 +68,9 @@ export function BDFinancialTable({ sections, quarters, compact }: Props) {
   const headerFontSize = compact ? 'text-[10px]' : 'text-[12px]';
 
   return (
-    <div className="border border-[#CED4DA] rounded-md overflow-hidden">
-      <div className="flex justify-end p-1 bg-[#F8F9FA] border-b border-[#DEE2E6]">
-        <button onClick={toggleAll} className="flex items-center gap-1 text-[10px] text-[#6C757D] hover:text-[#212529] px-2 py-0.5">
+    <div className="border border-border/50 rounded-md overflow-hidden">
+      <div className="flex justify-end p-1 bg-muted/30 border-b border-border/50">
+        <button onClick={toggleAll} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5">
           {allCollapsed ? <ChevronsUpDown className="h-3 w-3" /> : <ChevronsDownUp className="h-3 w-3" />}
           {allCollapsed ? 'Expand All' : 'Collapse All'}
         </button>
@@ -78,12 +78,12 @@ export function BDFinancialTable({ sections, quarters, compact }: Props) {
       <div className="overflow-auto max-h-[600px]">
         <table className="w-full border-collapse" style={{ fontFamily: 'Inter, system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
           <thead className="sticky top-0 z-20">
-            <tr className="bg-[#F1F3F5]">
-              <th className="sticky left-0 z-30 bg-[#F1F3F5] text-left px-3 py-1.5 border-b border-r border-[#CED4DA] min-w-[180px] text-[11px] font-semibold text-[#212529]">
+            <tr className="bg-muted/50">
+              <th className="sticky left-0 z-30 bg-muted/50 text-left px-3 py-1.5 border-b border-r border-border/50 min-w-[180px] text-[11px] font-semibold text-foreground">
                 &nbsp;
               </th>
               {quarters.map(q => (
-                <th key={q} className={`px-2 py-1.5 text-right border-b border-[#CED4DA] ${headerFontSize} font-semibold text-[#212529] min-w-[85px] whitespace-nowrap`}>
+                <th key={q} className={`px-2 py-1.5 text-right border-b border-border/50 ${headerFontSize} font-semibold text-foreground min-w-[85px] whitespace-nowrap`}>
                   {q}
                 </th>
               ))}
@@ -129,13 +129,13 @@ function SectionBlock({
 }) {
   return (
     <>
-      <tr className="cursor-pointer select-none" onClick={onToggle} style={{ backgroundColor: '#CAEDFB' }}>
-        <td className="sticky left-0 z-10 px-3 py-1.5 border-b border-r border-[#CED4DA] font-bold text-[12px] text-[#212529] flex items-center gap-1" style={{ backgroundColor: '#CAEDFB' }}>
+      <tr className="cursor-pointer select-none bg-primary/10" onClick={onToggle}>
+        <td className="sticky left-0 z-10 px-3 py-1.5 border-b border-r border-border/50 font-bold text-[12px] text-foreground flex items-center gap-1 bg-primary/10">
           {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           {section.label}
         </td>
         {quarters.map(q => (
-          <td key={q} className="border-b border-[#CED4DA]" />
+          <td key={q} className="border-b border-border/50" />
         ))}
       </tr>
       {!collapsed && section.rows.map(row => (
@@ -168,23 +168,23 @@ function RowBlock({
   onCancelEdit: () => void;
   cellFontSize: string;
 }) {
-  const totalClass = row.isTotal ? 'font-bold border-t-2 border-b-2 border-[#212529]' : '';
-  const subtotalClass = row.isSubtotal ? 'font-semibold border-t border-[#CED4DA]' : '';
-  const deltaClass = row.isDelta ? 'text-[10px] text-[#ADB5BD]' : '';
-  const bgClass = row.isTotal ? 'bg-[#F1FAFD]' : '';
+  const totalClass = row.isTotal ? 'font-bold border-t-2 border-b-2 border-foreground/20' : '';
+  const subtotalClass = row.isSubtotal ? 'font-semibold border-t border-border/50' : '';
+  const deltaClass = row.isDelta ? 'text-[10px] text-muted-foreground/60' : '';
+  const bgClass = row.isTotal ? 'bg-muted/20' : '';
 
   return (
-    <tr className={`${totalClass} ${subtotalClass} ${deltaClass} ${bgClass} hover:bg-[#F8F9FA] group`}>
-      <td className={`sticky left-0 z-10 bg-inherit px-3 py-1 border-b border-r border-[#CED4DA] ${cellFontSize} text-[#212529] whitespace-nowrap`}
-          style={{ paddingLeft: row.indented ? '28px' : '12px', backgroundColor: row.isTotal ? '#F1FAFD' : 'white' }}>
+    <tr className={`${totalClass} ${subtotalClass} ${deltaClass} ${bgClass} hover:bg-muted/30 group`}>
+      <td className={`sticky left-0 z-10 px-3 py-1 border-b border-r border-border/50 ${cellFontSize} text-foreground whitespace-nowrap`}
+          style={{ paddingLeft: row.indented ? '28px' : '12px', backgroundColor: row.isTotal ? 'hsl(var(--muted) / 0.3)' : 'hsl(var(--card))' }}>
         <div className="flex items-center gap-1">
-          {row.isDatarails && <span className="w-2 h-2 rounded-full bg-[#FFFF00] border border-[#CED4DA] flex-shrink-0" />}
+          {row.isDatarails && <span className="w-2 h-2 rounded-full bg-yellow-400 border border-border/50 flex-shrink-0" />}
           <span>{row.label}</span>
           {row.formulaDesc && (
             <Popover>
               <PopoverTrigger asChild>
                 <button className="opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-                  <Info className="h-3 w-3 text-[#ADB5BD]" />
+                  <Info className="h-3 w-3 text-muted-foreground" />
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-3" side="right">
@@ -192,12 +192,12 @@ function RowBlock({
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-semibold">{row.label}</span>
                     {row.editable
-                      ? <span className="text-[9px] bg-[#0070C0] text-white px-1.5 py-0.5 rounded font-medium">INPUT</span>
-                      : <span className="text-[9px] bg-[#198754] text-white px-1.5 py-0.5 rounded font-medium">FORMULA</span>
+                      ? <span className="text-[9px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-medium">INPUT</span>
+                      : <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-medium">FORMULA</span>
                     }
-                    {row.isDatarails && <span className="text-[9px] bg-[#FFC107] text-[#212529] px-1.5 py-0.5 rounded font-medium">DATARAILS</span>}
+                    {row.isDatarails && <span className="text-[9px] bg-yellow-500 text-black px-1.5 py-0.5 rounded font-medium">DATARAILS</span>}
                   </div>
-                  {row.formulaDesc && <p className="text-[10px] text-[#6C757D]">{row.formulaDesc}</p>}
+                  {row.formulaDesc && <p className="text-[10px] text-muted-foreground">{row.formulaDesc}</p>}
                 </div>
               </PopoverContent>
             </Popover>
@@ -212,9 +212,9 @@ function RowBlock({
         return (
           <td
             key={i}
-            className={`px-2 py-1 text-right border-b border-[#CED4DA] ${cellFontSize} whitespace-nowrap cursor-pointer`}
+            className={`px-2 py-1 text-right border-b border-border/50 ${cellFontSize} whitespace-nowrap cursor-pointer`}
             style={{
-              color: row.editable ? '#0070C0' : isGreenDelta ? '#198754' : isRedDelta ? '#DC3545' : '#212529',
+              color: row.editable ? '#60a5fa' : isGreenDelta ? '#34d399' : isRedDelta ? '#f87171' : undefined,
             }}
             onClick={() => row.editable && row.onEdit && onStartEdit(row.key, i, val)}
           >
@@ -229,11 +229,13 @@ function RowBlock({
                   if (e.key === 'Enter') onCommitEdit(row);
                   if (e.key === 'Escape') onCancelEdit();
                 }}
-                className="w-full text-right border border-[#0070C0] rounded px-1 py-0.5 text-[11px] outline-none bg-[#E8F2FC]"
+                className="w-full text-right border border-primary rounded px-1 py-0.5 text-[11px] outline-none bg-primary/10 text-foreground"
                 autoFocus
               />
             ) : (
-              formatBDValue(val, row.format)
+              <span className={!row.editable && !isGreenDelta && !isRedDelta ? 'text-foreground' : ''}>
+                {formatBDValue(val, row.format)}
+              </span>
             )}
           </td>
         );

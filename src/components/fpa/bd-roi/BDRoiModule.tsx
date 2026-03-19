@@ -51,7 +51,7 @@ export function BDRoiModule() {
           </Button>
         </div>
         <button
-          className="flex items-center gap-1.5 text-[11px] text-[#0070C0] hover:underline"
+          className="flex items-center gap-1.5 text-[11px] text-primary hover:underline"
           onClick={() => { setTempUser(userName); setUserEditOpen(true); }}
         >
           <User className="h-3.5 w-3.5" /> {userName}
@@ -94,18 +94,18 @@ export function BDRoiModule() {
             </SheetTitle>
           </SheetHeader>
           <div className="mt-4 space-y-2">
-            {auditLog.length === 0 && <p className="text-[12px] text-[#6C757D]">No changes recorded yet.</p>}
+            {auditLog.length === 0 && <p className="text-[12px] text-muted-foreground">No changes recorded yet.</p>}
             {auditLog.map(entry => (
-              <div key={entry.id} className="border border-[#DEE2E6] rounded p-2 text-[11px]">
+              <div key={entry.id} className="border border-border/50 rounded p-2 text-[11px]">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-semibold text-[#0070C0]">{entry.user}</span>
-                  <span className="text-[#ADB5BD]">{new Date(entry.timestamp).toLocaleString()}</span>
+                  <span className="font-semibold text-primary">{entry.user}</span>
+                  <span className="text-muted-foreground/60">{new Date(entry.timestamp).toLocaleString()}</span>
                 </div>
-                <div className="text-[#212529]">
+                <div className="text-foreground">
                   <span className="font-medium">{entry.field}</span> ({entry.quarter}, {entry.tab})
                 </div>
-                <div className="text-[#6C757D]">
-                  {entry.oldValue} → <span className="text-[#212529] font-medium">{entry.newValue}</span>
+                <div className="text-muted-foreground">
+                  {entry.oldValue} → <span className="text-foreground font-medium">{entry.newValue}</span>
                 </div>
               </div>
             ))}
@@ -120,16 +120,16 @@ export function BDRoiModule() {
             <DialogTitle>Comments / Agenda</DialogTitle>
           </DialogHeader>
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {comments.length === 0 && <p className="text-[12px] text-[#6C757D]">No comments yet.</p>}
+            {comments.length === 0 && <p className="text-[12px] text-muted-foreground">No comments yet.</p>}
             {comments.map(c => (
-              <div key={c.id} className="flex items-start gap-2 p-2 border border-[#DEE2E6] rounded">
+              <div key={c.id} className="flex items-start gap-2 p-2 border border-border/50 rounded">
                 <button onClick={() => toggleComment(c.id)} className="mt-0.5">
-                  {c.completed ? <CheckSquare className="h-4 w-4 text-[#198754]" /> : <Square className="h-4 w-4 text-[#CED4DA]" />}
+                  {c.completed ? <CheckSquare className="h-4 w-4 text-emerald-400" /> : <Square className="h-4 w-4 text-muted-foreground/40" />}
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-[12px] ${c.completed ? 'line-through text-[#ADB5BD]' : 'text-[#212529]'}`}>{c.text}</p>
-                  <div className="text-[10px] text-[#ADB5BD] mt-0.5">
-                    <span className="text-[#0070C0]">{c.author}</span> · {new Date(c.timestamp).toLocaleString()}
+                  <p className={`text-[12px] ${c.completed ? 'line-through text-muted-foreground/60' : 'text-foreground'}`}>{c.text}</p>
+                  <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                    <span className="text-primary">{c.author}</span> · {new Date(c.timestamp).toLocaleString()}
                   </div>
                 </div>
               </div>
