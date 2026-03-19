@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { exportWriteUpToPdf } from './writeUpPdfExport';
 import {
   Eye, Target, Shield, Building2, Users, TrendingUp, PieChart as PieChartIcon,
   ExternalLink, Linkedin, Globe, Download, Loader2,
