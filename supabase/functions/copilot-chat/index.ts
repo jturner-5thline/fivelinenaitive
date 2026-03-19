@@ -1216,7 +1216,7 @@ serve(async (req) => {
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { message, context, history } = body;
+    const { message, context, history, conversationMutations } = body;
 
     // Lightweight profile fetch only — all other data is lazy-loaded via tools
     const { data: profile } = await supabaseUser.from("profiles").select("display_name, email").eq("user_id", userId).single();
