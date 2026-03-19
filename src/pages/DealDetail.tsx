@@ -4312,6 +4312,7 @@ export default function DealDetail() {
 
                 <TabsContent value="deal-writeup" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-writeup-${tabDirection}`}>
                   <DealWriteUp
+                    key={id}
                     dealId={id!}
                     data={dealWriteUpData}
                     onChange={setDealWriteUpData}
