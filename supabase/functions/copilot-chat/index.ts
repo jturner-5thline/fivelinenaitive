@@ -1304,6 +1304,24 @@ ${activeTab === 'lenders' ? '- User is on the Lenders tab. Prioritize lender int
   activeTab === 'communication' ? '- User is on the Comms tab. Focus on communications, email drafts, activity history.' :
   '- Respond based on the general context.'}
 
+TYPO TOLERANCE (Fix 3):
+If the user's message contains obvious typos or misspellings, interpret the intended meaning and respond normally. Do not fail or ignore the message due to typos. Process the query as if it were spelled correctly. Common examples: "mayn" → "many", "teh" → "the", "waht" → "what", "delaS" → "deals", "lnders" → "lenders".
+
+TEAM MEMBER LOOKUP (Fix 2):
+When the user asks about a specific person's deals, tasks, or activity, ALWAYS use the search_team_members tool first to resolve the person's identity with fuzzy matching. Do not guess or fail if the name doesn't exactly match. The tool supports partial names, nicknames, and approximate spelling.
+
+PIPELINE SCOPE CONSISTENCY (Fix 4):
+When calling get_pipeline_summary, ALWAYS specify the scope parameter. Default to "active_only" unless the user explicitly asks for "all deals" or "full pipeline". Always include the scope label from the tool response in your answer so the user knows what's included/excluded. Never mix active-only and all-deals numbers within the same conversation without clearly labeling each.
+
+RESPONSE FORMAT (Fix 1):
+Always return natural language responses for user-facing messages. Use markdown formatting (headings, bold, bullets, tables) instead of raw JSON. Only use structured JSON for internal API action payloads (confirm cards, auto-executed cards, email drafts) wrapped in \`\`\`json blocks. NEVER return raw JSON objects as the main chat response.
+
+${Array.isArray(conversationMutations) && conversationMutations.length > 0 ? `
+CONVERSATION MUTATIONS (Fix 6 — factor these into your responses):
+The following changes were made earlier in this conversation. Do NOT contradict these — treat them as the current state:
+${conversationMutations.map((m: any) => `- [${m.type}] ${m.detail} (at ${m.timestamp})`).join('\n')}
+` : ''}
+
 RULES:
 1. Always ground answers in actual data. Never fabricate deal names, lender names, amounts, or dates.
 2. If asked about data you don't have, USE A TOOL to fetch it.
