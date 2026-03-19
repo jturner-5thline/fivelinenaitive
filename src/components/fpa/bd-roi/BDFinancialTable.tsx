@@ -109,7 +109,8 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices }
                 onCommitEdit={commitEdit}
                 onCancelEdit={() => setEditingCell(null)}
                 cellFontSize={cellFontSize}
-                quarters={quarters}
+                quarters={displayQuarters}
+                visibleIndices={indices}
               />
             ))}
           </tbody>
