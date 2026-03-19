@@ -61,6 +61,9 @@ interface ChecklistTreePaneProps {
   allItems?: UnifiedChecklistItem[];
   deleteAttachment?: DataRoomContextValue['deleteAttachment'];
   onToggleItemStatus?: (itemId: string, isComplete: boolean) => Promise<boolean>;
+  // Drag-drop remapping
+  mapFileToItem?: DataRoomContextValue['mapFileToItem'];
+  unmapFile?: DataRoomContextValue['unmapFile'];
 }
 
 export function ChecklistTreePane({
