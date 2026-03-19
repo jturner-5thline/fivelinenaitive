@@ -121,6 +121,7 @@ interface DbDeal {
   exclusivity: string | null;
   deal_type: string | null;
   referred_by: string | null;
+  pipeline_id: string | null;
   manager: string | null;
   deal_owner: string | null;
   analyst: string | null;
