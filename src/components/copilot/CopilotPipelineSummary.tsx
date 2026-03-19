@@ -41,9 +41,15 @@ export function CopilotPipelineSummary({ data }: Props) {
         marginTop: 8,
       }}
     >
-      <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)', marginBottom: 12 }}>
+      <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>
         Pipeline Summary
       </h3>
+      {data.scope && (
+        <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginBottom: 12, fontStyle: 'italic' }}>
+          {data.scope}
+        </div>
+      )}
+      {!data.scope && <div style={{ marginBottom: 12 }} />}
 
       {/* Stage Bar Chart */}
       <div style={{ marginBottom: 16 }}>

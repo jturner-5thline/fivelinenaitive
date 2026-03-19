@@ -402,7 +402,7 @@ function selectTools(page: string, entityType?: string) {
 
   const coreNames = new Set([
     "get_deal", "search_deals", "get_pipeline_summary", "get_activity_log",
-    "draft_email", "create_task", "get_tasks",
+    "draft_email", "create_task", "get_tasks", "search_team_members",
   ]);
 
   if (page.includes("lender")) {
