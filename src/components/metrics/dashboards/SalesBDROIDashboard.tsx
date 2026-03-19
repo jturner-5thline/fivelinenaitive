@@ -21,7 +21,7 @@ function KPICard({ title, value, change, changeDirection }: {
     <Card>
       <CardContent className="p-4 text-center">
         <p className="text-xs text-muted-foreground mb-1">{title}</p>
-        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-2xl font-bold text-foreground">{value}</p>
         {change && (
           <div className="flex items-center justify-center gap-1 mt-1">
             <span className={changeDirection === 'up' ? 'text-success' : 'text-destructive'}>
@@ -73,7 +73,7 @@ export function SalesBDROIDashboard() {
   const { data: metrics, isLoading } = useMetricsData();
 
   if (isLoading) {
-    return <div className="animate-pulse">Loading...</div>;
+    return <div className="animate-pulse text-muted-foreground">Loading...</div>;
   }
 
   const salesPnLData = [
@@ -193,7 +193,7 @@ export function SalesBDROIDashboard() {
                 ))}
               </TableBody>
             </Table>
-            <div className="mt-4 border-t pt-2">
+            <div className="mt-4 border-t border-border/50 pt-2">
               <p className="text-xs text-muted-foreground font-semibold">Expenses</p>
               <Table>
                 <TableBody>
@@ -216,14 +216,14 @@ export function SalesBDROIDashboard() {
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-xs text-muted-foreground">Deals on Board</p>
-              <p className="text-4xl font-bold">7</p>
+              <p className="text-4xl font-bold text-foreground">7</p>
               <p className="text-success text-sm">vs previous Mo <span className="font-semibold">1 ↑</span></p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-xs text-muted-foreground">Dollars on Board</p>
-              <p className="text-4xl font-bold">$39.5MM</p>
+              <p className="text-4xl font-bold text-foreground">$39.5MM</p>
               <p className="text-success text-sm">vs previous Mo <span className="font-semibold">$5.5MM ↑</span></p>
             </CardContent>
           </Card>
@@ -257,12 +257,12 @@ export function SalesBDROIDashboard() {
                 ))}
               </TableBody>
             </Table>
-            <div className="mt-4 pt-2 border-t flex justify-between text-xs">
+            <div className="mt-4 pt-2 border-t border-border/50 flex justify-between text-xs">
               <div>
-                <span className="text-muted-foreground">Top Performer:</span> <span className="font-semibold">Niki</span>
+                <span className="text-muted-foreground">Top Performer:</span> <span className="font-semibold text-foreground">Niki</span>
               </div>
               <div>
-                <span className="text-muted-foreground">Proj. Top Performer:</span> <span className="font-semibold">Teresa</span>
+                <span className="text-muted-foreground">Proj. Top Performer:</span> <span className="font-semibold text-foreground">Teresa</span>
               </div>
             </div>
           </CardContent>

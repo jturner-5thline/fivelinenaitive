@@ -21,22 +21,22 @@ export function BDDashboardTab() {
     {
       label: 'TTM Revenue', value: formatBDCurrency(c.ttmRevenue[last]),
       delta: formatBDDelta(c.ttmRevenue[last], c.ttmRevenue[last - 1]),
-      icon: DollarSign, color: '#0070C0',
+      icon: DollarSign, color: '#60a5fa',
     },
     {
       label: 'TTM Margin', value: formatBDCurrency(c.ttmMargin[last]),
       delta: formatBDDelta(c.ttmMargin[last], c.ttmMargin[last - 1]),
-      icon: TrendingUp, color: '#198754',
+      icon: TrendingUp, color: '#34d399',
     },
     {
       label: 'TTM ROI', value: formatBDMultiple(c.ttmROI[last]),
       delta: formatBDDelta(c.ttmROI[last], c.ttmROI[last - 1]),
-      icon: BarChart3, color: '#0070C0',
+      icon: BarChart3, color: '#60a5fa',
     },
     {
       label: 'Net Profit', value: formatBDCurrency(c.netProfit[last]),
       delta: formatBDDelta(c.netProfit[last], c.netProfit[last - 1]),
-      icon: c.netProfit[last] >= 0 ? TrendingUp : TrendingDown, color: c.netProfit[last] >= 0 ? '#198754' : '#DC3545',
+      icon: c.netProfit[last] >= 0 ? TrendingUp : TrendingDown, color: c.netProfit[last] >= 0 ? '#34d399' : '#f87171',
     },
   ];
 
@@ -153,25 +153,27 @@ export function BDDashboardTab() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-white border border-[#CED4DA] rounded-lg p-4">
-        <h2 className="text-lg font-bold text-[#212529]">{COVER_META.title}</h2>
-        <div className="flex flex-wrap gap-4 mt-1 text-[11px] text-[#6C757D]">
-          <span>Last Update: <strong>{COVER_META.lastUpdate}</strong></span>
-          <span>Actuals Through: <strong>{COVER_META.actualsThrough}</strong></span>
-          <span>ROI Target: <strong className="text-[#0070C0]">{COVER_META.roiTarget}x</strong></span>
+      <div className="bg-card border border-border/50 rounded-lg p-4">
+        <h2 className="text-lg font-bold text-foreground">{COVER_META.title}</h2>
+        <div className="flex flex-wrap gap-4 mt-1 text-[11px] text-muted-foreground">
+          <span>Last Update: <strong className="text-foreground">{COVER_META.lastUpdate}</strong></span>
+          <span>Actuals Through: <strong className="text-foreground">{COVER_META.actualsThrough}</strong></span>
+          <span>ROI Target: <strong className="text-primary">{COVER_META.roiTarget}x</strong></span>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpis.map(kpi => (
-          <div key={kpi.label} className="bg-white border border-[#CED4DA] rounded-lg p-4">
+          <div key={kpi.label} className="bg-card border border-border/50 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-1">
               <kpi.icon className="h-4 w-4" style={{ color: kpi.color }} />
-              <span className="text-[11px] text-[#6C757D] font-medium">{kpi.label}</span>
+              <span className="text-[11px] text-muted-foreground font-medium">{kpi.label}</span>
             </div>
-            <div className="text-xl font-bold text-[#212529]">{kpi.value}</div>
-            <div className="text-[10px] mt-0.5" style={{ color: kpi.delta.color || '#6C757D' }}>{kpi.delta.text}</div>
+            <div className="text-xl font-bold text-foreground">{kpi.value}</div>
+            <div className="text-[10px] mt-0.5" style={{ color: kpi.delta.color || undefined }}>
+              <span className={!kpi.delta.color ? 'text-muted-foreground' : ''}>{kpi.delta.text}</span>
+            </div>
           </div>
         ))}
       </div>

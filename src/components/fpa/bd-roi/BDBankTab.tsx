@@ -118,8 +118,8 @@ export function BDBankTab() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white border border-[#CED4DA] rounded-lg p-4">
-        <h3 className="text-[13px] font-semibold text-[#212529] mb-3">Bank Channel Assumptions</h3>
+      <div className="bg-card border border-border/50 rounded-lg p-4">
+        <h3 className="text-[13px] font-semibold text-foreground mb-3">Bank Channel Assumptions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { key: 'newContactsQ', label: 'New Contacts/Q' },
@@ -132,7 +132,7 @@ export function BDBankTab() {
             { key: 'revPerClosed', label: 'Revenue/Closed ($)' },
           ].map(({ key, label, pct }) => (
             <div key={key}>
-              <label className="text-[10px] text-[#6C757D] block mb-1">{label}</label>
+              <label className="text-[10px] text-muted-foreground block mb-1">{label}</label>
               <Input
                 type="number"
                 className="h-7 text-[11px]"
@@ -154,15 +154,15 @@ export function BDBankTab() {
           <TabsTrigger value="variance" className="text-xs">Variance</TabsTrigger>
         </TabsList>
         <TabsContent value="projections">
-          <h3 className="text-[13px] font-semibold text-[#212529] mb-2">Projections — Bank Channel</h3>
+          <h3 className="text-[13px] font-semibold text-foreground mb-2">Projections — Bank Channel</h3>
           <BDFinancialTable sections={projSections} quarters={QUARTERS_12} />
         </TabsContent>
         <TabsContent value="actuals">
-          <h3 className="text-[13px] font-semibold text-[#212529] mb-2">Actuals — Bank Channel</h3>
+          <h3 className="text-[13px] font-semibold text-foreground mb-2">Actuals — Bank Channel</h3>
           <BDFinancialTable sections={actSections} quarters={QUARTERS_12} />
         </TabsContent>
         <TabsContent value="variance">
-          <h3 className="text-[13px] font-semibold text-[#212529] mb-2">Variance — Bank Channel</h3>
+          <h3 className="text-[13px] font-semibold text-foreground mb-2">Variance — Bank Channel</h3>
           <BDFinancialTable sections={varianceSections} quarters={QUARTERS_12} />
         </TabsContent>
       </Tabs>

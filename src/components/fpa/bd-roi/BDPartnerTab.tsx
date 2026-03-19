@@ -43,7 +43,6 @@ function buildSections(
   onEditExpense?: (expIdx: number, qIdx: number, val: number) => void,
 ): TableSection[] {
   const editFn = (key: string) => editable && onEditField ? (idx: number, val: number) => onEditField(key, idx, val) : undefined;
-  const Q = data.partners.length;
 
   const pipelineSection: TableSection = {
     key: 'pipeline', label: 'Pipeline',
@@ -132,8 +131,8 @@ export function BDPartnerTab() {
   return (
     <div className="space-y-4">
       {/* Assumptions */}
-      <div className="bg-white border border-[#CED4DA] rounded-lg p-4">
-        <h3 className="text-[13px] font-semibold text-[#212529] mb-3">Partner Program Assumptions</h3>
+      <div className="bg-card border border-border/50 rounded-lg p-4">
+        <h3 className="text-[13px] font-semibold text-foreground mb-3">Partner Program Assumptions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { key: 'newPartnersQ', label: 'New Partners/Q' },
@@ -146,7 +145,7 @@ export function BDPartnerTab() {
             { key: 'revPerClosed', label: 'Revenue/Closed ($)' },
           ].map(({ key, label, pct }) => (
             <div key={key}>
-              <label className="text-[10px] text-[#6C757D] block mb-1">{label}</label>
+              <label className="text-[10px] text-muted-foreground block mb-1">{label}</label>
               <Input
                 type="number"
                 className="h-7 text-[11px]"
@@ -168,15 +167,15 @@ export function BDPartnerTab() {
           <TabsTrigger value="variance" className="text-xs">Variance</TabsTrigger>
         </TabsList>
         <TabsContent value="projections">
-          <h3 className="text-[13px] font-semibold text-[#212529] mb-2">Projections — Partner Program</h3>
+          <h3 className="text-[13px] font-semibold text-foreground mb-2">Projections — Partner Program</h3>
           <BDFinancialTable sections={projSections} quarters={QUARTERS_16} />
         </TabsContent>
         <TabsContent value="actuals">
-          <h3 className="text-[13px] font-semibold text-[#212529] mb-2">Actuals — Partner Program</h3>
+          <h3 className="text-[13px] font-semibold text-foreground mb-2">Actuals — Partner Program</h3>
           <BDFinancialTable sections={actSections} quarters={QUARTERS_16} />
         </TabsContent>
         <TabsContent value="variance">
-          <h3 className="text-[13px] font-semibold text-[#212529] mb-2">Variance — Partner Program</h3>
+          <h3 className="text-[13px] font-semibold text-foreground mb-2">Variance — Partner Program</h3>
           <BDFinancialTable sections={varianceSections} quarters={QUARTERS_16} />
         </TabsContent>
       </Tabs>
