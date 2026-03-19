@@ -792,10 +792,17 @@ export default function DealDetail() {
   // Deal writeup persistence hook
   const { writeupData: savedWriteupData, isLoading: isLoadingWriteup, isSaving: isSavingWriteup, saveWriteup } = useDealWriteup(id);
   
-  // Auto-save for deal writeup
+  // Auto-save for deal writeup — guard against stale dealId saves during navigation
+  const currentDealIdRef = useRef(id);
+  currentDealIdRef.current = id;
+  const guardedSaveWriteup = useCallback(async (data: DealWriteUpData): Promise<boolean> => {
+    // Prevent saving if the deal has changed since the save was scheduled
+    if (currentDealIdRef.current !== id) return false;
+    return saveWriteup(data);
+  }, [id, saveWriteup]);
   const { status: autoSaveStatus, saveNow: saveWriteupNow } = useAutoSave({
     data: dealWriteUpData,
-    onSave: saveWriteup,
+    onSave: guardedSaveWriteup,
     delay: 1500,
     enabled: dealInfoTab === 'deal-writeup' && !isLoadingWriteup,
   });
@@ -4312,6 +4319,7 @@ export default function DealDetail() {
 
                 <TabsContent value="deal-writeup" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-writeup-${tabDirection}`}>
                   <DealWriteUp
+                    key={id}
                     dealId={id!}
                     data={dealWriteUpData}
                     onChange={setDealWriteUpData}
