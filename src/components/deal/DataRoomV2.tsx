@@ -519,6 +519,8 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
             allItems={allItems}
             deleteAttachment={deleteAttachment}
             onToggleItemStatus={toggleItemStatus}
+            mapFileToItem={mapFileToItem}
+            unmapFile={unmapFile}
           />
         </div>
       </div>

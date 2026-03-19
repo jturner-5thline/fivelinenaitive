@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye, Trash2, ArrowLeftRight } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye, Trash2, ArrowLeftRight, GripVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -61,6 +61,9 @@ interface ChecklistTreePaneProps {
   allItems?: UnifiedChecklistItem[];
   deleteAttachment?: DataRoomContextValue['deleteAttachment'];
   onToggleItemStatus?: (itemId: string, isComplete: boolean) => Promise<boolean>;
+  // Drag-drop remapping
+  mapFileToItem?: DataRoomContextValue['mapFileToItem'];
+  unmapFile?: DataRoomContextValue['unmapFile'];
 }
 
 export function ChecklistTreePane({
@@ -68,10 +71,72 @@ export function ChecklistTreePane({
   searchQuery, setSearchQuery, statusFilter, setStatusFilter,
   getFilesForItem, getCategoryByName, unmappedFiles, handleUploadFiles,
   attachments = [], getItemsForFile, setPreviewFile, handleDownloadFile, onOpenMappingDialog, allItems,
-  deleteAttachment, onToggleItemStatus,
+  deleteAttachment, onToggleItemStatus, mapFileToItem, unmapFile,
 }: ChecklistTreePaneProps) {
   const [selectedUnmapped, setSelectedUnmapped] = useState<Set<string>>(new Set());
   const [fileToDelete, setFileToDelete] = useState<DealAttachment | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
+  const dragCounterRef = useRef<Record<string, number>>({});
+
+  // Drag handlers for file rows (mapped & unmapped)
+  const handleFileDragStart = useCallback((e: React.DragEvent, file: DealAttachment, sourceItemId?: string) => {
+    e.stopPropagation();
+    e.dataTransfer.setData('application/x-file-id', file.id);
+    if (sourceItemId) e.dataTransfer.setData('application/x-source-item', sourceItemId);
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  // Drop handler on checklist items
+  const handleItemDrop = useCallback(async (e: React.DragEvent, targetItemId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverItemId(null);
+    dragCounterRef.current = {};
+
+    const fileId = e.dataTransfer.getData('application/x-file-id');
+    if (!fileId || !mapFileToItem) return;
+
+    // Check for OS file drops (handled elsewhere)
+    if (e.dataTransfer.files.length > 0 && !fileId) {
+      handleUploadFiles(Array.from(e.dataTransfer.files), targetItemId);
+      return;
+    }
+
+    const sourceItemId = e.dataTransfer.getData('application/x-source-item');
+
+    // No-op if dropping on same item
+    if (sourceItemId === targetItemId) return;
+
+    // Unmap from old item if it was mapped
+    if (sourceItemId && unmapFile) {
+      await unmapFile(fileId, sourceItemId);
+    }
+
+    // Map to new item
+    await mapFileToItem(fileId, targetItemId, 'manual_drag');
+  }, [mapFileToItem, unmapFile, handleUploadFiles]);
+
+  const handleItemDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleItemDragEnter = useCallback((e: React.DragEvent, itemId: string) => {
+    e.preventDefault();
+    if (!dragCounterRef.current[itemId]) dragCounterRef.current[itemId] = 0;
+    dragCounterRef.current[itemId]++;
+    setDragOverItemId(itemId);
+  }, []);
+
+  const handleItemDragLeave = useCallback((e: React.DragEvent, itemId: string) => {
+    e.preventDefault();
+    if (!dragCounterRef.current[itemId]) dragCounterRef.current[itemId] = 0;
+    dragCounterRef.current[itemId]--;
+    if (dragCounterRef.current[itemId] <= 0) {
+      dragCounterRef.current[itemId] = 0;
+      if (dragOverItemId === itemId) setDragOverItemId(null);
+    }
+  }, [dragOverItemId]);
 
   const filterItem = (item: UnifiedChecklistItem): boolean => {
     if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -172,15 +237,24 @@ export function ChecklistTreePane({
                         <div key={item.id}>
                           <button
                             onClick={() => setSelectedItemId(item.id)}
-                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                            onDragOver={handleItemDragOver}
+                            onDragEnter={(e) => handleItemDragEnter(e, item.id)}
+                            onDragLeave={(e) => handleItemDragLeave(e, item.id)}
                             onDrop={(e) => {
-                              e.preventDefault(); e.stopPropagation();
+                              // Handle OS file drops
                               const files = Array.from(e.dataTransfer.files);
-                              if (files.length > 0) handleUploadFiles(files, item.id);
+                              if (files.length > 0 && !e.dataTransfer.getData('application/x-file-id')) {
+                                e.preventDefault(); e.stopPropagation();
+                                handleUploadFiles(files, item.id);
+                                setDragOverItemId(null);
+                                return;
+                              }
+                              handleItemDrop(e, item.id);
                             }}
                             className={cn(
-                              "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left transition-colors text-xs",
+                              "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left transition-all text-xs",
                               isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted/50",
+                              dragOverItemId === item.id && "ring-2 ring-primary bg-primary/10 shadow-[0_0_8px_hsl(var(--primary)/0.2)]",
                             )}
                           >
                             {isComplete ? (
@@ -215,9 +289,12 @@ export function ChecklistTreePane({
                                 <ContextMenu key={file.id}>
                                   <ContextMenuTrigger asChild>
                                     <div
+                                      draggable
+                                      onDragStart={(e) => handleFileDragStart(e, file, item.id)}
                                       className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-muted-foreground hover:bg-muted/30 cursor-pointer group/file"
                                       onClick={() => setPreviewFile?.(file)}
                                     >
+                                      <GripVertical className="h-3 w-3 shrink-0 opacity-0 group-hover/file:opacity-50 cursor-grab" />
                                       <FileIcon name={file.name} className="h-3 w-3 shrink-0" />
                                       <span className="truncate flex-1">{file.name}</span>
                                       <span className="text-[9px] shrink-0">{formatBytes(file.size_bytes)}</span>
@@ -326,12 +403,15 @@ export function ChecklistTreePane({
                     return (
                       <div
                         key={file.id}
+                        draggable
+                        onDragStart={(e) => handleFileDragStart(e, file)}
                         className={cn(
-                          "flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-pointer",
+                          "flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-pointer group/ufile",
                           isChecked && "ring-1 ring-primary bg-primary/5"
                         )}
                         onClick={() => setPreviewFile?.(file)}
                       >
+                        <GripVertical className="h-3 w-3 shrink-0 opacity-0 group-hover/ufile:opacity-50 cursor-grab" />
                         <div onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={isChecked}
