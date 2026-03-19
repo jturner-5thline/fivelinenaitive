@@ -491,17 +491,119 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return { count: tasks.length, tasks };
     }
     case "get_pipeline_summary": {
-      const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status").limit(500);
+      const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status").limit(1000);
       if (!deals) return { error: "No deals" };
+      const scope = args.scope || "active_only";
+      const filtered = scope === "active_only"
+        ? deals.filter((d: any) => d.status !== "on-hold" && d.status !== "closed" && d.stage !== "on-hold" && d.stage !== "closed")
+        : deals;
+      const excluded = deals.length - filtered.length;
       const stageCounts: Record<string, number> = {};
       let totalValue = 0;
       let active = 0;
-      for (const d of deals) {
+      for (const d of filtered) {
         stageCounts[d.stage || "Unknown"] = (stageCounts[d.stage || "Unknown"] || 0) + 1;
         totalValue += d.value || 0;
         if (d.status === "active") active++;
       }
-      return { total: deals.length, active, totalValue, byStage: stageCounts };
+      return {
+        total: filtered.length,
+        active,
+        totalValue,
+        byStage: stageCounts,
+        scope: scope === "active_only" ? `Active Pipeline (excluding ${excluded} on-hold/closed deals)` : `Full Pipeline (all ${deals.length} deals including on-hold/closed)`,
+        excluded_count: excluded,
+        full_count: deals.length,
+      };
+    }
+    // ── Fix 2: Team member search with fuzzy matching ──
+    case "search_team_members": {
+      // Get user's company
+      const { data: membership } = await supabase.from("company_members").select("company_id").eq("user_id", userId).limit(1).single();
+      if (!membership) return { error: "No company found" };
+      // Get all team members in the same company
+      const { data: members } = await supabase
+        .from("company_members")
+        .select("user_id")
+        .eq("company_id", membership.company_id);
+      if (!members || members.length === 0) return { matches: [], message: "No team members found" };
+      const memberIds = members.map((m: any) => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, first_name, last_name, email")
+        .in("user_id", memberIds);
+      if (!profiles) return { matches: [], message: "No profiles found" };
+      
+      const searchName = args.name.toLowerCase().trim();
+      
+      // Score each member
+      const scored = profiles.map((p: any) => {
+        const firstName = (p.first_name || "").toLowerCase();
+        const lastName = (p.last_name || "").toLowerCase();
+        const displayName = (p.display_name || "").toLowerCase();
+        const emailPrefix = (p.email || "").split("@")[0].toLowerCase();
+        const fullName = `${firstName} ${lastName}`.trim();
+        
+        let score = 0;
+        // Exact matches
+        if (firstName === searchName || lastName === searchName || displayName === searchName) score = 100;
+        else if (fullName === searchName) score = 100;
+        else if (emailPrefix === searchName) score = 90;
+        // Starts with
+        else if (firstName.startsWith(searchName) || lastName.startsWith(searchName)) score = 80;
+        else if (displayName.startsWith(searchName)) score = 75;
+        // Contains
+        else if (displayName.includes(searchName)) score = 60;
+        else if (fullName.includes(searchName)) score = 55;
+        else if (emailPrefix.includes(searchName)) score = 50;
+        // Levenshtein-like: check if within 2 edits for short names
+        else {
+          const names = [firstName, lastName, displayName, emailPrefix];
+          for (const n of names) {
+            if (n && Math.abs(n.length - searchName.length) <= 2) {
+              let diff = 0;
+              const shorter = n.length < searchName.length ? n : searchName;
+              const longer = n.length >= searchName.length ? n : searchName;
+              for (let i = 0; i < shorter.length; i++) {
+                if (shorter[i] !== longer[i]) diff++;
+              }
+              diff += longer.length - shorter.length;
+              if (diff <= 2) { score = 40; break; }
+            }
+          }
+        }
+        
+        return { ...p, score };
+      }).filter((p: any) => p.score > 0).sort((a: any, b: any) => b.score - a.score);
+      
+      if (scored.length === 0) {
+        return { matches: [], message: `No team member found matching "${args.name}". Available team members: ${profiles.map((p: any) => p.display_name || p.first_name).join(", ")}` };
+      }
+      
+      // Get deal counts for top matches
+      const topMatches = scored.slice(0, 3);
+      for (const match of topMatches) {
+        const { data: dealCount } = await supabase
+          .from("deals")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", match.user_id);
+        match.deal_count = dealCount?.length || 0;
+      }
+      
+      return {
+        matches: topMatches.map((m: any) => ({
+          user_id: m.user_id,
+          display_name: m.display_name,
+          first_name: m.first_name,
+          last_name: m.last_name,
+          email: m.email,
+          match_score: m.score,
+          deal_count: m.deal_count,
+        })),
+        note: scored.length > 1 && scored[0].score < 100
+          ? `Multiple possible matches found. Showing results for "${scored[0].display_name}".`
+          : `Showing results for ${scored[0].display_name}.`,
+      };
     }
     case "draft_email": {
       let dealInfo = null;
