@@ -3,6 +3,7 @@ interface PipelineData {
   active: number;
   totalValue: number;
   byStage: Record<string, number>;
+  scope?: string;
 }
 
 interface Props {
