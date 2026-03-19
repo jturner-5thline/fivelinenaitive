@@ -29,8 +29,18 @@ const iconMap: Record<string, typeof ArrowRight> = {
 export function CopilotActionConfirm({ action }: Props) {
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled'>('pending');
   const queryClient = useQueryClient();
+  const addMutation = useCopilotStore(s => s.addMutation);
 
   const Icon = iconMap[action.action_type] || Edit;
+
+  // Fix 5: Format the description with display names
+  const formattedDescription = action.description.replace(
+    /"([a-z][a-z0-9-]*)"/g,
+    (match, slug) => {
+      const display = getStageDisplayName(slug);
+      return display !== slug ? `"${display}"` : match;
+    }
+  );
 
   const invalidateRelatedQueries = (actionType: string, params: Record<string, any>) => {
     const dealId = params.deal_id;
