@@ -12,7 +12,6 @@ export function BDDashboardTab({ visibleQuarters }: { visibleQuarters: Set<strin
   const store = useBDRoiStore();
   const { revenue, costs, headcount, cmBonus, dealflow, finPerf } = store;
   const vi = useMemo(() => getVisibleIndices(QUARTERS_12, visibleQuarters), [visibleQuarters]);
-  const store = useBDRoiStore();
 
   const c = useMemo(() => computeDashboard(revenue, costs, headcount, cmBonus, dealflow), [revenue, costs, headcount, cmBonus, dealflow]);
 
