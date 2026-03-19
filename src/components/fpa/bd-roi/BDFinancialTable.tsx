@@ -122,7 +122,7 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices }
 
 function SectionBlock({
   section, collapsed, onToggle, editingCell, editValue, inputRef,
-  onStartEdit, onEditValueChange, onCommitEdit, onCancelEdit, cellFontSize, quarters,
+  onStartEdit, onEditValueChange, onCommitEdit, onCancelEdit, cellFontSize, quarters, visibleIndices,
 }: {
   section: TableSection; collapsed: boolean; onToggle: () => void;
   editingCell: { rowKey: string; col: number } | null; editValue: string;
@@ -131,7 +131,7 @@ function SectionBlock({
   onEditValueChange: (v: string) => void;
   onCommitEdit: (row: TableRow) => void;
   onCancelEdit: () => void;
-  cellFontSize: string; quarters: string[];
+  cellFontSize: string; quarters: string[]; visibleIndices: number[];
 }) {
   return (
     <>
@@ -156,6 +156,7 @@ function SectionBlock({
           onCommitEdit={onCommitEdit}
           onCancelEdit={onCancelEdit}
           cellFontSize={cellFontSize}
+          visibleIndices={visibleIndices}
         />
       ))}
     </>
