@@ -175,62 +175,16 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
   const [isExporting, setIsExporting] = useState(false);
 
   const handleDownloadPdf = useCallback(async () => {
-    if (!contentRef.current || isExporting) return;
+    if (isExporting) return;
     setIsExporting(true);
     try {
-      const el = contentRef.current;
-      const scrollParent = el.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null;
-      const prevOverflow = scrollParent?.style.overflow;
-      const prevMaxHeight = scrollParent?.style.maxHeight;
-      if (scrollParent) {
-        scrollParent.style.overflow = 'visible';
-        scrollParent.style.maxHeight = 'none';
-      }
-
-      // A4 dimensions in mm
-      const A4_W = 210;
-      const A4_H = 297;
-      const MARGIN = 12;
-      const CONTENT_W = A4_W - MARGIN * 2;
-
-      // Single html2canvas call for the entire content
-      const DPI_SCALE = 1.5;
-      const canvas = await html2canvas(el, {
-        scale: DPI_SCALE,
-        useCORS: true,
-        backgroundColor: T.bg,
-        logging: false,
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.7);
-      const scaleFactor = CONTENT_W / (canvas.width / DPI_SCALE);
-      const totalH = (canvas.height / DPI_SCALE) * scaleFactor;
-      const pageH = A4_H - MARGIN * 2;
-
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      let yOff = 0;
-      let pageIdx = 0;
-
-      while (yOff < totalH) {
-        if (pageIdx > 0) pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', MARGIN, MARGIN - yOff, CONTENT_W, totalH);
-        yOff += pageH;
-        pageIdx++;
-      }
-
-      if (scrollParent) {
-        scrollParent.style.overflow = prevOverflow || '';
-        scrollParent.style.maxHeight = prevMaxHeight || '';
-      }
-
-      const name = data.publishAsAnonymous ? 'Anonymous' : (data.companyName || 'Deal');
-      pdf.save(`${name.replace(/[^a-zA-Z0-9]/g, '_')}_WriteUp.pdf`);
+      await exportWriteUpToPdf({ data, owners, totalEquityRaised, dealManager, disclaimer });
     } catch (err) {
       console.error('PDF export failed:', err);
     } finally {
       setIsExporting(false);
     }
-  }, [data.companyName, data.publishAsAnonymous, isExporting]);
+  }, [data, owners, totalEquityRaised, dealManager, disclaimer, isExporting]);
 
   // Parse financial data for charts
   const chartData = useMemo(() => {
