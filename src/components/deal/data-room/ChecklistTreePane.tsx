@@ -289,9 +289,12 @@ export function ChecklistTreePane({
                                 <ContextMenu key={file.id}>
                                   <ContextMenuTrigger asChild>
                                     <div
+                                      draggable
+                                      onDragStart={(e) => handleFileDragStart(e, file, item.id)}
                                       className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-muted-foreground hover:bg-muted/30 cursor-pointer group/file"
                                       onClick={() => setPreviewFile?.(file)}
                                     >
+                                      <GripVertical className="h-3 w-3 shrink-0 opacity-0 group-hover/file:opacity-50 cursor-grab" />
                                       <FileIcon name={file.name} className="h-3 w-3 shrink-0" />
                                       <span className="truncate flex-1">{file.name}</span>
                                       <span className="text-[9px] shrink-0">{formatBytes(file.size_bytes)}</span>
