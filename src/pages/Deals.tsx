@@ -670,12 +670,37 @@ export default function Dashboard() {
               </div>
             </div>
 
+              {savedViewLikelyHidingDeals && !savedViewWarningDismissed && (
+                <div className="rounded-lg border border-border bg-muted/40 px-4 py-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-foreground">Your saved view is filtering out all deals in this pipeline.</p>
+                      <p className="text-xs text-muted-foreground">Reset filters to show all deals for this pipeline and clear the saved default view.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSavedViewWarningDismissed(true)}
+                      >
+                        Dismiss
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => resetDealViewState({ clearSavedViews: true, showToast: true })}
+                      >
+                        Reset Filters
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-            {/* Deals Grid/List/Pipeline or Milestones */}
-            <div 
-              className="opacity-0"
-              style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
-            >
+              {/* Deals Grid/List/Pipeline or Milestones */}
+              <div 
+                className="opacity-0"
+                style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
+              >
               {showMilestones ? (
                 <DealMilestonesView onBack={() => setShowMilestones(false)} managerFilter={filters.manager} />
               ) : isLoading ? (
