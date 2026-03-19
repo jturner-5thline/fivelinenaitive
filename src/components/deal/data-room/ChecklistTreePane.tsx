@@ -237,15 +237,24 @@ export function ChecklistTreePane({
                         <div key={item.id}>
                           <button
                             onClick={() => setSelectedItemId(item.id)}
-                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                            onDragOver={handleItemDragOver}
+                            onDragEnter={(e) => handleItemDragEnter(e, item.id)}
+                            onDragLeave={(e) => handleItemDragLeave(e, item.id)}
                             onDrop={(e) => {
-                              e.preventDefault(); e.stopPropagation();
+                              // Handle OS file drops
                               const files = Array.from(e.dataTransfer.files);
-                              if (files.length > 0) handleUploadFiles(files, item.id);
+                              if (files.length > 0 && !e.dataTransfer.getData('application/x-file-id')) {
+                                e.preventDefault(); e.stopPropagation();
+                                handleUploadFiles(files, item.id);
+                                setDragOverItemId(null);
+                                return;
+                              }
+                              handleItemDrop(e, item.id);
                             }}
                             className={cn(
-                              "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left transition-colors text-xs",
+                              "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left transition-all text-xs",
                               isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted/50",
+                              dragOverItemId === item.id && "ring-2 ring-primary bg-primary/10 shadow-[0_0_8px_hsl(var(--primary)/0.2)]",
                             )}
                           >
                             {isComplete ? (
