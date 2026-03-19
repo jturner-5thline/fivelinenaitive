@@ -91,9 +91,10 @@ function buildSections(
   return [pipelineSection, financialSection];
 }
 
-export function BDPartnerTab() {
+export function BDPartnerTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
   const store = useBDRoiStore();
   const { partnerAssumptions, partnerProjections, partnerActuals } = store;
+  const vi = useMemo(() => getVisibleIndices(QUARTERS_16, visibleQuarters), [visibleQuarters]);
 
   const projComputed = useMemo(() => buildComputedRows(partnerProjections, 16), [partnerProjections]);
   const actComputed = useMemo(() => buildComputedRows(partnerActuals, 16), [partnerActuals]);
