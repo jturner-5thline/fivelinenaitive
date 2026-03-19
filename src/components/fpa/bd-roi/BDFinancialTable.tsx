@@ -164,7 +164,7 @@ function SectionBlock({
 }
 
 function RowBlock({
-  row, editingCell, editValue, inputRef, onStartEdit, onEditValueChange, onCommitEdit, onCancelEdit, cellFontSize,
+  row, editingCell, editValue, inputRef, onStartEdit, onEditValueChange, onCommitEdit, onCancelEdit, cellFontSize, visibleIndices,
 }: {
   row: TableRow;
   editingCell: { rowKey: string; col: number } | null; editValue: string;
@@ -174,6 +174,7 @@ function RowBlock({
   onCommitEdit: (row: TableRow) => void;
   onCancelEdit: () => void;
   cellFontSize: string;
+  visibleIndices: number[];
 }) {
   const totalClass = row.isTotal ? 'font-bold border-t-2 border-b-2 border-foreground/20' : '';
   const subtotalClass = row.isSubtotal ? 'font-semibold border-t border-border/50' : '';
@@ -211,19 +212,20 @@ function RowBlock({
           )}
         </div>
       </td>
-      {row.values.map((val, i) => {
-        const isEditing = editingCell?.rowKey === row.key && editingCell?.col === i;
+      {visibleIndices.map(origIdx => {
+        const val = row.values[origIdx];
+        const isEditing = editingCell?.rowKey === row.key && editingCell?.col === origIdx;
         const isGreenDelta = row.isDelta && val !== null && val > 0;
         const isRedDelta = row.isDelta && val !== null && val < 0;
 
         return (
           <td
-            key={i}
+            key={origIdx}
             className={`px-2 py-1 text-right border-b border-border/50 ${cellFontSize} whitespace-nowrap cursor-pointer`}
             style={{
               color: row.editable ? '#60a5fa' : isGreenDelta ? '#34d399' : isRedDelta ? '#f87171' : undefined,
             }}
-            onClick={() => row.editable && row.onEdit && onStartEdit(row.key, i, val)}
+            onClick={() => row.editable && row.onEdit && onStartEdit(row.key, origIdx, val)}
           >
             {isEditing ? (
               <input
