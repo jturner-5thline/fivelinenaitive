@@ -26,6 +26,8 @@ import {
   Send,
   FileSignature,
   Video,
+  FileText,
+  Stamp,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 
