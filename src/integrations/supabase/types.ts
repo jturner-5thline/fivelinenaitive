@@ -14118,6 +14118,10 @@ export type Database = {
           total_count: number
         }[]
       }
+      seed_new_company_defaults: {
+        Args: { _company_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "support_admin"
