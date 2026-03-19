@@ -120,7 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
           `;
         }
 
-        const appUrl = "https://fivelinenaitive.lovable.app";
+        const appUrl = "https://naitive.co";
 
         const emailResponse = await resend.emails.send({
           from: "naitive <noreply@updates.naitive.co>",

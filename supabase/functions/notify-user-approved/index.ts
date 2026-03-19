@@ -62,7 +62,7 @@ serve(async (req) => {
             </p>
             
             <div style="text-align: center; margin: 32px 0;">
-              <a href="https://fivelinenaitive.lovable.app/dashboard" style="display: inline-block; background: #2563eb; color: white; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 500;">
+              <a href="https://naitive.co/dashboard" style="display: inline-block; background: #2563eb; color: white; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 500;">
                 Go to Dashboard
               </a>
             </div>

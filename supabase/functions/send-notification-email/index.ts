@@ -249,7 +249,7 @@ const handler = async (req: Request): Promise<Response> => {
     const message = template.getMessage(payload);
     const changesHtml = buildChangesHtml(payload.changes);
     const changesText = buildChangesText(payload.changes);
-    const appUrl = "https://fivelinenaitive.lovable.app";
+    const appUrl = "https://naitive.co";
     const dealUrl = payload.deal_id ? `${appUrl}/deal/${payload.deal_id}` : null;
     let actionUrl: string | null = dealUrl;
     let actionLabel = 'View Deal';

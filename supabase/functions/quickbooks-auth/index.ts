@@ -26,7 +26,7 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function redirectToApp(params: string) {
-  const appUrl = Deno.env.get("APP_URL") || "https://preview--fivelinenaitive.lovable.app";
+  const appUrl = Deno.env.get("APP_URL") || "https://naitive.co";
   return new Response(null, {
     status: 302,
     headers: {

@@ -262,7 +262,7 @@ const handler = async (req: Request): Promise<Response> => {
         const totalNdaRequests = sortedDeals.reduce((sum, d) => sum + d.nda_requests, 0);
 
         // Generate email HTML
-        const appUrl = "https://fivelinenaitive.lovable.app";
+        const appUrl = "https://naitive.co";
         
         const dealRowsHtml = sortedDeals.slice(0, 10).map(deal => `
           <tr>
