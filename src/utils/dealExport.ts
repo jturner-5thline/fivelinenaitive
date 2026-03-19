@@ -356,9 +356,9 @@ export async function exportDealToWord(deal: Deal): Promise<void> {
                         new TableRow({
                           children: [
                             createDataCell(lender.name),
-                            createDataCell(LENDER_STATUS_CONFIG[lender.status].label),
-                            createDataCell(LENDER_STAGE_CONFIG[lender.stage].label),
-                            createDataCell(LENDER_TRACKING_STATUS_CONFIG[lender.trackingStatus].label),
+                            createDataCell(getStatusLabel(lender.status)),
+                            createDataCell(getStageLabel(lender.stage)),
+                            createDataCell(getTrackingLabel(lender.trackingStatus)),
                           ],
                         })
                     ),
