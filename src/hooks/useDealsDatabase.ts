@@ -121,6 +121,7 @@ interface DbDeal {
   exclusivity: string | null;
   deal_type: string | null;
   referred_by: string | null;
+  pipeline_id: string | null;
   manager: string | null;
   deal_owner: string | null;
   analyst: string | null;
@@ -320,7 +321,7 @@ export function useDealsDatabase() {
       updatedAt: dbDeal.updated_at,
       lenders: dealLenders,
       migratedFromPersonal: dbDeal.migrated_from_personal || false,
-      pipelineId: (dbDeal as any).pipeline_id || undefined,
+      pipelineId: dbDeal.pipeline_id || undefined,
       closingDate: (dbDeal as any).closing_date || null,
     };
   }, []);

@@ -20,6 +20,10 @@ export interface DealSavedView {
 
 const STORAGE_KEY = 'deals-saved-views';
 
+function clearStoredViews() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 function loadViews(): DealSavedView[] {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -29,6 +33,11 @@ function loadViews(): DealSavedView[] {
 }
 
 function persistViews(views: DealSavedView[]) {
+  if (views.length === 0) {
+    clearStoredViews();
+    return;
+  }
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify(views));
 }
 
@@ -66,9 +75,20 @@ export function useDealSavedViews() {
     }
   }, [views]);
 
+  const clearDefaultView = useCallback(() => {
+    const updated = views.map(v => ({ ...v, isDefault: false }));
+    setViews(updated);
+    persistViews(updated);
+  }, [views]);
+
+  const clearAllViews = useCallback(() => {
+    setViews([]);
+    clearStoredViews();
+  }, []);
+
   const getDefaultView = useCallback((): DealSavedView | undefined => {
     return views.find(v => v.isDefault);
   }, [views]);
 
-  return { views, saveView, deleteView, setDefault, getDefaultView };
+  return { views, saveView, deleteView, setDefault, clearDefaultView, clearAllViews, getDefaultView };
 }
