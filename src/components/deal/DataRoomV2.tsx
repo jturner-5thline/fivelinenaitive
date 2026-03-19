@@ -556,6 +556,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
         allItems={allItems}
         getItemsForFile={getItemsForFile}
         mapFileToItems={mapFileToItems}
+        unmapFile={unmapFile}
         onMarkItemsComplete={async (itemIds) => {
           for (const itemId of itemIds) {
             await toggleItemStatus(itemId, true);

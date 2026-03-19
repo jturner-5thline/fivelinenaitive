@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye, Trash2, ArrowLeftRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,8 +11,11 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator,
+} from '@/components/ui/context-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -209,37 +212,81 @@ export function ChecklistTreePane({
                           {nestedFiles.length > 0 && (
                             <div className="ml-7 mb-1 space-y-px">
                               {nestedFiles.map(file => (
-                                <div
-                                  key={file.id}
-                                  className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-muted-foreground hover:bg-muted/30 cursor-pointer group/file"
-                                  onClick={() => setPreviewFile?.(file)}
-                                >
-                                  <FileIcon name={file.name} className="h-3 w-3 shrink-0" />
-                                  <span className="truncate flex-1">{file.name}</span>
-                                  <span className="text-[9px] shrink-0">{formatBytes(file.size_bytes)}</span>
-                                  <div className="flex items-center gap-0.5 opacity-0 group-hover/file:opacity-100 shrink-0">
+                                <ContextMenu key={file.id}>
+                                  <ContextMenuTrigger asChild>
+                                    <div
+                                      className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-muted-foreground hover:bg-muted/30 cursor-pointer group/file"
+                                      onClick={() => setPreviewFile?.(file)}
+                                    >
+                                      <FileIcon name={file.name} className="h-3 w-3 shrink-0" />
+                                      <span className="truncate flex-1">{file.name}</span>
+                                      <span className="text-[9px] shrink-0">{formatBytes(file.size_bytes)}</span>
+                                      <div className="flex items-center gap-0.5 opacity-0 group-hover/file:opacity-100 shrink-0">
+                                        {onOpenMappingDialog && (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-4 w-4"
+                                                onClick={(e) => { e.stopPropagation(); onOpenMappingDialog([file]); }}
+                                              >
+                                                <ArrowLeftRight className="h-2.5 w-2.5" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="text-[10px]">Change mapping</TooltipContent>
+                                          </Tooltip>
+                                        )}
+                                        {handleDownloadFile && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-4 w-4"
+                                            onClick={(e) => { e.stopPropagation(); handleDownloadFile(file); }}
+                                          >
+                                            <Download className="h-2.5 w-2.5" />
+                                          </Button>
+                                        )}
+                                        {deleteAttachment && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-4 w-4 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                            onClick={(e) => { e.stopPropagation(); setFileToDelete(file); }}
+                                          >
+                                            <Trash2 className="h-2.5 w-2.5" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </ContextMenuTrigger>
+                                  <ContextMenuContent className="w-44">
+                                    <ContextMenuItem onClick={() => setPreviewFile?.(file)}>
+                                      <Eye className="h-3.5 w-3.5 mr-2" /> Preview
+                                    </ContextMenuItem>
                                     {handleDownloadFile && (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-4 w-4"
-                                        onClick={(e) => { e.stopPropagation(); handleDownloadFile(file); }}
-                                      >
-                                        <Download className="h-2.5 w-2.5" />
-                                      </Button>
+                                      <ContextMenuItem onClick={() => handleDownloadFile(file)}>
+                                        <Download className="h-3.5 w-3.5 mr-2" /> Download
+                                      </ContextMenuItem>
+                                    )}
+                                    {onOpenMappingDialog && (
+                                      <>
+                                        <ContextMenuSeparator />
+                                        <ContextMenuItem onClick={() => onOpenMappingDialog([file])}>
+                                          <ArrowLeftRight className="h-3.5 w-3.5 mr-2" /> Move to checklist item…
+                                        </ContextMenuItem>
+                                      </>
                                     )}
                                     {deleteAttachment && (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-4 w-4 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                        onClick={(e) => { e.stopPropagation(); setFileToDelete(file); }}
-                                      >
-                                        <Trash2 className="h-2.5 w-2.5" />
-                                      </Button>
+                                      <>
+                                        <ContextMenuSeparator />
+                                        <ContextMenuItem className="text-destructive" onClick={() => setFileToDelete(file)}>
+                                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                                        </ContextMenuItem>
+                                      </>
                                     )}
-                                  </div>
-                                </div>
+                                  </ContextMenuContent>
+                                </ContextMenu>
                               ))}
                             </div>
                           )}

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Upload, Link2, Download, Eye, Trash2, MoreHorizontal, GripVertical, Pencil, Search } from 'lucide-react';
+import { Upload, Link2, Download, Eye, Trash2, MoreHorizontal, GripVertical, Pencil, Search, ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -294,7 +294,11 @@ export function FileListPane({
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onClick={() => onOpenMappingDialog([att])}>
-                          <Link2 className="h-3.5 w-3.5 mr-2" /> Map to Items
+                          {itemMappings.length > 0 ? (
+                            <><ArrowLeftRight className="h-3.5 w-3.5 mr-2" /> Change Mapping…</>
+                          ) : (
+                            <><Link2 className="h-3.5 w-3.5 mr-2" /> Map to Items</>
+                          )}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive" onClick={() => deleteAttachment(att)}>
