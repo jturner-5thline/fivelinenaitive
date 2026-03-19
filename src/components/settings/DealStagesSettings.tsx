@@ -304,14 +304,6 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Save to localStorage
-      localStorage.setItem('dealStages', JSON.stringify(stages));
-      if (defaultStageId) {
-        localStorage.setItem('defaultDealStageId', defaultStageId);
-      } else {
-        localStorage.removeItem('defaultDealStageId');
-      }
-
       // Save to database if user has a company
       if (companyId) {
         const { data: existing } = await supabase
