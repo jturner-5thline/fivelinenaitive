@@ -174,9 +174,9 @@ export function exportDealToPDF(deal: Deal): void {
 
     const lenderData = deal.lenders.map(lender => [
       lender.name,
-      LENDER_STATUS_CONFIG[lender.status].label,
-      LENDER_STAGE_CONFIG[lender.stage].label,
-      LENDER_TRACKING_STATUS_CONFIG[lender.trackingStatus].label,
+      getStatusLabel(lender.status),
+      getStageLabel(lender.stage),
+      getTrackingLabel(lender.trackingStatus),
     ]);
 
     autoTable(doc, {
