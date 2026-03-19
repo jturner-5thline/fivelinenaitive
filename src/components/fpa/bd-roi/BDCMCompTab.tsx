@@ -3,7 +3,7 @@ import { useBDRoiStore } from './useBDRoiStore';
 import { formatBDCurrency } from './bdRoiFormatters';
 import { DollarSign, Calendar, Award } from 'lucide-react';
 
-export function BDCMCompTab() {
+export function BDCMCompTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
   const { cmBonus } = useBDRoiStore();
 
   const totalPaid = cmBonus.reduce((a, b) => a + b, 0);
