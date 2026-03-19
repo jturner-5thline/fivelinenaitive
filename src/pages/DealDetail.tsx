@@ -2293,14 +2293,7 @@ export default function DealDetail() {
             </div>
           </div>
 
-          {/* Deal Pulse Dashboard */}
-          <DealPulseDashboard 
-            deal={deal}
-            attachmentCount={attachments.length}
-            checklistTotal={allChecklistItems.length}
-            checklistComplete={0}
-            outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
-          />
+          {/* Deal Pulse Dashboard - hidden per user request */}
 
           {/* Header Card */}
           <Card className="w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]">
