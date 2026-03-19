@@ -77,10 +77,10 @@ export function BDRoiModule() {
           <TabsTrigger value="amex" className="text-xs">AMEX CC</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard"><BDDashboardTab /></TabsContent>
-        <TabsContent value="partner"><BDPartnerTab /></TabsContent>
-        <TabsContent value="bank"><BDBankTab /></TabsContent>
-        <TabsContent value="cmcomp"><BDCMCompTab /></TabsContent>
+        <TabsContent value="dashboard"><BDDashboardTab visibleQuarters={visibleQuarters} /></TabsContent>
+        <TabsContent value="partner"><BDPartnerTab visibleQuarters={visibleQuarters} /></TabsContent>
+        <TabsContent value="bank"><BDBankTab visibleQuarters={visibleQuarters} /></TabsContent>
+        <TabsContent value="cmcomp"><BDCMCompTab visibleQuarters={visibleQuarters} /></TabsContent>
         <TabsContent value="events"><BDEventsTab /></TabsContent>
         <TabsContent value="amex"><BDAmexTab /></TabsContent>
       </Tabs>
