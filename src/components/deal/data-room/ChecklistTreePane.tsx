@@ -71,7 +71,7 @@ export function ChecklistTreePane({
   searchQuery, setSearchQuery, statusFilter, setStatusFilter,
   getFilesForItem, getCategoryByName, unmappedFiles, handleUploadFiles,
   attachments = [], getItemsForFile, setPreviewFile, handleDownloadFile, onOpenMappingDialog, allItems,
-  deleteAttachment, onToggleItemStatus,
+  deleteAttachment, onToggleItemStatus, mapFileToItem, unmapFile,
 }: ChecklistTreePaneProps) {
   const [selectedUnmapped, setSelectedUnmapped] = useState<Set<string>>(new Set());
   const [fileToDelete, setFileToDelete] = useState<DealAttachment | null>(null);
