@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye, Trash2, ArrowLeftRight } from 'lucide-react';
+import { Check, ChevronDown, AlertCircle, Link2, Filter, Download, Eye, Trash2, ArrowLeftRight, GripVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
