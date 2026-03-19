@@ -30,7 +30,7 @@ interface MappingDialogProps {
 
 export function MappingDialog({
   open, onOpenChange, filesToMap, categories, grouped, allItems,
-  getItemsForFile, mapFileToItems, onMarkItemsComplete,
+  getItemsForFile, mapFileToItems, unmapFile, onMarkItemsComplete,
 }: MappingDialogProps) {
   const [selections, setSelections] = useState<Set<string>>(new Set());
 
