@@ -2513,10 +2513,10 @@ export default function DealDetail() {
               {/* Tab Navigation */}
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}>
                 <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden flex-nowrap">
-                  {companyFeatures.agreement_icon_visible && (
+                  {companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
                     <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
                   )}
-                  {companyFeatures.deal_memo_enabled && (
+                  {companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
                     <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
                   )}
                   <HintTooltip

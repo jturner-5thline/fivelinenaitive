@@ -26,6 +26,8 @@ import {
   Send,
   FileSignature,
   Video,
+  FileText,
+  Stamp,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 
@@ -68,6 +70,8 @@ const featureConfigs: FeatureConfig[] = [
   { featureKey: 'flex_push', label: 'Push to FLEx', description: 'Publish/unpublish deals to FLEx', icon: <Send className="h-4 w-4" /> },
   { featureKey: 'autofill_deal_space', label: 'Auto-Fill from Deal Space', description: 'AI extraction of write-up fields', icon: <Sparkles className="h-4 w-4" /> },
   { featureKey: 'generate_ai_memo', label: 'Generate AI Memo', description: 'AI-generated lender-ready memo', icon: <FileSignature className="h-4 w-4" /> },
+  { featureKey: 'deal_memo', label: 'Deal Memo', description: 'Deal memo button on deal detail pages', icon: <FileText className="h-4 w-4" /> },
+  { featureKey: 'agreement_drafter', label: 'Agreement Drafter', description: 'Agreement drafter icon on deal detail pages', icon: <Stamp className="h-4 w-4" /> },
 ];
 
 export function CompanyPageAccessPanel({ companyId, editable = false }: CompanyPageAccessPanelProps) {

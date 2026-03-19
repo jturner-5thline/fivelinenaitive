@@ -32,6 +32,7 @@ import { DistributionStatsSettings } from '@/components/settings/DistributionSta
 import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
+import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 
 const SETTINGS_SECTIONS = [
@@ -99,6 +100,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('general');
   const { isAdmin } = useCompany();
   const { features: companyFeatures } = useCompanyFeatures();
+  const { hasPageAccess } = usePageAccessFlags();
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
 
   const visibleSections = useMemo(() => {
@@ -232,7 +234,7 @@ export default function Settings() {
                   {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
                   {isVisible('data-room-checklist') && <DefaultChecklistSettings isAdmin={isAdmin} />}
                   {isVisible('gamma-templates') && <GammaTemplatesSettings isAdmin={isAdmin} />}
-                  {isVisible('agreement-templates') && companyFeatures.agreement_icon_visible && (
+                  {isVisible('agreement-templates') && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
                     <AgreementTemplatesSettings isAdmin={isAdmin} />
                   )}
                   {isVisible('deal-types') && <LenderScoreSettings isAdmin={isAdmin} />}
