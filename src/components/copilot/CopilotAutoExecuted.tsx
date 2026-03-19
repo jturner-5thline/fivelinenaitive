@@ -18,6 +18,7 @@ interface Props {
 
 export function CopilotAutoExecuted({ action }: Props) {
   const queryClient = useQueryClient();
+  const addMutation = useCopilotStore(s => s.addMutation);
   const didRefresh = useRef(false);
 
   useEffect(() => {
