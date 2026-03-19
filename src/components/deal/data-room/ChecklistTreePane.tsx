@@ -403,12 +403,15 @@ export function ChecklistTreePane({
                     return (
                       <div
                         key={file.id}
+                        draggable
+                        onDragStart={(e) => handleFileDragStart(e, file)}
                         className={cn(
-                          "flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-pointer",
+                          "flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-pointer group/ufile",
                           isChecked && "ring-1 ring-primary bg-primary/5"
                         )}
                         onClick={() => setPreviewFile?.(file)}
                       >
+                        <GripVertical className="h-3 w-3 shrink-0 opacity-0 group-hover/ufile:opacity-50 cursor-grab" />
                         <div onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={isChecked}
