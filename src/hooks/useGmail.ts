@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { APP_BASE_URL } from '@/constants/appConfig';
 
 interface GmailMessage {
   id: string;
