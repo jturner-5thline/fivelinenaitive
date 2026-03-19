@@ -20,6 +20,8 @@ import { CopilotProactiveNudge } from '@/components/copilot/CopilotProactiveNudg
 import { CopilotCorrectionPopover } from '@/components/copilot/CopilotCorrectionPopover';
 import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
+import type { ConversationMutation } from '@/lib/copilot-utils';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
