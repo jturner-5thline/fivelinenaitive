@@ -3,6 +3,8 @@ import { ArrowRight, Plus, Edit, Check, Loader2, CheckCircle, RefreshCw } from '
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { getStageDisplayName } from '@/lib/copilot-utils';
+import { useCopilotStore } from '@/stores/copilotStore';
 
 interface ConfirmAction {
   action: 'confirm';
