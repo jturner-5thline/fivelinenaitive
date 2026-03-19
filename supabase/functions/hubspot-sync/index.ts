@@ -563,16 +563,25 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
     console.log('Could not fetch pipeline stages for label resolution');
   }
 
-  // 4. Get existing hubspot_deal_ids to determine insert vs update
-  const { data: existingDeals } = await supabase
-    .from('deals')
-    .select('id, hubspot_deal_id')
-    .not('hubspot_deal_id', 'is', null);
-
+  // 4. Get ALL existing hubspot_deal_ids to determine insert vs update
+  // Paginate to avoid Supabase's default 1000-row limit
   const existingMap = new Map<string, string>();
-  for (const d of (existingDeals || [])) {
-    if (d.hubspot_deal_id) existingMap.set(d.hubspot_deal_id, d.id);
+  let rangeStart = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data: existingDeals } = await supabase
+      .from('deals')
+      .select('id, hubspot_deal_id')
+      .not('hubspot_deal_id', 'is', null)
+      .range(rangeStart, rangeStart + PAGE_SIZE - 1);
+    
+    for (const d of (existingDeals || [])) {
+      if (d.hubspot_deal_id) existingMap.set(d.hubspot_deal_id, d.id);
+    }
+    if (!existingDeals || existingDeals.length < PAGE_SIZE) break;
+    rangeStart += PAGE_SIZE;
   }
+  console.log(`Found ${existingMap.size} existing HubSpot-linked deals in database`);
 
   // 4b. Look up the "In Development" pipeline for this company.
   // HubSpot deals default into "In Development" so they don't crowd the Active Deals pipeline.
