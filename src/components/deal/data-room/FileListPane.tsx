@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Upload, Link2, Download, Eye, Trash2, MoreHorizontal, GripVertical, Pencil, Search } from 'lucide-react';
+import { Upload, Link2, Download, Eye, Trash2, MoreHorizontal, GripVertical, Pencil, Search, ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
