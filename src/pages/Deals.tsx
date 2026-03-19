@@ -78,7 +78,15 @@ export default function Dashboard() {
     newStageLabel: string;
   } | null>(null);
 
-  const { views: savedViews, saveView, deleteView, setDefault, getDefaultView } = useDealSavedViews();
+  const {
+    views: savedViews,
+    saveView,
+    deleteView,
+    setDefault,
+    clearDefaultView,
+    clearAllViews,
+    getDefaultView,
+  } = useDealSavedViews();
   const defaultView = getDefaultView();
 
   const [groupBy, setGroupBy] = useState<string | null>(defaultView?.config.groupBy ?? 'status');
@@ -94,6 +102,7 @@ export default function Dashboard() {
     return (stored === 'grid' || stored === 'list' || stored === 'pipeline' || stored === 'timeline') ? stored : 'grid';
   });
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
+  const [savedViewWarningDismissed, setSavedViewWarningDismissed] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
@@ -126,6 +135,24 @@ export default function Dashboard() {
     initialSortDirection: defaultView.config.sortDirection,
   } : undefined);
 
+  const resetDealViewState = useCallback((options?: { clearSavedViews?: boolean; clearDefaultOnly?: boolean; showToast?: boolean }) => {
+    setFilters(DEFAULT_DEAL_FILTERS);
+    setSortField('updatedAt');
+    setSortDirection('desc');
+    setGroupBy('status');
+    setSavedViewWarningDismissed(false);
+
+    if (options?.clearSavedViews) {
+      clearAllViews();
+    } else if (options?.clearDefaultOnly) {
+      clearDefaultView();
+    }
+
+    if (options?.showToast) {
+      toast({ title: 'Filters reset', description: 'Showing all deals for the selected pipeline.' });
+    }
+  }, [clearAllViews, clearDefaultView, setFilters, setSortDirection, setSortField]);
+
   // Apply default saved view on mount (belt-and-suspenders with initial state)
   const defaultViewAppliedRef = useRef(false);
   useEffect(() => {
@@ -138,6 +165,13 @@ export default function Dashboard() {
       setGroupBy(defaultView.config.groupBy);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const previousPipelineIdRef = useRef<string | null>(activePipelineId);
+  useEffect(() => {
+    if (previousPipelineIdRef.current === activePipelineId) return;
+    previousPipelineIdRef.current = activePipelineId;
+    resetDealViewState({ clearDefaultOnly: true });
+  }, [activePipelineId, resetDealViewState]);
 
   // Check if any filters are active (different from defaults)
   const hasActiveFilters = JSON.stringify(filters) !== JSON.stringify(DEFAULT_DEAL_FILTERS) 
@@ -160,16 +194,37 @@ export default function Dashboard() {
     setSortDirection(view.config.sortDirection);
     setViewMode(view.config.viewMode);
     setGroupBy(view.config.groupBy);
+    setSavedViewWarningDismissed(false);
   };
 
   // Filter deals by active pipeline (include unassigned deals in the default pipeline)
   const activePipelineIsDefault = activePipelineId && pipelines.find(p => p.id === activePipelineId)?.isDefault;
+  const dealsInSelectedPipeline = useMemo(() => {
+    if (!activePipelineId) return allDeals;
+    return allDeals.filter(deal => 
+      deal.pipelineId === activePipelineId || (!deal.pipelineId && activePipelineIsDefault)
+    );
+  }, [allDeals, activePipelineId, activePipelineIsDefault]);
+
   const pipelineFilteredDeals = useMemo(() => {
     if (!activePipelineId) return allFilteredDeals;
     return allFilteredDeals.filter(deal => 
       deal.pipelineId === activePipelineId || (!deal.pipelineId && activePipelineIsDefault)
     );
   }, [allFilteredDeals, activePipelineId, activePipelineIsDefault]);
+
+  const savedViewLikelyHidingDeals = dealsInSelectedPipeline.length > 0 && pipelineFilteredDeals.length === 0 && (hasActiveFilters || !!defaultView);
+
+  const autoClearedBrokenSavedViewRef = useRef(false);
+  useEffect(() => {
+    if (autoClearedBrokenSavedViewRef.current || !savedViewLikelyHidingDeals || isLoading) return;
+    autoClearedBrokenSavedViewRef.current = true;
+    resetDealViewState({ clearSavedViews: true, showToast: true });
+    toast({
+      title: 'Saved view cleared',
+      description: 'A saved view was hiding all deals in this pipeline, so it was removed.',
+    });
+  }, [isLoading, resetDealViewState, savedViewLikelyHidingDeals]);
 
   // Get notification counts for filtering
   const allDealIds = useMemo(() => pipelineFilteredDeals.map(d => d.id), [pipelineFilteredDeals]);
