@@ -161,9 +161,7 @@ export function useGmail() {
 
     setIsConnecting(true);
     try {
-      const redirectUri = window.location.hostname === 'naitive.co'
-        ? 'https://fivelinenaitive.lovable.app/integrations?gmail_callback=true'
-        : `${window.location.origin}/integrations?gmail_callback=true`;
+      const redirectUri = `${APP_BASE_URL}/integrations?gmail_callback=true`;
       
       const { data, error } = await supabase.functions.invoke('gmail-auth', {
         body: {
