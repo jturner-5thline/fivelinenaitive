@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Check, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCopilotStore } from '@/stores/copilotStore';
 
 interface AutoExecutedAction {
   action: 'auto_executed';
@@ -17,6 +18,7 @@ interface Props {
 
 export function CopilotAutoExecuted({ action }: Props) {
   const queryClient = useQueryClient();
+  const addMutation = useCopilotStore(s => s.addMutation);
   const didRefresh = useRef(false);
 
   useEffect(() => {
@@ -25,6 +27,13 @@ export function CopilotAutoExecuted({ action }: Props) {
 
     if (action.success) {
       toast.success(action.message);
+      // Fix 6: Track mutation in conversation state
+      addMutation({
+        type: action.action_type,
+        dealId: action.params?.deal_id,
+        detail: action.message,
+        timestamp: new Date().toISOString(),
+      });
       // Invalidate relevant queries
       const dealId = action.params?.deal_id;
       queryClient.invalidateQueries({ queryKey: ['deals'] });

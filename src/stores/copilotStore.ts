@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { ConversationMutation } from '@/lib/copilot-utils';
 
 export interface CopilotMessage {
   id: string;
@@ -14,6 +15,7 @@ interface CopilotStore {
   messages: CopilotMessage[];
   isProcessing: boolean;
   conversationId: string | null;
+  conversationMutations: ConversationMutation[];
   togglePanel: () => void;
   openPanel: () => void;
   closePanel: () => void;
@@ -22,6 +24,7 @@ interface CopilotStore {
   setProcessing: (processing: boolean) => void;
   clearMessages: () => void;
   setConversationId: (id: string | null) => void;
+  addMutation: (mutation: ConversationMutation) => void;
 }
 
 export const useCopilotStore = create<CopilotStore>((set) => ({
@@ -29,6 +32,7 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   messages: [],
   isProcessing: false,
   conversationId: null,
+  conversationMutations: [],
   togglePanel: () => set((s) => {
     console.log('[Copilot] togglePanel →', !s.isOpen);
     return { isOpen: !s.isOpen };
@@ -38,6 +42,7 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   addMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
   setMessages: (messages) => set({ messages }),
   setProcessing: (processing) => set({ isProcessing: processing }),
-  clearMessages: () => set({ messages: [], conversationId: null }),
+  clearMessages: () => set({ messages: [], conversationId: null, conversationMutations: [] }),
   setConversationId: (id) => set({ conversationId: id }),
+  addMutation: (mutation) => set((s) => ({ conversationMutations: [...s.conversationMutations, mutation] })),
 }));

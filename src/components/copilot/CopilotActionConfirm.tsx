@@ -3,6 +3,8 @@ import { ArrowRight, Plus, Edit, Check, Loader2, CheckCircle, RefreshCw } from '
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { getStageDisplayName } from '@/lib/copilot-utils';
+import { useCopilotStore } from '@/stores/copilotStore';
 
 interface ConfirmAction {
   action: 'confirm';
@@ -27,8 +29,18 @@ const iconMap: Record<string, typeof ArrowRight> = {
 export function CopilotActionConfirm({ action }: Props) {
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled'>('pending');
   const queryClient = useQueryClient();
+  const addMutation = useCopilotStore(s => s.addMutation);
 
   const Icon = iconMap[action.action_type] || Edit;
+
+  // Fix 5: Format the description with display names
+  const formattedDescription = action.description.replace(
+    /"([a-z][a-z0-9-]*)"/g,
+    (match, slug) => {
+      const display = getStageDisplayName(slug);
+      return display !== slug ? `"${display}"` : match;
+    }
+  );
 
   const invalidateRelatedQueries = (actionType: string, params: Record<string, any>) => {
     const dealId = params.deal_id;
@@ -102,6 +114,14 @@ export function CopilotActionConfirm({ action }: Props) {
       if (result.success) {
         setStatus('done');
         toast.success(`✓ ${result.message || 'Action completed'}`);
+        // Fix 6: Track mutation in conversation state
+        addMutation({
+          type: action.action_type,
+          deal: action.params.deal_name || action.params.deal_id,
+          dealId: action.params.deal_id,
+          detail: result.message || action.description,
+          timestamp: new Date().toISOString(),
+        });
         // Trigger UI refresh
         invalidateRelatedQueries(result.actionType || action.action_type, result.params || action.params);
       } else {
@@ -128,7 +148,7 @@ export function CopilotActionConfirm({ action }: Props) {
         }}
       >
         <Check size={16} style={{ color: 'rgb(34, 197, 94)' }} />
-        <span style={{ fontSize: 13, color: 'rgb(34, 197, 94)' }}>Done — {action.description}</span>
+        <span style={{ fontSize: 13, color: 'rgb(34, 197, 94)' }}>Done — {formattedDescription}</span>
       </div>
     );
   }
@@ -153,7 +173,7 @@ export function CopilotActionConfirm({ action }: Props) {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <Icon size={16} style={{ color: 'hsl(var(--primary))' }} />
-        <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{action.description}</span>
+        <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{formattedDescription}</span>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button
