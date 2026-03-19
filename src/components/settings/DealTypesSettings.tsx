@@ -24,52 +24,23 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-
-interface DealType {
-  id: string;
-  label: string;
-}
-
-const DEFAULT_DEAL_TYPES: DealType[] = [
-  { id: 'venture-debt', label: 'Venture Debt' },
-  { id: 'asset-based-lending', label: 'Asset-Based Lending' },
-  { id: 'revenue-based-financing', label: 'Revenue-Based Financing' },
-  { id: 'mezzanine', label: 'Mezzanine' },
-  { id: 'term-loan', label: 'Term Loan' },
-  { id: 'line-of-credit', label: 'Line of Credit' },
-  { id: 'equipment-financing', label: 'Equipment Financing' },
-  { id: 'factoring', label: 'Factoring' },
-];
+import { useDealTypes, DealTypeOption } from '@/contexts/DealTypesContext';
 
 interface DealTypesSettingsProps {
   isAdmin?: boolean;
 }
 
 export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
-  // Load from localStorage
-  const [dealTypes, setDealTypes] = useState<DealType[]>(() => {
-    const saved = localStorage.getItem('dealTypes');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return DEFAULT_DEAL_TYPES;
-      }
-    }
-    return DEFAULT_DEAL_TYPES;
-  });
+  const { dealTypes: contextDealTypes, saveDealTypes, isLoading } = useDealTypes();
   
-  const [savedDealTypes, setSavedDealTypes] = useState<DealType[]>(() => {
-    const saved = localStorage.getItem('dealTypes');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return DEFAULT_DEAL_TYPES;
-      }
-    }
-    return DEFAULT_DEAL_TYPES;
-  });
+  const [dealTypes, setDealTypes] = useState<DealTypeOption[]>(contextDealTypes);
+  const [savedDealTypes, setSavedDealTypes] = useState<DealTypeOption[]>(contextDealTypes);
+
+  // Sync with context
+  useEffect(() => {
+    setDealTypes(contextDealTypes);
+    setSavedDealTypes(contextDealTypes);
+  }, [contextDealTypes]);
 
   const [isOpen, setIsOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -78,10 +49,6 @@ export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   const hasUnsavedChanges = JSON.stringify(dealTypes) !== JSON.stringify(savedDealTypes);
-
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-  };
 
   const openAddDialog = () => {
     setEditingId(null);
@@ -127,7 +94,7 @@ export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      localStorage.setItem('dealTypes', JSON.stringify(dealTypes));
+      await saveDealTypes(dealTypes);
       setSavedDealTypes(dealTypes);
       toast({ title: 'Deal types saved', description: 'Your changes have been saved successfully.' });
     } catch (error) {
@@ -182,7 +149,7 @@ export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CollapsibleTrigger asChild>
@@ -206,64 +173,72 @@ export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
           </CardHeader>
           <CollapsibleContent>
             <CardContent className="space-y-4">
-              {/* Top Save Bar */}
-              <SaveBar />
-              
-              <div className="space-y-2">
-                {dealTypes.map((dealType) => (
-                  <div
-                    key={dealType.id}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                  >
-                    <span className="font-medium">{dealType.label}</span>
-                    {isAdmin && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => openEditDialog(dealType.id)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  {/* Top Save Bar */}
+                  {isAdmin && <SaveBar />}
+                  
+                  <div className="space-y-2">
+                    {dealTypes.map((dealType) => (
+                      <div
+                        key={dealType.id}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
+                        <span className="font-medium">{dealType.label}</span>
+                        {isAdmin && (
+                          <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              className="h-8 w-8"
+                              onClick={() => openEditDialog(dealType.id)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Pencil className="h-4 w-4" />
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete "{dealType.label}"?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will remove the deal type from available options. Deals using this type will retain their current value.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(dealType.id)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete "{dealType.label}"?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will remove the deal type from available options. Deals using this type will retain their current value.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(dealType.id)}>
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
                       </div>
+                    ))}
+                    {dealTypes.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">
+                        No deal types configured. Add one to get started.
+                      </p>
                     )}
                   </div>
-                ))}
-                {dealTypes.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">
-                    No deal types configured. Add one to get started.
-                  </p>
-                )}
-              </div>
-              
-              {/* Bottom Save Bar */}
-              <SaveBar />
+                  
+                  {/* Bottom Save Bar */}
+                  {isAdmin && <SaveBar />}
+                </>
+              )}
             </CardContent>
           </CollapsibleContent>
         </Card>

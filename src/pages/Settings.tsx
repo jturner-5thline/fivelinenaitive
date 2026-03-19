@@ -31,112 +31,36 @@ import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
 import { DistributionStatsSettings } from '@/components/settings/DistributionStatsSettings';
 import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
 import { useCompany } from '@/hooks/useCompany';
+import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
+
 const SETTINGS_SECTIONS = [
-  {
-    id: 'account',
-    keywords: ['account', 'profile', 'personal', 'info', 'details', 'email', 'name', 'avatar'],
-  },
-  {
-    id: 'company',
-    keywords: ['company', 'team', 'organization', 'members', 'admin', 'logo', 'industry', 'employees'],
-  },
-  {
-    id: 'database',
-    keywords: ['database', 'lenders', 'directory', 'data', 'directories'],
-  },
-  {
-    id: 'workflows',
-    keywords: ['workflows', 'workflow', 'automation', 'automate', 'triggers', 'actions'],
-  },
-  {
-    id: 'lender-stages',
-    keywords: ['lender', 'stages', 'stage', 'pipeline', 'workflow', 'status', 'group', 'active', 'closed'],
-  },
-  {
-    id: 'lender-milestones',
-    keywords: ['lender', 'milestones', 'milestone', 'substage', 'tracking', 'progress'],
-  },
-  {
-    id: 'pass-reasons',
-    keywords: ['pass', 'reasons', 'reason', 'decline', 'reject', 'lender'],
-  },
-  {
-    id: 'deal-types',
-    keywords: ['deal', 'types', 'type', 'category', 'classification'],
-  },
-  {
-    id: 'pipelines',
-    keywords: ['pipeline', 'pipelines', 'kanban', 'board', 'workflow', 'deal', 'stages', 'manage'],
-  },
-  {
-    id: 'deal-info-fields',
-    keywords: ['deal', 'information', 'fields', 'card', 'layout', 'order', 'visibility', 'configure'],
-  },
-  {
-    id: 'writeup-fields',
-    keywords: ['write', 'writeup', 'write-up', 'fields', 'configure', 'labels', 'required', 'overview'],
-  },
-  {
-    id: 'deal-stages',
-    keywords: ['deal', 'stages', 'stage', 'pipeline', 'progression', 'workflow'],
-  },
-  {
-    id: 'default-milestones',
-    keywords: ['default', 'milestones', 'milestone', 'templates', 'automatic', 'deal'],
-  },
-  {
-    id: 'referral-sources',
-    keywords: ['referral', 'sources', 'source', 'referred', 'by', 'referrer'],
-  },
-  {
-    id: 'suggestions',
-    keywords: ['suggestions', 'smart', 'alerts', 'warnings', 'reminders', 'opportunities', 'ai'],
-  },
-  {
-    id: 'lender-matching',
-    keywords: ['lender', 'matching', 'algorithm', 'scoring', 'weight', 'priority', 'criteria', 'suggested'],
-  },
-  {
-    id: 'data-room-checklist',
-    keywords: ['data', 'room', 'checklist', 'documents', 'required', 'files', 'information', 'items'],
-  },
-  {
-    id: 'gamma-templates',
-    keywords: ['gamma', 'templates', 'presentation', 'document', 'pitch', 'status', 'update'],
-  },
-  {
-    id: 'agreement-templates',
-    keywords: ['agreement', 'templates', 'legal', 'advisory', 'drafter', 'contract', 'engagement'],
-  },
-  {
-    id: 'preferences',
-    keywords: ['preferences', 'theme', 'notifications', 'regional', 'settings', 'dark', 'light', 'mode'],
-  },
-  {
-    id: 'scheduled-reports',
-    keywords: ['scheduled', 'reports', 'report', 'automation', 'pipeline', 'summary', 'recurring'],
-  },
-  {
-    id: 'sla-rules',
-    keywords: ['sla', 'rules', 'stale', 'alert', 'monitoring', 'deal', 'activity', 'timeout'],
-  },
-  {
-    id: 'zapier',
-    keywords: ['zapier', 'webhook', 'integration', 'automation', 'connect', 'zap'],
-  },
-  {
-    id: 'email-snippets',
-    keywords: ['email', 'snippets', 'snippet', 'template', 'templates', 'reusable', 'tokens', 'hubspot'],
-  },
-  {
-    id: 'email-labels',
-    keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'],
-  },
-  {
-    id: 'distribution-stats',
-    keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'],
-  },
+  { id: 'account', keywords: ['account', 'profile', 'personal', 'info', 'details', 'email', 'name', 'avatar'] },
+  { id: 'company', keywords: ['company', 'team', 'organization', 'members', 'admin', 'logo', 'industry', 'employees'] },
+  { id: 'database', keywords: ['database', 'lenders', 'directory', 'data', 'directories'] },
+  { id: 'workflows', keywords: ['workflows', 'workflow', 'automation', 'automate', 'triggers', 'actions'] },
+  { id: 'lender-stages', keywords: ['lender', 'stages', 'stage', 'pipeline', 'workflow', 'status', 'group', 'active', 'closed'] },
+  { id: 'lender-milestones', keywords: ['lender', 'milestones', 'milestone', 'substage', 'tracking', 'progress'] },
+  { id: 'pass-reasons', keywords: ['pass', 'reasons', 'reason', 'decline', 'reject', 'lender'] },
+  { id: 'deal-types', keywords: ['deal', 'types', 'type', 'category', 'classification'] },
+  { id: 'pipelines', keywords: ['pipeline', 'pipelines', 'kanban', 'board', 'workflow', 'deal', 'stages', 'manage'] },
+  { id: 'deal-info-fields', keywords: ['deal', 'information', 'fields', 'card', 'layout', 'order', 'visibility', 'configure'] },
+  { id: 'writeup-fields', keywords: ['write', 'writeup', 'write-up', 'fields', 'configure', 'labels', 'required', 'overview'] },
+  { id: 'deal-stages', keywords: ['deal', 'stages', 'stage', 'pipeline', 'progression', 'workflow'] },
+  { id: 'default-milestones', keywords: ['default', 'milestones', 'milestone', 'templates', 'automatic', 'deal'] },
+  { id: 'referral-sources', keywords: ['referral', 'sources', 'source', 'referred', 'by', 'referrer'] },
+  { id: 'suggestions', keywords: ['suggestions', 'smart', 'alerts', 'warnings', 'reminders', 'opportunities', 'ai'] },
+  { id: 'lender-matching', keywords: ['lender', 'matching', 'algorithm', 'scoring', 'weight', 'priority', 'criteria', 'suggested'] },
+  { id: 'data-room-checklist', keywords: ['data', 'room', 'checklist', 'documents', 'required', 'files', 'information', 'items'] },
+  { id: 'gamma-templates', keywords: ['gamma', 'templates', 'presentation', 'document', 'pitch', 'status', 'update'] },
+  { id: 'agreement-templates', keywords: ['agreement', 'templates', 'legal', 'advisory', 'drafter', 'contract', 'engagement'] },
+  { id: 'preferences', keywords: ['preferences', 'theme', 'notifications', 'regional', 'settings', 'dark', 'light', 'mode'] },
+  { id: 'scheduled-reports', keywords: ['scheduled', 'reports', 'report', 'automation', 'pipeline', 'summary', 'recurring'] },
+  { id: 'sla-rules', keywords: ['sla', 'rules', 'stale', 'alert', 'monitoring', 'deal', 'activity', 'timeout'] },
+  { id: 'zapier', keywords: ['zapier', 'webhook', 'integration', 'automation', 'connect', 'zap'] },
+  { id: 'email-snippets', keywords: ['email', 'snippets', 'snippet', 'template', 'templates', 'reusable', 'tokens', 'hubspot'] },
+  { id: 'email-labels', keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'] },
+  { id: 'distribution-stats', keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'] },
 ];
 
 // Tab definitions with which section IDs belong to each
@@ -174,6 +98,7 @@ export default function Settings() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('general');
   const { isAdmin } = useCompany();
+  const { features: companyFeatures } = useCompanyFeatures();
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
 
   const visibleSections = useMemo(() => {
@@ -192,11 +117,19 @@ export default function Settings() {
 
   const isVisible = (id: string) => visibleSections.includes(id);
 
+  // Filter tabs based on feature flags — hide Automation if workflows disabled
+  const availableTabs = useMemo(() => {
+    return TABS.filter(tab => {
+      if (tab.id === 'automation' && !companyFeatures.workflows_enabled) return false;
+      return true;
+    });
+  }, [companyFeatures.workflows_enabled]);
+
   // When searching, find the first tab that has matching results and switch to it
   const filteredTabs = useMemo(() => {
-    if (!searchQuery.trim()) return TABS;
-    return TABS.filter(tab => tab.sectionIds.some(id => visibleSections.includes(id)));
-  }, [searchQuery, visibleSections]);
+    if (!searchQuery.trim()) return availableTabs;
+    return availableTabs.filter(tab => tab.sectionIds.some(id => visibleSections.includes(id)));
+  }, [searchQuery, visibleSections, availableTabs]);
 
   // Auto-switch to first matching tab when searching
   const effectiveTab = useMemo(() => {
@@ -299,7 +232,9 @@ export default function Settings() {
                   {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
                   {isVisible('data-room-checklist') && <DefaultChecklistSettings isAdmin={isAdmin} />}
                   {isVisible('gamma-templates') && <GammaTemplatesSettings isAdmin={isAdmin} />}
-                  {isVisible('agreement-templates') && <AgreementTemplatesSettings isAdmin={isAdmin} />}
+                  {isVisible('agreement-templates') && companyFeatures.agreement_icon_visible && (
+                    <AgreementTemplatesSettings isAdmin={isAdmin} />
+                  )}
                   {isVisible('deal-types') && <LenderScoreSettings isAdmin={isAdmin} />}
                   {isVisible('deal-types') && <DisclaimerSettings isAdmin={isAdmin} />}
                 </TabsContent>
@@ -313,18 +248,20 @@ export default function Settings() {
                   {isVisible('lender-matching') && <LenderMatchingSettings />}
                 </TabsContent>
 
-                {/* Automation Tab */}
-                <TabsContent value="automation" className="space-y-4 mt-4">
-                  {isVisible('workflows') && (
-                    <LinkCard to="/workflows" title="Workflows" description="Create and manage automated workflows" />
-                  )}
-                  {isVisible('suggestions') && <SuggestionSettings />}
-                  {isVisible('scheduled-reports') && <ScheduledReportsSettings />}
-                  {isVisible('sla-rules') && <SLARulesSettings />}
-                  {isVisible('zapier') && (
-                    <LinkCard to="/integrations?tab=zapier" title="Zapier" description="Manage Zapier webhooks and event triggers" />
-                  )}
-                </TabsContent>
+                {/* Automation Tab — only shown when workflows_enabled */}
+                {companyFeatures.workflows_enabled && (
+                  <TabsContent value="automation" className="space-y-4 mt-4">
+                    {isVisible('workflows') && (
+                      <LinkCard to="/workflows" title="Workflows" description="Create and manage automated workflows" />
+                    )}
+                    {isVisible('suggestions') && <SuggestionSettings />}
+                    {isVisible('scheduled-reports') && <ScheduledReportsSettings />}
+                    {isVisible('sla-rules') && <SLARulesSettings />}
+                    {isVisible('zapier') && (
+                      <LinkCard to="/integrations?tab=zapier" title="Zapier" description="Manage Zapier webhooks and event triggers" />
+                    )}
+                  </TabsContent>
+                )}
 
                 {/* Email Tab */}
                 <TabsContent value="email" className="space-y-4 mt-4">

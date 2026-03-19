@@ -1852,6 +1852,7 @@ export type Database = {
           deal_info_layout: Json | null
           deal_panel_layout: Json | null
           deal_stages: Json | null
+          deal_types: Json | null
           deals_special_widgets: Json | null
           deals_widgets_config: Json | null
           default_deal_stage_id: string | null
@@ -1869,6 +1870,7 @@ export type Database = {
           deal_info_layout?: Json | null
           deal_panel_layout?: Json | null
           deal_stages?: Json | null
+          deal_types?: Json | null
           deals_special_widgets?: Json | null
           deals_widgets_config?: Json | null
           default_deal_stage_id?: string | null
@@ -1886,6 +1888,7 @@ export type Database = {
           deal_info_layout?: Json | null
           deal_panel_layout?: Json | null
           deal_stages?: Json | null
+          deal_types?: Json | null
           deals_special_widgets?: Json | null
           deals_widgets_config?: Json | null
           default_deal_stage_id?: string | null
