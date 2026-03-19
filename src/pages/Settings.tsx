@@ -32,6 +32,7 @@ import { DistributionStatsSettings } from '@/components/settings/DistributionSta
 import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
+import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 
 const SETTINGS_SECTIONS = [
