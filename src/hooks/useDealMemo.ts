@@ -78,7 +78,9 @@ export function useDealMemo(dealId: string | undefined) {
         if (error) throw error;
       }
 
-      await fetchMemo();
+      if (!options?.silent) {
+        await fetchMemo();
+      }
       if (!options?.silent) {
         toast({ title: 'Saved', description: 'Memo updated successfully' });
       }
