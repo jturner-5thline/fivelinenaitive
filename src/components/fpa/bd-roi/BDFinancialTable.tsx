@@ -37,6 +37,9 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices }
   const [editingCell, setEditingCell] = useState<{ rowKey: string; col: number } | null>(null);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  // Determine which column indices to show
+  const indices = visibleIndices ?? quarters.map((_, i) => i);
+  const displayQuarters = indices.map(i => quarters[i]);
 
   const allCollapsed = collapsed.size === sections.length;
 
