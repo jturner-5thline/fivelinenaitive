@@ -567,6 +567,33 @@ export function useDealsDatabase() {
     const previousDeals = deals;
     const previousDeal = deals.find(d => d.id === dealId);
     
+    // Auto-move to In Development pipeline when stage is set to 'unresponsive'
+    if (updates.stage === 'unresponsive' && previousDeal?.stage !== 'unresponsive') {
+      try {
+        const { data: membership } = await supabase
+          .from('company_members')
+          .select('company_id')
+          .eq('user_id', userId!)
+          .maybeSingle();
+
+        if (membership?.company_id) {
+          const { data: inDevPipeline } = await supabase
+            .from('deal_pipelines')
+            .select('id')
+            .eq('company_id', membership.company_id)
+            .ilike('name', '%in development%')
+            .limit(1)
+            .maybeSingle();
+
+          if (inDevPipeline) {
+            updates = { ...updates, pipelineId: inDevPipeline.id, status: 'on-hold' as DealStatus };
+          }
+        }
+      } catch (err) {
+        console.error('Error resolving In Development pipeline:', err);
+      }
+    }
+
     // Mark as pending to prevent realtime refetch from overwriting optimistic update
     pendingOptimisticUpdatesRef.current.add(`deal-${dealId}`);
     
@@ -596,7 +623,6 @@ export function useDealsDatabase() {
         dbUpdates.referred_by = updates.referredBy?.name ?? null;
       }
       if (updates.dealTypes !== undefined) {
-        // Store as JSON array string
         dbUpdates.deal_type = updates.dealTypes.length > 0 ? JSON.stringify(updates.dealTypes) : null;
       }
       if (updates.preSigningHours !== undefined) dbUpdates.pre_signing_hours = updates.preSigningHours;
