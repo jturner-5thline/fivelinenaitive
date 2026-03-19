@@ -179,15 +179,15 @@ export function HubSpotMappingDetailModal({ configId, open, onClose }: HubSpotMa
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle>HubSpot Deals ↔ nAItive Deals</DialogTitle>
           <DialogDescription>
             Configure field mappings, sync direction, and record behavior for deal synchronization.
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
+        <ScrollArea className="flex-1 min-h-0 pr-4">
           <div className="space-y-6 pb-4">
             {/* Directionality */}
             <div>
