@@ -685,7 +685,8 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
 
     // Batch insert
     if (toInsert.length > 0) {
-      const { error } = await supabase.from('deals').insert(toInsert);
+      // Use upsert with ignoreDuplicates to gracefully handle race conditions
+      const { error } = await supabase.from('deals').upsert(toInsert, { onConflict: 'hubspot_deal_id', ignoreDuplicates: true });
       if (error) {
         console.error('Batch insert error:', JSON.stringify(error));
         errors.push(`Batch insert: ${error.message}`);
