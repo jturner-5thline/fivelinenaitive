@@ -82,9 +82,10 @@ function buildBankSections(
   ];
 }
 
-export function BDBankTab() {
+export function BDBankTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
   const store = useBDRoiStore();
   const { bankAssumptions, bankProjections, bankActuals } = store;
+  const vi = useMemo(() => getVisibleIndices(QUARTERS_12, visibleQuarters), [visibleQuarters]);
 
   const projComputed = useMemo(() => buildBankComputed(bankProjections), [bankProjections]);
   const actComputed = useMemo(() => buildBankComputed(bankActuals), [bankActuals]);
