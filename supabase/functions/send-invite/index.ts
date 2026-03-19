@@ -59,7 +59,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { invitationId, email, companyName, inviterName, role, token }: SendInviteRequest = await req.json();
 
     // Use the published app URL for invitation links
-    const appUrl = "https://fivelinenaitive.lovable.app";
+    const appUrl = "https://naitive.co";
     const inviteUrl = `${appUrl}/accept-invite?token=${token}`;
 
     console.log(`Sending invite to ${email} for company ${companyName}`);

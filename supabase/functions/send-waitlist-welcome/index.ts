@@ -25,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending waitlist welcome email to ${email}`);
 
-    const appUrl = "https://fivelinenaitive.lovable.app";
+    const appUrl = "https://naitive.co";
 
     const emailResponse = await resend.emails.send({
       from: "naitive <noreply@updates.naitive.co>",

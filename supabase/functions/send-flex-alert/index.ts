@@ -138,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const message = template.getMessage(payload);
-    const appUrl = "https://fivelinenaitive.lovable.app";
+    const appUrl = "https://naitive.co";
     const dealUrl = `${appUrl}/deal/${payload.deal_id}?tab=deal-management`;
     const userName = profileData.first_name || profileData.display_name || 'there';
 

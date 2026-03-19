@@ -104,7 +104,7 @@ serve(async (req) => {
               <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
                 Please log in to the admin panel to review and approve this user.
               </p>
-              <a href="https://fivelinenaitive.lovable.app/admin" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-top: 16px;">
+              <a href="https://naitive.co/admin" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-top: 16px;">
                 Review in Admin Panel
               </a>
             </div>
