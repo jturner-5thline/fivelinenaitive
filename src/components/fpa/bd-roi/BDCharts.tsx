@@ -82,50 +82,50 @@ export function BDChartGrid({ revenue, headcount, dealflow, finPerf, computed, v
   const filterArr = (arr: (number | null)[]) => vi.map(i => arr[i]);
 
   const revenueByChannel = useMemo(() => buildData(q,
-    { key: 'Debt', data: revenue.debt },
-    { key: 'FinServ', data: revenue.finServ },
-    { key: 'Other', data: revenue.other },
-  ), [revenue]);
+    { key: 'Debt', data: filterArr(revenue.debt) },
+    { key: 'FinServ', data: filterArr(revenue.finServ) },
+    { key: 'Other', data: filterArr(revenue.other) },
+  ), [revenue, q]);
 
   const revVsCosts = useMemo(() => buildData(q,
-    { key: 'Revenue', data: computed.totalRevenue },
-    { key: 'Costs', data: computed.totalCosts },
-  ), [computed]);
+    { key: 'Revenue', data: filterArr(computed.totalRevenue) },
+    { key: 'Costs', data: filterArr(computed.totalCosts) },
+  ), [computed, q]);
 
   const marginData = useMemo(() => buildData(q,
-    { key: 'Margin', data: computed.margin },
-    { key: 'Margin %', data: computed.marginPct.map(v => v !== null ? v * 100 : null) },
-  ), [computed]);
+    { key: 'Margin', data: filterArr(computed.margin) },
+    { key: 'Margin %', data: filterArr(computed.marginPct.map(v => v !== null ? v * 100 : null)) },
+  ), [computed, q]);
 
   const roiTrend = useMemo(() => buildData(q,
-    { key: 'TTM ROI', data: computed.ttmROI },
-  ), [computed]);
+    { key: 'TTM ROI', data: filterArr(computed.ttmROI) },
+  ), [computed, q]);
 
   const hcData = useMemo(() => buildData(q,
-    { key: 'Debt', data: headcount.debt },
-    { key: 'FinServ', data: headcount.finServ },
-    { key: 'Chandler+Tyler', data: headcount.chandlerTyler },
-  ), [headcount]);
+    { key: 'Debt', data: filterArr(headcount.debt) },
+    { key: 'FinServ', data: filterArr(headcount.finServ) },
+    { key: 'Chandler+Tyler', data: filterArr(headcount.chandlerTyler) },
+  ), [headcount, q]);
 
   const cumProfit = useMemo(() => buildData(q,
-    { key: 'Cumulative Profit', data: computed.allTimeProfit },
-  ), [computed]);
+    { key: 'Cumulative Profit', data: filterArr(computed.allTimeProfit) },
+  ), [computed, q]);
 
   const dealflowData = useMemo(() => buildData(q,
-    { key: 'DOB', data: dealflow.dobTotal },
-    { key: 'Signed', data: dealflow.dsTotal },
-    { key: 'Closed', data: dealflow.dcTotal },
-  ), [dealflow]);
+    { key: 'DOB', data: filterArr(dealflow.dobTotal) },
+    { key: 'Signed', data: filterArr(dealflow.dsTotal) },
+    { key: 'Closed', data: filterArr(dealflow.dcTotal) },
+  ), [dealflow, q]);
 
   const revGenerated = useMemo(() => buildData(q,
-    { key: 'Partner', data: finPerf.revPartner },
-    { key: 'Bank', data: finPerf.revBank },
-  ), [finPerf]);
+    { key: 'Partner', data: filterArr(finPerf.revPartner) },
+    { key: 'Bank', data: filterArr(finPerf.revBank) },
+  ), [finPerf, q]);
 
   const roiComparison = useMemo(() => buildData(q,
-    { key: 'RunRate ROI', data: computed.runRateROI },
-    { key: 'TTM ROI', data: computed.ttmROIWBonus },
-  ), [computed]);
+    { key: 'RunRate ROI', data: filterArr(computed.runRateROI) },
+    { key: 'TTM ROI', data: filterArr(computed.ttmROIWBonus) },
+  ), [computed, q]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">

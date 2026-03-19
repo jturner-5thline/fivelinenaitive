@@ -9,8 +9,8 @@ import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
 import { getVisibleIndices } from './QuarterFilter';
 
 export function BDDashboardTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
-  const { revenue, costs, headcount, cmBonus, dealflow, finPerf } = useBDRoiStore();
   const store = useBDRoiStore();
+  const { revenue, costs, headcount, cmBonus, dealflow, finPerf } = store;
   const vi = useMemo(() => getVisibleIndices(QUARTERS_12, visibleQuarters), [visibleQuarters]);
   const store = useBDRoiStore();
 
