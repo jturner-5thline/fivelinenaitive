@@ -14,6 +14,8 @@ import { BDBankTab } from './BDBankTab';
 import { BDCMCompTab } from './BDCMCompTab';
 import { BDEventsTab } from './BDEventsTab';
 import { BDAmexTab } from './BDAmexTab';
+import { QuarterFilter } from './QuarterFilter';
+import { QUARTERS_16 } from './bdRoiData';
 
 export function BDRoiModule() {
   const [auditOpen, setAuditOpen] = useState(false);
