@@ -574,6 +574,29 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
     if (d.hubspot_deal_id) existingMap.set(d.hubspot_deal_id, d.id);
   }
 
+  // 4b. Look up the "In Development" pipeline for this company.
+  // HubSpot deals default into "In Development" so they don't crowd the Active Deals pipeline.
+  // Falls back to null (no pipeline_id set) if the pipeline doesn't exist.
+  let inDevPipelineId: string | null = null;
+  if (companyId) {
+    try {
+      const { data: inDevPipeline } = await supabase
+        .from('deal_pipelines')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('name', 'In Development')
+        .maybeSingle();
+      if (inDevPipeline) {
+        inDevPipelineId = inDevPipeline.id;
+        console.log(`Found "In Development" pipeline: ${inDevPipelineId}`);
+      } else {
+        console.log('No "In Development" pipeline found; new deals will use default behavior');
+      }
+    } catch (e) {
+      console.warn('Error looking up "In Development" pipeline, falling back to default:', e);
+    }
+  }
+
   // UUID columns that cannot accept non-UUID strings
   const uuidColumns = new Set(['pipeline_id', 'company_id']);
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -629,10 +652,15 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
 
         const existingId = existingMap.get(hubspotDealId);
         if (existingId) {
+          // Existing deal: do NOT overwrite pipeline_id
           const { hubspot_deal_id: _hid, user_id: _uid, company_id: _cid, ...updateData } = dealData;
           updateData.updated_at = new Date().toISOString();
           toUpdate.push({ id: existingId, data: updateData });
         } else {
+          // New deal: assign to "In Development" pipeline if available and no pipeline_id already set
+          if (inDevPipelineId && !dealData.pipeline_id) {
+            dealData.pipeline_id = inDevPipelineId;
+          }
           toInsert.push(dealData);
         }
       } catch (e) {
