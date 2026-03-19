@@ -294,8 +294,13 @@ export function FileListPane({
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onClick={() => onOpenMappingDialog([att])}>
-                          <Link2 className="h-3.5 w-3.5 mr-2" /> Map to Items
+                          <Link2 className="h-3.5 w-3.5 mr-2" /> {itemMappings.length > 0 ? 'Change Mapping' : 'Map to Items'}
                         </DropdownMenuItem>
+                        {itemMappings.length > 0 && (
+                          <DropdownMenuItem onClick={() => onOpenMappingDialog([att])}>
+                            <ArrowLeftRight className="h-3.5 w-3.5 mr-2" /> Move to checklist item…
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive" onClick={() => deleteAttachment(att)}>
                           <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
