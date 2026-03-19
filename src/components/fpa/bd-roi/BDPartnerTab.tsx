@@ -170,15 +170,15 @@ export function BDPartnerTab({ visibleQuarters }: { visibleQuarters: Set<string>
         </TabsList>
         <TabsContent value="projections">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Projections — Partner Program</h3>
-          <BDFinancialTable sections={projSections} quarters={QUARTERS_16} />
+           <BDFinancialTable sections={projSections} quarters={QUARTERS_16} visibleIndices={vi} />
         </TabsContent>
         <TabsContent value="actuals">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Actuals — Partner Program</h3>
-          <BDFinancialTable sections={actSections} quarters={QUARTERS_16} />
+           <BDFinancialTable sections={actSections} quarters={QUARTERS_16} visibleIndices={vi} />
         </TabsContent>
         <TabsContent value="variance">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Variance — Partner Program</h3>
-          <BDFinancialTable sections={varianceSections} quarters={QUARTERS_16} />
+           <BDFinancialTable sections={varianceSections} quarters={QUARTERS_16} visibleIndices={vi} />
         </TabsContent>
       </Tabs>
     </div>

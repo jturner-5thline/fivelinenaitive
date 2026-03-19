@@ -188,10 +188,11 @@ export function BDDashboardTab({ visibleQuarters }: { visibleQuarters: Set<strin
         dealflow={dealflow}
         finPerf={finPerf}
         computed={c}
+        visibleQuarters={visibleQuarters}
       />
 
       {/* Data Tables */}
-      <BDFinancialTable sections={allSections} quarters={QUARTERS_12} />
+      <BDFinancialTable sections={allSections} quarters={QUARTERS_12} visibleIndices={vi} />
     </div>
   );
 }

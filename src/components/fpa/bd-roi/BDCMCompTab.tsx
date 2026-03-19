@@ -75,12 +75,15 @@ export function BDCMCompTab({ visibleQuarters }: { visibleQuarters: Set<string> 
               </tr>
             </thead>
             <tbody>
-              {QUARTERS_12.map((q, i) => (
-                <tr key={q} className="border-b border-border/30">
-                  <td className="px-2 py-1.5 text-foreground">{q}</td>
-                  <td className="text-right px-2 py-1.5 text-primary font-medium">{formatBDCurrency(cmBonus[i])}</td>
-                </tr>
-              ))}
+              {QUARTERS_12.map((q, i) => {
+                if (!visibleQuarters.has(q)) return null;
+                return (
+                  <tr key={q} className="border-b border-border/30">
+                    <td className="px-2 py-1.5 text-foreground">{q}</td>
+                    <td className="text-right px-2 py-1.5 text-primary font-medium">{formatBDCurrency(cmBonus[i])}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

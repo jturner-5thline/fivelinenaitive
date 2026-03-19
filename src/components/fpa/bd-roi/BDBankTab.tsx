@@ -157,15 +157,15 @@ export function BDBankTab({ visibleQuarters }: { visibleQuarters: Set<string> })
         </TabsList>
         <TabsContent value="projections">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Projections — Bank Channel</h3>
-          <BDFinancialTable sections={projSections} quarters={QUARTERS_12} />
+           <BDFinancialTable sections={projSections} quarters={QUARTERS_12} visibleIndices={vi} />
         </TabsContent>
         <TabsContent value="actuals">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Actuals — Bank Channel</h3>
-          <BDFinancialTable sections={actSections} quarters={QUARTERS_12} />
+           <BDFinancialTable sections={actSections} quarters={QUARTERS_12} visibleIndices={vi} />
         </TabsContent>
         <TabsContent value="variance">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Variance — Bank Channel</h3>
-          <BDFinancialTable sections={varianceSections} quarters={QUARTERS_12} />
+           <BDFinancialTable sections={varianceSections} quarters={QUARTERS_12} visibleIndices={vi} />
         </TabsContent>
       </Tabs>
     </div>
