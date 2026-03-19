@@ -67,15 +67,30 @@ export function MappingDialog({
   };
 
   const handleConfirm = async () => {
-    const itemIds = Array.from(selections);
+    const newItemIds = Array.from(selections);
+
     for (const file of filesToMap) {
-      if (itemIds.length > 0) {
-        await mapFileToItems(file.id, itemIds, 'manual_picker');
+      const currentMappings = getItemsForFile(file.id);
+      const currentItemIds = new Set(currentMappings.map(m => m.checklist_item_id));
+
+      // Unmap items that were deselected
+      if (unmapFile) {
+        for (const mapping of currentMappings) {
+          if (!selections.has(mapping.checklist_item_id)) {
+            await unmapFile(file.id, mapping.checklist_item_id);
+          }
+        }
+      }
+
+      // Map newly selected items
+      const toAdd = newItemIds.filter(id => !currentItemIds.has(id));
+      if (toAdd.length > 0) {
+        await mapFileToItems(file.id, toAdd, 'manual_picker');
       }
     }
-    // Mark mapped checklist items as complete
-    if (onMarkItemsComplete && itemIds.length > 0) {
-      await onMarkItemsComplete(itemIds);
+
+    if (onMarkItemsComplete && newItemIds.length > 0) {
+      await onMarkItemsComplete(newItemIds);
     }
     onOpenChange(false);
     setSelections(new Set());
