@@ -1,406 +1,389 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { useSupportSession } from '@/hooks/useSupportSession';
 import { format } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Eye, Pencil, ExternalLink, Shield, MonitorPlay, LogOut, Settings, ClipboardList, Layout } from 'lucide-react';
-import { toast } from 'sonner';
-import { CompanyConfigOverview } from './CompanyConfigOverview';
-import { CompanyPageAccessPanel } from './CompanyPageAccessPanel';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import {
+  Search, User, Building2, Briefcase, Clock, Mail, Shield,
+  ChevronRight, ArrowLeft, MonitorPlay, Activity,
+} from 'lucide-react';
 
-interface AuditLogEntry {
-  id: string;
-  support_user_id: string;
-  target_company_id: string;
-  action: string;
-  resource_type: string;
-  resource_id: string | null;
-  details: Record<string, unknown> | null;
-  created_at: string;
-}
-
-interface ProfileInfo {
-  display_name: string | null;
+interface UserResult {
+  user_id: string;
   email: string | null;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  onboarding_completed: boolean | null;
+  approved_at: string | null;
+  suspended_at: string | null;
+  suspended_reason: string | null;
 }
-
-// Map action to human-readable event label
-function formatEvent(action: string, resourceType: string): string {
-  const verb = action.startsWith('view_') ? 'Viewed'
-    : action.startsWith('create_') ? 'Created'
-    : action.startsWith('update_') ? 'Updated'
-    : action.startsWith('delete_') ? 'Deleted'
-    : action.charAt(0).toUpperCase() + action.slice(1);
-
-  const noun = resourceType.replace(/_/g, ' ');
-  return `${verb} ${noun}`;
-}
-
-// Determine if an action is a read or write
-function isWriteAction(action: string): boolean {
-  return action.startsWith('create_') || action.startsWith('update_') || action.startsWith('delete_');
-}
-
-// Get route for a resource
-function getResourceRoute(resourceType: string, resourceId: string | null): string | null {
-  if (!resourceId) return null;
-  switch (resourceType) {
-    case 'deal': return `/deals/${resourceId}`;
-    case 'workflow': return `/workflows/${resourceId}`;
-    case 'integration': case 'integration_config': return `/integrations/${resourceId}`;
-    case 'agent': return `/agents/${resourceId}`;
-    case 'config': case 'settings': return `/settings`;
-    default: return null;
-  }
-}
-
-type EventFilter = 'all' | 'edits' | 'views';
-type TimeFilter = '24h' | '7d' | '30d';
 
 export function ClientAccountViewer() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { canUseSupport, activeSession, companyName, startSession, endSession } = useSupportSession();
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-  const [eventFilter, setEventFilter] = useState<EventFilter>('all');
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('7d');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch all companies for the selector
-  const { data: companies, isLoading: companiesLoading } = useQuery({
-    queryKey: ['admin-all-companies-support'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('admin_get_all_companies');
-      if (error) throw error;
-      return data as Array<{ id: string; name: string; member_count: number }>;
-    },
-    enabled: canUseSupport,
-  });
-
-  // Set selected company from active session
-  useEffect(() => {
-    if (activeSession?.target_company_id && !selectedCompanyId) {
-      setSelectedCompanyId(activeSession.target_company_id);
-    }
-  }, [activeSession?.target_company_id, selectedCompanyId]);
-
-  const targetCompanyId = activeSession?.target_company_id || selectedCompanyId;
-
-  // Compute time cutoff
-  const getTimeCutoff = () => {
-    const now = new Date();
-    switch (timeFilter) {
-      case '24h': return new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-      case '7d': return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      case '30d': return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    }
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (searchTimeout) clearTimeout(searchTimeout);
+    const timeout = setTimeout(() => setDebouncedQuery(value.trim()), 300);
+    setSearchTimeout(timeout);
   };
 
-  // Fetch audit logs
-  const { data: auditLogs, isLoading: logsLoading } = useQuery({
-    queryKey: ['support-audit-logs', targetCompanyId, timeFilter],
+  // Search users
+  const { data: searchResults, isLoading: searchLoading } = useQuery({
+    queryKey: ['admin-user-search', debouncedQuery],
     queryFn: async () => {
-      if (!targetCompanyId) return [];
-      const cutoff = getTimeCutoff();
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
+      const pattern = `%${debouncedQuery}%`;
       const { data, error } = await supabase
-        .from('support_audit_logs')
-        .select('*')
-        .eq('target_company_id', targetCompanyId)
-        .gte('created_at', cutoff)
-        .order('created_at', { ascending: false })
-        .limit(200);
-
-      if (error) {
-        console.error('Error fetching audit logs:', error);
-        return [];
-      }
-      return data as AuditLogEntry[];
-    },
-    enabled: canUseSupport && !!targetCompanyId,
-    refetchInterval: 30_000,
-  });
-
-  // Fetch profiles for support users in audit logs
-  const supportUserIds = [...new Set((auditLogs ?? []).map(l => l.support_user_id))];
-  const { data: profilesMap } = useQuery({
-    queryKey: ['support-user-profiles', supportUserIds.join(',')],
-    queryFn: async () => {
-      if (supportUserIds.length === 0) return {} as Record<string, ProfileInfo>;
-      const { data } = await supabase
         .from('profiles')
-        .select('user_id, display_name, email')
-        .in('user_id', supportUserIds);
-      const map: Record<string, ProfileInfo> = {};
-      (data ?? []).forEach(p => { map[p.user_id] = p; });
-      return map;
+        .select('user_id, email, display_name, first_name, last_name, avatar_url, created_at, onboarding_completed, approved_at, suspended_at, suspended_reason')
+        .or(`display_name.ilike.${pattern},email.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as UserResult[];
     },
-    enabled: supportUserIds.length > 0,
+    enabled: debouncedQuery.length >= 2,
   });
 
-  // Apply event filter
-  const filteredLogs = (auditLogs ?? []).filter(log => {
-    if (eventFilter === 'edits') return isWriteAction(log.action);
-    if (eventFilter === 'views') return !isWriteAction(log.action);
-    return true;
-  });
-
-  const handleStartSession = async () => {
-    if (!selectedCompanyId) {
-      toast.error('Please select a company first');
-      return;
-    }
-    await startSession(selectedCompanyId);
-    toast.success('Support session started');
-  };
-
-  const handleEndSession = async () => {
-    await endSession();
-    toast.success('Support session ended');
-  };
-
-  const handleViewResource = (resourceType: string, resourceId: string | null) => {
-    if (!activeSession) {
-      toast.error('Start a support session to view resources in client context');
-      return;
-    }
-    const route = getResourceRoute(resourceType, resourceId);
-    if (route) {
-      navigate(route);
-    } else {
-      toast.error('No direct link available for this resource type');
-    }
-  };
-
-  if (!canUseSupport) return null;
+  if (selectedUserId) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => setSelectedUserId(null)}>
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to search
+        </Button>
+        <UserDetailView userId={selectedUserId} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Support Mode Banner */}
-      {activeSession && companyName && (
-        <div className="flex items-center justify-between gap-4 p-4 rounded-lg border border-destructive/30 bg-destructive/5">
-          <div className="flex items-center gap-3">
-            <MonitorPlay className="h-5 w-5 text-destructive shrink-0" />
-            <p className="text-sm">
-              You are viewing naitive as <strong>{companyName}</strong> – internal 5th Line support mode (full edit access).
-              All support views and edits in this client account are logged with your user id and timestamp.
-            </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={handleEndSession} className="shrink-0">
-            <LogOut className="h-4 w-4 mr-1" />
-            Exit support mode
-          </Button>
-        </div>
-      )}
-
-      {/* Company Selector & Session Controls */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
+            <MonitorPlay className="h-5 w-5" />
             Client Account Viewer
           </CardTitle>
           <CardDescription>
-            View and manage client accounts in support mode. All actions are logged.
+            Search for any user by name or email to view their account details, company, and deals.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-end gap-3">
-            <div className="grid gap-1.5 flex-1 max-w-sm">
-              <label className="text-sm font-medium">Select Company</label>
-              <Select
-                value={selectedCompanyId}
-                onValueChange={setSelectedCompanyId}
-                disabled={!!activeSession}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={companiesLoading ? 'Loading...' : 'Choose a company'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(companies ?? []).map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.member_count} members)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {activeSession ? (
-              <Button variant="outline" onClick={handleEndSession}>
-                <LogOut className="h-4 w-4 mr-1" />
-                End Session
-              </Button>
-            ) : (
-              <Button onClick={handleStartSession} disabled={!selectedCompanyId}>
-                <MonitorPlay className="h-4 w-4 mr-1" />
-                View as Client
-              </Button>
-            )}
+        <CardContent>
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-10"
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabbed content: Config Overview + Activity Log */}
-      {targetCompanyId && (
-        <Tabs defaultValue="config" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="config" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Configuration
-            </TabsTrigger>
-            <TabsTrigger value="page-access" className="gap-2">
-              <Layout className="h-4 w-4" />
-              Page Access
-            </TabsTrigger>
-            <TabsTrigger value="activity" className="gap-2">
-              <ClipboardList className="h-4 w-4" />
-              Activity Log
-            </TabsTrigger>
-          </TabsList>
+      {searchLoading && (
+        <Card>
+          <CardContent className="py-6 space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
-          <TabsContent value="config">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Company Configuration</CardTitle>
-                <CardDescription>All settings, integrations, members, preferences, and custom metrics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CompanyConfigOverview companyId={targetCompanyId} editable={!!activeSession} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="page-access">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Page & Feature Access</CardTitle>
-                <CardDescription>Control which pages and features are available for this company</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CompanyPageAccessPanel companyId={targetCompanyId} editable={!!activeSession} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="activity">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">Support Activity Log</CardTitle>
-                    <CardDescription>All support actions for this client account</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Select value={eventFilter} onValueChange={(v) => setEventFilter(v as EventFilter)}>
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All events</SelectItem>
-                        <SelectItem value="edits">Edits only</SelectItem>
-                        <SelectItem value="views">Views only</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)}>
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="24h">Last 24 hours</SelectItem>
-                        <SelectItem value="7d">Last 7 days</SelectItem>
-                        <SelectItem value="30d">Last 30 days</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+      {!searchLoading && searchResults && searchResults.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>{searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {searchResults.map((user) => (
+              <button
+                key={user.user_id}
+                onClick={() => setSelectedUserId(user.user_id)}
+                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+              >
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={user.avatar_url ?? undefined} />
+                  <AvatarFallback>{(user.display_name ?? user.email ?? '?')[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{user.display_name ?? 'Unnamed'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {logsLoading ? (
-                  <div className="space-y-2">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Skeleton key={i} className="h-10 w-full" />
-                    ))}
-                  </div>
-                ) : filteredLogs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center">
-                    No support activity found for the selected filters.
-                  </p>
-                ) : (
-                  <div className="overflow-auto max-h-[500px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Time</TableHead>
-                          <TableHead>Support User</TableHead>
-                          <TableHead>Event</TableHead>
-                          <TableHead>Resource</TableHead>
-                          <TableHead className="w-[80px]" />
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredLogs.map(log => {
-                          const profile = profilesMap?.[log.support_user_id];
-                          const route = getResourceRoute(log.resource_type, log.resource_id);
-                          const isWrite = isWriteAction(log.action);
+                <div className="flex items-center gap-2">
+                  {user.suspended_at && <Badge variant="destructive" className="text-xs">Suspended</Badge>}
+                  {!user.approved_at && !user.suspended_at && <Badge variant="secondary" className="text-xs">Pending</Badge>}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
-                          return (
-                            <TableRow key={log.id}>
-                              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                                {format(new Date(log.created_at), 'MMM d, HH:mm:ss')}
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">{profile?.display_name ?? 'Unknown'}</div>
-                                <div className="text-xs text-muted-foreground">{profile?.email ?? ''}</div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={isWrite ? 'destructive' : 'secondary'} className="text-xs">
-                                    {isWrite ? <Pencil className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                                    {isWrite ? 'Edit' : 'View'}
-                                  </Badge>
-                                  <span className="text-sm">{formatEvent(log.action, log.resource_type)}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm capitalize">{log.resource_type.replace(/_/g, ' ')}</span>
-                                {log.resource_id && (
-                                  <span className="text-xs text-muted-foreground ml-1">
-                                    ({log.resource_id.slice(0, 8)}…)
-                                  </span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {route && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleViewResource(log.resource_type, log.resource_id)}
-                                    disabled={!activeSession}
-                                    title={activeSession ? 'View in client context' : 'Start a session first'}
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+      {!searchLoading && debouncedQuery.length >= 2 && searchResults?.length === 0 && (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <User className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">No users found matching "{debouncedQuery}"</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── User Detail View ───────────────────────────────────────────────
+function UserDetailView({ userId }: { userId: string }) {
+  // Profile
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ['admin-user-detail', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Company membership
+  const { data: membership } = useQuery({
+    queryKey: ['admin-user-company', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_members')
+        .select('role, company_id, companies(name, industry, logo_url, employee_size, created_at)')
+        .eq('user_id', userId)
+        .limit(5);
+      if (error) throw error;
+      return data as Array<{
+        role: string;
+        company_id: string;
+        companies: { name: string; industry: string | null; logo_url: string | null; employee_size: string | null; created_at: string } | null;
+      }>;
+    },
+  });
+
+  // Deals summary
+  const { data: deals } = useQuery({
+    queryKey: ['admin-user-deals', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, company, stage, status, value, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Recent activity
+  const { data: activity } = useQuery({
+    queryKey: ['admin-user-activity', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('activity_logs')
+        .select('id, activity_type, description, created_at, deal_id')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(15);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  if (profileLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <p className="text-muted-foreground">User not found.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const statusBadge = profile.suspended_at
+    ? <Badge variant="destructive">Suspended</Badge>
+    : profile.approved_at
+      ? <Badge className="bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/10">Active</Badge>
+      : <Badge variant="secondary">Pending Approval</Badge>;
+
+  return (
+    <div className="space-y-6">
+      {/* Profile Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-start gap-4">
+            <Avatar className="h-14 w-14">
+              <AvatarImage src={profile.avatar_url ?? undefined} />
+              <AvatarFallback className="text-lg">{(profile.display_name ?? '?')[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <CardTitle>{profile.display_name ?? 'Unnamed User'}</CardTitle>
+                {statusBadge}
+              </div>
+              <CardDescription className="mt-1">{profile.email}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <InfoItem icon={User} label="First Name" value={profile.first_name} />
+            <InfoItem icon={User} label="Last Name" value={profile.last_name} />
+            <InfoItem icon={Clock} label="Joined" value={profile.created_at ? format(new Date(profile.created_at), 'MMM d, yyyy') : null} />
+            <InfoItem icon={Shield} label="Onboarded" value={profile.onboarding_completed ? 'Yes' : 'No'} />
+          </div>
+          {profile.suspended_at && profile.suspended_reason && (
+            <div className="mt-4 p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-sm">
+              <strong>Suspension reason:</strong> {profile.suspended_reason}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Company Info */}
+      {membership && membership.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Company Membership
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {membership.map((m) => (
+              <div key={m.company_id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                {m.companies?.logo_url ? (
+                  <img src={m.companies.logo_url} alt="" className="h-8 w-8 rounded object-contain" />
+                ) : (
+                  <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{m.companies?.name ?? 'Unknown'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[m.companies?.industry, m.companies?.employee_size].filter(Boolean).join(' · ') || 'No details'}
+                  </p>
+                </div>
+                <Badge variant="outline" className="capitalize text-xs">{m.role}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
+
+      {/* Deals Summary */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Briefcase className="h-4 w-4" />
+            Deals ({deals?.length ?? 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!deals || deals.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No deals found for this user.</p>
+          ) : (
+            <div className="space-y-2">
+              {deals.map((deal) => (
+                <div key={deal.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
+                  <div>
+                    <p className="font-medium">{deal.company || 'Untitled Deal'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Created {format(new Date(deal.created_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {deal.value != null && (
+                      <span className="text-xs text-muted-foreground">
+                        ${Number(deal.value).toLocaleString()}
+                      </span>
+                    )}
+                    <Badge variant="outline" className="text-xs capitalize">{deal.status ?? 'active'}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Recent Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!activity || activity.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No recent activity.</p>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {activity.map((log) => (
+                <div key={log.id} className="flex items-start gap-3 p-2 text-sm">
+                  <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                    <Activity className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{log.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(log.created_at), 'MMM d, yyyy · HH:mm')}
+                      {' · '}
+                      <span className="capitalize">{log.activity_type.replace(/_/g, ' ')}</span>
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function InfoItem({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | null | undefined }) {
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
+        <Icon className="h-3.5 w-3.5" />
+        <span className="text-xs">{label}</span>
+      </div>
+      <p className="font-medium text-sm">{value || '—'}</p>
     </div>
   );
 }
