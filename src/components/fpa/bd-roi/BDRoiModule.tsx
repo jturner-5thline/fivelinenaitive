@@ -22,6 +22,7 @@ export function BDRoiModule() {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [userEditOpen, setUserEditOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [visibleQuarters, setVisibleQuarters] = useState<Set<string>>(() => new Set(QUARTERS_16));
   const { auditLog, comments, userName, clearAuditLog, addComment, toggleComment, setUserName } = useBDRoiStore();
   const [tempUser, setTempUser] = useState(userName);
 
