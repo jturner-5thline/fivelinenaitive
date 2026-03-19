@@ -499,6 +499,7 @@ export default function Dashboard() {
                           } else {
                             updateFilters({ flaggedOnly: false });
                           }
+                          setSavedViewWarningDismissed(false);
                         }}
                         variant="outline"
                         size="sm"
@@ -524,6 +525,7 @@ export default function Dashboard() {
                           } else {
                             updateFilters({ hasNotificationsOnly: false });
                           }
+                          setSavedViewWarningDismissed(false);
                         }}
                         variant="outline"
                         size="sm"
