@@ -563,16 +563,25 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
     console.log('Could not fetch pipeline stages for label resolution');
   }
 
-  // 4. Get existing hubspot_deal_ids to determine insert vs update
-  const { data: existingDeals } = await supabase
-    .from('deals')
-    .select('id, hubspot_deal_id')
-    .not('hubspot_deal_id', 'is', null);
-
+  // 4. Get ALL existing hubspot_deal_ids to determine insert vs update
+  // Paginate to avoid Supabase's default 1000-row limit
   const existingMap = new Map<string, string>();
-  for (const d of (existingDeals || [])) {
-    if (d.hubspot_deal_id) existingMap.set(d.hubspot_deal_id, d.id);
+  let rangeStart = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data: existingDeals } = await supabase
+      .from('deals')
+      .select('id, hubspot_deal_id')
+      .not('hubspot_deal_id', 'is', null)
+      .range(rangeStart, rangeStart + PAGE_SIZE - 1);
+    
+    for (const d of (existingDeals || [])) {
+      if (d.hubspot_deal_id) existingMap.set(d.hubspot_deal_id, d.id);
+    }
+    if (!existingDeals || existingDeals.length < PAGE_SIZE) break;
+    rangeStart += PAGE_SIZE;
   }
+  console.log(`Found ${existingMap.size} existing HubSpot-linked deals in database`);
 
   // 4b. Look up the "In Development" pipeline for this company.
   // HubSpot deals default into "In Development" so they don't crowd the Active Deals pipeline.
@@ -650,6 +659,11 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
           dealData.company = props.dealname || `HubSpot Deal ${hubspotDealId}`;
         }
 
+        // Ensure value is never null (NOT NULL column)
+        if (dealData.value === undefined || dealData.value === null) {
+          dealData.value = 0;
+        }
+
         const existingId = existingMap.get(hubspotDealId);
         if (existingId) {
           // Existing deal: do NOT overwrite pipeline_id
@@ -671,7 +685,8 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
 
     // Batch insert
     if (toInsert.length > 0) {
-      const { error } = await supabase.from('deals').insert(toInsert);
+      // Use upsert with ignoreDuplicates to gracefully handle race conditions
+      const { error } = await supabase.from('deals').upsert(toInsert, { onConflict: 'hubspot_deal_id', ignoreDuplicates: true });
       if (error) {
         console.error('Batch insert error:', JSON.stringify(error));
         errors.push(`Batch insert: ${error.message}`);
