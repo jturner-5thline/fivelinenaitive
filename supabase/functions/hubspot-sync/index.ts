@@ -722,11 +722,16 @@ async function getAnalyticsSummary(): Promise<any> {
   const openTasks = tasks.results?.filter((t: any) => t.properties?.hs_task_status !== 'COMPLETED')?.length || 0;
   const openTickets = tickets.results?.filter((t: any) => t.properties?.hs_pipeline_stage !== 'closed')?.length || 0;
   
+  // Use HubSpot's reported total (from paging metadata) for accurate counts
+  const reportedDealTotal = deals.total || deals.results?.length || 0;
+  const reportedContactTotal = contacts.total || contacts.results?.length || 0;
+  const reportedCompanyTotal = companies.total || companies.results?.length || 0;
+
   return {
     summary: {
-      totalContacts: contacts.results?.length || 0,
-      totalDeals: deals.results?.length || 0,
-      totalCompanies: companies.results?.length || 0,
+      totalContacts: reportedContactTotal,
+      totalDeals: reportedDealTotal,
+      totalCompanies: reportedCompanyTotal,
       totalOwners: owners.results?.length || 0,
       totalDealsValue,
       openDeals,
