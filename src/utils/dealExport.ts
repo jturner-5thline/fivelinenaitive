@@ -4,10 +4,18 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, Width
 import { saveAs } from 'file-saver';
 import { Deal, DealStatus, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 
-// Helper to resolve tracking status label with fallback
-const getTrackingStatusLabel = (trackingStatus: string, trackingStatusConfig?: Record<string, { label: string; color: string }>) => {
+// Safe label helpers – fall back to the raw ID (formatted) when custom stages are used
+const formatId = (id: string) => id.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+const getStatusLabel = (status: string) =>
+  LENDER_STATUS_CONFIG[status as keyof typeof LENDER_STATUS_CONFIG]?.label || formatId(status);
+
+const getStageLabel = (stage: string) =>
+  LENDER_STAGE_CONFIG[stage as keyof typeof LENDER_STAGE_CONFIG]?.label || formatId(stage);
+
+const getTrackingLabel = (trackingStatus: string, trackingStatusConfig?: Record<string, { label: string; color: string }>) => {
   if (trackingStatusConfig?.[trackingStatus]) return trackingStatusConfig[trackingStatus].label;
-  return LENDER_TRACKING_STATUS_CONFIG[trackingStatus as keyof typeof LENDER_TRACKING_STATUS_CONFIG]?.label || trackingStatus;
+  return LENDER_TRACKING_STATUS_CONFIG[trackingStatus as keyof typeof LENDER_TRACKING_STATUS_CONFIG]?.label || formatId(trackingStatus);
 };
 
 const formatCurrency = (value: number) => {
