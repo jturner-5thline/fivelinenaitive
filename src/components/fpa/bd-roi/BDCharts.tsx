@@ -71,8 +71,15 @@ const tooltipStyle = {
   },
 };
 
-export function BDChartGrid({ revenue, headcount, dealflow, finPerf, computed }: ChartGridProps) {
-  const q = QUARTERS_12;
+export function BDChartGrid({ revenue, headcount, dealflow, finPerf, computed, visibleQuarters }: ChartGridProps) {
+  const q = visibleQuarters
+    ? QUARTERS_12.filter(qt => visibleQuarters.has(qt))
+    : QUARTERS_12;
+  const vi = visibleQuarters
+    ? QUARTERS_12.map((qt, i) => visibleQuarters.has(qt) ? i : -1).filter(i => i !== -1)
+    : QUARTERS_12.map((_, i) => i);
+  
+  const filterArr = (arr: (number | null)[]) => vi.map(i => arr[i]);
 
   const revenueByChannel = useMemo(() => buildData(q,
     { key: 'Debt', data: revenue.debt },
