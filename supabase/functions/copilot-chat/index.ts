@@ -118,8 +118,28 @@ const tools = [
     type: "function",
     function: {
       name: "get_pipeline_summary",
-      description: "Get pipeline summary: counts by stage, total value, key metrics.",
-      parameters: { type: "object", properties: {} },
+      description: "Get pipeline summary: counts by stage, total value, key metrics. Use scope parameter to control which deals are included.",
+      parameters: {
+        type: "object",
+        properties: {
+          scope: { type: "string", enum: ["active_only", "all"], description: "active_only (default): excludes on-hold/closed deals. all: includes everything." },
+        },
+      },
+    },
+  },
+  // ── Fix 2: Team member search tool ──
+  {
+    type: "function",
+    function: {
+      name: "search_team_members",
+      description: "Search team members by name (supports fuzzy/partial matching). Use when user asks about deals or activity for a specific person.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name or partial name to search for" },
+        },
+        required: ["name"],
+      },
     },
   },
   {
