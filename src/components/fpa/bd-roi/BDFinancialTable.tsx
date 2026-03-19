@@ -87,7 +87,7 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices }
               <th className="sticky left-0 z-30 bg-muted/50 text-left px-3 py-1.5 border-b border-r border-border/50 min-w-[180px] text-[11px] font-semibold text-foreground">
                 &nbsp;
               </th>
-              {quarters.map(q => (
+              {displayQuarters.map(q => (
                 <th key={q} className={`px-2 py-1.5 text-right border-b border-border/50 ${headerFontSize} font-semibold text-foreground min-w-[85px] whitespace-nowrap`}>
                   {q}
                 </th>
