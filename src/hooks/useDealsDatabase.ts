@@ -351,11 +351,29 @@ export function useDealsDatabase() {
       }
       
       // Fetch deals and lenders in parallel for faster loading
+      // NOTE: Supabase default limit is 1000 rows. We need all deals, so we
+      // paginate or use a large limit to avoid silently dropping records.
+      const fetchAllDeals = async () => {
+        const allData: any[] = [];
+        const pageSize = 1000;
+        let from = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from('deals')
+            .select('*')
+            .order('updated_at', { ascending: false })
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          if (data) allData.push(...data);
+          hasMore = data?.length === pageSize;
+          from += pageSize;
+        }
+        return { data: allData, error: null };
+      };
+
       const [dealsResult, lendersResult] = await Promise.all([
-        supabase
-          .from('deals')
-          .select('*')
-          .order('updated_at', { ascending: false }),
+        fetchAllDeals(),
         supabase
           .from('deal_lenders')
           .select('*')

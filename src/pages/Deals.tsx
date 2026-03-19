@@ -199,6 +199,7 @@ export default function Dashboard() {
 
   // Filter deals by active pipeline (include unassigned deals in the default pipeline)
   const activePipelineIsDefault = activePipelineId && pipelines.find(p => p.id === activePipelineId)?.isDefault;
+  
   const dealsInSelectedPipeline = useMemo(() => {
     if (!activePipelineId) return allDeals;
     return allDeals.filter(deal => 
