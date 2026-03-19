@@ -47,16 +47,20 @@ export function MappingDialog({
     return map;
   }, [filesToMap, allItems]);
 
-  // Pre-select existing mappings when dialog opens
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen && filesToMap.length > 0) {
+  useEffect(() => {
+    if (open && filesToMap.length > 0) {
       const existing = new Set<string>();
       for (const file of filesToMap) {
         getItemsForFile(file.id).forEach(m => existing.add(m.checklist_item_id));
       }
-      // Also add suggestions
       suggestions.forEach((_, itemId) => existing.add(itemId));
       setSelections(existing);
+    }
+  }, [open, filesToMap, suggestions, getItemsForFile]);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setSelections(new Set());
     }
     onOpenChange(isOpen);
   };
