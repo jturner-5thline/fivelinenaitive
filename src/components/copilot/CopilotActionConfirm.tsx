@@ -148,7 +148,7 @@ export function CopilotActionConfirm({ action }: Props) {
         }}
       >
         <Check size={16} style={{ color: 'rgb(34, 197, 94)' }} />
-        <span style={{ fontSize: 13, color: 'rgb(34, 197, 94)' }}>Done — {action.description}</span>
+        <span style={{ fontSize: 13, color: 'rgb(34, 197, 94)' }}>Done — {formattedDescription}</span>
       </div>
     );
   }
