@@ -100,6 +100,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('general');
   const { isAdmin } = useCompany();
   const { features: companyFeatures } = useCompanyFeatures();
+  const { hasPageAccess } = usePageAccessFlags();
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
 
   const visibleSections = useMemo(() => {
