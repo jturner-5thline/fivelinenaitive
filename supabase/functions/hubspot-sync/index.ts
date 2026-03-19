@@ -90,12 +90,12 @@ async function getDeals(limit: number = 100, after?: string): Promise<any> {
   return hubspotRequest(endpoint);
 }
 
-// Fetch ALL deals with pagination (up to 1000 to avoid timeout)
+// Fetch ALL deals with full cursor-based pagination (no artificial cap)
 async function getAllDeals(): Promise<any> {
   const allResults: any[] = [];
   let after: string | undefined = undefined;
   let pageCount = 0;
-  const maxPages = 10; // 10 pages * 100 = up to 1000 deals
+  const maxPages = 100; // Safety limit: 100 pages * 100 = up to 10,000 deals
 
   do {
     const response = await getDeals(100, after);
@@ -105,6 +105,10 @@ async function getAllDeals(): Promise<any> {
     after = response.paging?.next?.after;
     pageCount++;
   } while (after && pageCount < maxPages);
+
+  if (pageCount >= maxPages) {
+    console.warn(`Hit max pagination limit (${maxPages} pages). There may be more deals not fetched.`);
+  }
 
   console.log(`Fetched ${allResults.length} total deals across ${pageCount} pages`);
 
