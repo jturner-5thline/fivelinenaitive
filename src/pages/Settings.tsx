@@ -234,7 +234,7 @@ export default function Settings() {
                   {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
                   {isVisible('data-room-checklist') && <DefaultChecklistSettings isAdmin={isAdmin} />}
                   {isVisible('gamma-templates') && <GammaTemplatesSettings isAdmin={isAdmin} />}
-                  {isVisible('agreement-templates') && companyFeatures.agreement_icon_visible && (
+                  {isVisible('agreement-templates') && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
                     <AgreementTemplatesSettings isAdmin={isAdmin} />
                   )}
                   {isVisible('deal-types') && <LenderScoreSettings isAdmin={isAdmin} />}
