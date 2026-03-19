@@ -24,6 +24,7 @@ interface MappingDialogProps {
   allItems: UnifiedChecklistItem[];
   getItemsForFile: DataRoomContextValue['getItemsForFile'];
   mapFileToItems: DataRoomContextValue['mapFileToItems'];
+  unmapFile?: DataRoomContextValue['unmapFile'];
   onMarkItemsComplete?: (itemIds: string[]) => Promise<void>;
 }
 
