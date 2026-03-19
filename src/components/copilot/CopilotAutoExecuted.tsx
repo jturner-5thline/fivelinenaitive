@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Check, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCopilotStore } from '@/stores/copilotStore';
 
 interface AutoExecutedAction {
   action: 'auto_executed';
