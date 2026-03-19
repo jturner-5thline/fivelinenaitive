@@ -6,6 +6,7 @@ import { formatBDCurrency, formatBDMultiple, formatBDDelta, formatBDPct } from '
 import { BDChartGrid } from './BDCharts';
 import { BDFinancialTable, type TableSection } from './BDFinancialTable';
 import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
+import { getVisibleIndices } from './QuarterFilter';
 
 export function BDDashboardTab() {
   const { revenue, costs, headcount, cmBonus, dealflow, finPerf } = useBDRoiStore();
