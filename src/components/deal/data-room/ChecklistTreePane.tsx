@@ -75,6 +75,68 @@ export function ChecklistTreePane({
 }: ChecklistTreePaneProps) {
   const [selectedUnmapped, setSelectedUnmapped] = useState<Set<string>>(new Set());
   const [fileToDelete, setFileToDelete] = useState<DealAttachment | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
+  const dragCounterRef = useRef<Record<string, number>>({});
+
+  // Drag handlers for file rows (mapped & unmapped)
+  const handleFileDragStart = useCallback((e: React.DragEvent, file: DealAttachment, sourceItemId?: string) => {
+    e.stopPropagation();
+    e.dataTransfer.setData('application/x-file-id', file.id);
+    if (sourceItemId) e.dataTransfer.setData('application/x-source-item', sourceItemId);
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  // Drop handler on checklist items
+  const handleItemDrop = useCallback(async (e: React.DragEvent, targetItemId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverItemId(null);
+    dragCounterRef.current = {};
+
+    const fileId = e.dataTransfer.getData('application/x-file-id');
+    if (!fileId || !mapFileToItem) return;
+
+    // Check for OS file drops (handled elsewhere)
+    if (e.dataTransfer.files.length > 0 && !fileId) {
+      handleUploadFiles(Array.from(e.dataTransfer.files), targetItemId);
+      return;
+    }
+
+    const sourceItemId = e.dataTransfer.getData('application/x-source-item');
+
+    // No-op if dropping on same item
+    if (sourceItemId === targetItemId) return;
+
+    // Unmap from old item if it was mapped
+    if (sourceItemId && unmapFile) {
+      await unmapFile(fileId, sourceItemId);
+    }
+
+    // Map to new item
+    await mapFileToItem(fileId, targetItemId, 'manual_drag');
+  }, [mapFileToItem, unmapFile, handleUploadFiles]);
+
+  const handleItemDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleItemDragEnter = useCallback((e: React.DragEvent, itemId: string) => {
+    e.preventDefault();
+    if (!dragCounterRef.current[itemId]) dragCounterRef.current[itemId] = 0;
+    dragCounterRef.current[itemId]++;
+    setDragOverItemId(itemId);
+  }, []);
+
+  const handleItemDragLeave = useCallback((e: React.DragEvent, itemId: string) => {
+    e.preventDefault();
+    if (!dragCounterRef.current[itemId]) dragCounterRef.current[itemId] = 0;
+    dragCounterRef.current[itemId]--;
+    if (dragCounterRef.current[itemId] <= 0) {
+      dragCounterRef.current[itemId] = 0;
+      if (dragOverItemId === itemId) setDragOverItemId(null);
+    }
+  }, [dragOverItemId]);
 
   const filterItem = (item: UnifiedChecklistItem): boolean => {
     if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
