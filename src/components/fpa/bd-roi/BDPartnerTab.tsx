@@ -5,6 +5,7 @@ import { useBDRoiStore } from './useBDRoiStore';
 import { QUARTERS_16, PARTNER_EXPENSE_LABELS } from './bdRoiData';
 import { rollingSum, ytdSum, allTimeSum, safeDiv } from './bdRoiFormulas';
 import { BDFinancialTable, type TableSection } from './BDFinancialTable';
+import { getVisibleIndices } from './QuarterFilter';
 
 function buildComputedRows(data: typeof import('./bdRoiData').INITIAL_PARTNER_DATA, Q: number) {
   const totalExpenses = Array.from({ length: Q }, (_, i) =>
@@ -90,9 +91,10 @@ function buildSections(
   return [pipelineSection, financialSection];
 }
 
-export function BDPartnerTab() {
+export function BDPartnerTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
   const store = useBDRoiStore();
   const { partnerAssumptions, partnerProjections, partnerActuals } = store;
+  const vi = useMemo(() => getVisibleIndices(QUARTERS_16, visibleQuarters), [visibleQuarters]);
 
   const projComputed = useMemo(() => buildComputedRows(partnerProjections, 16), [partnerProjections]);
   const actComputed = useMemo(() => buildComputedRows(partnerActuals, 16), [partnerActuals]);
@@ -168,15 +170,15 @@ export function BDPartnerTab() {
         </TabsList>
         <TabsContent value="projections">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Projections — Partner Program</h3>
-          <BDFinancialTable sections={projSections} quarters={QUARTERS_16} />
+           <BDFinancialTable sections={projSections} quarters={QUARTERS_16} visibleIndices={vi} />
         </TabsContent>
         <TabsContent value="actuals">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Actuals — Partner Program</h3>
-          <BDFinancialTable sections={actSections} quarters={QUARTERS_16} />
+           <BDFinancialTable sections={actSections} quarters={QUARTERS_16} visibleIndices={vi} />
         </TabsContent>
         <TabsContent value="variance">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Variance — Partner Program</h3>
-          <BDFinancialTable sections={varianceSections} quarters={QUARTERS_16} />
+           <BDFinancialTable sections={varianceSections} quarters={QUARTERS_16} visibleIndices={vi} />
         </TabsContent>
       </Tabs>
     </div>

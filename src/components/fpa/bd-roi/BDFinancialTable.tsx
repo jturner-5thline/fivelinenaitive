@@ -28,13 +28,18 @@ interface Props {
   sections: TableSection[];
   quarters: string[];
   compact?: boolean;
+  /** When provided, only show columns at these original indices. Edit callbacks still receive original indices. */
+  visibleIndices?: number[];
 }
 
-export function BDFinancialTable({ sections, quarters, compact }: Props) {
+export function BDFinancialTable({ sections, quarters, compact, visibleIndices }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowKey: string; col: number } | null>(null);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  // Determine which column indices to show
+  const indices = visibleIndices ?? quarters.map((_, i) => i);
+  const displayQuarters = indices.map(i => quarters[i]);
 
   const allCollapsed = collapsed.size === sections.length;
 
@@ -82,7 +87,7 @@ export function BDFinancialTable({ sections, quarters, compact }: Props) {
               <th className="sticky left-0 z-30 bg-muted/50 text-left px-3 py-1.5 border-b border-r border-border/50 min-w-[180px] text-[11px] font-semibold text-foreground">
                 &nbsp;
               </th>
-              {quarters.map(q => (
+              {displayQuarters.map(q => (
                 <th key={q} className={`px-2 py-1.5 text-right border-b border-border/50 ${headerFontSize} font-semibold text-foreground min-w-[85px] whitespace-nowrap`}>
                   {q}
                 </th>
@@ -104,7 +109,8 @@ export function BDFinancialTable({ sections, quarters, compact }: Props) {
                 onCommitEdit={commitEdit}
                 onCancelEdit={() => setEditingCell(null)}
                 cellFontSize={cellFontSize}
-                quarters={quarters}
+                quarters={displayQuarters}
+                visibleIndices={indices}
               />
             ))}
           </tbody>
@@ -116,7 +122,7 @@ export function BDFinancialTable({ sections, quarters, compact }: Props) {
 
 function SectionBlock({
   section, collapsed, onToggle, editingCell, editValue, inputRef,
-  onStartEdit, onEditValueChange, onCommitEdit, onCancelEdit, cellFontSize, quarters,
+  onStartEdit, onEditValueChange, onCommitEdit, onCancelEdit, cellFontSize, quarters, visibleIndices,
 }: {
   section: TableSection; collapsed: boolean; onToggle: () => void;
   editingCell: { rowKey: string; col: number } | null; editValue: string;
@@ -125,7 +131,7 @@ function SectionBlock({
   onEditValueChange: (v: string) => void;
   onCommitEdit: (row: TableRow) => void;
   onCancelEdit: () => void;
-  cellFontSize: string; quarters: string[];
+  cellFontSize: string; quarters: string[]; visibleIndices: number[];
 }) {
   return (
     <>
@@ -150,6 +156,7 @@ function SectionBlock({
           onCommitEdit={onCommitEdit}
           onCancelEdit={onCancelEdit}
           cellFontSize={cellFontSize}
+          visibleIndices={visibleIndices}
         />
       ))}
     </>
@@ -157,7 +164,7 @@ function SectionBlock({
 }
 
 function RowBlock({
-  row, editingCell, editValue, inputRef, onStartEdit, onEditValueChange, onCommitEdit, onCancelEdit, cellFontSize,
+  row, editingCell, editValue, inputRef, onStartEdit, onEditValueChange, onCommitEdit, onCancelEdit, cellFontSize, visibleIndices,
 }: {
   row: TableRow;
   editingCell: { rowKey: string; col: number } | null; editValue: string;
@@ -167,6 +174,7 @@ function RowBlock({
   onCommitEdit: (row: TableRow) => void;
   onCancelEdit: () => void;
   cellFontSize: string;
+  visibleIndices: number[];
 }) {
   const totalClass = row.isTotal ? 'font-bold border-t-2 border-b-2 border-foreground/20' : '';
   const subtotalClass = row.isSubtotal ? 'font-semibold border-t border-border/50' : '';
@@ -204,19 +212,20 @@ function RowBlock({
           )}
         </div>
       </td>
-      {row.values.map((val, i) => {
-        const isEditing = editingCell?.rowKey === row.key && editingCell?.col === i;
+      {visibleIndices.map(origIdx => {
+        const val = row.values[origIdx];
+        const isEditing = editingCell?.rowKey === row.key && editingCell?.col === origIdx;
         const isGreenDelta = row.isDelta && val !== null && val > 0;
         const isRedDelta = row.isDelta && val !== null && val < 0;
 
         return (
           <td
-            key={i}
+            key={origIdx}
             className={`px-2 py-1 text-right border-b border-border/50 ${cellFontSize} whitespace-nowrap cursor-pointer`}
             style={{
               color: row.editable ? '#60a5fa' : isGreenDelta ? '#34d399' : isRedDelta ? '#f87171' : undefined,
             }}
-            onClick={() => row.editable && row.onEdit && onStartEdit(row.key, i, val)}
+            onClick={() => row.editable && row.onEdit && onStartEdit(row.key, origIdx, val)}
           >
             {isEditing ? (
               <input

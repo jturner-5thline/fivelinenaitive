@@ -5,6 +5,7 @@ import { useBDRoiStore } from './useBDRoiStore';
 import { QUARTERS_12 } from './bdRoiData';
 import { rollingSum, ytdSum, allTimeSum, safeDiv } from './bdRoiFormulas';
 import { BDFinancialTable, type TableSection } from './BDFinancialTable';
+import { getVisibleIndices } from './QuarterFilter';
 
 function buildBankComputed(data: typeof import('./bdRoiData').INITIAL_BANK_DATA) {
   const Q = 12;
@@ -81,9 +82,10 @@ function buildBankSections(
   ];
 }
 
-export function BDBankTab() {
+export function BDBankTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
   const store = useBDRoiStore();
   const { bankAssumptions, bankProjections, bankActuals } = store;
+  const vi = useMemo(() => getVisibleIndices(QUARTERS_12, visibleQuarters), [visibleQuarters]);
 
   const projComputed = useMemo(() => buildBankComputed(bankProjections), [bankProjections]);
   const actComputed = useMemo(() => buildBankComputed(bankActuals), [bankActuals]);
@@ -155,15 +157,15 @@ export function BDBankTab() {
         </TabsList>
         <TabsContent value="projections">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Projections — Bank Channel</h3>
-          <BDFinancialTable sections={projSections} quarters={QUARTERS_12} />
+           <BDFinancialTable sections={projSections} quarters={QUARTERS_12} visibleIndices={vi} />
         </TabsContent>
         <TabsContent value="actuals">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Actuals — Bank Channel</h3>
-          <BDFinancialTable sections={actSections} quarters={QUARTERS_12} />
+           <BDFinancialTable sections={actSections} quarters={QUARTERS_12} visibleIndices={vi} />
         </TabsContent>
         <TabsContent value="variance">
           <h3 className="text-[13px] font-semibold text-foreground mb-2">Variance — Bank Channel</h3>
-          <BDFinancialTable sections={varianceSections} quarters={QUARTERS_12} />
+           <BDFinancialTable sections={varianceSections} quarters={QUARTERS_12} visibleIndices={vi} />
         </TabsContent>
       </Tabs>
     </div>

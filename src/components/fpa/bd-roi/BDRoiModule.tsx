@@ -14,12 +14,15 @@ import { BDBankTab } from './BDBankTab';
 import { BDCMCompTab } from './BDCMCompTab';
 import { BDEventsTab } from './BDEventsTab';
 import { BDAmexTab } from './BDAmexTab';
+import { QuarterFilter } from './QuarterFilter';
+import { QUARTERS_16 } from './bdRoiData';
 
 export function BDRoiModule() {
   const [auditOpen, setAuditOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [userEditOpen, setUserEditOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [visibleQuarters, setVisibleQuarters] = useState<Set<string>>(() => new Set(QUARTERS_16));
   const { auditLog, comments, userName, clearAuditLog, addComment, toggleComment, setUserName } = useBDRoiStore();
   const [tempUser, setTempUser] = useState(userName);
 
@@ -39,6 +42,11 @@ export function BDRoiModule() {
       {/* Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
+          <QuarterFilter
+            allQuarters={QUARTERS_16}
+            visibleQuarters={visibleQuarters}
+            onChange={setVisibleQuarters}
+          />
           <Button variant="outline" size="sm" className="h-7 gap-1.5 text-[11px]" onClick={() => setAuditOpen(true)}>
             <ClipboardList className="h-3.5 w-3.5" />
             Audit Log
@@ -69,10 +77,10 @@ export function BDRoiModule() {
           <TabsTrigger value="amex" className="text-xs">AMEX CC</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard"><BDDashboardTab /></TabsContent>
-        <TabsContent value="partner"><BDPartnerTab /></TabsContent>
-        <TabsContent value="bank"><BDBankTab /></TabsContent>
-        <TabsContent value="cmcomp"><BDCMCompTab /></TabsContent>
+        <TabsContent value="dashboard"><BDDashboardTab visibleQuarters={visibleQuarters} /></TabsContent>
+        <TabsContent value="partner"><BDPartnerTab visibleQuarters={visibleQuarters} /></TabsContent>
+        <TabsContent value="bank"><BDBankTab visibleQuarters={visibleQuarters} /></TabsContent>
+        <TabsContent value="cmcomp"><BDCMCompTab visibleQuarters={visibleQuarters} /></TabsContent>
         <TabsContent value="events"><BDEventsTab /></TabsContent>
         <TabsContent value="amex"><BDAmexTab /></TabsContent>
       </Tabs>

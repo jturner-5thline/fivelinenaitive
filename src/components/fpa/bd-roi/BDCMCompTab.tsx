@@ -3,7 +3,7 @@ import { useBDRoiStore } from './useBDRoiStore';
 import { formatBDCurrency } from './bdRoiFormatters';
 import { DollarSign, Calendar, Award } from 'lucide-react';
 
-export function BDCMCompTab() {
+export function BDCMCompTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
   const { cmBonus } = useBDRoiStore();
 
   const totalPaid = cmBonus.reduce((a, b) => a + b, 0);
@@ -75,12 +75,15 @@ export function BDCMCompTab() {
               </tr>
             </thead>
             <tbody>
-              {QUARTERS_12.map((q, i) => (
-                <tr key={q} className="border-b border-border/30">
-                  <td className="px-2 py-1.5 text-foreground">{q}</td>
-                  <td className="text-right px-2 py-1.5 text-primary font-medium">{formatBDCurrency(cmBonus[i])}</td>
-                </tr>
-              ))}
+              {QUARTERS_12.map((q, i) => {
+                if (!visibleQuarters.has(q)) return null;
+                return (
+                  <tr key={q} className="border-b border-border/30">
+                    <td className="px-2 py-1.5 text-foreground">{q}</td>
+                    <td className="text-right px-2 py-1.5 text-primary font-medium">{formatBDCurrency(cmBonus[i])}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

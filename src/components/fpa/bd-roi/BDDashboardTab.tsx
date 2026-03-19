@@ -6,10 +6,12 @@ import { formatBDCurrency, formatBDMultiple, formatBDDelta, formatBDPct } from '
 import { BDChartGrid } from './BDCharts';
 import { BDFinancialTable, type TableSection } from './BDFinancialTable';
 import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
+import { getVisibleIndices } from './QuarterFilter';
 
-export function BDDashboardTab() {
-  const { revenue, costs, headcount, cmBonus, dealflow, finPerf } = useBDRoiStore();
+export function BDDashboardTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
   const store = useBDRoiStore();
+  const { revenue, costs, headcount, cmBonus, dealflow, finPerf } = store;
+  const vi = useMemo(() => getVisibleIndices(QUARTERS_12, visibleQuarters), [visibleQuarters]);
 
   const c = useMemo(() => computeDashboard(revenue, costs, headcount, cmBonus, dealflow), [revenue, costs, headcount, cmBonus, dealflow]);
 
@@ -185,10 +187,11 @@ export function BDDashboardTab() {
         dealflow={dealflow}
         finPerf={finPerf}
         computed={c}
+        visibleQuarters={visibleQuarters}
       />
 
       {/* Data Tables */}
-      <BDFinancialTable sections={allSections} quarters={QUARTERS_12} />
+      <BDFinancialTable sections={allSections} quarters={QUARTERS_12} visibleIndices={vi} />
     </div>
   );
 }
