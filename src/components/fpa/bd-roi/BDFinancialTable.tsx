@@ -28,6 +28,8 @@ interface Props {
   sections: TableSection[];
   quarters: string[];
   compact?: boolean;
+  /** When provided, only show columns at these original indices. Edit callbacks still receive original indices. */
+  visibleIndices?: number[];
 }
 
 export function BDFinancialTable({ sections, quarters, compact }: Props) {
