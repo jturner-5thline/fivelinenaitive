@@ -114,6 +114,14 @@ export function CopilotActionConfirm({ action }: Props) {
       if (result.success) {
         setStatus('done');
         toast.success(`✓ ${result.message || 'Action completed'}`);
+        // Fix 6: Track mutation in conversation state
+        addMutation({
+          type: action.action_type,
+          deal: action.params.deal_name || action.params.deal_id,
+          dealId: action.params.deal_id,
+          detail: result.message || action.description,
+          timestamp: new Date().toISOString(),
+        });
         // Trigger UI refresh
         invalidateRelatedQueries(result.actionType || action.action_type, result.params || action.params);
       } else {
