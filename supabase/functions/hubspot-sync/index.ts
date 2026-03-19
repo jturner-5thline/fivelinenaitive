@@ -650,6 +650,11 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
           dealData.company = props.dealname || `HubSpot Deal ${hubspotDealId}`;
         }
 
+        // Ensure value is never null (NOT NULL column)
+        if (dealData.value === undefined || dealData.value === null) {
+          dealData.value = 0;
+        }
+
         const existingId = existingMap.get(hubspotDealId);
         if (existingId) {
           // Existing deal: do NOT overwrite pipeline_id
