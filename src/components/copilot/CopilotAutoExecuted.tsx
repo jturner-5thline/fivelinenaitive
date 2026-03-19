@@ -27,6 +27,13 @@ export function CopilotAutoExecuted({ action }: Props) {
 
     if (action.success) {
       toast.success(action.message);
+      // Fix 6: Track mutation in conversation state
+      addMutation({
+        type: action.action_type,
+        dealId: action.params?.deal_id,
+        detail: action.message,
+        timestamp: new Date().toISOString(),
+      });
       // Invalidate relevant queries
       const dealId = action.params?.deal_id;
       queryClient.invalidateQueries({ queryKey: ['deals'] });
