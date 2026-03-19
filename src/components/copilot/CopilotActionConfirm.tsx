@@ -173,7 +173,7 @@ export function CopilotActionConfirm({ action }: Props) {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <Icon size={16} style={{ color: 'hsl(var(--primary))' }} />
-        <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{action.description}</span>
+        <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{formattedDescription}</span>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button
