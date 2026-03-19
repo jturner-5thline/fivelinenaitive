@@ -184,7 +184,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
 
   // Sync local values with memo data when dialog opens or memo changes
   useEffect(() => {
-    if (memo) {
+    if (memo && !hasChanges) {
       setLocalValues({
         narrative: memo.narrative || dealNarrative || '',
         highlights: memo.highlights || '',
