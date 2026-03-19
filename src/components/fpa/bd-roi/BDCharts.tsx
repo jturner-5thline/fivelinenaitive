@@ -35,6 +35,7 @@ interface ChartGridProps {
   dealflow: { dobTotal: number[]; dsTotal: number[]; dcTotal: number[] };
   finPerf: { revPartner: number[]; revBank: number[] };
   computed: DashboardComputed;
+  visibleQuarters?: Set<string>;
 }
 
 function buildData(quarters: string[], ...arrays: { key: string; data: (number | null)[] }[]) {
