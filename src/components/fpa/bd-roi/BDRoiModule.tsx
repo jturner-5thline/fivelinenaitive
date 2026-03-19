@@ -42,6 +42,11 @@ export function BDRoiModule() {
       {/* Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
+          <QuarterFilter
+            allQuarters={QUARTERS_16}
+            visibleQuarters={visibleQuarters}
+            onChange={setVisibleQuarters}
+          />
           <Button variant="outline" size="sm" className="h-7 gap-1.5 text-[11px]" onClick={() => setAuditOpen(true)}>
             <ClipboardList className="h-3.5 w-3.5" />
             Audit Log
