@@ -148,16 +148,30 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
   return { page: parts[0] || 'dashboard', entityType: null, entityId: null, activeTab, banners };
 }
 
-/** Renders assistant content with entity links */
+/** Renders assistant content with entity links, JSON formatting, and stage display names */
 function CopilotAssistantContent({ content }: { content: string }) {
   const navigate = useNavigate();
+  
+  // Fix 1: Detect and format raw JSON responses
+  const formattedJson = formatAIResponse(content);
+  const processedContent = formattedJson || content;
+  
+  // Fix 5: Replace stage slugs with display names in the content
+  const displayContent = processedContent.replace(
+    /(?:from|to|stage|→|->)\s*"([a-z][a-z0-9-]+)"/gi,
+    (match, slug) => {
+      const display = getStageDisplayName(slug);
+      return display !== slug ? match.replace(`"${slug}"`, `"${display}"`) : match;
+    }
+  );
+  
   const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline'; value: any }> = [];
   const jsonBlockRegex = /```json\s*(\{[\s\S]*?\})\s*```/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = jsonBlockRegex.exec(content)) !== null) {
-    if (match.index > lastIndex) segments.push({ type: 'text', value: content.slice(lastIndex, match.index) });
+  while ((match = jsonBlockRegex.exec(displayContent)) !== null) {
+    if (match.index > lastIndex) segments.push({ type: 'text', value: displayContent.slice(lastIndex, match.index) });
     try {
       const parsed = JSON.parse(match[1]);
       if (parsed.responseType === 'deal_card') segments.push({ type: 'deal', value: parsed.data });
@@ -173,8 +187,8 @@ function CopilotAssistantContent({ content }: { content: string }) {
     }
     lastIndex = match.index + match[0].length;
   }
-  if (lastIndex < content.length) segments.push({ type: 'text', value: content.slice(lastIndex) });
-  if (segments.length === 0) segments.push({ type: 'text', value: content });
+  if (lastIndex < displayContent.length) segments.push({ type: 'text', value: displayContent.slice(lastIndex) });
+  if (segments.length === 0) segments.push({ type: 'text', value: displayContent });
 
   return (
     <>
