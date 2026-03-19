@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Activity, Settings } from "lucide-react";
 
 interface HealthScoreCardProps {
   score: number;
@@ -7,60 +8,26 @@ interface HealthScoreCardProps {
 }
 
 export function HealthScoreCard({ score, totalRecommendations }: HealthScoreCardProps) {
-  const getScoreColor = (score: number) => {
-    if (score >= 70) return "text-green-500";
-    if (score >= 40) return "text-yellow-500";
-    return "text-red-500";
-  };
-
-  const getScoreBgColor = (score: number) => {
-    if (score >= 70) return "stroke-green-500";
-    if (score >= 40) return "stroke-yellow-500";
-    return "stroke-red-500";
-  };
-
-  const circumference = 2 * Math.PI * 45;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
-
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg">UX Health Score</CardTitle>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Activity className="h-4 w-4" />
+          UX Health Score
+        </CardTitle>
         <CardDescription>Overall user experience quality</CardDescription>
       </CardHeader>
-      <CardContent className="flex items-center justify-center gap-8">
-        <div className="relative w-32 h-32">
-          <svg className="w-32 h-32 transform -rotate-90">
-            <circle
-              cx="64"
-              cy="64"
-              r="45"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="10"
-              className="text-muted/20"
-            />
-            <circle
-              cx="64"
-              cy="64"
-              r="45"
-              fill="none"
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              className={cn("transition-all duration-1000", getScoreBgColor(score))}
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center flex-col">
-            <span className={cn("text-3xl font-bold", getScoreColor(score))}>{score}</span>
-            <span className="text-xs text-muted-foreground">/ 100</span>
-          </div>
+      <CardContent className="flex flex-col items-center justify-center py-6 text-center gap-4">
+        <div className="h-12 w-12 rounded-xl bg-muted/50 flex items-center justify-center">
+          <Activity className="h-6 w-6 text-muted-foreground" />
         </div>
-        <div className="text-center">
-          <p className="text-2xl font-semibold">{totalRecommendations}</p>
-          <p className="text-sm text-muted-foreground">Recommendations</p>
-        </div>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          UX Health Score will be calculated automatically once event tracking is enabled.
+        </p>
+        <Button variant="outline" size="sm" disabled>
+          <Settings className="h-3.5 w-3.5 mr-1.5" />
+          Configure Tracking
+        </Button>
       </CardContent>
     </Card>
   );

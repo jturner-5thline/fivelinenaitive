@@ -4,19 +4,14 @@ import { useUXRecommendations } from "@/hooks/useUXAnalytics";
 import { HealthScoreCard } from "./HealthScoreCard";
 import { InsightsGrid } from "./InsightsGrid";
 import { RecommendationsList } from "./RecommendationsList";
-import { FunnelVisualization } from "./FunnelVisualization";
-import { DevicesTab } from "./DevicesTab";
-import { HeatmapsTab } from "./HeatmapsTab";
-import { AdvancedAnalyticsTab } from "./AdvancedAnalyticsTab";
 import { InsightsTab } from "./InsightsTab";
+import { ComingSoonPlaceholder } from "./ComingSoonPlaceholder";
 
 export function UXRecommendationsPanel() {
   const {
     healthScore,
     insights,
     recommendations,
-    userEngagementFunnel,
-    dealEngagementFunnel,
     totalRecommendations,
   } = useUXRecommendations();
 
@@ -71,31 +66,36 @@ export function UXRecommendationsPanel() {
           <InsightsTab />
         </TabsContent>
 
-        <TabsContent value="funnels" className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <FunnelVisualization
-              title="User Engagement Funnel"
-              description="How users progress through engagement stages"
-              steps={userEngagementFunnel}
-            />
-            <FunnelVisualization
-              title="Deal Engagement Funnel"
-              description="Conversion through deal interaction stages"
-              steps={dealEngagementFunnel}
-            />
-          </div>
+        <TabsContent value="funnels">
+          <ComingSoonPlaceholder
+            icon={GitBranch}
+            title="Funnels"
+            description="Conversion funnel tracking and visualization will be available once UX event tracking is enabled across the platform."
+          />
         </TabsContent>
 
         <TabsContent value="devices">
-          <DevicesTab />
+          <ComingSoonPlaceholder
+            icon={Monitor}
+            title="Devices"
+            description="Device breakdowns, browser stats, and Core Web Vitals monitoring will be available once analytics collection is enabled."
+          />
         </TabsContent>
 
         <TabsContent value="heatmaps">
-          <HeatmapsTab />
+          <ComingSoonPlaceholder
+            icon={MousePointer}
+            title="Heatmaps"
+            description="Click tracking and heatmap visualization will be available once UX event tracking is enabled."
+          />
         </TabsContent>
 
         <TabsContent value="advanced">
-          <AdvancedAnalyticsTab />
+          <ComingSoonPlaceholder
+            icon={BarChart3}
+            title="Advanced Analytics"
+            description="Error tracking, failed search analysis, accessibility audits, and feedback aggregation will be available once tracking is enabled."
+          />
         </TabsContent>
       </Tabs>
     </div>
