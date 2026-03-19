@@ -62,9 +62,9 @@ export function exportDealToCSV(deal: Deal): void {
     deal.lenders.forEach(lender => {
       rows.push([
         lender.name,
-        LENDER_STATUS_CONFIG[lender.status].label,
-        LENDER_STAGE_CONFIG[lender.stage].label,
-        LENDER_TRACKING_STATUS_CONFIG[lender.trackingStatus].label,
+        getStatusLabel(lender.status),
+        getStageLabel(lender.stage),
+        getTrackingLabel(lender.trackingStatus),
       ]);
     });
     rows.push([]);
