@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { ArrowLeftRight, MessageSquare, ListChecks, Inbox, CheckSquare, Folder, MoreHorizontal, User } from 'lucide-react';
+import { ArrowLeftRight, MessageSquare, ListChecks, Inbox, CheckSquare, Folder, MoreHorizontal, User, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { VdrView, VdrDealStatus } from './types';
 import type { Deal } from '@/types/deal';
 
@@ -21,6 +22,9 @@ interface VdrSidebarProps {
   ingestionStats?: { pending: number; processing: number; complete: number; failed: number };
   profile: any;
   onFileDrop: (files: File[]) => void;
+  canPushToFlex?: boolean;
+  isPushingToFlex?: boolean;
+  onPushToFlex?: () => void;
 }
 
 const NAV_ITEMS: { id: VdrView; label: string; icon: React.ElementType }[] = [
@@ -50,6 +54,9 @@ export function VdrSidebar({
   ingestionStats,
   profile,
   onFileDrop,
+  canPushToFlex,
+  isPushingToFlex,
+  onPushToFlex,
 }: VdrSidebarProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -145,6 +152,27 @@ export function VdrSidebar({
              ingestionStats?.complete ? `${ingestionStats.complete} indexed` : 'synced just now'}
           </p>
         </div>
+
+        {/* Push to FLEx */}
+        {canPushToFlex && (
+          <div className="pt-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onPushToFlex}
+                  disabled={isPushingToFlex}
+                  className="w-full gap-1.5 h-7 text-xs border-primary/40 text-primary hover:bg-primary/10"
+                >
+                  {isPushingToFlex ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  Push to FLEx
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Push data room files to FLEx</TooltipContent>
+            </Tooltip>
+          </div>
+        )}
 
         {/* Team Comms Drop Zone */}
         <div className="pt-1">
