@@ -22,6 +22,9 @@ interface VdrSidebarProps {
   ingestionStats?: { pending: number; processing: number; complete: number; failed: number };
   profile: any;
   onFileDrop: (files: File[]) => void;
+  canPushToFlex?: boolean;
+  isPushingToFlex?: boolean;
+  onPushToFlex?: () => void;
 }
 
 const NAV_ITEMS: { id: VdrView; label: string; icon: React.ElementType }[] = [
