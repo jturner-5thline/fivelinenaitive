@@ -15,6 +15,9 @@ export interface VdrDocument {
   source: 'dataroom' | 'incoming' | 'team_comms';
   uploaded_by: string | null;
   sort_order: number;
+  ingestion_status: 'pending' | 'processing' | 'complete' | 'failed' | null;
+  chunk_count: number;
+  entity_count: number;
   created_at: string;
   updated_at: string;
 }
