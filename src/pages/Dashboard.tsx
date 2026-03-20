@@ -19,6 +19,8 @@ import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
 import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
+import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 export default function Dashboard() {
