@@ -12416,6 +12416,258 @@ export type Database = {
         }
         Relationships: []
       }
+      vdr_documents: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          deal_id: string
+          file_path: string | null
+          file_size: number | null
+          file_type: string | null
+          filename: string
+          folder_path: string
+          id: string
+          is_folder: boolean
+          sort_order: number | null
+          source: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          deal_id: string
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          filename: string
+          folder_path?: string
+          id?: string
+          is_folder?: boolean
+          sort_order?: number | null
+          source?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          filename?: string
+          folder_path?: string
+          id?: string
+          is_folder?: boolean
+          sort_order?: number | null
+          source?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vdr_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vdr_documents_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vdr_irl_requests: {
+        Row: {
+          category: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          description: string | null
+          id: string
+          request_name: string
+          request_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          description?: string | null
+          id?: string
+          request_name: string
+          request_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          description?: string | null
+          id?: string
+          request_name?: string
+          request_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vdr_irl_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vdr_irl_requests_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vdr_task_document_links: {
+        Row: {
+          document_id: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          document_id: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          document_id?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vdr_task_document_links_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "vdr_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vdr_task_document_links_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "vdr_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vdr_task_request_links: {
+        Row: {
+          id: string
+          irl_request_id: string
+          task_id: string
+        }
+        Insert: {
+          id?: string
+          irl_request_id: string
+          task_id: string
+        }
+        Update: {
+          id?: string
+          irl_request_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vdr_task_request_links_irl_request_id_fkey"
+            columns: ["irl_request_id"]
+            isOneToOne: false
+            referencedRelation: "vdr_irl_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vdr_task_request_links_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "vdr_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vdr_tasks: {
+        Row: {
+          assignee: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          description: string | null
+          hours_allocated: number | null
+          id: string
+          instructions: string | null
+          status: string
+          task_name: string
+          task_type: string
+          updated_at: string
+        }
+        Insert: {
+          assignee?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          description?: string | null
+          hours_allocated?: number | null
+          id?: string
+          instructions?: string | null
+          status?: string
+          task_name: string
+          task_type?: string
+          updated_at?: string
+        }
+        Update: {
+          assignee?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          description?: string | null
+          hours_allocated?: number | null
+          id?: string
+          instructions?: string | null
+          status?: string
+          task_name?: string
+          task_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vdr_tasks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vdr_tasks_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_resources: {
         Row: {
           category: string

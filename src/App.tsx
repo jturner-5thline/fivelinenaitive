@@ -84,6 +84,7 @@ const Promo = lazy(lazyRetry(() => import("./pages/Promo")));
 
 const WfHub = lazy(lazyRetry(() => import("./pages/WfHub")));
 const WfDealDetail = lazy(lazyRetry(() => import("./pages/WfDealDetail")));
+const VirtualDataRoom = lazy(lazyRetry(() => import("./pages/VirtualDataRoom")));
 
 const queryClient = new QueryClient();
 
@@ -252,6 +253,9 @@ const App = () => (
                           } />
                           <Route path="/wf-deals/:id" element={
                             <ProtectedRoute><AppLayout><WfDealDetail /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/vdr/:dealId" element={
+                            <ProtectedRoute><VirtualDataRoom /></ProtectedRoute>
                           } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
