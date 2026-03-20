@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,9 +14,10 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 
 interface VdrShellProps {
   dealId: string;
+  embedded?: boolean;
 }
 
-export function VdrShell({ dealId }: VdrShellProps) {
+export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const [activeView, setActiveView] = useState<VdrView>('chat-dataroom');
   const [previewDoc, setPreviewDoc] = useState<VdrDocument | null>(null);
   const { deals } = useDealsContext();
@@ -41,7 +43,7 @@ export function VdrShell({ dealId }: VdrShellProps) {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden" style={{ background: 'hsl(var(--background))' }}>
+    <div className={cn("flex overflow-hidden", embedded ? "h-full w-full" : "h-screen w-screen")} style={{ background: 'hsl(var(--background))' }}>
       {/* LEFT SIDEBAR */}
       <VdrSidebar
         dealId={dealId}
