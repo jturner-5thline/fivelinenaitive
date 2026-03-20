@@ -730,6 +730,38 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
     }
   }
 
+  // Fix 5: Deduplicate stages in deal_pipelines for this company
+  // Removes duplicate stage labels (case-insensitive) that may have accumulated
+  if (companyId) {
+    try {
+      const { data: pipelines } = await supabase
+        .from('deal_pipelines')
+        .select('id, stages')
+        .eq('company_id', companyId);
+
+      for (const pipeline of (pipelines || [])) {
+        if (!pipeline.stages || !Array.isArray(pipeline.stages)) continue;
+        const seen = new Set<string>();
+        const deduped: any[] = [];
+        for (const stage of pipeline.stages) {
+          const key = (stage.label || stage.name || '').toLowerCase().trim();
+          if (key && seen.has(key)) continue;
+          if (key) seen.add(key);
+          deduped.push(stage);
+        }
+        if (deduped.length < pipeline.stages.length) {
+          console.log(`Deduplicating pipeline ${pipeline.id}: ${pipeline.stages.length} → ${deduped.length} stages`);
+          await supabase
+            .from('deal_pipelines')
+            .update({ stages: deduped })
+            .eq('id', pipeline.id);
+        }
+      }
+    } catch (e) {
+      console.warn('Stage deduplication failed (non-fatal):', e);
+    }
+  }
+
   // 6. Record sync run
   const syncResult = {
     integration_config_id: configId,
