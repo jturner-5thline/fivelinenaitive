@@ -15,7 +15,7 @@ interface VdrCenterPanelProps {
 
 export function VdrCenterPanel({ dealId, activeView, documents, documentsLoading, onPreview, vdrDocs }: VdrCenterPanelProps) {
   return (
-    <div className="flex flex-col h-full min-w-0 bg-background">
+    <div className="flex flex-col h-full min-w-0">
       {activeView === 'chat-dataroom' && (
         <VdrChatDataroom
           dealId={dealId}
