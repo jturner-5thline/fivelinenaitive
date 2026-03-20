@@ -555,6 +555,7 @@ export default function Dashboard() {
                   </Tooltip>
                 </TooltipProvider>
 
+                {is5thLine && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -581,6 +582,7 @@ export default function Dashboard() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                )}
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
