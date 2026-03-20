@@ -101,6 +101,9 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         fileCount={vdrDocs.fileCount}
         ingestionStats={vdrDocs.ingestionStats}
         profile={profile}
+        canPushToFlex={canPushToFlex}
+        isPushingToFlex={isPushingToFlex}
+        onPushToFlex={handlePushToFlex}
         onFileDrop={async (files) => {
           for (const file of files) {
             await vdrDocs.uploadFile(file, '/Team Communications/', 'team_comms');
