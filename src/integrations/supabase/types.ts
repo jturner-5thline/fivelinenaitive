@@ -12608,6 +12608,60 @@ export type Database = {
           },
         ]
       }
+      vdr_irl_document_matches: {
+        Row: {
+          confidence_score: number
+          created_at: string
+          deal_id: string
+          document_id: string
+          explanation: string | null
+          flagged_mislabel: boolean | null
+          id: string
+          irl_request_id: string
+          match_type: string
+          status: string
+        }
+        Insert: {
+          confidence_score?: number
+          created_at?: string
+          deal_id: string
+          document_id: string
+          explanation?: string | null
+          flagged_mislabel?: boolean | null
+          id?: string
+          irl_request_id: string
+          match_type?: string
+          status?: string
+        }
+        Update: {
+          confidence_score?: number
+          created_at?: string
+          deal_id?: string
+          document_id?: string
+          explanation?: string | null
+          flagged_mislabel?: boolean | null
+          id?: string
+          irl_request_id?: string
+          match_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vdr_irl_document_matches_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "vdr_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vdr_irl_document_matches_irl_request_id_fkey"
+            columns: ["irl_request_id"]
+            isOneToOne: false
+            referencedRelation: "vdr_irl_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vdr_irl_requests: {
         Row: {
           category: string | null
