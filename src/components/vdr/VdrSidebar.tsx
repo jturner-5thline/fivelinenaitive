@@ -140,7 +140,10 @@ export function VdrSidebar({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <p className="text-[10px] text-muted-foreground pl-5.5">synced just now</p>
+          <p className="text-[10px] text-muted-foreground pl-5.5">
+            {ingestionStats?.processing ? `indexing ${ingestionStats.processing} files…` : 
+             ingestionStats?.complete ? `${ingestionStats.complete} indexed` : 'synced just now'}
+          </p>
         </div>
 
         {/* Team Comms Drop Zone */}
