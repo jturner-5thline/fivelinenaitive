@@ -53,6 +53,22 @@ export default function Dashboard() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
 
+  // Sync tab from URL query params
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'news-feed') setDashboardTab('news-feed');
+  }, [searchParams]);
+
+  const handleDashboardTabChange = (tab: string) => {
+    setDashboardTab(tab);
+    if (tab === 'overview') {
+      searchParams.delete('tab');
+    } else {
+      searchParams.set('tab', tab);
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
+
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
