@@ -45,6 +45,8 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
     notify_activity_milestone_added: true,
     notify_activity_milestone_completed: true,
     notify_activity_milestone_missed: true,
+    // Task notifications
+    email_task_assigned: true,
     // FLEx alerts
     notify_flex_alerts: true,
     notify_info_request_emails: true,
