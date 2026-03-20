@@ -243,7 +243,7 @@ export function NewsCard({
               </div>
             )}
 
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/20">
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Clock className="h-3 w-3" />
                 <span className="text-[11px]">
