@@ -106,6 +106,9 @@ export default function Dashboard() {
   });
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
   const [savedViewWarningDismissed, setSavedViewWarningDismissed] = useState(false);
+  const [showDuplicates, setShowDuplicates] = useState(false);
+  const [mergeCluster, setMergeCluster] = useState<DuplicateCluster | null>(null);
+  const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
