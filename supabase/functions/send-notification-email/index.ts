@@ -202,6 +202,7 @@ const preferenceMap: Record<string, string> = {
   milestone_missed: 'deal_updates_email',
   new_suggestions: 'email_notifications',
   flex_lender_sync: 'lender_updates_email',
+  task_assigned: 'email_task_assigned',
 };
 
 const handler = async (req: Request): Promise<Response> => {
