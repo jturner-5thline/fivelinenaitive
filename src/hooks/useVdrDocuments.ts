@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 import type { VdrDocument } from '@/components/vdr/types';
-import { VDR_DEFAULT_FOLDERS } from '@/components/vdr/types';
 import { toast } from 'sonner';
 
 export function useVdrDocuments(dealId: string) {
@@ -30,7 +29,7 @@ export function useVdrDocuments(dealId: string) {
     setLoading(false);
   }, [dealId, company?.id]);
 
-  // Seed default folders if none exist
+  // Seed folders from data_room_checklist_categories + Team Communications
   const seedDefaultFolders = useCallback(async () => {
     if (!dealId || !company?.id) return;
 
@@ -42,7 +41,18 @@ export function useVdrDocuments(dealId: string) {
 
     if ((count ?? 0) > 0) return;
 
-    const folders = VDR_DEFAULT_FOLDERS.map((name, i) => ({
+    // Fetch categories from settings
+    const { data: categories } = await supabase
+      .from('data_room_checklist_categories')
+      .select('name, position')
+      .order('position', { ascending: true });
+
+    const categoryNames = (categories || []).map((c: any) => c.name as string);
+
+    // Build folder list: categories + Team Communications at the end
+    const folderNames = [...categoryNames, 'Team Communications'];
+
+    const folders = folderNames.map((name, i) => ({
       deal_id: dealId,
       company_id: company.id,
       filename: name,
