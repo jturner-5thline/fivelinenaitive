@@ -563,20 +563,25 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
     console.log('Could not fetch pipeline stages for label resolution');
   }
 
-  // 4. Get ALL existing hubspot_deal_ids to determine insert vs update
+  // 4. Get ALL existing hubspot_deal_ids (and user_edited_fields) to determine insert vs update
   // Paginate to avoid Supabase's default 1000-row limit
-  const existingMap = new Map<string, string>();
+  const existingMap = new Map<string, { id: string; userEditedFields: Record<string, boolean> }>();
   let rangeStart = 0;
   const PAGE_SIZE = 1000;
   while (true) {
     const { data: existingDeals } = await supabase
       .from('deals')
-      .select('id, hubspot_deal_id')
+      .select('id, hubspot_deal_id, user_edited_fields')
       .not('hubspot_deal_id', 'is', null)
       .range(rangeStart, rangeStart + PAGE_SIZE - 1);
     
     for (const d of (existingDeals || [])) {
-      if (d.hubspot_deal_id) existingMap.set(d.hubspot_deal_id, d.id);
+      if (d.hubspot_deal_id) {
+        const editedFields = (d.user_edited_fields && typeof d.user_edited_fields === 'object' && !Array.isArray(d.user_edited_fields))
+          ? d.user_edited_fields as Record<string, boolean>
+          : {};
+        existingMap.set(d.hubspot_deal_id, { id: d.id, userEditedFields: editedFields });
+      }
     }
     if (!existingDeals || existingDeals.length < PAGE_SIZE) break;
     rangeStart += PAGE_SIZE;
@@ -664,12 +669,31 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
           dealData.value = 0;
         }
 
-        const existingId = existingMap.get(hubspotDealId);
-        if (existingId) {
-          // Existing deal: do NOT overwrite pipeline_id
+        const existing = existingMap.get(hubspotDealId);
+        if (existing) {
+          // Existing deal: strip immutable/Naitive-only fields from update payload
           const { hubspot_deal_id: _hid, user_id: _uid, company_id: _cid, ...updateData } = dealData;
+
+          // Fix 1: Never overwrite hours — these are Naitive-only manual entries
+          delete updateData.pre_signing_hours;
+          delete updateData.post_signing_hours;
+
+          // Fix 2: Never overwrite stage — Naitive pipelines have their own stages
+          delete updateData.stage;
+
+          // Fix 3: Never overwrite pipeline_id (already excluded from filteredFieldMap,
+          // but belt-and-suspenders)
+          delete updateData.pipeline_id;
+
+          // Fix 4: Respect user_edited_fields — skip any field the user has manually edited
+          for (const fieldName of Object.keys(existing.userEditedFields)) {
+            if (existing.userEditedFields[fieldName]) {
+              delete updateData[fieldName];
+            }
+          }
+
           updateData.updated_at = new Date().toISOString();
-          toUpdate.push({ id: existingId, data: updateData });
+          toUpdate.push({ id: existing.id, data: updateData });
         } else {
           // New deal: assign to "In Development" pipeline if available and no pipeline_id already set
           if (inDevPipelineId && !dealData.pipeline_id) {
@@ -703,6 +727,38 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
       } else {
         updated++;
       }
+    }
+  }
+
+  // Fix 5: Deduplicate stages in deal_pipelines for this company
+  // Removes duplicate stage labels (case-insensitive) that may have accumulated
+  if (companyId) {
+    try {
+      const { data: pipelines } = await supabase
+        .from('deal_pipelines')
+        .select('id, stages')
+        .eq('company_id', companyId);
+
+      for (const pipeline of (pipelines || [])) {
+        if (!pipeline.stages || !Array.isArray(pipeline.stages)) continue;
+        const seen = new Set<string>();
+        const deduped: any[] = [];
+        for (const stage of pipeline.stages) {
+          const key = (stage.label || stage.name || '').toLowerCase().trim();
+          if (key && seen.has(key)) continue;
+          if (key) seen.add(key);
+          deduped.push(stage);
+        }
+        if (deduped.length < pipeline.stages.length) {
+          console.log(`Deduplicating pipeline ${pipeline.id}: ${pipeline.stages.length} → ${deduped.length} stages`);
+          await supabase
+            .from('deal_pipelines')
+            .update({ stages: deduped })
+            .eq('id', pipeline.id);
+        }
+      }
+    } catch (e) {
+      console.warn('Stage deduplication failed (non-fatal):', e);
     }
   }
 
