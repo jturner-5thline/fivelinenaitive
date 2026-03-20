@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useVdrTasks, VdrTaskStatus, VdrTaskType } from '@/hooks/useVdrTasks';
 import { useVdrIrlRequests } from '@/hooks/useVdrIrlRequests';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -9,10 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, ChevronDown, ChevronRight, Sparkles, User } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Sparkles, User, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import type { VdrTask } from '@/components/vdr/types';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer } from 'recharts';
 
 interface VdrTasksViewProps {
@@ -49,9 +53,66 @@ export function VdrTasksView({ dealId }: VdrTasksViewProps) {
   const [tab, setTab] = useState('tasks');
   const [showNew, setShowNew] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [generatingInstructions, setGeneratingInstructions] = useState(false);
+  const [generatingForTaskId, setGeneratingForTaskId] = useState<string | null>(null);
   const [form, setForm] = useState({
     task_name: '', task_type: 'tie_out' as VdrTaskType, description: '', instructions: '', assignee: '', hours_allocated: 0,
   });
+
+  const generateInstructions = useCallback(async (
+    taskType: VdrTaskType,
+    taskName: string,
+    taskDescription: string,
+    targetSetter: (instructions: string) => void
+  ) => {
+    setGeneratingInstructions(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('vdr-task-instructions', {
+        body: {
+          deal_id: dealId,
+          task_type: taskType,
+          task_name: taskName,
+          task_description: taskDescription,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
+      targetSetter(data.instructions || '');
+      toast.success('Instructions generated');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to generate instructions';
+      if (msg.includes('Rate limit')) {
+        toast.error('Rate limited — try again in a moment');
+      } else if (msg.includes('credits')) {
+        toast.error('AI credits exhausted');
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setGeneratingInstructions(false);
+    }
+  }, [dealId]);
+
+  const handleGenerateForForm = useCallback(() => {
+    generateInstructions(form.task_type, form.task_name, form.description, (instructions) => {
+      setForm(f => ({ ...f, instructions }));
+    });
+  }, [form.task_type, form.task_name, form.description, generateInstructions]);
+
+  const handleGenerateForTask = useCallback(async (task: VdrTask) => {
+    setGeneratingForTaskId(task.id);
+    await generateInstructions(
+      task.task_type as VdrTaskType,
+      task.task_name,
+      task.description || '',
+      async (instructions) => {
+        await updateTask(task.id, { instructions });
+      }
+    );
+    setGeneratingForTaskId(null);
+  }, [generateInstructions, updateTask]);
 
   const handleCreate = useCallback(async () => {
     if (!form.task_name.trim()) return;
@@ -126,8 +187,10 @@ export function VdrTasksView({ dealId }: VdrTasksViewProps) {
                   key={task.id}
                   task={task}
                   isExpanded={expandedId === task.id}
+                  isGenerating={generatingForTaskId === task.id}
                   onToggle={() => setExpandedId(expandedId === task.id ? null : task.id)}
                   onUpdate={updateTask}
+                  onGenerateInstructions={() => handleGenerateForTask(task)}
                 />
               ))}
             </div>
@@ -224,17 +287,26 @@ export function VdrTasksView({ dealId }: VdrTasksViewProps) {
             </Select>
             <Input type="number" placeholder="Hours allocated" value={form.hours_allocated || ''} onChange={e => setForm(f => ({ ...f, hours_allocated: Number(e.target.value) || 0 }))} />
             <div className="relative">
-              <Textarea placeholder="Instructions (manual entry)" value={form.instructions} onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))} rows={3} />
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="sm" variant="ghost" className="absolute top-1 right-1 h-7 text-[10px] text-muted-foreground opacity-50 cursor-not-allowed" disabled>
-                      <Sparkles className="h-3 w-3 mr-1" /> Generate with AI
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p className="text-xs">AI-generated instructions coming in Phase 2</p></TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Textarea
+                placeholder="Instructions — type manually or generate with AI"
+                value={form.instructions}
+                onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))}
+                rows={4}
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="absolute top-1 right-1 h-7 text-[10px] gap-1"
+                disabled={generatingInstructions || !form.task_name.trim()}
+                onClick={handleGenerateForForm}
+              >
+                {generatingInstructions ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3" />
+                )}
+                {generatingInstructions ? 'Generating...' : 'Generate with AI'}
+              </Button>
             </div>
           </div>
           <DialogFooter>
@@ -249,11 +321,13 @@ export function VdrTasksView({ dealId }: VdrTasksViewProps) {
 
 /* ── Task Row ────────────────────────────────────── */
 
-function TaskRow({ task, isExpanded, onToggle, onUpdate }: {
+function TaskRow({ task, isExpanded, isGenerating, onToggle, onUpdate, onGenerateInstructions }: {
   task: VdrTask;
   isExpanded: boolean;
+  isGenerating: boolean;
   onToggle: () => void;
   onUpdate: (id: string, updates: Partial<VdrTask>) => Promise<void>;
+  onGenerateInstructions: () => void;
 }) {
   const statusCfg = STATUS_CFG[task.status];
   const typeLbl = TASK_TYPES.find(t => t.value === task.task_type)?.label || task.task_type;
@@ -293,19 +367,31 @@ function TaskRow({ task, isExpanded, onToggle, onUpdate }: {
               <p className="text-sm text-foreground/80">{task.description}</p>
             </div>
           )}
-          {task.instructions && (
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">Instructions</p>
-              <p className="text-sm text-foreground/80 whitespace-pre-wrap">{task.instructions}</p>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Instructions</p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-[10px] gap-1"
+                disabled={isGenerating}
+                onClick={onGenerateInstructions}
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3" />
+                )}
+                {isGenerating ? 'Generating...' : task.instructions ? 'Regenerate' : 'Generate with AI'}
+              </Button>
             </div>
-          )}
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">Linked IRL Requests</p>
-            <p className="text-xs text-muted-foreground italic">Manual linking coming in next iteration</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">Relevant Documents</p>
-            <p className="text-xs text-muted-foreground italic">Manual linking coming in next iteration</p>
+            {task.instructions ? (
+              <div className="prose prose-sm prose-invert max-w-none text-sm text-foreground/80 [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_ul]:text-sm [&_ol]:text-sm [&_p]:text-sm [&_li]:text-sm">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{task.instructions}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">No instructions yet. Click "Generate with AI" to create detailed analyst instructions.</p>
+            )}
           </div>
           <p className="text-[10px] text-muted-foreground">Created {format(new Date(task.created_at), 'MMM d, yyyy')}</p>
         </div>
