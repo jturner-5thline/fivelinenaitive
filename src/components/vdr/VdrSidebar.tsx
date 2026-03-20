@@ -83,7 +83,7 @@ export function VdrSidebar({
   const dealOptions = deals.filter(d => d.status !== 'archived').slice(0, 50);
 
   return (
-    <aside className="flex flex-col w-[220px] min-w-[220px] text-sidebar-foreground">
+    <aside className="flex flex-col w-[220px] min-w-[220px] text-sidebar-foreground overflow-y-auto">
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
         <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
