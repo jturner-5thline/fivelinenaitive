@@ -38,7 +38,6 @@ function buildChangeSummary(data: NotificationPayload): string {
   const lines: string[] = [];
   const actor = data.changed_by || 'Someone';
 
-  // Base message
   switch (data.type) {
     case 'lender_added':
       lines.push(`${actor} added lender "${data.lender_name}" to deal "${data.deal_name}".`);
@@ -112,6 +111,277 @@ function buildChangesText(changes?: ChangeDetail[]): string {
     }
   }
   return text;
+}
+
+// Priority badge colors
+function getPriorityConfig(priority: string): { label: string; color: string; bg: string } {
+  switch ((priority || '').toLowerCase()) {
+    case 'urgent': return { label: 'Urgent', color: '#DC2626', bg: '#FEE2E2' };
+    case 'high': return { label: 'High', color: '#EA580C', bg: '#FFF7ED' };
+    case 'low': return { label: 'Low', color: '#6B7280', bg: '#F3F4F6' };
+    default: return { label: 'Normal', color: '#2563EB', bg: '#EFF6FF' };
+  }
+}
+
+function formatCurrency(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+}
+
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch { return dateStr; }
+}
+
+// Build the enriched task_assigned email HTML
+function buildTaskAssignedHtml(data: NotificationPayload, actionUrl: string, appUrl: string): string {
+  const meta = (data.metadata || {}) as Record<string, any>;
+  const priority = getPriorityConfig(meta.priority);
+  const year = new Date().getFullYear();
+
+  // Build context rows for the deal card
+  let dealCardHtml = '';
+  if (meta.deal_name) {
+    const dealRows: string[] = [];
+    const addRow = (label: string, value: string | null | undefined) => {
+      if (value) dealRows.push(`
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px; width: 110px; vertical-align: top;">${label}</td>
+          <td style="padding: 6px 0; color: #e2e8f0; font-size: 13px; font-weight: 500;">${value}</td>
+        </tr>`);
+    };
+    addRow('Deal', meta.deal_name);
+    if (meta.deal_value) addRow('Value', formatCurrency(meta.deal_value));
+    if (meta.deal_stage) addRow('Stage', meta.deal_stage);
+    if (meta.deal_status) addRow('Status', meta.deal_status.charAt(0).toUpperCase() + meta.deal_status.slice(1));
+    if (meta.deal_pipeline) addRow('Pipeline', meta.deal_pipeline);
+    if (meta.deal_manager) addRow('Manager', meta.deal_manager);
+
+    if (dealRows.length > 0) {
+      dealCardHtml = `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 20px 0 0 0; background: #1e293b; border-radius: 8px; border: 1px solid #334155;">
+          <tr>
+            <td style="padding: 16px 20px 6px 20px;">
+              <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; font-weight: 600;">Deal Context</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 20px 16px 20px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                ${dealRows.join('')}
+              </table>
+            </td>
+          </tr>
+        </table>`;
+    }
+  }
+
+  // Lender card
+  let lenderCardHtml = '';
+  if (meta.lender_name) {
+    const lenderRows: string[] = [];
+    const addRow = (label: string, value: string | null | undefined) => {
+      if (value) lenderRows.push(`
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px; width: 110px; vertical-align: top;">${label}</td>
+          <td style="padding: 6px 0; color: #e2e8f0; font-size: 13px; font-weight: 500;">${value}</td>
+        </tr>`);
+    };
+    addRow('Lender', meta.lender_name);
+    if (meta.lender_status) addRow('Status', meta.lender_status);
+    if (meta.lender_stage) addRow('Stage', meta.lender_stage);
+
+    lenderCardHtml = `
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 12px 0 0 0; background: #1e293b; border-radius: 8px; border: 1px solid #334155;">
+        <tr>
+          <td style="padding: 16px 20px 6px 20px;">
+            <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; font-weight: 600;">Lender Context</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 20px 16px 20px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+              ${lenderRows.join('')}
+            </table>
+          </td>
+        </tr>
+      </table>`;
+  }
+
+  // Task description section
+  const descriptionHtml = meta.task_description
+    ? `<p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; margin: 12px 0 0 0; padding: 12px 16px; background: #1e293b; border-radius: 6px; border-left: 3px solid #8B5CF6;">${meta.task_description}</p>`
+    : '';
+
+  // Due date row
+  const dueDateHtml = meta.due_date
+    ? `<tr>
+        <td style="padding: 10px 0;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+            <tr>
+              <td style="padding-right: 8px; vertical-align: middle; color: #94a3b8; font-size: 16px;">📅</td>
+              <td style="color: #94a3b8; font-size: 13px;">Due: <strong style="color: #e2e8f0;">${formatDate(meta.due_date)}</strong></td>
+            </tr>
+          </table>
+        </td>
+      </tr>`
+    : '';
+
+  // Subtask count
+  const subtaskHtml = meta.subtask_count && meta.subtask_count > 0
+    ? `<tr>
+        <td style="padding: 4px 0 10px 0; color: #94a3b8; font-size: 13px;">
+          📋 ${meta.subtask_count} subtask${meta.subtask_count > 1 ? 's' : ''}
+        </td>
+      </tr>`
+    : '';
+
+  // Task type badge
+  const taskTypeBadge = meta.task_type && meta.task_type !== 'task'
+    ? `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; color: #a78bfa; background: rgba(139,92,246,0.15); margin-left: 8px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.5px;">${meta.task_type}</span>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>New Task Assigned</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+  <div style="display: none; max-height: 0; overflow: hidden;">
+    ${meta.assigner_name || 'A team member'} assigned you: ${meta.task_title || 'a task'}${data.deal_name ? ` on ${data.deal_name}` : ''}
+    &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+  </div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #0f172a;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+        <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width: 560px; width: 100%;">
+
+          <!-- Logo / Header -->
+          <tr>
+            <td style="padding: 0 0 24px 0; text-align: center;">
+              <span style="font-size: 22px; font-weight: 700; color: #f8fafc; letter-spacing: -0.5px;">naitive</span>
+            </td>
+          </tr>
+
+          <!-- Main Card -->
+          <tr>
+            <td style="background: #1a1a2e; border-radius: 12px; border: 1px solid #2d2d52;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+
+                <!-- Header bar -->
+                <tr>
+                  <td style="padding: 28px 28px 0 28px;">
+                    <p style="margin: 0 0 16px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #8B5CF6; font-weight: 700;">New Task Assigned</p>
+                    <h1 style="margin: 0; font-size: 20px; font-weight: 600; color: #f1f5f9; line-height: 1.3;">
+                      ${meta.task_title || 'Untitled Task'}${taskTypeBadge}
+                    </h1>
+                  </td>
+                </tr>
+
+                <!-- Priority + Due date row -->
+                <tr>
+                  <td style="padding: 16px 28px 0 28px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding-right: 12px;">
+                          <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; color: ${priority.color}; background: ${priority.bg};">${priority.label} Priority</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Description -->
+                <tr>
+                  <td style="padding: 4px 28px 0 28px;">
+                    ${descriptionHtml}
+                  </td>
+                </tr>
+
+                <!-- Meta info: due date, subtasks -->
+                <tr>
+                  <td style="padding: 12px 28px 0 28px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      ${dueDateHtml}
+                      ${subtaskHtml}
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Context cards (deal, lender) -->
+                <tr>
+                  <td style="padding: 4px 28px 0 28px;">
+                    ${dealCardHtml}
+                    ${lenderCardHtml}
+                  </td>
+                </tr>
+
+                <!-- Assigned by -->
+                <tr>
+                  <td style="padding: 20px 28px 0 28px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="width: 36px; height: 36px; border-radius: 18px; background: linear-gradient(135deg, #8B5CF6, #D946EF); text-align: center; vertical-align: middle; color: #fff; font-size: 15px; font-weight: 600;">${(meta.assigner_name || 'T').charAt(0).toUpperCase()}</td>
+                        <td style="padding-left: 12px; vertical-align: middle;">
+                          <p style="margin: 0; color: #e2e8f0; font-size: 14px; font-weight: 500;">${meta.assigner_name || 'A team member'}</p>
+                          ${meta.assigner_email ? `<p style="margin: 2px 0 0 0; color: #64748b; font-size: 12px;">${meta.assigner_email}</p>` : ''}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- CTA Button -->
+                <tr>
+                  <td style="padding: 24px 28px 28px 28px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td align="center">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td style="border-radius: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%);">
+                                <a href="${actionUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none;">View Task in Naitive</a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 0 0 0; text-align: center;">
+              <p style="color: #475569; font-size: 12px; margin: 0 0 6px 0;">
+                You're receiving this because you have task assignment notifications enabled.
+              </p>
+              <p style="color: #475569; font-size: 12px; margin: 0 0 6px 0;">
+                © ${year} naitive. All rights reserved.
+              </p>
+              <p style="color: #475569; font-size: 12px; margin: 0;">
+                <a href="${appUrl}/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
+                &nbsp;|&nbsp;
+                <a href="${appUrl}/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 const notificationTemplates: Record<string, { subject: string; getMessage: (data: NotificationPayload) => string }> = {
@@ -268,11 +538,13 @@ const handler = async (req: Request): Promise<Response> => {
     const dealUrl = payload.deal_id ? `${appUrl}/deal/${payload.deal_id}` : null;
     let actionUrl: string | null = dealUrl;
     let actionLabel = 'View Deal';
+    let emailSubject = `naitive: ${template.subject}${payload.deal_name ? ` – ${payload.deal_name}` : ''}`;
 
     if (payload.type === 'task_assigned') {
       const meta = (payload.metadata || {}) as Record<string, any>;
       actionUrl = meta.action_url || `${appUrl}/tasks`;
-      actionLabel = 'View Task';
+      actionLabel = 'View Task in Naitive';
+      emailSubject = `[Naitive] New Task: ${meta.task_title || 'Untitled'}${payload.deal_name ? ` — ${payload.deal_name}` : ''}`;
     } else if (payload.type === 'new_suggestions') {
       actionUrl = payload.agent_suggestion_count && payload.agent_suggestion_count > 0
         ? `${appUrl}/agents`
@@ -283,22 +555,17 @@ const handler = async (req: Request): Promise<Response> => {
       actionLabel = 'Review Sync Requests';
     }
 
-    // Build actor badge
-    const actorHtml = payload.changed_by
-      ? `<p style="color: #888; font-size: 13px; margin: 0 0 16px 0;">By: <strong style="color: #555;">${payload.changed_by}</strong> · ${new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>`
-      : '';
+    // Build HTML body — use enriched template for task_assigned, standard for others
+    let emailHtml: string;
 
-    const emailResponse = await resend.emails.send({
-      from: "naitive <noreply@updates.naitive.co>",
-      reply_to: "support@naitive.co",
-      to: [userData.user.email],
-      subject: `naitive: ${template.subject}${payload.deal_name ? ` – ${payload.deal_name}` : ''}`,
-      headers: {
-        "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
-      text: `${template.subject}\n\n${message}${payload.changed_by ? `\nBy: ${payload.changed_by}` : ''}${changesText}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnaitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
-      html: `
+    if (payload.type === 'task_assigned') {
+      emailHtml = buildTaskAssignedHtml(payload, actionUrl || appUrl, appUrl);
+    } else {
+      const actorHtml = payload.changed_by
+        ? `<p style="color: #888; font-size: 13px; margin: 0 0 16px 0;">By: <strong style="color: #555;">${payload.changed_by}</strong> · ${new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>`
+        : '';
+
+      emailHtml = `
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -352,7 +619,20 @@ const handler = async (req: Request): Promise<Response> => {
           </table>
         </body>
         </html>
-      `,
+      `;
+    }
+
+    const emailResponse = await resend.emails.send({
+      from: "naitive <noreply@updates.naitive.co>",
+      reply_to: "support@naitive.co",
+      to: [userData.user.email],
+      subject: emailSubject,
+      headers: {
+        "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+      text: `${template.subject}\n\n${message}${payload.changed_by ? `\nBy: ${payload.changed_by}` : ''}${changesText}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnaitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
+      html: emailHtml,
     });
 
     console.log("Email sent successfully:", emailResponse);
