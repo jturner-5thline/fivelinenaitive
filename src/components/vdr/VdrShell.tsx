@@ -53,6 +53,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         onViewChange={setActiveView}
         onDealChange={handleDealChange}
         fileCount={vdrDocs.fileCount}
+        ingestionStats={vdrDocs.ingestionStats}
         profile={profile}
         onFileDrop={async (files) => {
           for (const file of files) {
