@@ -74,6 +74,24 @@ export default function Tasks() {
   const { labels, createLabel } = useTaskLabels();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+
+  // Auto-open task from ?task= query parameter (e.g. from email deep link)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const taskParam = params.get('task');
+    if (taskParam && tasks.length > 0) {
+      const found = tasks.find(t => t.id === taskParam);
+      if (found) {
+        setSelectedTaskId(taskParam);
+        // Scroll the task row into view after a short delay for DOM render
+        setTimeout(() => {
+          document.querySelector(`[data-task-id="${taskParam}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 200);
+      }
+      // Clear the query param so it doesn't persist on refresh
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [tasks]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [sortBy, setSortBy] = useState<SortBy>('due_date');
