@@ -97,6 +97,31 @@ export function useDealTasks(dealId: string | undefined) {
         };
         fireZapierWebhook('task_created', webhookPayload);
         fireZapierWebhook('task_assigned', webhookPayload);
+
+        // Send email notification to assignee (skip self-assignment, fire-and-forget)
+        if (task.assigned_to !== user.id && assigneeProfile?.email) {
+          const { data: assignerProfile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', user.id)
+            .single();
+
+          supabase.functions.invoke('send-notification-email', {
+            body: {
+              type: 'task_assigned',
+              user_id: task.assigned_to,
+              deal_id: dealId,
+              deal_name: dealId,
+              metadata: {
+                task_title: task.title,
+                task_description: task.description || null,
+                due_date: task.due_date || null,
+                assigner_name: assignerProfile?.display_name || 'A team member',
+                action_url: taskUrl,
+              },
+            },
+          }).catch(e => console.error('Task assignment email failed:', e));
+        }
       }
 
       return data;

@@ -16,7 +16,7 @@ interface ChangeDetail {
 }
 
 interface NotificationPayload {
-  type: 'deal_created' | 'deal_updated' | 'stage_changed' | 'lender_added' | 'lender_updated' | 'milestone_added' | 'milestone_completed' | 'milestone_missed' | 'new_suggestions' | 'flex_lender_sync';
+  type: 'deal_created' | 'deal_updated' | 'stage_changed' | 'lender_added' | 'lender_updated' | 'milestone_added' | 'milestone_completed' | 'milestone_missed' | 'new_suggestions' | 'flex_lender_sync' | 'task_assigned';
   user_id: string;
   deal_id?: string;
   deal_name?: string;
@@ -175,6 +175,20 @@ const notificationTemplates: Record<string, { subject: string; getMessage: (data
       return `${count} lender sync requests have been received from Flex and are awaiting your review.`;
     },
   },
+  task_assigned: {
+    subject: 'New Task Assigned',
+    getMessage: (data) => {
+      const meta = (data.metadata || {}) as Record<string, any>;
+      const assigner = meta.assigner_name || 'A team member';
+      const taskTitle = meta.task_title || 'a task';
+      let msg = `${assigner} assigned you a task: "${taskTitle}"`;
+      if (data.deal_name) msg += ` on deal "${data.deal_name}"`;
+      msg += '.';
+      if (meta.task_description) msg += ` Details: ${meta.task_description}`;
+      if (meta.due_date) msg += ` Due: ${meta.due_date}.`;
+      return msg;
+    },
+  },
 };
 
 const preferenceMap: Record<string, string> = {
@@ -188,6 +202,7 @@ const preferenceMap: Record<string, string> = {
   milestone_missed: 'deal_updates_email',
   new_suggestions: 'email_notifications',
   flex_lender_sync: 'lender_updates_email',
+  task_assigned: 'email_task_assigned',
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -254,7 +269,11 @@ const handler = async (req: Request): Promise<Response> => {
     let actionUrl: string | null = dealUrl;
     let actionLabel = 'View Deal';
 
-    if (payload.type === 'new_suggestions') {
+    if (payload.type === 'task_assigned') {
+      const meta = (payload.metadata || {}) as Record<string, any>;
+      actionUrl = meta.action_url || `${appUrl}/tasks`;
+      actionLabel = 'View Task';
+    } else if (payload.type === 'new_suggestions') {
       actionUrl = payload.agent_suggestion_count && payload.agent_suggestion_count > 0
         ? `${appUrl}/agents`
         : `${appUrl}/workflows`;

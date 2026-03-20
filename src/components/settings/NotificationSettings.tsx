@@ -45,6 +45,8 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
     notify_activity_milestone_added: true,
     notify_activity_milestone_completed: true,
     notify_activity_milestone_missed: true,
+    // Task notifications
+    email_task_assigned: true,
     // FLEx alerts
     notify_flex_alerts: true,
     notify_info_request_emails: true,
@@ -69,6 +71,8 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
         notify_activity_milestone_added: (profile as any).notify_activity_milestone_added ?? true,
         notify_activity_milestone_completed: (profile as any).notify_activity_milestone_completed ?? true,
         notify_activity_milestone_missed: (profile as any).notify_activity_milestone_missed ?? true,
+        // Task notifications
+        email_task_assigned: (profile as any).email_task_assigned ?? true,
         // FLEx alerts
         notify_flex_alerts: (profile as any).notify_flex_alerts ?? true,
         notify_info_request_emails: (profile as any).notify_info_request_emails ?? true,
@@ -264,6 +268,21 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
               />
             </div>
             )}
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="email_task_assigned" className="flex flex-col gap-1">
+                <span>Task assignments</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  Get notified when someone assigns you a task
+                </span>
+              </Label>
+              <Switch
+                id="email_task_assigned"
+                checked={preferences.email_task_assigned}
+                onCheckedChange={(checked) => handleToggle('email_task_assigned', checked)}
+                disabled={isSaving || !preferences.email_notifications}
+              />
+            </div>
 
             {canSeeFlexSync && (
             <div className="flex items-center justify-between">
