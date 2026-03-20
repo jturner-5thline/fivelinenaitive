@@ -63,6 +63,32 @@ export function useVdrDocuments(dealId: string) {
     }
   }, [dealId, company?.id]);
 
+  // Trigger ingestion for newly uploaded documents
+  const triggerIngestion = useCallback(async (documentIds: string[]) => {
+    if (!documentIds.length) return;
+    try {
+      const { error } = await supabase.functions.invoke('vdr-ingest', {
+        body: { document_ids: documentIds, deal_id: dealId },
+      });
+      if (error) {
+        console.error('Ingestion error:', error);
+      } else {
+        // Poll for completion
+        const poll = async (attempts = 0) => {
+          if (attempts > 30) return;
+          await new Promise(r => setTimeout(r, 3000));
+          await fetchDocuments();
+          const updated = documents.filter(d => documentIds.includes(d.id));
+          const allDone = updated.every(d => (d as any).ingestion_status === 'complete' || (d as any).ingestion_status === 'failed');
+          if (!allDone) await poll(attempts + 1);
+        };
+        poll();
+      }
+    } catch (e) {
+      console.error('Ingestion invoke error:', e);
+    }
+  }, [dealId, fetchDocuments, documents]);
+
   const uploadFile = useCallback(async (file: File, folderPath: string, source: VdrDocument['source'] = 'dataroom') => {
     if (!dealId || !company?.id || !user?.id) return;
 
@@ -77,7 +103,7 @@ export function useVdrDocuments(dealId: string) {
       return;
     }
 
-    await (supabase as any).from('vdr_documents').insert({
+    const { data: inserted } = await (supabase as any).from('vdr_documents').insert({
       deal_id: dealId,
       company_id: company.id,
       filename: file.name,
@@ -88,11 +114,17 @@ export function useVdrDocuments(dealId: string) {
       is_folder: false,
       source,
       uploaded_by: user.id,
-    });
+      ingestion_status: 'pending',
+    }).select('id').single();
 
     await fetchDocuments();
     toast.success(`Uploaded ${file.name}`);
-  }, [dealId, company?.id, user?.id, fetchDocuments]);
+
+    // Fire-and-forget ingestion
+    if (inserted?.id) {
+      triggerIngestion([inserted.id]);
+    }
+  }, [dealId, company?.id, user?.id, fetchDocuments, triggerIngestion]);
 
   const createFolder = useCallback(async (name: string, parentPath: string) => {
     if (!dealId || !company?.id || !user?.id) return;
@@ -137,16 +169,26 @@ export function useVdrDocuments(dealId: string) {
 
   const fileCount = documents.filter(d => !d.is_folder).length;
 
+  // Ingestion stats
+  const ingestionStats = {
+    pending: documents.filter(d => !d.is_folder && (d as any).ingestion_status === 'pending').length,
+    processing: documents.filter(d => !d.is_folder && (d as any).ingestion_status === 'processing').length,
+    complete: documents.filter(d => !d.is_folder && (d as any).ingestion_status === 'complete').length,
+    failed: documents.filter(d => !d.is_folder && (d as any).ingestion_status === 'failed').length,
+  };
+
   return {
     documents,
     loading,
     fileCount,
+    ingestionStats,
     uploadFile,
     createFolder,
     deleteDocument,
     renameDocument,
     moveDocument,
     getDownloadUrl,
+    triggerIngestion,
     refetch: fetchDocuments,
   };
 }

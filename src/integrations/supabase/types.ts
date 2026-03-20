@@ -12416,17 +12416,137 @@ export type Database = {
         }
         Relationships: []
       }
-      vdr_documents: {
+      vdr_document_account_tags: {
         Row: {
+          account_category: string
+          confidence_score: number | null
+          created_at: string
+          deal_id: string
+          document_id: string
+          id: string
+        }
+        Insert: {
+          account_category: string
+          confidence_score?: number | null
+          created_at?: string
+          deal_id: string
+          document_id: string
+          id?: string
+        }
+        Update: {
+          account_category?: string
+          confidence_score?: number | null
+          created_at?: string
+          deal_id?: string
+          document_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vdr_document_account_tags_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "vdr_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vdr_document_chunks: {
+        Row: {
+          chunk_index: number
+          chunk_text: string
           company_id: string | null
           created_at: string
           deal_id: string
+          document_id: string
+          embedding: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          chunk_index?: number
+          chunk_text: string
+          company_id?: string | null
+          created_at?: string
+          deal_id: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          chunk_index?: number
+          chunk_text?: string
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vdr_document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "vdr_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vdr_document_entities: {
+        Row: {
+          context_snippet: string | null
+          created_at: string
+          deal_id: string
+          document_id: string
+          entity_type: string
+          entity_value: string
+          id: string
+        }
+        Insert: {
+          context_snippet?: string | null
+          created_at?: string
+          deal_id: string
+          document_id: string
+          entity_type: string
+          entity_value: string
+          id?: string
+        }
+        Update: {
+          context_snippet?: string | null
+          created_at?: string
+          deal_id?: string
+          document_id?: string
+          entity_type?: string
+          entity_value?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vdr_document_entities_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "vdr_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vdr_documents: {
+        Row: {
+          chunk_count: number | null
+          company_id: string | null
+          created_at: string
+          deal_id: string
+          entity_count: number | null
           file_path: string | null
           file_size: number | null
           file_type: string | null
           filename: string
           folder_path: string
           id: string
+          ingestion_status: string | null
           is_folder: boolean
           sort_order: number | null
           source: string
@@ -12434,15 +12554,18 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          chunk_count?: number | null
           company_id?: string | null
           created_at?: string
           deal_id: string
+          entity_count?: number | null
           file_path?: string | null
           file_size?: number | null
           file_type?: string | null
           filename: string
           folder_path?: string
           id?: string
+          ingestion_status?: string | null
           is_folder?: boolean
           sort_order?: number | null
           source?: string
@@ -12450,15 +12573,18 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          chunk_count?: number | null
           company_id?: string | null
           created_at?: string
           deal_id?: string
+          entity_count?: number | null
           file_path?: string | null
           file_size?: number | null
           file_type?: string | null
           filename?: string
           folder_path?: string
           id?: string
+          ingestion_status?: string | null
           is_folder?: boolean
           sort_order?: number | null
           source?: string
@@ -14392,6 +14518,20 @@ export type Database = {
       seed_new_company_defaults: {
         Args: { _company_id: string }
         Returns: undefined
+      }
+      vdr_search_chunks: {
+        Args: {
+          _deal_id: string
+          _match_count?: number
+          _query_embedding: string
+        }
+        Returns: {
+          chunk_text: string
+          document_id: string
+          id: string
+          metadata: Json
+          similarity: number
+        }[]
       }
     }
     Enums: {
