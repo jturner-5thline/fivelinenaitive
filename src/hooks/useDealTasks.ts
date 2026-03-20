@@ -74,7 +74,8 @@ export function useDealTasks(dealId: string | undefined) {
 
       // Fire Zapier webhooks with assignee profile info for Asana matching
       if (data) {
-        const taskUrl = `https://naitive.co/tasks?task=${(data as any).id}`;
+        const createdTask = data as any;
+        const taskUrl = `https://naitive.co/deals/${dealId}?tab=tasks&task=${createdTask.id}`;
 
         // Fetch assignee profile to include email/name for Asana user matching
         const { data: assigneeProfile } = await supabase
@@ -84,7 +85,7 @@ export function useDealTasks(dealId: string | undefined) {
           .single();
 
         const webhookPayload = {
-          task_id: (data as any).id,
+          task_id: createdTask.id,
           title: task.title,
           description: task.description || null,
           assigned_to: task.assigned_to,
@@ -98,27 +99,81 @@ export function useDealTasks(dealId: string | undefined) {
         fireZapierWebhook('task_created', webhookPayload);
         fireZapierWebhook('task_assigned', webhookPayload);
 
-        // Send email notification to assignee (skip self-assignment, fire-and-forget)
+        // Send enriched email notification to assignee (skip self-assignment, fire-and-forget)
         if (task.assigned_to !== user.id && assigneeProfile?.email) {
-          const { data: assignerProfile } = await supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('user_id', user.id)
-            .single();
+          // Fetch all context in parallel for the enriched email
+          const [assignerRes, dealRes, lenderRes, subtaskRes, pipelineRes] = await Promise.all([
+            supabase.from('profiles').select('display_name, email').eq('user_id', user.id).single(),
+            supabase.from('deals').select('company, value, stage, status, pipeline_id, manager, deal_owner, company_id').eq('id', dealId).single(),
+            createdTask.lender_id
+              ? supabase.from('deal_lenders').select('name, tracking_status, stage').eq('id', createdTask.lender_id).single()
+              : Promise.resolve({ data: null }),
+            supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('parent_task_id', createdTask.id),
+            null as any, // placeholder — pipeline fetched after deal
+          ]);
+
+          const assignerProfile = assignerRes.data;
+          const dealData = dealRes.data as any;
+          const lenderData = lenderRes.data as any;
+          const subtaskCount = subtaskRes?.count || 0;
+
+          // Fetch pipeline name if deal has one
+          let pipelineName: string | null = null;
+          if (dealData?.pipeline_id) {
+            const { data: pipelineData } = await supabase
+              .from('deal_pipelines')
+              .select('name')
+              .eq('id', dealData.pipeline_id)
+              .single();
+            pipelineName = pipelineData?.name || null;
+          }
+
+          // Fetch deal manager name if present
+          let managerName: string | null = null;
+          const managerId = dealData?.deal_owner || dealData?.manager;
+          if (managerId) {
+            const { data: managerProfile } = await supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('user_id', managerId)
+              .single();
+            managerName = managerProfile?.display_name || null;
+          }
+
+          const emailMetadata: Record<string, any> = {
+            task_title: task.title,
+            task_description: task.description || null,
+            due_date: task.due_date || null,
+            priority: createdTask.priority || 'normal',
+            task_type: createdTask.task_type || null,
+            subtask_count: subtaskCount,
+            assigner_name: assignerProfile?.display_name || 'A team member',
+            assigner_email: assignerProfile?.email || null,
+            action_url: taskUrl,
+          };
+
+          if (dealData) {
+            emailMetadata.deal_name = dealData.company || null;
+            emailMetadata.deal_value = dealData.value || null;
+            emailMetadata.deal_stage = dealData.stage || null;
+            emailMetadata.deal_status = dealData.status || null;
+            emailMetadata.deal_pipeline = pipelineName;
+            emailMetadata.deal_manager = managerName;
+          }
+
+          if (lenderData) {
+            emailMetadata.lender_name = lenderData.name || null;
+            emailMetadata.lender_status = lenderData.tracking_status || null;
+            emailMetadata.lender_stage = lenderData.stage || null;
+          }
 
           supabase.functions.invoke('send-notification-email', {
             body: {
               type: 'task_assigned',
               user_id: task.assigned_to,
               deal_id: dealId,
-              deal_name: dealId,
-              metadata: {
-                task_title: task.title,
-                task_description: task.description || null,
-                due_date: task.due_date || null,
-                assigner_name: assignerProfile?.display_name || 'A team member',
-                action_url: taskUrl,
-              },
+              deal_name: dealData?.company || dealId,
+              metadata: emailMetadata,
             },
           }).catch(e => console.error('Task assignment email failed:', e));
         }
