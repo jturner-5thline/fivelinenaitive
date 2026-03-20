@@ -41,8 +41,9 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, featureKey: "dashboard" },
   { title: "Tasks", url: "/tasks", icon: CheckSquare, featureKey: null }, // Always visible
   { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
-  { title: "Contacts", url: "/contacts", icon: Contact, featureKey: "sales_bd" },
-  { title: "Companies", url: "/crm-companies", icon: Building2, featureKey: "sales_bd" },
+  // Contacts and Companies hidden from sidebar
+  // { title: "Contacts", url: "/contacts", icon: Contact, featureKey: "sales_bd" },
+  // { title: "Companies", url: "/crm-companies", icon: Building2, featureKey: "sales_bd" },
   { title: "News Feed", url: "/news-feed", icon: Newspaper, featureKey: "newsfeed" },
   
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
