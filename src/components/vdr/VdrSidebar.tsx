@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { ArrowLeftRight, MessageSquare, ListChecks, Inbox, CheckSquare, Folder, MoreHorizontal, User } from 'lucide-react';
+import { ArrowLeftRight, MessageSquare, ListChecks, Inbox, CheckSquare, Folder, MoreHorizontal, User, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
