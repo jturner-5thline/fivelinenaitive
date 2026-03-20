@@ -42,7 +42,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden" style={{ background: 'hsl(var(--background))' }}>
+    <div className={cn("flex overflow-hidden", embedded ? "h-full w-full" : "h-screen w-screen")} style={{ background: 'hsl(var(--background))' }}>
       {/* LEFT SIDEBAR */}
       <VdrSidebar
         dealId={dealId}
