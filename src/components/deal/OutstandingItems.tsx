@@ -326,6 +326,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [bulkImportText, setBulkImportText] = useState('');
+  const [bulkImportRequestedBy, setBulkImportRequestedBy] = useState<string[]>([]);
 
   const handleItemClick = (item: OutstandingItem) => {
     if (editingId) return;
