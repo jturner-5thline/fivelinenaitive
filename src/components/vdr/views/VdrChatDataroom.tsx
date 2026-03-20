@@ -1,17 +1,20 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Send } from 'lucide-react';
+import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Send, Filter, X, Tag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import ReactMarkdown from 'react-markdown';
 import type { VdrDocument } from '../types';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
+import { useVdrAccountTags } from '@/hooks/useVdrAccountTags';
+import { useVdrSuggestions } from '@/hooks/useVdrSuggestions';
 
 interface VdrChatDataroomProps {
   dealId: string;
@@ -26,6 +29,21 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   citations?: Array<{ filename: string; folder: string; similarity: number }>;
+}
+
+const ACCOUNT_TAG_COLORS: Record<string, string> = {
+  'Revenue': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+  'COGS': 'bg-amber-500/15 text-amber-400 border-amber-500/25',
+  'SG&A': 'bg-blue-500/15 text-blue-400 border-blue-500/25',
+  'Debt/Liabilities': 'bg-red-500/15 text-red-400 border-red-500/25',
+  'Real Estate/Leases': 'bg-purple-500/15 text-purple-400 border-purple-500/25',
+  'Tax': 'bg-orange-500/15 text-orange-400 border-orange-500/25',
+  'Legal': 'bg-sky-500/15 text-sky-400 border-sky-500/25',
+  'Corporate': 'bg-indigo-500/15 text-indigo-400 border-indigo-500/25',
+};
+
+function getTagColor(category: string) {
+  return ACCOUNT_TAG_COLORS[category] || 'bg-muted text-muted-foreground border-border';
 }
 
 function getFileIcon(name: string, className = 'h-3.5 w-3.5') {
@@ -96,6 +114,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<string>('/');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -104,23 +123,38 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Account tags
+  const { categories, tagsByDocId } = useVdrAccountTags(dealId);
+
   const tree = useMemo(() => buildTree(documents), [documents]);
 
+  // Filter tree by search query AND category filter
   const filteredTree = useMemo(() => {
-    if (!searchQuery.trim()) return tree;
     const q = searchQuery.toLowerCase();
+    const hasSearch = !!q.trim();
+    const hasCategory = categoryFilter !== 'all';
+
+    if (!hasSearch && !hasCategory) return tree;
+
+    // Get doc IDs matching category filter
+    const categoryDocIds = hasCategory
+      ? new Set([...tagsByDocId.entries()].filter(([, tags]) => tags.some(t => t.account_category === categoryFilter)).map(([id]) => id))
+      : null;
+
     function filterNode(node: TreeNode): TreeNode | null {
       if (!node.doc.is_folder) {
-        return node.doc.filename.toLowerCase().includes(q) ? node : null;
+        const matchesSearch = !hasSearch || node.doc.filename.toLowerCase().includes(q);
+        const matchesCategory = !categoryDocIds || categoryDocIds.has(node.doc.id);
+        return matchesSearch && matchesCategory ? node : null;
       }
       const filteredChildren = node.children.map(filterNode).filter(Boolean) as TreeNode[];
-      if (filteredChildren.length > 0 || node.doc.filename.toLowerCase().includes(q)) {
+      if (filteredChildren.length > 0 || (!hasCategory && node.doc.filename.toLowerCase().includes(q))) {
         return { ...node, children: filteredChildren };
       }
       return null;
     }
     return tree.map(filterNode).filter(Boolean) as TreeNode[];
-  }, [tree, searchQuery]);
+  }, [tree, searchQuery, categoryFilter, tagsByDocId]);
 
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => {
@@ -173,6 +207,20 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Dynamic suggestions
+  const indexedCount = vdrDocs.ingestionStats?.complete || 0;
+  const processingCount = vdrDocs.ingestionStats?.processing || 0;
+  const { suggestions: dynamicSuggestions } = useVdrSuggestions(dealId, indexedCount);
+
+  const suggestedPrompts = dynamicSuggestions.length > 0
+    ? dynamicSuggestions
+    : [
+        'Summarize the latest financial statements',
+        'What are the key risks in this deal?',
+        'Compare revenue trends across years',
+        'List all outstanding compliance items',
+      ];
+
   // Send chat message with RAG streaming
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isStreaming) return;
@@ -219,7 +267,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       let citations: ChatMessage['citations'] = [];
       const assistantId = crypto.randomUUID();
 
-      // Add empty assistant message
       setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', citations: [] }]);
 
       while (true) {
@@ -240,13 +287,10 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
           try {
             const parsed = JSON.parse(jsonStr);
-
-            // Check for our custom citations event
             if (parsed.type === 'citations') {
               citations = parsed.citations || [];
               continue;
             }
-
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               assistantContent += content;
@@ -263,7 +307,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
         }
       }
 
-      // Final update with citations
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId ? { ...m, content: assistantContent, citations } : m
@@ -279,16 +322,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       abortRef.current = null;
     }
   }, [dealId, messages, isStreaming]);
-
-  const suggestedPrompts = [
-    'Summarize the latest financial statements',
-    'What are the key risks in this deal?',
-    'Compare revenue trends across years',
-    'List all outstanding compliance items',
-  ];
-
-  const indexedCount = vdrDocs.ingestionStats?.complete || 0;
-  const processingCount = vdrDocs.ingestionStats?.processing || 0;
 
   const renderNode = (node: TreeNode, depth = 0) => {
     const { doc } = node;
@@ -335,7 +368,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       );
     }
 
-    // File node with ingestion indicator
+    // File node with ingestion indicator + account tags
+    const docTags = tagsByDocId.get(doc.id);
+
     return (
       <ContextMenu key={doc.id}>
         <ContextMenuTrigger>
@@ -348,8 +383,24 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
           >
             {getIngestionIcon(doc.ingestion_status)}
             {getFileIcon(doc.filename)}
-            <span className="truncate flex-1">{doc.filename}</span>
-            <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">{formatSize(doc.file_size)}</span>
+            <span className="truncate flex-1 min-w-0">{doc.filename}</span>
+            {docTags && docTags.length > 0 && (
+              <div className="flex gap-0.5 flex-shrink-0">
+                {docTags.slice(0, 2).map((t, i) => (
+                  <span
+                    key={i}
+                    className={cn('px-1 py-px rounded text-[8px] leading-tight border', getTagColor(t.account_category))}
+                    title={`${t.account_category} (${Math.round(t.confidence_score * 100)}%)`}
+                  >
+                    {t.account_category.length > 8 ? t.account_category.slice(0, 7) + '…' : t.account_category}
+                  </span>
+                ))}
+                {docTags.length > 2 && (
+                  <span className="text-[8px] text-muted-foreground">+{docTags.length - 2}</span>
+                )}
+              </div>
+            )}
+            <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 flex-shrink-0">{formatSize(doc.file_size)}</span>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
@@ -395,8 +446,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             </div>
           </div>
 
-          {/* Search */}
-          <div className="px-3 py-2">
+          {/* Search + Category Filter */}
+          <div className="px-3 py-2 space-y-1.5">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
@@ -406,6 +457,27 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                 className="h-8 text-xs pl-7 bg-secondary/30"
               />
             </div>
+            {categories.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Tag className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="h-7 text-[11px] bg-secondary/30 border-border/40">
+                    <SelectValue placeholder="All categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {categoryFilter !== 'all' && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => setCategoryFilter('all')}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Tree */}
@@ -502,7 +574,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                     <p>{msg.content}</p>
                   )}
 
-                  {/* Citation chips */}
                   {msg.citations && msg.citations.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border/30">
                       {msg.citations.slice(0, 5).map((c, i) => (
