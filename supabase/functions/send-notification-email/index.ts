@@ -175,6 +175,20 @@ const notificationTemplates: Record<string, { subject: string; getMessage: (data
       return `${count} lender sync requests have been received from Flex and are awaiting your review.`;
     },
   },
+  task_assigned: {
+    subject: 'New Task Assigned',
+    getMessage: (data) => {
+      const meta = (data.metadata || {}) as Record<string, any>;
+      const assigner = meta.assigner_name || 'A team member';
+      const taskTitle = meta.task_title || 'a task';
+      let msg = `${assigner} assigned you a task: "${taskTitle}"`;
+      if (data.deal_name) msg += ` on deal "${data.deal_name}"`;
+      msg += '.';
+      if (meta.task_description) msg += ` Details: ${meta.task_description}`;
+      if (meta.due_date) msg += ` Due: ${meta.due_date}.`;
+      return msg;
+    },
+  },
 };
 
 const preferenceMap: Record<string, string> = {
