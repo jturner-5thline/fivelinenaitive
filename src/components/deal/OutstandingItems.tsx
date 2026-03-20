@@ -1012,7 +1012,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
       </Dialog>
 
       {/* Bulk Import Dialog */}
-      <Dialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen}>
+      <Dialog open={isBulkImportOpen} onOpenChange={(open) => { setIsBulkImportOpen(open); if (!open) { setBulkImportRequestedBy([]); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
