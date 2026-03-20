@@ -269,7 +269,11 @@ const handler = async (req: Request): Promise<Response> => {
     let actionUrl: string | null = dealUrl;
     let actionLabel = 'View Deal';
 
-    if (payload.type === 'new_suggestions') {
+    if (payload.type === 'task_assigned') {
+      const meta = (payload.metadata || {}) as Record<string, any>;
+      actionUrl = meta.action_url || `${appUrl}/tasks`;
+      actionLabel = 'View Task';
+    } else if (payload.type === 'new_suggestions') {
       actionUrl = payload.agent_suggestion_count && payload.agent_suggestion_count > 0
         ? `${appUrl}/agents`
         : `${appUrl}/workflows`;

@@ -269,6 +269,21 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
             </div>
             )}
 
+            <div className="flex items-center justify-between">
+              <Label htmlFor="email_task_assigned" className="flex flex-col gap-1">
+                <span>Task assignments</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  Get notified when someone assigns you a task
+                </span>
+              </Label>
+              <Switch
+                id="email_task_assigned"
+                checked={preferences.email_task_assigned}
+                onCheckedChange={(checked) => handleToggle('email_task_assigned', checked)}
+                disabled={isSaving || !preferences.email_notifications}
+              />
+            </div>
+
             {canSeeFlexSync && (
             <div className="flex items-center justify-between">
               <Label htmlFor="notify_info_request_emails" className="flex flex-col gap-1">
