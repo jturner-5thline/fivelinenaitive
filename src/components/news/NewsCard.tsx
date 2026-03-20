@@ -81,7 +81,7 @@ export function NewsCard({
     return (
       <div
         className={cn(
-          'group/row flex items-center gap-3 px-3 py-2 rounded-md border border-border/50 hover:bg-muted/50 hover:border-border cursor-pointer transition-all',
+          'group/row flex items-center gap-3 px-3 py-2 rounded-md border border-border/20 hover:bg-muted/50 hover:border-border/40 cursor-pointer transition-all',
           isRead && 'opacity-60',
         )}
         onClick={(e) => {
