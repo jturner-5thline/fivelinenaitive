@@ -1,0 +1,2 @@
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS merged_into uuid REFERENCES public.deals(id) ON DELETE SET NULL;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS merged_hubspot_ids text[] DEFAULT '{}';

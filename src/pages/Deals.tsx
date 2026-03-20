@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck } from 'lucide-react';
+import { useDealDuplicates, DuplicateCluster } from '@/hooks/useDealDuplicates';
+import { DuplicatesView } from '@/components/deals/duplicates/DuplicatesView';
+import { DealMergeDrawer } from '@/components/deals/duplicates/DealMergeDrawer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
@@ -103,6 +106,9 @@ export default function Dashboard() {
   });
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
   const [savedViewWarningDismissed, setSavedViewWarningDismissed] = useState(false);
+  const [showDuplicates, setShowDuplicates] = useState(false);
+  const [mergeCluster, setMergeCluster] = useState<DuplicateCluster | null>(null);
+  const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
@@ -259,6 +265,14 @@ export default function Dashboard() {
       return count > 0;
     });
   }, [pipelineFilteredDeals, filters.hasNotificationsOnly, notificationCounts, preferences.staleDealsDays]);
+
+  // Duplicate detection
+  const { clusters: duplicateClusters } = useDealDuplicates(deals, showDuplicates);
+
+  const handleOpenMerge = (cluster: DuplicateCluster) => {
+    setMergeCluster(cluster);
+    setMergeDrawerOpen(true);
+  };
 
   const handleMarkReviewed = async (dealId: string) => {
     try {
@@ -541,7 +555,33 @@ export default function Dashboard() {
                   </Tooltip>
                 </TooltipProvider>
 
-                {/* Sort Dropdown */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Toggle
+                        pressed={showDuplicates}
+                        onPressedChange={(pressed) => setShowDuplicates(pressed)}
+                        variant="outline"
+                        size="sm"
+                        className={`h-8 w-8 p-0 relative backdrop-blur-md border transition-all duration-200 ${showDuplicates ? 'bg-gradient-to-br from-violet-500/25 to-purple-600/20 border-violet-500/50 text-violet-400 shadow-[0_0_12px_hsl(270,70%,50%,0.2)] hover:from-violet-500/30 hover:to-purple-600/25' : 'bg-gradient-to-br from-violet-500/10 to-purple-600/5 border-violet-500/20 text-violet-400/60 hover:from-violet-500/15 hover:to-purple-600/10 hover:border-violet-500/35 hover:text-violet-400'}`}
+                      >
+                        <CopyCheck className="h-4 w-4" />
+                        {showDuplicates && duplicateClusters.length > 0 && (
+                          <Badge 
+                            variant="destructive" 
+                            className="absolute -top-2 -right-2 h-5 min-w-5 px-1.5 text-xs rounded-full"
+                          >
+                            {duplicateClusters.length}
+                          </Badge>
+                        )}
+                      </Toggle>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Find duplicate deals</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 h-8 shrink-0">
@@ -702,7 +742,9 @@ export default function Dashboard() {
                 className="opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
-              {showMilestones ? (
+              {showDuplicates ? (
+                <DuplicatesView clusters={duplicateClusters} onMerge={handleOpenMerge} />
+              ) : showMilestones ? (
                 <DealMilestonesView onBack={() => setShowMilestones(false)} managerFilter={filters.manager} />
               ) : isLoading ? (
                 <DealsListSkeleton groupBy={groupBy} />
@@ -769,6 +811,12 @@ export default function Dashboard() {
             onCancel={() => setSizeConfirm(null)}
           />
         )}
+
+        <DealMergeDrawer
+          cluster={mergeCluster}
+          open={mergeDrawerOpen}
+          onOpenChange={setMergeDrawerOpen}
+        />
       </div>
     </>
   );
