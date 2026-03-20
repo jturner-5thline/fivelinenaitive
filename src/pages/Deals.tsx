@@ -555,7 +555,33 @@ export default function Dashboard() {
                   </Tooltip>
                 </TooltipProvider>
 
-                {/* Sort Dropdown */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Toggle
+                        pressed={showDuplicates}
+                        onPressedChange={(pressed) => setShowDuplicates(pressed)}
+                        variant="outline"
+                        size="sm"
+                        className={`h-8 w-8 p-0 relative backdrop-blur-md border transition-all duration-200 ${showDuplicates ? 'bg-gradient-to-br from-violet-500/25 to-purple-600/20 border-violet-500/50 text-violet-400 shadow-[0_0_12px_hsl(270,70%,50%,0.2)] hover:from-violet-500/30 hover:to-purple-600/25' : 'bg-gradient-to-br from-violet-500/10 to-purple-600/5 border-violet-500/20 text-violet-400/60 hover:from-violet-500/15 hover:to-purple-600/10 hover:border-violet-500/35 hover:text-violet-400'}`}
+                      >
+                        <CopyCheck className="h-4 w-4" />
+                        {showDuplicates && duplicateClusters.length > 0 && (
+                          <Badge 
+                            variant="destructive" 
+                            className="absolute -top-2 -right-2 h-5 min-w-5 px-1.5 text-xs rounded-full"
+                          >
+                            {duplicateClusters.length}
+                          </Badge>
+                        )}
+                      </Toggle>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Find duplicate deals</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 h-8 shrink-0">
