@@ -47,7 +47,7 @@ export function VdrPreviewPanel({ document: doc, onClose, getDownloadUrl }: VdrP
   };
 
   return (
-    <div className="flex flex-col h-full border-l border-border/40 bg-card">
+    <div className="flex flex-col h-full bg-card">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40">
         <span className="text-sm font-medium truncate flex-1">{doc.filename}</span>
