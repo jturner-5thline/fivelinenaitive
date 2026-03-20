@@ -47,6 +47,7 @@ export function VdrSidebar({
   onViewChange,
   onDealChange,
   fileCount,
+  ingestionStats,
   profile,
   onFileDrop,
 }: VdrSidebarProps) {
