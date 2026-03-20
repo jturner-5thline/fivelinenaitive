@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useVdrIrlRequests, IrlStatus } from '@/hooks/useVdrIrlRequests';
+import { useVdrIrlMatches, IrlDocumentMatch } from '@/hooks/useVdrIrlMatches';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Upload, Plus, ChevronDown, ChevronRight, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Upload, Plus, ChevronDown, ChevronRight, Pencil, Trash2, MoreHorizontal, Sparkles, FileText, Check, X, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { VdrIrlRequest } from '@/components/vdr/types';
@@ -54,6 +56,7 @@ function parseIrlCsv(text: string) {
 
 export function VdrIrlTracker({ dealId }: VdrIrlTrackerProps) {
   const { requests, loading, counts, addRequest, updateRequest, deleteRequest, bulkUpdateStatus, importFromCsv } = useVdrIrlRequests(dealId);
+  const { isMatching, matchProgress, fetchMatches, runMatching, updateMatchStatus, getMatchesForRequest, getMatchCount } = useVdrIrlMatches(dealId);
 
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -63,6 +66,11 @@ export function VdrIrlTracker({ dealId }: VdrIrlTrackerProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addForm, setAddForm] = useState({ request_number: '', request_name: '', description: '', category: '', status: 'open' as IrlStatus });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch matches on mount
+  useEffect(() => {
+    if (dealId) fetchMatches();
+  }, [dealId, fetchMatches]);
 
   const filtered = useMemo(() => {
     if (filter === 'all') return requests;
@@ -119,6 +127,10 @@ export function VdrIrlTracker({ dealId }: VdrIrlTrackerProps) {
     setShowAddForm(false);
   }, [addForm, addRequest]);
 
+  const handleRunMatching = useCallback(async () => {
+    await runMatching();
+  }, [runMatching]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Top Bar */}
@@ -129,8 +141,34 @@ export function VdrIrlTracker({ dealId }: VdrIrlTrackerProps) {
           <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload IRL
           </Button>
+          <Button
+            size="sm"
+            onClick={handleRunMatching}
+            disabled={isMatching || requests.length === 0}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isMatching ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            {isMatching ? 'Matching...' : 'Run AI Matching'}
+          </Button>
         </div>
       </div>
+
+      {/* Matching Progress */}
+      {isMatching && matchProgress.total > 0 && (
+        <div className="px-6 py-2 bg-primary/5 border-b border-border/40">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+            <span className="text-xs text-muted-foreground">
+              Matching documents... ({matchProgress.processed}/{matchProgress.total} requests)
+            </span>
+            <Progress value={(matchProgress.processed / matchProgress.total) * 100} className="flex-1 h-1.5" />
+          </div>
+        </div>
+      )}
 
       {/* Filters + Stats */}
       <div className="flex items-center gap-3 px-6 py-3 border-b border-border/40">
@@ -207,6 +245,8 @@ export function VdrIrlTracker({ dealId }: VdrIrlTrackerProps) {
               {filtered.map(req => {
                 const isExpanded = expandedId === req.id;
                 const statusCfg = STATUS_CONFIG[req.status];
+                const matchCount = getMatchCount(req.id);
+                const reqMatches = getMatchesForRequest(req.id);
                 return (
                   <IrlRow
                     key={req.id}
@@ -214,11 +254,14 @@ export function VdrIrlTracker({ dealId }: VdrIrlTrackerProps) {
                     isExpanded={isExpanded}
                     isSelected={selected.has(req.id)}
                     statusCfg={statusCfg}
+                    matchCount={matchCount}
+                    matches={reqMatches}
                     onToggleExpand={() => setExpandedId(isExpanded ? null : req.id)}
                     onToggleSelect={() => toggleSelect(req.id)}
                     onStatusCycle={() => handleStatusCycle(req)}
                     onEdit={() => startEdit(req)}
                     onDelete={() => deleteRequest(req.id)}
+                    onUpdateMatchStatus={updateMatchStatus}
                   />
                 );
               })}
@@ -287,18 +330,29 @@ export function VdrIrlTracker({ dealId }: VdrIrlTrackerProps) {
   );
 }
 
+/* ── Match type badge config ────────────────────────────── */
+
+const MATCH_TYPE_CONFIG = {
+  full: { label: 'Full Match', className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  partial: { label: 'Partial', className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  mislabeled: { label: 'Mislabeled', className: 'bg-destructive/20 text-destructive border-destructive/30' },
+};
+
 /* ── Row component ────────────────────────────────────── */
 
-function IrlRow({ req, isExpanded, isSelected, statusCfg, onToggleExpand, onToggleSelect, onStatusCycle, onEdit, onDelete }: {
+function IrlRow({ req, isExpanded, isSelected, statusCfg, matchCount, matches, onToggleExpand, onToggleSelect, onStatusCycle, onEdit, onDelete, onUpdateMatchStatus }: {
   req: VdrIrlRequest;
   isExpanded: boolean;
   isSelected: boolean;
   statusCfg: { label: string; className: string };
+  matchCount: number;
+  matches: IrlDocumentMatch[];
   onToggleExpand: () => void;
   onToggleSelect: () => void;
   onStatusCycle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onUpdateMatchStatus: (matchId: string, status: 'accepted' | 'rejected') => void;
 }) {
   return (
     <>
@@ -327,7 +381,16 @@ function IrlRow({ req, isExpanded, isSelected, statusCfg, onToggleExpand, onTogg
             {statusCfg.label}
           </Badge>
         </td>
-        <td className="px-3 py-2.5 text-muted-foreground text-xs">—</td>
+        <td className="px-3 py-2.5">
+          {matchCount > 0 ? (
+            <Badge variant="secondary" className="text-[10px] gap-1">
+              <FileText className="h-2.5 w-2.5" />
+              {matchCount}
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </td>
         <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -361,15 +424,90 @@ function IrlRow({ req, isExpanded, isSelected, statusCfg, onToggleExpand, onTogg
       {isExpanded && (
         <tr className="bg-secondary/10">
           <td colSpan={7} className="px-10 py-4">
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">Description</p>
                 <p className="text-sm text-foreground/80">{req.description || 'No description provided.'}</p>
               </div>
+
+              {/* Matched Documents */}
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">Matched Documents</p>
-                <p className="text-xs text-muted-foreground italic">AI document matching coming in Phase 2</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Matched Documents</p>
+                {matches.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No matches found. Click "Run AI Matching" to find matching documents.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {matches.map(match => {
+                      const typeCfg = MATCH_TYPE_CONFIG[match.match_type] || MATCH_TYPE_CONFIG.partial;
+                      return (
+                        <div
+                          key={match.id}
+                          className={cn(
+                            'flex items-start gap-3 p-3 rounded-lg border bg-card/50',
+                            match.flagged_mislabel && 'border-destructive/40'
+                          )}
+                        >
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium truncate">{match.filename}</span>
+                              <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 border', typeCfg.className)}>
+                                {typeCfg.label}
+                              </Badge>
+                              <span className="text-[10px] text-muted-foreground">{match.confidence_score}%</span>
+                            </div>
+                            {match.explanation && (
+                              <p className="text-xs text-muted-foreground">{match.explanation}</p>
+                            )}
+                            {match.flagged_mislabel && (
+                              <div className="flex items-center gap-1.5 text-xs text-destructive">
+                                <AlertTriangle className="h-3 w-3" />
+                                <span>Filename may not match document content</span>
+                              </div>
+                            )}
+                          </div>
+                          {/* Accept/Reject */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {match.status === 'pending' ? (
+                              <>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                                  onClick={() => onUpdateMatchStatus(match.id, 'accepted')}
+                                  title="Accept match"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => onUpdateMatchStatus(match.id, 'rejected')}
+                                  title="Reject match"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  'text-[9px]',
+                                  match.status === 'accepted' ? 'border-emerald-500/30 text-emerald-400' : 'border-muted text-muted-foreground line-through'
+                                )}
+                              >
+                                {match.status === 'accepted' ? 'Accepted' : 'Rejected'}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onEdit}>
                   <Pencil className="h-3 w-3 mr-1.5" /> Edit
