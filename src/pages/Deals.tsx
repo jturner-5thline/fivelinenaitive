@@ -266,7 +266,15 @@ export default function Dashboard() {
     });
   }, [pipelineFilteredDeals, filters.hasNotificationsOnly, notificationCounts, preferences.staleDealsDays]);
 
-  const handleMarkReviewed = async (dealId: string) => {
+  // Duplicate detection
+  const { clusters: duplicateClusters } = useDealDuplicates(deals, showDuplicates);
+
+  const handleOpenMerge = (cluster: DuplicateCluster) => {
+    setMergeCluster(cluster);
+    setMergeDrawerOpen(true);
+  };
+
+
     try {
       await updateDeal(dealId, { updatedAt: new Date().toISOString() });
       toast({ 
