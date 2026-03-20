@@ -254,6 +254,9 @@ const App = () => (
                           <Route path="/wf-deals/:id" element={
                             <ProtectedRoute><AppLayout><WfDealDetail /></AppLayout></ProtectedRoute>
                           } />
+                          <Route path="/vdr/:dealId" element={
+                            <ProtectedRoute><VirtualDataRoom /></ProtectedRoute>
+                          } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
                         </Routes>
