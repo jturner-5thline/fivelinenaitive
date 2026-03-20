@@ -506,9 +506,16 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
     if (!onBulkAdd || !bulkImportText.trim()) return;
     const lines = bulkImportText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length === 0) return;
-    onBulkAdd(lines, []);
+    onBulkAdd(lines, bulkImportRequestedBy);
     setBulkImportText('');
+    setBulkImportRequestedBy([]);
     setIsBulkImportOpen(false);
+  };
+
+  const toggleBulkImportRequestedBy = (option: string) => {
+    setBulkImportRequestedBy(prev =>
+      prev.includes(option) ? prev.filter(r => r !== option) : [...prev, option]
+    );
   };
 
   const deliveredCount = items.filter(i => isFullyDelivered(i)).length;
