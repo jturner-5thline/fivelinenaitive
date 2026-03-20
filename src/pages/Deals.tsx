@@ -274,7 +274,7 @@ export default function Dashboard() {
     setMergeDrawerOpen(true);
   };
 
-
+  const handleMarkReviewed = async (dealId: string) => {
     try {
       await updateDeal(dealId, { updatedAt: new Date().toISOString() });
       toast({ 
