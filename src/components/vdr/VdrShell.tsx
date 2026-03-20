@@ -13,9 +13,10 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 
 interface VdrShellProps {
   dealId: string;
+  embedded?: boolean;
 }
 
-export function VdrShell({ dealId }: VdrShellProps) {
+export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const [activeView, setActiveView] = useState<VdrView>('chat-dataroom');
   const [previewDoc, setPreviewDoc] = useState<VdrDocument | null>(null);
   const { deals } = useDealsContext();
