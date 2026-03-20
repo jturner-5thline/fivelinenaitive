@@ -1,6 +1,7 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Zap, Briefcase, LayoutTemplate } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Zap, Briefcase, LayoutTemplate, Newspaper } from 'lucide-react';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
 import { useProfile } from '@/hooks/useProfile';
 import { useDashboardPresets, WidgetConfig, GridItem } from '@/hooks/useDashboardPresets';
