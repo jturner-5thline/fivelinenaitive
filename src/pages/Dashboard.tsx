@@ -39,6 +39,10 @@ export default function Dashboard() {
     removeWidgetFromPreset,
   } = useDashboardPresets();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [dashboardTab, setDashboardTab] = useState<string>(() => {
+    return searchParams.get('tab') || 'overview';
+  });
   const [isEditing, setIsEditing] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
