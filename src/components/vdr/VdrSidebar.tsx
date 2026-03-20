@@ -54,6 +54,9 @@ export function VdrSidebar({
   ingestionStats,
   profile,
   onFileDrop,
+  canPushToFlex,
+  isPushingToFlex,
+  onPushToFlex,
 }: VdrSidebarProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
