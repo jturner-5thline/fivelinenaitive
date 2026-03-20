@@ -153,6 +153,27 @@ export function VdrSidebar({
           </p>
         </div>
 
+        {/* Push to FLEx */}
+        {canPushToFlex && (
+          <div className="pt-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onPushToFlex}
+                  disabled={isPushingToFlex}
+                  className="w-full gap-1.5 h-7 text-xs border-primary/40 text-primary hover:bg-primary/10"
+                >
+                  {isPushingToFlex ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  Push to FLEx
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Push data room files to FLEx</TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+
         {/* Team Comms Drop Zone */}
         <div className="pt-1">
           <p className="text-[10px] text-muted-foreground mb-1">Team Comms</p>
