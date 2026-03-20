@@ -5126,6 +5126,8 @@ export type Database = {
           id: string
           is_flagged: boolean
           manager: string | null
+          merged_hubspot_ids: string[] | null
+          merged_into: string | null
           migrated_from_personal: boolean
           milestone_fee: number | null
           narrative: string | null
@@ -5165,6 +5167,8 @@ export type Database = {
           id?: string
           is_flagged?: boolean
           manager?: string | null
+          merged_hubspot_ids?: string[] | null
+          merged_into?: string | null
           migrated_from_personal?: boolean
           milestone_fee?: number | null
           narrative?: string | null
@@ -5204,6 +5208,8 @@ export type Database = {
           id?: string
           is_flagged?: boolean
           manager?: string | null
+          merged_hubspot_ids?: string[] | null
+          merged_into?: string | null
           migrated_from_personal?: boolean
           milestone_fee?: number | null
           narrative?: string | null
@@ -5236,6 +5242,13 @@ export type Database = {
             columns: ["crm_company_id"]
             isOneToOne: false
             referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
           {
