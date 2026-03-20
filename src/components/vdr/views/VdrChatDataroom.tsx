@@ -422,7 +422,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     <ResizablePanelGroup direction="horizontal" className="h-full">
       {/* File Tree */}
       <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
-        <div className="flex flex-col h-full border-r border-border/40">
+        <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/40">
             <h2 className="text-sm font-semibold">Dataroom</h2>
