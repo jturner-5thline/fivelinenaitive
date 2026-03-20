@@ -16,7 +16,7 @@ interface ChangeDetail {
 }
 
 interface NotificationPayload {
-  type: 'deal_created' | 'deal_updated' | 'stage_changed' | 'lender_added' | 'lender_updated' | 'milestone_added' | 'milestone_completed' | 'milestone_missed' | 'new_suggestions' | 'flex_lender_sync';
+  type: 'deal_created' | 'deal_updated' | 'stage_changed' | 'lender_added' | 'lender_updated' | 'milestone_added' | 'milestone_completed' | 'milestone_missed' | 'new_suggestions' | 'flex_lender_sync' | 'task_assigned';
   user_id: string;
   deal_id?: string;
   deal_name?: string;
