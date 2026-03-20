@@ -4336,12 +4336,10 @@ export default function DealDetail() {
                   />
                 </TabsContent>
 
-                <TabsContent value="data-room" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`data-room-${tabDirection}`}>
-                  <Card className="transition-all duration-200 relative">
-                    <CardContent className="pt-6">
-                      <DataRoomV2 dealId={id!} />
-                    </CardContent>
-                  </Card>
+                <TabsContent value="data-room" className={cn("mt-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`data-room-${tabDirection}`}>
+                  <div className="rounded-lg border border-border/60 overflow-hidden" style={{ height: 'calc(100vh - 180px)' }}>
+                    <VdrShell dealId={id!} embedded />
+                  </div>
                 </TabsContent>
 
                 {hasDealSpaceAccess && (
