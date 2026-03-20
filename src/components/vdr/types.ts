@@ -52,19 +52,5 @@ export interface VdrTask {
   updated_at: string;
 }
 
-export const VDR_DEFAULT_FOLDERS = [
-  '0.0 Data Room Index',
-  '1.0 Corporate',
-  '2.0 Financial',
-  '3.0 Tax',
-  '4.0 Legal and Compliance',
-  '5.0 Contracts',
-  '6.0 Intellectual Property',
-  '7.0 Human Resources',
-  '8.0 Insurance',
-  '9.0 Real Estate',
-  '10.0 IT and Technology',
-  '11.0 Environmental',
-  '12.0 M&A History',
-  'Team Communications',
-];
+/** @deprecated Use data_room_checklist_categories table instead */
+export const VDR_DEFAULT_FOLDERS: string[] = [];
