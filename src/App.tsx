@@ -84,6 +84,7 @@ const Promo = lazy(lazyRetry(() => import("./pages/Promo")));
 
 const WfHub = lazy(lazyRetry(() => import("./pages/WfHub")));
 const WfDealDetail = lazy(lazyRetry(() => import("./pages/WfDealDetail")));
+const VirtualDataRoom = lazy(lazyRetry(() => import("./pages/VirtualDataRoom")));
 
 const queryClient = new QueryClient();
 
