@@ -669,12 +669,31 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
           dealData.value = 0;
         }
 
-        const existingId = existingMap.get(hubspotDealId);
-        if (existingId) {
-          // Existing deal: do NOT overwrite pipeline_id
+        const existing = existingMap.get(hubspotDealId);
+        if (existing) {
+          // Existing deal: strip immutable/Naitive-only fields from update payload
           const { hubspot_deal_id: _hid, user_id: _uid, company_id: _cid, ...updateData } = dealData;
+
+          // Fix 1: Never overwrite hours — these are Naitive-only manual entries
+          delete updateData.pre_signing_hours;
+          delete updateData.post_signing_hours;
+
+          // Fix 2: Never overwrite stage — Naitive pipelines have their own stages
+          delete updateData.stage;
+
+          // Fix 3: Never overwrite pipeline_id (already excluded from filteredFieldMap,
+          // but belt-and-suspenders)
+          delete updateData.pipeline_id;
+
+          // Fix 4: Respect user_edited_fields — skip any field the user has manually edited
+          for (const fieldName of Object.keys(existing.userEditedFields)) {
+            if (existing.userEditedFields[fieldName]) {
+              delete updateData[fieldName];
+            }
+          }
+
           updateData.updated_at = new Date().toISOString();
-          toUpdate.push({ id: existingId, data: updateData });
+          toUpdate.push({ id: existing.id, data: updateData });
         } else {
           // New deal: assign to "In Development" pipeline if available and no pipeline_id already set
           if (inDevPipelineId && !dealData.pipeline_id) {
