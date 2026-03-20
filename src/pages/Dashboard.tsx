@@ -263,103 +263,119 @@ export default function Dashboard() {
           </div>
           </HintTooltip>
 
-          {/* Header row: Edit button */}
-          <div className="flex items-center justify-between">
-            <div />
-            <div className="flex items-center gap-2">
-              {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
-              <HintTooltip
-                hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
-                visible={isHintVisible('dashboard-edit')}
-                onDismiss={() => dismissHint('dashboard-edit')}
-                side="left"
-              >
-              <Button
-                variant={isEditing ? "default" : "outline"}
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={() => setIsEditing(!isEditing)}
-              >
-                {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-                {isEditing ? 'Done' : 'Edit'}
-              </Button>
-              </HintTooltip>
-            </div>
-          </div>
+          {/* Dashboard Tabs */}
+          <Tabs value={dashboardTab} onValueChange={handleDashboardTabChange}>
+            <TabsList>
+              <TabsTrigger value="overview">My Dashboard</TabsTrigger>
+              <TabsTrigger value="news-feed" className="gap-1.5">
+                <Newspaper className="h-3.5 w-3.5" />
+                News Feed
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Preset tabs + Add Widget */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-            <PresetManager
-              presets={presets}
-              activePreset={activePreset}
-              onSwitch={switchPreset}
-              onCreate={handleCreatePreset}
-              onDuplicate={duplicatePreset}
-              onDelete={deletePreset}
-              onRename={handleRenamePreset}
-            />
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Fix #2: Templates in this context replace the current dashboard */}
-              <DashboardTemplatesDialog
-                mode="replace"
-                onSelectTemplate={handleCreateFromTemplate}
-                onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
-              />
-              {isEditing && activePreset && (
-                <AddWidgetDialog
-                  existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
-                  onAddBuiltIn={handleAddBuiltIn}
-                  onAddCustom={handleAddCustom}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Grid */}
-          {activePreset && activePreset.widgets_config.length > 0 && (
-            <DashboardGrid
-              gridConfig={activePreset.grid_config}
-              widgetsConfig={activePreset.widgets_config}
-              isEditing={isEditing}
-              onLayoutChange={handleLayoutChange}
-              onRemoveWidget={handleRemoveWidget}
-              onReorder={handleReorder}
-            />
-          )}
-
-          {/* Empty state */}
-          {activePreset && activePreset.widgets_config.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Settings2 className="h-12 w-12 text-muted-foreground/40 mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-1">No widgets yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Start with a template or click "Start Editing" to add widgets manually.
-              </p>
-              <div className="flex items-center gap-2">
-                {/* Fix #2: Browse Templates on empty state replaces current dashboard */}
-                <DashboardTemplatesDialog
-                  mode="replace"
-                  onSelectTemplate={handleCreateFromTemplate}
-                  onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
-                  trigger={
-                    <Button variant="default" size="sm">
-                      <LayoutTemplate className="h-3.5 w-3.5 mr-1.5" />
-                      Browse Templates
-                    </Button>
-                  }
-                />
-                {/* Fix #3: Start Editing enters edit mode */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                  Start Editing
-                </Button>
+            <TabsContent value="overview">
+              {/* Header row: Edit button */}
+              <div className="flex items-center justify-between">
+                <div />
+                <div className="flex items-center gap-2">
+                  {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
+                  <HintTooltip
+                    hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
+                    visible={isHintVisible('dashboard-edit')}
+                    onDismiss={() => dismissHint('dashboard-edit')}
+                    side="left"
+                  >
+                  <Button
+                    variant={isEditing ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={() => setIsEditing(!isEditing)}
+                  >
+                    {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                    {isEditing ? 'Done' : 'Edit'}
+                  </Button>
+                  </HintTooltip>
+                </div>
               </div>
-            </div>
-          )}
+
+              {/* Preset tabs + Add Widget */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mt-4">
+                <PresetManager
+                  presets={presets}
+                  activePreset={activePreset}
+                  onSwitch={switchPreset}
+                  onCreate={handleCreatePreset}
+                  onDuplicate={duplicatePreset}
+                  onDelete={deletePreset}
+                  onRename={handleRenamePreset}
+                />
+                <div className="flex items-center gap-2 shrink-0">
+                  <DashboardTemplatesDialog
+                    mode="replace"
+                    onSelectTemplate={handleCreateFromTemplate}
+                    onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
+                  />
+                  {isEditing && activePreset && (
+                    <AddWidgetDialog
+                      existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
+                      onAddBuiltIn={handleAddBuiltIn}
+                      onAddCustom={handleAddCustom}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Grid */}
+              {activePreset && activePreset.widgets_config.length > 0 && (
+                <div className="mt-4">
+                  <DashboardGrid
+                    gridConfig={activePreset.grid_config}
+                    widgetsConfig={activePreset.widgets_config}
+                    isEditing={isEditing}
+                    onLayoutChange={handleLayoutChange}
+                    onRemoveWidget={handleRemoveWidget}
+                    onReorder={handleReorder}
+                  />
+                </div>
+              )}
+
+              {/* Empty state */}
+              {activePreset && activePreset.widgets_config.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Settings2 className="h-12 w-12 text-muted-foreground/40 mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-1">No widgets yet</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Start with a template or click "Start Editing" to add widgets manually.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <DashboardTemplatesDialog
+                      mode="replace"
+                      onSelectTemplate={handleCreateFromTemplate}
+                      onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
+                      trigger={
+                        <Button variant="default" size="sm">
+                          <LayoutTemplate className="h-3.5 w-3.5 mr-1.5" />
+                          Browse Templates
+                        </Button>
+                      }
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Start Editing
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="news-feed">
+              <NewsFeedPanel />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </>
