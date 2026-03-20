@@ -44,7 +44,7 @@ const menuItems = [
   // Contacts and Companies hidden from sidebar
   // { title: "Contacts", url: "/contacts", icon: Contact, featureKey: "sales_bd" },
   // { title: "Companies", url: "/crm-companies", icon: Building2, featureKey: "sales_bd" },
-  { title: "News Feed", url: "/news-feed", icon: Newspaper, featureKey: "newsfeed" },
+  { title: "News Feed", url: "/dashboard?tab=news-feed", icon: Newspaper, featureKey: "newsfeed" },
   
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
   { title: "Metrics", url: "/metrics", icon: BarChart3, featureKey: "metrics" },
