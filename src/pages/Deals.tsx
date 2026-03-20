@@ -742,7 +742,9 @@ export default function Dashboard() {
                 className="opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
-              {showMilestones ? (
+              {showDuplicates ? (
+                <DuplicatesView clusters={duplicateClusters} onMerge={handleOpenMerge} />
+              ) : showMilestones ? (
                 <DealMilestonesView onBack={() => setShowMilestones(false)} managerFilter={filters.manager} />
               ) : isLoading ? (
                 <DealsListSkeleton groupBy={groupBy} />
