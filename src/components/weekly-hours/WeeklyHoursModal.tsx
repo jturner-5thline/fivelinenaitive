@@ -24,6 +24,17 @@ export function WeeklyHoursModal({ open, onOpenChange, week }: WeeklyHoursModalP
   const [showSaveSuccess, setShowSaveSuccess] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Reset all state when modal opens
+  useEffect(() => {
+    if (open) {
+      setCurrentIndex(0);
+      setLocalHours({});
+      setSavedDeals(new Set());
+      setSavingDeal(null);
+      setShowSaveSuccess(null);
+    }
+  }, [open]);
+
   // Sync existing hours to local state
   useEffect(() => {
     if (deals.length > 0) {
@@ -38,7 +49,7 @@ export function WeeklyHoursModal({ open, onOpenChange, week }: WeeklyHoursModalP
       setLocalHours(existing);
       setSavedDeals(saved);
     }
-  }, [deals]);
+  }, [deals, open]);
 
   // Focus input when card changes
   useEffect(() => {
