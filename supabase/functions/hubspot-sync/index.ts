@@ -563,20 +563,25 @@ async function syncDealsToDatabase(userId: string, companyId: string | null, con
     console.log('Could not fetch pipeline stages for label resolution');
   }
 
-  // 4. Get ALL existing hubspot_deal_ids to determine insert vs update
+  // 4. Get ALL existing hubspot_deal_ids (and user_edited_fields) to determine insert vs update
   // Paginate to avoid Supabase's default 1000-row limit
-  const existingMap = new Map<string, string>();
+  const existingMap = new Map<string, { id: string; userEditedFields: Record<string, boolean> }>();
   let rangeStart = 0;
   const PAGE_SIZE = 1000;
   while (true) {
     const { data: existingDeals } = await supabase
       .from('deals')
-      .select('id, hubspot_deal_id')
+      .select('id, hubspot_deal_id, user_edited_fields')
       .not('hubspot_deal_id', 'is', null)
       .range(rangeStart, rangeStart + PAGE_SIZE - 1);
     
     for (const d of (existingDeals || [])) {
-      if (d.hubspot_deal_id) existingMap.set(d.hubspot_deal_id, d.id);
+      if (d.hubspot_deal_id) {
+        const editedFields = (d.user_edited_fields && typeof d.user_edited_fields === 'object' && !Array.isArray(d.user_edited_fields))
+          ? d.user_edited_fields as Record<string, boolean>
+          : {};
+        existingMap.set(d.hubspot_deal_id, { id: d.id, userEditedFields: editedFields });
+      }
     }
     if (!existingDeals || existingDeals.length < PAGE_SIZE) break;
     rangeStart += PAGE_SIZE;
