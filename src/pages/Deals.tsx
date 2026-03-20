@@ -811,6 +811,12 @@ export default function Dashboard() {
             onCancel={() => setSizeConfirm(null)}
           />
         )}
+
+        <DealMergeDrawer
+          cluster={mergeCluster}
+          open={mergeDrawerOpen}
+          onOpenChange={setMergeDrawerOpen}
+        />
       </div>
     </>
   );
