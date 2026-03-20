@@ -1031,6 +1031,30 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               className="min-h-[200px] font-mono text-sm"
               autoFocus
             />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Assign requester to all items</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-between gap-2 font-normal',
+                      bulkImportRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'text-muted-foreground'
+                    )}
+                  >
+                    <span className="truncate">{bulkImportRequestedBy.length === 0 ? 'Select requester (optional)' : getDisplayText(bulkImportRequestedBy)}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="start">
+                  <SearchableRequesterList
+                    options={requestedByOptions}
+                    selected={bulkImportRequestedBy}
+                    onToggle={toggleBulkImportRequestedBy}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
                 {bulkImportText.split('\n').filter(l => l.trim()).length} items to import
