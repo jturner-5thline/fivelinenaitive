@@ -432,7 +432,7 @@ naitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubs
 
         // Send email
         const emailResponse = await resend.emails.send({
-          from: "naitive <noreply@naitive.co>",
+          from: "naitive <noreply@notify.flexfi.ai>",
           reply_to: "support@naitive.co",
           to: [userEmail],
           subject: `🔥 Weekly FLEx Summary: ${totalViews} views from ${totalUniqueLenders} lenders`,

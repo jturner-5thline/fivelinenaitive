@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "naitive <noreply@naitive.co>",
+            from: "naitive <noreply@notify.flexfi.ai>",
             to: [admin.email],
             subject: `New join request for ${companyName}`,
             html: `
