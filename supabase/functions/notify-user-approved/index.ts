@@ -88,9 +88,14 @@ serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "naitive <notifications@5thline.co>",
+        from: "naitive <noreply@naitive.co>",
         to: [user_email],
-        subject: "Your naitive Account Has Been Approved! 🎉",
+        subject: "Your naitive Account Has Been Approved!",
+        headers: {
+          "List-Unsubscribe": "<https://naitive.co/unsubscribe>",
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+        text: `Hi ${displayName},\n\nGreat news! Your account has been approved by an administrator. You now have full access to naitive.\n\nGo to Dashboard: https://naitive.co/dashboard\n\nIf you have any questions, please don't hesitate to reach out.\n\n— The naitive Team\n\n---\nnaitive | Unsubscribe: https://naitive.co/unsubscribe`,
         html: emailHtml,
       }),
     });

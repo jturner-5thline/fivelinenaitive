@@ -123,7 +123,7 @@ const handler = async (req: Request): Promise<Response> => {
         const appUrl = "https://naitive.co";
 
         const emailResponse = await resend.emails.send({
-          from: "naitive <noreply@updates.naitive.co>",
+          from: "naitive <noreply@naitive.co>",
           reply_to: "support@naitive.co",
           to: [userData.user.email],
           subject: "naitive: Your Weekly Summary",

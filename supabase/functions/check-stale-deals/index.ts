@@ -90,7 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
         }).join('');
 
         const emailResponse = await resend.emails.send({
-          from: "naitive <onboarding@resend.dev>",
+          from: "naitive <noreply@naitive.co>",
           to: [userData.user.email],
           subject: `naitive: ${staleDeals.length} Deal${staleDeals.length !== 1 ? 's' : ''} Need Attention`,
           html: `
