@@ -351,6 +351,9 @@ export default function ContactDetail() {
                 </CardContent>
               </Card>
 
+              {/* Tasks */}
+              <ContactTasksCard contactId={contact.id} contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Contact'} />
+
               {/* Custom Fields */}
               {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
                 <Card>
