@@ -156,6 +156,23 @@ export function useCompany() {
 
     setIsSaving(true);
     try {
+      const { data: existingMembership, error: existingMembershipError } = await supabase
+        .from('company_members')
+        .select('company_id, companies(name)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingMembershipError) throw existingMembershipError;
+
+      if (existingMembership?.company_id) {
+        refetch();
+        const existingCompanyName = (existingMembership as any).companies?.name || 'your company';
+        toast.info(`You're already set up in ${existingCompanyName}`);
+        return { error: null, companyId: existingMembership.company_id };
+      }
+
       const companyId = crypto.randomUUID();
 
       const { error: companyError } = await supabase
@@ -176,7 +193,7 @@ export function useCompany() {
 
       refetch();
       toast.success('Company created successfully');
-      return { error: null };
+      return { error: null, companyId };
     } catch (error: any) {
       console.error('Error creating company:', error);
       toast.error(error.message || 'Failed to create company');
