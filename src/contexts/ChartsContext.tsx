@@ -38,30 +38,6 @@ const defaultCharts: ChartConfig[] = [
     color: '#3b82f6',
     createdAt: new Date().toISOString(),
   },
-  {
-    id: 'chart-3',
-    title: 'Deals by Status',
-    type: 'pie',
-    dataSource: 'deals-by-status',
-    color: '#10b981',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'chart-4',
-    title: 'Revenue per Hour by Manager',
-    type: 'bar',
-    dataSource: 'revenue-per-hour-by-manager',
-    color: '#f59e0b',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'chart-5',
-    title: 'Avg Hours per Deal',
-    type: 'bar',
-    dataSource: 'avg-hours-per-deal',
-    color: '#8b5cf6',
-    createdAt: new Date().toISOString(),
-  },
 ];
 
 export function ChartsProvider({ children }: { children: ReactNode }) {

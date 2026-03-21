@@ -53,22 +53,6 @@ const AnalyticsWidgetsContext = createContext<AnalyticsWidgetsContextType | unde
 const defaultWidgets: WidgetConfig[] = [
   {
     id: 'widget-1',
-    title: 'Pre-Signing Hours',
-    type: 'stat',
-    dataSource: 'pre-signing-hours',
-    size: 'small',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'widget-2',
-    title: 'Post-Signing Hours',
-    type: 'stat',
-    dataSource: 'post-signing-hours',
-    size: 'small',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'widget-3',
     title: 'Total Hours',
     type: 'stat',
     dataSource: 'total-hours',
@@ -76,7 +60,7 @@ const defaultWidgets: WidgetConfig[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    id: 'widget-4',
+    id: 'widget-2',
     title: 'Total Fees',
     type: 'stat',
     dataSource: 'total-fees',
@@ -84,7 +68,7 @@ const defaultWidgets: WidgetConfig[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    id: 'widget-5',
+    id: 'widget-3',
     title: 'Revenue per Hour',
     type: 'stat',
     dataSource: 'revenue-per-hour',
@@ -92,47 +76,14 @@ const defaultWidgets: WidgetConfig[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    id: 'widget-6',
-    title: 'Total Retainer',
+    id: 'widget-4',
+    title: 'Avg Hours per Deal',
     type: 'stat',
-    dataSource: 'total-retainer',
-    size: 'medium',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'widget-7',
-    title: 'Total Milestone',
-    type: 'stat',
-    dataSource: 'total-milestone',
-    size: 'medium',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'widget-8',
-    title: 'Avg Success Fee',
-    type: 'stat',
-    dataSource: 'avg-success-fee',
-    size: 'medium',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'widget-9',
-    title: 'Hours by Manager',
-    type: 'list',
-    dataSource: 'hours-by-manager',
-    size: 'large',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'widget-10',
-    title: 'Hours by Stage',
-    type: 'list',
-    dataSource: 'hours-by-stage',
-    size: 'large',
+    dataSource: 'avg-hours-per-deal',
+    size: 'small',
     createdAt: new Date().toISOString(),
   },
 ];
-
 export function AnalyticsWidgetsProvider({ children }: { children: ReactNode }) {
   const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
     const saved = localStorage.getItem('analytics-widgets');
