@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Pencil, Sparkles, User, Building2, Briefcase, Trash2, X, Link } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Pencil, Sparkles, User, Building2, Briefcase, Trash2, X, Link, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
