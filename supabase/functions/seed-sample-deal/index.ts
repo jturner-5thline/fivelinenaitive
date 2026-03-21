@@ -13,8 +13,8 @@ Deno.serve(async (req) => {
   try {
     const { company_id, user_id } = await req.json();
 
-    if (!company_id || !user_id) {
-      return new Response(JSON.stringify({ error: "company_id and user_id required" }), {
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: "user_id required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -24,18 +24,32 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check company_features flag
-    const { data: features } = await supabase
-      .from("company_features")
-      .select("sample_deal_on_signup")
-      .eq("company_id", company_id)
-      .maybeSingle();
+    // Resolve company_id: use provided one, or look up user's company, or null
+    let resolvedCompanyId = company_id || null;
+    if (!resolvedCompanyId) {
+      const { data: membership } = await supabase
+        .from("company_members")
+        .select("company_id")
+        .eq("user_id", user_id)
+        .limit(1)
+        .maybeSingle();
+      resolvedCompanyId = membership?.company_id || null;
+    }
 
-    if (features && features.sample_deal_on_signup === false) {
-      return new Response(JSON.stringify({ seeded: false, reason: "disabled" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Check company_features flag if company exists
+    if (resolvedCompanyId) {
+      const { data: features } = await supabase
+        .from("company_features")
+        .select("sample_deal_on_signup")
+        .eq("company_id", resolvedCompanyId)
+        .maybeSingle();
+
+      if (features && features.sample_deal_on_signup === false) {
+        return new Response(JSON.stringify({ seeded: false, reason: "disabled" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Check if user already has deals
@@ -52,36 +66,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get default pipeline
+    // Get default pipeline (if company exists)
     let pipelineId: string | null = null;
     let defaultStage = "qualification";
 
-    const { data: pipeline } = await supabase
-      .from("deal_pipelines")
-      .select("id, stages")
-      .eq("company_id", company_id)
-      .eq("is_default", true)
-      .maybeSingle();
+    if (resolvedCompanyId) {
+      const { data: pipeline } = await supabase
+        .from("deal_pipelines")
+        .select("id, stages")
+        .eq("company_id", resolvedCompanyId)
+        .eq("is_default", true)
+        .maybeSingle();
 
-    if (pipeline) {
-      pipelineId = pipeline.id;
-      const stages = pipeline.stages as any[];
-      if (stages && stages.length > 1) {
-        defaultStage = stages[1].id;
+      if (pipeline) {
+        pipelineId = pipeline.id;
+        const stages = pipeline.stages as any[];
+        if (stages && stages.length > 1) {
+          defaultStage = stages[1].id;
+        }
       }
     }
 
     // Get lender pipeline stages
     let lenderStages: { id: string; label: string }[] = [];
-    const { data: lenderPipeline } = await supabase
-      .from("lender_pipelines")
-      .select("stages")
-      .eq("company_id", company_id)
-      .eq("is_default", true)
-      .maybeSingle();
+    if (resolvedCompanyId) {
+      const { data: lenderPipeline } = await supabase
+        .from("lender_pipelines")
+        .select("stages")
+        .eq("company_id", resolvedCompanyId)
+        .eq("is_default", true)
+        .maybeSingle();
 
-    if (lenderPipeline?.stages) {
-      lenderStages = lenderPipeline.stages as any[];
+      if (lenderPipeline?.stages) {
+        lenderStages = lenderPipeline.stages as any[];
+      }
     }
 
     if (lenderStages.length === 0) {
@@ -136,7 +154,7 @@ Deno.serve(async (req) => {
         narrative:
           "Example Corp is seeking $10MM in debt financing to fund geographic expansion and product development. The company has demonstrated consistent growth with strong unit economics: gross margins above 75%, CAC payback under 14 months, and a clear path to profitability within 18 months. Management team has deep industry experience with two prior successful exits.",
         user_id,
-        company_id,
+        company_id: resolvedCompanyId,
         pipeline_id: pipelineId,
         notes:
           "**This is an example deal** to help you explore the platform.\n\nDeal Overview:\n- $10MM debt financing for growth capital\n- Strong recurring revenue base ($6.5MM ARR)\n- Multiple lenders engaged at various stages\n- Target close in 60 days\n\nNext Steps:\n1. Complete management presentations with shortlisted lenders\n2. Compare incoming term sheets\n3. Negotiate final terms with selected lender\n\nFeel free to edit or delete this deal at any time.",
@@ -214,7 +232,7 @@ Deno.serve(async (req) => {
       { deal_id: deal.id, user_id, activity_type: "note_added", description: "Summit Growth Partners term sheet: $10MM, 10.75% fixed, 36-month term.", user_display_name: "You", created_at: fmtISO(subDays(now, 1)) },
     ]);
 
-    console.log("Sample deal seeded successfully for user:", user_id, "company:", company_id);
+    console.log("Sample deal seeded successfully for user:", user_id, "company:", resolvedCompanyId);
 
     return new Response(JSON.stringify({ seeded: true, deal_id: deal.id }), {
       status: 200,
