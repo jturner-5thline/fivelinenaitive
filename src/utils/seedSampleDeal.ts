@@ -7,10 +7,11 @@ import { addDays, subDays, format } from 'date-fns';
  */
 export async function seedSampleDeal(userId: string, companyId?: string | null): Promise<boolean> {
   try {
-    // Check if user already has deals (don't re-seed)
+    // Check if THIS USER already has deals (don't re-seed)
     const { data: existingDeals } = await supabase
       .from('deals')
       .select('id')
+      .eq('user_id', userId)
       .limit(1);
 
     if (existingDeals && existingDeals.length > 0) {
@@ -32,7 +33,7 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
 
     // Get default pipeline for the company
     let pipelineId: string | null = null;
-    let defaultStage = 'initial-screening';
+    let defaultStage = 'qualification';
     if (companyId) {
       const { data: pipeline } = await supabase
         .from('deal_pipelines')
@@ -43,13 +44,52 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
 
       if (pipeline) {
         pipelineId = pipeline.id;
-        // Use second stage (after new-lead) if available
         const stages = pipeline.stages as any[];
         if (stages && stages.length > 1) {
           defaultStage = stages[1].id;
         }
       }
     }
+
+    // Get lender pipeline stages for this company to use valid stage IDs
+    let lenderStages: { id: string; label: string }[] = [];
+    if (companyId) {
+      const { data: lenderPipeline } = await (supabase as any)
+        .from('lender_pipelines')
+        .select('stages')
+        .eq('company_id', companyId)
+        .eq('is_default', true)
+        .maybeSingle();
+
+      if (lenderPipeline?.stages) {
+        lenderStages = lenderPipeline.stages as any[];
+      }
+    }
+
+    // Fallback generic stages if no lender pipeline found
+    if (lenderStages.length === 0) {
+      lenderStages = [
+        { id: 'outreach', label: 'Outreach' },
+        { id: 'reviewing', label: 'Reviewing' },
+        { id: 'diligence', label: 'Diligence' },
+        { id: 'term-sheet', label: 'Term Sheet' },
+        { id: 'passed', label: 'Passed' },
+      ];
+    }
+
+    // Helper to find a stage by label pattern or fall back to index
+    const findStage = (patterns: string[], fallbackIndex: number): string => {
+      for (const pattern of patterns) {
+        const found = lenderStages.find(s => s.label.toLowerCase().includes(pattern.toLowerCase()));
+        if (found) return found.id;
+      }
+      return lenderStages[Math.min(fallbackIndex, lenderStages.length - 1)]?.id || 'outreach';
+    };
+
+    const stageOutreach = findStage(['outreach', 'contacted', 'sent'], 0);
+    const stageReviewing = findStage(['review', 'diligence'], 1);
+    const stageTermSheet = findStage(['term', 'offer', 'draft'], Math.min(3, lenderStages.length - 1));
+    const stagePassed = findStage(['pass', 'declined', 'closed'], lenderStages.length - 1);
 
     const now = new Date();
 
@@ -86,12 +126,12 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
       return false;
     }
 
-    // ── Add realistic lenders at various stages ──
+    // ── Add realistic lenders using the company's actual lender stages ──
     const lenders = [
       {
         deal_id: deal.id,
         name: 'Summit Growth Partners',
-        stage: 'term-sheets',
+        stage: stageTermSheet,
         tracking_status: 'active',
         notes: 'Very strong interest. Term sheet received at $8.5M, 3-year term, 11.5% rate. Reviewing with client.',
         quote_amount: 8500000,
@@ -102,7 +142,7 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
       {
         deal_id: deal.id,
         name: 'Horizon Capital Group',
-        stage: 'draft-terms',
+        stage: stageReviewing,
         tracking_status: 'active',
         notes: 'Draft terms received. Competitive rate but requesting board observer seat. Client reviewing.',
         quote_amount: 7500000,
@@ -113,7 +153,7 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
       {
         deal_id: deal.id,
         name: 'Meridian Lending Corp',
-        stage: 'reviewing-drl',
+        stage: stageReviewing,
         substage: 'in-review',
         tracking_status: 'active',
         notes: 'Materials sent last week. Credit team reviewing financials. Follow-up scheduled for Thursday.',
@@ -122,39 +162,24 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
       {
         deal_id: deal.id,
         name: 'Pacific Coast Finance',
-        stage: 'reviewing-drl',
-        substage: 'awaiting-response',
+        stage: stageOutreach,
         tracking_status: 'active',
-        notes: 'DRL submitted. Awaiting initial feedback from their growth lending team.',
+        notes: 'Information package sent. Awaiting initial feedback from their growth lending team.',
       },
       {
         deal_id: deal.id,
         name: 'Atlas Venture Debt',
-        stage: 'e8be95f3-4e34-4e72-999e-bbf79789d9a7', // Sent DRL
+        stage: stageOutreach,
         tracking_status: 'active',
-        notes: 'Information package sent. They typically take 5-7 business days for initial review.',
+        notes: 'Outreach initiated. They typically take 5-7 business days for initial review.',
       },
       {
         deal_id: deal.id,
         name: 'Keystone Business Credit',
-        stage: 'passed',
+        stage: stagePassed,
         tracking_status: 'passed',
         pass_reason: 'Deal size below their minimum ($15M floor). Suggested we revisit if raise increases.',
         notes: 'Passed — deal size mismatch. Min ticket is $15M.',
-      },
-      {
-        deal_id: deal.id,
-        name: 'First Republic Commercial',
-        stage: 'on-hold',
-        tracking_status: 'on-hold',
-        notes: 'Interested but currently at capacity for Q1. Will revisit in 30 days.',
-      },
-      {
-        deal_id: deal.id,
-        name: 'Venture West Capital',
-        stage: 'on-deck',
-        tracking_status: 'on-deck',
-        notes: 'Good fit profile. Queued for outreach after current round of responses.',
       },
     ];
 
@@ -216,7 +241,7 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
         deal_id: deal.id,
         user_id: userId,
         activity_type: 'lender_added',
-        description: 'Added 8 lenders to the deal for outreach',
+        description: 'Added 6 lenders to the deal for outreach',
         user_display_name: 'You',
         created_at: format(subDays(now, 7), "yyyy-MM-dd'T'HH:mm:ss'Z'"),
       },
@@ -224,7 +249,7 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
         deal_id: deal.id,
         user_id: userId,
         activity_type: 'stage_change',
-        description: 'Summit Growth Partners moved to Term Sheets stage',
+        description: 'Summit Growth Partners moved to Term Sheet stage',
         user_display_name: 'You',
         created_at: format(subDays(now, 2), "yyyy-MM-dd'T'HH:mm:ss'Z'"),
       },
