@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
         narrative:
           "Example Corp is seeking $10MM in debt financing to fund geographic expansion and product development. The company has demonstrated consistent growth with strong unit economics: gross margins above 75%, CAC payback under 14 months, and a clear path to profitability within 18 months. Management team has deep industry experience with two prior successful exits.",
         user_id,
-        company_id,
+        company_id: resolvedCompanyId,
         pipeline_id: pipelineId,
         notes:
           "**This is an example deal** to help you explore the platform.\n\nDeal Overview:\n- $10MM debt financing for growth capital\n- Strong recurring revenue base ($6.5MM ARR)\n- Multiple lenders engaged at various stages\n- Target close in 60 days\n\nNext Steps:\n1. Complete management presentations with shortlisted lenders\n2. Compare incoming term sheets\n3. Negotiate final terms with selected lender\n\nFeel free to edit or delete this deal at any time.",
