@@ -448,3 +448,21 @@ export function useSubtasks(parentTaskId: string | null) {
 
   return { subtasks, isLoading, createSubtask, updateSubtask, deleteSubtask };
 }
+
+export function useContactTasks(contactId: string | undefined) {
+  return useQuery({
+    queryKey: ['contact-tasks', contactId],
+    queryFn: async () => {
+      if (!contactId) return [];
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('contact_id', contactId)
+        .is('archived_at', null)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as Task[];
+    },
+    enabled: !!contactId,
+  });
+}
