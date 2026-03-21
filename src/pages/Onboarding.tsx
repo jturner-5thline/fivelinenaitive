@@ -32,7 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { extractDomain, useFindCompaniesByDomain } from '@/hooks/useCompanyJoinRequests';
 import { CompanyJoinRequestModal } from '@/components/onboarding/CompanyJoinRequestModal';
 import { seedSampleDeal } from '@/utils/seedSampleDeal';
-import { isBlockedEmailDomain } from '@/lib/blocked-email-domains';
+import { BLOCKED_EMAIL_DOMAINS } from '@/lib/blocked-email-domains';
 
 const fireConfetti = () => {
   const duration = 3000;
@@ -252,7 +252,9 @@ export default function Onboarding() {
 
       // Auto-create company if user has no company membership
       if (!resolvedCompanyId) {
-        const shouldUseEmailDomain = Boolean(user.email && userDomain && !isBlockedEmailDomain(user.email));
+        const shouldUseEmailDomain = Boolean(
+          userDomain && !BLOCKED_EMAIL_DOMAINS.includes(userDomain)
+        );
 
         const { data: newCompany, error: companyError } = await supabase
           .from('companies')
