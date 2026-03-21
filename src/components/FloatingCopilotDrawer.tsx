@@ -10,13 +10,14 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { PinnedInsightsPanel } from '@/components/dashboard/chat/PinnedInsightsPanel';
-import { useFeatureAccess } from '@/hooks/useFeatureFlags';
+import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 
 export function FloatingCopilotDrawer() {
   const { user } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const { hasAccess: copilotEnabled, isLoading } = useFeatureAccess('copilot_widget');
+  const { hasPageAccess, isLoading } = usePageAccessFlags();
+  const copilotEnabled = hasPageAccess('copilot_widget');
 
   // Hide on onboarding and auth pages, or if copilot access is disabled
   if (!user || location.pathname === '/onboarding' || location.pathname === '/auth') return null;
