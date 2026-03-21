@@ -356,7 +356,7 @@ export default function ContactDetail() {
               </Card>
 
               {/* Tasks */}
-              <ContactTasksCard contactId={contact.id} contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Contact'} />
+              <ContactTasksCard contactId={contact.id} contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Contact'} externalShowCreate={showCreateTask} onExternalShowCreateChange={setShowCreateTask} />
 
               {/* Custom Fields */}
               {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
