@@ -54,7 +54,7 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
     // Get lender pipeline stages for this company to use valid stage IDs
     let lenderStages: { id: string; label: string }[] = [];
     if (companyId) {
-      const { data: lenderPipeline } = await supabase
+      const { data: lenderPipeline } = await (supabase as any)
         .from('lender_pipelines')
         .select('stages')
         .eq('company_id', companyId)
