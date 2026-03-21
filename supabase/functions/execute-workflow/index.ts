@@ -159,7 +159,7 @@ async function executeEmailAction(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "naitive <noreply@naitive.co>",
+        from: "naitive <noreply@notify.flexfi.ai>",
         to: [userEmail],
         subject: subject,
         html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">

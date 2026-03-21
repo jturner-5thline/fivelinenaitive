@@ -623,7 +623,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "naitive <noreply@naitive.co>",
+      from: "naitive <noreply@notify.flexfi.ai>",
       reply_to: "support@naitive.co",
       to: [userData.user.email],
       subject: emailSubject,
