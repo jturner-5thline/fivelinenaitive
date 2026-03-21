@@ -311,7 +311,10 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         });
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+      queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
+    },
     onError: () => toast.error('Failed to update task'),
   });
 
