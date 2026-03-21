@@ -42,6 +42,7 @@ interface DealCardProps {
   flexNotificationCount?: number;
   compact?: boolean;
   onStageChange?: (dealId: string, newStage: string) => void;
+  mentionUsers?: TeamMember[];
 }
 
 export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, onStageChange }: DealCardProps) {
