@@ -127,16 +127,8 @@ const DEFAULT_WIDGETS: MetricWidgetConfig[] = [
   { id: 'stat-2', title: 'Closed Won (All Time)', type: 'stat', dataSource: 'closed-won', size: 'small', color: 'hsl(var(--success))', createdAt: new Date().toISOString() },
   { id: 'stat-3', title: 'Total Fees Earned', type: 'stat', dataSource: 'total-fees', size: 'small', color: 'hsl(var(--chart-2))', createdAt: new Date().toISOString() },
   { id: 'stat-4', title: 'Avg Deal Size', type: 'stat', dataSource: 'avg-deal-size', size: 'small', color: 'hsl(var(--chart-4))', createdAt: new Date().toISOString() },
-  { id: 'chart-1', title: 'Closed Value: Rolling 12 Months', type: 'chart', chartType: 'composed', dataSource: 'closed-value-12m', size: 'large', color: 'hsl(var(--primary))', createdAt: new Date().toISOString() },
-  { id: 'chart-2', title: 'Pipeline by Stage', type: 'chart', chartType: 'bar', dataSource: 'pipeline-by-stage', size: 'medium', color: 'hsl(var(--primary))', createdAt: new Date().toISOString() },
-  { id: 'chart-3', title: 'Deal Activity: Rolling 12 Months', type: 'chart', chartType: 'bar', dataSource: 'deal-activity-12m', size: 'full', color: 'hsl(var(--chart-3))', createdAt: new Date().toISOString() },
-  { id: 'chart-4', title: 'Closed Value: Period over Period', type: 'chart', chartType: 'bar', dataSource: 'closed-value-pop', size: 'medium', color: 'hsl(var(--primary))', createdAt: new Date().toISOString() },
-  { id: 'chart-5', title: 'Fees: Period over Period', type: 'chart', chartType: 'bar', dataSource: 'fees-pop', size: 'medium', color: 'hsl(var(--chart-2))', createdAt: new Date().toISOString() },
-  { id: 'chart-6', title: 'YTD Cumulative Value', type: 'chart', chartType: 'area', dataSource: 'ytd-cumulative', size: 'medium', color: 'hsl(var(--primary))', createdAt: new Date().toISOString() },
-  { id: 'chart-7', title: 'QTD Value', type: 'chart', chartType: 'bar', dataSource: 'qtd-value', size: 'medium', color: 'hsl(var(--primary))', createdAt: new Date().toISOString() },
-  { id: 'chart-8', title: 'Pipeline by Deal Type', type: 'chart', chartType: 'pie', dataSource: 'pipeline-by-type', size: 'medium', color: 'hsl(var(--primary))', createdAt: new Date().toISOString() },
-  { id: 'chart-9', title: 'Manager Performance', type: 'chart', chartType: 'bar', dataSource: 'manager-performance', size: 'medium', color: 'hsl(var(--primary))', createdAt: new Date().toISOString() },
-  { id: 'chart-10', title: 'Pipeline Stage Breakdown', type: 'chart', chartType: 'composed', dataSource: 'stage-breakdown', size: 'full', color: 'hsl(var(--primary))', createdAt: new Date().toISOString() },
+  { id: 'chart-1', title: 'Pipeline by Stage', type: 'chart', chartType: 'bar', dataSource: 'pipeline-by-stage', size: 'medium', color: 'hsl(var(--primary))', createdAt: new Date().toISOString() },
+  { id: 'chart-2', title: 'Deal Activity: Rolling 12 Months', type: 'chart', chartType: 'bar', dataSource: 'deal-activity-12m', size: 'medium', color: 'hsl(var(--chart-3))', createdAt: new Date().toISOString() },
 ];
 
 const CONFIG_KEY = 'metrics_widgets';
