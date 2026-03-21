@@ -100,12 +100,16 @@ export function ProfileSetupModal({ open, onComplete, companyName }: ProfileSetu
           .eq('user_id', user.id)
           .limit(1)
           .maybeSingle();
-        
-        seedSampleDeal(user.id, membership?.company_id).then((seeded) => {
-          if (seeded) {
-            toast.success('A sample deal has been created to help you get started!');
-          }
-        });
+
+        const companyId = membership?.company_id ?? null;
+
+        if (companyId) {
+          seedSampleDeal(user.id, companyId).then((seeded) => {
+            if (seeded) {
+              toast.success('A sample deal has been created to help you get started!');
+            }
+          });
+        }
       }
       
       onComplete();

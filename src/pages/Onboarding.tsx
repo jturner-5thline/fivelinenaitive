@@ -32,7 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { extractDomain, useFindCompaniesByDomain } from '@/hooks/useCompanyJoinRequests';
 import { CompanyJoinRequestModal } from '@/components/onboarding/CompanyJoinRequestModal';
 import { seedSampleDeal } from '@/utils/seedSampleDeal';
-import { BLOCKED_EMAIL_DOMAINS } from '@/lib/blocked-email-domains';
+
 
 const fireConfetti = () => {
   const duration = 3000;
