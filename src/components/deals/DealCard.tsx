@@ -13,7 +13,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
-import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { TeamMember } from '@/hooks/useTeamMembers';
 import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { FlagNoteDialog } from './FlagNoteDialog';
