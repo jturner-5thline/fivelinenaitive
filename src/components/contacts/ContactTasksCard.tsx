@@ -17,7 +17,7 @@ interface ContactTasksCardProps {
 
 export function ContactTasksCard({ contactId, contactName }: ContactTasksCardProps) {
   const { data: tasks = [], isLoading } = useContactTasks(contactId);
-  const { createTask, updateTask } = useTasks();
+  const { createTask, updateTask } = useMyTasks();
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const navigate = useNavigate();
