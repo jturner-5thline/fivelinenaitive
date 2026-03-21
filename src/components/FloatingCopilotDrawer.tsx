@@ -20,7 +20,7 @@ export function FloatingCopilotDrawer() {
 
   // Hide on onboarding and auth pages, or if copilot access is disabled
   if (!user || location.pathname === '/onboarding' || location.pathname === '/auth') return null;
-  if (!isLoading && !copilotEnabled) return null;
+  if (isLoading || !copilotEnabled) return null;
 
   const content = (
     <>
