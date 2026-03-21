@@ -204,8 +204,8 @@ export const usePageAccessFlags = () => {
   const isLoading = flagsLoading || overridesLoading;
   
   const hasPageAccess = (pageName: string): boolean => {
-    // Demo account cannot access finance page
-    if (isDemoAccount && pageName === 'finance') return false;
+    // Demo account cannot access certain pages
+    if (isDemoAccount && (pageName === 'finance' || pageName === 'workflows' || pageName === 'sales_bd')) return false;
 
     // While flags or company overrides are still loading, block access
     // to prevent flash of unauthorized content.
