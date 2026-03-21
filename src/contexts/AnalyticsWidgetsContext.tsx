@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { ChartConfig } from './ChartsContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type WidgetType = 'stat' | 'list';
 
@@ -50,6 +51,9 @@ interface AnalyticsWidgetsContextType {
 
 const AnalyticsWidgetsContext = createContext<AnalyticsWidgetsContextType | undefined>(undefined);
 
+const getUserStorageKey = (baseKey: string, userId?: string) =>
+  userId ? `${baseKey}:${userId}` : null;
+
 const defaultWidgets: WidgetConfig[] = [
   {
     id: 'widget-1',
@@ -85,23 +89,41 @@ const defaultWidgets: WidgetConfig[] = [
   },
 ];
 export function AnalyticsWidgetsProvider({ children }: { children: ReactNode }) {
-  const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
-    const saved = localStorage.getItem('analytics-widgets');
-    return saved ? JSON.parse(saved) : defaultWidgets;
-  });
-
-  const [presets, setPresets] = useState<LayoutPreset[]>(() => {
-    const saved = localStorage.getItem('analytics-presets');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const { user } = useAuth();
+  const widgetsStorageKey = getUserStorageKey('analytics-widgets', user?.id);
+  const presetsStorageKey = getUserStorageKey('analytics-presets', user?.id);
+  const [widgets, setWidgets] = useState<WidgetConfig[]>(defaultWidgets);
+  const [presets, setPresets] = useState<LayoutPreset[]>([]);
 
   useEffect(() => {
-    localStorage.setItem('analytics-widgets', JSON.stringify(widgets));
-  }, [widgets]);
+    if (!widgetsStorageKey || !presetsStorageKey) {
+      setWidgets(defaultWidgets);
+      setPresets([]);
+      return;
+    }
+
+    try {
+      const savedWidgets = localStorage.getItem(widgetsStorageKey);
+      const savedPresets = localStorage.getItem(presetsStorageKey);
+
+      setWidgets(savedWidgets ? JSON.parse(savedWidgets) : defaultWidgets);
+      setPresets(savedPresets ? JSON.parse(savedPresets) : []);
+    } catch (error) {
+      console.error('Failed to load analytics widget preferences:', error);
+      setWidgets(defaultWidgets);
+      setPresets([]);
+    }
+  }, [widgetsStorageKey, presetsStorageKey]);
 
   useEffect(() => {
-    localStorage.setItem('analytics-presets', JSON.stringify(presets));
-  }, [presets]);
+    if (!widgetsStorageKey) return;
+    localStorage.setItem(widgetsStorageKey, JSON.stringify(widgets));
+  }, [widgets, widgetsStorageKey]);
+
+  useEffect(() => {
+    if (!presetsStorageKey) return;
+    localStorage.setItem(presetsStorageKey, JSON.stringify(presets));
+  }, [presets, presetsStorageKey]);
 
   const addWidget = (widget: Omit<WidgetConfig, 'id' | 'createdAt'>) => {
     const newWidget: WidgetConfig = {

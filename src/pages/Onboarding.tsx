@@ -31,6 +31,8 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { extractDomain, useFindCompaniesByDomain } from '@/hooks/useCompanyJoinRequests';
 import { CompanyJoinRequestModal } from '@/components/onboarding/CompanyJoinRequestModal';
+import { seedSampleDeal } from '@/utils/seedSampleDeal';
+import { BLOCKED_EMAIL_DOMAINS } from '@/lib/blocked-email-domains';
 
 const fireConfetti = () => {
   const duration = 3000;
@@ -232,34 +234,59 @@ export default function Onboarding() {
 
     setIsSubmitting(true);
     try {
+      let resolvedCompanyId: string | null = null;
+
+      if (hasCompany) {
+        const { data: membership, error: membershipError } = await supabase
+          .from('company_members')
+          .select('company_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (membershipError) {
+          throw membershipError;
+        }
+
+        resolvedCompanyId = membership?.company_id ?? null;
+      }
+
       // Auto-create company if user has no company membership
-      if (hasCompany === false && userDomain) {
-        // Create company with the user's domain
+      if (!resolvedCompanyId) {
+        const shouldUseEmailDomain = Boolean(
+          userDomain && !BLOCKED_EMAIL_DOMAINS.includes(userDomain)
+        );
+
         const { data: newCompany, error: companyError } = await supabase
           .from('companies')
           .insert({
             name: data.company_name,
-            primary_domain: userDomain,
-            domains: [userDomain],
+            primary_domain: shouldUseEmailDomain ? userDomain : null,
+            domains: shouldUseEmailDomain && userDomain ? [userDomain] : null,
             website_url: data.company_url || null,
             employee_size: data.company_size || null,
           })
           .select('id')
           .single();
 
-        if (companyError) {
+        if (companyError || !newCompany) {
           console.error('Error creating company:', companyError);
-          // Don't throw - company creation is optional, continue with onboarding
-        } else if (newCompany) {
-          // Add user as admin of the new company
-          await supabase
-            .from('company_members')
-            .insert({
-              company_id: newCompany.id,
-              user_id: user.id,
-              role: 'owner',
-            });
+          throw companyError ?? new Error('Failed to create company');
         }
+
+        const { error: memberError } = await supabase
+          .from('company_members')
+          .insert({
+            company_id: newCompany.id,
+            user_id: user.id,
+            role: 'owner',
+          });
+
+        if (memberError) {
+          console.error('Error creating company membership:', memberError);
+          throw memberError;
+        }
+
+        resolvedCompanyId = newCompany.id;
       }
 
       const { error } = await supabase
@@ -278,6 +305,8 @@ export default function Onboarding() {
 
       if (error) throw error;
 
+      const seeded = await seedSampleDeal(user.id, resolvedCompanyId);
+
       // Refresh profile and notify all instances (including ProtectedRoute)
       await refreshProfile();
       window.dispatchEvent(new Event('profile-updated'));
@@ -290,7 +319,9 @@ export default function Onboarding() {
       
       toast({
         title: 'Welcome!',
-        description: 'Your account has been set up successfully.',
+        description: seeded
+          ? 'Your account is ready with a sample deal and starter dashboard.'
+          : 'Your account has been set up successfully.',
       });
       
       // Navigate to deals page where the platform tour will automatically start

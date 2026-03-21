@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type ChartType = 'bar' | 'line' | 'pie' | 'area';
 
@@ -21,13 +22,16 @@ interface ChartsContextType {
 
 const ChartsContext = createContext<ChartsContextType | undefined>(undefined);
 
+const getUserStorageKey = (baseKey: string, userId?: string) =>
+  userId ? `${baseKey}:${userId}` : null;
+
 const defaultCharts: ChartConfig[] = [
   {
     id: 'chart-1',
     title: 'Deals by Stage',
     type: 'bar',
     dataSource: 'deals-by-stage',
-    color: '#9333ea',
+    color: 'hsl(var(--primary))',
     createdAt: new Date().toISOString(),
   },
   {
@@ -35,20 +39,35 @@ const defaultCharts: ChartConfig[] = [
     title: 'Monthly Deal Value',
     type: 'line',
     dataSource: 'monthly-value',
-    color: '#3b82f6',
+    color: 'hsl(var(--chart-2))',
     createdAt: new Date().toISOString(),
   },
 ];
 
 export function ChartsProvider({ children }: { children: ReactNode }) {
-  const [charts, setCharts] = useState<ChartConfig[]>(() => {
-    const saved = localStorage.getItem('analytics-charts');
-    return saved ? JSON.parse(saved) : defaultCharts;
-  });
+  const { user } = useAuth();
+  const chartsStorageKey = getUserStorageKey('analytics-charts', user?.id);
+  const [charts, setCharts] = useState<ChartConfig[]>(defaultCharts);
 
   useEffect(() => {
-    localStorage.setItem('analytics-charts', JSON.stringify(charts));
-  }, [charts]);
+    if (!chartsStorageKey) {
+      setCharts(defaultCharts);
+      return;
+    }
+
+    try {
+      const savedCharts = localStorage.getItem(chartsStorageKey);
+      setCharts(savedCharts ? JSON.parse(savedCharts) : defaultCharts);
+    } catch (error) {
+      console.error('Failed to load analytics charts preferences:', error);
+      setCharts(defaultCharts);
+    }
+  }, [chartsStorageKey]);
+
+  useEffect(() => {
+    if (!chartsStorageKey) return;
+    localStorage.setItem(chartsStorageKey, JSON.stringify(charts));
+  }, [charts, chartsStorageKey]);
 
   const addChart = (chart: Omit<ChartConfig, 'id' | 'createdAt'>) => {
     const newChart: ChartConfig = {
