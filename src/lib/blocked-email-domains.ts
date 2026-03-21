@@ -39,11 +39,20 @@ export const BLOCKED_EMAIL_DOMAINS = [
 ];
 
 /**
+ * Specific email addresses that are whitelisted despite using a blocked domain.
+ */
+const WHITELISTED_EMAILS = [
+  'goturner@outlook.com',
+];
+
+/**
  * Check if an email uses a blocked personal domain.
- * Returns true if the domain is blocked.
+ * Returns true if the domain is blocked (unless the exact email is whitelisted).
  */
 export function isBlockedEmailDomain(email: string): boolean {
-  const domain = email.trim().toLowerCase().split('@')[1];
+  const normalizedEmail = email.trim().toLowerCase();
+  if (WHITELISTED_EMAILS.includes(normalizedEmail)) return false;
+  const domain = normalizedEmail.split('@')[1];
   if (!domain) return false;
   return BLOCKED_EMAIL_DOMAINS.includes(domain);
 }
