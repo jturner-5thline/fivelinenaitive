@@ -16,7 +16,8 @@ export function FloatingCopilotDrawer() {
   const { user } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const { hasAccess: copilotEnabled, isLoading } = useFeatureAccess('copilot_widget');
+  const { hasPageAccess, isLoading } = usePageAccessFlags();
+  const copilotEnabled = hasPageAccess('copilot_widget');
 
   // Hide on onboarding and auth pages, or if copilot access is disabled
   if (!user || location.pathname === '/onboarding' || location.pathname === '/auth') return null;
