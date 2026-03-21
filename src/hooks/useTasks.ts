@@ -20,6 +20,7 @@ export interface Task {
   section_id: string | null;
   parent_task_id: string | null;
   deal_id: string | null;
+  contact_id: string | null;
   company_id: string | null;
   title: string;
   description: string | null;
@@ -179,7 +180,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
   }));
 
   const createTask = useMutation({
-    mutationFn: async (task: { title: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string }) => {
+    mutationFn: async (task: { title: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string }) => {
       if (!user) throw new Error('Not authenticated');
       // Get company_id
       const { data: membership } = await supabase
@@ -201,6 +202,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           project_id: task.project_id || null,
           section_id: task.section_id || null,
           deal_id: task.deal_id || null,
+          contact_id: task.contact_id || null,
           company_id: membership?.company_id || null,
         } as any)
         .select()
@@ -210,6 +212,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+      queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
       if (user && data) {
         const taskUrl = `https://naitive.co/tasks?task=${(data as any).id}`;
         const { data: assigneeProfile } = await supabase
@@ -308,7 +311,10 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         });
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+      queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
+    },
     onError: () => toast.error('Failed to update task'),
   });
 
@@ -445,4 +451,22 @@ export function useSubtasks(parentTaskId: string | null) {
   });
 
   return { subtasks, isLoading, createSubtask, updateSubtask, deleteSubtask };
+}
+
+export function useContactTasks(contactId: string | undefined) {
+  return useQuery({
+    queryKey: ['contact-tasks', contactId],
+    queryFn: async () => {
+      if (!contactId) return [];
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('contact_id', contactId)
+        .is('archived_at', null)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as Task[];
+    },
+    enabled: !!contactId,
+  });
 }

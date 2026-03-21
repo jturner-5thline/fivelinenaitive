@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Pencil, Sparkles, User, Building2, Briefcase, Trash2, X, Link } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Pencil, Sparkles, User, Building2, Briefcase, Trash2, X, Link, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSuggestions';
+import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -349,6 +350,9 @@ export default function ContactDetail() {
                   </Button>
                 </CardContent>
               </Card>
+
+              {/* Tasks */}
+              <ContactTasksCard contactId={contact.id} contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Contact'} />
 
               {/* Custom Fields */}
               {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
