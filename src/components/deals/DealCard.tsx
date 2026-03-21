@@ -45,7 +45,7 @@ interface DealCardProps {
   mentionUsers?: TeamMember[];
 }
 
-export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, onStageChange }: DealCardProps) {
+export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, onStageChange, mentionUsers = [] }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -58,7 +58,6 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const { updateDeal } = useDealsContext();
   const { dealTypes } = useDealTypes();
   const { getStageConfigForDeal } = usePipelineStageConfig();
-  const mentionUsers = useTeamMembers();
 
   useEffect(() => {
     if (isEditingStatus && statusInputRef.current) {
