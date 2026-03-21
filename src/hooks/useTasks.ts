@@ -179,7 +179,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
   }));
 
   const createTask = useMutation({
-    mutationFn: async (task: { title: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string }) => {
+    mutationFn: async (task: { title: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string }) => {
       if (!user) throw new Error('Not authenticated');
       // Get company_id
       const { data: membership } = await supabase
@@ -201,6 +201,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           project_id: task.project_id || null,
           section_id: task.section_id || null,
           deal_id: task.deal_id || null,
+          contact_id: task.contact_id || null,
           company_id: membership?.company_id || null,
         } as any)
         .select()
