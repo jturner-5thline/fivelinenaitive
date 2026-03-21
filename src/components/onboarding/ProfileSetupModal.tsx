@@ -8,8 +8,7 @@ import { Camera, Loader2, User } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { seedSampleDeal } from '@/utils/seedSampleDeal';
-import { supabase } from '@/integrations/supabase/client';
+
 
 interface ProfileSetupModalProps {
   open: boolean;
