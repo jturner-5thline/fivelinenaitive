@@ -1,8 +1,10 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { 
   LayoutDashboard, 
   Newspaper, 
@@ -25,6 +27,9 @@ import {
   Send,
   FileSignature,
   Video,
+  Search,
+  ArrowUpDown,
+  Filter,
 } from "lucide-react";
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from "sonner";
@@ -234,14 +239,57 @@ const statusConfig: Record<
   },
 };
 
+type SortOption = "name_asc" | "name_desc" | "status";
+type FilterOption = "all" | FeatureStatus;
+
 export function PageAccessPanel() {
   const { data: flags, isLoading } = useFeatureFlags();
   const updateFlag = useUpdateFeatureFlag();
   const createFlag = useCreateFeatureFlag();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<FilterOption>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("name_asc");
 
   const getPageFlag = (featureKey: string) => {
     return flags?.find(f => f.name === featureKey);
   };
+
+  const getStatus = (featureKey: string): FeatureStatus => {
+    const flag = getPageFlag(featureKey);
+    return (flag?.status || 'deployed') as FeatureStatus;
+  };
+
+  const filteredAndSorted = useMemo(() => {
+    let result = pageConfigs.filter((config) => {
+      const matchesSearch =
+        !searchQuery ||
+        config.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        config.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const status = getStatus(config.featureKey);
+      const matchesFilter = statusFilter === "all" || status === statusFilter;
+      return matchesSearch && matchesFilter;
+    });
+
+    result.sort((a, b) => {
+      if (sortBy === "name_asc") return a.label.localeCompare(b.label);
+      if (sortBy === "name_desc") return b.label.localeCompare(a.label);
+      // sort by status priority: deployed > staging > james_only > disabled
+      const order: Record<FeatureStatus, number> = { deployed: 0, staging: 1, james_only: 2, disabled: 3 };
+      return order[getStatus(a.featureKey)] - order[getStatus(b.featureKey)];
+    });
+
+    return result;
+  }, [searchQuery, statusFilter, sortBy, flags]);
+
+  // Count per status for filter badges
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: pageConfigs.length, deployed: 0, staging: 0, james_only: 0, disabled: 0 };
+    for (const config of pageConfigs) {
+      const s = getStatus(config.featureKey);
+      counts[s] = (counts[s] || 0) + 1;
+    }
+    return counts;
+  }, [flags]);
 
   const handleStatusChange = async (featureKey: string, status: FeatureStatus) => {
     const flag = getPageFlag(featureKey);
@@ -276,8 +324,6 @@ export function PageAccessPanel() {
           description: `Access control for ${featureKey.replace(/_/g, ' ')}`,
           status: 'deployed'
         });
-        // After creation, we need to update the beta flag
-        // Re-fetch will happen, then we update
         const { data } = await supabase
           .from("feature_flags")
           .select("id")
@@ -308,6 +354,68 @@ export function PageAccessPanel() {
 
   return (
     <div className="space-y-6">
+      {/* Toolbar: Search, Filter, Sort */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search features..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as FilterOption)}>
+          <SelectTrigger className="w-[200px]">
+            <div className="flex items-center gap-2">
+              <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>
+                {statusFilter === "all"
+                  ? `All (${statusCounts.all})`
+                  : `${statusConfig[statusFilter].label} (${statusCounts[statusFilter] || 0})`}
+              </span>
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All ({statusCounts.all})</SelectItem>
+            <SelectItem value="deployed">
+              <div className="flex items-center gap-2">
+                <Rocket className="h-3 w-3" /> All Users ({statusCounts.deployed})
+              </div>
+            </SelectItem>
+            <SelectItem value="staging">
+              <div className="flex items-center gap-2">
+                <FlaskConical className="h-3 w-3" /> 5thLine Only ({statusCounts.staging})
+              </div>
+            </SelectItem>
+            <SelectItem value="james_only">
+              <div className="flex items-center gap-2">
+                <User className="h-3 w-3" /> James Only ({statusCounts.james_only})
+              </div>
+            </SelectItem>
+            <SelectItem value="disabled">
+              <div className="flex items-center gap-2">
+                <Ban className="h-3 w-3" /> Disabled ({statusCounts.disabled})
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+          <SelectTrigger className="w-[180px]">
+            <div className="flex items-center gap-2">
+              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>{sortBy === "name_asc" ? "Name A–Z" : sortBy === "name_desc" ? "Name Z–A" : "By Access Level"}</span>
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name_asc">Name A–Z</SelectItem>
+            <SelectItem value="name_desc">Name Z–A</SelectItem>
+            <SelectItem value="status">By Access Level</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Access Level Legend */}
       <div className="bg-muted/50 rounded-lg p-4 space-y-2">
         <h4 className="font-medium text-sm">Access Levels</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -342,8 +450,15 @@ export function PageAccessPanel() {
         </div>
       </div>
 
+      {/* Results count */}
+      {(searchQuery || statusFilter !== "all") && (
+        <p className="text-sm text-muted-foreground">
+          Showing {filteredAndSorted.length} of {pageConfigs.length} features
+        </p>
+      )}
+
       <div className="grid gap-4">
-        {pageConfigs.map((config) => {
+        {filteredAndSorted.map((config) => {
           const flag = getPageFlag(config.featureKey);
           const status = (flag?.status || 'deployed') as FeatureStatus;
           const statusInfo = statusConfig[status];
@@ -424,6 +539,12 @@ export function PageAccessPanel() {
             </Card>
           );
         })}
+
+        {filteredAndSorted.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No features match your search or filter.
+          </div>
+        )}
       </div>
     </div>
   );
