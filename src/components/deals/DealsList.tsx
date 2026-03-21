@@ -245,6 +245,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                   onToggleFlag={onToggleFlag} 
                   flexEngagement={flexEngagementScores?.get(deal.id)}
                   flexNotificationCount={flexNotificationCounts[deal.id] || 0}
+                  mentionUsers={mentionUsers}
                 />
               </div>
             </HintTooltip>
