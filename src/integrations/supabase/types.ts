@@ -14474,6 +14474,14 @@ export type Database = {
       }
       can_delete_lenders: { Args: { _user_id: string }; Returns: boolean }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      ensure_user_workspace: {
+        Args: {
+          _company_name?: string
+          _company_size?: string
+          _company_url?: string
+        }
+        Returns: string
+      }
       find_companies_by_domain: {
         Args: { _domain: string }
         Returns: {
