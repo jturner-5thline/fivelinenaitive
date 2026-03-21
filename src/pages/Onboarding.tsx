@@ -32,7 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { extractDomain, useFindCompaniesByDomain } from '@/hooks/useCompanyJoinRequests';
 import { CompanyJoinRequestModal } from '@/components/onboarding/CompanyJoinRequestModal';
 import { seedSampleDeal } from '@/utils/seedSampleDeal';
-import { BLOCKED_EMAIL_DOMAINS } from '@/lib/blocked-email-domains';
+
 
 const fireConfetti = () => {
   const duration = 3000;
@@ -236,57 +236,34 @@ export default function Onboarding() {
     try {
       let resolvedCompanyId: string | null = null;
 
-      if (hasCompany) {
-        const { data: membership, error: membershipError } = await supabase
-          .from('company_members')
-          .select('company_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
+      const { data: membership, error: membershipError } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-        if (membershipError) {
-          throw membershipError;
-        }
-
-        resolvedCompanyId = membership?.company_id ?? null;
+      if (membershipError) {
+        throw membershipError;
       }
 
-      // Auto-create company if user has no company membership
+      resolvedCompanyId = membership?.company_id ?? null;
+
       if (!resolvedCompanyId) {
-        const shouldUseEmailDomain = Boolean(
-          userDomain && !BLOCKED_EMAIL_DOMAINS.includes(userDomain)
+        const { data: ensuredCompanyId, error: ensureWorkspaceError } = await supabase.rpc(
+          'ensure_user_workspace',
+          {
+            _company_name: data.company_name,
+            _company_url: data.company_url || null,
+            _company_size: data.company_size,
+          }
         );
 
-        const { data: newCompany, error: companyError } = await supabase
-          .from('companies')
-          .insert({
-            name: data.company_name,
-            primary_domain: shouldUseEmailDomain ? userDomain : null,
-            domains: shouldUseEmailDomain && userDomain ? [userDomain] : null,
-            website_url: data.company_url || null,
-            employee_size: data.company_size || null,
-          })
-          .select('id')
-          .single();
-
-        if (companyError || !newCompany) {
-          console.error('Error creating company:', companyError);
-          throw companyError ?? new Error('Failed to create company');
+        if (ensureWorkspaceError || !ensuredCompanyId) {
+          console.error('Error ensuring user workspace:', ensureWorkspaceError);
+          throw ensureWorkspaceError ?? new Error('Failed to create workspace');
         }
 
-        const { error: memberError } = await supabase
-          .from('company_members')
-          .insert({
-            company_id: newCompany.id,
-            user_id: user.id,
-            role: 'owner',
-          });
-
-        if (memberError) {
-          console.error('Error creating company membership:', memberError);
-          throw memberError;
-        }
-
-        resolvedCompanyId = newCompany.id;
+        resolvedCompanyId = ensuredCompanyId;
       }
 
       const { error } = await supabase
