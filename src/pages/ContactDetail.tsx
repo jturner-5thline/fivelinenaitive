@@ -210,14 +210,6 @@ export default function ContactDetail() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm">Scores</CardTitle></CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between"><span className="text-muted-foreground text-xs">Contact Score</span><span className="font-medium">{contact.contact_score || 0}</span></div>
-                  <div className="flex items-center justify-between"><span className="text-muted-foreground text-xs">Behavioral</span><span className="font-medium">{contact.behavioral_score || 0}</span></div>
-                  <div className="flex items-center justify-between"><span className="text-muted-foreground text-xs">Fit</span><span className="font-medium">{contact.fit_score || 0}</span></div>
-                </CardContent>
-              </Card>
 
               {contact.tags && contact.tags.length > 0 && (
                 <Card>
