@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
       { deal_id: deal.id, user_id, activity_type: "note_added", description: "Summit Growth Partners term sheet: $10MM, 10.75% fixed, 36-month term.", user_display_name: "You", created_at: fmtISO(subDays(now, 1)) },
     ]);
 
-    console.log("Sample deal seeded successfully for user:", user_id, "company:", company_id);
+    console.log("Sample deal seeded successfully for user:", user_id, "company:", resolvedCompanyId);
 
     return new Response(JSON.stringify({ seeded: true, deal_id: deal.id }), {
       status: 200,
