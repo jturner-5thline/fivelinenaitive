@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { PinnedInsightsPanel } from '@/components/dashboard/chat/PinnedInsightsPanel';
-import { useFeatureAccess } from '@/hooks/useFeatureFlags';
+import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 
 export function FloatingCopilotDrawer() {
   const { user } = useAuth();
