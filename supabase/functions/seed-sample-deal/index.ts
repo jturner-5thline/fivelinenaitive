@@ -66,36 +66,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get default pipeline
+    // Get default pipeline (if company exists)
     let pipelineId: string | null = null;
     let defaultStage = "qualification";
 
-    const { data: pipeline } = await supabase
-      .from("deal_pipelines")
-      .select("id, stages")
-      .eq("company_id", company_id)
-      .eq("is_default", true)
-      .maybeSingle();
+    if (resolvedCompanyId) {
+      const { data: pipeline } = await supabase
+        .from("deal_pipelines")
+        .select("id, stages")
+        .eq("company_id", resolvedCompanyId)
+        .eq("is_default", true)
+        .maybeSingle();
 
-    if (pipeline) {
-      pipelineId = pipeline.id;
-      const stages = pipeline.stages as any[];
-      if (stages && stages.length > 1) {
-        defaultStage = stages[1].id;
+      if (pipeline) {
+        pipelineId = pipeline.id;
+        const stages = pipeline.stages as any[];
+        if (stages && stages.length > 1) {
+          defaultStage = stages[1].id;
+        }
       }
     }
 
     // Get lender pipeline stages
     let lenderStages: { id: string; label: string }[] = [];
-    const { data: lenderPipeline } = await supabase
-      .from("lender_pipelines")
-      .select("stages")
-      .eq("company_id", company_id)
-      .eq("is_default", true)
-      .maybeSingle();
+    if (resolvedCompanyId) {
+      const { data: lenderPipeline } = await supabase
+        .from("lender_pipelines")
+        .select("stages")
+        .eq("company_id", resolvedCompanyId)
+        .eq("is_default", true)
+        .maybeSingle();
 
-    if (lenderPipeline?.stages) {
-      lenderStages = lenderPipeline.stages as any[];
+      if (lenderPipeline?.stages) {
+        lenderStages = lenderPipeline.stages as any[];
+      }
     }
 
     if (lenderStages.length === 0) {
