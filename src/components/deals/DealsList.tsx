@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { DealListRow } from './DealListRow';
 import { FileX, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
