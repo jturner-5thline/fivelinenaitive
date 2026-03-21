@@ -6,9 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Users, ExternalLink, Ban, Eye, Archive } from "lucide-react";
+import { Search, Users, ExternalLink, Ban, Eye, Archive, Trash2, Loader2 } from "lucide-react";
 import { useAllCompanies } from "@/hooks/useAdminData";
 import { CompanyDetailDialog } from "./CompanyDetailDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Company {
   id: string;
@@ -29,7 +33,26 @@ export const CompaniesTable = () => {
   const [search, setSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { data: companies, isLoading } = useAllCompanies();
+  const queryClient = useQueryClient();
+
+  const handleDeleteCompany = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.rpc('admin_delete_company', { _company_id: deleteTarget.id });
+      if (error) throw error;
+      toast.success(`"${deleteTarget.name}" deleted`);
+      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+      setDeleteTarget(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete company');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const filteredCompanies = companies?.filter(
     (c) =>
@@ -179,6 +202,14 @@ export const CompaniesTable = () => {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleteTarget(company)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -199,6 +230,27 @@ export const CompaniesTable = () => {
           }
         }}
       />
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{deleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this company, all its members, deals, and associated data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCompany}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Company
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
