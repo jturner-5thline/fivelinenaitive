@@ -8,8 +8,7 @@ import { Camera, Loader2, User } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { seedSampleDeal } from '@/utils/seedSampleDeal';
-import { supabase } from '@/integrations/supabase/client';
+
 
 interface ProfileSetupModalProps {
   open: boolean;
@@ -91,27 +90,6 @@ export function ProfileSetupModal({ open, onComplete, companyName }: ProfileSetu
       }, false);
 
       toast.success('Profile updated successfully!');
-      
-      // Seed a sample deal for new users (fire and forget)
-      if (user) {
-        const { data: membership } = await supabase
-          .from('company_members')
-          .select('company_id')
-          .eq('user_id', user.id)
-          .limit(1)
-          .maybeSingle();
-
-        const companyId = membership?.company_id ?? null;
-
-        if (companyId) {
-          seedSampleDeal(user.id, companyId).then((seeded) => {
-            if (seeded) {
-              toast.success('A sample deal has been created to help you get started!');
-            }
-          });
-        }
-      }
-      
       onComplete();
     } catch (error) {
       toast.error('Failed to save profile');
