@@ -13,7 +13,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
-import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { TeamMember } from '@/hooks/useTeamMembers';
 import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { FlagNoteDialog } from './FlagNoteDialog';
@@ -42,9 +42,10 @@ interface DealCardProps {
   flexNotificationCount?: number;
   compact?: boolean;
   onStageChange?: (dealId: string, newStage: string) => void;
+  mentionUsers?: TeamMember[];
 }
 
-export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, onStageChange }: DealCardProps) {
+export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, onStageChange, mentionUsers = [] }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -57,7 +58,6 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const { updateDeal } = useDealsContext();
   const { dealTypes } = useDealTypes();
   const { getStageConfigForDeal } = usePipelineStageConfig();
-  const mentionUsers = useTeamMembers();
 
   useEffect(() => {
     if (isEditingStatus && statusInputRef.current) {
