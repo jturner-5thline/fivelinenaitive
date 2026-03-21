@@ -278,6 +278,9 @@ export default function ContactDetail() {
 
             {/* Right: Related objects */}
             <div className="col-span-3 space-y-4">
+              {/* Tasks */}
+              <ContactTasksCard contactId={contact.id} contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Contact'} externalShowCreate={showCreateTask} onExternalShowCreateChange={setShowCreateTask} />
+
               {/* AI Field Suggestions */}
               <ContactFieldSuggestions contactId={contact.id} companyId={(contact as any)?.org_company_id} />
 
