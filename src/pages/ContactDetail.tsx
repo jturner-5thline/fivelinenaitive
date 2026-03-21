@@ -37,6 +37,7 @@ export default function ContactDetail() {
   const [showLinkCompany, setShowLinkCompany] = useState(false);
   const [showLinkDeal, setShowLinkDeal] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
 
   // CRM company info
   const crmCompanyId = (contact as any)?.crm_company_id;
