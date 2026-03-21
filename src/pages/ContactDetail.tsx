@@ -148,6 +148,9 @@ export default function ContactDetail() {
               <Button variant="outline" size="sm" onClick={() => handleLogActivity('meeting')}>
                 <Calendar className="h-4 w-4 mr-1" /> Meeting
               </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowCreateTask(true)}>
+                <CheckSquare className="h-4 w-4 mr-1" /> Task
+              </Button>
               <Button variant="destructive" size="sm" onClick={() => setShowDelete(true)}>
                 <Trash2 className="h-4 w-4 mr-1" /> Delete
               </Button>
