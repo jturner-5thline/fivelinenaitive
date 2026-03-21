@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckSquare, Plus, Circle, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,14 +13,23 @@ import { useNavigate } from 'react-router-dom';
 interface ContactTasksCardProps {
   contactId: string;
   contactName: string;
+  externalShowCreate?: boolean;
+  onExternalShowCreateChange?: (v: boolean) => void;
 }
 
-export function ContactTasksCard({ contactId, contactName }: ContactTasksCardProps) {
+export function ContactTasksCard({ contactId, contactName, externalShowCreate, onExternalShowCreateChange }: ContactTasksCardProps) {
   const { data: tasks = [], isLoading } = useContactTasks(contactId);
   const { createTask, updateTask } = useMyTasks();
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (externalShowCreate) {
+      setShowCreate(true);
+      onExternalShowCreateChange?.(false);
+    }
+  }, [externalShowCreate]);
 
   const handleCreate = () => {
     if (!newTitle.trim()) return;

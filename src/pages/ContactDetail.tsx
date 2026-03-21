@@ -37,6 +37,7 @@ export default function ContactDetail() {
   const [showLinkCompany, setShowLinkCompany] = useState(false);
   const [showLinkDeal, setShowLinkDeal] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
 
   // CRM company info
   const crmCompanyId = (contact as any)?.crm_company_id;
@@ -146,6 +147,9 @@ export default function ContactDetail() {
               </Button>
               <Button variant="outline" size="sm" onClick={() => handleLogActivity('meeting')}>
                 <Calendar className="h-4 w-4 mr-1" /> Meeting
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowCreateTask(true)}>
+                <CheckSquare className="h-4 w-4 mr-1" /> Task
               </Button>
               <Button variant="destructive" size="sm" onClick={() => setShowDelete(true)}>
                 <Trash2 className="h-4 w-4 mr-1" /> Delete
@@ -352,7 +356,7 @@ export default function ContactDetail() {
               </Card>
 
               {/* Tasks */}
-              <ContactTasksCard contactId={contact.id} contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Contact'} />
+              <ContactTasksCard contactId={contact.id} contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Contact'} externalShowCreate={showCreateTask} onExternalShowCreateChange={setShowCreateTask} />
 
               {/* Custom Fields */}
               {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
