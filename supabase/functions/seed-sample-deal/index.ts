@@ -13,8 +13,8 @@ Deno.serve(async (req) => {
   try {
     const { company_id, user_id } = await req.json();
 
-    if (!company_id || !user_id) {
-      return new Response(JSON.stringify({ error: "company_id and user_id required" }), {
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: "user_id required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -24,18 +24,32 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check company_features flag
-    const { data: features } = await supabase
-      .from("company_features")
-      .select("sample_deal_on_signup")
-      .eq("company_id", company_id)
-      .maybeSingle();
+    // Resolve company_id: use provided one, or look up user's company, or null
+    let resolvedCompanyId = company_id || null;
+    if (!resolvedCompanyId) {
+      const { data: membership } = await supabase
+        .from("company_members")
+        .select("company_id")
+        .eq("user_id", user_id)
+        .limit(1)
+        .maybeSingle();
+      resolvedCompanyId = membership?.company_id || null;
+    }
 
-    if (features && features.sample_deal_on_signup === false) {
-      return new Response(JSON.stringify({ seeded: false, reason: "disabled" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Check company_features flag if company exists
+    if (resolvedCompanyId) {
+      const { data: features } = await supabase
+        .from("company_features")
+        .select("sample_deal_on_signup")
+        .eq("company_id", resolvedCompanyId)
+        .maybeSingle();
+
+      if (features && features.sample_deal_on_signup === false) {
+        return new Response(JSON.stringify({ seeded: false, reason: "disabled" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Check if user already has deals
