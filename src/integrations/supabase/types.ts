@@ -11477,6 +11477,7 @@ export type Database = {
           company_id: string | null
           completed_at: string | null
           completed_by: string | null
+          contact_id: string | null
           created_at: string
           deal_id: string | null
           description: string | null
@@ -11508,6 +11509,7 @@ export type Database = {
           company_id?: string | null
           completed_at?: string | null
           completed_by?: string | null
+          contact_id?: string | null
           created_at?: string
           deal_id?: string | null
           description?: string | null
@@ -11539,6 +11541,7 @@ export type Database = {
           company_id?: string | null
           completed_at?: string | null
           completed_by?: string | null
+          contact_id?: string | null
           created_at?: string
           deal_id?: string | null
           description?: string | null
@@ -11568,6 +11571,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
           {
