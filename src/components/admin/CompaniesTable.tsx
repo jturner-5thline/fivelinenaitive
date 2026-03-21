@@ -6,9 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Users, ExternalLink, Ban, Eye, Archive } from "lucide-react";
+import { Search, Users, ExternalLink, Ban, Eye, Archive, Trash2, Loader2 } from "lucide-react";
 import { useAllCompanies } from "@/hooks/useAdminData";
 import { CompanyDetailDialog } from "./CompanyDetailDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Company {
   id: string;
