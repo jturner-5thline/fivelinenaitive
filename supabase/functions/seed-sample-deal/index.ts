@@ -52,20 +52,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if user already has deals
-    const { data: existingDeals } = await supabase
-      .from("deals")
-      .select("id")
-      .eq("user_id", user_id)
-      .limit(1);
-
-    if (existingDeals && existingDeals.length > 0) {
-      return new Response(JSON.stringify({ seeded: false, reason: "already_has_deals" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     // Get default pipeline (if company exists)
     let pipelineId: string | null = null;
     let defaultStage = "qualification";
@@ -80,11 +66,80 @@ Deno.serve(async (req) => {
 
       if (pipeline) {
         pipelineId = pipeline.id;
-        const stages = pipeline.stages as any[];
-        if (stages && stages.length > 1) {
+        const stages = pipeline.stages as Array<{ id?: string }> | null;
+        if (stages && stages.length > 1 && stages[1]?.id) {
           defaultStage = stages[1].id;
+        } else if (stages && stages.length > 0 && stages[0]?.id) {
+          defaultStage = stages[0].id;
         }
       }
+    }
+
+    // If the seeded sample deal already exists, attach it to the user's company/pipeline
+    // instead of bailing out. This fixes signups where the deal was created before the
+    // workspace/pipeline existed.
+    const { data: existingSampleDeal } = await supabase
+      .from("deals")
+      .select("id, company, company_id, pipeline_id, stage")
+      .eq("user_id", user_id)
+      .in("company", ["Example Deal", "EXAMPLE DEAL"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingSampleDeal) {
+      const updates: Record<string, unknown> = {};
+
+      if (existingSampleDeal.company !== "EXAMPLE DEAL") {
+        updates.company = "EXAMPLE DEAL";
+      }
+
+      if (resolvedCompanyId && existingSampleDeal.company_id !== resolvedCompanyId) {
+        updates.company_id = resolvedCompanyId;
+        updates.migrated_from_personal = existingSampleDeal.company_id === null;
+      }
+
+      if (pipelineId && existingSampleDeal.pipeline_id !== pipelineId) {
+        updates.pipeline_id = pipelineId;
+      }
+
+      if (existingSampleDeal.stage !== defaultStage) {
+        updates.stage = defaultStage;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        const { error: updateError } = await supabase
+          .from("deals")
+          .update(updates)
+          .eq("id", existingSampleDeal.id);
+
+        if (updateError) {
+          console.error("Failed to update existing sample deal:", updateError);
+          return new Response(JSON.stringify({ error: "Failed to update sample deal", details: updateError }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      return new Response(JSON.stringify({ seeded: true, repaired: true, deal_id: existingSampleDeal.id }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Check if user already has deals
+    const { data: existingDeals } = await supabase
+      .from("deals")
+      .select("id")
+      .eq("user_id", user_id)
+      .limit(1);
+
+    if (existingDeals && existingDeals.length > 0) {
+      return new Response(JSON.stringify({ seeded: false, reason: "already_has_deals" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Get lender pipeline stages
@@ -137,7 +192,7 @@ Deno.serve(async (req) => {
     const { data: deal, error: dealError } = await supabase
       .from("deals")
       .insert({
-        company: "Example Deal",
+        company: "EXAMPLE DEAL",
         value: 10000000,
         status: "active",
         stage: defaultStage,
@@ -224,7 +279,7 @@ Deno.serve(async (req) => {
 
     // Add activity logs
     await supabase.from("activity_logs").insert([
-      { deal_id: deal.id, user_id, activity_type: "deal_created", description: "Deal created — Example Deal, $10.00MM Debt Financing", user_display_name: "You", created_at: fmtISO(subDays(now, 14)) },
+      { deal_id: deal.id, user_id, activity_type: "deal_created", description: "Deal created — EXAMPLE DEAL, $10.00MM Debt Financing", user_display_name: "You", created_at: fmtISO(subDays(now, 14)) },
       { deal_id: deal.id, user_id, activity_type: "milestone_completed", description: "Milestone completed: Engagement Letter Signed", user_display_name: "You", created_at: fmtISO(subDays(now, 14)) },
       { deal_id: deal.id, user_id, activity_type: "note_added", description: "Received financial model and 3-year projections from client.", user_display_name: "You", created_at: fmtISO(subDays(now, 9)) },
       { deal_id: deal.id, user_id, activity_type: "lender_added", description: "Added 6 lenders to the deal for outreach", user_display_name: "You", created_at: fmtISO(subDays(now, 7)) },
