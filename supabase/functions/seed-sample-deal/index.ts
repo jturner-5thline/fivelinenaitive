@@ -24,8 +24,20 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Resolve company_id: use provided one, or look up user's company, or null
+    // Resolve company_id: prefer a valid provided value, otherwise use the user's current membership.
     let resolvedCompanyId = company_id || null;
+    if (resolvedCompanyId) {
+      const { data: existingCompany } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("id", resolvedCompanyId)
+        .maybeSingle();
+
+      if (!existingCompany) {
+        resolvedCompanyId = null;
+      }
+    }
+
     if (!resolvedCompanyId) {
       const { data: membership } = await supabase
         .from("company_members")
