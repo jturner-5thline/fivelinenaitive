@@ -138,6 +138,13 @@ export default function AcceptInvite() {
 
       if (memberError) throw memberError;
 
+      // Seed sample deal (or repair orphaned one) for this user+company
+      try {
+        await seedSampleDeal(user.id, invitation.company_id);
+      } catch (seedErr) {
+        console.error('Sample deal seed/repair failed:', seedErr);
+      }
+
       // Mark invitation as accepted - this uses RLS policy for users with matching email
       const { error: updateError } = await supabase
         .from('company_invitations')

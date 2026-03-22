@@ -7,14 +7,46 @@ import { addDays, subDays, format } from 'date-fns';
  */
 export async function seedSampleDeal(userId: string, companyId?: string | null): Promise<boolean> {
   try {
-    // Check if THIS USER already has deals (don't re-seed)
+    // Check if THIS USER already has deals
     const { data: existingDeals } = await supabase
       .from('deals')
-      .select('id')
+      .select('id, company_id, pipeline_id')
       .eq('user_id', userId)
-      .limit(1);
+      .limit(5);
 
     if (existingDeals && existingDeals.length > 0) {
+      // If there's an orphaned deal (company_id is null) and we now have a companyId, repair it
+      const orphanedDeal = existingDeals.find(d => !d.company_id);
+      if (orphanedDeal && companyId) {
+        // Find default pipeline for this company
+        let pipelineId: string | null = null;
+        let defaultStage: string | null = null;
+        const { data: pipeline } = await supabase
+          .from('deal_pipelines')
+          .select('id, stages')
+          .eq('company_id', companyId)
+          .eq('is_default', true)
+          .maybeSingle();
+
+        if (pipeline) {
+          pipelineId = pipeline.id;
+          const stages = pipeline.stages as any[];
+          if (stages && stages.length > 1) {
+            defaultStage = stages[1].id;
+          }
+        }
+
+        const updates: Record<string, any> = { company_id: companyId };
+        if (pipelineId) updates.pipeline_id = pipelineId;
+        if (defaultStage) updates.stage = defaultStage;
+
+        await supabase
+          .from('deals')
+          .update(updates)
+          .eq('id', orphanedDeal.id);
+
+        console.log('Repaired orphaned sample deal:', orphanedDeal.id);
+      }
       return false;
     }
 

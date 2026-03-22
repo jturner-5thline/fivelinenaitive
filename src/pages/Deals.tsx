@@ -218,9 +218,11 @@ export default function Dashboard() {
   const pipelineFilteredDeals = useMemo(() => {
     if (!activePipelineId) return allFilteredDeals;
     return allFilteredDeals.filter(deal => 
-      deal.pipelineId === activePipelineId || (!deal.pipelineId && activePipelineIsDefault)
+      deal.pipelineId === activePipelineId || 
+      (!deal.pipelineId && activePipelineIsDefault) ||
+      (!deal.pipelineId && !deal.companyId && deal.userId === user?.id)
     );
-  }, [allFilteredDeals, activePipelineId, activePipelineIsDefault]);
+  }, [allFilteredDeals, activePipelineId, activePipelineIsDefault, user?.id]);
 
   const savedViewLikelyHidingDeals = dealsInSelectedPipeline.length > 0 && pipelineFilteredDeals.length === 0 && (hasActiveFilters || !!defaultView);
 
