@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { seedSampleDeal } from '@/utils/seedSampleDeal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, Mail, Clock } from 'lucide-react';
@@ -136,6 +137,13 @@ export default function AcceptInvite() {
         }]);
 
       if (memberError) throw memberError;
+
+      // Seed sample deal (or repair orphaned one) for this user+company
+      try {
+        await seedSampleDeal(user.id, invitation.company_id);
+      } catch (seedErr) {
+        console.error('Sample deal seed/repair failed:', seedErr);
+      }
 
       // Mark invitation as accepted - this uses RLS policy for users with matching email
       const { error: updateError } = await supabase

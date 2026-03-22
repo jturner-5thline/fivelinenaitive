@@ -204,21 +204,21 @@ export default function Dashboard() {
   };
 
   // Filter deals by active pipeline (include unassigned deals in the default pipeline)
-  const activePipelineIsDefault = activePipelineId && pipelines.find(p => p.id === activePipelineId)?.isDefault;
+  
   
   const dealsInSelectedPipeline = useMemo(() => {
     if (!activePipelineId) return allDeals;
     return allDeals.filter(deal => 
-      deal.pipelineId === activePipelineId || (!deal.pipelineId && activePipelineIsDefault)
+      deal.pipelineId === activePipelineId || !deal.pipelineId
     );
-  }, [allDeals, activePipelineId, activePipelineIsDefault]);
+  }, [allDeals, activePipelineId]);
 
   const pipelineFilteredDeals = useMemo(() => {
     if (!activePipelineId) return allFilteredDeals;
     return allFilteredDeals.filter(deal => 
-      deal.pipelineId === activePipelineId || (!deal.pipelineId && activePipelineIsDefault)
+      deal.pipelineId === activePipelineId || !deal.pipelineId
     );
-  }, [allFilteredDeals, activePipelineId, activePipelineIsDefault]);
+  }, [allFilteredDeals, activePipelineId]);
 
   const savedViewLikelyHidingDeals = dealsInSelectedPipeline.length > 0 && pipelineFilteredDeals.length === 0 && (hasActiveFilters || !!defaultView);
 
