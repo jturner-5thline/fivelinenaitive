@@ -103,9 +103,10 @@ serve(async (req) => {
     if (!emailResponse.ok) {
       const errorText = await emailResponse.text();
       console.error("Failed to send approval email:", errorText);
+      // Don't fail hard - email is a notification, not critical
       return new Response(
-        JSON.stringify({ error: "Failed to send email" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: true, message: "User approved but email delivery failed", emailError: errorText }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
