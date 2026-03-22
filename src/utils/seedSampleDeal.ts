@@ -1,12 +1,51 @@
 import { supabase } from '@/integrations/supabase/client';
 import { addDays, subDays, format } from 'date-fns';
 
+async function resolveDefaultPipeline(companyId: string, userId: string) {
+  const { data: pipeline, error: pipelineError } = await supabase
+    .from('deal_pipelines')
+    .select('id, stages')
+    .eq('company_id', companyId)
+    .eq('is_default', true)
+    .maybeSingle();
+
+  if (pipelineError) {
+    console.error('Failed to load default pipeline for sample deal seeding:', {
+      userId,
+      companyId,
+      error: pipelineError,
+    });
+    return null;
+  }
+
+  if (!pipeline) {
+    console.error('No default pipeline found for sample deal seeding:', {
+      userId,
+      companyId,
+    });
+    return null;
+  }
+
+  const stages = Array.isArray(pipeline.stages) ? (pipeline.stages as Array<{ id?: string }>) : [];
+  const defaultStage = stages[1]?.id || stages[0]?.id || 'qualification';
+
+  return {
+    pipelineId: pipeline.id,
+    defaultStage,
+  };
+}
+
 /**
  * Seeds a fully configured sample deal with realistic fake lenders,
  * milestones, and activity logs so new users can explore immediately.
  */
 export async function seedSampleDeal(userId: string, companyId?: string | null): Promise<boolean> {
   try {
+    if (!companyId) {
+      console.error('Cannot seed sample deal before workspace pipeline exists:', { userId, companyId });
+      return false;
+    }
+
     // Check if THIS USER already has deals
     const { data: existingDeals } = await supabase
       .from('deals')
@@ -18,27 +57,21 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
       // If there's an orphaned deal (company_id is null) and we now have a companyId, repair it
       const orphanedDeal = existingDeals.find(d => !d.company_id);
       if (orphanedDeal && companyId) {
-        // Find default pipeline for this company
-        let pipelineId: string | null = null;
-        let defaultStage: string | null = null;
-        const { data: pipeline } = await supabase
-          .from('deal_pipelines')
-          .select('id, stages')
-          .eq('company_id', companyId)
-          .eq('is_default', true)
-          .maybeSingle();
-
-        if (pipeline) {
-          pipelineId = pipeline.id;
-          const stages = pipeline.stages as any[];
-          if (stages && stages.length > 1) {
-            defaultStage = stages[1].id;
-          }
+        const pipelineConfig = await resolveDefaultPipeline(companyId, userId);
+        if (!pipelineConfig) {
+          console.error('Cannot repair orphaned sample deal because default pipeline is missing:', {
+            userId,
+            companyId,
+            dealId: orphanedDeal.id,
+          });
+          return false;
         }
 
-        const updates: Record<string, any> = { company_id: companyId };
-        if (pipelineId) updates.pipeline_id = pipelineId;
-        if (defaultStage) updates.stage = defaultStage;
+        const updates: Record<string, any> = {
+          company_id: companyId,
+          pipeline_id: pipelineConfig.pipelineId,
+          stage: pipelineConfig.defaultStage,
+        };
 
         await supabase
           .from('deals')
@@ -63,50 +96,13 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
       }
     }
 
-    // Get or create default pipeline for the company
-    let pipelineId: string | null = null;
-    let defaultStage = 'qualification';
-    if (companyId) {
-      const { data: pipeline } = await supabase
-        .from('deal_pipelines')
-        .select('id, stages')
-        .eq('company_id', companyId)
-        .eq('is_default', true)
-        .maybeSingle();
-
-      if (pipeline) {
-        pipelineId = pipeline.id;
-        const stages = pipeline.stages as any[];
-        if (stages && stages.length > 1) {
-          defaultStage = stages[1].id;
-        }
-      } else {
-        // Create default "Active Pipeline" if none exists
-        const defaultPipelineStages = [
-          { id: 'prospect', label: 'Prospect', color: 'bg-slate-500' },
-          { id: 'qualification', label: 'Qualification', color: 'bg-blue-500' },
-          { id: 'proposal', label: 'Proposal', color: 'bg-yellow-500' },
-          { id: 'negotiation', label: 'Negotiation', color: 'bg-orange-500' },
-          { id: 'closed-won', label: 'Closed Won', color: 'bg-green-500' },
-          { id: 'closed-lost', label: 'Closed Lost', color: 'bg-red-500' },
-        ];
-        const { data: newPipeline } = await supabase
-          .from('deal_pipelines')
-          .insert({
-            company_id: companyId,
-            name: 'Active Pipeline',
-            stages: defaultPipelineStages as any,
-            is_default: true,
-            position: 0,
-          })
-          .select('id')
-          .single();
-
-        if (newPipeline) {
-          pipelineId = newPipeline.id;
-        }
-      }
+    const pipelineConfig = await resolveDefaultPipeline(companyId, userId);
+    if (!pipelineConfig) {
+      console.error('Aborting sample deal seed because default pipeline is missing:', { userId, companyId });
+      return false;
     }
+
+    const { pipelineId, defaultStage } = pipelineConfig;
 
     // Get lender pipeline stages for this company to use valid stage IDs
     let lenderStages: { id: string; label: string }[] = [];
