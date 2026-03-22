@@ -63,7 +63,7 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
       }
     }
 
-    // Get default pipeline for the company
+    // Get or create default pipeline for the company
     let pipelineId: string | null = null;
     let defaultStage = 'qualification';
     if (companyId) {
@@ -79,6 +79,31 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
         const stages = pipeline.stages as any[];
         if (stages && stages.length > 1) {
           defaultStage = stages[1].id;
+        }
+      } else {
+        // Create default "Active Pipeline" if none exists
+        const defaultPipelineStages = [
+          { id: 'prospect', label: 'Prospect', color: 'bg-slate-500' },
+          { id: 'qualification', label: 'Qualification', color: 'bg-blue-500' },
+          { id: 'proposal', label: 'Proposal', color: 'bg-yellow-500' },
+          { id: 'negotiation', label: 'Negotiation', color: 'bg-orange-500' },
+          { id: 'closed-won', label: 'Closed Won', color: 'bg-green-500' },
+          { id: 'closed-lost', label: 'Closed Lost', color: 'bg-red-500' },
+        ];
+        const { data: newPipeline } = await supabase
+          .from('deal_pipelines')
+          .insert({
+            company_id: companyId,
+            name: 'Active Pipeline',
+            stages: defaultPipelineStages as any,
+            is_default: true,
+            position: 0,
+          })
+          .select('id')
+          .single();
+
+        if (newPipeline) {
+          pipelineId = newPipeline.id;
         }
       }
     }

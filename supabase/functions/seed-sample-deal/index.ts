@@ -64,11 +64,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Get default pipeline (if company exists)
+    // Default pipeline stages used for new pipelines
+    const defaultPipelineStages = [
+      { id: "prospect", label: "Prospect", color: "bg-slate-500" },
+      { id: "qualification", label: "Qualification", color: "bg-blue-500" },
+      { id: "proposal", label: "Proposal", color: "bg-yellow-500" },
+      { id: "negotiation", label: "Negotiation", color: "bg-orange-500" },
+      { id: "closed-won", label: "Closed Won", color: "bg-green-500" },
+      { id: "closed-lost", label: "Closed Lost", color: "bg-red-500" },
+    ];
+
+    // Get or create default pipeline
     let pipelineId: string | null = null;
     let defaultStage = "qualification";
 
     if (resolvedCompanyId) {
+      // Try to find existing default pipeline
       const { data: pipeline } = await supabase
         .from("deal_pipelines")
         .select("id, stages")
@@ -83,6 +94,28 @@ Deno.serve(async (req) => {
           defaultStage = stages[1].id;
         } else if (stages && stages.length > 0 && stages[0]?.id) {
           defaultStage = stages[0].id;
+        }
+      } else {
+        // No default pipeline exists — create "Active Pipeline"
+        console.log("Creating default 'Active Pipeline' for company:", resolvedCompanyId);
+        const { data: newPipeline, error: pipelineError } = await supabase
+          .from("deal_pipelines")
+          .insert({
+            company_id: resolvedCompanyId,
+            name: "Active Pipeline",
+            stages: defaultPipelineStages,
+            is_default: true,
+            position: 0,
+          })
+          .select("id, stages")
+          .single();
+
+        if (pipelineError) {
+          console.error("Failed to create default pipeline:", pipelineError);
+        } else if (newPipeline) {
+          pipelineId = newPipeline.id;
+          // Use "qualification" (index 1) as default stage
+          defaultStage = "qualification";
         }
       }
     }
