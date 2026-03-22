@@ -209,9 +209,11 @@ export default function Dashboard() {
   const dealsInSelectedPipeline = useMemo(() => {
     if (!activePipelineId) return allDeals;
     return allDeals.filter(deal => 
-      deal.pipelineId === activePipelineId || (!deal.pipelineId && activePipelineIsDefault)
+      deal.pipelineId === activePipelineId || 
+      (!deal.pipelineId && activePipelineIsDefault) ||
+      (!deal.pipelineId && !deal.companyId && deal.userId === user?.id)
     );
-  }, [allDeals, activePipelineId, activePipelineIsDefault]);
+  }, [allDeals, activePipelineId, activePipelineIsDefault, user?.id]);
 
   const pipelineFilteredDeals = useMemo(() => {
     if (!activePipelineId) return allFilteredDeals;
