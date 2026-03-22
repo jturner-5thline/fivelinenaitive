@@ -209,20 +209,16 @@ export default function Dashboard() {
   const dealsInSelectedPipeline = useMemo(() => {
     if (!activePipelineId) return allDeals;
     return allDeals.filter(deal => 
-      deal.pipelineId === activePipelineId || 
-      (!deal.pipelineId && activePipelineIsDefault) ||
-      (!deal.pipelineId && !deal.companyId && deal.userId === user?.id)
+      deal.pipelineId === activePipelineId || !deal.pipelineId
     );
-  }, [allDeals, activePipelineId, activePipelineIsDefault, user?.id]);
+  }, [allDeals, activePipelineId]);
 
   const pipelineFilteredDeals = useMemo(() => {
     if (!activePipelineId) return allFilteredDeals;
     return allFilteredDeals.filter(deal => 
-      deal.pipelineId === activePipelineId || 
-      (!deal.pipelineId && activePipelineIsDefault) ||
-      (!deal.pipelineId && !deal.companyId && deal.userId === user?.id)
+      deal.pipelineId === activePipelineId || !deal.pipelineId
     );
-  }, [allFilteredDeals, activePipelineId, activePipelineIsDefault, user?.id]);
+  }, [allFilteredDeals, activePipelineId]);
 
   const savedViewLikelyHidingDeals = dealsInSelectedPipeline.length > 0 && pipelineFilteredDeals.length === 0 && (hasActiveFilters || !!defaultView);
 
