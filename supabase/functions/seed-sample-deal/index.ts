@@ -24,6 +24,41 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const resolveDefaultPipeline = async (resolvedCompanyId: string, resolvedUserId: string) => {
+      const { data: pipeline, error: pipelineError } = await supabase
+        .from("deal_pipelines")
+        .select("id, stages")
+        .eq("company_id", resolvedCompanyId)
+        .eq("is_default", true)
+        .maybeSingle();
+
+      if (pipelineError) {
+        console.error("Failed to load default pipeline for sample deal seeding:", {
+          user_id: resolvedUserId,
+          company_id: resolvedCompanyId,
+          error: pipelineError,
+        });
+        return null;
+      }
+
+      if (!pipeline) {
+        console.error("No default pipeline found for sample deal seeding:", {
+          user_id: resolvedUserId,
+          company_id: resolvedCompanyId,
+        });
+        return null;
+      }
+
+      const stages = Array.isArray(pipeline.stages)
+        ? (pipeline.stages as Array<{ id?: string }> )
+        : [];
+
+      return {
+        pipelineId: pipeline.id,
+        defaultStage: stages[1]?.id || stages[0]?.id || "qualification",
+      };
+    };
+
     // Resolve company_id: prefer a valid provided value, otherwise use the user's current membership.
     let resolvedCompanyId = company_id || null;
     if (resolvedCompanyId) {
@@ -64,60 +99,27 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Default pipeline stages used for new pipelines
-    const defaultPipelineStages = [
-      { id: "prospect", label: "Prospect", color: "bg-slate-500" },
-      { id: "qualification", label: "Qualification", color: "bg-blue-500" },
-      { id: "proposal", label: "Proposal", color: "bg-yellow-500" },
-      { id: "negotiation", label: "Negotiation", color: "bg-orange-500" },
-      { id: "closed-won", label: "Closed Won", color: "bg-green-500" },
-      { id: "closed-lost", label: "Closed Lost", color: "bg-red-500" },
-    ];
-
-    // Get or create default pipeline
     let pipelineId: string | null = null;
     let defaultStage = "qualification";
 
     if (resolvedCompanyId) {
-      // Try to find existing default pipeline
-      const { data: pipeline } = await supabase
-        .from("deal_pipelines")
-        .select("id, stages")
-        .eq("company_id", resolvedCompanyId)
-        .eq("is_default", true)
-        .maybeSingle();
-
-      if (pipeline) {
-        pipelineId = pipeline.id;
-        const stages = pipeline.stages as Array<{ id?: string }> | null;
-        if (stages && stages.length > 1 && stages[1]?.id) {
-          defaultStage = stages[1].id;
-        } else if (stages && stages.length > 0 && stages[0]?.id) {
-          defaultStage = stages[0].id;
-        }
-      } else {
-        // No default pipeline exists — create "Active Pipeline"
-        console.log("Creating default 'Active Pipeline' for company:", resolvedCompanyId);
-        const { data: newPipeline, error: pipelineError } = await supabase
-          .from("deal_pipelines")
-          .insert({
-            company_id: resolvedCompanyId,
-            name: "Active Pipeline",
-            stages: defaultPipelineStages,
-            is_default: true,
-            position: 0,
-          })
-          .select("id, stages")
-          .single();
-
-        if (pipelineError) {
-          console.error("Failed to create default pipeline:", pipelineError);
-        } else if (newPipeline) {
-          pipelineId = newPipeline.id;
-          // Use "qualification" (index 1) as default stage
-          defaultStage = "qualification";
-        }
+      const pipelineConfig = await resolveDefaultPipeline(resolvedCompanyId, user_id);
+      if (pipelineConfig) {
+        pipelineId = pipelineConfig.pipelineId;
+        defaultStage = pipelineConfig.defaultStage;
       }
+    }
+
+    if (!resolvedCompanyId || !pipelineId) {
+      console.error("Aborting sample deal seed because workspace pipeline is unavailable:", {
+        user_id,
+        company_id: resolvedCompanyId,
+        pipeline_id: pipelineId,
+      });
+      return new Response(JSON.stringify({ seeded: false, reason: "missing_default_pipeline" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // If the seeded sample deal already exists, attach it to the user's company/pipeline
