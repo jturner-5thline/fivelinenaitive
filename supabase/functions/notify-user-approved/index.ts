@@ -88,7 +88,7 @@ serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "naitive <noreply@notify.flexfi.ai>",
+        from: "naitive <noreply@updates.naitive.co>",
         to: [user_email],
         subject: "Your naitive Account Has Been Approved!",
         headers: {

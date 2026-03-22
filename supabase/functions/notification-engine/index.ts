@@ -309,7 +309,7 @@ serve(async (req) => {
             if (resendKey && recipientProfile?.email) {
               const resend = new Resend(resendKey);
               const { error: emailError } = await resend.emails.send({
-                from: "naitive <noreply@notify.flexfi.ai>",
+                from: "naitive <noreply@updates.naitive.co>",
                 to: recipientProfile.email,
                 subject: renderedSubject,
                 text: renderedBody,

@@ -474,7 +474,7 @@ async function sendWorkflowSummaryEmail(
         'Content-Type': 'application/json',
       },
         body: JSON.stringify({
-          from: 'naitive <noreply@notify.flexfi.ai>',
+          from: 'naitive <noreply@updates.naitive.co>',
           to: adminEmails,
           subject: `${statusEmoji} Workflow Actions Processed ${status}`,
         html: `

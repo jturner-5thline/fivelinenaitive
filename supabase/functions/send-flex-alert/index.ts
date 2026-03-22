@@ -143,7 +143,7 @@ const handler = async (req: Request): Promise<Response> => {
     const userName = profileData.first_name || profileData.display_name || 'there';
 
     const emailResponse = await resend.emails.send({
-      from: "naitive <noreply@notify.flexfi.ai>",
+      from: "naitive <noreply@updates.naitive.co>",
       reply_to: "support@naitive.co",
       to: [userData.user.email],
       subject: `naitive: ${template.subject}`,
