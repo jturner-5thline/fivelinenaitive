@@ -673,11 +673,30 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
 
       {/* Existing Debt Details */}
       <FlexChangedFieldWrapper fieldKey="existingDebtDetails" changedFields={changedFields} className="space-y-2">
-        <Label htmlFor="existingDebtDetails">Existing Debt Details</Label>
+        <div className="flex items-center gap-3">
+          <Label htmlFor="existingDebtDetails">Existing Debt Details</Label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <Switch
+              checked={debtBullets}
+              onCheckedChange={(checked) => {
+                setDebtBullets(checked);
+                updateField('existingDebtDetails', applyBullets(data.existingDebtDetails || '', checked));
+              }}
+              className="h-4 w-8 [&>span]:h-3 [&>span]:w-3 data-[state=checked]:[&>span]:translate-x-4"
+            />
+            <span className="text-xs text-muted-foreground select-none">Bullet list</span>
+          </label>
+        </div>
         <Textarea
           id="existingDebtDetails"
           value={data.existingDebtDetails}
-          onChange={(e) => updateField('existingDebtDetails', e.target.value)}
+          onChange={(e) => {
+            const val = debtBullets ? applyBullets(e.target.value, true) : e.target.value;
+            updateField('existingDebtDetails', val);
+          }}
+          onBlur={() => {
+            if (debtBullets) updateField('existingDebtDetails', applyBullets(data.existingDebtDetails || '', true));
+          }}
           placeholder="Lender: Silicon Valley Bank&#10;Amount: $500,000&#10;Terms: 3-year term loan at 8.5% APR&#10;Maturity: March 2024"
           className="min-h-[100px]"
         />
