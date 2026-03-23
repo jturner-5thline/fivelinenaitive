@@ -169,6 +169,8 @@ function CopilotAssistantContent({ content }: { content: string }) {
   const jsonBlockRegex = /```json\s*(\{[\s\S]*?\})\s*```/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
+  // Track seen confirm/auto_executed actions to prevent duplicates
+  const seenActions = new Set<string>();
 
   while ((match = jsonBlockRegex.exec(displayContent)) !== null) {
     if (match.index > lastIndex) segments.push({ type: 'text', value: displayContent.slice(lastIndex, match.index) });
@@ -178,8 +180,20 @@ function CopilotAssistantContent({ content }: { content: string }) {
       else if (parsed.responseType === 'lender_card') segments.push({ type: 'lender', value: parsed.data });
       else if (parsed.responseType === 'task_card') segments.push({ type: 'task', value: parsed.data });
       else if (parsed.responseType === 'pipeline_summary') segments.push({ type: 'pipeline', value: parsed.data });
-      else if (parsed.action === 'confirm' && parsed.action_type) segments.push({ type: 'confirm', value: parsed });
-      else if (parsed.action === 'auto_executed' && parsed.action_type) segments.push({ type: 'auto_executed', value: parsed });
+      else if (parsed.action === 'confirm' && parsed.action_type) {
+        const key = `confirm:${parsed.action_type}:${parsed.params?.deal_id || ''}:${parsed.params?.new_pipeline_id || parsed.params?.new_stage || ''}`;
+        if (!seenActions.has(key)) {
+          seenActions.add(key);
+          segments.push({ type: 'confirm', value: parsed });
+        }
+      }
+      else if (parsed.action === 'auto_executed' && parsed.action_type) {
+        const key = `auto:${parsed.action_type}:${parsed.params?.deal_id || ''}:${parsed.message || ''}`;
+        if (!seenActions.has(key)) {
+          seenActions.add(key);
+          segments.push({ type: 'auto_executed', value: parsed });
+        }
+      }
       else if (parsed.subject && parsed.body) segments.push({ type: 'email', value: parsed });
       else segments.push({ type: 'text', value: match[0] });
     } catch {

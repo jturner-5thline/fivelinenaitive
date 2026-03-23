@@ -1102,18 +1102,34 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       return { success: true, message: `Moved "${params.deal_name}" to "${params.new_stage}"`, actionType: "update_deal_stage", params: { deal_id: params.deal_id } };
     }
     case "move_deal_pipeline": {
+      console.log("[move_deal_pipeline] params:", JSON.stringify(params));
+      // Defensively look up deal name if missing
+      let dealName = params.deal_name;
+      let pipelineName = params.new_pipeline_name;
+      if (!dealName || !pipelineName) {
+        const { data: dealInfo } = await supabase.from("deals").select("company").eq("id", params.deal_id).single();
+        dealName = dealName || dealInfo?.company || "Unknown deal";
+        if (!pipelineName) {
+          const { data: pipeInfo } = await supabase.from("deal_pipelines").select("name").eq("id", params.new_pipeline_id).single();
+          pipelineName = pipeInfo?.name || "Unknown pipeline";
+        }
+      }
       const { error } = await supabase.from("deals").update({ pipeline_id: params.new_pipeline_id, stage: params.new_stage }).eq("id", params.deal_id);
-      if (error) return { success: false, error: error.message };
+      if (error) {
+        console.error("[move_deal_pipeline] update error:", error);
+        return { success: false, error: error.message };
+      }
       const { data: verified } = await supabase.from("deals").select("pipeline_id, stage").eq("id", params.deal_id).single();
       if (!verified || verified.pipeline_id !== params.new_pipeline_id) {
-        return { success: false, error: `Failed to move "${params.deal_name}" to "${params.new_pipeline_name}".` };
+        console.error("[move_deal_pipeline] verification failed:", verified);
+        return { success: false, error: `Failed to move "${dealName}" to "${pipelineName}". Update may have been blocked by permissions.` };
       }
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id, activity_type: "pipeline_change",
-        description: `Deal moved to "${params.new_pipeline_name}" pipeline (stage: ${params.new_stage}) via AI Copilot`,
+        description: `Deal moved to "${pipelineName}" pipeline (stage: ${params.new_stage}) via AI Copilot`,
         user_id: userId,
       });
-      return { success: true, message: `Moved "${params.deal_name}" to "${params.new_pipeline_name}" pipeline`, actionType: "move_deal_pipeline", params: { deal_id: params.deal_id } };
+      return { success: true, message: `Moved "${dealName}" to "${pipelineName}" pipeline`, actionType: "move_deal_pipeline", params: { deal_id: params.deal_id } };
     }
     case "create_task": {
       const { data: newTask, error } = await supabase.from("tasks").insert({
