@@ -297,6 +297,32 @@ const tools = [
       },
     },
   },
+  // ── MOVE DEAL BETWEEN PIPELINES ──
+  {
+    type: "function",
+    function: {
+      name: "move_deal_pipeline",
+      description: "Move a deal to a different pipeline (e.g. Active Deals, In Development, Archived). Use this when the user wants to move a deal between pipelines. This is NOT the same as changing stages within a pipeline. HIGH RISK — returns a confirmation card.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+          pipeline_name: { type: "string", description: "Target pipeline name (e.g. 'Active Deals', 'In Development', 'Archived')" },
+          new_stage: { type: "string", description: "Optional: stage to set in target pipeline. Defaults to first stage." },
+        },
+        required: ["deal_id", "pipeline_name"],
+      },
+    },
+  },
+  // ── GET PIPELINES ──
+  {
+    type: "function",
+    function: {
+      name: "get_pipelines",
+      description: "List all available pipelines for the user's company. Use to resolve pipeline names to IDs before moving deals.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
   // ── LENDER STATUS ──
   {
     type: "function",
@@ -403,6 +429,7 @@ function selectTools(page: string, entityType?: string) {
   const coreNames = new Set([
     "get_deal", "search_deals", "get_pipeline_summary", "get_activity_log",
     "draft_email", "create_task", "get_tasks", "search_team_members",
+    "get_pipelines", "move_deal_pipeline",
   ]);
 
   if (page.includes("lender")) {
@@ -460,6 +487,30 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         action_type: "update_deal_stage",
         description: `Move "${deal.company}" from "${deal.stage}" to "${args.new_stage}"`,
         params: { deal_id: args.deal_id, new_stage: args.new_stage, current_stage: deal.stage, deal_name: deal.company },
+      };
+    }
+    case "get_pipelines": {
+      const { data: pipelines } = await supabase.from("deal_pipelines").select("id, name, is_default, stages").order("position", { ascending: true });
+      return { pipelines: (pipelines || []).map((p: any) => ({ id: p.id, name: p.name, is_default: p.is_default, stage_count: Array.isArray(p.stages) ? p.stages.length : 0, stages: Array.isArray(p.stages) ? p.stages.map((s: any) => s.label || s.id) : [] })) };
+    }
+    case "move_deal_pipeline": {
+      const { data: deal } = await supabase.from("deals").select("id, company, stage, pipeline_id").eq("id", args.deal_id).single();
+      if (!deal) return { error: "Deal not found" };
+      // Find target pipeline by name (fuzzy)
+      const { data: pipelines } = await supabase.from("deal_pipelines").select("id, name, stages").order("position", { ascending: true });
+      if (!pipelines || pipelines.length === 0) return { error: "No pipelines found" };
+      const searchName = args.pipeline_name.toLowerCase();
+      const target = pipelines.find((p: any) => p.name.toLowerCase() === searchName)
+        || pipelines.find((p: any) => p.name.toLowerCase().includes(searchName));
+      if (!target) return { error: `Pipeline "${args.pipeline_name}" not found. Available: ${pipelines.map((p: any) => p.name).join(', ')}` };
+      if (target.id === deal.pipeline_id) return { error: `"${deal.company}" is already in the "${target.name}" pipeline.` };
+      const stages = Array.isArray(target.stages) ? target.stages : [];
+      const defaultStage = args.new_stage || (stages.length > 0 ? stages[0].id : 'qualification');
+      return {
+        action: "confirm",
+        action_type: "move_deal_pipeline",
+        description: `Move "${deal.company}" to the "${target.name}" pipeline (stage: ${stages.find((s: any) => s.id === defaultStage)?.label || defaultStage})`,
+        params: { deal_id: args.deal_id, new_pipeline_id: target.id, new_pipeline_name: target.name, new_stage: defaultStage, deal_name: deal.company },
       };
     }
     case "get_deal_lenders": {
@@ -1050,6 +1101,20 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       });
       return { success: true, message: `Moved "${params.deal_name}" to "${params.new_stage}"`, actionType: "update_deal_stage", params: { deal_id: params.deal_id } };
     }
+    case "move_deal_pipeline": {
+      const { error } = await supabase.from("deals").update({ pipeline_id: params.new_pipeline_id, stage: params.new_stage }).eq("id", params.deal_id);
+      if (error) return { success: false, error: error.message };
+      const { data: verified } = await supabase.from("deals").select("pipeline_id, stage").eq("id", params.deal_id).single();
+      if (!verified || verified.pipeline_id !== params.new_pipeline_id) {
+        return { success: false, error: `Failed to move "${params.deal_name}" to "${params.new_pipeline_name}".` };
+      }
+      await supabase.from("activity_logs").insert({
+        deal_id: params.deal_id, activity_type: "pipeline_change",
+        description: `Deal moved to "${params.new_pipeline_name}" pipeline (stage: ${params.new_stage}) via AI Copilot`,
+        user_id: userId,
+      });
+      return { success: true, message: `Moved "${params.deal_name}" to "${params.new_pipeline_name}" pipeline`, actionType: "move_deal_pipeline", params: { deal_id: params.deal_id } };
+    }
     case "create_task": {
       const { data: newTask, error } = await supabase.from("tasks").insert({
         title: params.title, description: params.description || null,
@@ -1563,7 +1628,9 @@ WRITE ACTION TOOLS:
 - delete_outstanding_item: Delete outstanding item (HIGH RISK, needs confirmation)
 - add_deal_note: Add note to activity log (LOW RISK, auto-executes)
 - update_deal_fields: Update deal size, close date, flag (MEDIUM/LOW RISK, depends on field)
-- update_deal_stage: Move deal to new stage (HIGH RISK, needs confirmation)
+- update_deal_stage: Move deal to a different stage WITHIN its current pipeline (HIGH RISK, needs confirmation). Do NOT use this to move between pipelines.
+- move_deal_pipeline: Move deal to a DIFFERENT pipeline entirely (e.g. from Active Deals to In Development, or to Archived). HIGH RISK, needs confirmation. Use get_pipelines first to see available pipelines.
+- get_pipelines: List all available pipelines with their stages. Use before move_deal_pipeline to resolve names to IDs.
 - update_lender_status: Update lender stage/status (HIGH RISK, needs confirmation)
 - create_task: Create a task (needs confirmation)
 

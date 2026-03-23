@@ -19,6 +19,7 @@ interface Props {
 
 const iconMap: Record<string, typeof ArrowRight> = {
   update_deal_stage: ArrowRight,
+  move_deal_pipeline: ArrowRight,
   create_task: Plus,
   update_milestone: CheckCircle,
   update_lender_status: RefreshCw,
@@ -92,6 +93,15 @@ export function CopilotActionConfirm({ action }: Props) {
         if (dealId) {
           queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
         }
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
+
+      case 'move_deal_pipeline':
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        }
+        queryClient.invalidateQueries({ queryKey: ['deals'] });
+        queryClient.invalidateQueries({ queryKey: ['pipelines'] });
         window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
         break;
     }

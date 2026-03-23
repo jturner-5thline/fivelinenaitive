@@ -1,0 +1,1 @@
+UPDATE deals SET stage = 'qualification' WHERE id = '881400f8-e554-4be3-8436-2c59222fdfef' AND stage = 'archived';
