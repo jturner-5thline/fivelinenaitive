@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { applyBullets } from '@/utils/bulletFormat';
-import { Plus, Trash2, CalendarIcon, Loader2, Check, X } from 'lucide-react';
+import { Plus, Trash2, CalendarIcon, Loader2, Check, X, List } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
