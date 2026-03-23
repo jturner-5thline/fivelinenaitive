@@ -260,7 +260,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
         const match = yearStr.match(/(\d{4})/);
         return match ? parseInt(match[1], 10) : Infinity;
       };
-      return parseYear(b.year) - parseYear(a.year);
+      return parseYear(a.year) - parseYear(b.year);
     });
   };
 
