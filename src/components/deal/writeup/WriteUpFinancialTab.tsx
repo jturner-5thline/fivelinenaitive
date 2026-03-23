@@ -186,6 +186,16 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
     });
   }, [data.financialDataAsOf]);
 
+  // Bullet toggle state
+  const [useOfFundsBullets, setUseOfFundsBullets] = useState(() => {
+    const v = data.useOfFunds || '';
+    return v.split('\n').filter(l => l.trim()).some(l => l.trimStart().startsWith('• '));
+  });
+  const [debtBullets, setDebtBullets] = useState(() => {
+    const v = data.existingDebtDetails || '';
+    return v.split('\n').filter(l => l.trim()).some(l => l.trimStart().startsWith('• '));
+  });
+
   // AI refine state
   const [isRefining, setIsRefining] = useState(false);
   const [refinedText, setRefinedText] = useState<string | null>(null);
