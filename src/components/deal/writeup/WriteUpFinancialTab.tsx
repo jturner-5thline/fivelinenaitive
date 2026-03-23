@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { applyBullets } from '@/utils/bulletFormat';
 import { Plus, Trash2, CalendarIcon, Loader2, Check, X, List } from 'lucide-react';
