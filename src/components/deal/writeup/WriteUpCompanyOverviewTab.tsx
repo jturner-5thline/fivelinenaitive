@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { applyBullets } from '@/utils/bulletFormat';
+
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
