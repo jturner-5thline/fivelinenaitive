@@ -62,6 +62,20 @@ export function useAutoSave<T>({
     save(data);
   }, [clearPendingTimeout, save, data]);
 
+  // Flush any pending save when auto-save becomes disabled (e.g., tab switch)
+  const prevEnabledRef = useRef(enabled);
+  useEffect(() => {
+    if (prevEnabledRef.current && !enabled) {
+      // Was enabled, now disabled — flush pending changes immediately
+      const serialized = JSON.stringify(data);
+      if (serialized !== lastSavedRef.current) {
+        clearPendingTimeout();
+        save(data);
+      }
+    }
+    prevEnabledRef.current = enabled;
+  }, [enabled, data, clearPendingTimeout, save]);
+
   // Watch for data changes and schedule auto-save
   useEffect(() => {
     // Skip the first render to avoid saving initial data
