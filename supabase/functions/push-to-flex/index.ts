@@ -55,8 +55,14 @@ interface DataRoomFile {
   size_bytes: number;
   content_type: string | null;
 }
+/** Return the string if it has real content, otherwise undefined. */
+function nonEmpty(val: string | null | undefined): string | undefined {
+  if (!val) return undefined;
+  const stripped = val.trim().replace(/<[^>]*>/g, '').trim();
+  return stripped.length > 0 ? val : undefined;
+}
 
-interface PushToFlexRequest {
+
   dealId?: string;
   action?: "publish" | "unpublish" | "sync_data_room" | "bulk_sync";
   writeUpData?: WriteUpData;
@@ -161,16 +167,16 @@ serve(async (req) => {
         industry: d.industry,
         state: d.location,
         deal_type: d.deal_type,
-        billing_model: d.billing_model || undefined,
-        profitability: d.profitability || undefined,
-        gross_margins: d.gross_margins || undefined,
-        capital_ask: d.capital_ask || undefined,
-        this_year_revenue: d.this_year_revenue || undefined,
-        last_year_revenue: d.last_year_revenue || undefined,
-        description: d.description || undefined,
-        use_of_funds: d.use_of_funds || undefined,
-        existing_debt: d.existing_debt_details || undefined,
-        data_room_url: d.data_room_url || undefined,
+        billing_model: nonEmpty(d.billing_model) ,
+        profitability: nonEmpty(d.profitability),
+        gross_margins: nonEmpty(d.gross_margins),
+        capital_ask: nonEmpty(d.capital_ask),
+        this_year_revenue: nonEmpty(d.this_year_revenue),
+        last_year_revenue: nonEmpty(d.last_year_revenue),
+        description: nonEmpty(d.description),
+        use_of_funds: nonEmpty(d.use_of_funds),
+        existing_debt: nonEmpty(d.existing_debt_details),
+        data_room_url: nonEmpty(d.data_room_url),
         key_items: d.key_items || undefined,
         is_published: !d.publish_as_anonymous,
         deal_manager_name: (d as any).deals?.manager || undefined,
@@ -387,15 +393,15 @@ serve(async (req) => {
         customer_base: (writeUpData as any).customerBase || undefined,
         headcount: (writeUpData as any).headcount || undefined,
         deal_type: writeUpData!.dealType,
-        billing_model: writeUpData!.billingModel || undefined,
-        profitability: writeUpData!.profitability || undefined,
-        gross_margins: writeUpData!.grossMargins || undefined,
-        capital_ask: writeUpData!.capitalAsk || undefined,
-        accounting_system: writeUpData!.accountingSystem || undefined,
-        description: writeUpData!.description || undefined,
-        use_of_funds: writeUpData!.useOfFunds || undefined,
-        existing_debt: writeUpData!.existingDebtDetails || undefined,
-        data_room_url: writeUpData!.dataRoomUrl || undefined,
+        billing_model: nonEmpty(writeUpData!.billingModel),
+        profitability: nonEmpty(writeUpData!.profitability),
+        gross_margins: nonEmpty(writeUpData!.grossMargins),
+        capital_ask: nonEmpty(writeUpData!.capitalAsk),
+        accounting_system: nonEmpty(writeUpData!.accountingSystem),
+        description: nonEmpty(writeUpData!.description),
+        use_of_funds: nonEmpty(writeUpData!.useOfFunds),
+        existing_debt: nonEmpty(writeUpData!.existingDebtDetails),
+        data_room_url: nonEmpty(writeUpData!.dataRoomUrl),
         key_items: writeUpData!.keyItems?.length > 0 ? writeUpData!.keyItems : undefined,
         company_highlights: writeUpData!.companyHighlights?.length > 0 ? writeUpData!.companyHighlights : undefined,
         financial_years: writeUpData!.financialYears?.length > 0 ? writeUpData!.financialYears : undefined,
