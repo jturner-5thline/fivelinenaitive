@@ -489,6 +489,30 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         params: { deal_id: args.deal_id, new_stage: args.new_stage, current_stage: deal.stage, deal_name: deal.company },
       };
     }
+    case "get_pipelines": {
+      const { data: pipelines } = await supabase.from("deal_pipelines").select("id, name, is_default, stages").order("position", { ascending: true });
+      return { pipelines: (pipelines || []).map((p: any) => ({ id: p.id, name: p.name, is_default: p.is_default, stage_count: Array.isArray(p.stages) ? p.stages.length : 0, stages: Array.isArray(p.stages) ? p.stages.map((s: any) => s.label || s.id) : [] })) };
+    }
+    case "move_deal_pipeline": {
+      const { data: deal } = await supabase.from("deals").select("id, company, stage, pipeline_id").eq("id", args.deal_id).single();
+      if (!deal) return { error: "Deal not found" };
+      // Find target pipeline by name (fuzzy)
+      const { data: pipelines } = await supabase.from("deal_pipelines").select("id, name, stages").order("position", { ascending: true });
+      if (!pipelines || pipelines.length === 0) return { error: "No pipelines found" };
+      const searchName = args.pipeline_name.toLowerCase();
+      const target = pipelines.find((p: any) => p.name.toLowerCase() === searchName)
+        || pipelines.find((p: any) => p.name.toLowerCase().includes(searchName));
+      if (!target) return { error: `Pipeline "${args.pipeline_name}" not found. Available: ${pipelines.map((p: any) => p.name).join(', ')}` };
+      if (target.id === deal.pipeline_id) return { error: `"${deal.company}" is already in the "${target.name}" pipeline.` };
+      const stages = Array.isArray(target.stages) ? target.stages : [];
+      const defaultStage = args.new_stage || (stages.length > 0 ? stages[0].id : 'qualification');
+      return {
+        action: "confirm",
+        action_type: "move_deal_pipeline",
+        description: `Move "${deal.company}" to the "${target.name}" pipeline (stage: ${stages.find((s: any) => s.id === defaultStage)?.label || defaultStage})`,
+        params: { deal_id: args.deal_id, new_pipeline_id: target.id, new_pipeline_name: target.name, new_stage: defaultStage, deal_name: deal.company },
+      };
+    }
     case "get_deal_lenders": {
       const { data } = await supabase.from("deal_lenders").select("id, name, stage, notes, tracking_status, created_at").eq("deal_id", args.deal_id).order("created_at", { ascending: false });
       return { lenders: data || [] };
