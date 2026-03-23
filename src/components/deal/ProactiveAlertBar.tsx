@@ -8,6 +8,7 @@ import { differenceInBusinessDays } from 'date-fns';
 interface ProactiveAlertBarProps {
   deal: {
     id: string;
+    status?: string;
     lenders?: Array<{
       id: string;
       name: string;
