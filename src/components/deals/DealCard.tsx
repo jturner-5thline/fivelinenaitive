@@ -49,6 +49,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
+  const [isEditDrawerMounted, setIsEditDrawerMounted] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [statusText, setStatusText] = useState('');
   const [mentionTaskUsers, setMentionTaskUsers] = useState<MentionedUser[]>([]);
