@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Switch } from '@/components/ui/switch';
+import { applyBullets } from '@/utils/bulletFormat';
 import { Plus, Trash2, CalendarIcon, Loader2, Check, X } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { format } from 'date-fns';
@@ -184,6 +185,16 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
       return formatted;
     });
   }, [data.financialDataAsOf]);
+
+  // Bullet toggle state
+  const [useOfFundsBullets, setUseOfFundsBullets] = useState(() => {
+    const v = data.useOfFunds || '';
+    return v.split('\n').filter(l => l.trim()).some(l => l.trimStart().startsWith('• '));
+  });
+  const [debtBullets, setDebtBullets] = useState(() => {
+    const v = data.existingDebtDetails || '';
+    return v.split('\n').filter(l => l.trim()).some(l => l.trimStart().startsWith('• '));
+  });
 
   // AI refine state
   const [isRefining, setIsRefining] = useState(false);
@@ -580,7 +591,20 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
       {/* Use of Funds */}
       <FlexChangedFieldWrapper fieldKey="useOfFunds" changedFields={changedFields} className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="useOfFunds">Use of Funds</Label>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="useOfFunds">Use of Funds</Label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <Switch
+                checked={useOfFundsBullets}
+                onCheckedChange={(checked) => {
+                  setUseOfFundsBullets(checked);
+                  updateField('useOfFunds', applyBullets(data.useOfFunds || '', checked));
+                }}
+                className="h-4 w-8 [&>span]:h-3 [&>span]:w-3 data-[state=checked]:[&>span]:translate-x-4"
+              />
+              <span className="text-xs text-muted-foreground select-none">Bullet list</span>
+            </label>
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -600,8 +624,12 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
           id="useOfFunds"
           value={data.useOfFunds}
           onChange={(e) => {
-            updateField('useOfFunds', e.target.value);
+            const val = useOfFundsBullets ? applyBullets(e.target.value, true) : e.target.value;
+            updateField('useOfFunds', val);
             setRefinedText(null);
+          }}
+          onBlur={() => {
+            if (useOfFundsBullets) updateField('useOfFunds', applyBullets(data.useOfFunds || '', true));
           }}
           placeholder="Expand sales team and accelerate product development for enterprise features."
           className="min-h-[80px]"
@@ -645,11 +673,30 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
 
       {/* Existing Debt Details */}
       <FlexChangedFieldWrapper fieldKey="existingDebtDetails" changedFields={changedFields} className="space-y-2">
-        <Label htmlFor="existingDebtDetails">Existing Debt Details</Label>
+        <div className="flex items-center gap-3">
+          <Label htmlFor="existingDebtDetails">Existing Debt Details</Label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <Switch
+              checked={debtBullets}
+              onCheckedChange={(checked) => {
+                setDebtBullets(checked);
+                updateField('existingDebtDetails', applyBullets(data.existingDebtDetails || '', checked));
+              }}
+              className="h-4 w-8 [&>span]:h-3 [&>span]:w-3 data-[state=checked]:[&>span]:translate-x-4"
+            />
+            <span className="text-xs text-muted-foreground select-none">Bullet list</span>
+          </label>
+        </div>
         <Textarea
           id="existingDebtDetails"
           value={data.existingDebtDetails}
-          onChange={(e) => updateField('existingDebtDetails', e.target.value)}
+          onChange={(e) => {
+            const val = debtBullets ? applyBullets(e.target.value, true) : e.target.value;
+            updateField('existingDebtDetails', val);
+          }}
+          onBlur={() => {
+            if (debtBullets) updateField('existingDebtDetails', applyBullets(data.existingDebtDetails || '', true));
+          }}
           placeholder="Lender: Silicon Valley Bank&#10;Amount: $500,000&#10;Terms: 3-year term loan at 8.5% APR&#10;Maturity: March 2024"
           className="min-h-[100px]"
         />
