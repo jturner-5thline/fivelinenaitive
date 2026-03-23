@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Switch } from '@/components/ui/switch';
+import { applyBullets } from '@/utils/bulletFormat';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -211,6 +213,7 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
   const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
   const [extractedCompanyName, setExtractedCompanyName] = useState<string>();
   const [dealManager, setDealManager] = useState('');
+  const [descBullets, setDescBullets] = useState(() => (data.description || '').split('\n').some(l => l.trimStart().startsWith('• ')));
   const teamSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -452,11 +455,30 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
 
       {/* Company Overview (formerly Description) */}
       <FlexChangedFieldWrapper fieldKey="description" changedFields={changedFields} className="space-y-2">
-        <Label htmlFor="description">Company Overview *</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="description">Company Overview *</Label>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Bullet list</span>
+            <Switch
+              checked={descBullets}
+              onCheckedChange={(checked) => {
+                setDescBullets(checked);
+                updateField('description', applyBullets(data.description || '', checked));
+              }}
+              className="h-4 w-8 [&>span]:h-3 [&>span]:w-3 data-[state=checked]:[&>span]:translate-x-4"
+            />
+          </div>
+        </div>
         <Textarea
           id="description"
           value={data.description}
-          onChange={(e) => updateField('description', e.target.value)}
+          onChange={(e) => {
+            const val = descBullets ? applyBullets(e.target.value, true) : e.target.value;
+            updateField('description', val);
+          }}
+          onBlur={() => {
+            if (descBullets) updateField('description', applyBullets(data.description || '', true));
+          }}
           placeholder="Enterprise SaaS platform for workflow automation with strong recurring revenue and expanding customer base."
           className="min-h-[100px]"
         />
