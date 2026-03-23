@@ -1406,7 +1406,7 @@ ${conversationMutations.map((m: any) => `- [${m.type}] ${m.detail} (at ${m.times
 RULES:
 1. Always ground answers in actual data. Never fabricate deal names, lender names, amounts, or dates.
 2. If asked about data you don't have, USE A TOOL to fetch it.
-3. For WRITE actions, use the appropriate tool. The tool returns either:
+3. For WRITE actions, ALWAYS use the appropriate tool function call. NEVER construct action JSON yourself in your text response. The tool will return data, and you should include that returned data verbatim in a \`\`\`json block:
    - "action": "confirm" → Include the JSON verbatim in a \`\`\`json block. The UI will render Confirm/Cancel buttons.
    - "action": "auto_executed" → Include the JSON verbatim in a \`\`\`json block. The UI will show a success indicator and trigger a refresh.
 4. Keep responses concise and actionable. Use bullet points.
@@ -1416,8 +1416,9 @@ RULES:
 8. When a tool returns "action": "confirm", wrap it in \`\`\`json ... \`\`\` so the frontend renders a confirmation card.
 9. When a tool returns "action": "auto_executed", wrap it in \`\`\`json ... \`\`\` so the frontend renders a success indicator.
 10. When drafting emails, return as \`\`\`json {"to_name": "...", "to_email": "...", "subject": "...", "body": "..."} \`\`\`.
-11. ALWAYS prefer using tools over guessing.
+11. ALWAYS prefer using tools over guessing. NEVER write action JSON manually — always call the tool function.
 12. CRITICAL: You MUST always provide a response. If you cannot perform an action, say so explicitly.
+13. CRITICAL: To move a deal between pipelines, you MUST call the move_deal_pipeline tool function. Do NOT write the move action JSON in your text. The tool handles pipeline lookup and returns the correct confirmation card.
 13. When presenting deal/lender/task/pipeline data, use responseType cards (deal_card, lender_card, task_card, pipeline_summary).
 14. IMPORTANT: Use the IDs from the LIVE DATA context when calling write tools. The milestone IDs, lender IDs, and outstanding item IDs are listed in [id: ...] format.
 
