@@ -46,7 +46,11 @@ export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete 
     const now = new Date();
 
     // Stale lenders
-    const activeLenders = (deal.lenders || []).filter(l => l.trackingStatus === 'active' || !l.trackingStatus);
+    const excludedStages = ['passed', 'on hold', 'on deck', 'not a fit', 'unresponsive'];
+    const activeLenders = (deal.lenders || []).filter(l => 
+      (l.trackingStatus === 'active' || !l.trackingStatus) &&
+      !excludedStages.includes((l.stage || '').toLowerCase())
+    );
     const staleLenders = activeLenders.filter(l => {
       if (!l.updatedAt) return true;
       return differenceInBusinessDays(now, new Date(l.updatedAt)) >= 5;
