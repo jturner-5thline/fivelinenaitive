@@ -1,6 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Switch } from '@/components/ui/switch';
-import { applyBullets } from '@/utils/bulletFormat';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -21,7 +20,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { DealWriteUpData, TeamMember } from '../DealWriteUp';
-import { Check, ChevronsUpDown, Loader2, Plus, Trash2, Linkedin, GripVertical } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Plus, Trash2, Linkedin, GripVertical, List } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -213,7 +212,7 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
   const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
   const [extractedCompanyName, setExtractedCompanyName] = useState<string>();
   const [dealManager, setDealManager] = useState('');
-  const [descBullets, setDescBullets] = useState(() => (data.description || '').split('\n').some(l => l.trimStart().startsWith('• ')));
+  const descTextareaRef = useRef<HTMLTextAreaElement>(null);
   const teamSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -457,28 +456,53 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
       <FlexChangedFieldWrapper fieldKey="description" changedFields={changedFields} className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="description">Company Overview *</Label>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Bullet list</span>
-            <Switch
-              checked={descBullets}
-              onCheckedChange={(checked) => {
-                setDescBullets(checked);
-                updateField('description', applyBullets(data.description || '', checked));
-              }}
-              className="h-4 w-8 [&>span]:h-3 [&>span]:w-3 data-[state=checked]:[&>span]:translate-x-4"
-            />
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            title="Toggle bullet on current line"
+            onClick={() => {
+              const ta = descTextareaRef.current;
+              if (!ta) return;
+              const val = data.description || '';
+              const start = ta.selectionStart ?? 0;
+              // Find the start and end of the current line
+              const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+              let lineEnd = val.indexOf('\n', start);
+              if (lineEnd === -1) lineEnd = val.length;
+              const line = val.substring(lineStart, lineEnd);
+              const trimmed = line.trimStart();
+              let newLine: string;
+              let cursorOffset: number;
+              if (trimmed.startsWith('• ')) {
+                // Remove bullet
+                newLine = line.replace('• ', '');
+                cursorOffset = -2;
+              } else {
+                // Add bullet
+                const leadingWhitespace = line.length - trimmed.length;
+                newLine = line.substring(0, leadingWhitespace) + '• ' + trimmed;
+                cursorOffset = 2;
+              }
+              const newVal = val.substring(0, lineStart) + newLine + val.substring(lineEnd);
+              updateField('description', newVal);
+              // Restore cursor position after React re-render
+              const newPos = Math.max(lineStart, Math.min(start + cursorOffset, lineStart + newLine.length));
+              requestAnimationFrame(() => {
+                ta.focus();
+                ta.setSelectionRange(newPos, newPos);
+              });
+            }}
+          >
+            <List className="h-4 w-4" />
+          </Button>
         </div>
         <Textarea
+          ref={descTextareaRef}
           id="description"
           value={data.description}
-          onChange={(e) => {
-            const val = descBullets ? applyBullets(e.target.value, true) : e.target.value;
-            updateField('description', val);
-          }}
-          onBlur={() => {
-            if (descBullets) updateField('description', applyBullets(data.description || '', true));
-          }}
+          onChange={(e) => updateField('description', e.target.value)}
           placeholder="Enterprise SaaS platform for workflow automation with strong recurring revenue and expanding customer base."
           className="min-h-[100px]"
         />
