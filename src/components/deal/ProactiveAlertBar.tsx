@@ -8,6 +8,7 @@ import { differenceInBusinessDays } from 'date-fns';
 interface ProactiveAlertBarProps {
   deal: {
     id: string;
+    status?: string;
     lenders?: Array<{
       id: string;
       name: string;
@@ -43,6 +44,11 @@ export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete 
 
   const alerts = useMemo(() => {
     const result: Alert[] = [];
+
+    // Suppress all alerts for on-hold or archived deals
+    const suppressedStatuses = ['on-hold', 'on_hold', 'archived'];
+    if (deal.status && suppressedStatuses.includes(deal.status)) return result;
+
     const now = new Date();
 
     // Stale lenders
