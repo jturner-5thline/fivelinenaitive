@@ -55,8 +55,14 @@ interface DataRoomFile {
   size_bytes: number;
   content_type: string | null;
 }
+/** Return the string if it has real content, otherwise undefined. */
+function nonEmpty(val: string | null | undefined): string | undefined {
+  if (!val) return undefined;
+  const stripped = val.trim().replace(/<[^>]*>/g, '').trim();
+  return stripped.length > 0 ? val : undefined;
+}
 
-interface PushToFlexRequest {
+
   dealId?: string;
   action?: "publish" | "unpublish" | "sync_data_room" | "bulk_sync";
   writeUpData?: WriteUpData;
