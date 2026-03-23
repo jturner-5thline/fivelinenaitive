@@ -49,6 +49,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
+  const [isEditDrawerMounted, setIsEditDrawerMounted] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [statusText, setStatusText] = useState('');
   const [mentionTaskUsers, setMentionTaskUsers] = useState<MentionedUser[]>([]);
@@ -284,17 +285,23 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    setIsEditDrawerMounted(true);
                     setIsEditDrawerOpen(true);
                   }}
                 >
                   <Search className="h-3.5 w-3.5" />
                 </Button>
-                <DealEditDrawer
-                  deal={deal}
-                  isOpen={isEditDrawerOpen}
-                  onClose={() => setIsEditDrawerOpen(false)}
-                  onStatusChange={onStatusChange}
-                />
+                {isEditDrawerMounted && (
+                  <DealEditDrawer
+                    deal={deal}
+                    isOpen={isEditDrawerOpen}
+                    onClose={() => {
+                      setIsEditDrawerOpen(false);
+                      setTimeout(() => setIsEditDrawerMounted(false), 350);
+                    }}
+                    onStatusChange={onStatusChange}
+                  />
+                )}
               </div>
               <p className="text-xl font-semibold text-foreground tracking-tight">{formatCurrencyValue(deal.value)}</p>
             </div>

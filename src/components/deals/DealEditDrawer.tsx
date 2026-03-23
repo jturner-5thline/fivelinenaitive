@@ -69,7 +69,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     }
   }, [isOpen]);
 
-  const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingNotes } = useStatusNotes(deal.id);
+  const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingNotes } = useStatusNotes(isOpen ? deal.id : undefined);
   const [newStatusNote, setNewStatusNote] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [hasUserEdited, setHasUserEdited] = useState(false);
