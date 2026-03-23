@@ -62,7 +62,7 @@ function nonEmpty(val: string | null | undefined): string | undefined {
   return stripped.length > 0 ? val : undefined;
 }
 
-
+interface PushToFlexRequest {
   dealId?: string;
   action?: "publish" | "unpublish" | "sync_data_room" | "bulk_sync";
   writeUpData?: WriteUpData;
