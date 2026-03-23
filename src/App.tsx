@@ -193,7 +193,7 @@ const App = () => (
                             <ProtectedRoute><AppLayout><Operations /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/deal/:id" element={
-                            <ProtectedRoute><AppLayout><DealDetail /></AppLayout></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><DealDetailKeyedWrapper /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/settings" element={
                             <ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>
