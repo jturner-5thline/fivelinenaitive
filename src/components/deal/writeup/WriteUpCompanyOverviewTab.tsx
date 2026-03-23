@@ -1,5 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Switch } from '@/components/ui/switch';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { applyBullets } from '@/utils/bulletFormat';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { Label } from '@/components/ui/label';
