@@ -19,6 +19,7 @@ interface Props {
 
 const iconMap: Record<string, typeof ArrowRight> = {
   update_deal_stage: ArrowRight,
+  move_deal_pipeline: ArrowRight,
   create_task: Plus,
   update_milestone: CheckCircle,
   update_lender_status: RefreshCw,

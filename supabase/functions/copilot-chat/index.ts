@@ -297,6 +297,32 @@ const tools = [
       },
     },
   },
+  // ── MOVE DEAL BETWEEN PIPELINES ──
+  {
+    type: "function",
+    function: {
+      name: "move_deal_pipeline",
+      description: "Move a deal to a different pipeline (e.g. Active Deals, In Development, Archived). Use this when the user wants to move a deal between pipelines. This is NOT the same as changing stages within a pipeline. HIGH RISK — returns a confirmation card.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+          pipeline_name: { type: "string", description: "Target pipeline name (e.g. 'Active Deals', 'In Development', 'Archived')" },
+          new_stage: { type: "string", description: "Optional: stage to set in target pipeline. Defaults to first stage." },
+        },
+        required: ["deal_id", "pipeline_name"],
+      },
+    },
+  },
+  // ── GET PIPELINES ──
+  {
+    type: "function",
+    function: {
+      name: "get_pipelines",
+      description: "List all available pipelines for the user's company. Use to resolve pipeline names to IDs before moving deals.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
   // ── LENDER STATUS ──
   {
     type: "function",
