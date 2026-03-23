@@ -135,9 +135,8 @@ const CONFIG_KEY = 'metrics_widgets';
 const PRESETS_CONFIG_KEY = 'metrics_presets';
 
 export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
-  const { company, isAdmin, isOwner } = useCompany();
-  const canEdit = isAdmin || isOwner;
-  const [widgets, setWidgets] = useState<MetricWidgetConfig[]>(DEFAULT_WIDGETS);
+  const { company } = useCompany();
+  const [widgets, setWidgets] = useState<MetricWidgetConfig[]>([]);
   const [presets, setPresets] = useState<MetricsLayoutPreset[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const widgetsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -145,7 +144,12 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
 
   // Load from company_settings
   useEffect(() => {
-    if (!company?.id) return;
+    if (!company?.id) {
+      // No company yet — show defaults locally but don't persist
+      setWidgets(DEFAULT_WIDGETS);
+      setIsLoaded(true);
+      return;
+    }
 
     (async () => {
       try {
@@ -158,12 +162,15 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
         const fpaConfig = (data?.fpa_dashboard_config as Record<string, any>) || {};
         if (fpaConfig[CONFIG_KEY] && Array.isArray(fpaConfig[CONFIG_KEY]) && fpaConfig[CONFIG_KEY].length > 0) {
           setWidgets(fpaConfig[CONFIG_KEY]);
+        } else {
+          setWidgets(DEFAULT_WIDGETS);
         }
         if (fpaConfig[PRESETS_CONFIG_KEY] && Array.isArray(fpaConfig[PRESETS_CONFIG_KEY])) {
           setPresets(fpaConfig[PRESETS_CONFIG_KEY]);
         }
       } catch (err) {
         console.error('Error loading metrics widgets config:', err);
+        setWidgets(DEFAULT_WIDGETS);
       } finally {
         setIsLoaded(true);
       }
@@ -171,8 +178,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
   }, [company?.id]);
 
   const persistWidgets = useCallback((newWidgets: MetricWidgetConfig[]) => {
-    if (!company?.id) {
-      console.warn('[MetricsWidgets] Cannot persist: no company ID');
+    if (!isLoaded || !company?.id) {
       return;
     }
     if (widgetsSaveTimerRef.current) clearTimeout(widgetsSaveTimerRef.current);
@@ -190,7 +196,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
         console.error('Error saving metrics widgets:', err);
       }
     }, 500);
-  }, [company?.id]);
+  }, [isLoaded, company?.id]);
 
   const persistPresets = useCallback((newPresets: MetricsLayoutPreset[]) => {
     if (!company?.id) return;
