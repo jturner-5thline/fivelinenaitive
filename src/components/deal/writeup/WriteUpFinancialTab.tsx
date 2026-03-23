@@ -937,8 +937,48 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                 />
               </div>
               <div className="space-y-2">
-                <Label>Description</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Description</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    title="Toggle bullet on current line"
+                    onClick={() => {
+                      const ta = document.getElementById(`fin-comment-desc-${item.id}`) as HTMLTextAreaElement | null;
+                      if (!ta) return;
+                      const val = item.description || '';
+                      const start = ta.selectionStart ?? 0;
+                      const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+                      let lineEnd = val.indexOf('\n', start);
+                      if (lineEnd === -1) lineEnd = val.length;
+                      const line = val.substring(lineStart, lineEnd);
+                      const trimmed = line.trimStart();
+                      let newLine: string;
+                      let cursorOffset: number;
+                      if (trimmed.startsWith('• ')) {
+                        newLine = line.replace('• ', '');
+                        cursorOffset = -2;
+                      } else {
+                        const lw = line.length - trimmed.length;
+                        newLine = line.substring(0, lw) + '• ' + trimmed;
+                        cursorOffset = 2;
+                      }
+                      const newVal = val.substring(0, lineStart) + newLine + val.substring(lineEnd);
+                      updateFinancialComment(item.id, 'description', newVal);
+                      const newPos = Math.max(lineStart, Math.min(start + cursorOffset, lineStart + newLine.length));
+                      requestAnimationFrame(() => {
+                        ta.focus();
+                        ta.setSelectionRange(newPos, newPos);
+                      });
+                    }}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
                 <Textarea
+                  id={`fin-comment-desc-${item.id}`}
                   value={item.description}
                   onChange={(e) => updateFinancialComment(item.id, 'description', e.target.value)}
                   placeholder="Revenue has grown 40% YoY driven by expansion into new markets..."
