@@ -307,10 +307,11 @@ const tools = [
         type: "object",
         properties: {
           deal_id: { type: "string", description: "Deal UUID" },
-          pipeline_name: { type: "string", description: "Target pipeline name (e.g. 'Active Deals', 'In Development', 'Archived')" },
+          pipeline_name: { type: "string", description: "Target pipeline name (e.g. 'Active Deals', 'In Development', 'Archived'). Use get_pipelines first to see available names." },
           new_stage: { type: "string", description: "Optional: stage to set in target pipeline. Defaults to first stage." },
         },
         required: ["deal_id", "pipeline_name"],
+        additionalProperties: false,
       },
     },
   },
