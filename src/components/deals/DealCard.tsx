@@ -289,12 +289,14 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 >
                   <Search className="h-3.5 w-3.5" />
                 </Button>
-                <DealEditDrawer
-                  deal={deal}
-                  isOpen={isEditDrawerOpen}
-                  onClose={() => setIsEditDrawerOpen(false)}
-                  onStatusChange={onStatusChange}
-                />
+                {isEditDrawerOpen && (
+                  <DealEditDrawer
+                    deal={deal}
+                    isOpen={isEditDrawerOpen}
+                    onClose={() => setIsEditDrawerOpen(false)}
+                    onStatusChange={onStatusChange}
+                  />
+                )}
               </div>
               <p className="text-xl font-semibold text-foreground tracking-tight">{formatCurrencyValue(deal.value)}</p>
             </div>
