@@ -591,7 +591,20 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
       {/* Use of Funds */}
       <FlexChangedFieldWrapper fieldKey="useOfFunds" changedFields={changedFields} className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="useOfFunds">Use of Funds</Label>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="useOfFunds">Use of Funds</Label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <Switch
+                checked={useOfFundsBullets}
+                onCheckedChange={(checked) => {
+                  setUseOfFundsBullets(checked);
+                  updateField('useOfFunds', applyBullets(data.useOfFunds || '', checked));
+                }}
+                className="h-4 w-8 [&>span]:h-3 [&>span]:w-3 data-[state=checked]:[&>span]:translate-x-4"
+              />
+              <span className="text-xs text-muted-foreground select-none">Bullet list</span>
+            </label>
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -611,8 +624,12 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
           id="useOfFunds"
           value={data.useOfFunds}
           onChange={(e) => {
-            updateField('useOfFunds', e.target.value);
+            const val = useOfFundsBullets ? applyBullets(e.target.value, true) : e.target.value;
+            updateField('useOfFunds', val);
             setRefinedText(null);
+          }}
+          onBlur={() => {
+            if (useOfFundsBullets) updateField('useOfFunds', applyBullets(data.useOfFunds || '', true));
           }}
           placeholder="Expand sales team and accelerate product development for enterprise features."
           className="min-h-[80px]"
