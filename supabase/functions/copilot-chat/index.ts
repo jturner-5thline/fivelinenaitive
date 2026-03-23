@@ -1628,7 +1628,9 @@ WRITE ACTION TOOLS:
 - delete_outstanding_item: Delete outstanding item (HIGH RISK, needs confirmation)
 - add_deal_note: Add note to activity log (LOW RISK, auto-executes)
 - update_deal_fields: Update deal size, close date, flag (MEDIUM/LOW RISK, depends on field)
-- update_deal_stage: Move deal to new stage (HIGH RISK, needs confirmation)
+- update_deal_stage: Move deal to a different stage WITHIN its current pipeline (HIGH RISK, needs confirmation). Do NOT use this to move between pipelines.
+- move_deal_pipeline: Move deal to a DIFFERENT pipeline entirely (e.g. from Active Deals to In Development, or to Archived). HIGH RISK, needs confirmation. Use get_pipelines first to see available pipelines.
+- get_pipelines: List all available pipelines with their stages. Use before move_deal_pipeline to resolve names to IDs.
 - update_lender_status: Update lender stage/status (HIGH RISK, needs confirmation)
 - create_task: Create a task (needs confirmation)
 
