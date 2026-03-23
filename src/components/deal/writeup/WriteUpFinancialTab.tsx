@@ -998,29 +998,29 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
         </div>
         <div className="grid grid-cols-2 gap-3">
           {(() => {
-            // Calculate YoY growth from last two financial years
-            const sortedYears = [...data.financialYears].filter(y => y.revenue && y.year);
-            let yoyValue: string | null = null;
-            if (sortedYears.length >= 2) {
-              const last = sortedYears[sortedYears.length - 1];
-              const prev = sortedYears[sortedYears.length - 2];
-              const lastRev = parseCurrencyToNumber(last.revenue);
-              const prevRev = parseCurrencyToNumber(prev.revenue);
-              if (lastRev !== null && prevRev !== null && prevRev !== 0) {
-                const growth = ((lastRev - prevRev) / Math.abs(prevRev)) * 100;
-                yoyValue = growth > 0 ? `+${growth.toFixed(1)}%` : `${growth.toFixed(1)}%`;
-              }
-            }
+            // Match financial years to the actual calendar year
+            const calendarYear = new Date().getFullYear();
+            const yearsWithParsed = data.financialYears
+              .filter(y => y.year)
+              .map(y => ({ ...y, parsedYear: parseYearToNumber(y.year) }));
 
-            // Get current/prior year revenue from sorted financial years
-            const lastYear = sortedYears.length >= 1 ? sortedYears[sortedYears.length - 1] : null;
-            const priorYear = sortedYears.length >= 2 ? sortedYears[sortedYears.length - 2] : null;
+            const currentYearData = yearsWithParsed.find(y => y.parsedYear === calendarYear) ?? null;
+            const priorYearData = yearsWithParsed.find(y => y.parsedYear === calendarYear - 1) ?? null;
+
+            const currentYearRev = currentYearData?.revenue ? parseCurrencyToNumber(currentYearData.revenue) : null;
+            const priorYearRev = priorYearData?.revenue ? parseCurrencyToNumber(priorYearData.revenue) : null;
+
+            let yoyValue: string | null = null;
+            if (currentYearRev !== null && priorYearRev !== null && priorYearRev !== 0) {
+              const growth = ((currentYearRev - priorYearRev) / Math.abs(priorYearRev)) * 100;
+              yoyValue = growth > 0 ? `+${growth.toFixed(1)}%` : `${growth.toFixed(1)}%`;
+            }
 
             const metricItems = [
               { key: 'yoy_growth' as const, label: 'YoY Growth', value: yoyValue },
-              { key: 'this_year_revenue' as const, label: 'Current Year Revenue', value: lastYear?.revenue ? formatCurrency(lastYear.revenue) : null },
-              { key: 'last_year_revenue' as const, label: 'Prior Year Revenue', value: priorYear?.revenue ? formatCurrency(priorYear.revenue) : null },
-              { key: 'gross_margins' as const, label: 'Gross Margins', value: data.grossMargins || null },
+              { key: 'this_year_revenue' as const, label: 'Current Year Revenue', value: currentYearData?.revenue ? formatCurrency(currentYearData.revenue) : null },
+              { key: 'last_year_revenue' as const, label: 'Prior Year Revenue', value: priorYearData?.revenue ? formatCurrency(priorYearData.revenue) : null },
+              { key: 'gross_margins' as const, label: 'Gross Margins', value: currentYearData?.gross_margin || data.grossMargins || null },
             ];
 
             const defaults = { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true };
