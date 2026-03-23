@@ -213,7 +213,7 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
   const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
   const [extractedCompanyName, setExtractedCompanyName] = useState<string>();
   const [dealManager, setDealManager] = useState('');
-  const [descBullets, setDescBullets] = useState(() => (data.description || '').split('\n').some(l => l.trimStart().startsWith('• ')));
+  const descTextareaRef = React.useRef<HTMLTextAreaElement>(null);
   const teamSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
