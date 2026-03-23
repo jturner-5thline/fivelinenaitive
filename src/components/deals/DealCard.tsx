@@ -285,16 +285,20 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    setIsEditDrawerMounted(true);
                     setIsEditDrawerOpen(true);
                   }}
                 >
                   <Search className="h-3.5 w-3.5" />
                 </Button>
-                {isEditDrawerOpen && (
+                {isEditDrawerMounted && (
                   <DealEditDrawer
                     deal={deal}
                     isOpen={isEditDrawerOpen}
-                    onClose={() => setIsEditDrawerOpen(false)}
+                    onClose={() => {
+                      setIsEditDrawerOpen(false);
+                      setTimeout(() => setIsEditDrawerMounted(false), 350);
+                    }}
                     onStatusChange={onStatusChange}
                   />
                 )}
