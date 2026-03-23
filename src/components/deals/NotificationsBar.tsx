@@ -65,7 +65,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
   
   const staleDeals: StaleDeal[] = [];
   
-  deals.filter(d => d.status !== 'archived' && d.status !== 'on_hold' && d.stage !== 'closed-lost').forEach(deal => {
+  deals.filter(d => d.status !== 'archived' && d.status !== 'on-hold' && d.stage !== 'closed-lost').forEach(deal => {
     let maxDays = 0;
     let staleLenderCount = 0;
     
