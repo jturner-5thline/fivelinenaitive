@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -80,6 +80,12 @@ const PendingApproval = lazy(lazyRetry(() => import("./pages/PendingApproval")))
 const PendingCompanyApproval = lazy(lazyRetry(() => import("./pages/PendingCompanyApproval")));
 const Homepage = lazy(lazyRetry(() => import("./pages/Homepage")));
 const Promo = lazy(lazyRetry(() => import("./pages/Promo")));
+
+/** Forces DealDetail to fully remount when navigating between deals */
+function DealDetailKeyedWrapper() {
+  const { id } = useParams<{ id: string }>();
+  return <DealDetail key={id} />;
+}
 
 
 const WfHub = lazy(lazyRetry(() => import("./pages/WfHub")));
@@ -193,7 +199,7 @@ const App = () => (
                             <ProtectedRoute><AppLayout><Operations /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/deal/:id" element={
-                            <ProtectedRoute><AppLayout><DealDetail /></AppLayout></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><DealDetailKeyedWrapper /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/settings" element={
                             <ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>
