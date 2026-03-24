@@ -145,7 +145,24 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     return tree.map(filterNode).filter(Boolean) as TreeNode[];
   }, [tree, searchQuery, categoryFilter, tagsByDocId]);
 
-  const toggleFolder = (folderId: string) => {
+  // Flat file list (no folders)
+  const flatFiles = useMemo(() => {
+    const files = documents.filter(d => !d.is_folder);
+    const q = searchQuery.toLowerCase();
+    const hasSearch = !!q.trim();
+    const hasCategory = categoryFilter !== 'all';
+    if (!hasSearch && !hasCategory) return files;
+    const categoryDocIds = hasCategory
+      ? new Set([...tagsByDocId.entries()].filter(([, tags]) => tags.some(t => t.account_category === categoryFilter)).map(([id]) => id))
+      : null;
+    return files.filter(f => {
+      const matchesSearch = !hasSearch || f.filename.toLowerCase().includes(q);
+      const matchesCategory = !categoryDocIds || categoryDocIds.has(f.id);
+      return matchesSearch && matchesCategory;
+    });
+  }, [documents, searchQuery, categoryFilter, tagsByDocId]);
+
+
     setExpandedFolders(prev => {
       const next = new Set(prev);
       if (next.has(folderId)) next.delete(folderId);
