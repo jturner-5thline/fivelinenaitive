@@ -131,6 +131,45 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[], o
     }
   }, [canEdit, persistLayout]);
 
+  // Flush pending debounced save on unmount or page unload
+  const pendingLayoutRef = useRef<GridLayoutItem[] | null>(null);
+  const originalSaveLayout = saveLayout;
+  const wrappedSaveLayout = useCallback((newLayout: GridLayoutItem[], immediate?: boolean) => {
+    pendingLayoutRef.current = newLayout;
+    originalSaveLayout(newLayout, immediate);
+    if (immediate) pendingLayoutRef.current = null;
+  }, [originalSaveLayout]);
+
+  useEffect(() => {
+    const flushOnUnload = () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (pendingLayoutRef.current && canEdit && company?.id) {
+        // Use sendBeacon for reliability during page unload
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/dashboard_grid_layouts`;
+        const body = JSON.stringify({
+          company_id: company.id,
+          dashboard_id: dashboardId,
+          layout: pendingLayoutRef.current,
+        });
+        navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+      }
+    };
+    window.addEventListener('beforeunload', flushOnUnload);
+    return () => {
+      window.removeEventListener('beforeunload', flushOnUnload);
+      // Also flush on unmount
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        if (pendingLayoutRef.current) {
+          persistLayout(pendingLayoutRef.current);
+        }
+      }
+    };
+  }, [canEdit, company?.id, dashboardId, persistLayout]);
+
   const resetLayout = useCallback(async () => {
     const def = generateDefaultLayout(defaultWidgetIds);
     setLayout(def);
@@ -142,5 +181,5 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[], o
       .eq('dashboard_id', dashboardId);
   }, [company?.id, dashboardId, defaultWidgetIds, canEdit]);
 
-  return { layout, saveLayout, resetLayout, isLoaded, canEdit };
+  return { layout, saveLayout: wrappedSaveLayout, resetLayout, isLoaded, canEdit };
 }
