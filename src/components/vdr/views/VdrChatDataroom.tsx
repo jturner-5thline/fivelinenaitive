@@ -105,13 +105,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [uploadTarget, setUploadTarget] = useState<string>('/');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  // Chat state
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
   // Account tags
   const { categories, tagsByDocId } = useVdrAccountTags(dealId);
 
