@@ -278,9 +278,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     for (const file of files) {
-      const target = uploadTarget === '/'
-        ? classifyFileToFolder(file.name, documents)
-        : uploadTarget;
+      const target = uploadTarget;
       await vdrDocs.uploadFile(file, target);
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
