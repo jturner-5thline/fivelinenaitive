@@ -91,7 +91,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         currentDeal={currentDeal}
         fileCount={vdrDocs.fileCount}
         ingestionStats={vdrDocs.ingestionStats}
-        profile={profile}
+        
         canPushToFlex={canPushToFlex}
         isPushingToFlex={isPushingToFlex}
         onPushToFlex={handlePushToFlex}
