@@ -121,6 +121,25 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [rightView, setRightView] = useState<'folders' | 'files'>('folders');
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [bulkUploadStep, setBulkUploadStep] = useState<'none' | 'upload' | 'mapping'>('none');
+  const [bulkBatchId, setBulkBatchId] = useState<string | null>(null);
+
+  // Deal checklist items for mapping
+  const [dealChecklistItems, setDealChecklistItems] = useState<{ id: string; name: string; category: string | null }[]>([]);
+  useEffect(() => {
+    if (!dealId) return;
+    supabase
+      .from('deal_checklist_items')
+      .select('id, name, category')
+      .eq('deal_id', dealId)
+      .order('position', { ascending: true })
+      .then(({ data }) => {
+        setDealChecklistItems((data || []) as { id: string; name: string; category: string | null }[]);
+      });
+  }, [dealId]);
+
+  // Uploaded items hook
+  const uploadedItems = useUploadedItems(dealId, bulkBatchId);
 
   // Checklist config
   const { config: checklistConfig, loading: checklistLoading } = useDefaultChecklistConfig(companyId ?? undefined);
