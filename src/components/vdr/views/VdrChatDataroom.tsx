@@ -18,6 +18,9 @@ interface VdrChatDataroomProps {
   documentsLoading: boolean;
   onPreview: (doc: VdrDocument) => void;
   vdrDocs: any;
+  canPushToFlex?: boolean;
+  isPushingToFlex?: boolean;
+  onPushToFlex?: () => void;
 }
 
 const ACCOUNT_TAG_COLORS: Record<string, string> = {
