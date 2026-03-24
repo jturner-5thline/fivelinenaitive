@@ -601,9 +601,12 @@ export default function DealDetail() {
     [deal?.lenders]
   );
   const [lenderSort, setLenderSort] = useState<'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest'>('updated-desc');
+  const [lenderDropdownOpen, setLenderDropdownOpen] = useState(false);
+  const pendingReorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [stableLenderSnapshot, setStableLenderSnapshot] = useState<DealLender[] | null>(null);
 
-  // Sort lenders based on selected sort option
-  const sortedLenders = useMemo(() => {
+  // Compute the "real" sorted order from current data
+  const computedSortedLenders = useMemo(() => {
     const lenders = deal?.lenders ? [...deal.lenders] : [];
     if (lenders.length === 0) return lenders;
     
@@ -634,6 +637,72 @@ export default function DealDetail() {
         return lenders;
     }
   }, [deal?.lenders, lenderSort, configuredStages]);
+
+  // Delayed reorder: use a stable snapshot that updates after 4s delay
+  // If a dropdown is open, defer until it closes
+  useEffect(() => {
+    // Clear any pending timer
+    if (pendingReorderTimer.current) {
+      clearTimeout(pendingReorderTimer.current);
+      pendingReorderTimer.current = null;
+    }
+
+    // If no snapshot yet, set immediately (initial load)
+    if (!stableLenderSnapshot) {
+      setStableLenderSnapshot(computedSortedLenders);
+      return;
+    }
+
+    // If dropdown is open, don't schedule — we'll handle it when dropdown closes
+    if (lenderDropdownOpen) return;
+
+    // Schedule a delayed update
+    pendingReorderTimer.current = setTimeout(() => {
+      setStableLenderSnapshot(computedSortedLenders);
+      pendingReorderTimer.current = null;
+    }, 4000);
+
+    return () => {
+      if (pendingReorderTimer.current) {
+        clearTimeout(pendingReorderTimer.current);
+      }
+    };
+  }, [computedSortedLenders, lenderDropdownOpen]);
+
+  // When dropdown closes, schedule the delayed reorder
+  useEffect(() => {
+    if (!lenderDropdownOpen && stableLenderSnapshot) {
+      if (pendingReorderTimer.current) {
+        clearTimeout(pendingReorderTimer.current);
+      }
+      pendingReorderTimer.current = setTimeout(() => {
+        setStableLenderSnapshot(computedSortedLenders);
+        pendingReorderTimer.current = null;
+      }, 4000);
+    }
+    return () => {
+      if (pendingReorderTimer.current) {
+        clearTimeout(pendingReorderTimer.current);
+      }
+    };
+  }, [lenderDropdownOpen]);
+
+  // Use the stable snapshot but update data (not order) from computed
+  const sortedLenders = useMemo(() => {
+    if (!stableLenderSnapshot) return computedSortedLenders;
+    // Use the order from the snapshot, but the data from computedSortedLenders
+    const dataMap = new Map(computedSortedLenders.map(l => [l.id, l]));
+    const result = stableLenderSnapshot
+      .filter(l => dataMap.has(l.id))
+      .map(l => dataMap.get(l.id)!);
+    // Add any new lenders not in snapshot
+    computedSortedLenders.forEach(l => {
+      if (!stableLenderSnapshot.some(s => s.id === l.id)) {
+        result.push(l);
+      }
+    });
+    return result;
+  }, [stableLenderSnapshot, computedSortedLenders]);
 
 
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
