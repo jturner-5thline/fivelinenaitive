@@ -536,7 +536,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       <ResizablePanel defaultSize={65} minSize={30}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/40">
+          <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-border/40">
             <h2 className="text-sm font-semibold">Dataroom</h2>
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{vdrDocs.fileCount} files</Badge>
             {processingCount > 0 && (
