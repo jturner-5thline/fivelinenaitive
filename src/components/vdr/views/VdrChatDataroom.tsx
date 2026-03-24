@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X } from 'lucide-react';
+import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,9 @@ interface VdrChatDataroomProps {
   documentsLoading: boolean;
   onPreview: (doc: VdrDocument) => void;
   vdrDocs: any;
+  canPushToFlex?: boolean;
+  isPushingToFlex?: boolean;
+  onPushToFlex?: () => void;
 }
 
 const ACCOUNT_TAG_COLORS: Record<string, string> = {
@@ -95,7 +98,7 @@ function buildTree(docs: VdrDocument[]): TreeNode[] {
   return [...tree, ...rootFiles];
 }
 
-export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview, vdrDocs }: VdrChatDataroomProps) {
+export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex }: VdrChatDataroomProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [newFolderDialog, setNewFolderDialog] = useState<{ parentPath: string } | null>(null);
@@ -395,7 +398,19 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                 {indexedCount} indexed
               </Badge>
             )}
-            <div className="ml-auto flex gap-0.5">
+            <div className="ml-auto flex items-center gap-1">
+              {canPushToFlex && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onPushToFlex}
+                  disabled={isPushingToFlex}
+                  className="h-6 gap-1 text-[10px] px-2 border-primary/40 text-primary hover:bg-primary/10"
+                >
+                  {isPushingToFlex ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  Push to FLEx
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUploadClick('/')} title="Upload files">
                 <Plus className="h-3.5 w-3.5" />
               </Button>

@@ -100,6 +100,9 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
               documentsLoading={vdrDocs.loading}
               onPreview={handlePreview}
               vdrDocs={vdrDocs}
+              canPushToFlex={canPushToFlex}
+              isPushingToFlex={isPushingToFlex}
+              onPushToFlex={handlePushToFlex}
             />
           </ResizablePanel>
 

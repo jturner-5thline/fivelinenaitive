@@ -7,9 +7,12 @@ interface VdrCenterPanelProps {
   documentsLoading: boolean;
   onPreview: (doc: VdrDocument) => void;
   vdrDocs: any;
+  canPushToFlex?: boolean;
+  isPushingToFlex?: boolean;
+  onPushToFlex?: () => void;
 }
 
-export function VdrCenterPanel({ dealId, documents, documentsLoading, onPreview, vdrDocs }: VdrCenterPanelProps) {
+export function VdrCenterPanel({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex }: VdrCenterPanelProps) {
   return (
     <div className="flex flex-col h-full min-w-0">
       <VdrChatDataroom
@@ -18,6 +21,9 @@ export function VdrCenterPanel({ dealId, documents, documentsLoading, onPreview,
         documentsLoading={documentsLoading}
         onPreview={onPreview}
         vdrDocs={vdrDocs}
+        canPushToFlex={canPushToFlex}
+        isPushingToFlex={isPushingToFlex}
+        onPushToFlex={onPushToFlex}
       />
     </div>
   );
