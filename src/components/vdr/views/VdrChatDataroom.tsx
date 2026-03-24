@@ -419,7 +419,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                 {indexedCount} indexed
               </Badge>
             )}
-            <div className="ml-auto flex gap-0.5">
+            <div className="ml-auto flex items-center gap-1">
+              {renderViewToggle(leftView, setLeftView)}
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setNewFolderDialog({ parentPath: '/' }); setNewFolderName(''); }} title="New folder">
                 <FolderPlus className="h-3.5 w-3.5" />
               </Button>
