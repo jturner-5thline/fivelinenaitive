@@ -37,7 +37,7 @@ export function VdrSidebar({
   currentDeal,
   fileCount,
   ingestionStats,
-  profile,
+  
   canPushToFlex,
   isPushingToFlex,
   onPushToFlex,
