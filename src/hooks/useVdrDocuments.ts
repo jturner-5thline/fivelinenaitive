@@ -81,7 +81,22 @@ export function useVdrDocuments(dealId: string) {
       }
     }
 
-    if (missingFolders.length > 0) {
+    // Remove folders that are not in the categories list (e.g. legacy "Team Communications")
+    const categoryNameSet = new Set(categoryNames);
+    const foldersToRemove = (existingFolders || []).filter((f: any) => !categoryNameSet.has(f.filename));
+    for (const folder of foldersToRemove) {
+      // Only remove if the folder is empty (no children)
+      const { count: childCount } = await (supabase as any)
+        .from('vdr_documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('deal_id', dealId)
+        .eq('folder_path', `/${folder.filename}/`);
+      if ((childCount ?? 0) === 0) {
+        await (supabase as any).from('vdr_documents').delete().eq('id', folder.id);
+      }
+    }
+
+    if (missingFolders.length > 0 || foldersToRemove.length > 0) {
       await fetchDocuments();
     }
   }, [dealId, company?.id, user?.id, fetchDocuments]);
