@@ -125,21 +125,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [bulkUploadStep, setBulkUploadStep] = useState<'none' | 'upload' | 'mapping'>('none');
   const [bulkBatchId, setBulkBatchId] = useState<string | null>(null);
 
-  // Build checklist items from Initial/Kick Off round configs for mapping
-  const checklistItemsForMapping = useMemo(() => {
-    const items: { id: string; name: string; category: string | null }[] = [];
-    if (initialRound) {
-      for (const item of initialRound.items) {
-        items.push({ id: item.id, name: item.label, category: 'Initial Items' });
-      }
-    }
-    if (kickOffRound) {
-      for (const item of kickOffRound.items) {
-        items.push({ id: item.id, name: item.label, category: 'Kick Off Items' });
-      }
-    }
-    return items;
-  }, [initialRound, kickOffRound]);
 
   // Uploaded items hook
   const uploadedItems = useUploadedItems(dealId, bulkBatchId);
