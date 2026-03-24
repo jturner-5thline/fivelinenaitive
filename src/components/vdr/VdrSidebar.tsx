@@ -48,7 +48,7 @@ export function VdrSidebar({
   currentDeal,
   activeView,
   onViewChange,
-  onDealChange,
+  
   fileCount,
   ingestionStats,
   profile,
