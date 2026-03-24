@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X, Send } from 'lucide-react';
+import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X, Send, FolderPlus, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -103,6 +103,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [newFolderDialog, setNewFolderDialog] = useState<{ parentPath: string } | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
+  const [renameDialog, setRenameDialog] = useState<{ id: string; currentName: string } | null>(null);
+  const [renameName, setRenameName] = useState('');
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<string>('/');
@@ -155,6 +157,25 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     await vdrDocs.createFolder(newFolderName.trim(), newFolderDialog.parentPath);
     setNewFolderDialog(null);
     setNewFolderName('');
+  };
+
+  const handleRename = async () => {
+    if (!renameName.trim() || !renameDialog) return;
+    await vdrDocs.renameDocument(renameDialog.id, renameName.trim());
+    toast.success(`Renamed to "${renameName.trim()}"`);
+    setRenameDialog(null);
+    setRenameName('');
+  };
+
+  const handleDeleteFolder = async (doc: VdrDocument) => {
+    // Check if folder has children
+    const folderPath = `${doc.folder_path === '/' ? '' : doc.folder_path}${doc.filename}/`;
+    const childDocs = documents.filter(d => d.folder_path === folderPath || d.folder_path?.startsWith(folderPath));
+    if (childDocs.length > 0) {
+      toast.error(`Cannot delete "${doc.filename}" — folder is not empty. Remove its contents first.`);
+      return;
+    }
+    await vdrDocs.deleteDocument(doc);
   };
 
   const handleUploadClick = (folderPath: string) => {
@@ -226,8 +247,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               <ContextMenuItem onClick={() => handleUploadClick(`/${doc.filename}/`)}>
                 Upload files here
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => toast.info('Rename coming soon')}>Rename</ContextMenuItem>
-              <ContextMenuItem className="text-destructive" onClick={() => vdrDocs.deleteDocument(doc)}>Delete</ContextMenuItem>
+              <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>Rename</ContextMenuItem>
+              <ContextMenuItem className="text-destructive" onClick={() => handleDeleteFolder(doc)}>Delete</ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
           {isExpanded && node.children.map(child => renderNode(child, depth + 1))}
@@ -278,7 +299,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             });
           }}>Download</ContextMenuItem>
           <ContextMenuItem onClick={() => toast.info('Move coming soon')}>Move to…</ContextMenuItem>
-          <ContextMenuItem onClick={() => toast.info('Rename coming soon')}>Rename</ContextMenuItem>
+          <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>Rename</ContextMenuItem>
           <ContextMenuItem className="text-destructive" onClick={() => vdrDocs.deleteDocument(doc)}>Delete</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -307,6 +328,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               </Badge>
             )}
             <div className="ml-auto flex gap-0.5">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setNewFolderDialog({ parentPath: '/' }); setNewFolderName(''); }} title="New folder">
+                <FolderPlus className="h-3.5 w-3.5" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUploadClick('/')} title="Upload files">
                 <Plus className="h-3.5 w-3.5" />
               </Button>
@@ -361,7 +385,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
           {/* New Folder Dialog */}
           <Dialog open={!!newFolderDialog} onOpenChange={open => { if (!open) setNewFolderDialog(null); }}>
             <DialogContent className="max-w-sm">
-              <DialogHeader><DialogTitle>New Subfolder</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{newFolderDialog?.parentPath === '/' ? 'New Folder' : 'New Subfolder'}</DialogTitle></DialogHeader>
               <Input
                 placeholder="Folder name"
                 value={newFolderName}
@@ -371,6 +395,23 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setNewFolderDialog(null)}>Cancel</Button>
                 <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>Create</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Rename Dialog */}
+          <Dialog open={!!renameDialog} onOpenChange={open => { if (!open) setRenameDialog(null); }}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader><DialogTitle>Rename</DialogTitle></DialogHeader>
+              <Input
+                placeholder="New name"
+                value={renameName}
+                onChange={e => setRenameName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleRename(); }}
+              />
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setRenameDialog(null)}>Cancel</Button>
+                <Button onClick={handleRename} disabled={!renameName.trim()}>Rename</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -411,6 +452,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                   Push to FLEx
                 </Button>
               )}
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setNewFolderDialog({ parentPath: '/' }); setNewFolderName(''); }} title="New folder">
+                <FolderPlus className="h-3.5 w-3.5" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUploadClick('/')} title="Upload files">
                 <Plus className="h-3.5 w-3.5" />
               </Button>
