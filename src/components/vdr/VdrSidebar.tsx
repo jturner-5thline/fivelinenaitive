@@ -35,37 +35,14 @@ export function VdrSidebar({
   dealId,
   deals,
   currentDeal,
-  activeView,
-  onViewChange,
-  
   fileCount,
   ingestionStats,
   profile,
-  onFileDrop,
   canPushToFlex,
   isPushingToFlex,
   onPushToFlex,
 }: VdrSidebarProps) {
-  const [isDragOver, setIsDragOver] = useState(false);
-  const dropRef = useRef<HTMLDivElement>(null);
-
   const statusBadge = getStatusBadge(currentDeal?.status);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    setIsDragOver(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) onFileDrop(files);
-  }, [onFileDrop]);
 
 
   return (
