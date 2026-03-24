@@ -91,7 +91,10 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         deals={deals}
         currentDeal={currentDeal}
         onFilesDropped={useCallback((files: File[]) => {
-          files.forEach(file => vdrDocs.uploadFile(file, '/', 'dataroom'));
+          files.forEach(file => {
+            const folderPath = classifyFileToFolder(file.name, vdrDocs.documents);
+            vdrDocs.uploadFile(file, folderPath, 'dataroom');
+          });
         }, [vdrDocs])}
       />
 
