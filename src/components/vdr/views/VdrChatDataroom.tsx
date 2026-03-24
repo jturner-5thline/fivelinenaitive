@@ -1,20 +1,16 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Send, Filter, X, Tag } from 'lucide-react';
+import { useState, useMemo, useCallback, useRef } from 'react';
+import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import ReactMarkdown from 'react-markdown';
 import type { VdrDocument } from '../types';
-import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useVdrAccountTags } from '@/hooks/useVdrAccountTags';
-import { useVdrSuggestions } from '@/hooks/useVdrSuggestions';
 
 interface VdrChatDataroomProps {
   dealId: string;
