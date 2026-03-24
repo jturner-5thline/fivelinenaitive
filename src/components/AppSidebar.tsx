@@ -210,51 +210,6 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
-          
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton tooltip="Profile" className="cursor-pointer">
-                  <Avatar className="h-5 w-5">
-                    <AvatarImage src="" />
-                    <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
-                      {userInitials}
-                    </AvatarFallback>
-                  </Avatar>
-                  {showExpanded && (
-                    <span className="truncate">{user?.email || "Profile"}</span>
-                  )}
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="right" align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate("/preferences?section=profile")}>
-                  <UserPen className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/account")}>
-                  <User className="mr-2 h-4 w-4" />
-                  Account
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/preferences")}>
-                  <SlidersHorizontal className="mr-2 h-4 w-4" />
-                  Preferences
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/settings")}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.dispatchEvent(new Event('restart-platform-tour'))}>
-                  <Compass className="mr-2 h-4 w-4" />
-                  Take a tour
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
