@@ -32,9 +32,9 @@ export function generateDefaultLayout(widgetIds: string[], cols = 3, w = 4, h = 
  * Hook to persist and restore grid layouts per company + dashboard.
  * All company members see the same layout; only admins can save changes.
  */
-export function useGridLayout(dashboardId: string, defaultWidgetIds: string[]) {
+export function useGridLayout(dashboardId: string, defaultWidgetIds: string[], options?: { allowAllMembers?: boolean }) {
   const { company, isAdmin, isOwner } = useCompany();
-  const canEdit = isAdmin || isOwner;
+  const canEdit = options?.allowAllMembers ? !!company?.id : (isAdmin || isOwner);
   const [layout, setLayout] = useState<GridLayoutItem[]>(() => generateDefaultLayout(defaultWidgetIds));
   const [isLoaded, setIsLoaded] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
