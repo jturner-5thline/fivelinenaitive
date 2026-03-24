@@ -162,7 +162,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     });
   }, [documents, searchQuery, categoryFilter, tagsByDocId]);
 
-
+  const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => {
       const next = new Set(prev);
       if (next.has(folderId)) next.delete(folderId);
