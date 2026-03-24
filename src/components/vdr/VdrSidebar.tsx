@@ -21,12 +21,6 @@ interface VdrSidebarProps {
   onPushToFlex?: () => void;
 }
 
-const NAV_ITEMS: { id: VdrView; label: string; icon: React.ElementType }[] = [
-  { id: 'chat-dataroom', label: 'Chat & Dataroom', icon: MessageSquare },
-  { id: 'irl-tracker', label: 'IRL Tracker', icon: ListChecks },
-  { id: 'incoming-data', label: 'Incoming Data', icon: Inbox },
-  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-];
 
 function getStatusBadge(status: string | undefined) {
   const s = (status || 'active').toLowerCase();
