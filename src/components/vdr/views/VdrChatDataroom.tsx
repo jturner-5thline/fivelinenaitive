@@ -20,13 +20,6 @@ interface VdrChatDataroomProps {
   vdrDocs: any;
 }
 
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  citations?: Array<{ filename: string; folder: string; similarity: number }>;
-}
-
 const ACCOUNT_TAG_COLORS: Record<string, string> = {
   'Revenue': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
   'COGS': 'bg-amber-500/15 text-amber-400 border-amber-500/25',
