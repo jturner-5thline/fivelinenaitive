@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-
+import { lovable } from "@/integrations/lovable/index";
 import naitiveLogoFull from "@/assets/naitive-logo-dark-mode-no-circle.png";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -239,14 +239,10 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/deals`,
-          queryParams: {
-            prompt: "select_account",
-          },
-          skipBrowserRedirect: false,
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/deals`,
+        extraParams: {
+          prompt: "select_account",
         },
       });
       if (error) {
