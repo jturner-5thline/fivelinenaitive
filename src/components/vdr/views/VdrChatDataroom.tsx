@@ -535,6 +535,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               </Badge>
             )}
             <div className="ml-auto flex items-center gap-1">
+              {renderViewToggle(rightView, setRightView)}
               {canPushToFlex && (
                 <Button
                   variant="outline"
