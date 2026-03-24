@@ -591,12 +591,14 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             )}
           </div>
 
-          {/* Tree */}
+          {/* Tree / Flat Files */}
           <div className="flex-1 overflow-auto px-1 pb-2">
             {documentsLoading ? (
               <div className="flex items-center justify-center h-32 text-xs text-muted-foreground">Loading…</div>
-            ) : (
+            ) : rightView === 'folders' ? (
               filteredTree.map(node => renderNode(node))
+            ) : (
+              flatFiles.map(doc => renderFlatFileItem(doc))
             )}
           </div>
         </div>
