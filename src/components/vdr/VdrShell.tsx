@@ -25,7 +25,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const { deals } = useDealsContext();
   const { user } = useAuth();
   const { company } = useCompany();
-  const { profile } = useProfile();
+  
   const navigate = useNavigate();
 
   const currentDeal = useMemo(() => deals.find(d => d.id === dealId), [deals, dealId]);
