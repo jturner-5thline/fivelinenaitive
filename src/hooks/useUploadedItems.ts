@@ -272,6 +272,7 @@ export function useUploadedItems(dealId: string | null, batchId: string | null) 
     setItemMappings,
     bulkSetMappings,
     setIgnored,
+    deleteItems,
     fetchItems,
     fetchMappings,
   };
