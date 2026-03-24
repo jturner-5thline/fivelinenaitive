@@ -94,7 +94,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         currentDeal={currentDeal}
         activeView={activeView}
         onViewChange={setActiveView}
-        onDealChange={handleDealChange}
+        
         fileCount={vdrDocs.fileCount}
         ingestionStats={vdrDocs.ingestionStats}
         profile={profile}
