@@ -551,7 +551,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
         ) : bulkUploadStep === 'mapping' ? (
           <BulkMappingTable
             rows={uploadedItems.mappingRows}
-            checklistItems={dealChecklistItems}
+            checklistItems={checklistItemsForMapping}
             onSetMappings={uploadedItems.setItemMappings}
             onBulkSetMappings={uploadedItems.bulkSetMappings}
             onSetIgnored={uploadedItems.setIgnored}
