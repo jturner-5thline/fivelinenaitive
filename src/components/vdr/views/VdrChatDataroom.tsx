@@ -247,8 +247,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               <ContextMenuItem onClick={() => handleUploadClick(`/${doc.filename}/`)}>
                 Upload files here
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => toast.info('Rename coming soon')}>Rename</ContextMenuItem>
-              <ContextMenuItem className="text-destructive" onClick={() => vdrDocs.deleteDocument(doc)}>Delete</ContextMenuItem>
+              <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>Rename</ContextMenuItem>
+              <ContextMenuItem className="text-destructive" onClick={() => handleDeleteFolder(doc)}>Delete</ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
           {isExpanded && node.children.map(child => renderNode(child, depth + 1))}
