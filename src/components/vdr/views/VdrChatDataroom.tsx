@@ -555,6 +555,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             onSetMappings={uploadedItems.setItemMappings}
             onBulkSetMappings={uploadedItems.bulkSetMappings}
             onSetIgnored={uploadedItems.setIgnored}
+            onDeleteItems={uploadedItems.deleteItems}
             onBack={() => setBulkUploadStep('upload')}
             onDone={() => { setBulkUploadStep('none'); setBulkBatchId(null); }}
           />
