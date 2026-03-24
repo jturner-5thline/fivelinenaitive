@@ -15,6 +15,10 @@ import { useVdrAccountTags } from '@/hooks/useVdrAccountTags';
 import { useDefaultChecklistConfig, findMatchingConfig, type RoundConfig } from '@/hooks/useDefaultChecklistConfig';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useUploadedItems } from '@/hooks/useUploadedItems';
+import { BulkUploadStep } from '../BulkUploadStep';
+import { BulkMappingTable } from '../BulkMappingTable';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VdrChatDataroomProps {
   dealId: string;
