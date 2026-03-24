@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { VdrDealStatus } from './types';
@@ -15,7 +15,7 @@ interface VdrSidebarProps {
   currentDeal: Deal | undefined;
   fileCount: number;
   ingestionStats?: { pending: number; processing: number; complete: number; failed: number };
-  profile: any;
+  
   canPushToFlex?: boolean;
   isPushingToFlex?: boolean;
   onPushToFlex?: () => void;
@@ -37,7 +37,7 @@ export function VdrSidebar({
   currentDeal,
   fileCount,
   ingestionStats,
-  profile,
+  
   canPushToFlex,
   isPushingToFlex,
   onPushToFlex,
@@ -126,21 +126,6 @@ export function VdrSidebar({
 
       <div className="flex-1" />
 
-      {/* Footer */}
-      <div className="mt-auto px-3 py-3 border-t border-border/40">
-        <div className="flex items-center gap-2">
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={profile?.avatar_url} />
-            <AvatarFallback className="text-[10px] bg-secondary">
-              {(profile?.display_name || profile?.email || 'U').charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium truncate">{profile?.display_name || 'User'}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{profile?.email}</p>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }

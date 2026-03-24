@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
-import { useProfile } from '@/hooks/useProfile';
+
 import { useVdrDocuments } from '@/hooks/useVdrDocuments';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +25,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const { deals } = useDealsContext();
   const { user } = useAuth();
   const { company } = useCompany();
-  const { profile } = useProfile();
+  
   const navigate = useNavigate();
 
   const currentDeal = useMemo(() => deals.find(d => d.id === dealId), [deals, dealId]);
@@ -91,7 +91,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         currentDeal={currentDeal}
         fileCount={vdrDocs.fileCount}
         ingestionStats={vdrDocs.ingestionStats}
-        profile={profile}
+        
         canPushToFlex={canPushToFlex}
         isPushingToFlex={isPushingToFlex}
         onPushToFlex={handlePushToFlex}
