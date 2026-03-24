@@ -178,6 +178,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     return items;
   }, [initialRound, kickOffRound]);
 
+  const toggleCheckItem = (itemId: string) => {
     setCheckedItems(prev => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId);
