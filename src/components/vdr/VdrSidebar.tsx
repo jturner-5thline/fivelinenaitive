@@ -122,58 +122,9 @@ export function VdrSidebar({
           </div>
         )}
 
-        {/* Team Comms Drop Zone */}
-        <div className="pt-1">
-          <p className="text-[10px] text-muted-foreground mb-1">Team Comms</p>
-          <div
-            ref={dropRef}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={cn(
-              'rounded-lg border border-dashed p-3 text-center transition-colors cursor-pointer',
-              isDragOver
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border/60 text-muted-foreground hover:border-primary/40'
-            )}
-            onClick={() => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.multiple = true;
-              input.onchange = () => {
-                const files = Array.from(input.files || []);
-                if (files.length > 0) onFileDrop(files);
-              };
-              input.click();
-            }}
-          >
-            <p className="text-[10px] leading-relaxed">Drop files or click to upload</p>
-          </div>
-        </div>
       </div>
 
-      {/* Views Navigation */}
-      <div className="px-3 pb-3 space-y-0.5 flex-1">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium px-1 pb-1">Views</p>
-        {NAV_ITEMS.map(item => {
-          const isActive = activeView === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onViewChange(item.id)}
-              className={cn(
-                'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-medium transition-colors',
-                isActive
-                  ? 'bg-primary/10 text-primary border-l-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-              )}
-            >
-              <item.icon className="h-3.5 w-3.5" />
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
+      <div className="flex-1" />
 
       {/* Footer */}
       <div className="mt-auto px-3 py-3 border-t border-border/40">
