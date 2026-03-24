@@ -265,6 +265,12 @@ export function BulkMappingTable({
             <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={() => handleBulkIgnore(false)}>
               <Undo2 className="h-3 w-3" /> Un-ignore
             </Button>
+            <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive" onClick={async () => {
+              await onDeleteItems(Array.from(selectedIds));
+              setSelectedIds(new Set());
+            }}>
+              <Trash2 className="h-3 w-3" /> Delete
+            </Button>
           </div>
         </div>
       )}
