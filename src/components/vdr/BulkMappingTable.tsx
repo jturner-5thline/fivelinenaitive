@@ -38,6 +38,7 @@ export function BulkMappingTable({
   onSetMappings,
   onBulkSetMappings,
   onSetIgnored,
+  onDeleteItems,
   onBack,
   onDone,
 }: BulkMappingTableProps) {
