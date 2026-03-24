@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
-import { ArrowLeftRight, MessageSquare, ListChecks, Inbox, CheckSquare, Folder, MoreHorizontal, User, Send, Loader2 } from 'lucide-react';
+import { Folder, MoreHorizontal, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,20 +6,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import type { VdrView, VdrDealStatus } from './types';
+import type { VdrDealStatus } from './types';
 import type { Deal } from '@/types/deal';
 
 interface VdrSidebarProps {
   dealId: string;
   deals: Deal[];
   currentDeal: Deal | undefined;
-  activeView: VdrView;
-  onViewChange: (view: VdrView) => void;
-  
   fileCount: number;
   ingestionStats?: { pending: number; processing: number; complete: number; failed: number };
   profile: any;
-  onFileDrop: (files: File[]) => void;
   canPushToFlex?: boolean;
   isPushingToFlex?: boolean;
   onPushToFlex?: () => void;
