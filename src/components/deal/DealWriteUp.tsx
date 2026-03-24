@@ -1154,12 +1154,12 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           
           {viewMode === 'tabs' && (
             <Tabs defaultValue="company-overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-5 rounded-sm">
-                <TabsTrigger value="company-overview" className="min-w-0 truncate rounded-sm">Company Overview</TabsTrigger>
-                <TabsTrigger value="financial" className="min-w-0 truncate rounded-sm">Financial</TabsTrigger>
-                <TabsTrigger value="highlights" className="min-w-0 truncate rounded-sm">Company Highlights</TabsTrigger>
-                <TabsTrigger value="key-items" className="min-w-0 truncate rounded-sm">Key Items</TabsTrigger>
-                <TabsTrigger value="ownership" className="min-w-0 truncate rounded-sm">Ownership</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-5 rounded-sm gap-1 bg-transparent p-1">
+                <TabsTrigger value="company-overview" className="min-w-0 truncate rounded-md border border-border/20 data-[state=active]:border-border/40">Company Overview</TabsTrigger>
+                <TabsTrigger value="financial" className="min-w-0 truncate rounded-md border border-border/20 data-[state=active]:border-border/40">Financial</TabsTrigger>
+                <TabsTrigger value="highlights" className="min-w-0 truncate rounded-md border border-border/20 data-[state=active]:border-border/40">Company Highlights</TabsTrigger>
+                <TabsTrigger value="key-items" className="min-w-0 truncate rounded-md border border-border/20 data-[state=active]:border-border/40">Key Items</TabsTrigger>
+                <TabsTrigger value="ownership" className="min-w-0 truncate rounded-md border border-border/20 data-[state=active]:border-border/40">Ownership</TabsTrigger>
               </TabsList>
               
               <TabsContent value="company-overview" className="mt-6">
