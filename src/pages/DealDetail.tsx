@@ -4188,6 +4188,7 @@ export default function DealDetail() {
                                           </Select>
                                           <Select
                                             value={lender.substage || '__none__'}
+                                            onOpenChange={(open) => setLenderDropdownOpen(open)}
                                             onValueChange={(value: LenderSubstage) => {
                                               const newSubstage = value === '__none__' ? undefined : value;
                                               
