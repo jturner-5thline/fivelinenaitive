@@ -16,7 +16,7 @@ interface VdrSidebarProps {
   currentDeal: Deal | undefined;
   activeView: VdrView;
   onViewChange: (view: VdrView) => void;
-  onDealChange: (dealId: string) => void;
+  
   fileCount: number;
   ingestionStats?: { pending: number; processing: number; complete: number; failed: number };
   profile: any;
