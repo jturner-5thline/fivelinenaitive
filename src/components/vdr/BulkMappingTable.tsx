@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Search, FileText, Check, X, ChevronDown, Ban, Undo2, ArrowLeft } from 'lucide-react';
+import { Search, FileText, Check, X, ChevronDown, Ban, Undo2, ArrowLeft, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ interface BulkMappingTableProps {
   onSetMappings: (uploadedItemId: string, checklistItemIds: string[]) => Promise<boolean>;
   onBulkSetMappings: (uploadedItemIds: string[], checklistItemIds: string[]) => Promise<boolean>;
   onSetIgnored: (uploadedItemIds: string[], ignored: boolean) => Promise<boolean>;
+  onDeleteItems: (uploadedItemIds: string[]) => Promise<boolean>;
   onBack: () => void;
   onDone: () => void;
 }
@@ -37,6 +38,7 @@ export function BulkMappingTable({
   onSetMappings,
   onBulkSetMappings,
   onSetIgnored,
+  onDeleteItems,
   onBack,
   onDone,
 }: BulkMappingTableProps) {
@@ -263,6 +265,12 @@ export function BulkMappingTable({
             <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={() => handleBulkIgnore(false)}>
               <Undo2 className="h-3 w-3" /> Un-ignore
             </Button>
+            <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive" onClick={async () => {
+              await onDeleteItems(Array.from(selectedIds));
+              setSelectedIds(new Set());
+            }}>
+              <Trash2 className="h-3 w-3" /> Delete
+            </Button>
           </div>
         </div>
       )}
@@ -319,14 +327,24 @@ export function BulkMappingTable({
                     </Badge>
                   </td>
                   <td className="px-2 py-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 text-[9px] px-1.5"
-                      onClick={() => isIgnored ? onSetIgnored([row.id], false) : onSetIgnored([row.id], true)}
-                    >
-                      {isIgnored ? 'Un-ignore' : 'Ignore'}
-                    </Button>
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 text-[9px] px-1.5"
+                        onClick={() => isIgnored ? onSetIgnored([row.id], false) : onSetIgnored([row.id], true)}
+                      >
+                        {isIgnored ? 'Un-ignore' : 'Ignore'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 text-[9px] px-1 text-destructive hover:text-destructive"
+                        onClick={() => onDeleteItems([row.id])}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               );

@@ -221,6 +221,35 @@ export function useUploadedItems(dealId: string | null, batchId: string | null) 
     }
   }, [user, mappings]);
 
+  // Delete uploaded items
+  const deleteItems = useCallback(async (uploadedItemIds: string[]): Promise<boolean> => {
+    if (!user || uploadedItemIds.length === 0) return false;
+    try {
+      // Delete mappings first
+      const { error: mapErr } = await supabase
+        .from('uploaded_item_checklist_mapping')
+        .delete()
+        .in('uploaded_item_id', uploadedItemIds);
+      if (mapErr) throw mapErr;
+
+      // Delete items
+      const { error } = await supabase
+        .from('uploaded_items')
+        .delete()
+        .in('id', uploadedItemIds);
+      if (error) throw error;
+
+      setItems(prev => prev.filter(i => !uploadedItemIds.includes(i.id)));
+      setMappings(prev => prev.filter(m => !uploadedItemIds.includes(m.uploaded_item_id)));
+      toast.success(`Deleted ${uploadedItemIds.length} item(s)`);
+      return true;
+    } catch (err) {
+      console.error('Error deleting uploaded items:', err);
+      toast.error('Failed to delete items');
+      return false;
+    }
+  }, [user]);
+
   // Build mapping rows for the table
   const mappingRows: MappingRow[] = useMemo(() => {
     return items.map(item => ({
@@ -243,6 +272,7 @@ export function useUploadedItems(dealId: string | null, batchId: string | null) 
     setItemMappings,
     bulkSetMappings,
     setIgnored,
+    deleteItems,
     fetchItems,
     fetchMappings,
   };
