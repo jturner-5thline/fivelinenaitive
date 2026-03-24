@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
-import { useProfile } from '@/hooks/useProfile';
+
 import { useVdrDocuments } from '@/hooks/useVdrDocuments';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { supabase } from '@/integrations/supabase/client';
