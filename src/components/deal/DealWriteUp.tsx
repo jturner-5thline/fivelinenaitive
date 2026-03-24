@@ -1154,13 +1154,13 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           
           {viewMode === 'tabs' && (
             <Tabs defaultValue="company-overview" className="w-full">
-              <div className="grid w-full grid-cols-5 gap-2 p-1" role="tablist">
+              <TabsList className="grid w-full grid-cols-5 gap-2 bg-transparent p-1 h-auto [&>span]:hidden">
                 <TabsTrigger value="company-overview" className="min-w-0 truncate rounded-md border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 data-[state=active]:bg-[rgba(126,184,247,0.1)] data-[state=active]:border-[rgba(126,184,247,0.25)] data-[state=active]:text-primary data-[state=active]:shadow-[inset_0_1px_1px_rgba(126,184,247,0.1)]">Company Overview</TabsTrigger>
                 <TabsTrigger value="financial" className="min-w-0 truncate rounded-md border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 data-[state=active]:bg-[rgba(126,184,247,0.1)] data-[state=active]:border-[rgba(126,184,247,0.25)] data-[state=active]:text-primary data-[state=active]:shadow-[inset_0_1px_1px_rgba(126,184,247,0.1)]">Financial</TabsTrigger>
                 <TabsTrigger value="highlights" className="min-w-0 truncate rounded-md border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 data-[state=active]:bg-[rgba(126,184,247,0.1)] data-[state=active]:border-[rgba(126,184,247,0.25)] data-[state=active]:text-primary data-[state=active]:shadow-[inset_0_1px_1px_rgba(126,184,247,0.1)]">Company Highlights</TabsTrigger>
                 <TabsTrigger value="key-items" className="min-w-0 truncate rounded-md border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 data-[state=active]:bg-[rgba(126,184,247,0.1)] data-[state=active]:border-[rgba(126,184,247,0.25)] data-[state=active]:text-primary data-[state=active]:shadow-[inset_0_1px_1px_rgba(126,184,247,0.1)]">Key Items</TabsTrigger>
                 <TabsTrigger value="ownership" className="min-w-0 truncate rounded-md border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 data-[state=active]:bg-[rgba(126,184,247,0.1)] data-[state=active]:border-[rgba(126,184,247,0.25)] data-[state=active]:text-primary data-[state=active]:shadow-[inset_0_1px_1px_rgba(126,184,247,0.1)]">Ownership</TabsTrigger>
-              </div>
+              </TabsList>
               
               <TabsContent value="company-overview" className="mt-6">
                 <WriteUpCompanyOverviewTab dealId={dealId} data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} isFieldEdited={isFieldEdited} />
