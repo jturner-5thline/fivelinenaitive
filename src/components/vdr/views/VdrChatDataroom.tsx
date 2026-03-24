@@ -325,6 +325,79 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     );
   };
 
+  const renderViewToggle = (view: 'folders' | 'files', setView: (v: 'folders' | 'files') => void) => (
+    <div className="inline-flex items-center rounded-md border border-border/40 p-0.5 gap-0">
+      <button
+        onClick={() => setView('folders')}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium transition-colors',
+          view === 'folders' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
+        )}
+        title="Folder view"
+      >
+        <FolderTree className="h-3 w-3" />
+        Folders
+      </button>
+      <button
+        onClick={() => setView('files')}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium transition-colors',
+          view === 'files' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
+        )}
+        title="All files view"
+      >
+        <List className="h-3 w-3" />
+        All Files
+      </button>
+    </div>
+  );
+
+  const renderFlatFileItem = (doc: VdrDocument) => {
+    const docTags = tagsByDocId.get(doc.id);
+    return (
+      <ContextMenu key={doc.id}>
+        <ContextMenuTrigger>
+          <div
+            className="flex items-center gap-1.5 py-1 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group"
+            style={{ paddingLeft: '8px' }}
+            onClick={() => onPreview(doc)}
+          >
+            {getIngestionIcon(doc.ingestion_status)}
+            {getFileIcon(doc.filename)}
+            <span className="truncate flex-1 min-w-0">{doc.filename}</span>
+            <span className="text-[9px] text-muted-foreground/60 flex-shrink-0 truncate max-w-[80px]" title={doc.folder_path}>
+              {doc.folder_path === '/' ? 'Root' : doc.folder_path.replace(/^\/|\/$/g, '')}
+            </span>
+            {docTags && docTags.length > 0 && (
+              <div className="flex gap-0.5 flex-shrink-0">
+                {docTags.slice(0, 2).map((t, i) => (
+                  <span
+                    key={i}
+                    className={cn('px-1 py-px rounded text-[8px] leading-tight border', getTagColor(t.account_category))}
+                    title={`${t.account_category} (${Math.round(t.confidence_score * 100)}%)`}
+                  >
+                    {t.account_category.length > 8 ? t.account_category.slice(0, 7) + '…' : t.account_category}
+                  </span>
+                ))}
+              </div>
+            )}
+            <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 flex-shrink-0">{formatSize(doc.file_size)}</span>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => onPreview(doc)}>Preview</ContextMenuItem>
+          <ContextMenuItem onClick={() => {
+            vdrDocs.getDownloadUrl(doc.file_path).then((url: string | null) => {
+              if (url) { const a = document.createElement('a'); a.href = url; a.download = doc.filename; a.click(); }
+            });
+          }}>Download</ContextMenuItem>
+          <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>Rename</ContextMenuItem>
+          <ContextMenuItem className="text-destructive" onClick={() => vdrDocs.deleteDocument(doc)}>Delete</ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  };
+
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">
       {/* File Tree */}
