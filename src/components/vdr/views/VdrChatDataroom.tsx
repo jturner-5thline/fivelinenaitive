@@ -405,7 +405,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/40">
-            <h2 className="text-sm font-semibold">Dataroom</h2>
+            <h2 className="text-sm font-semibold">Internal</h2>
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{vdrDocs.fileCount} files</Badge>
             {processingCount > 0 && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/30 text-amber-400 gap-1">
