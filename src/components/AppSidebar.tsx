@@ -13,7 +13,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { usePageAccessFlags } from "@/hooks/useFeatureFlags";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { useCompany } from "@/hooks/useCompany";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 
 import {
   Sidebar,
