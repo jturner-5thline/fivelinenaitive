@@ -125,19 +125,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [bulkUploadStep, setBulkUploadStep] = useState<'none' | 'upload' | 'mapping'>('none');
   const [bulkBatchId, setBulkBatchId] = useState<string | null>(null);
 
-  // Deal checklist items for mapping
-  const [dealChecklistItems, setDealChecklistItems] = useState<{ id: string; name: string; category: string | null }[]>([]);
-  useEffect(() => {
-    if (!dealId) return;
-    supabase
-      .from('deal_checklist_items')
-      .select('id, name, category')
-      .eq('deal_id', dealId)
-      .order('position', { ascending: true })
-      .then(({ data }) => {
-        setDealChecklistItems((data || []) as { id: string; name: string; category: string | null }[]);
-      });
-  }, [dealId]);
 
   // Uploaded items hook
   const uploadedItems = useUploadedItems(dealId, bulkBatchId);
@@ -174,6 +161,22 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     return matchedConfig.rounds.find(r => r.title.toLowerCase().includes('kick')) || 
            (matchedConfig.rounds.length > 1 ? matchedConfig.rounds[1] : null);
   }, [matchedConfig]);
+
+  // Build checklist items from Initial/Kick Off round configs for mapping
+  const checklistItemsForMapping = useMemo(() => {
+    const items: { id: string; name: string; category: string | null }[] = [];
+    if (initialRound) {
+      for (const item of initialRound.items) {
+        items.push({ id: item.id, name: item.label, category: 'Initial Items' });
+      }
+    }
+    if (kickOffRound) {
+      for (const item of kickOffRound.items) {
+        items.push({ id: item.id, name: item.label, category: 'Kick Off Items' });
+      }
+    }
+    return items;
+  }, [initialRound, kickOffRound]);
 
   const toggleCheckItem = (itemId: string) => {
     setCheckedItems(prev => {
@@ -548,7 +551,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
         ) : bulkUploadStep === 'mapping' ? (
           <BulkMappingTable
             rows={uploadedItems.mappingRows}
-            checklistItems={dealChecklistItems}
+            checklistItems={checklistItemsForMapping}
             onSetMappings={uploadedItems.setItemMappings}
             onBulkSetMappings={uploadedItems.bulkSetMappings}
             onSetIgnored={uploadedItems.setIgnored}
