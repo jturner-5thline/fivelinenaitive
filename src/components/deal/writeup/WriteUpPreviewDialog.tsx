@@ -648,7 +648,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                       {data.financialComments.map(fc => (
                         <div key={fc.id} style={{ marginBottom: 8 }}>
                           {fc.title && <div style={{ fontSize: 14, fontWeight: 600, color: T.fg }}>{fc.title}</div>}
-                          {fc.description && <p style={{ fontSize: 13, color: T.mutedFg, lineHeight: 1.5, marginTop: 2 }}>{fc.description}</p>}
+                          {fc.description && <div style={{ fontSize: 13, color: T.mutedFg, lineHeight: 1.5, marginTop: 2 }}>{renderBulletText(fc.description)}</div>}
                         </div>
                       ))}
                     </div>
