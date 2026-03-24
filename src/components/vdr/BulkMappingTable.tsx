@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Search, FileText, Check, X, ChevronDown, Ban, Undo2, ArrowLeft } from 'lucide-react';
+import { Search, FileText, Check, X, ChevronDown, Ban, Undo2, ArrowLeft, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ interface BulkMappingTableProps {
   onSetMappings: (uploadedItemId: string, checklistItemIds: string[]) => Promise<boolean>;
   onBulkSetMappings: (uploadedItemIds: string[], checklistItemIds: string[]) => Promise<boolean>;
   onSetIgnored: (uploadedItemIds: string[], ignored: boolean) => Promise<boolean>;
+  onDeleteItems: (uploadedItemIds: string[]) => Promise<boolean>;
   onBack: () => void;
   onDone: () => void;
 }
