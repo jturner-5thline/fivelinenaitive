@@ -299,7 +299,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             });
           }}>Download</ContextMenuItem>
           <ContextMenuItem onClick={() => toast.info('Move coming soon')}>Move to…</ContextMenuItem>
-          <ContextMenuItem onClick={() => toast.info('Rename coming soon')}>Rename</ContextMenuItem>
+          <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>Rename</ContextMenuItem>
           <ContextMenuItem className="text-destructive" onClick={() => vdrDocs.deleteDocument(doc)}>Delete</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
