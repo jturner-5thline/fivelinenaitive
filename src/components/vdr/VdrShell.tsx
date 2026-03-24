@@ -89,12 +89,6 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         dealId={dealId}
         deals={deals}
         currentDeal={currentDeal}
-        fileCount={vdrDocs.fileCount}
-        ingestionStats={vdrDocs.ingestionStats}
-        
-        canPushToFlex={canPushToFlex}
-        isPushingToFlex={isPushingToFlex}
-        onPushToFlex={handlePushToFlex}
       />
 
       <div className="flex-1 flex min-w-0 min-h-0">
