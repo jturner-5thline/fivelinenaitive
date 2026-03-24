@@ -11912,6 +11912,89 @@ export type Database = {
           },
         ]
       }
+      uploaded_item_checklist_mapping: {
+        Row: {
+          checklist_item_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          uploaded_item_id: string
+        }
+        Insert: {
+          checklist_item_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          uploaded_item_id: string
+        }
+        Update: {
+          checklist_item_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          uploaded_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uploaded_item_checklist_mapping_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "deal_checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_item_checklist_mapping_uploaded_item_id_fkey"
+            columns: ["uploaded_item_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uploaded_items: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          mapping_status: string
+          metadata: Json | null
+          name: string
+          updated_at: string
+          upload_batch_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          mapping_status?: string
+          metadata?: Json | null
+          name: string
+          updated_at?: string
+          upload_batch_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          mapping_status?: string
+          metadata?: Json | null
+          name?: string
+          updated_at?: string
+          upload_batch_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uploaded_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_behavior_insights: {
         Row: {
           category: string
