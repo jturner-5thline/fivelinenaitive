@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
-import { ArrowLeftRight, MessageSquare, ListChecks, Inbox, CheckSquare, Folder, MoreHorizontal, User, Send, Loader2 } from 'lucide-react';
+import { Folder, MoreHorizontal, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,31 +6,21 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import type { VdrView, VdrDealStatus } from './types';
+import type { VdrDealStatus } from './types';
 import type { Deal } from '@/types/deal';
 
 interface VdrSidebarProps {
   dealId: string;
   deals: Deal[];
   currentDeal: Deal | undefined;
-  activeView: VdrView;
-  onViewChange: (view: VdrView) => void;
-  
   fileCount: number;
   ingestionStats?: { pending: number; processing: number; complete: number; failed: number };
   profile: any;
-  onFileDrop: (files: File[]) => void;
   canPushToFlex?: boolean;
   isPushingToFlex?: boolean;
   onPushToFlex?: () => void;
 }
 
-const NAV_ITEMS: { id: VdrView; label: string; icon: React.ElementType }[] = [
-  { id: 'chat-dataroom', label: 'Chat & Dataroom', icon: MessageSquare },
-  { id: 'irl-tracker', label: 'IRL Tracker', icon: ListChecks },
-  { id: 'incoming-data', label: 'Incoming Data', icon: Inbox },
-  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-];
 
 function getStatusBadge(status: string | undefined) {
   const s = (status || 'active').toLowerCase();
@@ -46,37 +35,14 @@ export function VdrSidebar({
   dealId,
   deals,
   currentDeal,
-  activeView,
-  onViewChange,
-  
   fileCount,
   ingestionStats,
   profile,
-  onFileDrop,
   canPushToFlex,
   isPushingToFlex,
   onPushToFlex,
 }: VdrSidebarProps) {
-  const [isDragOver, setIsDragOver] = useState(false);
-  const dropRef = useRef<HTMLDivElement>(null);
-
   const statusBadge = getStatusBadge(currentDeal?.status);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    setIsDragOver(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) onFileDrop(files);
-  }, [onFileDrop]);
 
 
   return (
@@ -156,58 +122,9 @@ export function VdrSidebar({
           </div>
         )}
 
-        {/* Team Comms Drop Zone */}
-        <div className="pt-1">
-          <p className="text-[10px] text-muted-foreground mb-1">Team Comms</p>
-          <div
-            ref={dropRef}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={cn(
-              'rounded-lg border border-dashed p-3 text-center transition-colors cursor-pointer',
-              isDragOver
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border/60 text-muted-foreground hover:border-primary/40'
-            )}
-            onClick={() => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.multiple = true;
-              input.onchange = () => {
-                const files = Array.from(input.files || []);
-                if (files.length > 0) onFileDrop(files);
-              };
-              input.click();
-            }}
-          >
-            <p className="text-[10px] leading-relaxed">Drop files or click to upload</p>
-          </div>
-        </div>
       </div>
 
-      {/* Views Navigation */}
-      <div className="px-3 pb-3 space-y-0.5 flex-1">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium px-1 pb-1">Views</p>
-        {NAV_ITEMS.map(item => {
-          const isActive = activeView === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onViewChange(item.id)}
-              className={cn(
-                'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-medium transition-colors',
-                isActive
-                  ? 'bg-primary/10 text-primary border-l-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-              )}
-            >
-              <item.icon className="h-3.5 w-3.5" />
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
+      <div className="flex-1" />
 
       {/* Footer */}
       <div className="mt-auto px-3 py-3 border-t border-border/40">

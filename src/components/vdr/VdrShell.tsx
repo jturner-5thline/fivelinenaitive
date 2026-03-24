@@ -9,7 +9,7 @@ import { useVdrDocuments } from '@/hooks/useVdrDocuments';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { VdrView, VdrDocument } from './types';
+import type { VdrDocument } from './types';
 import { VdrSidebar } from './VdrSidebar';
 import { VdrCenterPanel } from './VdrCenterPanel';
 import { VdrPreviewPanel } from './VdrPreviewPanel';
@@ -21,7 +21,6 @@ interface VdrShellProps {
 }
 
 export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
-  const [activeView, setActiveView] = useState<VdrView>('chat-dataroom');
   const [previewDoc, setPreviewDoc] = useState<VdrDocument | null>(null);
   const { deals } = useDealsContext();
   const { user } = useAuth();
@@ -35,7 +34,6 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const { hasPageAccess } = usePageAccessFlags();
   const canPushToFlex = hasPageAccess('flex_push');
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
-
 
   const handlePushToFlex = useCallback(async () => {
     if (isPushingToFlex) return;
@@ -87,34 +85,23 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
 
   return (
     <div className={cn("flex overflow-hidden divide-x divide-border/50", embedded ? "h-full w-full bg-card" : "h-screen w-screen bg-background")}>
-      {/* LEFT SIDEBAR */}
       <VdrSidebar
         dealId={dealId}
         deals={deals}
         currentDeal={currentDeal}
-        activeView={activeView}
-        onViewChange={setActiveView}
-        
         fileCount={vdrDocs.fileCount}
         ingestionStats={vdrDocs.ingestionStats}
         profile={profile}
         canPushToFlex={canPushToFlex}
         isPushingToFlex={isPushingToFlex}
         onPushToFlex={handlePushToFlex}
-        onFileDrop={async (files) => {
-          for (const file of files) {
-            await vdrDocs.uploadFile(file, '/Team Communications/', 'team_comms');
-          }
-        }}
       />
 
-      {/* CENTER + RIGHT PANELS */}
       <div className="flex-1 flex min-w-0 min-h-0">
         <ResizablePanelGroup direction="horizontal" className="flex-1">
           <ResizablePanel defaultSize={previewDoc ? 65 : 100} minSize={40}>
             <VdrCenterPanel
               dealId={dealId}
-              activeView={activeView}
               documents={vdrDocs.documents}
               documentsLoading={vdrDocs.loading}
               onPreview={handlePreview}

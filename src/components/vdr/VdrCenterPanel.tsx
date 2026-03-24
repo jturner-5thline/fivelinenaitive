@@ -1,33 +1,24 @@
-import type { VdrView, VdrDocument } from './types';
+import type { VdrDocument } from './types';
 import { VdrChatDataroom } from './views/VdrChatDataroom';
-import { VdrIrlTracker } from './views/VdrIrlTracker';
-import { VdrIncomingData } from './views/VdrIncomingData';
-import { VdrTasksView } from './views/VdrTasksView';
 
 interface VdrCenterPanelProps {
   dealId: string;
-  activeView: VdrView;
   documents: VdrDocument[];
   documentsLoading: boolean;
   onPreview: (doc: VdrDocument) => void;
   vdrDocs: any;
 }
 
-export function VdrCenterPanel({ dealId, activeView, documents, documentsLoading, onPreview, vdrDocs }: VdrCenterPanelProps) {
+export function VdrCenterPanel({ dealId, documents, documentsLoading, onPreview, vdrDocs }: VdrCenterPanelProps) {
   return (
     <div className="flex flex-col h-full min-w-0">
-      {activeView === 'chat-dataroom' && (
-        <VdrChatDataroom
-          dealId={dealId}
-          documents={documents}
-          documentsLoading={documentsLoading}
-          onPreview={onPreview}
-          vdrDocs={vdrDocs}
-        />
-      )}
-      {activeView === 'irl-tracker' && <VdrIrlTracker dealId={dealId} />}
-      {activeView === 'incoming-data' && <VdrIncomingData dealId={dealId} vdrDocs={vdrDocs} onPreview={onPreview} />}
-      {activeView === 'tasks' && <VdrTasksView dealId={dealId} />}
+      <VdrChatDataroom
+        dealId={dealId}
+        documents={documents}
+        documentsLoading={documentsLoading}
+        onPreview={onPreview}
+        vdrDocs={vdrDocs}
+      />
     </div>
   );
 }
