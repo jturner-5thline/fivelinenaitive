@@ -89,6 +89,9 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         dealId={dealId}
         deals={deals}
         currentDeal={currentDeal}
+        onFilesDropped={useCallback((files: File[]) => {
+          files.forEach(file => vdrDocs.uploadFile(file, '/', 'dataroom'));
+        }, [vdrDocs])}
       />
 
       <div className="flex-1 flex min-w-0 min-h-0">
