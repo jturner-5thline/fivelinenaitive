@@ -524,17 +524,20 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
           <BulkUploadStep
             onContinue={async (files) => {
               const batchId = crypto.randomUUID();
-              setBulkBatchId(batchId);
-              // Create uploaded items from files
-              const fileItems = files.map(f => ({
+              // Insert items directly so we don't depend on hook state timing
+              const { user } = (await supabase.auth.getUser()).data;
+              if (!user) return;
+              const rows = files.map(f => ({
+                upload_batch_id: batchId,
+                deal_id: dealId,
                 name: f.name,
                 metadata: { size: f.size, type: f.type },
+                uploaded_by: user.id,
               }));
-              // We need to wait for batchId to propagate, so set it first then create
-              setTimeout(async () => {
-                await uploadedItems.createItems(fileItems);
-                setBulkUploadStep('mapping');
-              }, 100);
+              const { error } = await supabase.from('uploaded_items').insert(rows);
+              if (error) { console.error(error); toast.error('Failed to create items'); return; }
+              setBulkBatchId(batchId);
+              setBulkUploadStep('mapping');
             }}
             onCancel={() => setBulkUploadStep('none')}
           />
