@@ -639,7 +639,8 @@ export default function DealDetail() {
   }, [deal?.lenders, lenderSort, configuredStages]);
 
   // Delayed reorder: use a stable snapshot that updates after 4s delay
-  // If a dropdown is open, defer until it closes
+  // If a dropdown is open, defer until it closes + 4s
+  const prevLenderSortRef = useRef(lenderSort);
   useEffect(() => {
     // Clear any pending timer
     if (pendingReorderTimer.current) {
@@ -650,10 +651,18 @@ export default function DealDetail() {
     // If no snapshot yet, set immediately (initial load)
     if (!stableLenderSnapshot) {
       setStableLenderSnapshot(computedSortedLenders);
+      prevLenderSortRef.current = lenderSort;
       return;
     }
 
-    // If dropdown is open, don't schedule — we'll handle it when dropdown closes
+    // If sort option changed, apply immediately
+    if (prevLenderSortRef.current !== lenderSort) {
+      setStableLenderSnapshot(computedSortedLenders);
+      prevLenderSortRef.current = lenderSort;
+      return;
+    }
+
+    // If dropdown is open, don't schedule — wait for close
     if (lenderDropdownOpen) return;
 
     // Schedule a delayed update
@@ -667,25 +676,7 @@ export default function DealDetail() {
         clearTimeout(pendingReorderTimer.current);
       }
     };
-  }, [computedSortedLenders, lenderDropdownOpen]);
-
-  // When dropdown closes, schedule the delayed reorder
-  useEffect(() => {
-    if (!lenderDropdownOpen && stableLenderSnapshot) {
-      if (pendingReorderTimer.current) {
-        clearTimeout(pendingReorderTimer.current);
-      }
-      pendingReorderTimer.current = setTimeout(() => {
-        setStableLenderSnapshot(computedSortedLenders);
-        pendingReorderTimer.current = null;
-      }, 4000);
-    }
-    return () => {
-      if (pendingReorderTimer.current) {
-        clearTimeout(pendingReorderTimer.current);
-      }
-    };
-  }, [lenderDropdownOpen]);
+  }, [computedSortedLenders, lenderDropdownOpen, lenderSort]);
 
   // Use the stable snapshot but update data (not order) from computed
   const sortedLenders = useMemo(() => {
