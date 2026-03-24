@@ -1,26 +1,12 @@
-import { Folder, MoreHorizontal, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-
-import { toast } from 'sonner';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import type { VdrDealStatus } from './types';
 import type { Deal } from '@/types/deal';
 
 interface VdrSidebarProps {
   dealId: string;
   deals: Deal[];
   currentDeal: Deal | undefined;
-  fileCount: number;
-  ingestionStats?: { pending: number; processing: number; complete: number; failed: number };
-  
-  canPushToFlex?: boolean;
-  isPushingToFlex?: boolean;
-  onPushToFlex?: () => void;
 }
-
 
 function getStatusBadge(status: string | undefined) {
   const s = (status || 'active').toLowerCase();
@@ -35,15 +21,8 @@ export function VdrSidebar({
   dealId,
   deals,
   currentDeal,
-  fileCount,
-  ingestionStats,
-  
-  canPushToFlex,
-  isPushingToFlex,
-  onPushToFlex,
 }: VdrSidebarProps) {
   const statusBadge = getStatusBadge(currentDeal?.status);
-
 
   return (
     <aside className="flex flex-col w-[220px] min-w-[220px] text-sidebar-foreground overflow-y-auto">
@@ -55,7 +34,6 @@ export function VdrSidebar({
         <span className="font-semibold text-sm tracking-tight">nAItive</span>
         <Badge variant="outline" className="ml-auto text-[9px] px-1 py-0 leading-tight border-primary/30 text-primary">VDR</Badge>
       </div>
-
 
       {/* Deal Info */}
       <div className="px-4 pb-3 space-y-1.5">
@@ -74,9 +52,7 @@ export function VdrSidebar({
         </div>
       </div>
 
-
       <div className="flex-1" />
-
     </aside>
   );
 }
