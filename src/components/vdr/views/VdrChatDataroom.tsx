@@ -452,6 +452,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                   Push to FLEx
                 </Button>
               )}
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setNewFolderDialog({ parentPath: '/' }); setNewFolderName(''); }} title="New folder">
+                <FolderPlus className="h-3.5 w-3.5" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUploadClick('/')} title="Upload files">
                 <Plus className="h-3.5 w-3.5" />
               </Button>
