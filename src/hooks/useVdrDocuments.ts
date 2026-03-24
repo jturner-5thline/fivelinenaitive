@@ -88,7 +88,7 @@ export function useVdrDocuments(dealId: string) {
 
   useEffect(() => {
     if (dealId && company?.id) {
-      fetchDocuments().then(() => seedDefaultFolders());
+      fetchDocuments().then(() => syncFoldersWithCategories());
     }
   }, [dealId, company?.id]);
 
