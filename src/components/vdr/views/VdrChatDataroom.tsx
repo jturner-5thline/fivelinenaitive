@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X, Send, FolderPlus, Pencil, Trash2, List, FolderTree, ClipboardList } from 'lucide-react';
+import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X, Send, FolderPlus, Pencil, Trash2, List, FolderTree, ClipboardList, PackagePlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,10 @@ import { useVdrAccountTags } from '@/hooks/useVdrAccountTags';
 import { useDefaultChecklistConfig, findMatchingConfig, type RoundConfig } from '@/hooks/useDefaultChecklistConfig';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useUploadedItems } from '@/hooks/useUploadedItems';
+import { BulkUploadStep } from '../BulkUploadStep';
+import { BulkMappingTable } from '../BulkMappingTable';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VdrChatDataroomProps {
   dealId: string;
@@ -117,6 +121,25 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [rightView, setRightView] = useState<'folders' | 'files'>('folders');
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [bulkUploadStep, setBulkUploadStep] = useState<'none' | 'upload' | 'mapping'>('none');
+  const [bulkBatchId, setBulkBatchId] = useState<string | null>(null);
+
+  // Deal checklist items for mapping
+  const [dealChecklistItems, setDealChecklistItems] = useState<{ id: string; name: string; category: string | null }[]>([]);
+  useEffect(() => {
+    if (!dealId) return;
+    supabase
+      .from('deal_checklist_items')
+      .select('id, name, category')
+      .eq('deal_id', dealId)
+      .order('position', { ascending: true })
+      .then(({ data }) => {
+        setDealChecklistItems((data || []) as { id: string; name: string; category: string | null }[]);
+      });
+  }, [dealId]);
+
+  // Uploaded items hook
+  const uploadedItems = useUploadedItems(dealId, bulkBatchId);
 
   // Checklist config
   const { config: checklistConfig, loading: checklistLoading } = useDefaultChecklistConfig(companyId ?? undefined);
@@ -497,6 +520,38 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     <ResizablePanelGroup direction="horizontal" className="h-full">
       {/* Internal - Checklists */}
       <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+        {bulkUploadStep === 'upload' ? (
+          <BulkUploadStep
+            onContinue={async (files) => {
+              const batchId = crypto.randomUUID();
+              // Insert items directly so we don't depend on hook state timing
+              const { user } = (await supabase.auth.getUser()).data;
+              if (!user) return;
+              const rows = files.map(f => ({
+                upload_batch_id: batchId,
+                deal_id: dealId,
+                name: f.name,
+                metadata: { size: f.size, type: f.type },
+                uploaded_by: user.id,
+              }));
+              const { error } = await supabase.from('uploaded_items').insert(rows);
+              if (error) { console.error(error); toast.error('Failed to create items'); return; }
+              setBulkBatchId(batchId);
+              setBulkUploadStep('mapping');
+            }}
+            onCancel={() => setBulkUploadStep('none')}
+          />
+        ) : bulkUploadStep === 'mapping' ? (
+          <BulkMappingTable
+            rows={uploadedItems.mappingRows}
+            checklistItems={dealChecklistItems}
+            onSetMappings={uploadedItems.setItemMappings}
+            onBulkSetMappings={uploadedItems.bulkSetMappings}
+            onSetIgnored={uploadedItems.setIgnored}
+            onBack={() => setBulkUploadStep('upload')}
+            onDone={() => { setBulkUploadStep('none'); setBulkBatchId(null); }}
+          />
+        ) : (
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-border/40">
@@ -504,6 +559,17 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             {dealTypeLabel && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{dealTypeLabel}</Badge>
             )}
+            <div className="ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 gap-1 text-[10px] px-2"
+                onClick={() => setBulkUploadStep('upload')}
+              >
+                <PackagePlus className="h-3 w-3" />
+                Bulk Upload
+              </Button>
+            </div>
           </div>
 
           {/* Checklist content */}
@@ -528,6 +594,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             )}
           </div>
         </div>
+        )}
       </ResizablePanel>
 
       <ResizableHandle />
