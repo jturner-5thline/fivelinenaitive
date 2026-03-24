@@ -398,7 +398,19 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                 {indexedCount} indexed
               </Badge>
             )}
-            <div className="ml-auto flex gap-0.5">
+            <div className="ml-auto flex items-center gap-1">
+              {canPushToFlex && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onPushToFlex}
+                  disabled={isPushingToFlex}
+                  className="h-6 gap-1 text-[10px] px-2 border-primary/40 text-primary hover:bg-primary/10"
+                >
+                  {isPushingToFlex ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  Push to FLEx
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUploadClick('/')} title="Upload files">
                 <Plus className="h-3.5 w-3.5" />
               </Button>
