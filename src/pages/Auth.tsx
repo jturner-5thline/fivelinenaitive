@@ -239,11 +239,14 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/deals`,
-        extraParams: {
-          hd: "*",
-          prompt: "select_account",
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/deals`,
+          queryParams: {
+            hd: "*",
+            prompt: "select_account",
+          },
         },
       });
       if (error) {
