@@ -29,17 +29,9 @@ export function useVdrDocuments(dealId: string) {
     setLoading(false);
   }, [dealId, company?.id]);
 
-  // Seed folders from data_room_checklist_categories + Team Communications
-  const seedDefaultFolders = useCallback(async () => {
-    if (!dealId || !company?.id) return;
-
-    const { count } = await (supabase as any)
-      .from('vdr_documents')
-      .select('id', { count: 'exact', head: true })
-      .eq('deal_id', dealId)
-      .eq('is_folder', true);
-
-    if ((count ?? 0) > 0) return;
+  // Sync folders with data_room_checklist_categories from settings
+  const syncFoldersWithCategories = useCallback(async () => {
+    if (!dealId || !company?.id || !user?.id) return;
 
     // Fetch categories from settings
     const { data: categories } = await supabase
@@ -48,23 +40,50 @@ export function useVdrDocuments(dealId: string) {
       .order('position', { ascending: true });
 
     const categoryNames = (categories || []).map((c: any) => c.name as string);
+    if (categoryNames.length === 0) return;
 
-    // Build folder list: categories + Team Communications at the end
-    const folderNames = [...categoryNames, 'Team Communications'];
+    // Fetch existing root-level folders for this deal
+    const { data: existingFolders } = await (supabase as any)
+      .from('vdr_documents')
+      .select('id, filename, sort_order')
+      .eq('deal_id', dealId)
+      .eq('is_folder', true)
+      .eq('folder_path', '/');
 
-    const folders = folderNames.map((name, i) => ({
-      deal_id: dealId,
-      company_id: company.id,
-      filename: name,
-      folder_path: '/',
-      is_folder: true,
-      source: name === 'Team Communications' ? 'team_comms' : 'dataroom',
-      uploaded_by: user?.id,
-      sort_order: i,
-    }));
+    const existingNames = new Set((existingFolders || []).map((f: any) => f.filename as string));
 
-    await (supabase as any).from('vdr_documents').insert(folders);
-    await fetchDocuments();
+    // Insert any missing category folders
+    const missingFolders = categoryNames
+      .filter(name => !existingNames.has(name))
+      .map((name, i) => ({
+        deal_id: dealId,
+        company_id: company.id,
+        filename: name,
+        folder_path: '/',
+        is_folder: true,
+        source: 'dataroom',
+        uploaded_by: user.id,
+        sort_order: (categories || []).find((c: any) => c.name === name)?.position ?? (existingFolders?.length || 0) + i,
+      }));
+
+    if (missingFolders.length > 0) {
+      await (supabase as any).from('vdr_documents').insert(missingFolders);
+    }
+
+    // Update sort_order of existing folders to match category positions
+    for (const cat of categories || []) {
+      const existing = (existingFolders || []).find((f: any) => f.filename === (cat as any).name);
+      if (existing && existing.sort_order !== (cat as any).position) {
+        await (supabase as any)
+          .from('vdr_documents')
+          .update({ sort_order: (cat as any).position })
+          .eq('id', existing.id);
+      }
+    }
+
+    if (missingFolders.length > 0) {
+      await fetchDocuments();
+    }
   }, [dealId, company?.id, user?.id, fetchDocuments]);
 
   useEffect(() => {
