@@ -10,7 +10,7 @@ import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { VdrDocument } from './types';
-import { classifyFileToFolder } from '@/utils/vdrFileClassifier';
+
 import { VdrSidebar } from './VdrSidebar';
 import { VdrCenterPanel } from './VdrCenterPanel';
 import { VdrPreviewPanel } from './VdrPreviewPanel';
