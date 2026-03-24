@@ -471,7 +471,7 @@ interface ManagementSnapshotDashboardProps {
   cardConfigs?: Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>;
   hiddenCards?: EditableManagementSnapshotCardId[];
   gridLayout: GridLayoutItem[];
-  onGridLayoutChange: (layout: GridLayoutItem[]) => void;
+  onGridLayoutChange: (layout: GridLayoutItem[], immediate?: boolean) => void;
   /** Additional widget elements (custom widgets) to include in the same grid */
   children?: React.ReactNode;
 }
