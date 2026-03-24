@@ -376,9 +376,75 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
       <ResizableHandle />
 
-      {/* Right Panel - Empty */}
+      {/* Right Panel - Duplicate File Tree */}
       <ResizablePanel defaultSize={65} minSize={30}>
-        <div className="flex flex-col h-full" />
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/40">
+            <h2 className="text-sm font-semibold">Dataroom</h2>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{vdrDocs.fileCount} files</Badge>
+            {processingCount > 0 && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/30 text-amber-400 gap-1">
+                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                {processingCount} indexing
+              </Badge>
+            )}
+            {indexedCount > 0 && processingCount === 0 && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-500/30 text-emerald-400 gap-1">
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                {indexedCount} indexed
+              </Badge>
+            )}
+            <div className="ml-auto flex gap-0.5">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUploadClick('/')} title="Upload files">
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Search + Category Filter */}
+          <div className="px-3 py-2 space-y-1.5">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Filter files..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="h-8 text-xs pl-7 bg-secondary/30"
+              />
+            </div>
+            {categories.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Tag className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="h-7 text-[11px] bg-secondary/30 border-border/40">
+                    <SelectValue placeholder="All categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {categoryFilter !== 'all' && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => setCategoryFilter('all')}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Tree */}
+          <div className="flex-1 overflow-auto px-1 pb-2">
+            {documentsLoading ? (
+              <div className="flex items-center justify-center h-32 text-xs text-muted-foreground">Loading…</div>
+            ) : (
+              filteredTree.map(node => renderNode(node))
+            )}
+          </div>
+        </div>
       </ResizablePanel>
     </ResizablePanelGroup>
   );
