@@ -244,9 +244,9 @@ const Auth = () => {
         options: {
           redirectTo: `${window.location.origin}/deals`,
           queryParams: {
-            hd: "*",
             prompt: "select_account",
           },
+          skipBrowserRedirect: false,
         },
       });
       if (error) {
