@@ -41,7 +41,6 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[], o
   const prevWidgetIdsRef = useRef<string>(defaultWidgetIds.join(','));
 
   // Synchronously merge any new widget IDs into the current layout
-  // so react-grid-layout renders them immediately (no async wait).
   const widgetIdsKey = defaultWidgetIds.join(',');
   if (widgetIdsKey !== prevWidgetIdsRef.current) {
     prevWidgetIdsRef.current = widgetIdsKey;
@@ -60,7 +59,6 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[], o
       }));
       setLayout(prev => [...prev, ...newItems]);
     }
-    // Also remove layout items for widgets that no longer exist
     const validIds = new Set(defaultWidgetIds);
     const hasStale = layout.some(l => !validIds.has(l.i));
     if (hasStale) {
@@ -104,24 +102,34 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[], o
     })();
   }, [company?.id, dashboardId, widgetIdsKey]);
 
-  // Debounced save — only admins can persist
-  const saveLayout = useCallback((newLayout: GridLayoutItem[]) => {
+  // Persist layout to DB
+  const persistLayout = useCallback(async (newLayout: GridLayoutItem[]) => {
+    if (!canEdit || !company?.id) return;
+    await (supabase
+      .from('dashboard_grid_layouts') as any)
+      .upsert({
+        company_id: company.id,
+        dashboard_id: dashboardId,
+        layout: newLayout,
+      }, { onConflict: 'company_id,dashboard_id' });
+  }, [company?.id, dashboardId, canEdit]);
+
+  // Save layout — supports immediate mode (skip debounce) for drag/resize stop
+  const saveLayout = useCallback((newLayout: GridLayoutItem[], immediate?: boolean) => {
     setLayout(newLayout);
 
-    if (!canEdit) return; // non-admins can drag locally but it won't persist
+    if (!canEdit) return;
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      if (!company?.id) return;
-      await (supabase
-        .from('dashboard_grid_layouts') as any)
-        .upsert({
-          company_id: company.id,
-          dashboard_id: dashboardId,
-          layout: newLayout,
-        }, { onConflict: 'company_id,dashboard_id' });
-    }, 300);
-  }, [company?.id, dashboardId, canEdit]);
+
+    if (immediate) {
+      persistLayout(newLayout);
+    } else {
+      saveTimerRef.current = setTimeout(() => {
+        persistLayout(newLayout);
+      }, 300);
+    }
+  }, [canEdit, persistLayout]);
 
   const resetLayout = useCallback(async () => {
     const def = generateDefaultLayout(defaultWidgetIds);
