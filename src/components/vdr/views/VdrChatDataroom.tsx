@@ -109,6 +109,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<string>('/');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [leftView, setLeftView] = useState<'folders' | 'files'>('folders');
+  const [rightView, setRightView] = useState<'folders' | 'files'>('folders');
 
   // Account tags
   const { categories, tagsByDocId } = useVdrAccountTags(dealId);
