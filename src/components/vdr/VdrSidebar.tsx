@@ -126,21 +126,6 @@ export function VdrSidebar({
 
       <div className="flex-1" />
 
-      {/* Footer */}
-      <div className="mt-auto px-3 py-3 border-t border-border/40">
-        <div className="flex items-center gap-2">
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={profile?.avatar_url} />
-            <AvatarFallback className="text-[10px] bg-secondary">
-              {(profile?.display_name || profile?.email || 'U').charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium truncate">{profile?.display_name || 'User'}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{profile?.email}</p>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }
