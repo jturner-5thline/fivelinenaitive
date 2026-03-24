@@ -98,7 +98,7 @@ function buildTree(docs: VdrDocument[]): TreeNode[] {
   return [...tree, ...rootFiles];
 }
 
-export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview, vdrDocs }: VdrChatDataroomProps) {
+export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex }: VdrChatDataroomProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [newFolderDialog, setNewFolderDialog] = useState<{ parentPath: string } | null>(null);
