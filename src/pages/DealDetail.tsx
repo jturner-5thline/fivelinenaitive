@@ -4096,6 +4096,7 @@ export default function DealDetail() {
                                           </div>
                                           <Select
                                             value={lender.stage}
+                                            onOpenChange={(open) => setLenderDropdownOpen(open)}
                                             onValueChange={(value: LenderStage) => {
                                               const newStage = configuredStages.find(s => s.id === value);
                                               if (newStage?.group === 'passed') {
