@@ -93,21 +93,6 @@ export function VdrSidebar({
         <Badge variant="outline" className="ml-auto text-[9px] px-1 py-0 leading-tight border-primary/30 text-primary">VDR</Badge>
       </div>
 
-      {/* Deal Selector */}
-      <div className="px-3 pb-3">
-        <Select value={dealId} onValueChange={onDealChange}>
-          <SelectTrigger className="h-9 text-xs bg-secondary/50 border-border/50">
-            <SelectValue placeholder="Select deal..." />
-          </SelectTrigger>
-          <SelectContent className="max-h-60">
-            {dealOptions.map(d => (
-              <SelectItem key={d.id} value={d.id} className="text-xs">
-                <span className="font-medium">{d.company || 'Unnamed Deal'}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
 
       {/* Deal Info */}
       <div className="px-4 pb-3 space-y-1.5">
