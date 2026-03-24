@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import type { VdrDocument } from '../types';
+import { classifyFileToFolder } from '@/utils/vdrFileClassifier';
 import { useVdrAccountTags } from '@/hooks/useVdrAccountTags';
 import { useDefaultChecklistConfig, findMatchingConfig, type RoundConfig } from '@/hooks/useDefaultChecklistConfig';
 import { useDealTypes } from '@/contexts/DealTypesContext';
@@ -274,7 +275,10 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     for (const file of files) {
-      await vdrDocs.uploadFile(file, uploadTarget);
+      const target = uploadTarget === '/'
+        ? classifyFileToFolder(file.name, documents)
+        : uploadTarget;
+      await vdrDocs.uploadFile(file, target);
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
