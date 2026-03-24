@@ -15,7 +15,7 @@ interface VdrSidebarProps {
   currentDeal: Deal | undefined;
   fileCount: number;
   ingestionStats?: { pending: number; processing: number; complete: number; failed: number };
-  profile: any;
+  
   canPushToFlex?: boolean;
   isPushingToFlex?: boolean;
   onPushToFlex?: () => void;
