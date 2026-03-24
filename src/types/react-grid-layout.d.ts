@@ -28,6 +28,8 @@ declare module 'react-grid-layout' {
     draggableHandle?: string;
     draggableCancel?: string;
     onLayoutChange?: (layout: LayoutItem[], layouts?: { [P: string]: LayoutItem[] }) => void;
+    onDragStop?: (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => void;
+    onResizeStop?: (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => void;
     onBreakpointChange?: (newBreakpoint: string, newCols: number) => void;
     margin?: [number, number];
     containerPadding?: [number, number];
