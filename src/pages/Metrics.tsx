@@ -1432,6 +1432,7 @@ export default function Metrics() {
   } = useCompanyDashboardConfig<Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState>>(
     'snapshot_card_configs',
     MANAGEMENT_SNAPSHOT_CARD_DEFAULTS,
+    { allowAllMembers: true },
   );
   const setManagementSnapshotCards = (updater: React.SetStateAction<Record<EditableManagementSnapshotCardId, ManagementSnapshotCardState>>) => {
     const newVal = typeof updater === 'function' ? updater(managementSnapshotCards) : updater;
@@ -1444,6 +1445,7 @@ export default function Metrics() {
   } = useCompanyDashboardConfig<{ items: EditableManagementSnapshotCardId[] }>(
     'hidden_snapshot_cards',
     { items: [] },
+    { allowAllMembers: true },
   );
   const hiddenSnapshotCards = hiddenSnapshotCardsConfig.items;
   const setHiddenSnapshotCards = (updater: React.SetStateAction<EditableManagementSnapshotCardId[]>) => {
