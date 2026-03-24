@@ -3,7 +3,6 @@ import { ArrowLeftRight, MessageSquare, ListChecks, Inbox, CheckSquare, Folder, 
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
@@ -17,7 +16,7 @@ interface VdrSidebarProps {
   currentDeal: Deal | undefined;
   activeView: VdrView;
   onViewChange: (view: VdrView) => void;
-  onDealChange: (dealId: string) => void;
+  
   fileCount: number;
   ingestionStats?: { pending: number; processing: number; complete: number; failed: number };
   profile: any;
@@ -49,7 +48,7 @@ export function VdrSidebar({
   currentDeal,
   activeView,
   onViewChange,
-  onDealChange,
+  
   fileCount,
   ingestionStats,
   profile,
@@ -79,8 +78,6 @@ export function VdrSidebar({
     if (files.length > 0) onFileDrop(files);
   }, [onFileDrop]);
 
-  // Get top deals for the selector
-  const dealOptions = deals.filter(d => d.status !== 'archived').slice(0, 50);
 
   return (
     <aside className="flex flex-col w-[220px] min-w-[220px] text-sidebar-foreground overflow-y-auto">
@@ -93,21 +90,6 @@ export function VdrSidebar({
         <Badge variant="outline" className="ml-auto text-[9px] px-1 py-0 leading-tight border-primary/30 text-primary">VDR</Badge>
       </div>
 
-      {/* Deal Selector */}
-      <div className="px-3 pb-3">
-        <Select value={dealId} onValueChange={onDealChange}>
-          <SelectTrigger className="h-9 text-xs bg-secondary/50 border-border/50">
-            <SelectValue placeholder="Select deal..." />
-          </SelectTrigger>
-          <SelectContent className="max-h-60">
-            {dealOptions.map(d => (
-              <SelectItem key={d.id} value={d.id} className="text-xs">
-                <span className="font-medium">{d.company || 'Unnamed Deal'}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
 
       {/* Deal Info */}
       <div className="px-4 pb-3 space-y-1.5">

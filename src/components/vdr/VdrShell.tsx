@@ -36,9 +36,6 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const canPushToFlex = hasPageAccess('flex_push');
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
 
-  const handleDealChange = useCallback((newDealId: string) => {
-    navigate(`/vdr/${newDealId}`, { replace: true });
-  }, [navigate]);
 
   const handlePushToFlex = useCallback(async () => {
     if (isPushingToFlex) return;
@@ -97,7 +94,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         currentDeal={currentDeal}
         activeView={activeView}
         onViewChange={setActiveView}
-        onDealChange={handleDealChange}
+        
         fileCount={vdrDocs.fileCount}
         ingestionStats={vdrDocs.ingestionStats}
         profile={profile}
