@@ -103,6 +103,8 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
               canPushToFlex={canPushToFlex}
               isPushingToFlex={isPushingToFlex}
               onPushToFlex={handlePushToFlex}
+              dealType={currentDeal?.dealTypes?.[0] ?? null}
+              companyId={company?.id ?? null}
             />
           </ResizablePanel>
 
