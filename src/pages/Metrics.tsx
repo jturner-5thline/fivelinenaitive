@@ -1445,6 +1445,7 @@ export default function Metrics() {
   } = useCompanyDashboardConfig<{ items: EditableManagementSnapshotCardId[] }>(
     'hidden_snapshot_cards',
     { items: [] },
+    { allowAllMembers: true },
   );
   const hiddenSnapshotCards = hiddenSnapshotCardsConfig.items;
   const setHiddenSnapshotCards = (updater: React.SetStateAction<EditableManagementSnapshotCardId[]>) => {

@@ -53,7 +53,7 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
 
 export function useDashboardPresets() {
   const { company, isAdmin, isOwner } = useCompany();
-  const canEdit = isAdmin || isOwner;
+  const canEdit = !!company?.id; // All company members can edit global dashboard layouts
   const [presets, setPresets] = useState<DashboardPreset[]>([]);
   const [activePreset, setActivePreset] = useState<DashboardPreset | null>(null);
   const [isLoading, setIsLoading] = useState(true);
