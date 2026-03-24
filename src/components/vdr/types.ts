@@ -1,4 +1,4 @@
-export type VdrView = 'chat-dataroom' | 'irl-tracker' | 'incoming-data' | 'tasks';
+export type VdrView = 'chat-dataroom';
 
 export type VdrDealStatus = 'ready' | 'in_progress' | 'review' | 'closed';
 
