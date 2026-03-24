@@ -74,55 +74,6 @@ export function VdrSidebar({
         </div>
       </div>
 
-      {/* Sources */}
-      <div className="px-4 pb-3 space-y-1.5">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Sources</p>
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs">
-            <Folder className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>Documents</span>
-            <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">{fileCount}</Badge>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
-                  <MoreHorizontal className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="text-xs">
-                <DropdownMenuItem onClick={() => toast.info('Re-sync coming soon')}>Re-sync</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.info('Settings coming soon')}>Settings</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.info('Disconnect coming soon')}>Disconnect</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <p className="text-[10px] text-muted-foreground pl-5.5">
-            {ingestionStats?.processing ? `indexing ${ingestionStats.processing} files…` : 
-             ingestionStats?.complete ? `${ingestionStats.complete} indexed` : 'synced just now'}
-          </p>
-        </div>
-
-        {/* Push to FLEx */}
-        {canPushToFlex && (
-          <div className="pt-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onPushToFlex}
-                  disabled={isPushingToFlex}
-                  className="w-full gap-1.5 h-7 text-xs border-primary/40 text-primary hover:bg-primary/10"
-                >
-                  {isPushingToFlex ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                  Push to FLEx
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Push data room files to FLEx</TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-
-      </div>
 
       <div className="flex-1" />
 
