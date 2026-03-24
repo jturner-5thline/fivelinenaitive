@@ -385,7 +385,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
           {/* New Folder Dialog */}
           <Dialog open={!!newFolderDialog} onOpenChange={open => { if (!open) setNewFolderDialog(null); }}>
             <DialogContent className="max-w-sm">
-              <DialogHeader><DialogTitle>New Subfolder</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{newFolderDialog?.parentPath === '/' ? 'New Folder' : 'New Subfolder'}</DialogTitle></DialogHeader>
               <Input
                 placeholder="Folder name"
                 value={newFolderName}
@@ -395,6 +395,23 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setNewFolderDialog(null)}>Cancel</Button>
                 <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>Create</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Rename Dialog */}
+          <Dialog open={!!renameDialog} onOpenChange={open => { if (!open) setRenameDialog(null); }}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader><DialogTitle>Rename</DialogTitle></DialogHeader>
+              <Input
+                placeholder="New name"
+                value={renameName}
+                onChange={e => setRenameName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleRename(); }}
+              />
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setRenameDialog(null)}>Cancel</Button>
+                <Button onClick={handleRename} disabled={!renameName.trim()}>Rename</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
