@@ -1,20 +1,16 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Send, Filter, X, Tag } from 'lucide-react';
+import { useState, useMemo, useCallback, useRef } from 'react';
+import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import ReactMarkdown from 'react-markdown';
 import type { VdrDocument } from '../types';
-import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useVdrAccountTags } from '@/hooks/useVdrAccountTags';
-import { useVdrSuggestions } from '@/hooks/useVdrSuggestions';
 
 interface VdrChatDataroomProps {
   dealId: string;
@@ -22,13 +18,6 @@ interface VdrChatDataroomProps {
   documentsLoading: boolean;
   onPreview: (doc: VdrDocument) => void;
   vdrDocs: any;
-}
-
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  citations?: Array<{ filename: string; folder: string; similarity: number }>;
 }
 
 const ACCOUNT_TAG_COLORS: Record<string, string> = {
@@ -116,13 +105,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [uploadTarget, setUploadTarget] = useState<string>('/');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  // Chat state
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
   // Account tags
   const { categories, tagsByDocId } = useVdrAccountTags(dealId);
 
@@ -202,126 +184,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     }
   };
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Dynamic suggestions
   const indexedCount = vdrDocs.ingestionStats?.complete || 0;
   const processingCount = vdrDocs.ingestionStats?.processing || 0;
-  const { suggestions: dynamicSuggestions } = useVdrSuggestions(dealId, indexedCount);
-
-  const suggestedPrompts = dynamicSuggestions.length > 0
-    ? dynamicSuggestions
-    : [
-        'Summarize the latest financial statements',
-        'What are the key risks in this deal?',
-        'Compare revenue trends across years',
-        'List all outstanding compliance items',
-      ];
-
-  // Send chat message with RAG streaming
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || isStreaming) return;
-
-    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text.trim() };
-    setMessages(prev => [...prev, userMsg]);
-    setInputValue('');
-    setIsStreaming(true);
-
-    const conversationHistory = messages.map(m => ({ role: m.role, content: m.content }));
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vdr-chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            deal_id: dealId,
-            message: text.trim(),
-            conversation_history: conversationHistory,
-          }),
-          signal: controller.signal,
-        }
-      );
-
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        toast.error(errData.error || 'Chat request failed');
-        setIsStreaming(false);
-        return;
-      }
-
-      const reader = resp.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let assistantContent = '';
-      let citations: ChatMessage['citations'] = [];
-      const assistantId = crypto.randomUUID();
-
-      setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', citations: [] }]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-          let line = buffer.slice(0, newlineIndex);
-          buffer = buffer.slice(newlineIndex + 1);
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            if (parsed.type === 'citations') {
-              citations = parsed.citations || [];
-              continue;
-            }
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              assistantContent += content;
-              setMessages(prev =>
-                prev.map(m =>
-                  m.id === assistantId ? { ...m, content: assistantContent, citations } : m
-                )
-              );
-            }
-          } catch {
-            buffer = line + '\n' + buffer;
-            break;
-          }
-        }
-      }
-
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === assistantId ? { ...m, content: assistantContent, citations } : m
-        )
-      );
-    } catch (e: any) {
-      if (e.name !== 'AbortError') {
-        console.error('Chat error:', e);
-        toast.error('Failed to get response');
-      }
-    } finally {
-      setIsStreaming(false);
-      abortRef.current = null;
-    }
-  }, [dealId, messages, isStreaming]);
 
   const renderNode = (node: TreeNode, depth = 0) => {
     const { doc } = node;
@@ -512,122 +376,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
       <ResizableHandle />
 
-      {/* Chat Panel */}
+      {/* Right Panel - Empty */}
       <ResizablePanel defaultSize={65} minSize={30}>
-        <div className="flex flex-col h-full">
-          {/* Chat Messages */}
-          <ScrollArea className="flex-1 px-6 py-6">
-            {messages.length === 0 && (
-              <div className="flex gap-3 max-w-2xl">
-                <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                </div>
-                <div className="space-y-3">
-                  <p className="text-sm leading-relaxed">
-                    Welcome to nAItive. I've indexed {indexedCount} document{indexedCount !== 1 ? 's' : ''} in the dataroom.
-                    {processingCount > 0 && ` ${processingCount} more are being processed.`}
-                    {' '}Ask me anything about the deal.
-                  </p>
-                  <div className="text-sm leading-relaxed">
-                    <p className="font-medium mb-1">I can help with:</p>
-                    <ul className="list-disc pl-5 space-y-0.5 text-muted-foreground">
-                      <li>Finding and summarizing specific documents</li>
-                      <li>Answering questions about deal context and financials</li>
-                      <li>Identifying potential QoE adjustments or red flags</li>
-                      <li>Comparing data across multiple documents</li>
-                    </ul>
-                  </div>
-                  <p className="text-sm">What would you like to explore?</p>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {suggestedPrompts.map((prompt, i) => (
-                      <button
-                        key={i}
-                        className="px-3 py-1.5 rounded-full text-xs bg-secondary/60 text-foreground/80 hover:bg-secondary hover:text-foreground transition-colors border border-border/40"
-                        onClick={() => sendMessage(prompt)}
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {messages.map(msg => (
-              <div key={msg.id} className={cn('flex gap-3 mb-4 max-w-2xl', msg.role === 'user' ? 'ml-auto flex-row-reverse' : '')}>
-                {msg.role === 'assistant' && (
-                  <div className="flex-shrink-0 h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center mt-0.5">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                )}
-                <div className={cn(
-                  'rounded-xl px-4 py-2.5 text-sm',
-                  msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary/50'
-                )}>
-                  {msg.role === 'assistant' ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                      <ReactMarkdown>{msg.content || (isStreaming ? '...' : '')}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p>{msg.content}</p>
-                  )}
-
-                  {msg.citations && msg.citations.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border/30">
-                      {msg.citations.slice(0, 5).map((c, i) => (
-                        <button
-                          key={i}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                          onClick={() => {
-                            const doc = documents.find(d => d.filename === c.filename);
-                            if (doc) onPreview(doc);
-                          }}
-                        >
-                          <FileText className="h-2.5 w-2.5" />
-                          {c.filename}
-                          <span className="text-muted-foreground">{c.similarity}%</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {isStreaming && messages.length > 0 && messages[messages.length - 1]?.content === '' && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground ml-10 mb-4">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Searching dataroom…
-              </div>
-            )}
-
-            <div ref={chatEndRef} />
-          </ScrollArea>
-
-          {/* Chat Input */}
-          <div className="border-t border-border/40 px-6 py-3">
-            <form
-              className="flex gap-2 max-w-2xl"
-              onSubmit={e => { e.preventDefault(); sendMessage(inputValue); }}
-            >
-              <Input
-                placeholder="Ask anything about the dataroom..."
-                className="flex-1 h-9 text-sm"
-                value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
-                disabled={isStreaming}
-              />
-              <Button size="sm" className="h-9 px-3" type="submit" disabled={isStreaming || !inputValue.trim()}>
-                {isStreaming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-              </Button>
-            </form>
-            <p className="text-[10px] text-muted-foreground mt-1.5 max-w-2xl">
-              Responses are grounded in the indexed dataroom. All answers include citations to source documents.
-            </p>
-          </div>
-        </div>
+        <div className="flex flex-col h-full" />
       </ResizablePanel>
     </ResizablePanelGroup>
   );
