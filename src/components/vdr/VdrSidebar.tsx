@@ -79,8 +79,6 @@ export function VdrSidebar({
     if (files.length > 0) onFileDrop(files);
   }, [onFileDrop]);
 
-  // Get top deals for the selector
-  const dealOptions = deals.filter(d => d.status !== 'archived').slice(0, 50);
 
   return (
     <aside className="flex flex-col w-[220px] min-w-[220px] text-sidebar-foreground overflow-y-auto">
