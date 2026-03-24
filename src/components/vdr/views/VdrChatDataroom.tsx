@@ -520,6 +520,35 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     <ResizablePanelGroup direction="horizontal" className="h-full">
       {/* Internal - Checklists */}
       <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+        {bulkUploadStep === 'upload' ? (
+          <BulkUploadStep
+            onContinue={async (files) => {
+              const batchId = crypto.randomUUID();
+              setBulkBatchId(batchId);
+              // Create uploaded items from files
+              const fileItems = files.map(f => ({
+                name: f.name,
+                metadata: { size: f.size, type: f.type },
+              }));
+              // We need to wait for batchId to propagate, so set it first then create
+              setTimeout(async () => {
+                await uploadedItems.createItems(fileItems);
+                setBulkUploadStep('mapping');
+              }, 100);
+            }}
+            onCancel={() => setBulkUploadStep('none')}
+          />
+        ) : bulkUploadStep === 'mapping' ? (
+          <BulkMappingTable
+            rows={uploadedItems.mappingRows}
+            checklistItems={dealChecklistItems}
+            onSetMappings={uploadedItems.setItemMappings}
+            onBulkSetMappings={uploadedItems.bulkSetMappings}
+            onSetIgnored={uploadedItems.setIgnored}
+            onBack={() => setBulkUploadStep('upload')}
+            onDone={() => { setBulkUploadStep('none'); setBulkBatchId(null); }}
+          />
+        ) : (
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-border/40">
@@ -527,6 +556,17 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             {dealTypeLabel && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{dealTypeLabel}</Badge>
             )}
+            <div className="ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 gap-1 text-[10px] px-2"
+                onClick={() => setBulkUploadStep('upload')}
+              >
+                <PackagePlus className="h-3 w-3" />
+                Bulk Upload
+              </Button>
+            </div>
           </div>
 
           {/* Checklist content */}
@@ -551,6 +591,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             )}
           </div>
         </div>
+        )}
       </ResizablePanel>
 
       <ResizableHandle />
