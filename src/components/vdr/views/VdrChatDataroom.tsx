@@ -159,6 +159,25 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     setNewFolderName('');
   };
 
+  const handleRename = async () => {
+    if (!renameName.trim() || !renameDialog) return;
+    await vdrDocs.renameDocument(renameDialog.id, renameName.trim());
+    toast.success(`Renamed to "${renameName.trim()}"`);
+    setRenameDialog(null);
+    setRenameName('');
+  };
+
+  const handleDeleteFolder = async (doc: VdrDocument) => {
+    // Check if folder has children
+    const folderPath = `${doc.folder_path === '/' ? '' : doc.folder_path}${doc.filename}/`;
+    const childDocs = documents.filter(d => d.folder_path === folderPath || d.folder_path?.startsWith(folderPath));
+    if (childDocs.length > 0) {
+      toast.error(`Cannot delete "${doc.filename}" — folder is not empty. Remove its contents first.`);
+      return;
+    }
+    await vdrDocs.deleteDocument(doc);
+  };
+
   const handleUploadClick = (folderPath: string) => {
     setUploadTarget(folderPath);
     fileInputRef.current?.click();
