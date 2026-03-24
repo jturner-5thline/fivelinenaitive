@@ -1154,12 +1154,12 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           
           {viewMode === 'tabs' && (
             <Tabs defaultValue="company-overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-5 rounded-sm gap-1 bg-transparent p-1">
-                <TabsTrigger value="company-overview" className="min-w-0 truncate rounded-md border border-border/20 data-[state=active]:border-border/40">Company Overview</TabsTrigger>
-                <TabsTrigger value="financial" className="min-w-0 truncate rounded-md border border-border/20 data-[state=active]:border-border/40">Financial</TabsTrigger>
-                <TabsTrigger value="highlights" className="min-w-0 truncate rounded-md border border-border/20 data-[state=active]:border-border/40">Company Highlights</TabsTrigger>
-                <TabsTrigger value="key-items" className="min-w-0 truncate rounded-md border border-border/20 data-[state=active]:border-border/40">Key Items</TabsTrigger>
-                <TabsTrigger value="ownership" className="min-w-0 truncate rounded-md border border-border/20 data-[state=active]:border-border/40">Ownership</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-5 rounded-sm gap-2 bg-transparent p-1">
+                <TabsTrigger value="company-overview" className="min-w-0 truncate rounded-md border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 data-[state=active]:border-border/40 data-[state=active]:bg-background">Company Overview</TabsTrigger>
+                <TabsTrigger value="financial" className="min-w-0 truncate rounded-md border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 data-[state=active]:border-border/40 data-[state=active]:bg-background">Financial</TabsTrigger>
+                <TabsTrigger value="highlights" className="min-w-0 truncate rounded-md border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 data-[state=active]:border-border/40 data-[state=active]:bg-background">Company Highlights</TabsTrigger>
+                <TabsTrigger value="key-items" className="min-w-0 truncate rounded-md border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 data-[state=active]:border-border/40 data-[state=active]:bg-background">Key Items</TabsTrigger>
+                <TabsTrigger value="ownership" className="min-w-0 truncate rounded-md border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 data-[state=active]:border-border/40 data-[state=active]:bg-background">Ownership</TabsTrigger>
               </TabsList>
               
               <TabsContent value="company-overview" className="mt-6">
