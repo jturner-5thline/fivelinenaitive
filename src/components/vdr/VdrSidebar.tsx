@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { FolderLock, FolderOpen } from 'lucide-react';
 import type { Deal } from '@/types/deal';
 
 interface VdrSidebarProps {
@@ -49,6 +50,21 @@ export function VdrSidebar({
               {statusBadge.label}
             </Badge>
           </div>
+        </div>
+      </div>
+
+      {/* Views */}
+      <div className="px-4 pb-3 space-y-1.5">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Views</p>
+        <div className="space-y-0.5">
+          <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs font-medium text-foreground bg-secondary/50 hover:bg-secondary transition-colors">
+            <FolderLock className="h-3.5 w-3.5 text-muted-foreground" />
+            Internal
+          </button>
+          <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
+            <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
+            Dataroom
+          </button>
         </div>
       </div>
 
