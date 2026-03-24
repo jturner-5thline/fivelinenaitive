@@ -327,14 +327,24 @@ export function BulkMappingTable({
                     </Badge>
                   </td>
                   <td className="px-2 py-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 text-[9px] px-1.5"
-                      onClick={() => isIgnored ? onSetIgnored([row.id], false) : onSetIgnored([row.id], true)}
-                    >
-                      {isIgnored ? 'Un-ignore' : 'Ignore'}
-                    </Button>
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 text-[9px] px-1.5"
+                        onClick={() => isIgnored ? onSetIgnored([row.id], false) : onSetIgnored([row.id], true)}
+                      >
+                        {isIgnored ? 'Un-ignore' : 'Ignore'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 text-[9px] px-1 text-destructive hover:text-destructive"
+                        onClick={() => onDeleteItems([row.id])}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               );
