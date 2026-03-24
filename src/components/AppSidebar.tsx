@@ -96,12 +96,6 @@ export function AppSidebar() {
     return currentPath.startsWith(url);
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/auth");
-  };
-
-  const userInitials = user?.email?.slice(0, 2).toUpperCase() || "U";
 
   return (
     <Sidebar side="left" collapsible="icon" className="h-[calc(100vh-1rem)]">
