@@ -103,6 +103,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [newFolderDialog, setNewFolderDialog] = useState<{ parentPath: string } | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
+  const [renameDialog, setRenameDialog] = useState<{ id: string; currentName: string } | null>(null);
+  const [renameName, setRenameName] = useState('');
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<string>('/');
