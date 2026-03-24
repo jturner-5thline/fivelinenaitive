@@ -162,7 +162,22 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
            (matchedConfig.rounds.length > 1 ? matchedConfig.rounds[1] : null);
   }, [matchedConfig]);
 
-  const toggleCheckItem = (itemId: string) => {
+  // Build checklist items from Initial/Kick Off round configs for mapping
+  const checklistItemsForMapping = useMemo(() => {
+    const items: { id: string; name: string; category: string | null }[] = [];
+    if (initialRound) {
+      for (const item of initialRound.items) {
+        items.push({ id: item.id, name: item.label, category: 'Initial Items' });
+      }
+    }
+    if (kickOffRound) {
+      for (const item of kickOffRound.items) {
+        items.push({ id: item.id, name: item.label, category: 'Kick Off Items' });
+      }
+    }
+    return items;
+  }, [initialRound, kickOffRound]);
+
     setCheckedItems(prev => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId);
