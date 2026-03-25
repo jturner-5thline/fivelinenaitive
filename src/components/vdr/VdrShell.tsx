@@ -48,9 +48,9 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   // Upload dialog state
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<string>('/');
-  const [uploadStep, setUploadStep] = useState<'folder' | 'mapping'>('folder');
-  // Per-file checklist mappings: fileIndex -> Set of checklist item IDs
-  const [fileMappings, setFileMappings] = useState<Map<number, Set<string>>>(new Map());
+  // Checklist mapping: Set of checklist item IDs applied to all files in this upload
+  const [selectedChecklistIds, setSelectedChecklistIds] = useState<Set<string>>(new Set());
+  const [checklistOpen, setChecklistOpen] = useState(false);
   const [mappingSearch, setMappingSearch] = useState('');
 
   // Checklist config for mapping step
