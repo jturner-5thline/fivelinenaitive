@@ -94,8 +94,23 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
   const cellFontSize = compact ? 'text-[10px]' : 'text-[11px]';
   const headerFontSize = compact ? 'text-[10px]' : 'text-[12px]';
 
-  return (
-    <CellConfigContext.Provider value={{ getCellConfig, inspecting, setInspecting, qboResolvedValues }}>
+  // Merge hook-resolved and locally-resolved QBO values
+  const mergedQbo = useMemo((): QBOResolvedValues => {
+    const merged = new Map(qboResolvedValues?.values ?? []);
+    for (const [k, v] of localQboValues) merged.set(k, v);
+    return { values: merged, loading: qboResolvedValues?.loading ?? new Set() };
+  }, [qboResolvedValues, localQboValues]);
+
+  const handleQboValueResolved = (rowKey: string, colKey: string, value: number) => {
+    setLocalQboValues(prev => {
+      const next = new Map(prev);
+      next.set(`${rowKey}::${colKey}`, value);
+      return next;
+    });
+  };
+
+    return (
+    <CellConfigContext.Provider value={{ getCellConfig, inspecting, setInspecting, qboResolvedValues: mergedQbo }}>
       <div className="flex gap-0">
         <div className={`border border-border/50 rounded-md overflow-hidden ${inspecting ? 'flex-1 min-w-0' : 'w-full'}`}>
           <div className="flex justify-end p-1 bg-muted/30 border-b border-border/50">
