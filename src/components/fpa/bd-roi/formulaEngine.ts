@@ -94,7 +94,7 @@ export function displayFormulaToInternal(displayFormula: string, sections: Table
 
   let result = displayFormula;
   for (const [label, key] of sorted) {
-    result = result.replaceAll(label, key);
+    result = result.split(label).join(key);
   }
   return result;
 }
