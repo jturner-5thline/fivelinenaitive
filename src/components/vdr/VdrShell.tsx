@@ -174,6 +174,56 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
     setPendingFiles(null);
   }, []);
 
+  // --- existing handlers below ---
+
+  const handlePushToFlex = useCallback(async () => {
+    if (isPushingToFlex) return;
+    setIsPushingToFlex(true);
+    try {
+      const files = vdrDocs.documents.filter(d => !d.is_folder && d.file_path);
+      const fileData = await Promise.all(
+        files.map(async (doc) => {
+          const { data: signedData } = await supabase.storage
+            .from('vdr-files')
+            .createSignedUrl(doc.file_path!, 3600);
+          return {
+            name: doc.filename,
+            category: doc.folder_path,
+            url: signedData?.signedUrl || null,
+            size_bytes: doc.file_size,
+            content_type: doc.file_type,
+          };
+        })
+      );
+      const { error } = await supabase.functions.invoke('push-to-flex', {
+        body: {
+          dealId,
+          action: 'sync_data_room',
+          dataRoomFiles: fileData.filter(f => f.url !== null),
+        },
+      });
+      if (error) throw error;
+      toast.success('Data Room pushed to FLEx', {
+        description: files.length > 0 ? `${files.length} file(s) synced successfully.` : 'Data room cleared on FLEx.',
+      });
+    } catch (error) {
+      console.error('Error pushing data room to FLEx:', error);
+      toast.error('Failed to push to FLEx', {
+        description: error instanceof Error ? error.message : 'An error occurred',
+      });
+    } finally {
+      setIsPushingToFlex(false);
+    }
+  }, [dealId, isPushingToFlex, vdrDocs.documents]);
+
+  const handlePreview = useCallback((doc: VdrDocument) => {
+    setPreviewDoc(doc);
+  }, []);
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewDoc(null);
+  }, []);
+
   return (
     <div className={cn("flex overflow-hidden divide-x divide-border/50", embedded ? "h-full w-full bg-card" : "h-screen w-screen bg-background")}>
       <VdrSidebar
