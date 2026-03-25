@@ -183,7 +183,37 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     return items;
   }, [initialRound, kickOffRound]);
 
+  // Fetch all mapped checklist item IDs for this deal (across all batches)
+  useEffect(() => {
+    const fetchMappedIds = async () => {
+      const { data: items } = await supabase
+        .from('uploaded_items')
+        .select('id')
+        .eq('deal_id', dealId)
+        .neq('mapping_status', 'ignored');
+      if (!items?.length) { setMappedChecklistIds(new Set()); return; }
+      const itemIds = items.map(i => i.id);
+      const { data: maps } = await supabase
+        .from('uploaded_item_checklist_mapping')
+        .select('checklist_item_id')
+        .in('uploaded_item_id', itemIds);
+      if (maps) {
+        const ids = new Set(maps.map(m => m.checklist_item_id));
+        setMappedChecklistIds(ids);
+        // Auto-check mapped items
+        setCheckedItems(prev => {
+          const next = new Set(prev);
+          ids.forEach(id => next.add(id));
+          return next;
+        });
+      }
+    };
+    fetchMappedIds();
+  }, [dealId, uploadedItems.mappings]);
+
   const toggleCheckItem = (itemId: string) => {
+    // Don't allow unchecking items that are mapped via uploads
+    if (mappedChecklistIds.has(itemId)) return;
     setCheckedItems(prev => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId);
