@@ -261,9 +261,8 @@ function RowBlock({
         const isInspected = inspecting?.rowKey === row.key && inspecting?.colIdx === origIdx;
 
         const handleCellClick = () => {
-          if (row.editable && row.onEdit) {
-            onStartEdit(row.key, origIdx, val);
-          } else if (cellConfig) {
+          // QBO metric and formula cells always open inspector, never edit mode
+          if (cellConfig && (cellConfig.cell_type === 'qbo_metric' || cellConfig.cell_type === 'formula')) {
             setInspecting({
               rowKey: row.key,
               colIdx: origIdx,
@@ -271,6 +270,24 @@ function RowBlock({
               colLabel: quarterLabel,
               value: formatBDValue(val, row.format),
               config: cellConfig,
+            });
+          } else if (row.editable && row.onEdit) {
+            onStartEdit(row.key, origIdx, val);
+          } else {
+            // Static or unconfigured cells also open inspector for editing
+            const fallbackConfig: CellConfig = cellConfig ?? {
+              sheet_id: 'bd-budget-dashboard',
+              row_key: row.key,
+              col_key: quarterLabel,
+              cell_type: 'static',
+            };
+            setInspecting({
+              rowKey: row.key,
+              colIdx: origIdx,
+              rowLabel: row.label,
+              colLabel: quarterLabel,
+              value: formatBDValue(val, row.format),
+              config: fallbackConfig,
             });
           }
         };
