@@ -196,6 +196,17 @@ export function useVdrDocuments(dealId: string) {
     toast.success(`Deleted "${doc.filename}"`);
   }, [fetchDocuments]);
 
+  const deleteDocuments = useCallback(async (docs: VdrDocument[]) => {
+    const filePaths = docs.filter(d => d.file_path).map(d => d.file_path!);
+    const ids = docs.map(d => d.id);
+    if (filePaths.length > 0) {
+      await supabase.storage.from('vdr-files').remove(filePaths);
+    }
+    await (supabase as any).from('vdr_documents').delete().in('id', ids);
+    await fetchDocuments();
+    toast.success(`Deleted ${docs.length} file(s)`);
+  }, [fetchDocuments]);
+
   const renameDocument = useCallback(async (id: string, newName: string) => {
     await (supabase as any).from('vdr_documents').update({ filename: newName }).eq('id', id);
     await fetchDocuments();
@@ -229,6 +240,7 @@ export function useVdrDocuments(dealId: string) {
     uploadFile,
     createFolder,
     deleteDocument,
+    deleteDocuments,
     renameDocument,
     moveDocument,
     getDownloadUrl,
