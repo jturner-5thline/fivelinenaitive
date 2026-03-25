@@ -7,6 +7,7 @@ import { FunctionSquare, Database, FileText, X, Calendar, Save, Loader2 } from '
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { CellConfig } from './useCellConfig';
+import { resolveSingleCell } from './useQBOCellValues';
 
 interface Props {
   config: CellConfig;
