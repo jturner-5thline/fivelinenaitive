@@ -106,28 +106,28 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
         .limit(1)
         .single();
 
-      const payload: Record<string, any> = {
+      const payload = {
         sheet_id: config.sheet_id,
         row_key: config.row_key,
         col_key: config.col_key,
         cell_type: cellType,
-        company_id: companyMember?.company_id,
+        company_id: companyMember?.company_id ?? '',
         formula_string: cellType === 'formula' ? formulaString : null,
         qbo_entity: cellType === 'qbo_metric' ? qboEntity : null,
         qbo_account: cellType === 'qbo_metric' ? qboAccount : null,
         qbo_aggregation: cellType === 'qbo_metric' ? qboAggregation : null,
-        qbo_time_window: cellType === 'qbo_metric' ? timeWindow : null,
+        qbo_time_window: cellType === 'qbo_metric' ? (timeWindow as any) : null,
       };
 
       if (config.id) {
         await supabase
           .from('sheet_cell_config')
-          .update(payload)
+          .update(payload as any)
           .eq('id', config.id);
       } else {
         await supabase
           .from('sheet_cell_config')
-          .insert([payload]);
+          .insert(payload as any);
       }
 
       onSaved?.({
