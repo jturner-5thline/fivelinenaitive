@@ -515,14 +515,39 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
   const renderFlatFileItem = (doc: VdrDocument) => {
     const docTags = tagsByDocId.get(doc.id);
+    const isSelected = selectedFileIds.has(doc.id);
     return (
       <ContextMenu key={doc.id}>
         <ContextMenuTrigger>
           <div
-            className="flex items-center gap-1.5 py-1 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group"
+            className={cn(
+              "flex items-center gap-1.5 py-1 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group",
+              isSelected && "bg-primary/10 ring-1 ring-primary/30"
+            )}
             style={{ paddingLeft: '8px' }}
-            onClick={() => onPreview(doc)}
+            onClick={(e) => {
+              if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                e.preventDefault();
+                toggleFileSelect(doc.id);
+              } else {
+                onPreview(doc);
+              }
+            }}
+            draggable
+            onDragStart={e => {
+              const ids = isSelected && selectedFileIds.size > 1
+                ? Array.from(selectedFileIds)
+                : [doc.id];
+              e.dataTransfer.setData('text/vdr-doc-ids', JSON.stringify(ids));
+              e.dataTransfer.setData('text/vdr-doc-id', doc.id);
+            }}
           >
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => toggleFileSelect(doc.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-3 w-3 flex-shrink-0"
+            />
             {getIngestionIcon(doc.ingestion_status)}
             {getFileIcon(doc.filename)}
             <span className="truncate flex-1 min-w-0">{doc.filename}</span>
@@ -552,6 +577,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               if (url) { const a = document.createElement('a'); a.href = url; a.download = doc.filename; a.click(); }
             });
           }}>Download</ContextMenuItem>
+          <ContextMenuItem onClick={() => setMoveDialog({ fileIds: [doc.id] })}>Move to…</ContextMenuItem>
           <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>Rename</ContextMenuItem>
           <ContextMenuItem className="text-destructive" onClick={() => vdrDocs.deleteDocument(doc)}>Delete</ContextMenuItem>
         </ContextMenuContent>
