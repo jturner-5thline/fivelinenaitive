@@ -7,11 +7,13 @@ import { BDChartGrid } from './BDCharts';
 import { BDFinancialTable, type TableSection } from './BDFinancialTable';
 import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
 import { getVisibleIndices } from './QuarterFilter';
+import { useCellConfig } from './useCellConfig';
 
 export function BDDashboardTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
   const store = useBDRoiStore();
   const { revenue, costs, headcount, cmBonus, dealflow, finPerf } = store;
   const vi = useMemo(() => getVisibleIndices(QUARTERS_12, visibleQuarters), [visibleQuarters]);
+  const { getConfig } = useCellConfig('bd-budget-dashboard');
 
   const c = useMemo(() => computeDashboard(revenue, costs, headcount, cmBonus, dealflow), [revenue, costs, headcount, cmBonus, dealflow]);
 
@@ -191,7 +193,7 @@ export function BDDashboardTab({ visibleQuarters }: { visibleQuarters: Set<strin
       />
 
       {/* Data Tables */}
-      <BDFinancialTable sections={allSections} quarters={QUARTERS_12} visibleIndices={vi} />
+      <BDFinancialTable sections={allSections} quarters={QUARTERS_12} visibleIndices={vi} getCellConfig={getConfig} />
     </div>
   );
 }

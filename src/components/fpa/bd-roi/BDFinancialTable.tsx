@@ -1,7 +1,9 @@
-import { useState, useRef } from 'react';
-import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Info } from 'lucide-react';
+import { useState, useRef, createContext, useContext } from 'react';
+import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Info, FunctionSquare, Database } from 'lucide-react';
 import { formatBDValue } from './bdRoiFormatters';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CellInspector } from './CellInspector';
+import type { CellConfig } from './useCellConfig';
 
 export interface TableRow {
   key: string;
@@ -28,16 +30,31 @@ interface Props {
   sections: TableSection[];
   quarters: string[];
   compact?: boolean;
-  /** When provided, only show columns at these original indices. Edit callbacks still receive original indices. */
   visibleIndices?: number[];
+  getCellConfig?: (rowKey: string, colKey: string) => CellConfig | undefined;
 }
 
-export function BDFinancialTable({ sections, quarters, compact, visibleIndices }: Props) {
+interface InspectorState {
+  rowKey: string;
+  colIdx: number;
+  rowLabel: string;
+  colLabel: string;
+  value: string;
+  config: CellConfig;
+}
+
+const CellConfigContext = createContext<{
+  getCellConfig?: (rowKey: string, colKey: string) => CellConfig | undefined;
+  inspecting: InspectorState | null;
+  setInspecting: (s: InspectorState | null) => void;
+}>({ inspecting: null, setInspecting: () => {} });
+
+export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowKey: string; col: number } | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [inspecting, setInspecting] = useState<InspectorState | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Determine which column indices to show
   const indices = visibleIndices ?? quarters.map((_, i) => i);
   const displayQuarters = indices.map(i => quarters[i]);
 
@@ -73,50 +90,67 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices }
   const headerFontSize = compact ? 'text-[10px]' : 'text-[12px]';
 
   return (
-    <div className="border border-border/50 rounded-md overflow-hidden">
-      <div className="flex justify-end p-1 bg-muted/30 border-b border-border/50">
-        <button onClick={toggleAll} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5">
-          {allCollapsed ? <ChevronsUpDown className="h-3 w-3" /> : <ChevronsDownUp className="h-3 w-3" />}
-          {allCollapsed ? 'Expand All' : 'Collapse All'}
-        </button>
+    <CellConfigContext.Provider value={{ getCellConfig, inspecting, setInspecting }}>
+      <div className="flex gap-0">
+        <div className={`border border-border/50 rounded-md overflow-hidden ${inspecting ? 'flex-1 min-w-0' : 'w-full'}`}>
+          <div className="flex justify-end p-1 bg-muted/30 border-b border-border/50">
+            <button onClick={toggleAll} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5">
+              {allCollapsed ? <ChevronsUpDown className="h-3 w-3" /> : <ChevronsDownUp className="h-3 w-3" />}
+              {allCollapsed ? 'Expand All' : 'Collapse All'}
+            </button>
+          </div>
+          <div className="overflow-auto max-h-[600px]">
+            <table className="w-full border-collapse" style={{ fontFamily: 'Inter, system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
+              <thead className="sticky top-0 z-20">
+                <tr className="bg-muted/50">
+                  <th className="sticky left-0 z-30 bg-muted/50 text-left px-3 py-1.5 border-b border-r border-border/50 min-w-[180px] text-[11px] font-semibold text-foreground">
+                    &nbsp;
+                  </th>
+                  {displayQuarters.map(q => (
+                    <th key={q} className={`px-2 py-1.5 text-right border-b border-border/50 ${headerFontSize} font-semibold text-foreground min-w-[85px] whitespace-nowrap`}>
+                      {q}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sections.map(section => (
+                  <SectionBlock
+                    key={section.key}
+                    section={section}
+                    collapsed={collapsed.has(section.key)}
+                    onToggle={() => toggleSection(section.key)}
+                    editingCell={editingCell}
+                    editValue={editValue}
+                    inputRef={inputRef}
+                    onStartEdit={startEdit}
+                    onEditValueChange={setEditValue}
+                    onCommitEdit={commitEdit}
+                    onCancelEdit={() => setEditingCell(null)}
+                    cellFontSize={cellFontSize}
+                    quarters={displayQuarters}
+                    visibleIndices={indices}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Inspector Side Panel */}
+        {inspecting && (
+          <div className="w-72 flex-shrink-0 border border-border/50 border-l-0 rounded-r-md bg-card overflow-auto max-h-[640px]">
+            <CellInspector
+              config={inspecting.config}
+              rowLabel={inspecting.rowLabel}
+              colLabel={inspecting.colLabel}
+              value={inspecting.value}
+              onClose={() => setInspecting(null)}
+            />
+          </div>
+        )}
       </div>
-      <div className="overflow-auto max-h-[600px]">
-        <table className="w-full border-collapse" style={{ fontFamily: 'Inter, system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
-          <thead className="sticky top-0 z-20">
-            <tr className="bg-muted/50">
-              <th className="sticky left-0 z-30 bg-muted/50 text-left px-3 py-1.5 border-b border-r border-border/50 min-w-[180px] text-[11px] font-semibold text-foreground">
-                &nbsp;
-              </th>
-              {displayQuarters.map(q => (
-                <th key={q} className={`px-2 py-1.5 text-right border-b border-border/50 ${headerFontSize} font-semibold text-foreground min-w-[85px] whitespace-nowrap`}>
-                  {q}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sections.map(section => (
-              <SectionBlock
-                key={section.key}
-                section={section}
-                collapsed={collapsed.has(section.key)}
-                onToggle={() => toggleSection(section.key)}
-                editingCell={editingCell}
-                editValue={editValue}
-                inputRef={inputRef}
-                onStartEdit={startEdit}
-                onEditValueChange={setEditValue}
-                onCommitEdit={commitEdit}
-                onCancelEdit={() => setEditingCell(null)}
-                cellFontSize={cellFontSize}
-                quarters={displayQuarters}
-                visibleIndices={indices}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    </CellConfigContext.Provider>
   );
 }
 
@@ -176,6 +210,7 @@ function RowBlock({
   cellFontSize: string;
   visibleIndices: number[];
 }) {
+  const { getCellConfig, inspecting, setInspecting } = useContext(CellConfigContext);
   const totalClass = row.isTotal ? 'font-bold border-t-2 border-b-2 border-foreground/20' : '';
   const subtotalClass = row.isSubtotal ? 'font-semibold border-t border-border/50' : '';
   const deltaClass = row.isDelta ? 'text-[10px] text-muted-foreground/60' : '';
@@ -218,14 +253,36 @@ function RowBlock({
         const isGreenDelta = row.isDelta && val !== null && val > 0;
         const isRedDelta = row.isDelta && val !== null && val < 0;
 
+        // Get cell config for indicator
+        const colKey = `Q${Math.floor(origIdx / 4) + Math.ceil((origIdx % 4) + 1)}-${25 + Math.floor(origIdx / 4)}`;
+        // Use the QUARTERS_12 array pattern: Q1-25, Q2-25, etc.
+        const quarterLabel = ['Q1-25','Q2-25','Q3-25','Q4-25','Q1-26','Q2-26','Q3-26','Q4-26','Q1-27','Q2-27','Q3-27','Q4-27'][origIdx] ?? '';
+        const cellConfig = getCellConfig?.(row.key, quarterLabel);
+        const isInspected = inspecting?.rowKey === row.key && inspecting?.colIdx === origIdx;
+
+        const handleCellClick = () => {
+          if (row.editable && row.onEdit) {
+            onStartEdit(row.key, origIdx, val);
+          } else if (cellConfig) {
+            setInspecting({
+              rowKey: row.key,
+              colIdx: origIdx,
+              rowLabel: row.label,
+              colLabel: quarterLabel,
+              value: formatBDValue(val, row.format),
+              config: cellConfig,
+            });
+          }
+        };
+
         return (
           <td
             key={origIdx}
-            className={`px-2 py-1 text-right border-b border-border/50 ${cellFontSize} whitespace-nowrap cursor-pointer`}
+            className={`px-2 py-1 text-right border-b border-border/50 ${cellFontSize} whitespace-nowrap cursor-pointer ${isInspected ? 'ring-1 ring-primary/50 bg-primary/5' : ''}`}
             style={{
               color: row.editable ? '#60a5fa' : isGreenDelta ? '#34d399' : isRedDelta ? '#f87171' : undefined,
             }}
-            onClick={() => row.editable && row.onEdit && onStartEdit(row.key, origIdx, val)}
+            onClick={handleCellClick}
           >
             {isEditing ? (
               <input
@@ -242,7 +299,13 @@ function RowBlock({
                 autoFocus
               />
             ) : (
-              <span className={!row.editable && !isGreenDelta && !isRedDelta ? 'text-foreground' : ''}>
+              <span className={`inline-flex items-center gap-0.5 ${!row.editable && !isGreenDelta && !isRedDelta ? 'text-foreground' : ''}`}>
+                {cellConfig?.cell_type === 'formula' && (
+                  <FunctionSquare className="h-2.5 w-2.5 text-emerald-500/60 flex-shrink-0" />
+                )}
+                {cellConfig?.cell_type === 'qbo_metric' && (
+                  <Database className="h-2.5 w-2.5 text-blue-500/60 flex-shrink-0" />
+                )}
                 {formatBDValue(val, row.format)}
               </span>
             )}

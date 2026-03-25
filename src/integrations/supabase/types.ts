@@ -10548,6 +10548,68 @@ export type Database = {
           },
         ]
       }
+      sheet_cell_config: {
+        Row: {
+          cell_type: string
+          col_key: string
+          company_id: string
+          created_at: string
+          formula_string: string | null
+          id: string
+          metadata: Json | null
+          qbo_account: string | null
+          qbo_aggregation: string | null
+          qbo_entity: string | null
+          qbo_metric_id: string | null
+          qbo_time_window: Json | null
+          row_key: string
+          sheet_id: string
+          updated_at: string
+        }
+        Insert: {
+          cell_type: string
+          col_key: string
+          company_id: string
+          created_at?: string
+          formula_string?: string | null
+          id?: string
+          metadata?: Json | null
+          qbo_account?: string | null
+          qbo_aggregation?: string | null
+          qbo_entity?: string | null
+          qbo_metric_id?: string | null
+          qbo_time_window?: Json | null
+          row_key: string
+          sheet_id: string
+          updated_at?: string
+        }
+        Update: {
+          cell_type?: string
+          col_key?: string
+          company_id?: string
+          created_at?: string
+          formula_string?: string | null
+          id?: string
+          metadata?: Json | null
+          qbo_account?: string | null
+          qbo_aggregation?: string | null
+          qbo_entity?: string | null
+          qbo_metric_id?: string | null
+          qbo_time_window?: Json | null
+          row_key?: string
+          sheet_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_cell_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       slack_agent_routes: {
         Row: {
           agent_id: string
