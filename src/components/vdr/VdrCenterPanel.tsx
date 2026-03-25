@@ -12,6 +12,7 @@ interface VdrCenterPanelProps {
   onPushToFlex?: () => void;
   dealType?: string | null;
   companyId?: string | null;
+  mappingRefreshKey?: number;
 }
 
 export function VdrCenterPanel({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex, dealType, companyId }: VdrCenterPanelProps) {
