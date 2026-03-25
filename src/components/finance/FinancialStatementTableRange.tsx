@@ -92,8 +92,18 @@ export function FinancialStatementTableRange({
     );
   }, [financialData]);
 
-  const handleStartEdit = (periodId: string, lineItemId: string, currentValue: number, replaceValue?: string) => {
+  const handleStartEdit = (periodId: string, lineItemId: string, currentValue: number, replaceValue?: string, colEndDate?: Date) => {
     const key = `${periodId}-${lineItemId}`;
+    // Track session original for projection cells
+    if (colEndDate) {
+      const colKey = periodColumns.find(c => c.period?.id === periodId)?.label;
+      if (colKey) {
+        const colType = getColumnType(colKey, colEndDate);
+        if (colType === 'projection' && !(key in sessionOriginals)) {
+          setSessionOriginals(prev => ({ ...prev, [key]: currentValue }));
+        }
+      }
+    }
     setEditingCell(key);
     setEditValue(replaceValue !== undefined ? replaceValue : formatCurrencyInputValue(currentValue));
   };
