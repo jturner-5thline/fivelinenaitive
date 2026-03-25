@@ -645,11 +645,15 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                 checked={checkedItems.has(item.id)}
                 onCheckedChange={() => toggleCheckItem(item.id)}
                 className="mt-0.5 h-3.5 w-3.5"
+                disabled={mappedChecklistIds.has(item.id)}
               />
               <div className="flex-1 min-w-0">
                 <span className={cn('leading-tight', checkedItems.has(item.id) && 'line-through')}>
                   {item.label}
                 </span>
+                {mappedChecklistIds.has(item.id) && (
+                  <span className="ml-1.5 text-[9px] text-primary font-medium">Mapped</span>
+                )}
                 {item.required && (
                   <span className="ml-1.5 text-[9px] text-destructive font-medium">Required</span>
                 )}
