@@ -1,9 +1,10 @@
 import { useState, useRef, createContext, useContext } from 'react';
-import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Info, FunctionSquare, Database } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Info, FunctionSquare, Database, Loader2 } from 'lucide-react';
 import { formatBDValue } from './bdRoiFormatters';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CellInspector } from './CellInspector';
 import type { CellConfig } from './useCellConfig';
+import type { QBOResolvedValues } from './useQBOCellValues';
 
 export interface TableRow {
   key: string;
