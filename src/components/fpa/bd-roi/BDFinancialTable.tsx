@@ -32,6 +32,7 @@ interface Props {
   compact?: boolean;
   visibleIndices?: number[];
   getCellConfig?: (rowKey: string, colKey: string) => CellConfig | undefined;
+  onCellConfigSaved?: (updated: CellConfig) => void;
 }
 
 interface InspectorState {
@@ -49,7 +50,7 @@ const CellConfigContext = createContext<{
   setInspecting: (s: InspectorState | null) => void;
 }>({ inspecting: null, setInspecting: () => {} });
 
-export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig }: Props) {
+export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig, onCellConfigSaved }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowKey: string; col: number } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -146,6 +147,7 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
               colLabel={inspecting.colLabel}
               value={inspecting.value}
               onClose={() => setInspecting(null)}
+              onSaved={onCellConfigSaved}
             />
           </div>
         )}
@@ -261,9 +263,8 @@ function RowBlock({
         const isInspected = inspecting?.rowKey === row.key && inspecting?.colIdx === origIdx;
 
         const handleCellClick = () => {
-          if (row.editable && row.onEdit) {
-            onStartEdit(row.key, origIdx, val);
-          } else if (cellConfig) {
+          // QBO metric and formula cells always open inspector, never edit mode
+          if (cellConfig && (cellConfig.cell_type === 'qbo_metric' || cellConfig.cell_type === 'formula')) {
             setInspecting({
               rowKey: row.key,
               colIdx: origIdx,
@@ -271,6 +272,24 @@ function RowBlock({
               colLabel: quarterLabel,
               value: formatBDValue(val, row.format),
               config: cellConfig,
+            });
+          } else if (row.editable && row.onEdit) {
+            onStartEdit(row.key, origIdx, val);
+          } else {
+            // Static or unconfigured cells also open inspector for editing
+            const fallbackConfig: CellConfig = cellConfig ?? {
+              sheet_id: 'bd-budget-dashboard',
+              row_key: row.key,
+              col_key: quarterLabel,
+              cell_type: 'static',
+            };
+            setInspecting({
+              rowKey: row.key,
+              colIdx: origIdx,
+              rowLabel: row.label,
+              colLabel: quarterLabel,
+              value: formatBDValue(val, row.format),
+              config: fallbackConfig,
             });
           }
         };

@@ -107,5 +107,13 @@ export function useCellConfig(sheetId: string) {
     return configs.get(makeKey(rowKey, colKey));
   }, [configs]);
 
-  return { configs, getConfig, loading };
+  const updateConfig = useCallback((updated: CellConfig) => {
+    setConfigs(prev => {
+      const next = new Map(prev);
+      next.set(makeKey(updated.row_key, updated.col_key), updated);
+      return next;
+    });
+  }, []);
+
+  return { configs, getConfig, updateConfig, loading };
 }
