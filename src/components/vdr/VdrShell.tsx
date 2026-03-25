@@ -142,7 +142,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
       setSelectedFolder('/');
       setSelectedChecklistIds(new Set());
       setMappingSearch('');
-      setChecklistOpen(false);
+      
     }
   }, [pendingFiles]);
 
