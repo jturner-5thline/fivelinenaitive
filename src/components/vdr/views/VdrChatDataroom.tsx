@@ -21,6 +21,8 @@ import { BulkUploadStep } from '../BulkUploadStep';
 import { BulkMappingTable } from '../BulkMappingTable';
 import { supabase } from '@/integrations/supabase/client';
 
+import type { VdrView } from '../VdrSidebar';
+
 interface VdrChatDataroomProps {
   dealId: string;
   documents: VdrDocument[];
@@ -33,6 +35,7 @@ interface VdrChatDataroomProps {
   dealType?: string | null;
   companyId?: string | null;
   mappingRefreshKey?: number;
+  activeView?: VdrView;
 }
 
 const ACCOUNT_TAG_COLORS: Record<string, string> = {
