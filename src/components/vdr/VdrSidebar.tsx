@@ -4,11 +4,15 @@ import { Badge } from '@/components/ui/badge';
 import { FolderLock, FolderOpen, Upload } from 'lucide-react';
 import type { Deal } from '@/types/deal';
 
+export type VdrView = 'internal' | 'dataroom';
+
 interface VdrSidebarProps {
   dealId: string;
   deals: Deal[];
   currentDeal: Deal | undefined;
   onFilesDropped?: (files: File[]) => void;
+  activeView: VdrView;
+  onViewChange: (view: VdrView) => void;
 }
 
 function getStatusBadge(status: string | undefined) {
