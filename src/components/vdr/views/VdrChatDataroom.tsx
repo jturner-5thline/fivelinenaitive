@@ -397,17 +397,44 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     }
 
     const docTags = tagsByDocId.get(doc.id);
+    const isSelected = selectedFileIds.has(doc.id);
 
     return (
       <ContextMenu key={doc.id}>
         <ContextMenuTrigger>
           <div
-            className="flex items-center gap-1.5 py-1 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group"
+            className={cn(
+              "flex items-center gap-1.5 py-1 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group",
+              isSelected && "bg-primary/10 ring-1 ring-primary/30"
+            )}
             style={{ paddingLeft: `${24 + depth * 16}px` }}
-            onClick={() => onPreview(doc)}
+            onClick={(e) => {
+              if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                e.preventDefault();
+                toggleFileSelect(doc.id);
+              } else {
+                onPreview(doc);
+              }
+            }}
             draggable
-            onDragStart={e => { e.dataTransfer.setData('text/vdr-doc-id', doc.id); }}
+            onDragStart={e => {
+              // If this file is selected, drag all selected; otherwise just this one
+              const ids = isSelected && selectedFileIds.size > 1
+                ? Array.from(selectedFileIds)
+                : [doc.id];
+              e.dataTransfer.setData('text/vdr-doc-ids', JSON.stringify(ids));
+              e.dataTransfer.setData('text/vdr-doc-id', doc.id);
+              if (ids.length > 1) {
+                e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
+              }
+            }}
           >
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => toggleFileSelect(doc.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-3 w-3 flex-shrink-0"
+            />
             {getIngestionIcon(doc.ingestion_status)}
             {getFileIcon(doc.filename)}
             <span className="truncate flex-1 min-w-0">{doc.filename}</span>
@@ -437,12 +464,42 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               if (url) { const a = document.createElement('a'); a.href = url; a.download = doc.filename; a.click(); }
             });
           }}>Download</ContextMenuItem>
-          <ContextMenuItem onClick={() => toast.info('Move coming soon')}>Move to…</ContextMenuItem>
+          <ContextMenuItem onClick={() => setMoveDialog({ fileIds: [doc.id] })}>Move to…</ContextMenuItem>
           <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>Rename</ContextMenuItem>
           <ContextMenuItem className="text-destructive" onClick={() => vdrDocs.deleteDocument(doc)}>Delete</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
     );
+  };
+
+  const handleFolderDrop = async (e: React.DragEvent, folderPath: string) => {
+    e.preventDefault();
+    setDragOverFolder(null);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      for (const file of files) {
+        await vdrDocs.uploadFile(file, folderPath);
+      }
+    } else {
+      // Check for multi-select drag
+      const idsJson = e.dataTransfer.getData('text/vdr-doc-ids');
+      if (idsJson) {
+        try {
+          const ids: string[] = JSON.parse(idsJson);
+          for (const id of ids) {
+            await vdrDocs.moveDocument(id, folderPath);
+          }
+          toast.success(`Moved ${ids.length} file(s)`);
+          setSelectedFileIds(new Set());
+          return;
+        } catch { /* fall through */ }
+      }
+      const docId = e.dataTransfer.getData('text/vdr-doc-id');
+      if (docId) {
+        await vdrDocs.moveDocument(docId, folderPath);
+        toast.success('File moved');
+      }
+    }
   };
 
   const renderViewToggle = (view: 'folders' | 'files', setView: (v: 'folders' | 'files') => void) => (
