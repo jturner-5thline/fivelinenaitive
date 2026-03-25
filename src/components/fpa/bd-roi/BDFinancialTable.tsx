@@ -1,4 +1,4 @@
-import { useState, useRef, createContext, useContext } from 'react';
+import { useState, useMemo, useRef, createContext, useContext } from 'react';
 import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Info, FunctionSquare, Database, Loader2 } from 'lucide-react';
 import { formatBDValue } from './bdRoiFormatters';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
