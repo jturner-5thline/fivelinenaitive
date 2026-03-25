@@ -32,6 +32,7 @@ interface Props {
   compact?: boolean;
   visibleIndices?: number[];
   getCellConfig?: (rowKey: string, colKey: string) => CellConfig | undefined;
+  onCellConfigSaved?: (updated: CellConfig) => void;
 }
 
 interface InspectorState {
