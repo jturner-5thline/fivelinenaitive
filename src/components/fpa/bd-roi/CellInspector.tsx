@@ -1,13 +1,14 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FunctionSquare, Database, FileText, X, Calendar, Save, Loader2 } from 'lucide-react';
+import { FunctionSquare, Database, FileText, X, Calendar, Save, Loader2, Plus, Minus, Divide } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { CellConfig } from './useCellConfig';
 import { resolveSingleCell } from './useQBOCellValues';
+import { resolveFormula, rowKeyToRefLabel, displayFormulaToInternal, internalFormulaToDisplay } from './formulaEngine';
+import type { TableSection } from './BDFinancialTable';
 
 interface Props {
   config: CellConfig;
@@ -17,6 +18,11 @@ interface Props {
   onClose: () => void;
   onSaved?: (updated: CellConfig) => void;
   onQboValueResolved?: (rowKey: string, colKey: string, value: number) => void;
+  onFormulaResolved?: (rowKey: string, colKey: string, value: number) => void;
+  enterFormulaMode?: (callback: (rowKey: string, label: string) => void) => void;
+  exitFormulaMode?: () => void;
+  formulaModeActive?: boolean;
+  sections?: TableSection[];
 }
 
 const AGGREGATION_OPTIONS = [
@@ -24,6 +30,15 @@ const AGGREGATION_OPTIONS = [
   { value: 'average', label: 'Average' },
   { value: 'balance', label: 'Balance' },
   { value: 'count', label: 'Count' },
+];
+
+const OPERATORS = [
+  { label: '+', value: ' + ' },
+  { label: '−', value: ' - ' },
+  { label: '×', value: ' * ' },
+  { label: '÷', value: ' / ' },
+  { label: '(', value: '(' },
+  { label: ')', value: ')' },
 ];
 
 function getQuarterDates(colKey: string): { start: string; end: string; label: string } {
@@ -41,25 +56,69 @@ function getQuarterDates(colKey: string): { start: string; end: string; label: s
   };
 }
 
-export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSaved, onQboValueResolved }: Props) {
+export function CellInspector({
+  config, rowLabel, colLabel, value, onClose, onSaved, onQboValueResolved,
+  onFormulaResolved, enterFormulaMode, exitFormulaMode, formulaModeActive, sections,
+}: Props) {
   const { user } = useAuth();
   const [cellType, setCellType] = useState<CellConfig['cell_type']>(config.cell_type);
   const [qboEntity, setQboEntity] = useState(config.qbo_entity ?? '');
   const [qboAccount, setQboAccount] = useState(config.qbo_account ?? '');
   const [qboAggregation, setQboAggregation] = useState(config.qbo_aggregation ?? 'sum');
-  const [formulaString, setFormulaString] = useState(config.formula_string ?? '');
+  // Store display formula (human-readable labels)
+  const [displayFormula, setDisplayFormula] = useState(() => {
+    const internal = config.formula_string ?? '';
+    return sections ? internalFormulaToDisplay(internal, sections) : internal;
+  });
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState<{ name: string; qb_id: string; realm_id: string }[]>([]);
   const [entities, setEntities] = useState<{ realm_id: string; company_name: string }[]>([]);
+  const formulaRef = useRef<HTMLTextAreaElement>(null);
 
   const timeWindow = useMemo(() => getQuarterDates(colLabel), [colLabel]);
+
+  // Derive internal formula for dirty check and saving
+  const internalFormula = useMemo(
+    () => sections ? displayFormulaToInternal(displayFormula, sections) : displayFormula,
+    [displayFormula, sections],
+  );
+
   const isDirty = cellType !== config.cell_type
     || qboEntity !== (config.qbo_entity ?? '')
     || qboAccount !== (config.qbo_account ?? '')
     || qboAggregation !== (config.qbo_aggregation ?? 'sum')
-    || formulaString !== (config.formula_string ?? '');
+    || internalFormula !== (config.formula_string ?? '');
 
-  // Load QBO entities (distinct realm_ids from quickbooks_tokens)
+  // Activate/deactivate formula mode when cell type changes
+  useEffect(() => {
+    if (cellType === 'formula') {
+      enterFormulaMode?.((rowKey: string, label: string) => {
+        const refLabel = sections
+          ? rowKeyToRefLabel(rowKey, sections)
+          : label.replace(/[:\s—–-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        setDisplayFormula(prev => {
+          const trimmed = prev.trimEnd();
+          // Add space if last char isn't an operator or opening paren
+          const needsSpace = trimmed.length > 0 && !/[+\-*/(]$/.test(trimmed);
+          return prev + (needsSpace ? ' ' : '') + refLabel;
+        });
+      });
+    } else {
+      exitFormulaMode?.();
+    }
+  }, [cellType, enterFormulaMode, exitFormulaMode, sections]);
+
+  // Preview resolved formula value
+  const formulaPreview = useMemo(() => {
+    if (cellType !== 'formula' || !internalFormula || !sections) return null;
+    // Find the column index from colLabel
+    const quarters = ['Q1-25','Q2-25','Q3-25','Q4-25','Q1-26','Q2-26','Q3-26','Q4-26','Q1-27','Q2-27','Q3-27','Q4-27'];
+    const colIdx = quarters.indexOf(colLabel);
+    if (colIdx < 0) return null;
+    return resolveFormula(internalFormula, sections, colIdx);
+  }, [cellType, internalFormula, sections, colLabel]);
+
+  // Load QBO entities
   useEffect(() => {
     if (!user) return;
     const load = async () => {
@@ -70,7 +129,6 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
       if (data) {
         const unique = Array.from(new Map((data as any[]).map((d: any) => [d.realm_id, d])).values());
         setEntities(unique as any[]);
-        // If no entity set, default to first
         if (!qboEntity && unique.length > 0) {
           setQboEntity((unique[0] as any).company_name ?? '');
         }
@@ -79,7 +137,7 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
     load();
   }, [user]);
 
-  // Load QBO accounts for selected entity
+  // Load QBO accounts
   useEffect(() => {
     if (!user || cellType !== 'qbo_metric') return;
     const load = async () => {
@@ -87,16 +145,18 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
         .select('name, qb_id, realm_id')
         .eq('active', true)
         .order('name');
-      // Filter by realm if we can resolve it
       const entity = entities.find(e => e.company_name === qboEntity);
-      if (entity) {
-        query = query.eq('realm_id', entity.realm_id);
-      }
+      if (entity) query = query.eq('realm_id', entity.realm_id);
       const { data } = await query;
       if (data) setAccounts(data as any[]);
     };
     load();
   }, [user, cellType, qboEntity, entities]);
+
+  const insertOperator = useCallback((op: string) => {
+    setDisplayFormula(prev => prev + op);
+    setTimeout(() => formulaRef.current?.focus(), 0);
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -114,7 +174,7 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
         col_key: config.col_key,
         cell_type: cellType,
         company_id: companyMember?.company_id ?? '',
-        formula_string: cellType === 'formula' ? formulaString : null,
+        formula_string: cellType === 'formula' ? internalFormula : null,
         qbo_entity: cellType === 'qbo_metric' ? qboEntity : null,
         qbo_account: cellType === 'qbo_metric' ? qboAccount : null,
         qbo_aggregation: cellType === 'qbo_metric' ? qboAggregation : null,
@@ -135,7 +195,7 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
       const updatedConfig: CellConfig = {
         ...config,
         cell_type: cellType,
-        formula_string: cellType === 'formula' ? formulaString : undefined,
+        formula_string: cellType === 'formula' ? internalFormula : undefined,
         qbo_entity: cellType === 'qbo_metric' ? qboEntity : undefined,
         qbo_account: cellType === 'qbo_metric' ? qboAccount : undefined,
         qbo_aggregation: cellType === 'qbo_metric' ? qboAggregation : undefined,
@@ -143,6 +203,11 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
       };
 
       onSaved?.(updatedConfig);
+
+      // Resolve formula after save
+      if (cellType === 'formula' && formulaPreview !== null) {
+        onFormulaResolved?.(config.row_key, config.col_key, formulaPreview);
+      }
 
       // Resolve QBO value after save
       if (cellType === 'qbo_metric') {
@@ -152,12 +217,18 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
         }
       }
 
+      exitFormulaMode?.();
       onClose();
     } catch (err) {
       console.error('Failed to save cell config:', err);
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleClose = () => {
+    exitFormulaMode?.();
+    onClose();
   };
 
   const typeIcon = cellType === 'formula'
@@ -177,7 +248,7 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
           </div>
           <span className="text-[10px] text-muted-foreground">{colLabel}</span>
         </div>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+        <button onClick={handleClose} className="text-muted-foreground hover:text-foreground">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -207,16 +278,66 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
         </Select>
       </div>
 
-      {/* Formula editor */}
+      {/* Formula builder */}
       {cellType === 'formula' && (
-        <div>
-          <div className="text-[10px] text-muted-foreground mb-1">Formula</div>
-          <textarea
-            value={formulaString}
-            onChange={e => setFormulaString(e.target.value)}
-            className="w-full bg-muted/50 rounded px-2 py-1.5 font-mono text-[10px] text-emerald-400 border border-border/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
-            rows={2}
-          />
+        <div className="space-y-2">
+          <div>
+            <div className="text-[10px] text-muted-foreground mb-1">Formula</div>
+            <textarea
+              ref={formulaRef}
+              value={displayFormula}
+              onChange={e => setDisplayFormula(e.target.value)}
+              placeholder="Click cells in the grid or type references..."
+              className="w-full bg-muted/50 rounded px-2 py-1.5 font-mono text-[10px] text-emerald-400 border border-emerald-500/30 resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+              rows={3}
+            />
+          </div>
+
+          {/* Operator toolbar */}
+          <div className="flex items-center gap-1">
+            {OPERATORS.map(op => (
+              <button
+                key={op.label}
+                onClick={() => insertOperator(op.value)}
+                className="w-7 h-7 flex items-center justify-center rounded border border-border/50 bg-muted/30 hover:bg-muted text-xs font-mono text-foreground hover:text-primary transition-colors"
+              >
+                {op.label}
+              </button>
+            ))}
+            <button
+              onClick={() => setDisplayFormula('')}
+              className="ml-auto text-[10px] text-muted-foreground hover:text-destructive px-1.5 py-0.5"
+            >
+              Clear
+            </button>
+          </div>
+
+          {/* Hint */}
+          {formulaModeActive && (
+            <div className="flex items-center gap-1.5 text-[10px] text-emerald-400/80 bg-emerald-500/5 rounded px-2 py-1.5 border border-emerald-500/20">
+              <FunctionSquare className="h-3 w-3 flex-shrink-0" />
+              <span>Click any cell in the grid to add it as a reference</span>
+            </div>
+          )}
+
+          {/* Live preview */}
+          {displayFormula.trim() && (
+            <div className="bg-muted/30 rounded px-2 py-1.5 border border-border/50">
+              <div className="text-[10px] text-muted-foreground mb-0.5">Preview</div>
+              <div className="text-xs font-mono font-semibold text-foreground">
+                {formulaPreview !== null ? (
+                  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(formulaPreview)
+                ) : (
+                  <span className="text-destructive/60">Invalid formula</span>
+                )}
+              </div>
+              {internalFormula !== displayFormula && (
+                <div className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono truncate">
+                  → {internalFormula}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -231,7 +352,6 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
             </div>
           </div>
 
-          {/* Entity */}
           <div>
             <div className="text-[10px] text-muted-foreground mb-1">Entity</div>
             <Select value={qboEntity} onValueChange={setQboEntity}>
@@ -249,7 +369,6 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
             </Select>
           </div>
 
-          {/* Account */}
           <div>
             <div className="text-[10px] text-muted-foreground mb-1">Account</div>
             <Select value={qboAccount} onValueChange={setQboAccount}>
@@ -267,7 +386,6 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
             </Select>
           </div>
 
-          {/* Aggregation */}
           <div>
             <div className="text-[10px] text-muted-foreground mb-1">Aggregation</div>
             <Select value={qboAggregation} onValueChange={setQboAggregation}>
@@ -282,7 +400,6 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
             </Select>
           </div>
 
-          {/* Time Window */}
           <div>
             <div className="text-[10px] text-muted-foreground mb-0.5">Time Window</div>
             <div className="flex items-center gap-1.5 text-xs text-foreground">
@@ -311,7 +428,7 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
             size="sm"
             className="w-full h-7 text-xs"
             onClick={handleSave}
-            disabled={saving || (cellType === 'qbo_metric' && (!qboEntity || !qboAccount))}
+            disabled={saving || (cellType === 'qbo_metric' && (!qboEntity || !qboAccount)) || (cellType === 'formula' && formulaPreview === null && displayFormula.trim().length > 0)}
           >
             {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
             Save Configuration
