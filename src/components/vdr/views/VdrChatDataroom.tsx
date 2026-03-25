@@ -352,6 +352,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const indexedCount = vdrDocs.ingestionStats?.complete || 0;
   const processingCount = vdrDocs.ingestionStats?.processing || 0;
 
+  const handleFileDrop = handleFolderDrop;
+
   const renderNode = (node: TreeNode, depth = 0) => {
     const { doc } = node;
     const isExpanded = expandedFolders.has(doc.id);
@@ -370,7 +372,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                 onClick={() => toggleFolder(doc.id)}
                 onDragOver={e => { e.preventDefault(); setDragOverFolder(doc.id); }}
                 onDragLeave={() => setDragOverFolder(null)}
-                onDrop={e => handleFileDrop(e, `/${doc.filename}/`)}
+                onDrop={e => handleFolderDrop(e, `/${doc.filename}/`)}
               >
                 {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
                 {isExpanded ? <FolderOpen className="h-3.5 w-3.5 text-primary/70" /> : <FolderClosed className="h-3.5 w-3.5 text-muted-foreground" />}
