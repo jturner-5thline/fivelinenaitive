@@ -32,6 +32,7 @@ interface VdrChatDataroomProps {
   onPushToFlex?: () => void;
   dealType?: string | null;
   companyId?: string | null;
+  mappingRefreshKey?: number;
 }
 
 const ACCOUNT_TAG_COLORS: Record<string, string> = {
@@ -109,7 +110,7 @@ function buildTree(docs: VdrDocument[]): TreeNode[] {
   return [...tree, ...rootFiles];
 }
 
-export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex, dealType, companyId }: VdrChatDataroomProps) {
+export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex, dealType, companyId, mappingRefreshKey }: VdrChatDataroomProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [newFolderDialog, setNewFolderDialog] = useState<{ parentPath: string } | null>(null);
@@ -209,7 +210,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       }
     };
     fetchMappedIds();
-  }, [dealId, uploadedItems.mappings]);
+  }, [dealId, uploadedItems.mappings, mappingRefreshKey]);
 
   const toggleCheckItem = (itemId: string) => {
     // Don't allow unchecking items that are mapped via uploads

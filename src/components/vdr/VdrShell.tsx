@@ -49,6 +49,8 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const [selectedFolder, setSelectedFolder] = useState<string>('/');
   // Checklist mapping: Set of checklist item IDs applied to all files in this upload
   const [selectedChecklistIds, setSelectedChecklistIds] = useState<Set<string>>(new Set());
+  // Counter to signal center panel to re-fetch mapped checklist IDs
+  const [mappingRefreshKey, setMappingRefreshKey] = useState(0);
   
   const [mappingSearch, setMappingSearch] = useState('');
 
@@ -201,6 +203,9 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
     toast.success(`Uploaded ${pendingFiles.length} file(s)`, {
       description: hasMappings ? 'Files mapped to checklist items.' : undefined,
     });
+    if (hasMappings) {
+      setMappingRefreshKey(k => k + 1);
+    }
     setPendingFiles(null);
   }, [pendingFiles, selectedFolder, selectedChecklistIds, vdrDocs, dealId, user]);
 
@@ -281,6 +286,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
               onPushToFlex={handlePushToFlex}
               dealType={currentDeal?.dealTypes?.[0] ?? null}
               companyId={company?.id ?? null}
+              mappingRefreshKey={mappingRefreshKey}
             />
           </ResizablePanel>
 
