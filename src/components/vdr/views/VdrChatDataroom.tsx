@@ -796,6 +796,46 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             )}
           </div>
 
+          {/* Bulk Action Bar */}
+          {selectedFileIds.size > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border-y border-primary/20">
+              <Checkbox
+                checked={allFilesSelected}
+                onCheckedChange={toggleSelectAll}
+                className="h-3 w-3"
+              />
+              <span className="text-[11px] font-medium text-foreground">{selectedFileIds.size} selected</span>
+              <div className="ml-auto flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 gap-1"
+                  onClick={() => setMoveDialog({ fileIds: Array.from(selectedFileIds) })}
+                >
+                  <FolderOpen className="h-3 w-3" />
+                  Move to…
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={() => setDeleteConfirmDialog(Array.from(selectedFileIds))}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Delete
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] px-2"
+                  onClick={() => setSelectedFileIds(new Set())}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Tree / Flat Files */}
           <div className="flex-1 overflow-auto px-1 pb-2">
             {documentsLoading ? (
