@@ -122,6 +122,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [rightView, setRightView] = useState<'folders' | 'files'>('folders');
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [mappedChecklistIds, setMappedChecklistIds] = useState<Set<string>>(new Set());
   const [bulkUploadStep, setBulkUploadStep] = useState<'none' | 'upload' | 'mapping'>('none');
   const [bulkBatchId, setBulkBatchId] = useState<string | null>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
