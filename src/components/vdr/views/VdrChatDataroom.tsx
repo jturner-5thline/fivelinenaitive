@@ -914,6 +914,58 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               />
               <span className="text-[11px] font-medium text-foreground">{selectedFileIds.size} selected</span>
               <div className="ml-auto flex items-center gap-1">
+                {!isDataroomView && (
+                  <>
+                    {/* Check if any selected are already shared */}
+                    {(() => {
+                      const selectedDocs = documents.filter(d => selectedFileIds.has(d.id));
+                      const anyShared = selectedDocs.some(d => d.shared_to_dataroom);
+                      const anyUnshared = selectedDocs.some(d => !d.shared_to_dataroom);
+                      return (
+                        <>
+                          {anyUnshared && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] px-2 gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                              onClick={() => {
+                                const ids = Array.from(selectedFileIds).filter(id => {
+                                  const doc = documents.find(d => d.id === id);
+                                  return doc && !doc.shared_to_dataroom;
+                                });
+                                vdrDocs.bulkShareToDataroom(ids, true);
+                                setSelectedFileIds(new Set());
+                                toast.success(`Shared ${ids.length} file(s) to Dataroom`);
+                              }}
+                            >
+                              <Share2 className="h-3 w-3" />
+                              Push to Dataroom
+                            </Button>
+                          )}
+                          {anyShared && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] px-2 gap-1 text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                              onClick={() => {
+                                const ids = Array.from(selectedFileIds).filter(id => {
+                                  const doc = documents.find(d => d.id === id);
+                                  return doc && doc.shared_to_dataroom;
+                                });
+                                vdrDocs.bulkShareToDataroom(ids, false);
+                                setSelectedFileIds(new Set());
+                                toast.success(`Unshared ${ids.length} file(s) from Dataroom`);
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                              Unshare
+                            </Button>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
