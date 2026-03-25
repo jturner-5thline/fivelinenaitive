@@ -29,6 +29,8 @@ export function VdrSidebar({
   deals,
   currentDeal,
   onFilesDropped,
+  activeView,
+  onViewChange,
 }: VdrSidebarProps) {
   const statusBadge = getStatusBadge(currentDeal?.status);
   const [isDragOver, setIsDragOver] = useState(false);
