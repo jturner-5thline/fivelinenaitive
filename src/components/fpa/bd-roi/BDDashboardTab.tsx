@@ -195,7 +195,7 @@ export function BDDashboardTab({ visibleQuarters }: { visibleQuarters: Set<strin
       />
 
       {/* Data Tables */}
-      <BDFinancialTable sections={allSections} quarters={QUARTERS_12} visibleIndices={vi} getCellConfig={getConfig} onCellConfigSaved={updateConfig} />
+      <BDFinancialTable sections={allSections} quarters={QUARTERS_12} visibleIndices={vi} getCellConfig={getConfig} onCellConfigSaved={updateConfig} qboResolvedValues={qboValues} />
     </div>
   );
 }
