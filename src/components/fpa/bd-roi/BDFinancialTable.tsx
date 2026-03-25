@@ -53,7 +53,7 @@ const CellConfigContext = createContext<{
   qboResolvedValues?: QBOResolvedValues;
 }>({ inspecting: null, setInspecting: () => {} });
 
-export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig, onCellConfigSaved }: Props) {
+export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig, onCellConfigSaved, qboResolvedValues }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowKey: string; col: number } | null>(null);
   const [editValue, setEditValue] = useState('');
