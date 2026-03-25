@@ -124,6 +124,10 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [bulkUploadStep, setBulkUploadStep] = useState<'none' | 'upload' | 'mapping'>('none');
   const [bulkBatchId, setBulkBatchId] = useState<string | null>(null);
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
+  const [moveDialog, setMoveDialog] = useState<{ fileIds: string[] } | null>(null);
+  const [moveTargetFolder, setMoveTargetFolder] = useState<string>('/');
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<string[] | null>(null);
 
 
   // Uploaded items hook
@@ -189,6 +193,50 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
   // Account tags
   const { categories, tagsByDocId } = useVdrAccountTags(dealId);
+
+  const toggleFileSelect = useCallback((fileId: string, e?: React.MouseEvent) => {
+    setSelectedFileIds(prev => {
+      const next = new Set(prev);
+      if (next.has(fileId)) next.delete(fileId);
+      else next.add(fileId);
+      return next;
+    });
+  }, []);
+
+  const allFileIds = useMemo(() => documents.filter(d => !d.is_folder).map(d => d.id), [documents]);
+  const allFilesSelected = allFileIds.length > 0 && allFileIds.every(id => selectedFileIds.has(id));
+
+  const toggleSelectAll = useCallback(() => {
+    if (allFilesSelected) {
+      setSelectedFileIds(new Set());
+    } else {
+      setSelectedFileIds(new Set(allFileIds));
+    }
+  }, [allFilesSelected, allFileIds]);
+
+  const folders = useMemo(() => documents.filter(d => d.is_folder), [documents]);
+
+  const handleBulkMove = useCallback(async () => {
+    if (!moveDialog) return;
+    for (const id of moveDialog.fileIds) {
+      await vdrDocs.moveDocument(id, moveTargetFolder);
+    }
+    toast.success(`Moved ${moveDialog.fileIds.length} file(s)`);
+    setSelectedFileIds(new Set());
+    setMoveDialog(null);
+    setMoveTargetFolder('/');
+  }, [moveDialog, moveTargetFolder, vdrDocs]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!deleteConfirmDialog) return;
+    const docsToDelete = documents.filter(d => deleteConfirmDialog.includes(d.id));
+    for (const doc of docsToDelete) {
+      await vdrDocs.deleteDocument(doc);
+    }
+    toast.success(`Deleted ${docsToDelete.length} file(s)`);
+    setSelectedFileIds(new Set());
+    setDeleteConfirmDialog(null);
+  }, [deleteConfirmDialog, documents, vdrDocs]);
 
   const tree = useMemo(() => buildTree(documents), [documents]);
 
@@ -293,6 +341,19 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
         await vdrDocs.uploadFile(file, folderPath);
       }
     } else {
+      // Check for multi-select drag
+      const idsJson = e.dataTransfer.getData('text/vdr-doc-ids');
+      if (idsJson) {
+        try {
+          const ids: string[] = JSON.parse(idsJson);
+          for (const id of ids) {
+            await vdrDocs.moveDocument(id, folderPath);
+          }
+          toast.success(`Moved ${ids.length} file(s)`);
+          setSelectedFileIds(new Set());
+          return;
+        } catch { /* fall through */ }
+      }
       const docId = e.dataTransfer.getData('text/vdr-doc-id');
       if (docId) {
         await vdrDocs.moveDocument(docId, folderPath);
@@ -349,17 +410,44 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     }
 
     const docTags = tagsByDocId.get(doc.id);
+    const isSelected = selectedFileIds.has(doc.id);
 
     return (
       <ContextMenu key={doc.id}>
         <ContextMenuTrigger>
           <div
-            className="flex items-center gap-1.5 py-1 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group"
+            className={cn(
+              "flex items-center gap-1.5 py-1 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group",
+              isSelected && "bg-primary/10 ring-1 ring-primary/30"
+            )}
             style={{ paddingLeft: `${24 + depth * 16}px` }}
-            onClick={() => onPreview(doc)}
+            onClick={(e) => {
+              if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                e.preventDefault();
+                toggleFileSelect(doc.id);
+              } else {
+                onPreview(doc);
+              }
+            }}
             draggable
-            onDragStart={e => { e.dataTransfer.setData('text/vdr-doc-id', doc.id); }}
+            onDragStart={e => {
+              // If this file is selected, drag all selected; otherwise just this one
+              const ids = isSelected && selectedFileIds.size > 1
+                ? Array.from(selectedFileIds)
+                : [doc.id];
+              e.dataTransfer.setData('text/vdr-doc-ids', JSON.stringify(ids));
+              e.dataTransfer.setData('text/vdr-doc-id', doc.id);
+              if (ids.length > 1) {
+                e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
+              }
+            }}
           >
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => toggleFileSelect(doc.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-3 w-3 flex-shrink-0"
+            />
             {getIngestionIcon(doc.ingestion_status)}
             {getFileIcon(doc.filename)}
             <span className="truncate flex-1 min-w-0">{doc.filename}</span>
@@ -389,13 +477,14 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               if (url) { const a = document.createElement('a'); a.href = url; a.download = doc.filename; a.click(); }
             });
           }}>Download</ContextMenuItem>
-          <ContextMenuItem onClick={() => toast.info('Move coming soon')}>Move to…</ContextMenuItem>
+          <ContextMenuItem onClick={() => setMoveDialog({ fileIds: [doc.id] })}>Move to…</ContextMenuItem>
           <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>Rename</ContextMenuItem>
           <ContextMenuItem className="text-destructive" onClick={() => vdrDocs.deleteDocument(doc)}>Delete</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
     );
   };
+
 
   const renderViewToggle = (view: 'folders' | 'files', setView: (v: 'folders' | 'files') => void) => (
     <div className="inline-flex items-center rounded-md border border-border/40 p-0.5 gap-0">
@@ -426,14 +515,39 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
   const renderFlatFileItem = (doc: VdrDocument) => {
     const docTags = tagsByDocId.get(doc.id);
+    const isSelected = selectedFileIds.has(doc.id);
     return (
       <ContextMenu key={doc.id}>
         <ContextMenuTrigger>
           <div
-            className="flex items-center gap-1.5 py-1 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group"
+            className={cn(
+              "flex items-center gap-1.5 py-1 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group",
+              isSelected && "bg-primary/10 ring-1 ring-primary/30"
+            )}
             style={{ paddingLeft: '8px' }}
-            onClick={() => onPreview(doc)}
+            onClick={(e) => {
+              if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                e.preventDefault();
+                toggleFileSelect(doc.id);
+              } else {
+                onPreview(doc);
+              }
+            }}
+            draggable
+            onDragStart={e => {
+              const ids = isSelected && selectedFileIds.size > 1
+                ? Array.from(selectedFileIds)
+                : [doc.id];
+              e.dataTransfer.setData('text/vdr-doc-ids', JSON.stringify(ids));
+              e.dataTransfer.setData('text/vdr-doc-id', doc.id);
+            }}
           >
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => toggleFileSelect(doc.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-3 w-3 flex-shrink-0"
+            />
             {getIngestionIcon(doc.ingestion_status)}
             {getFileIcon(doc.filename)}
             <span className="truncate flex-1 min-w-0">{doc.filename}</span>
@@ -463,6 +577,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               if (url) { const a = document.createElement('a'); a.href = url; a.download = doc.filename; a.click(); }
             });
           }}>Download</ContextMenuItem>
+          <ContextMenuItem onClick={() => setMoveDialog({ fileIds: [doc.id] })}>Move to…</ContextMenuItem>
           <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>Rename</ContextMenuItem>
           <ContextMenuItem className="text-destructive" onClick={() => vdrDocs.deleteDocument(doc)}>Delete</ContextMenuItem>
         </ContextMenuContent>
@@ -681,6 +796,46 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             )}
           </div>
 
+          {/* Bulk Action Bar */}
+          {selectedFileIds.size > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border-y border-primary/20">
+              <Checkbox
+                checked={allFilesSelected}
+                onCheckedChange={toggleSelectAll}
+                className="h-3 w-3"
+              />
+              <span className="text-[11px] font-medium text-foreground">{selectedFileIds.size} selected</span>
+              <div className="ml-auto flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 gap-1"
+                  onClick={() => setMoveDialog({ fileIds: Array.from(selectedFileIds) })}
+                >
+                  <FolderOpen className="h-3 w-3" />
+                  Move to…
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={() => setDeleteConfirmDialog(Array.from(selectedFileIds))}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Delete
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] px-2"
+                  onClick={() => setSelectedFileIds(new Set())}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Tree / Flat Files */}
           <div className="flex-1 overflow-auto px-1 pb-2">
             {documentsLoading ? (
@@ -724,6 +879,40 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setRenameDialog(null)}>Cancel</Button>
                 <Button onClick={handleRename} disabled={!renameName.trim()}>Rename</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Move Dialog */}
+          <Dialog open={!!moveDialog} onOpenChange={open => { if (!open) setMoveDialog(null); }}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader><DialogTitle>Move {moveDialog?.fileIds.length === 1 ? 'file' : `${moveDialog?.fileIds.length} files`} to…</DialogTitle></DialogHeader>
+              <Select value={moveTargetFolder} onValueChange={setMoveTargetFolder}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="/">Root</SelectItem>
+                  {folders.map(f => (
+                    <SelectItem key={f.id} value={`/${f.filename}/`}>{f.filename}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setMoveDialog(null)}>Cancel</Button>
+                <Button onClick={handleBulkMove}>Move</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <Dialog open={!!deleteConfirmDialog} onOpenChange={open => { if (!open) setDeleteConfirmDialog(null); }}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader><DialogTitle>Delete {deleteConfirmDialog?.length === 1 ? 'file' : `${deleteConfirmDialog?.length} files`}?</DialogTitle></DialogHeader>
+              <p className="text-sm text-muted-foreground">This action cannot be undone. The selected files will be permanently removed.</p>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setDeleteConfirmDialog(null)}>Cancel</Button>
+                <Button variant="destructive" onClick={handleBulkDelete}>Delete</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
