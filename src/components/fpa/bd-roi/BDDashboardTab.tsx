@@ -8,12 +8,14 @@ import { BDFinancialTable, type TableSection } from './BDFinancialTable';
 import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
 import { getVisibleIndices } from './QuarterFilter';
 import { useCellConfig } from './useCellConfig';
+import { useQBOCellValues } from './useQBOCellValues';
 
 export function BDDashboardTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
   const store = useBDRoiStore();
   const { revenue, costs, headcount, cmBonus, dealflow, finPerf } = store;
   const vi = useMemo(() => getVisibleIndices(QUARTERS_12, visibleQuarters), [visibleQuarters]);
-  const { getConfig, updateConfig } = useCellConfig('bd-budget-dashboard');
+  const { configs, getConfig, updateConfig } = useCellConfig('bd-budget-dashboard');
+  const qboValues = useQBOCellValues(configs);
 
   const c = useMemo(() => computeDashboard(revenue, costs, headcount, cmBonus, dealflow), [revenue, costs, headcount, cmBonus, dealflow]);
 
