@@ -210,7 +210,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       }
     };
     fetchMappedIds();
-  }, [dealId, uploadedItems.mappings]);
+  }, [dealId, uploadedItems.mappings, mappingRefreshKey]);
 
   const toggleCheckItem = (itemId: string) => {
     // Don't allow unchecking items that are mapped via uploads
