@@ -485,35 +485,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     );
   };
 
-  const handleFolderDrop = async (e: React.DragEvent, folderPath: string) => {
-    e.preventDefault();
-    setDragOverFolder(null);
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      for (const file of files) {
-        await vdrDocs.uploadFile(file, folderPath);
-      }
-    } else {
-      // Check for multi-select drag
-      const idsJson = e.dataTransfer.getData('text/vdr-doc-ids');
-      if (idsJson) {
-        try {
-          const ids: string[] = JSON.parse(idsJson);
-          for (const id of ids) {
-            await vdrDocs.moveDocument(id, folderPath);
-          }
-          toast.success(`Moved ${ids.length} file(s)`);
-          setSelectedFileIds(new Set());
-          return;
-        } catch { /* fall through */ }
-      }
-      const docId = e.dataTransfer.getData('text/vdr-doc-id');
-      if (docId) {
-        await vdrDocs.moveDocument(docId, folderPath);
-        toast.success('File moved');
-      }
-    }
-  };
 
   const renderViewToggle = (view: 'folders' | 'files', setView: (v: 'folders' | 'files') => void) => (
     <div className="inline-flex items-center rounded-md border border-border/40 p-0.5 gap-0">
