@@ -167,6 +167,7 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
               value={inspecting.value}
               onClose={() => setInspecting(null)}
               onSaved={onCellConfigSaved}
+              onQboValueResolved={handleQboValueResolved}
             />
           </div>
         )}
