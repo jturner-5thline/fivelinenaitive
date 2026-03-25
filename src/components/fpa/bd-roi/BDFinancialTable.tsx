@@ -1,9 +1,10 @@
-import { useState, useRef, createContext, useContext } from 'react';
-import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Info, FunctionSquare, Database } from 'lucide-react';
+import { useState, useMemo, useRef, createContext, useContext } from 'react';
+import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Info, FunctionSquare, Database, Loader2 } from 'lucide-react';
 import { formatBDValue } from './bdRoiFormatters';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CellInspector } from './CellInspector';
 import type { CellConfig } from './useCellConfig';
+import type { QBOResolvedValues } from './useQBOCellValues';
 
 export interface TableRow {
   key: string;
@@ -33,6 +34,7 @@ interface Props {
   visibleIndices?: number[];
   getCellConfig?: (rowKey: string, colKey: string) => CellConfig | undefined;
   onCellConfigSaved?: (updated: CellConfig) => void;
+  qboResolvedValues?: QBOResolvedValues;
 }
 
 interface InspectorState {
@@ -48,13 +50,15 @@ const CellConfigContext = createContext<{
   getCellConfig?: (rowKey: string, colKey: string) => CellConfig | undefined;
   inspecting: InspectorState | null;
   setInspecting: (s: InspectorState | null) => void;
+  qboResolvedValues?: QBOResolvedValues;
 }>({ inspecting: null, setInspecting: () => {} });
 
-export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig, onCellConfigSaved }: Props) {
+export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig, onCellConfigSaved, qboResolvedValues }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowKey: string; col: number } | null>(null);
   const [editValue, setEditValue] = useState('');
   const [inspecting, setInspecting] = useState<InspectorState | null>(null);
+  const [localQboValues, setLocalQboValues] = useState<Map<string, number>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
   const indices = visibleIndices ?? quarters.map((_, i) => i);
   const displayQuarters = indices.map(i => quarters[i]);
@@ -90,8 +94,23 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
   const cellFontSize = compact ? 'text-[10px]' : 'text-[11px]';
   const headerFontSize = compact ? 'text-[10px]' : 'text-[12px]';
 
-  return (
-    <CellConfigContext.Provider value={{ getCellConfig, inspecting, setInspecting }}>
+  // Merge hook-resolved and locally-resolved QBO values
+  const mergedQbo = useMemo((): QBOResolvedValues => {
+    const merged = new Map(qboResolvedValues?.values ?? []);
+    for (const [k, v] of localQboValues) merged.set(k, v);
+    return { values: merged, loading: qboResolvedValues?.loading ?? new Set() };
+  }, [qboResolvedValues, localQboValues]);
+
+  const handleQboValueResolved = (rowKey: string, colKey: string, value: number) => {
+    setLocalQboValues(prev => {
+      const next = new Map(prev);
+      next.set(`${rowKey}::${colKey}`, value);
+      return next;
+    });
+  };
+
+    return (
+    <CellConfigContext.Provider value={{ getCellConfig, inspecting, setInspecting, qboResolvedValues: mergedQbo }}>
       <div className="flex gap-0">
         <div className={`border border-border/50 rounded-md overflow-hidden ${inspecting ? 'flex-1 min-w-0' : 'w-full'}`}>
           <div className="flex justify-end p-1 bg-muted/30 border-b border-border/50">
@@ -148,6 +167,7 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
               value={inspecting.value}
               onClose={() => setInspecting(null)}
               onSaved={onCellConfigSaved}
+              onQboValueResolved={handleQboValueResolved}
             />
           </div>
         )}
@@ -212,7 +232,7 @@ function RowBlock({
   cellFontSize: string;
   visibleIndices: number[];
 }) {
-  const { getCellConfig, inspecting, setInspecting } = useContext(CellConfigContext);
+  const { getCellConfig, inspecting, setInspecting, qboResolvedValues } = useContext(CellConfigContext);
   const totalClass = row.isTotal ? 'font-bold border-t-2 border-b-2 border-foreground/20' : '';
   const subtotalClass = row.isSubtotal ? 'font-semibold border-t border-border/50' : '';
   const deltaClass = row.isDelta ? 'text-[10px] text-muted-foreground/60' : '';
@@ -255,28 +275,30 @@ function RowBlock({
         const isGreenDelta = row.isDelta && val !== null && val > 0;
         const isRedDelta = row.isDelta && val !== null && val < 0;
 
-        // Get cell config for indicator
-        const colKey = `Q${Math.floor(origIdx / 4) + Math.ceil((origIdx % 4) + 1)}-${25 + Math.floor(origIdx / 4)}`;
-        // Use the QUARTERS_12 array pattern: Q1-25, Q2-25, etc.
         const quarterLabel = ['Q1-25','Q2-25','Q3-25','Q4-25','Q1-26','Q2-26','Q3-26','Q4-26','Q1-27','Q2-27','Q3-27','Q4-27'][origIdx] ?? '';
         const cellConfig = getCellConfig?.(row.key, quarterLabel);
         const isInspected = inspecting?.rowKey === row.key && inspecting?.colIdx === origIdx;
 
+        // Resolve QBO value if available
+        const qboKey = `${row.key}::${quarterLabel}`;
+        const isQboCell = cellConfig?.cell_type === 'qbo_metric';
+        const qboResolved = isQboCell ? qboResolvedValues?.values.get(qboKey) : undefined;
+        const qboLoading = isQboCell && qboResolvedValues?.loading.has(qboKey);
+        const displayVal = qboResolved !== undefined ? qboResolved : val;
+
         const handleCellClick = () => {
-          // QBO metric and formula cells always open inspector, never edit mode
           if (cellConfig && (cellConfig.cell_type === 'qbo_metric' || cellConfig.cell_type === 'formula')) {
             setInspecting({
               rowKey: row.key,
               colIdx: origIdx,
               rowLabel: row.label,
               colLabel: quarterLabel,
-              value: formatBDValue(val, row.format),
+              value: formatBDValue(displayVal, row.format),
               config: cellConfig,
             });
           } else if (row.editable && row.onEdit) {
             onStartEdit(row.key, origIdx, val);
           } else {
-            // Static or unconfigured cells also open inspector for editing
             const fallbackConfig: CellConfig = cellConfig ?? {
               sheet_id: 'bd-budget-dashboard',
               row_key: row.key,
@@ -288,7 +310,7 @@ function RowBlock({
               colIdx: origIdx,
               rowLabel: row.label,
               colLabel: quarterLabel,
-              value: formatBDValue(val, row.format),
+              value: formatBDValue(displayVal, row.format),
               config: fallbackConfig,
             });
           }
@@ -317,6 +339,10 @@ function RowBlock({
                 className="w-full text-right border border-primary rounded px-1 py-0.5 text-[11px] outline-none bg-primary/10 text-foreground"
                 autoFocus
               />
+            ) : qboLoading ? (
+              <span className="inline-flex items-center gap-0.5">
+                <Loader2 className="h-2.5 w-2.5 animate-spin text-blue-500/60" />
+              </span>
             ) : (
               <span className={`inline-flex items-center gap-0.5 ${!row.editable && !isGreenDelta && !isRedDelta ? 'text-foreground' : ''}`}>
                 {cellConfig?.cell_type === 'formula' && (
@@ -325,7 +351,7 @@ function RowBlock({
                 {cellConfig?.cell_type === 'qbo_metric' && (
                   <Database className="h-2.5 w-2.5 text-blue-500/60 flex-shrink-0" />
                 )}
-                {formatBDValue(val, row.format)}
+                {formatBDValue(displayVal, row.format)}
               </span>
             )}
           </td>
