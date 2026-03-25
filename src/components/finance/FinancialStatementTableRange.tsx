@@ -744,13 +744,19 @@ export function FinancialStatementTableRange({
                                               selectedCell?.periodId === period.id;
                             const variance = getVarianceInfo(period.id, item.id, currentAmount);
                             const conditionalClass = getConditionalClass(currentAmount, variance);
+                            const colType = getColumnType(col.label, col.endDate);
+                            const isProjectionCol = colType === 'projection';
+                            const sessionOriginal = sessionOriginals[cellKey];
+                            const hasSessionDelta = isProjectionCol && sessionOriginal !== undefined && sessionOriginal !== currentAmount;
+                            const sessionDelta = hasSessionDelta ? currentAmount - sessionOriginal! : 0;
 
                             return (
                               <TableCell 
                                 key={col.label} 
                                 className={cn(
                                   "text-right p-0",
-                                  isSelected && "ring-2 ring-primary ring-inset"
+                                  isSelected && "ring-2 ring-primary ring-inset",
+                                  isProjectionCol && "bg-accent/5"
                                 )}
                                 onClick={() => handleCellSelect(item.id, period.id, rowIndex, periodColIndex)}
                               >
@@ -798,15 +804,24 @@ export function FinancialStatementTableRange({
                                           className={cn(
                                             "w-full px-2 py-1.5 text-right hover:bg-muted/50 transition-colors cursor-pointer text-xs",
                                             conditionalClass,
-                                            isSelected && "bg-primary/10"
+                                            isSelected && "bg-primary/10",
+                                            isProjectionCol && "italic"
                                           )}
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             handleCellSelect(item.id, period.id, rowIndex, periodColIndex);
                                           }}
-                                          onDoubleClick={() => handleStartEdit(period.id, item.id, currentAmount)}
+                                          onDoubleClick={() => handleStartEdit(period.id, item.id, currentAmount, undefined, col.endDate)}
                                         >
                                           ${formatCurrencyInputValue(currentAmount)}
+                                          {hasSessionDelta && (
+                                            <span className={cn(
+                                              "ml-1 text-[10px]",
+                                              sessionDelta > 0 ? "text-success" : "text-destructive"
+                                            )}>
+                                              {sessionDelta > 0 ? '+' : ''}{formatCurrencyInputValue(sessionDelta)}
+                                            </span>
+                                          )}
                                           {variance && variance.percentChange !== 0 && (
                                             <span className={cn(
                                               "ml-1 inline-flex items-center",
@@ -821,35 +836,48 @@ export function FinancialStatementTableRange({
                                           )}
                                         </button>
                                       </TooltipTrigger>
-                                      {variance && (
-                                        <TooltipContent side="top" className="text-xs">
-                                          <div className="space-y-1">
-                                            <div className="flex items-center justify-between gap-4">
-                                              <span className="text-muted-foreground">Prior Period:</span>
-                                              <span>${formatCurrencyInputValue(variance.priorAmount)}</span>
+                                      <TooltipContent side="top" className="text-xs">
+                                        <div className="space-y-1">
+                                          {hasSessionDelta && (
+                                            <div className="flex items-center justify-between gap-4 border-b pb-1 mb-1">
+                                              <span className="text-muted-foreground">Original this session:</span>
+                                              <span>${formatCurrencyInputValue(sessionOriginal!)}</span>
                                             </div>
-                                            <div className="flex items-center justify-between gap-4">
-                                              <span className="text-muted-foreground">Change:</span>
-                                              <span className={cn(
-                                                variance.isPositive && "text-success",
-                                                variance.isNegative && "text-destructive"
-                                              )}>
-                                                {variance.isPositive ? '+' : ''}${formatCurrencyInputValue(variance.absoluteChange)}
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center justify-between gap-4 border-t pt-1">
-                                              <span className="text-muted-foreground">% Change:</span>
-                                              <span className={cn(
-                                                "font-medium",
-                                                variance.isPositive && "text-success",
-                                                variance.isNegative && "text-destructive"
-                                              )}>
-                                                {variance.isPositive ? '+' : ''}{variance.percentChange.toFixed(1)}%
-                                              </span>
-                                            </div>
-                                          </div>
-                                        </TooltipContent>
-                                      )}
+                                          )}
+                                          {variance && (
+                                            <>
+                                              <div className="flex items-center justify-between gap-4">
+                                                <span className="text-muted-foreground">Prior Period:</span>
+                                                <span>${formatCurrencyInputValue(variance.priorAmount)}</span>
+                                              </div>
+                                              <div className="flex items-center justify-between gap-4">
+                                                <span className="text-muted-foreground">Change:</span>
+                                                <span className={cn(
+                                                  variance.isPositive && "text-success",
+                                                  variance.isNegative && "text-destructive"
+                                                )}>
+                                                  {variance.isPositive ? '+' : ''}${formatCurrencyInputValue(variance.absoluteChange)}
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center justify-between gap-4 border-t pt-1">
+                                                <span className="text-muted-foreground">% Change:</span>
+                                                <span className={cn(
+                                                  "font-medium",
+                                                  variance.isPositive && "text-success",
+                                                  variance.isNegative && "text-destructive"
+                                                )}>
+                                                  {variance.isPositive ? '+' : ''}{variance.percentChange.toFixed(1)}%
+                                                </span>
+                                              </div>
+                                            </>
+                                          )}
+                                          {!variance && !hasSessionDelta && (
+                                            <span className="text-muted-foreground">
+                                              {isProjectionCol ? 'Projection' : 'Actual'}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
