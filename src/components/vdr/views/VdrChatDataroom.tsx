@@ -709,7 +709,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-border/40">
-            <h2 className="text-sm font-semibold">Internal</h2>
+            <h2 className="text-sm font-semibold">Checklist</h2>
             {dealTypeLabel && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{dealTypeLabel}</Badge>
             )}
