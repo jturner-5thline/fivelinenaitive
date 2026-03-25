@@ -7,6 +7,7 @@ import { BDChartGrid } from './BDCharts';
 import { BDFinancialTable, type TableSection } from './BDFinancialTable';
 import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
 import { getVisibleIndices } from './QuarterFilter';
+import { useCellConfig } from './useCellConfig';
 
 export function BDDashboardTab({ visibleQuarters }: { visibleQuarters: Set<string> }) {
   const store = useBDRoiStore();
