@@ -274,15 +274,26 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
   const tree = useMemo(() => buildTree(documents), [documents]);
 
-  // For dataroom view, show folder structure but strip file children (empty folders)
+  // For dataroom view, only show files that are shared_to_dataroom (keep folder structure)
   const dataroomTree = useMemo(() => {
     if (!isDataroomView) return tree;
-    function stripFiles(nodes: TreeNode[]): TreeNode[] {
+    function filterShared(nodes: TreeNode[]): TreeNode[] {
       return nodes
-        .filter(n => n.doc.is_folder)
-        .map(n => ({ ...n, children: stripFiles(n.children) }));
+        .map(n => {
+          if (!n.doc.is_folder) {
+            return n.doc.shared_to_dataroom ? n : null;
+          }
+          const filteredChildren = filterShared(n.children);
+          // Keep folder if it has shared children
+          if (filteredChildren.length > 0) {
+            return { ...n, children: filteredChildren };
+          }
+          // Still show empty folders for structure
+          return { ...n, children: [] };
+        })
+        .filter(Boolean) as TreeNode[];
     }
-    return stripFiles(tree);
+    return filterShared(tree);
   }, [tree, isDataroomView]);
 
   // Filter tree by search query AND category filter
