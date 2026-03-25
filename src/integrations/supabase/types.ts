@@ -6361,6 +6361,41 @@ export type Database = {
           },
         ]
       }
+      financial_column_settings: {
+        Row: {
+          column_key: string
+          column_type: Database["public"]["Enums"]["financial_column_type"]
+          company_id: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          column_key: string
+          column_type?: Database["public"]["Enums"]["financial_column_type"]
+          company_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          column_key?: string
+          column_type?: Database["public"]["Enums"]["financial_column_type"]
+          company_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_column_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_data: {
         Row: {
           amount: number
@@ -14952,6 +14987,7 @@ export type Database = {
         | "other"
       data_access_scope: "all" | "team" | "own" | "none"
       feature_status: "disabled" | "staging" | "deployed" | "james_only"
+      financial_column_type: "actual" | "projection"
       financial_period_type: "monthly" | "quarterly" | "annual"
       financial_statement_type: "pnl" | "balance_sheet" | "cash_flow"
       lender_pass_reason_category:
@@ -15234,6 +15270,7 @@ export const Constants = {
       ],
       data_access_scope: ["all", "team", "own", "none"],
       feature_status: ["disabled", "staging", "deployed", "james_only"],
+      financial_column_type: ["actual", "projection"],
       financial_period_type: ["monthly", "quarterly", "annual"],
       financial_statement_type: ["pnl", "balance_sheet", "cash_flow"],
       lender_pass_reason_category: [

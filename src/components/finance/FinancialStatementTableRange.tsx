@@ -11,6 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { parseExcelFromFile, ParsedSheet } from "@/lib/excelUtils";
+import { useColumnSettings, ColumnType } from "@/hooks/useColumnSettings";
+import { ColumnTypeSettingsDialog } from "./ColumnTypeSettingsDialog";
+import { Badge } from "@/components/ui/badge";
 
 // Type for undo history
 interface UndoEntry {
@@ -65,9 +68,14 @@ export function FinancialStatementTableRange({
   const [isPasting, setIsPasting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [undoHistory, setUndoHistory] = useState<UndoEntry[]>([]);
+  // Session-level original values for projection cells (key: cellKey, value: original amount before first edit this session)
+  const [sessionOriginals, setSessionOriginals] = useState<Record<string, number>>({});
   const tableRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Column type settings
+  const { getColumnType, bulkSetColumnTypes } = useColumnSettings(companyId);
 
   // Get flattened list of line items (excluding category headers)
   const flatLineItems = categories.flatMap(cat => 
@@ -84,8 +92,18 @@ export function FinancialStatementTableRange({
     );
   }, [financialData]);
 
-  const handleStartEdit = (periodId: string, lineItemId: string, currentValue: number, replaceValue?: string) => {
+  const handleStartEdit = (periodId: string, lineItemId: string, currentValue: number, replaceValue?: string, colEndDate?: Date) => {
     const key = `${periodId}-${lineItemId}`;
+    // Track session original for projection cells
+    if (colEndDate) {
+      const colKey = periodColumns.find(c => c.period?.id === periodId)?.label;
+      if (colKey) {
+        const colType = getColumnType(colKey, colEndDate);
+        if (colType === 'projection' && !(key in sessionOriginals)) {
+          setSessionOriginals(prev => ({ ...prev, [key]: currentValue }));
+        }
+      }
+    }
     setEditingCell(key);
     setEditValue(replaceValue !== undefined ? replaceValue : formatCurrencyInputValue(currentValue));
   };
@@ -298,23 +316,25 @@ export function FinancialStatementTableRange({
         // Start editing on Enter
         e.preventDefault();
         const data = getDataForCell(selectedCell.periodId, selectedCell.lineItemId);
-        handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, data?.amount ?? 0);
+        const selectedColForEnter = existingPeriodColumns[selectedCell.colIndex];
+        handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, data?.amount ?? 0, undefined, selectedColForEnter?.endDate);
         break;
       case 'Escape':
         setSelectedCell(null);
         break;
       default:
         // Start editing when typing a number or backspace
+        const selectedColForType = existingPeriodColumns[selectedCell.colIndex];
         if (/^[0-9]$/.test(e.key)) {
           e.preventDefault();
-          handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, 0, e.key);
+          handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, 0, e.key, selectedColForType?.endDate);
         } else if (e.key === 'Backspace' || e.key === 'Delete') {
           e.preventDefault();
-          handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, 0, '');
+          handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, 0, '', selectedColForType?.endDate);
         }
         break;
     }
-  }, [editingCell, selectedCell, navigateToCell, handleUndo, handleCopy, getDataForCell, handleStartEdit]);
+  }, [editingCell, selectedCell, navigateToCell, handleUndo, handleCopy, getDataForCell, handleStartEdit, existingPeriodColumns]);
 
   const handleEditKeyDown = (e: React.KeyboardEvent, periodId: string, lineItemId: string, previousAmount: number) => {
     if (e.key === 'Enter') {
@@ -604,6 +624,14 @@ export function FinancialStatementTableRange({
             )}
             Import Excel
           </Button>
+          <ColumnTypeSettingsDialog
+            periodColumns={periodColumns}
+            getColumnType={getColumnType}
+            onSave={async (updates) => {
+              await bulkSetColumnTypes(updates);
+              toast.success('Column types saved');
+            }}
+          />
         </div>
       </CardHeader>
       <CardContent>
@@ -631,20 +659,37 @@ export function FinancialStatementTableRange({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[200px] min-w-[200px] sticky left-0 bg-background z-10">Line Item</TableHead>
-                  {periodColumns.map((col, colIndex) => (
-                    <TableHead key={col.label} className="text-right min-w-[100px]">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="cursor-default text-xs">{col.shortLabel}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{col.label}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableHead>
-                  ))}
+                  {periodColumns.map((col, colIndex) => {
+                    const colType = getColumnType(col.label, col.endDate);
+                    const isProjection = colType === 'projection';
+                    return (
+                      <TableHead
+                        key={col.label}
+                        className={cn(
+                          "text-right min-w-[100px]",
+                          isProjection && "bg-accent/15"
+                        )}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          {isProjection && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-normal border-accent text-accent-foreground">
+                              Proj
+                            </Badge>
+                          )}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-default text-xs">{col.shortLabel}</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{col.label}{isProjection ? ' (Projection)' : ' (Actual)'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableHead>
+                    );
+                  })}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -701,13 +746,19 @@ export function FinancialStatementTableRange({
                                               selectedCell?.periodId === period.id;
                             const variance = getVarianceInfo(period.id, item.id, currentAmount);
                             const conditionalClass = getConditionalClass(currentAmount, variance);
+                            const colType = getColumnType(col.label, col.endDate);
+                            const isProjectionCol = colType === 'projection';
+                            const sessionOriginal = sessionOriginals[cellKey];
+                            const hasSessionDelta = isProjectionCol && sessionOriginal !== undefined && sessionOriginal !== currentAmount;
+                            const sessionDelta = hasSessionDelta ? currentAmount - sessionOriginal! : 0;
 
                             return (
                               <TableCell 
                                 key={col.label} 
                                 className={cn(
                                   "text-right p-0",
-                                  isSelected && "ring-2 ring-primary ring-inset"
+                                  isSelected && "ring-2 ring-primary ring-inset",
+                                  isProjectionCol && "bg-accent/5"
                                 )}
                                 onClick={() => handleCellSelect(item.id, period.id, rowIndex, periodColIndex)}
                               >
@@ -755,15 +806,24 @@ export function FinancialStatementTableRange({
                                           className={cn(
                                             "w-full px-2 py-1.5 text-right hover:bg-muted/50 transition-colors cursor-pointer text-xs",
                                             conditionalClass,
-                                            isSelected && "bg-primary/10"
+                                            isSelected && "bg-primary/10",
+                                            isProjectionCol && "italic"
                                           )}
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             handleCellSelect(item.id, period.id, rowIndex, periodColIndex);
                                           }}
-                                          onDoubleClick={() => handleStartEdit(period.id, item.id, currentAmount)}
+                                          onDoubleClick={() => handleStartEdit(period.id, item.id, currentAmount, undefined, col.endDate)}
                                         >
                                           ${formatCurrencyInputValue(currentAmount)}
+                                          {hasSessionDelta && (
+                                            <span className={cn(
+                                              "ml-1 text-[10px]",
+                                              sessionDelta > 0 ? "text-success" : "text-destructive"
+                                            )}>
+                                              {sessionDelta > 0 ? '+' : ''}{formatCurrencyInputValue(sessionDelta)}
+                                            </span>
+                                          )}
                                           {variance && variance.percentChange !== 0 && (
                                             <span className={cn(
                                               "ml-1 inline-flex items-center",
@@ -778,35 +838,48 @@ export function FinancialStatementTableRange({
                                           )}
                                         </button>
                                       </TooltipTrigger>
-                                      {variance && (
-                                        <TooltipContent side="top" className="text-xs">
-                                          <div className="space-y-1">
-                                            <div className="flex items-center justify-between gap-4">
-                                              <span className="text-muted-foreground">Prior Period:</span>
-                                              <span>${formatCurrencyInputValue(variance.priorAmount)}</span>
+                                      <TooltipContent side="top" className="text-xs">
+                                        <div className="space-y-1">
+                                          {hasSessionDelta && (
+                                            <div className="flex items-center justify-between gap-4 border-b pb-1 mb-1">
+                                              <span className="text-muted-foreground">Original this session:</span>
+                                              <span>${formatCurrencyInputValue(sessionOriginal!)}</span>
                                             </div>
-                                            <div className="flex items-center justify-between gap-4">
-                                              <span className="text-muted-foreground">Change:</span>
-                                              <span className={cn(
-                                                variance.isPositive && "text-success",
-                                                variance.isNegative && "text-destructive"
-                                              )}>
-                                                {variance.isPositive ? '+' : ''}${formatCurrencyInputValue(variance.absoluteChange)}
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center justify-between gap-4 border-t pt-1">
-                                              <span className="text-muted-foreground">% Change:</span>
-                                              <span className={cn(
-                                                "font-medium",
-                                                variance.isPositive && "text-success",
-                                                variance.isNegative && "text-destructive"
-                                              )}>
-                                                {variance.isPositive ? '+' : ''}{variance.percentChange.toFixed(1)}%
-                                              </span>
-                                            </div>
-                                          </div>
-                                        </TooltipContent>
-                                      )}
+                                          )}
+                                          {variance && (
+                                            <>
+                                              <div className="flex items-center justify-between gap-4">
+                                                <span className="text-muted-foreground">Prior Period:</span>
+                                                <span>${formatCurrencyInputValue(variance.priorAmount)}</span>
+                                              </div>
+                                              <div className="flex items-center justify-between gap-4">
+                                                <span className="text-muted-foreground">Change:</span>
+                                                <span className={cn(
+                                                  variance.isPositive && "text-success",
+                                                  variance.isNegative && "text-destructive"
+                                                )}>
+                                                  {variance.isPositive ? '+' : ''}${formatCurrencyInputValue(variance.absoluteChange)}
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center justify-between gap-4 border-t pt-1">
+                                                <span className="text-muted-foreground">% Change:</span>
+                                                <span className={cn(
+                                                  "font-medium",
+                                                  variance.isPositive && "text-success",
+                                                  variance.isNegative && "text-destructive"
+                                                )}>
+                                                  {variance.isPositive ? '+' : ''}{variance.percentChange.toFixed(1)}%
+                                                </span>
+                                              </div>
+                                            </>
+                                          )}
+                                          {!variance && !hasSessionDelta && (
+                                            <span className="text-muted-foreground">
+                                              {isProjectionCol ? 'Projection' : 'Actual'}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
