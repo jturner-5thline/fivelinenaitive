@@ -127,7 +127,7 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
       } else {
         await supabase
           .from('sheet_cell_config')
-          .insert(payload);
+          .insert([payload]);
       }
 
       onSaved?.({
