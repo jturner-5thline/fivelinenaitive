@@ -11936,13 +11936,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "uploaded_item_checklist_mapping_checklist_item_id_fkey"
-            columns: ["checklist_item_id"]
-            isOneToOne: false
-            referencedRelation: "deal_checklist_items"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "uploaded_item_checklist_mapping_uploaded_item_id_fkey"
             columns: ["uploaded_item_id"]
             isOneToOne: false

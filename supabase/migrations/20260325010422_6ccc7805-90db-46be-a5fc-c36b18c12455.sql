@@ -1,0 +1,1 @@
+ALTER TABLE public.uploaded_item_checklist_mapping DROP CONSTRAINT uploaded_item_checklist_mapping_checklist_item_id_fkey;
