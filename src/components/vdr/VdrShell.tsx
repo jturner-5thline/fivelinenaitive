@@ -12,6 +12,7 @@ import { useDealTypes } from '@/contexts/DealTypesContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { VdrDocument } from './types';
+import { classifyFileToFolder } from '@/utils/vdrFileClassifier';
 
 import { VdrSidebar } from './VdrSidebar';
 import { VdrCenterPanel } from './VdrCenterPanel';
@@ -119,26 +120,22 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
     return fileAssignments.get(activeFileIndex) || { folder: '/', checklistIds: new Set<string>() };
   }, [fileAssignments, activeFileIndex]);
 
-  // Derive auto-folder from active file's checklist selections
+  // Derive auto-folder from active file's checklist item labels using the classifier
   const autoFolderInfo = useMemo(() => {
     if (activeAssignment.checklistIds.size === 0) return null;
-    const categories = new Set<string>();
+    // Try each selected checklist item's label as a "filename" for classification
     for (const id of activeAssignment.checklistIds) {
       const item = checklistItems.find(i => i.id === id);
-      if (item) categories.add(item.category);
-    }
-    for (const category of categories) {
-      const catLower = category.toLowerCase();
-      const matchedFolder = availableFolders.find(f => {
-        const fLower = f.filename.toLowerCase();
-        return fLower.includes(catLower) || catLower.includes(fLower);
-      });
-      if (matchedFolder) {
-        return { path: `/${matchedFolder.filename}/`, name: matchedFolder.filename };
+      if (item) {
+        const folderPath = classifyFileToFolder(item.label, vdrDocs.documents);
+        if (folderPath !== '/') {
+          const folderName = folderPath.replace(/^\/|\/$/g, '');
+          return { path: folderPath, name: folderName };
+        }
       }
     }
     return null;
-  }, [activeAssignment.checklistIds, checklistItems, availableFolders]);
+  }, [activeAssignment.checklistIds, checklistItems, vdrDocs.documents]);
 
   const folderLocked = !!autoFolderInfo;
 
