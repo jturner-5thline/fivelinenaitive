@@ -628,18 +628,21 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               e.dataTransfer.setData('text/vdr-doc-id', doc.id);
             }}
           >
+            {/* Shared status: subtle left-border accent */}
+            {!isDataroomView && doc.shared_to_dataroom && (
+              <span className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full bg-primary/60" />
+            )}
             <Checkbox
               checked={isSelected}
               onCheckedChange={() => toggleFileSelect(doc.id)}
               onClick={(e) => e.stopPropagation()}
               className="h-3 w-3 flex-shrink-0"
             />
-            {getIngestionIcon(doc.ingestion_status)}
-            {getFileIcon(doc.filename)}
-            <span className="truncate flex-1 min-w-0">{doc.filename}</span>
-            {doc.shared_to_dataroom && (
-              <Badge variant="outline" className="text-[8px] px-1 py-0 border-primary/30 text-primary flex-shrink-0">Shared</Badge>
-            )}
+            <span className="ml-1 flex items-center gap-1 min-w-0 flex-1">
+              {getIngestionIcon(doc.ingestion_status)}
+              {getFileIcon(doc.filename)}
+              <span className="truncate flex-1 min-w-0">{doc.filename}</span>
+            </span>
             <span className="text-[9px] text-muted-foreground/60 flex-shrink-0 truncate max-w-[80px]" title={doc.folder_path}>
               {doc.folder_path === '/' ? 'Root' : doc.folder_path.replace(/^\/|\/$/g, '')}
             </span>
@@ -656,21 +659,24 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                 ))}
               </div>
             )}
-            {!isDataroomView && (
-              <button
-                className={cn(
-                  "flex-shrink-0 p-0.5 rounded transition-colors",
-                  doc.shared_to_dataroom
-                    ? "text-primary hover:text-primary/80"
-                    : "text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-primary"
-                )}
-                title={doc.shared_to_dataroom ? 'Unshare from Dataroom' : 'Share to Dataroom'}
-                onClick={(e) => { e.stopPropagation(); vdrDocs.toggleShareToDataroom(doc.id, !doc.shared_to_dataroom); }}
-              >
-                <ArrowRightFromLine className="h-3 w-3" />
-              </button>
-            )}
-            <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 flex-shrink-0">{formatSize(doc.file_size)}</span>
+            {/* Hover action area */}
+            <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              {!isDataroomView && (
+                <button
+                  className={cn(
+                    "p-0.5 rounded transition-colors",
+                    doc.shared_to_dataroom
+                      ? "text-primary hover:text-primary/80"
+                      : "text-muted-foreground/50 hover:text-primary"
+                  )}
+                  title={doc.shared_to_dataroom ? 'Unshare from Dataroom' : 'Share to Dataroom'}
+                  onClick={(e) => { e.stopPropagation(); vdrDocs.toggleShareToDataroom(doc.id, !doc.shared_to_dataroom); }}
+                >
+                  <ArrowRightFromLine className="h-3 w-3" />
+                </button>
+              )}
+              <span className="text-[10px] text-muted-foreground flex-shrink-0">{formatSize(doc.file_size)}</span>
+            </div>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
