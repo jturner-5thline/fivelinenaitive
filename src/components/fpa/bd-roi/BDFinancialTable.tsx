@@ -58,6 +58,7 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
   const [editingCell, setEditingCell] = useState<{ rowKey: string; col: number } | null>(null);
   const [editValue, setEditValue] = useState('');
   const [inspecting, setInspecting] = useState<InspectorState | null>(null);
+  const [localQboValues, setLocalQboValues] = useState<Map<string, number>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
   const indices = visibleIndices ?? quarters.map((_, i) => i);
   const displayQuarters = indices.map(i => quarters[i]);
