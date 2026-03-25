@@ -18,6 +18,7 @@ export interface VdrDocument {
   ingestion_status: 'pending' | 'processing' | 'complete' | 'failed' | null;
   chunk_count: number;
   entity_count: number;
+  shared_to_dataroom: boolean;
   created_at: string;
   updated_at: string;
 }
