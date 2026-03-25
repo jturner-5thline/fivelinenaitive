@@ -622,6 +622,14 @@ export function FinancialStatementTableRange({
             )}
             Import Excel
           </Button>
+          <ColumnTypeSettingsDialog
+            periodColumns={periodColumns}
+            getColumnType={getColumnType}
+            onSave={async (updates) => {
+              await bulkSetColumnTypes(updates);
+              toast.success('Column types saved');
+            }}
+          />
         </div>
       </CardHeader>
       <CardContent>
