@@ -202,22 +202,32 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
     }
   }, [endDrag, getCellConfig, onCellConfigSaved, sections, user, indices]);
 
-  // Global mouseup to end drag
+  // Global mouseup/mousemove to end drag and prevent scroll during fill
   useEffect(() => {
     if (!fillState.isDragging) return;
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
+      e.preventDefault();
       applyFill();
+    };
+    const handleMouseMove = (e: MouseEvent) => {
+      // Prevent browser text-selection drag and scroll while fill-dragging
+      e.preventDefault();
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') cancelDrag();
     };
 
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('keydown', handleKeyDown);
+    // Suppress any accidental selectstart during drag
+    window.addEventListener('selectstart', handleMouseMove);
     return () => {
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('selectstart', handleMouseMove);
     };
   }, [fillState.isDragging, applyFill, cancelDrag]);
 
