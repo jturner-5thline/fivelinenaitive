@@ -50,6 +50,7 @@ const CellConfigContext = createContext<{
   getCellConfig?: (rowKey: string, colKey: string) => CellConfig | undefined;
   inspecting: InspectorState | null;
   setInspecting: (s: InspectorState | null) => void;
+  qboResolvedValues?: QBOResolvedValues;
 }>({ inspecting: null, setInspecting: () => {} });
 
 export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig, onCellConfigSaved }: Props) {
