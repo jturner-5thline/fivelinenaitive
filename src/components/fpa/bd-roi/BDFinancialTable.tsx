@@ -258,28 +258,30 @@ function RowBlock({
         const isGreenDelta = row.isDelta && val !== null && val > 0;
         const isRedDelta = row.isDelta && val !== null && val < 0;
 
-        // Get cell config for indicator
-        const colKey = `Q${Math.floor(origIdx / 4) + Math.ceil((origIdx % 4) + 1)}-${25 + Math.floor(origIdx / 4)}`;
-        // Use the QUARTERS_12 array pattern: Q1-25, Q2-25, etc.
         const quarterLabel = ['Q1-25','Q2-25','Q3-25','Q4-25','Q1-26','Q2-26','Q3-26','Q4-26','Q1-27','Q2-27','Q3-27','Q4-27'][origIdx] ?? '';
         const cellConfig = getCellConfig?.(row.key, quarterLabel);
         const isInspected = inspecting?.rowKey === row.key && inspecting?.colIdx === origIdx;
 
+        // Resolve QBO value if available
+        const qboKey = `${row.key}::${quarterLabel}`;
+        const isQboCell = cellConfig?.cell_type === 'qbo_metric';
+        const qboResolved = isQboCell ? qboResolvedValues?.values.get(qboKey) : undefined;
+        const qboLoading = isQboCell && qboResolvedValues?.loading.has(qboKey);
+        const displayVal = qboResolved !== undefined ? qboResolved : val;
+
         const handleCellClick = () => {
-          // QBO metric and formula cells always open inspector, never edit mode
           if (cellConfig && (cellConfig.cell_type === 'qbo_metric' || cellConfig.cell_type === 'formula')) {
             setInspecting({
               rowKey: row.key,
               colIdx: origIdx,
               rowLabel: row.label,
               colLabel: quarterLabel,
-              value: formatBDValue(val, row.format),
+              value: formatBDValue(displayVal, row.format),
               config: cellConfig,
             });
           } else if (row.editable && row.onEdit) {
             onStartEdit(row.key, origIdx, val);
           } else {
-            // Static or unconfigured cells also open inspector for editing
             const fallbackConfig: CellConfig = cellConfig ?? {
               sheet_id: 'bd-budget-dashboard',
               row_key: row.key,
@@ -291,7 +293,7 @@ function RowBlock({
               colIdx: origIdx,
               rowLabel: row.label,
               colLabel: quarterLabel,
-              value: formatBDValue(val, row.format),
+              value: formatBDValue(displayVal, row.format),
               config: fallbackConfig,
             });
           }
@@ -320,6 +322,10 @@ function RowBlock({
                 className="w-full text-right border border-primary rounded px-1 py-0.5 text-[11px] outline-none bg-primary/10 text-foreground"
                 autoFocus
               />
+            ) : qboLoading ? (
+              <span className="inline-flex items-center gap-0.5">
+                <Loader2 className="h-2.5 w-2.5 animate-spin text-blue-500/60" />
+              </span>
             ) : (
               <span className={`inline-flex items-center gap-0.5 ${!row.editable && !isGreenDelta && !isRedDelta ? 'text-foreground' : ''}`}>
                 {cellConfig?.cell_type === 'formula' && (
@@ -328,7 +334,7 @@ function RowBlock({
                 {cellConfig?.cell_type === 'qbo_metric' && (
                   <Database className="h-2.5 w-2.5 text-blue-500/60 flex-shrink-0" />
                 )}
-                {formatBDValue(val, row.format)}
+                {formatBDValue(displayVal, row.format)}
               </span>
             )}
           </td>
