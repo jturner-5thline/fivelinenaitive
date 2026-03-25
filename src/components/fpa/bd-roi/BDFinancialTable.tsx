@@ -215,7 +215,7 @@ function RowBlock({
   cellFontSize: string;
   visibleIndices: number[];
 }) {
-  const { getCellConfig, inspecting, setInspecting } = useContext(CellConfigContext);
+  const { getCellConfig, inspecting, setInspecting, qboResolvedValues } = useContext(CellConfigContext);
   const totalClass = row.isTotal ? 'font-bold border-t-2 border-b-2 border-foreground/20' : '';
   const subtotalClass = row.isSubtotal ? 'font-semibold border-t border-border/50' : '';
   const deltaClass = row.isDelta ? 'text-[10px] text-muted-foreground/60' : '';
