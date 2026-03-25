@@ -195,7 +195,10 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
           }
         }
         if (mappingRows.length > 0) {
-          await supabase.from('uploaded_item_checklist_mapping').insert(mappingRows);
+          const { error: mapError } = await supabase.from('uploaded_item_checklist_mapping').insert(mappingRows);
+          if (mapError) {
+            console.error('Failed to insert checklist mappings:', mapError);
+          }
         }
       }
     }
