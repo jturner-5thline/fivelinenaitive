@@ -4,11 +4,15 @@ import { Badge } from '@/components/ui/badge';
 import { FolderLock, FolderOpen, Upload } from 'lucide-react';
 import type { Deal } from '@/types/deal';
 
+export type VdrView = 'internal' | 'dataroom';
+
 interface VdrSidebarProps {
   dealId: string;
   deals: Deal[];
   currentDeal: Deal | undefined;
   onFilesDropped?: (files: File[]) => void;
+  activeView: VdrView;
+  onViewChange: (view: VdrView) => void;
 }
 
 function getStatusBadge(status: string | undefined) {
@@ -25,6 +29,8 @@ export function VdrSidebar({
   deals,
   currentDeal,
   onFilesDropped,
+  activeView,
+  onViewChange,
 }: VdrSidebarProps) {
   const statusBadge = getStatusBadge(currentDeal?.status);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -75,11 +81,23 @@ export function VdrSidebar({
       <div className="px-4 pb-3 space-y-1.5">
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Views</p>
         <div className="space-y-0.5">
-          <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs font-medium text-foreground bg-secondary/50 hover:bg-secondary transition-colors">
+          <button
+            onClick={() => onViewChange('internal')}
+            className={cn(
+              "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs font-medium transition-colors",
+              activeView === 'internal' ? "text-foreground bg-secondary/50" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            )}
+          >
             <FolderLock className="h-3.5 w-3.5 text-muted-foreground" />
             Internal
           </button>
-          <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
+          <button
+            onClick={() => onViewChange('dataroom')}
+            className={cn(
+              "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs font-medium transition-colors",
+              activeView === 'dataroom' ? "text-foreground bg-secondary/50" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            )}
+          >
             <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
             Dataroom
           </button>

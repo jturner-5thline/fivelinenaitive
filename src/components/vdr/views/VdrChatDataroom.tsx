@@ -21,6 +21,8 @@ import { BulkUploadStep } from '../BulkUploadStep';
 import { BulkMappingTable } from '../BulkMappingTable';
 import { supabase } from '@/integrations/supabase/client';
 
+import type { VdrView } from '../VdrSidebar';
+
 interface VdrChatDataroomProps {
   dealId: string;
   documents: VdrDocument[];
@@ -33,6 +35,7 @@ interface VdrChatDataroomProps {
   dealType?: string | null;
   companyId?: string | null;
   mappingRefreshKey?: number;
+  activeView?: VdrView;
 }
 
 const ACCOUNT_TAG_COLORS: Record<string, string> = {
@@ -110,7 +113,7 @@ function buildTree(docs: VdrDocument[]): TreeNode[] {
   return [...tree, ...rootFiles];
 }
 
-export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex, dealType, companyId, mappingRefreshKey }: VdrChatDataroomProps) {
+export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex, dealType, companyId, mappingRefreshKey, activeView = 'internal' }: VdrChatDataroomProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [newFolderDialog, setNewFolderDialog] = useState<{ parentPath: string } | null>(null);
@@ -267,15 +270,29 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     setDeleteConfirmDialog(null);
   }, [deleteConfirmDialog, documents, vdrDocs]);
 
+  const isDataroomView = activeView === 'dataroom';
+
   const tree = useMemo(() => buildTree(documents), [documents]);
+
+  // For dataroom view, show folder structure but strip file children (empty folders)
+  const dataroomTree = useMemo(() => {
+    if (!isDataroomView) return tree;
+    function stripFiles(nodes: TreeNode[]): TreeNode[] {
+      return nodes
+        .filter(n => n.doc.is_folder)
+        .map(n => ({ ...n, children: stripFiles(n.children) }));
+    }
+    return stripFiles(tree);
+  }, [tree, isDataroomView]);
 
   // Filter tree by search query AND category filter
   const filteredTree = useMemo(() => {
+    const baseTree = isDataroomView ? dataroomTree : tree;
     const q = searchQuery.toLowerCase();
     const hasSearch = !!q.trim();
     const hasCategory = categoryFilter !== 'all';
 
-    if (!hasSearch && !hasCategory) return tree;
+    if (!hasSearch && !hasCategory) return baseTree;
 
     const categoryDocIds = hasCategory
       ? new Set([...tagsByDocId.entries()].filter(([, tags]) => tags.some(t => t.account_category === categoryFilter)).map(([id]) => id))
@@ -293,11 +310,12 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       }
       return null;
     }
-    return tree.map(filterNode).filter(Boolean) as TreeNode[];
-  }, [tree, searchQuery, categoryFilter, tagsByDocId]);
+    return baseTree.map(filterNode).filter(Boolean) as TreeNode[];
+  }, [tree, dataroomTree, isDataroomView, searchQuery, categoryFilter, tagsByDocId]);
 
-  // Flat file list (no folders)
+  // Flat file list (no folders) — empty in dataroom view
   const flatFiles = useMemo(() => {
+    if (isDataroomView) return [];
     const files = documents.filter(d => !d.is_folder);
     const q = searchQuery.toLowerCase();
     const hasSearch = !!q.trim();
@@ -311,7 +329,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       const matchesCategory = !categoryDocIds || categoryDocIds.has(f.id);
       return matchesSearch && matchesCategory;
     });
-  }, [documents, searchQuery, categoryFilter, tagsByDocId]);
+  }, [documents, searchQuery, categoryFilter, tagsByDocId, isDataroomView]);
 
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => {
@@ -758,23 +776,24 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-border/40">
-            <h2 className="text-sm font-semibold">Dataroom</h2>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{vdrDocs.fileCount} files</Badge>
-            {processingCount > 0 && (
+            <h2 className="text-sm font-semibold">{isDataroomView ? 'Dataroom (External)' : 'Dataroom'}</h2>
+            {!isDataroomView && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{vdrDocs.fileCount} files</Badge>}
+            {isDataroomView && <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">Shared</Badge>}
+            {!isDataroomView && processingCount > 0 && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/30 text-amber-400 gap-1">
                 <Loader2 className="h-2.5 w-2.5 animate-spin" />
                 {processingCount} indexing
               </Badge>
             )}
-            {indexedCount > 0 && processingCount === 0 && (
+            {!isDataroomView && indexedCount > 0 && processingCount === 0 && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-500/30 text-emerald-400 gap-1">
                 <CheckCircle2 className="h-2.5 w-2.5" />
                 {indexedCount} indexed
               </Badge>
             )}
             <div className="ml-auto flex items-center gap-1">
-              {renderViewToggle(rightView, setRightView)}
-              {canPushToFlex && (
+              {!isDataroomView && renderViewToggle(rightView, setRightView)}
+              {!isDataroomView && canPushToFlex && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -789,9 +808,11 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setNewFolderDialog({ parentPath: '/' }); setNewFolderName(''); }} title="New folder">
                 <FolderPlus className="h-3.5 w-3.5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUploadClick('/')} title="Upload files">
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
+              {!isDataroomView && (
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUploadClick('/')} title="Upload files">
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
           </div>
 
