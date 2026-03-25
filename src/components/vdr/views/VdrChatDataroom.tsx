@@ -882,6 +882,40 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Move Dialog */}
+          <Dialog open={!!moveDialog} onOpenChange={open => { if (!open) setMoveDialog(null); }}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader><DialogTitle>Move {moveDialog?.fileIds.length === 1 ? 'file' : `${moveDialog?.fileIds.length} files`} to…</DialogTitle></DialogHeader>
+              <Select value={moveTargetFolder} onValueChange={setMoveTargetFolder}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="/">Root</SelectItem>
+                  {folders.map(f => (
+                    <SelectItem key={f.id} value={`/${f.filename}/`}>{f.filename}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setMoveDialog(null)}>Cancel</Button>
+                <Button onClick={handleBulkMove}>Move</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <Dialog open={!!deleteConfirmDialog} onOpenChange={open => { if (!open) setDeleteConfirmDialog(null); }}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader><DialogTitle>Delete {deleteConfirmDialog?.length === 1 ? 'file' : `${deleteConfirmDialog?.length} files`}?</DialogTitle></DialogHeader>
+              <p className="text-sm text-muted-foreground">This action cannot be undone. The selected files will be permanently removed.</p>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setDeleteConfirmDialog(null)}>Cancel</Button>
+                <Button variant="destructive" onClick={handleBulkDelete}>Delete</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </ResizablePanel>
     </ResizablePanelGroup>
