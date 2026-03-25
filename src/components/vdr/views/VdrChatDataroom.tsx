@@ -113,7 +113,7 @@ function buildTree(docs: VdrDocument[]): TreeNode[] {
   return [...tree, ...rootFiles];
 }
 
-export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex, dealType, companyId, mappingRefreshKey }: VdrChatDataroomProps) {
+export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex, dealType, companyId, mappingRefreshKey, activeView = 'internal' }: VdrChatDataroomProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [newFolderDialog, setNewFolderDialog] = useState<{ parentPath: string } | null>(null);
