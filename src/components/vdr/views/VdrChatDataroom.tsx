@@ -324,10 +324,10 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     return baseTree.map(filterNode).filter(Boolean) as TreeNode[];
   }, [tree, dataroomTree, isDataroomView, searchQuery, categoryFilter, tagsByDocId]);
 
-  // Flat file list (no folders) — empty in dataroom view
+  // Flat file list (no folders) — in dataroom view only show shared files
   const flatFiles = useMemo(() => {
-    if (isDataroomView) return [];
-    const files = documents.filter(d => !d.is_folder);
+    let files = documents.filter(d => !d.is_folder);
+    if (isDataroomView) files = files.filter(d => d.shared_to_dataroom);
     const q = searchQuery.toLowerCase();
     const hasSearch = !!q.trim();
     const hasCategory = categoryFilter !== 'all';
