@@ -105,10 +105,10 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   // Reset state when dialog opens
   useEffect(() => {
     if (pendingFiles) {
-      setUploadStep('folder');
       setSelectedFolder('/');
-      setFileMappings(new Map());
+      setSelectedChecklistIds(new Set());
       setMappingSearch('');
+      setChecklistOpen(false);
     }
   }, [pendingFiles]);
 
@@ -116,32 +116,14 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
     setPendingFiles(files);
   }, []);
 
-  const toggleFileMapping = useCallback((fileIndex: number, checklistItemId: string) => {
-    setFileMappings(prev => {
-      const next = new Map(prev);
-      const existing = next.get(fileIndex) ?? new Set<string>();
-      const updated = new Set(existing);
-      if (updated.has(checklistItemId)) updated.delete(checklistItemId);
-      else updated.add(checklistItemId);
-      next.set(fileIndex, updated);
+  const toggleChecklistItem = useCallback((id: string) => {
+    setSelectedChecklistIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }, []);
-
-  const applyChecklistItemToAll = useCallback((checklistItemId: string, checked: boolean) => {
-    if (!pendingFiles) return;
-    setFileMappings(prev => {
-      const next = new Map(prev);
-      for (let i = 0; i < pendingFiles.length; i++) {
-        const existing = next.get(i) ?? new Set<string>();
-        const updated = new Set(existing);
-        if (checked) updated.add(checklistItemId);
-        else updated.delete(checklistItemId);
-        next.set(i, updated);
-      }
-      return next;
-    });
-  }, [pendingFiles]);
 
   const handleUploadConfirm = useCallback(async () => {
     if (!pendingFiles || !user) return;
@@ -151,8 +133,8 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
       await vdrDocs.uploadFile(file, selectedFolder, 'dataroom');
     }
 
-    // Create uploaded_items + mappings if any mappings were made
-    const hasMappings = Array.from(fileMappings.values()).some(s => s.size > 0);
+    // Create uploaded_items + mappings if any checklist items were selected
+    const hasMappings = selectedChecklistIds.size > 0;
     if (hasMappings) {
       const batchId = crypto.randomUUID();
       const rows = pendingFiles.map(f => ({
@@ -171,14 +153,11 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
 
       if (!error && insertedItems) {
         const mappingRows: { uploaded_item_id: string; checklist_item_id: string }[] = [];
-        insertedItems.forEach((item, idx) => {
-          const itemMappings = fileMappings.get(idx);
-          if (itemMappings) {
-            for (const checklistId of itemMappings) {
-              mappingRows.push({ uploaded_item_id: item.id, checklist_item_id: checklistId });
-            }
+        for (const item of insertedItems) {
+          for (const checklistId of selectedChecklistIds) {
+            mappingRows.push({ uploaded_item_id: item.id, checklist_item_id: checklistId });
           }
-        });
+        }
         if (mappingRows.length > 0) {
           await supabase.from('uploaded_item_checklist_mapping').insert(mappingRows);
         }
@@ -189,67 +168,11 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
       description: hasMappings ? 'Files mapped to checklist items.' : undefined,
     });
     setPendingFiles(null);
-  }, [pendingFiles, selectedFolder, fileMappings, vdrDocs, dealId, user]);
+  }, [pendingFiles, selectedFolder, selectedChecklistIds, vdrDocs, dealId, user]);
 
   const handleCancel = useCallback(() => {
     setPendingFiles(null);
   }, []);
-
-  // --- existing handlers below ---
-
-  const handlePushToFlex = useCallback(async () => {
-    if (isPushingToFlex) return;
-    setIsPushingToFlex(true);
-    try {
-      const files = vdrDocs.documents.filter(d => !d.is_folder && d.file_path);
-      const fileData = await Promise.all(
-        files.map(async (doc) => {
-          const { data: signedData } = await supabase.storage
-            .from('vdr-files')
-            .createSignedUrl(doc.file_path!, 3600);
-          return {
-            name: doc.filename,
-            category: doc.folder_path,
-            url: signedData?.signedUrl || null,
-            size_bytes: doc.file_size,
-            content_type: doc.file_type,
-          };
-        })
-      );
-      const { error } = await supabase.functions.invoke('push-to-flex', {
-        body: {
-          dealId,
-          action: 'sync_data_room',
-          dataRoomFiles: fileData.filter(f => f.url !== null),
-        },
-      });
-      if (error) throw error;
-      toast.success('Data Room pushed to FLEx', {
-        description: files.length > 0 ? `${files.length} file(s) synced successfully.` : 'Data room cleared on FLEx.',
-      });
-    } catch (error) {
-      console.error('Error pushing data room to FLEx:', error);
-      toast.error('Failed to push to FLEx', {
-        description: error instanceof Error ? error.message : 'An error occurred',
-      });
-    } finally {
-      setIsPushingToFlex(false);
-    }
-  }, [dealId, isPushingToFlex, vdrDocs.documents]);
-
-  const handlePreview = useCallback((doc: VdrDocument) => {
-    setPreviewDoc(doc);
-  }, []);
-
-  const handleClosePreview = useCallback(() => {
-    setPreviewDoc(null);
-  }, []);
-
-  const totalMappedCount = useMemo(() => {
-    let count = 0;
-    fileMappings.forEach(s => { if (s.size > 0) count++; });
-    return count;
-  }, [fileMappings]);
 
   return (
     <div className={cn("flex overflow-hidden divide-x divide-border/50", embedded ? "h-full w-full bg-card" : "h-screen w-screen bg-background")}>
