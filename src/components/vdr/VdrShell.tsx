@@ -21,12 +21,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { FolderOpen, FolderClosed, FileText, Search, Lock } from 'lucide-react';
+import { FolderOpen, FolderClosed, FileText, Search, Lock, Check, CheckCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface VdrShellProps {
   dealId: string;
   embedded?: boolean;
+}
+
+interface FileAssignment {
+  folder: string;
+  checklistIds: Set<string>;
+}
+
+function getFileIcon(name: string) {
+  const ext = name.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') return <FileText className="h-3.5 w-3.5 text-red-400" />;
+  if (['xls', 'xlsx', 'csv'].includes(ext || '')) return <FileText className="h-3.5 w-3.5 text-green-400" />;
+  if (['doc', 'docx'].includes(ext || '')) return <FileText className="h-3.5 w-3.5 text-blue-400" />;
+  return <FileText className="h-3.5 w-3.5 text-muted-foreground" />;
 }
 
 export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
@@ -46,13 +59,12 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
 
   // Upload dialog state
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
-  const [selectedFolder, setSelectedFolder] = useState<string>('/');
-  // Checklist mapping: Set of checklist item IDs applied to all files in this upload
-  const [selectedChecklistIds, setSelectedChecklistIds] = useState<Set<string>>(new Set());
-  // Counter to signal center panel to re-fetch mapped checklist IDs
   const [mappingRefreshKey, setMappingRefreshKey] = useState(0);
-  
   const [mappingSearch, setMappingSearch] = useState('');
+
+  // Per-file assignments: Map<fileIndex, FileAssignment>
+  const [fileAssignments, setFileAssignments] = useState<Map<number, FileAssignment>>(new Map());
+  const [activeFileIndex, setActiveFileIndex] = useState(0);
 
   // Checklist config for mapping step
   const { config: checklistConfig } = useDefaultChecklistConfig(company?.id ?? undefined);
@@ -87,7 +99,6 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
     return checklistItems.filter(i => i.label.toLowerCase().includes(q) || i.category.toLowerCase().includes(q));
   }, [checklistItems, mappingSearch]);
 
-  // Group items by category for display
   const groupedChecklistItems = useMemo(() => {
     const groups = new Map<string, typeof checklistItems>();
     for (const item of filteredChecklistItems) {
@@ -103,18 +114,19 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
       .sort((a, b) => a.sort_order - b.sort_order || a.filename.localeCompare(b.filename));
   }, [vdrDocs.documents]);
 
-  // Derive auto-folder from selected checklist items' categories
+  // Get the active file's assignment
+  const activeAssignment = useMemo(() => {
+    return fileAssignments.get(activeFileIndex) || { folder: '/', checklistIds: new Set<string>() };
+  }, [fileAssignments, activeFileIndex]);
+
+  // Derive auto-folder from active file's checklist selections
   const autoFolderInfo = useMemo(() => {
-    if (selectedChecklistIds.size === 0) return null;
-    // Get unique categories from selected checklist items
+    if (activeAssignment.checklistIds.size === 0) return null;
     const categories = new Set<string>();
-    for (const id of selectedChecklistIds) {
+    for (const id of activeAssignment.checklistIds) {
       const item = checklistItems.find(i => i.id === id);
       if (item) categories.add(item.category);
     }
-    // Try to find a matching folder for the first category
-    // Categories are round titles (e.g., "Initial Items", "Kick Off Items")
-    // Folders may match by containing the category name or vice versa
     for (const category of categories) {
       const catLower = category.toLowerCase();
       const matchedFolder = availableFolders.find(f => {
@@ -125,26 +137,31 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         return { path: `/${matchedFolder.filename}/`, name: matchedFolder.filename };
       }
     }
-    // If no folder matches the category, return null (user picks manually)
     return null;
-  }, [selectedChecklistIds, checklistItems, availableFolders]);
-
-  // Auto-update selectedFolder when checklist mapping auto-assigns a folder
-  useEffect(() => {
-    if (autoFolderInfo) {
-      setSelectedFolder(autoFolderInfo.path);
-    }
-  }, [autoFolderInfo]);
+  }, [activeAssignment.checklistIds, checklistItems, availableFolders]);
 
   const folderLocked = !!autoFolderInfo;
+
+  // Auto-update folder when checklist auto-assigns
+  useEffect(() => {
+    if (autoFolderInfo) {
+      setFileAssignments(prev => {
+        const next = new Map(prev);
+        const current = next.get(activeFileIndex) || { folder: '/', checklistIds: new Set<string>() };
+        next.set(activeFileIndex, { ...current, folder: autoFolderInfo.path });
+        return next;
+      });
+    }
+  }, [autoFolderInfo, activeFileIndex]);
 
   // Reset state when dialog opens
   useEffect(() => {
     if (pendingFiles) {
-      setSelectedFolder('/');
-      setSelectedChecklistIds(new Set());
+      const initial = new Map<number, FileAssignment>();
+      pendingFiles.forEach((_, i) => initial.set(i, { folder: '/', checklistIds: new Set() }));
+      setFileAssignments(initial);
+      setActiveFileIndex(0);
       setMappingSearch('');
-      
     }
   }, [pendingFiles]);
 
@@ -152,49 +169,86 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
     setPendingFiles(files);
   }, []);
 
-  const toggleChecklistItem = useCallback((id: string) => {
-    setSelectedChecklistIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+  const updateActiveFolder = useCallback((folder: string) => {
+    setFileAssignments(prev => {
+      const next = new Map(prev);
+      const current = next.get(activeFileIndex) || { folder: '/', checklistIds: new Set<string>() };
+      next.set(activeFileIndex, { ...current, folder });
       return next;
     });
-  }, []);
+  }, [activeFileIndex]);
+
+  const toggleActiveChecklistItem = useCallback((id: string) => {
+    setFileAssignments(prev => {
+      const next = new Map(prev);
+      const current = next.get(activeFileIndex) || { folder: '/', checklistIds: new Set<string>() };
+      const newIds = new Set(current.checklistIds);
+      if (newIds.has(id)) newIds.delete(id);
+      else newIds.add(id);
+      next.set(activeFileIndex, { ...current, checklistIds: newIds });
+      return next;
+    });
+  }, [activeFileIndex]);
+
+  // Check if a file has been assigned (has a folder selected or checklist mapping)
+  const isFileAssigned = useCallback((index: number) => {
+    const assignment = fileAssignments.get(index);
+    if (!assignment) return false;
+    return assignment.folder !== '/' || assignment.checklistIds.size > 0;
+  }, [fileAssignments]);
+
+  const allFilesAssigned = useMemo(() => {
+    if (!pendingFiles) return false;
+    return pendingFiles.every((_, i) => isFileAssigned(i));
+  }, [pendingFiles, isFileAssigned]);
+
+  // Apply current active file's settings to all files
+  const applyToAll = useCallback(() => {
+    if (!pendingFiles) return;
+    const current = fileAssignments.get(activeFileIndex) || { folder: '/', checklistIds: new Set<string>() };
+    setFileAssignments(prev => {
+      const next = new Map(prev);
+      pendingFiles.forEach((_, i) => {
+        next.set(i, { folder: current.folder, checklistIds: new Set(current.checklistIds) });
+      });
+      return next;
+    });
+    toast.success('Applied to all files');
+  }, [pendingFiles, fileAssignments, activeFileIndex]);
 
   const handleUploadConfirm = useCallback(async () => {
     if (!pendingFiles || !user) return;
 
-    // Upload files to VDR
-    for (const file of pendingFiles) {
-      await vdrDocs.uploadFile(file, selectedFolder, 'dataroom');
-    }
+    const batchId = crypto.randomUUID();
+    let anyMappings = false;
 
-    // Create uploaded_items + mappings if any checklist items were selected
-    const hasMappings = selectedChecklistIds.size > 0;
-    if (hasMappings) {
-      const batchId = crypto.randomUUID();
-      const rows = pendingFiles.map(f => ({
-        upload_batch_id: batchId,
-        deal_id: dealId,
-        name: f.name,
-        metadata: { size: f.size, type: f.type } as Record<string, string | number>,
-        uploaded_by: user.id,
-        mapping_status: 'mapped' as const,
-      }));
+    for (let i = 0; i < pendingFiles.length; i++) {
+      const file = pendingFiles[i];
+      const assignment = fileAssignments.get(i) || { folder: '/', checklistIds: new Set<string>() };
 
-      const { data: insertedItems, error } = await supabase
-        .from('uploaded_items')
-        .insert(rows)
-        .select('id');
+      // Upload file to VDR
+      await vdrDocs.uploadFile(file, assignment.folder, 'dataroom');
 
-      if (!error && insertedItems) {
-        const mappingRows: { uploaded_item_id: string; checklist_item_id: string }[] = [];
-        for (const item of insertedItems) {
-          for (const checklistId of selectedChecklistIds) {
-            mappingRows.push({ uploaded_item_id: item.id, checklist_item_id: checklistId });
-          }
-        }
-        if (mappingRows.length > 0) {
+      // Create uploaded_item + mappings if checklist items were selected
+      if (assignment.checklistIds.size > 0) {
+        anyMappings = true;
+        const { data: insertedItems, error } = await supabase
+          .from('uploaded_items')
+          .insert({
+            upload_batch_id: batchId,
+            deal_id: dealId,
+            name: file.name,
+            metadata: { size: file.size, type: file.type } as Record<string, string | number>,
+            uploaded_by: user.id,
+            mapping_status: 'mapped' as const,
+          })
+          .select('id');
+
+        if (!error && insertedItems?.length) {
+          const mappingRows = Array.from(assignment.checklistIds).map(checklistId => ({
+            uploaded_item_id: insertedItems[0].id,
+            checklist_item_id: checklistId,
+          }));
           const { error: mapError } = await supabase.from('uploaded_item_checklist_mapping').insert(mappingRows);
           if (mapError) {
             console.error('Failed to insert checklist mappings:', mapError);
@@ -203,14 +257,12 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
       }
     }
 
-    toast.success(`Uploaded ${pendingFiles.length} file(s)`, {
-      description: hasMappings ? 'Files mapped to checklist items.' : undefined,
-    });
-    if (hasMappings) {
+    toast.success(`Uploaded ${pendingFiles.length} file(s)`);
+    if (anyMappings) {
       setMappingRefreshKey(k => k + 1);
     }
     setPendingFiles(null);
-  }, [pendingFiles, selectedFolder, selectedChecklistIds, vdrDocs, dealId, user]);
+  }, [pendingFiles, fileAssignments, vdrDocs, dealId, user]);
 
   const handleCancel = useCallback(() => {
     setPendingFiles(null);
@@ -266,6 +318,8 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
     setPreviewDoc(null);
   }, []);
 
+  const isSingleFile = pendingFiles?.length === 1;
+
   return (
     <div className={cn("flex overflow-hidden divide-x divide-border/50", embedded ? "h-full w-full bg-card" : "h-screen w-screen bg-background")}>
       <VdrSidebar
@@ -308,117 +362,180 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         </ResizablePanelGroup>
       </div>
 
-      {/* Upload Dialog - Two-column layout */}
+      {/* Upload Dialog */}
       <Dialog open={!!pendingFiles} onOpenChange={open => { if (!open) handleCancel(); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className={cn("max-w-3xl", !isSingleFile && "max-w-4xl")}>
           <DialogHeader>
-            <DialogTitle className="text-sm">Upload files</DialogTitle>
+            <DialogTitle className="text-sm">
+              Upload {pendingFiles?.length === 1 ? 'file' : `${pendingFiles?.length} files`}
+            </DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground">
-            {pendingFiles?.length === 1 ? `"${pendingFiles[0].name}"` : `${pendingFiles?.length} files`}
-          </p>
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* Left column: Checklist items */}
-            <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Map to checklist</p>
-              {checklistItems.length > 0 ? (
-                <>
-                  <div className="relative mb-2">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      placeholder="Search..."
-                      value={mappingSearch}
-                      onChange={e => setMappingSearch(e.target.value)}
-                      className="h-7 text-xs pl-7 bg-secondary/30"
-                    />
-                  </div>
-                  <div className="max-h-[280px] overflow-auto space-y-1.5 pr-1">
-                    {Array.from(groupedChecklistItems.entries()).map(([category, items]) => (
-                      <div key={category}>
-                        <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium px-1 mb-0.5">{category}</p>
-                        {items.map(item => (
-                          <label
-                            key={item.id}
-                            className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer text-xs hover:bg-secondary/50 transition-colors"
-                          >
-                            <Checkbox
-                              checked={selectedChecklistIds.has(item.id)}
-                              onCheckedChange={() => toggleChecklistItem(item.id)}
-                              className="h-3 w-3"
-                            />
-                            <span className="truncate flex-1">{item.label}</span>
-                            {item.required && (
-                              <span className="text-[8px] text-destructive font-medium flex-shrink-0">Req</span>
-                            )}
-                          </label>
-                        ))}
-                      </div>
-                    ))}
-                    {groupedChecklistItems.size === 0 && (
-                      <p className="text-[10px] text-muted-foreground/60 italic px-1 py-1">No matching items</p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p className="text-[10px] text-muted-foreground/60 italic px-1 py-4">No checklist items available for this deal type.</p>
-              )}
-            </div>
-
-            {/* Right column: Folder selection */}
-            <div className={cn("space-y-1", folderLocked && "opacity-60 pointer-events-none")}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Destination folder</p>
-                {folderLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+          <div className={cn("flex gap-4", !isSingleFile ? "min-h-[360px]" : "")}>
+            {/* File list (left side, only for multi-file) */}
+            {!isSingleFile && pendingFiles && (
+              <div className="w-48 flex-shrink-0 border-r border-border pr-3 space-y-1">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Files</p>
+                  <Badge variant="secondary" className="text-[9px] h-4 px-1">
+                    {pendingFiles.filter((_, i) => isFileAssigned(i)).length}/{pendingFiles.length}
+                  </Badge>
+                </div>
+                <div className="max-h-[320px] overflow-auto space-y-0.5">
+                  {pendingFiles.map((file, i) => {
+                    const assigned = isFileAssigned(i);
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setActiveFileIndex(i)}
+                        className={cn(
+                          'flex items-center gap-1.5 w-full px-2 py-1.5 rounded text-xs transition-colors text-left',
+                          activeFileIndex === i
+                            ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                            : 'text-foreground hover:bg-secondary/50',
+                        )}
+                      >
+                        {assigned ? (
+                          <Check className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          getFileIcon(file.name)
+                        )}
+                        <span className="truncate flex-1 min-w-0">{file.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-[10px] h-7 mt-2"
+                  onClick={applyToAll}
+                  disabled={!isFileAssigned(activeFileIndex)}
+                >
+                  <CheckCheck className="h-3 w-3 mr-1" />
+                  Apply to all
+                </Button>
               </div>
-              {folderLocked && (
-                <p className="text-[10px] text-primary italic px-1 -mt-0.5 mb-1">
-                  Auto-assigned to <span className="font-semibold">{autoFolderInfo?.name}</span>
+            )}
+
+            {/* Main area: checklist + folder columns */}
+            <div className="flex-1 min-w-0">
+              {/* Active file name for single file */}
+              {isSingleFile && pendingFiles && (
+                <p className="text-xs text-muted-foreground mb-2 truncate">
+                  "{pendingFiles[0].name}"
                 </p>
               )}
-              <div className="max-h-[280px] overflow-auto space-y-1">
-                <button
-                  onClick={() => !folderLocked && setSelectedFolder('/')}
-                  disabled={folderLocked}
-                  className={cn(
-                    'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
-                    selectedFolder === '/'
-                      ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
-                      : 'text-foreground hover:bg-secondary/50',
-                    folderLocked && 'cursor-not-allowed'
+              {/* Active file indicator for multi-file */}
+              {!isSingleFile && pendingFiles && (
+                <p className="text-xs text-muted-foreground mb-2 truncate">
+                  Configuring: <span className="font-medium text-foreground">{pendingFiles[activeFileIndex]?.name}</span>
+                </p>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Left column: Checklist items */}
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Map to checklist</p>
+                  {checklistItems.length > 0 ? (
+                    <>
+                      <div className="relative mb-2">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          placeholder="Search..."
+                          value={mappingSearch}
+                          onChange={e => setMappingSearch(e.target.value)}
+                          className="h-7 text-xs pl-7 bg-secondary/30"
+                        />
+                      </div>
+                      <div className="max-h-[260px] overflow-auto space-y-1.5 pr-1">
+                        {Array.from(groupedChecklistItems.entries()).map(([category, items]) => (
+                          <div key={category}>
+                            <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium px-1 mb-0.5">{category}</p>
+                            {items.map(item => (
+                              <label
+                                key={item.id}
+                                className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer text-xs hover:bg-secondary/50 transition-colors"
+                              >
+                                <Checkbox
+                                  checked={activeAssignment.checklistIds.has(item.id)}
+                                  onCheckedChange={() => toggleActiveChecklistItem(item.id)}
+                                  className="h-3 w-3"
+                                />
+                                <span className="truncate flex-1">{item.label}</span>
+                                {item.required && (
+                                  <span className="text-[8px] text-destructive font-medium flex-shrink-0">Req</span>
+                                )}
+                              </label>
+                            ))}
+                          </div>
+                        ))}
+                        {groupedChecklistItems.size === 0 && (
+                          <p className="text-[10px] text-muted-foreground/60 italic px-1 py-1">No matching items</p>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground/60 italic px-1 py-4">No checklist items available for this deal type.</p>
                   )}
-                >
-                  <FolderOpen className="h-4 w-4 flex-shrink-0" />
-                  Root (no folder)
-                </button>
-                {availableFolders.map(folder => {
-                  const path = `/${folder.filename}/`;
-                  return (
+                </div>
+
+                {/* Right column: Folder selection */}
+                <div className={cn("space-y-1", folderLocked && "opacity-60 pointer-events-none")}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Destination folder</p>
+                    {folderLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                  </div>
+                  {folderLocked && (
+                    <p className="text-[10px] text-primary italic px-1 -mt-0.5 mb-1">
+                      Auto-assigned to <span className="font-semibold">{autoFolderInfo?.name}</span>
+                    </p>
+                  )}
+                  <div className="max-h-[260px] overflow-auto space-y-1">
                     <button
-                      key={folder.id}
-                      onClick={() => !folderLocked && setSelectedFolder(path)}
+                      onClick={() => !folderLocked && updateActiveFolder('/')}
                       disabled={folderLocked}
                       className={cn(
                         'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
-                        selectedFolder === path
+                        activeAssignment.folder === '/'
                           ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
                           : 'text-foreground hover:bg-secondary/50',
                         folderLocked && 'cursor-not-allowed'
                       )}
                     >
-                      <FolderClosed className="h-4 w-4 flex-shrink-0" />
-                      {folder.filename}
+                      <FolderOpen className="h-4 w-4 flex-shrink-0" />
+                      Root (no folder)
                     </button>
-                  );
-                })}
+                    {availableFolders.map(folder => {
+                      const path = `/${folder.filename}/`;
+                      return (
+                        <button
+                          key={folder.id}
+                          onClick={() => !folderLocked && updateActiveFolder(path)}
+                          disabled={folderLocked}
+                          className={cn(
+                            'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
+                            activeAssignment.folder === path
+                              ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                              : 'text-foreground hover:bg-secondary/50',
+                            folderLocked && 'cursor-not-allowed'
+                          )}
+                        >
+                          <FolderClosed className="h-4 w-4 flex-shrink-0" />
+                          {folder.filename}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           <DialogFooter className="flex justify-between sm:justify-between">
             <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
-            <Button size="sm" onClick={handleUploadConfirm}>
-              Upload{selectedChecklistIds.size > 0 ? ` & Map` : ''}
+            <Button size="sm" onClick={handleUploadConfirm} disabled={!isSingleFile && !allFilesAssigned}>
+              Upload{pendingFiles && pendingFiles.length > 1 ? ` ${pendingFiles.length} files` : ''}
             </Button>
           </DialogFooter>
         </DialogContent>
