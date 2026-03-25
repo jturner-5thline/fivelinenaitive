@@ -316,23 +316,25 @@ export function FinancialStatementTableRange({
         // Start editing on Enter
         e.preventDefault();
         const data = getDataForCell(selectedCell.periodId, selectedCell.lineItemId);
-        handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, data?.amount ?? 0);
+        const selectedColForEnter = existingPeriodColumns[selectedCell.colIndex];
+        handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, data?.amount ?? 0, undefined, selectedColForEnter?.endDate);
         break;
       case 'Escape':
         setSelectedCell(null);
         break;
       default:
         // Start editing when typing a number or backspace
+        const selectedColForType = existingPeriodColumns[selectedCell.colIndex];
         if (/^[0-9]$/.test(e.key)) {
           e.preventDefault();
-          handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, 0, e.key);
+          handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, 0, e.key, selectedColForType?.endDate);
         } else if (e.key === 'Backspace' || e.key === 'Delete') {
           e.preventDefault();
-          handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, 0, '');
+          handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, 0, '', selectedColForType?.endDate);
         }
         break;
     }
-  }, [editingCell, selectedCell, navigateToCell, handleUndo, handleCopy, getDataForCell, handleStartEdit]);
+  }, [editingCell, selectedCell, navigateToCell, handleUndo, handleCopy, getDataForCell, handleStartEdit, existingPeriodColumns]);
 
   const handleEditKeyDown = (e: React.KeyboardEvent, periodId: string, lineItemId: string, previousAmount: number) => {
     if (e.key === 'Enter') {
