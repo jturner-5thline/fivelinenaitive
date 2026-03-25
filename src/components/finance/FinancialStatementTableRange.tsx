@@ -11,6 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { parseExcelFromFile, ParsedSheet } from "@/lib/excelUtils";
+import { useColumnSettings, ColumnType } from "@/hooks/useColumnSettings";
+import { ColumnTypeSettingsDialog } from "./ColumnTypeSettingsDialog";
+import { Badge } from "@/components/ui/badge";
 
 // Type for undo history
 interface UndoEntry {
