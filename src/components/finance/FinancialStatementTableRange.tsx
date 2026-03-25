@@ -657,20 +657,37 @@ export function FinancialStatementTableRange({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[200px] min-w-[200px] sticky left-0 bg-background z-10">Line Item</TableHead>
-                  {periodColumns.map((col, colIndex) => (
-                    <TableHead key={col.label} className="text-right min-w-[100px]">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="cursor-default text-xs">{col.shortLabel}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{col.label}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableHead>
-                  ))}
+                  {periodColumns.map((col, colIndex) => {
+                    const colType = getColumnType(col.label, col.endDate);
+                    const isProjection = colType === 'projection';
+                    return (
+                      <TableHead
+                        key={col.label}
+                        className={cn(
+                          "text-right min-w-[100px]",
+                          isProjection && "bg-accent/15"
+                        )}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          {isProjection && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-normal border-accent text-accent-foreground">
+                              Proj
+                            </Badge>
+                          )}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-default text-xs">{col.shortLabel}</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{col.label}{isProjection ? ' (Projection)' : ' (Actual)'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableHead>
+                    );
+                  })}
                 </TableRow>
               </TableHeader>
               <TableBody>
