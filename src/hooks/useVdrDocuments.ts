@@ -222,6 +222,16 @@ export function useVdrDocuments(dealId: string) {
     return data?.signedUrl || null;
   }, []);
 
+  const toggleShareToDataroom = useCallback(async (docId: string, shared: boolean) => {
+    await (supabase as any).from('vdr_documents').update({ shared_to_dataroom: shared }).eq('id', docId);
+    setDocuments(prev => prev.map(d => d.id === docId ? { ...d, shared_to_dataroom: shared } : d));
+  }, []);
+
+  const bulkShareToDataroom = useCallback(async (docIds: string[], shared: boolean) => {
+    await (supabase as any).from('vdr_documents').update({ shared_to_dataroom: shared }).in('id', docIds);
+    setDocuments(prev => prev.map(d => docIds.includes(d.id) ? { ...d, shared_to_dataroom: shared } : d));
+  }, []);
+
   const fileCount = documents.filter(d => !d.is_folder).length;
 
   // Ingestion stats
@@ -244,6 +254,8 @@ export function useVdrDocuments(dealId: string) {
     renameDocument,
     moveDocument,
     getDownloadUrl,
+    toggleShareToDataroom,
+    bulkShareToDataroom,
     triggerIngestion,
     refetch: fetchDocuments,
   };

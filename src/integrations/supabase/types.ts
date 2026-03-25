@@ -12842,6 +12842,7 @@ export type Database = {
           id: string
           ingestion_status: string | null
           is_folder: boolean
+          shared_to_dataroom: boolean
           sort_order: number | null
           source: string
           updated_at: string
@@ -12861,6 +12862,7 @@ export type Database = {
           id?: string
           ingestion_status?: string | null
           is_folder?: boolean
+          shared_to_dataroom?: boolean
           sort_order?: number | null
           source?: string
           updated_at?: string
@@ -12880,6 +12882,7 @@ export type Database = {
           id?: string
           ingestion_status?: string | null
           is_folder?: boolean
+          shared_to_dataroom?: boolean
           sort_order?: number | null
           source?: string
           updated_at?: string

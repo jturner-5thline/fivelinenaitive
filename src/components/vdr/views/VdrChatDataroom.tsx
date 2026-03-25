@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X, Send, FolderPlus, Pencil, Trash2, List, FolderTree, ClipboardList, PackagePlus } from 'lucide-react';
+import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X, Send, FolderPlus, Pencil, Trash2, List, FolderTree, ClipboardList, PackagePlus, Share2, ArrowRightFromLine } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -274,15 +274,26 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
   const tree = useMemo(() => buildTree(documents), [documents]);
 
-  // For dataroom view, show folder structure but strip file children (empty folders)
+  // For dataroom view, only show files that are shared_to_dataroom (keep folder structure)
   const dataroomTree = useMemo(() => {
     if (!isDataroomView) return tree;
-    function stripFiles(nodes: TreeNode[]): TreeNode[] {
+    function filterShared(nodes: TreeNode[]): TreeNode[] {
       return nodes
-        .filter(n => n.doc.is_folder)
-        .map(n => ({ ...n, children: stripFiles(n.children) }));
+        .map(n => {
+          if (!n.doc.is_folder) {
+            return n.doc.shared_to_dataroom ? n : null;
+          }
+          const filteredChildren = filterShared(n.children);
+          // Keep folder if it has shared children
+          if (filteredChildren.length > 0) {
+            return { ...n, children: filteredChildren };
+          }
+          // Still show empty folders for structure
+          return { ...n, children: [] };
+        })
+        .filter(Boolean) as TreeNode[];
     }
-    return stripFiles(tree);
+    return filterShared(tree);
   }, [tree, isDataroomView]);
 
   // Filter tree by search query AND category filter
@@ -313,10 +324,10 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     return baseTree.map(filterNode).filter(Boolean) as TreeNode[];
   }, [tree, dataroomTree, isDataroomView, searchQuery, categoryFilter, tagsByDocId]);
 
-  // Flat file list (no folders) — empty in dataroom view
+  // Flat file list (no folders) — in dataroom view only show shared files
   const flatFiles = useMemo(() => {
-    if (isDataroomView) return [];
-    const files = documents.filter(d => !d.is_folder);
+    let files = documents.filter(d => !d.is_folder);
+    if (isDataroomView) files = files.filter(d => d.shared_to_dataroom);
     const q = searchQuery.toLowerCase();
     const hasSearch = !!q.trim();
     const hasCategory = categoryFilter !== 'all';
@@ -498,6 +509,14 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             {getIngestionIcon(doc.ingestion_status)}
             {getFileIcon(doc.filename)}
             <span className="truncate flex-1 min-w-0">{doc.filename}</span>
+            {doc.shared_to_dataroom && (
+              <Badge variant="outline" className="text-[8px] px-1 py-0 border-primary/30 text-primary flex-shrink-0">Shared</Badge>
+            )}
+            {isDataroomView && (
+              <span className="text-[8px] text-muted-foreground/60 flex-shrink-0" title={`From: ${doc.folder_path === '/' ? 'Root' : doc.folder_path.replace(/^\/|\/$/g, '')}`}>
+                From: {doc.folder_path === '/' ? 'Root' : doc.folder_path.replace(/^\/|\/$/g, '')}
+              </span>
+            )}
             {docTags && docTags.length > 0 && (
               <div className="flex gap-0.5 flex-shrink-0">
                 {docTags.slice(0, 2).map((t, i) => (
@@ -513,6 +532,20 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                   <span className="text-[8px] text-muted-foreground">+{docTags.length - 2}</span>
                 )}
               </div>
+            )}
+            {!isDataroomView && (
+              <button
+                className={cn(
+                  "flex-shrink-0 p-0.5 rounded transition-colors",
+                  doc.shared_to_dataroom
+                    ? "text-primary hover:text-primary/80"
+                    : "text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-primary"
+                )}
+                title={doc.shared_to_dataroom ? 'Unshare from Dataroom' : 'Share to Dataroom'}
+                onClick={(e) => { e.stopPropagation(); vdrDocs.toggleShareToDataroom(doc.id, !doc.shared_to_dataroom); }}
+              >
+                <ArrowRightFromLine className="h-3 w-3" />
+              </button>
             )}
             <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 flex-shrink-0">{formatSize(doc.file_size)}</span>
           </div>
@@ -598,6 +631,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             {getIngestionIcon(doc.ingestion_status)}
             {getFileIcon(doc.filename)}
             <span className="truncate flex-1 min-w-0">{doc.filename}</span>
+            {doc.shared_to_dataroom && (
+              <Badge variant="outline" className="text-[8px] px-1 py-0 border-primary/30 text-primary flex-shrink-0">Shared</Badge>
+            )}
             <span className="text-[9px] text-muted-foreground/60 flex-shrink-0 truncate max-w-[80px]" title={doc.folder_path}>
               {doc.folder_path === '/' ? 'Root' : doc.folder_path.replace(/^\/|\/$/g, '')}
             </span>
@@ -613,6 +649,20 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                   </span>
                 ))}
               </div>
+            )}
+            {!isDataroomView && (
+              <button
+                className={cn(
+                  "flex-shrink-0 p-0.5 rounded transition-colors",
+                  doc.shared_to_dataroom
+                    ? "text-primary hover:text-primary/80"
+                    : "text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-primary"
+                )}
+                title={doc.shared_to_dataroom ? 'Unshare from Dataroom' : 'Share to Dataroom'}
+                onClick={(e) => { e.stopPropagation(); vdrDocs.toggleShareToDataroom(doc.id, !doc.shared_to_dataroom); }}
+              >
+                <ArrowRightFromLine className="h-3 w-3" />
+              </button>
             )}
             <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 flex-shrink-0">{formatSize(doc.file_size)}</span>
           </div>
@@ -864,6 +914,58 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               />
               <span className="text-[11px] font-medium text-foreground">{selectedFileIds.size} selected</span>
               <div className="ml-auto flex items-center gap-1">
+                {!isDataroomView && (
+                  <>
+                    {/* Check if any selected are already shared */}
+                    {(() => {
+                      const selectedDocs = documents.filter(d => selectedFileIds.has(d.id));
+                      const anyShared = selectedDocs.some(d => d.shared_to_dataroom);
+                      const anyUnshared = selectedDocs.some(d => !d.shared_to_dataroom);
+                      return (
+                        <>
+                          {anyUnshared && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] px-2 gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                              onClick={() => {
+                                const ids = Array.from(selectedFileIds).filter(id => {
+                                  const doc = documents.find(d => d.id === id);
+                                  return doc && !doc.shared_to_dataroom;
+                                });
+                                vdrDocs.bulkShareToDataroom(ids, true);
+                                setSelectedFileIds(new Set());
+                                toast.success(`Shared ${ids.length} file(s) to Dataroom`);
+                              }}
+                            >
+                              <Share2 className="h-3 w-3" />
+                              Push to Dataroom
+                            </Button>
+                          )}
+                          {anyShared && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] px-2 gap-1 text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                              onClick={() => {
+                                const ids = Array.from(selectedFileIds).filter(id => {
+                                  const doc = documents.find(d => d.id === id);
+                                  return doc && doc.shared_to_dataroom;
+                                });
+                                vdrDocs.bulkShareToDataroom(ids, false);
+                                setSelectedFileIds(new Set());
+                                toast.success(`Unshared ${ids.length} file(s) from Dataroom`);
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                              Unshare
+                            </Button>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
