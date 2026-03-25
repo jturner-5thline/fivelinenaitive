@@ -147,6 +147,7 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
               colLabel={inspecting.colLabel}
               value={inspecting.value}
               onClose={() => setInspecting(null)}
+              onSaved={onCellConfigSaved}
             />
           </div>
         )}
