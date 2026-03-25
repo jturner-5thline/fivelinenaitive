@@ -810,12 +810,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             ) : (
               <>
                 {renderChecklistSection(initialRound, 'Initial Items Checklist')}
-                {!isDataroomView ? null : (
-                  <>
-                    <div className="border-t border-border/30 mx-3" />
-                    {renderChecklistSection(kickOffRound, 'Kick Off Items Checklist')}
-                  </>
-                )}
+                <div className="border-t border-border/30 mx-3" />
+                {renderChecklistSection(kickOffRound, 'Kick Off Items Checklist')}
               </>
             )}
           </div>
