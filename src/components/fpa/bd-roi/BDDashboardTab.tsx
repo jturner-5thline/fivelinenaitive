@@ -193,7 +193,7 @@ export function BDDashboardTab({ visibleQuarters }: { visibleQuarters: Set<strin
       />
 
       {/* Data Tables */}
-      <BDFinancialTable sections={allSections} quarters={QUARTERS_12} visibleIndices={vi} />
+      <BDFinancialTable sections={allSections} quarters={QUARTERS_12} visibleIndices={vi} getCellConfig={getConfig} />
     </div>
   );
 }
