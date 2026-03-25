@@ -313,8 +313,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     return baseTree.map(filterNode).filter(Boolean) as TreeNode[];
   }, [tree, dataroomTree, isDataroomView, searchQuery, categoryFilter, tagsByDocId]);
 
-  // Flat file list (no folders)
+  // Flat file list (no folders) — empty in dataroom view
   const flatFiles = useMemo(() => {
+    if (isDataroomView) return [];
     const files = documents.filter(d => !d.is_folder);
     const q = searchQuery.toLowerCase();
     const hasSearch = !!q.trim();
@@ -328,7 +329,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       const matchesCategory = !categoryDocIds || categoryDocIds.has(f.id);
       return matchesSearch && matchesCategory;
     });
-  }, [documents, searchQuery, categoryFilter, tagsByDocId]);
+  }, [documents, searchQuery, categoryFilter, tagsByDocId, isDataroomView]);
 
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => {
