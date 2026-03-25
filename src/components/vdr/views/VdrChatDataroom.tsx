@@ -32,6 +32,7 @@ interface VdrChatDataroomProps {
   onPushToFlex?: () => void;
   dealType?: string | null;
   companyId?: string | null;
+  mappingRefreshKey?: number;
 }
 
 const ACCOUNT_TAG_COLORS: Record<string, string> = {
