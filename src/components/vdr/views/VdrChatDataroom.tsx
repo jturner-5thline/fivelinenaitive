@@ -498,6 +498,14 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             {getIngestionIcon(doc.ingestion_status)}
             {getFileIcon(doc.filename)}
             <span className="truncate flex-1 min-w-0">{doc.filename}</span>
+            {doc.shared_to_dataroom && (
+              <Badge variant="outline" className="text-[8px] px-1 py-0 border-primary/30 text-primary flex-shrink-0">Shared</Badge>
+            )}
+            {isDataroomView && (
+              <span className="text-[8px] text-muted-foreground/60 flex-shrink-0" title={`From: ${doc.folder_path === '/' ? 'Root' : doc.folder_path.replace(/^\/|\/$/g, '')}`}>
+                From: {doc.folder_path === '/' ? 'Root' : doc.folder_path.replace(/^\/|\/$/g, '')}
+              </span>
+            )}
             {docTags && docTags.length > 0 && (
               <div className="flex gap-0.5 flex-shrink-0">
                 {docTags.slice(0, 2).map((t, i) => (
@@ -513,6 +521,20 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                   <span className="text-[8px] text-muted-foreground">+{docTags.length - 2}</span>
                 )}
               </div>
+            )}
+            {!isDataroomView && (
+              <button
+                className={cn(
+                  "flex-shrink-0 p-0.5 rounded transition-colors",
+                  doc.shared_to_dataroom
+                    ? "text-primary hover:text-primary/80"
+                    : "text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-primary"
+                )}
+                title={doc.shared_to_dataroom ? 'Unshare from Dataroom' : 'Share to Dataroom'}
+                onClick={(e) => { e.stopPropagation(); vdrDocs.toggleShareToDataroom(doc.id, !doc.shared_to_dataroom); }}
+              >
+                <ArrowRightFromLine className="h-3 w-3" />
+              </button>
             )}
             <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 flex-shrink-0">{formatSize(doc.file_size)}</span>
           </div>
