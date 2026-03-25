@@ -34,6 +34,7 @@ interface Props {
   visibleIndices?: number[];
   getCellConfig?: (rowKey: string, colKey: string) => CellConfig | undefined;
   onCellConfigSaved?: (updated: CellConfig) => void;
+  qboResolvedValues?: QBOResolvedValues;
 }
 
 interface InspectorState {
