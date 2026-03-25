@@ -124,6 +124,10 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [bulkUploadStep, setBulkUploadStep] = useState<'none' | 'upload' | 'mapping'>('none');
   const [bulkBatchId, setBulkBatchId] = useState<string | null>(null);
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
+  const [moveDialog, setMoveDialog] = useState<{ fileIds: string[] } | null>(null);
+  const [moveTargetFolder, setMoveTargetFolder] = useState<string>('/');
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<string[] | null>(null);
 
 
   // Uploaded items hook
