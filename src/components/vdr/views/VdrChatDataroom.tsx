@@ -341,6 +341,19 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
         await vdrDocs.uploadFile(file, folderPath);
       }
     } else {
+      // Check for multi-select drag
+      const idsJson = e.dataTransfer.getData('text/vdr-doc-ids');
+      if (idsJson) {
+        try {
+          const ids: string[] = JSON.parse(idsJson);
+          for (const id of ids) {
+            await vdrDocs.moveDocument(id, folderPath);
+          }
+          toast.success(`Moved ${ids.length} file(s)`);
+          setSelectedFileIds(new Set());
+          return;
+        } catch { /* fall through */ }
+      }
       const docId = e.dataTransfer.getData('text/vdr-doc-id');
       if (docId) {
         await vdrDocs.moveDocument(docId, folderPath);
@@ -348,11 +361,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       }
     }
   };
-
-  const indexedCount = vdrDocs.ingestionStats?.complete || 0;
-  const processingCount = vdrDocs.ingestionStats?.processing || 0;
-
-  const handleFileDrop = handleFolderDrop;
 
   const renderNode = (node: TreeNode, depth = 0) => {
     const { doc } = node;
