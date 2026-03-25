@@ -1,0 +1,1 @@
+ALTER TABLE public.vdr_documents ADD COLUMN IF NOT EXISTS shared_to_dataroom boolean NOT NULL DEFAULT false;
