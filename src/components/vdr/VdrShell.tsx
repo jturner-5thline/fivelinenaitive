@@ -21,8 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { FolderOpen, FolderClosed, ChevronDown, FileText, Search, Lock } from 'lucide-react';
+import { FolderOpen, FolderClosed, FileText, Search, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface VdrShellProps {
@@ -50,7 +49,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const [selectedFolder, setSelectedFolder] = useState<string>('/');
   // Checklist mapping: Set of checklist item IDs applied to all files in this upload
   const [selectedChecklistIds, setSelectedChecklistIds] = useState<Set<string>>(new Set());
-  const [checklistOpen, setChecklistOpen] = useState(false);
+  
   const [mappingSearch, setMappingSearch] = useState('');
 
   // Checklist config for mapping step
@@ -143,7 +142,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
       setSelectedFolder('/');
       setSelectedChecklistIds(new Set());
       setMappingSearch('');
-      setChecklistOpen(false);
+      
     }
   }, [pendingFiles]);
 
@@ -300,9 +299,9 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         </ResizablePanelGroup>
       </div>
 
-      {/* Upload Dialog - Single Step with inline checklist */}
+      {/* Upload Dialog - Two-column layout */}
       <Dialog open={!!pendingFiles} onOpenChange={open => { if (!open) handleCancel(); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm">Upload files</DialogTitle>
           </DialogHeader>
@@ -310,79 +309,22 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
             {pendingFiles?.length === 1 ? `"${pendingFiles[0].name}"` : `${pendingFiles?.length} files`}
           </p>
 
-          {/* Folder selection */}
-          <div className={cn("space-y-1", folderLocked && "opacity-60 pointer-events-none")}>
-            <div className="flex items-center gap-1.5 mb-1">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Destination folder</p>
-              {folderLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
-            </div>
-            {folderLocked && (
-              <p className="text-[10px] text-primary italic px-1 -mt-0.5 mb-1">
-                Auto-assigned to <span className="font-semibold">{autoFolderInfo?.name}</span> based on checklist mapping.
-              </p>
-            )}
-            <div className="max-h-[180px] overflow-auto space-y-1">
-              <button
-                onClick={() => !folderLocked && setSelectedFolder('/')}
-                disabled={folderLocked}
-                className={cn(
-                  'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
-                  selectedFolder === '/'
-                    ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
-                    : 'text-foreground hover:bg-secondary/50',
-                  folderLocked && 'cursor-not-allowed'
-                )}
-              >
-                <FolderOpen className="h-4 w-4 flex-shrink-0" />
-                Root (no folder)
-              </button>
-              {availableFolders.map(folder => {
-                const path = `/${folder.filename}/`;
-                return (
-                  <button
-                    key={folder.id}
-                    onClick={() => !folderLocked && setSelectedFolder(path)}
-                    disabled={folderLocked}
-                    className={cn(
-                      'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
-                      selectedFolder === path
-                        ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
-                        : 'text-foreground hover:bg-secondary/50',
-                      folderLocked && 'cursor-not-allowed'
-                    )}
-                  >
-                    <FolderClosed className="h-4 w-4 flex-shrink-0" />
-                    {folder.filename}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Inline collapsible checklist mapping */}
-          {checklistItems.length > 0 && (
-            <Collapsible open={checklistOpen} onOpenChange={setChecklistOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-                <span className="flex items-center gap-1.5">
-                  Map to checklist
-                  {selectedChecklistIds.size > 0 && (
-                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{selectedChecklistIds.size} selected</Badge>
-                  )}
-                </span>
-                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", checklistOpen && "rotate-180")} />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="space-y-2 pt-1">
-                  <div className="relative">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Left column: Checklist items */}
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Map to checklist</p>
+              {checklistItems.length > 0 ? (
+                <>
+                  <div className="relative mb-2">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
-                      placeholder="Search checklist items..."
+                      placeholder="Search..."
                       value={mappingSearch}
                       onChange={e => setMappingSearch(e.target.value)}
                       className="h-7 text-xs pl-7 bg-secondary/30"
                     />
                   </div>
-                  <div className="max-h-[200px] overflow-auto space-y-1.5">
+                  <div className="max-h-[280px] overflow-auto space-y-1.5 pr-1">
                     {Array.from(groupedChecklistItems.entries()).map(([category, items]) => (
                       <div key={category}>
                         <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium px-1 mb-0.5">{category}</p>
@@ -408,10 +350,61 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
                       <p className="text-[10px] text-muted-foreground/60 italic px-1 py-1">No matching items</p>
                     )}
                   </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
+                </>
+              ) : (
+                <p className="text-[10px] text-muted-foreground/60 italic px-1 py-4">No checklist items available for this deal type.</p>
+              )}
+            </div>
+
+            {/* Right column: Folder selection */}
+            <div className={cn("space-y-1", folderLocked && "opacity-60 pointer-events-none")}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Destination folder</p>
+                {folderLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+              </div>
+              {folderLocked && (
+                <p className="text-[10px] text-primary italic px-1 -mt-0.5 mb-1">
+                  Auto-assigned to <span className="font-semibold">{autoFolderInfo?.name}</span>
+                </p>
+              )}
+              <div className="max-h-[280px] overflow-auto space-y-1">
+                <button
+                  onClick={() => !folderLocked && setSelectedFolder('/')}
+                  disabled={folderLocked}
+                  className={cn(
+                    'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
+                    selectedFolder === '/'
+                      ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                      : 'text-foreground hover:bg-secondary/50',
+                    folderLocked && 'cursor-not-allowed'
+                  )}
+                >
+                  <FolderOpen className="h-4 w-4 flex-shrink-0" />
+                  Root (no folder)
+                </button>
+                {availableFolders.map(folder => {
+                  const path = `/${folder.filename}/`;
+                  return (
+                    <button
+                      key={folder.id}
+                      onClick={() => !folderLocked && setSelectedFolder(path)}
+                      disabled={folderLocked}
+                      className={cn(
+                        'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
+                        selectedFolder === path
+                          ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                          : 'text-foreground hover:bg-secondary/50',
+                        folderLocked && 'cursor-not-allowed'
+                      )}
+                    >
+                      <FolderClosed className="h-4 w-4 flex-shrink-0" />
+                      {folder.filename}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
 
           <DialogFooter className="flex justify-between sm:justify-between">
             <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
