@@ -1,10 +1,11 @@
-import { useState, useMemo, useRef, createContext, useContext } from 'react';
-import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Info, FunctionSquare, Database, Loader2 } from 'lucide-react';
+import { useState, useMemo, useRef, createContext, useContext, useCallback } from 'react';
+import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Info, FunctionSquare, Database, Loader2, X } from 'lucide-react';
 import { formatBDValue } from './bdRoiFormatters';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CellInspector } from './CellInspector';
 import type { CellConfig } from './useCellConfig';
 import type { QBOResolvedValues } from './useQBOCellValues';
+import { resolveFormula } from './formulaEngine';
 
 export interface TableRow {
   key: string;
@@ -46,12 +47,27 @@ interface InspectorState {
   config: CellConfig;
 }
 
+export interface FormulaMode {
+  active: boolean;
+  /** Append a cell reference (row label) to the formula being built */
+  appendRef: (rowKey: string, rowLabel: string) => void;
+}
+
 const CellConfigContext = createContext<{
   getCellConfig?: (rowKey: string, colKey: string) => CellConfig | undefined;
   inspecting: InspectorState | null;
   setInspecting: (s: InspectorState | null) => void;
   qboResolvedValues?: QBOResolvedValues;
-}>({ inspecting: null, setInspecting: () => {} });
+  formulaMode: FormulaMode;
+  sections: TableSection[];
+  formulaResolvedValues: Map<string, number>;
+}>({
+  inspecting: null,
+  setInspecting: () => {},
+  formulaMode: { active: false, appendRef: () => {} },
+  sections: [],
+  formulaResolvedValues: new Map(),
+});
 
 export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig, onCellConfigSaved, qboResolvedValues }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -59,6 +75,9 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
   const [editValue, setEditValue] = useState('');
   const [inspecting, setInspecting] = useState<InspectorState | null>(null);
   const [localQboValues, setLocalQboValues] = useState<Map<string, number>>(new Map());
+  const [formulaModeActive, setFormulaModeActive] = useState(false);
+  const [formulaRefCallback, setFormulaRefCallback] = useState<((rowKey: string, label: string) => void) | null>(null);
+  const [formulaResolvedValues, setFormulaResolvedValues] = useState<Map<string, number>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
   const indices = visibleIndices ?? quarters.map((_, i) => i);
   const displayQuarters = indices.map(i => quarters[i]);
@@ -109,10 +128,51 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
     });
   };
 
-    return (
-    <CellConfigContext.Provider value={{ getCellConfig, inspecting, setInspecting, qboResolvedValues: mergedQbo }}>
+  const handleFormulaResolved = useCallback((rowKey: string, colKey: string, value: number) => {
+    setFormulaResolvedValues(prev => {
+      const next = new Map(prev);
+      next.set(`${rowKey}::${colKey}`, value);
+      return next;
+    });
+  }, []);
+
+  // Formula mode controls
+  const enterFormulaMode = useCallback((callback: (rowKey: string, label: string) => void) => {
+    setFormulaModeActive(true);
+    setFormulaRefCallback(() => callback);
+  }, []);
+
+  const exitFormulaMode = useCallback(() => {
+    setFormulaModeActive(false);
+    setFormulaRefCallback(null);
+  }, []);
+
+  const formulaMode: FormulaMode = useMemo(() => ({
+    active: formulaModeActive,
+    appendRef: (rowKey: string, label: string) => {
+      formulaRefCallback?.(rowKey, label);
+    },
+  }), [formulaModeActive, formulaRefCallback]);
+
+  return (
+    <CellConfigContext.Provider value={{ getCellConfig, inspecting, setInspecting, qboResolvedValues: mergedQbo, formulaMode, sections, formulaResolvedValues }}>
       <div className="flex gap-0">
         <div className={`border border-border/50 rounded-md overflow-hidden ${inspecting ? 'flex-1 min-w-0' : 'w-full'}`}>
+          {/* Formula mode banner */}
+          {formulaModeActive && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border-b border-emerald-500/30">
+              <FunctionSquare className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="text-[11px] text-emerald-300 font-medium flex-1">Formula mode: click cells to add references</span>
+              <button
+                onClick={exitFormulaMode}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded bg-muted/50 hover:bg-muted"
+              >
+                <X className="h-3 w-3" />
+                Cancel
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-end p-1 bg-muted/30 border-b border-border/50">
             <button onClick={toggleAll} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5">
               {allCollapsed ? <ChevronsUpDown className="h-3 w-3" /> : <ChevronsDownUp className="h-3 w-3" />}
@@ -165,9 +225,14 @@ export function BDFinancialTable({ sections, quarters, compact, visibleIndices, 
               rowLabel={inspecting.rowLabel}
               colLabel={inspecting.colLabel}
               value={inspecting.value}
-              onClose={() => setInspecting(null)}
+              onClose={() => { setInspecting(null); exitFormulaMode(); }}
               onSaved={onCellConfigSaved}
               onQboValueResolved={handleQboValueResolved}
+              onFormulaResolved={handleFormulaResolved}
+              enterFormulaMode={enterFormulaMode}
+              exitFormulaMode={exitFormulaMode}
+              formulaModeActive={formulaModeActive}
+              sections={sections}
             />
           </div>
         )}
@@ -232,7 +297,7 @@ function RowBlock({
   cellFontSize: string;
   visibleIndices: number[];
 }) {
-  const { getCellConfig, inspecting, setInspecting, qboResolvedValues } = useContext(CellConfigContext);
+  const { getCellConfig, inspecting, setInspecting, qboResolvedValues, formulaMode, sections, formulaResolvedValues } = useContext(CellConfigContext);
   const totalClass = row.isTotal ? 'font-bold border-t-2 border-b-2 border-foreground/20' : '';
   const subtotalClass = row.isSubtotal ? 'font-semibold border-t border-border/50' : '';
   const deltaClass = row.isDelta ? 'text-[10px] text-muted-foreground/60' : '';
@@ -284,10 +349,28 @@ function RowBlock({
         const isQboCell = cellConfig?.cell_type === 'qbo_metric';
         const qboResolved = isQboCell ? qboResolvedValues?.values.get(qboKey) : undefined;
         const qboLoading = isQboCell && qboResolvedValues?.loading.has(qboKey);
-        const displayVal = qboResolved !== undefined ? qboResolved : val;
+
+        // Resolve formula value if available
+        const isFormulaCell = cellConfig?.cell_type === 'formula' && cellConfig?.formula_string;
+        const formulaResolved = formulaResolvedValues.get(qboKey);
+        const liveFormulaValue = isFormulaCell ? resolveFormula(cellConfig!.formula_string!, sections, origIdx) : null;
+
+        const displayVal = qboResolved !== undefined
+          ? qboResolved
+          : formulaResolved !== undefined
+          ? formulaResolved
+          : liveFormulaValue !== null
+          ? liveFormulaValue
+          : val;
 
         const handleCellClick = () => {
-          // All cells open inspector — allows converting any cell to QBO metric
+          // In formula mode, clicking a cell appends its reference
+          if (formulaMode.active) {
+            formulaMode.appendRef(row.key, row.label);
+            return;
+          }
+
+          // Normal mode: open inspector
           const effectiveConfig: CellConfig = cellConfig ?? {
             sheet_id: 'bd-budget-dashboard',
             row_key: row.key,
@@ -307,9 +390,12 @@ function RowBlock({
         return (
           <td
             key={origIdx}
-            className={`px-2 py-1 text-right border-b border-border/50 ${cellFontSize} whitespace-nowrap cursor-pointer ${isInspected ? 'ring-1 ring-primary/50 bg-primary/5' : ''}`}
+            className={`px-2 py-1 text-right border-b border-border/50 ${cellFontSize} whitespace-nowrap cursor-pointer transition-all
+              ${isInspected ? 'ring-1 ring-primary/50 bg-primary/5' : ''}
+              ${formulaMode.active ? 'hover:ring-1 hover:ring-emerald-400/50 hover:bg-emerald-500/5' : ''}
+            `}
             style={{
-              color: row.editable ? '#60a5fa' : isGreenDelta ? '#34d399' : isRedDelta ? '#f87171' : undefined,
+              color: row.editable && !formulaMode.active ? '#60a5fa' : isGreenDelta ? '#34d399' : isRedDelta ? '#f87171' : undefined,
             }}
             onClick={handleCellClick}
           >
