@@ -132,7 +132,7 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
           .insert(payload as any);
       }
 
-      onSaved?.({
+      const updatedConfig: CellConfig = {
         ...config,
         cell_type: cellType,
         formula_string: cellType === 'formula' ? formulaString : undefined,
@@ -140,7 +140,18 @@ export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSa
         qbo_account: cellType === 'qbo_metric' ? qboAccount : undefined,
         qbo_aggregation: cellType === 'qbo_metric' ? qboAggregation : undefined,
         qbo_time_window: cellType === 'qbo_metric' ? timeWindow : undefined,
-      });
+      };
+
+      onSaved?.(updatedConfig);
+
+      // Resolve QBO value after save
+      if (cellType === 'qbo_metric') {
+        const resolved = await resolveSingleCell(updatedConfig);
+        if (resolved !== null) {
+          onQboValueResolved?.(config.row_key, config.col_key, resolved);
+        }
+      }
+
       onClose();
     } catch (err) {
       console.error('Failed to save cell config:', err);
