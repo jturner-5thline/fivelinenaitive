@@ -122,6 +122,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [rightView, setRightView] = useState<'folders' | 'files'>('folders');
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [mappedChecklistIds, setMappedChecklistIds] = useState<Set<string>>(new Set());
   const [bulkUploadStep, setBulkUploadStep] = useState<'none' | 'upload' | 'mapping'>('none');
   const [bulkBatchId, setBulkBatchId] = useState<string | null>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
@@ -182,7 +183,37 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     return items;
   }, [initialRound, kickOffRound]);
 
+  // Fetch all mapped checklist item IDs for this deal (across all batches)
+  useEffect(() => {
+    const fetchMappedIds = async () => {
+      const { data: items } = await supabase
+        .from('uploaded_items')
+        .select('id')
+        .eq('deal_id', dealId)
+        .neq('mapping_status', 'ignored');
+      if (!items?.length) { setMappedChecklistIds(new Set()); return; }
+      const itemIds = items.map(i => i.id);
+      const { data: maps } = await supabase
+        .from('uploaded_item_checklist_mapping')
+        .select('checklist_item_id')
+        .in('uploaded_item_id', itemIds);
+      if (maps) {
+        const ids = new Set(maps.map(m => m.checklist_item_id));
+        setMappedChecklistIds(ids);
+        // Auto-check mapped items
+        setCheckedItems(prev => {
+          const next = new Set(prev);
+          ids.forEach(id => next.add(id));
+          return next;
+        });
+      }
+    };
+    fetchMappedIds();
+  }, [dealId, uploadedItems.mappings]);
+
   const toggleCheckItem = (itemId: string) => {
+    // Don't allow unchecking items that are mapped via uploads
+    if (mappedChecklistIds.has(itemId)) return;
     setCheckedItems(prev => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId);
@@ -614,11 +645,15 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                 checked={checkedItems.has(item.id)}
                 onCheckedChange={() => toggleCheckItem(item.id)}
                 className="mt-0.5 h-3.5 w-3.5"
+                disabled={mappedChecklistIds.has(item.id)}
               />
               <div className="flex-1 min-w-0">
                 <span className={cn('leading-tight', checkedItems.has(item.id) && 'line-through')}>
                   {item.label}
                 </span>
+                {mappedChecklistIds.has(item.id) && (
+                  <span className="ml-1.5 text-[9px] text-primary font-medium">Mapped</span>
+                )}
                 {item.required && (
                   <span className="ml-1.5 text-[9px] text-destructive font-medium">Required</span>
                 )}
