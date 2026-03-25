@@ -325,6 +325,8 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         deals={deals}
         currentDeal={currentDeal}
         onFilesDropped={handleFilesDropped}
+        activeView={activeView}
+        onViewChange={setActiveView}
       />
 
       <div className="flex-1 flex min-w-0 min-h-0">
