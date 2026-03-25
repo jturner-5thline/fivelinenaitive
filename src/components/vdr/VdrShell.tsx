@@ -21,8 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { FolderOpen, FolderClosed, ChevronDown, FileText, Search, Lock } from 'lucide-react';
+import { FolderOpen, FolderClosed, FileText, Search, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface VdrShellProps {
