@@ -475,7 +475,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
         <ContextMenuTrigger>
           <div
             className={cn(
-              "flex items-center gap-1.5 py-1 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group",
+              "relative flex items-center gap-1.5 py-1.5 px-2 rounded-md cursor-pointer text-xs hover:bg-secondary/50 transition-colors group",
               isSelected && "bg-primary/10 ring-1 ring-primary/30"
             )}
             style={{ paddingLeft: `${24 + depth * 16}px` }}
