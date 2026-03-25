@@ -270,7 +270,20 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     setDeleteConfirmDialog(null);
   }, [deleteConfirmDialog, documents, vdrDocs]);
 
+  const isDataroomView = activeView === 'dataroom';
+
   const tree = useMemo(() => buildTree(documents), [documents]);
+
+  // For dataroom view, show folder structure but strip file children (empty folders)
+  const dataroomTree = useMemo(() => {
+    if (!isDataroomView) return tree;
+    function stripFiles(nodes: TreeNode[]): TreeNode[] {
+      return nodes
+        .filter(n => n.doc.is_folder)
+        .map(n => ({ ...n, children: stripFiles(n.children) }));
+    }
+    return stripFiles(tree);
+  }, [tree, isDataroomView]);
 
   // Filter tree by search query AND category filter
   const filteredTree = useMemo(() => {
