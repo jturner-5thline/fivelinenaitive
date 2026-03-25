@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { FolderOpen, FolderClosed, ChevronDown, FileText, Search } from 'lucide-react';
+import { FolderOpen, FolderClosed, ChevronDown, FileText, Search, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface VdrShellProps {
@@ -101,6 +101,41 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
       .filter(d => d.is_folder && d.folder_path === '/')
       .sort((a, b) => a.sort_order - b.sort_order || a.filename.localeCompare(b.filename));
   }, [vdrDocs.documents]);
+
+  // Derive auto-folder from selected checklist items' categories
+  const autoFolderInfo = useMemo(() => {
+    if (selectedChecklistIds.size === 0) return null;
+    // Get unique categories from selected checklist items
+    const categories = new Set<string>();
+    for (const id of selectedChecklistIds) {
+      const item = checklistItems.find(i => i.id === id);
+      if (item) categories.add(item.category);
+    }
+    // Try to find a matching folder for the first category
+    // Categories are round titles (e.g., "Initial Items", "Kick Off Items")
+    // Folders may match by containing the category name or vice versa
+    for (const category of categories) {
+      const catLower = category.toLowerCase();
+      const matchedFolder = availableFolders.find(f => {
+        const fLower = f.filename.toLowerCase();
+        return fLower.includes(catLower) || catLower.includes(fLower);
+      });
+      if (matchedFolder) {
+        return { path: `/${matchedFolder.filename}/`, name: matchedFolder.filename };
+      }
+    }
+    // If no folder matches the category, return null (user picks manually)
+    return null;
+  }, [selectedChecklistIds, checklistItems, availableFolders]);
+
+  // Auto-update selectedFolder when checklist mapping auto-assigns a folder
+  useEffect(() => {
+    if (autoFolderInfo) {
+      setSelectedFolder(autoFolderInfo.path);
+    }
+  }, [autoFolderInfo]);
+
+  const folderLocked = !!autoFolderInfo;
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -276,38 +311,52 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
           </p>
 
           {/* Folder selection */}
-          <div className="space-y-1 max-h-[180px] overflow-auto">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Destination folder</p>
-            <button
-              onClick={() => setSelectedFolder('/')}
-              className={cn(
-                'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
-                selectedFolder === '/'
-                  ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
-                  : 'text-foreground hover:bg-secondary/50'
-              )}
-            >
-              <FolderOpen className="h-4 w-4 flex-shrink-0" />
-              Root (no folder)
-            </button>
-            {availableFolders.map(folder => {
-              const path = `/${folder.filename}/`;
-              return (
-                <button
-                  key={folder.id}
-                  onClick={() => setSelectedFolder(path)}
-                  className={cn(
-                    'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
-                    selectedFolder === path
-                      ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
-                      : 'text-foreground hover:bg-secondary/50'
-                  )}
-                >
-                  <FolderClosed className="h-4 w-4 flex-shrink-0" />
-                  {folder.filename}
-                </button>
-              );
-            })}
+          <div className={cn("space-y-1", folderLocked && "opacity-60 pointer-events-none")}>
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Destination folder</p>
+              {folderLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+            </div>
+            {folderLocked && (
+              <p className="text-[10px] text-primary italic px-1 -mt-0.5 mb-1">
+                Auto-assigned to <span className="font-semibold">{autoFolderInfo?.name}</span> based on checklist mapping.
+              </p>
+            )}
+            <div className="max-h-[180px] overflow-auto space-y-1">
+              <button
+                onClick={() => !folderLocked && setSelectedFolder('/')}
+                disabled={folderLocked}
+                className={cn(
+                  'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
+                  selectedFolder === '/'
+                    ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                    : 'text-foreground hover:bg-secondary/50',
+                  folderLocked && 'cursor-not-allowed'
+                )}
+              >
+                <FolderOpen className="h-4 w-4 flex-shrink-0" />
+                Root (no folder)
+              </button>
+              {availableFolders.map(folder => {
+                const path = `/${folder.filename}/`;
+                return (
+                  <button
+                    key={folder.id}
+                    onClick={() => !folderLocked && setSelectedFolder(path)}
+                    disabled={folderLocked}
+                    className={cn(
+                      'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
+                      selectedFolder === path
+                        ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                        : 'text-foreground hover:bg-secondary/50',
+                      folderLocked && 'cursor-not-allowed'
+                    )}
+                  >
+                    <FolderClosed className="h-4 w-4 flex-shrink-0" />
+                    {folder.filename}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Inline collapsible checklist mapping */}
