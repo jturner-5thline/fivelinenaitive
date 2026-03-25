@@ -45,6 +45,7 @@ function getFileIcon(name: string) {
 
 export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const [previewDoc, setPreviewDoc] = useState<VdrDocument | null>(null);
+  const [activeView, setActiveView] = useState<VdrView>('internal');
   const { deals } = useDealsContext();
   const { user } = useAuth();
   const { company } = useCompany();
