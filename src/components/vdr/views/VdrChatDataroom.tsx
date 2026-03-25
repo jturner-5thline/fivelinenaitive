@@ -779,21 +779,21 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             <h2 className="text-sm font-semibold">{isDataroomView ? 'Dataroom (External)' : 'Dataroom'}</h2>
             {!isDataroomView && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{vdrDocs.fileCount} files</Badge>}
             {isDataroomView && <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">Shared</Badge>}
-            {processingCount > 0 && (
+            {!isDataroomView && processingCount > 0 && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/30 text-amber-400 gap-1">
                 <Loader2 className="h-2.5 w-2.5 animate-spin" />
                 {processingCount} indexing
               </Badge>
             )}
-            {indexedCount > 0 && processingCount === 0 && (
+            {!isDataroomView && indexedCount > 0 && processingCount === 0 && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-500/30 text-emerald-400 gap-1">
                 <CheckCircle2 className="h-2.5 w-2.5" />
                 {indexedCount} indexed
               </Badge>
             )}
             <div className="ml-auto flex items-center gap-1">
-              {renderViewToggle(rightView, setRightView)}
-              {canPushToFlex && (
+              {!isDataroomView && renderViewToggle(rightView, setRightView)}
+              {!isDataroomView && canPushToFlex && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -808,9 +808,11 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setNewFolderDialog({ parentPath: '/' }); setNewFolderName(''); }} title="New folder">
                 <FolderPlus className="h-3.5 w-3.5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUploadClick('/')} title="Upload files">
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
+              {!isDataroomView && (
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUploadClick('/')} title="Upload files">
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
           </div>
 
