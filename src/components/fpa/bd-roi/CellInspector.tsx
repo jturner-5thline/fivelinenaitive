@@ -16,6 +16,7 @@ interface Props {
   value: string;
   onClose: () => void;
   onSaved?: (updated: CellConfig) => void;
+  onQboValueResolved?: (rowKey: string, colKey: string, value: number) => void;
 }
 
 const AGGREGATION_OPTIONS = [
