@@ -41,7 +41,7 @@ function getQuarterDates(colKey: string): { start: string; end: string; label: s
   };
 }
 
-export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSaved }: Props) {
+export function CellInspector({ config, rowLabel, colLabel, value, onClose, onSaved, onQboValueResolved }: Props) {
   const { user } = useAuth();
   const [cellType, setCellType] = useState<CellConfig['cell_type']>(config.cell_type);
   const [qboEntity, setQboEntity] = useState(config.qbo_entity ?? '');
