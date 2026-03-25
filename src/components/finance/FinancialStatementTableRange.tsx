@@ -68,9 +68,14 @@ export function FinancialStatementTableRange({
   const [isPasting, setIsPasting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [undoHistory, setUndoHistory] = useState<UndoEntry[]>([]);
+  // Session-level original values for projection cells (key: cellKey, value: original amount before first edit this session)
+  const [sessionOriginals, setSessionOriginals] = useState<Record<string, number>>({});
   const tableRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Column type settings
+  const { getColumnType, bulkSetColumnTypes } = useColumnSettings(companyId);
 
   // Get flattened list of line items (excluding category headers)
   const flatLineItems = categories.flatMap(cat => 
