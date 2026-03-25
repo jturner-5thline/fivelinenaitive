@@ -203,6 +203,9 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
     toast.success(`Uploaded ${pendingFiles.length} file(s)`, {
       description: hasMappings ? 'Files mapped to checklist items.' : undefined,
     });
+    if (hasMappings) {
+      setMappingRefreshKey(k => k + 1);
+    }
     setPendingFiles(null);
   }, [pendingFiles, selectedFolder, selectedChecklistIds, vdrDocs, dealId, user]);
 
