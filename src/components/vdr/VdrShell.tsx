@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import type { VdrDocument } from './types';
 import { classifyFileToFolder } from '@/utils/vdrFileClassifier';
 
-import { VdrSidebar } from './VdrSidebar';
+import { VdrSidebar, type VdrView } from './VdrSidebar';
 import { VdrCenterPanel } from './VdrCenterPanel';
 import { VdrPreviewPanel } from './VdrPreviewPanel';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
