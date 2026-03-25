@@ -49,7 +49,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const [selectedFolder, setSelectedFolder] = useState<string>('/');
   // Checklist mapping: Set of checklist item IDs applied to all files in this upload
   const [selectedChecklistIds, setSelectedChecklistIds] = useState<Set<string>>(new Set());
-  const [checklistOpen, setChecklistOpen] = useState(false);
+  
   const [mappingSearch, setMappingSearch] = useState('');
 
   // Checklist config for mapping step
