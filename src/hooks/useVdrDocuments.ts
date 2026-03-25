@@ -240,6 +240,7 @@ export function useVdrDocuments(dealId: string) {
     uploadFile,
     createFolder,
     deleteDocument,
+    deleteDocuments,
     renameDocument,
     moveDocument,
     getDownloadUrl,
