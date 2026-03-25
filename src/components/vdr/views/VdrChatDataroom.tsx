@@ -194,6 +194,50 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   // Account tags
   const { categories, tagsByDocId } = useVdrAccountTags(dealId);
 
+  const toggleFileSelect = useCallback((fileId: string, e?: React.MouseEvent) => {
+    setSelectedFileIds(prev => {
+      const next = new Set(prev);
+      if (next.has(fileId)) next.delete(fileId);
+      else next.add(fileId);
+      return next;
+    });
+  }, []);
+
+  const allFileIds = useMemo(() => documents.filter(d => !d.is_folder).map(d => d.id), [documents]);
+  const allFilesSelected = allFileIds.length > 0 && allFileIds.every(id => selectedFileIds.has(id));
+
+  const toggleSelectAll = useCallback(() => {
+    if (allFilesSelected) {
+      setSelectedFileIds(new Set());
+    } else {
+      setSelectedFileIds(new Set(allFileIds));
+    }
+  }, [allFilesSelected, allFileIds]);
+
+  const folders = useMemo(() => documents.filter(d => d.is_folder), [documents]);
+
+  const handleBulkMove = useCallback(async () => {
+    if (!moveDialog) return;
+    for (const id of moveDialog.fileIds) {
+      await vdrDocs.moveDocument(id, moveTargetFolder);
+    }
+    toast.success(`Moved ${moveDialog.fileIds.length} file(s)`);
+    setSelectedFileIds(new Set());
+    setMoveDialog(null);
+    setMoveTargetFolder('/');
+  }, [moveDialog, moveTargetFolder, vdrDocs]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!deleteConfirmDialog) return;
+    const docsToDelete = documents.filter(d => deleteConfirmDialog.includes(d.id));
+    for (const doc of docsToDelete) {
+      await vdrDocs.deleteDocument(doc);
+    }
+    toast.success(`Deleted ${docsToDelete.length} file(s)`);
+    setSelectedFileIds(new Set());
+    setDeleteConfirmDialog(null);
+  }, [deleteConfirmDialog, documents, vdrDocs]);
+
   const tree = useMemo(() => buildTree(documents), [documents]);
 
   // Filter tree by search query AND category filter
