@@ -287,33 +287,21 @@ function RowBlock({
         const displayVal = qboResolved !== undefined ? qboResolved : val;
 
         const handleCellClick = () => {
-          if (cellConfig && (cellConfig.cell_type === 'qbo_metric' || cellConfig.cell_type === 'formula')) {
-            setInspecting({
-              rowKey: row.key,
-              colIdx: origIdx,
-              rowLabel: row.label,
-              colLabel: quarterLabel,
-              value: formatBDValue(displayVal, row.format),
-              config: cellConfig,
-            });
-          } else if (row.editable && row.onEdit) {
-            onStartEdit(row.key, origIdx, val);
-          } else {
-            const fallbackConfig: CellConfig = cellConfig ?? {
-              sheet_id: 'bd-budget-dashboard',
-              row_key: row.key,
-              col_key: quarterLabel,
-              cell_type: 'static',
-            };
-            setInspecting({
-              rowKey: row.key,
-              colIdx: origIdx,
-              rowLabel: row.label,
-              colLabel: quarterLabel,
-              value: formatBDValue(displayVal, row.format),
-              config: fallbackConfig,
-            });
-          }
+          // All cells open inspector — allows converting any cell to QBO metric
+          const effectiveConfig: CellConfig = cellConfig ?? {
+            sheet_id: 'bd-budget-dashboard',
+            row_key: row.key,
+            col_key: quarterLabel,
+            cell_type: 'static',
+          };
+          setInspecting({
+            rowKey: row.key,
+            colIdx: origIdx,
+            rowLabel: row.label,
+            colLabel: quarterLabel,
+            value: formatBDValue(displayVal, row.format),
+            config: effectiveConfig,
+          });
         };
 
         return (
