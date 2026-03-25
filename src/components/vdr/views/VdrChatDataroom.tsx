@@ -362,6 +362,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
     }
   };
 
+  const indexedCount = vdrDocs.ingestionStats?.complete || 0;
+  const processingCount = vdrDocs.ingestionStats?.processing || 0;
+
   const renderNode = (node: TreeNode, depth = 0) => {
     const { doc } = node;
     const isExpanded = expandedFolders.has(doc.id);
