@@ -102,6 +102,41 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
       .sort((a, b) => a.sort_order - b.sort_order || a.filename.localeCompare(b.filename));
   }, [vdrDocs.documents]);
 
+  // Derive auto-folder from selected checklist items' categories
+  const autoFolderInfo = useMemo(() => {
+    if (selectedChecklistIds.size === 0) return null;
+    // Get unique categories from selected checklist items
+    const categories = new Set<string>();
+    for (const id of selectedChecklistIds) {
+      const item = checklistItems.find(i => i.id === id);
+      if (item) categories.add(item.category);
+    }
+    // Try to find a matching folder for the first category
+    // Categories are round titles (e.g., "Initial Items", "Kick Off Items")
+    // Folders may match by containing the category name or vice versa
+    for (const category of categories) {
+      const catLower = category.toLowerCase();
+      const matchedFolder = availableFolders.find(f => {
+        const fLower = f.filename.toLowerCase();
+        return fLower.includes(catLower) || catLower.includes(fLower);
+      });
+      if (matchedFolder) {
+        return { path: `/${matchedFolder.filename}/`, name: matchedFolder.filename };
+      }
+    }
+    // If no folder matches the category, return null (user picks manually)
+    return null;
+  }, [selectedChecklistIds, checklistItems, availableFolders]);
+
+  // Auto-update selectedFolder when checklist mapping auto-assigns a folder
+  useEffect(() => {
+    if (autoFolderInfo) {
+      setSelectedFolder(autoFolderInfo.path);
+    }
+  }, [autoFolderInfo]);
+
+  const folderLocked = !!autoFolderInfo;
+
   // Reset state when dialog opens
   useEffect(() => {
     if (pendingFiles) {
