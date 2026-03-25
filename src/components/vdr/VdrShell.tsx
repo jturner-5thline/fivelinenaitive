@@ -15,6 +15,9 @@ import { VdrSidebar } from './VdrSidebar';
 import { VdrCenterPanel } from './VdrCenterPanel';
 import { VdrPreviewPanel } from './VdrPreviewPanel';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { FolderOpen, FolderClosed } from 'lucide-react';
 
 interface VdrShellProps {
   dealId: string;
@@ -35,6 +38,35 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const { hasPageAccess } = usePageAccessFlags();
   const canPushToFlex = hasPageAccess('flex_push');
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
+
+  // Folder picker state for sidebar uploads
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [selectedFolder, setSelectedFolder] = useState<string>('/');
+
+  const availableFolders = useMemo(() => {
+    return vdrDocs.documents
+      .filter(d => d.is_folder && d.folder_path === '/')
+      .sort((a, b) => a.sort_order - b.sort_order || a.filename.localeCompare(b.filename));
+  }, [vdrDocs.documents]);
+
+  const handleFilesDropped = useCallback((files: File[]) => {
+    setPendingFiles(files);
+    setSelectedFolder('/');
+  }, []);
+
+  const handleFolderPickConfirm = useCallback(() => {
+    if (!pendingFiles) return;
+    pendingFiles.forEach(file => {
+      vdrDocs.uploadFile(file, selectedFolder, 'dataroom');
+    });
+    setPendingFiles(null);
+    setSelectedFolder('/');
+  }, [pendingFiles, selectedFolder, vdrDocs]);
+
+  const handleFolderPickCancel = useCallback(() => {
+    setPendingFiles(null);
+    setSelectedFolder('/');
+  }, []);
 
   const handlePushToFlex = useCallback(async () => {
     if (isPushingToFlex) return;
@@ -90,11 +122,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         dealId={dealId}
         deals={deals}
         currentDeal={currentDeal}
-        onFilesDropped={useCallback((files: File[]) => {
-          files.forEach(file => {
-            vdrDocs.uploadFile(file, '/', 'dataroom');
-          });
-        }, [vdrDocs])}
+        onFilesDropped={handleFilesDropped}
       />
 
       <div className="flex-1 flex min-w-0 min-h-0">
@@ -128,6 +156,54 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
           )}
         </ResizablePanelGroup>
       </div>
+
+      {/* Folder Picker Modal */}
+      <Dialog open={!!pendingFiles} onOpenChange={open => { if (!open) handleFolderPickCancel(); }}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Choose upload folder</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Select a folder for {pendingFiles?.length === 1 ? `"${pendingFiles[0].name}"` : `${pendingFiles?.length} files`}:
+          </p>
+          <div className="space-y-1 max-h-[240px] overflow-auto">
+            <button
+              onClick={() => setSelectedFolder('/')}
+              className={cn(
+                'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
+                selectedFolder === '/'
+                  ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                  : 'text-foreground hover:bg-secondary/50'
+              )}
+            >
+              <FolderOpen className="h-4 w-4 flex-shrink-0" />
+              Root (no folder)
+            </button>
+            {availableFolders.map(folder => {
+              const path = `/${folder.filename}/`;
+              return (
+                <button
+                  key={folder.id}
+                  onClick={() => setSelectedFolder(path)}
+                  className={cn(
+                    'flex items-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium transition-colors',
+                    selectedFolder === path
+                      ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                      : 'text-foreground hover:bg-secondary/50'
+                  )}
+                >
+                  <FolderClosed className="h-4 w-4 flex-shrink-0" />
+                  {folder.filename}
+                </button>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={handleFolderPickCancel}>Cancel</Button>
+            <Button size="sm" onClick={handleFolderPickConfirm}>Upload</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
