@@ -287,11 +287,12 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
   // Filter tree by search query AND category filter
   const filteredTree = useMemo(() => {
+    const baseTree = isDataroomView ? dataroomTree : tree;
     const q = searchQuery.toLowerCase();
     const hasSearch = !!q.trim();
     const hasCategory = categoryFilter !== 'all';
 
-    if (!hasSearch && !hasCategory) return tree;
+    if (!hasSearch && !hasCategory) return baseTree;
 
     const categoryDocIds = hasCategory
       ? new Set([...tagsByDocId.entries()].filter(([, tags]) => tags.some(t => t.account_category === categoryFilter)).map(([id]) => id))
@@ -309,8 +310,8 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       }
       return null;
     }
-    return tree.map(filterNode).filter(Boolean) as TreeNode[];
-  }, [tree, searchQuery, categoryFilter, tagsByDocId]);
+    return baseTree.map(filterNode).filter(Boolean) as TreeNode[];
+  }, [tree, dataroomTree, isDataroomView, searchQuery, categoryFilter, tagsByDocId]);
 
   // Flat file list (no folders)
   const flatFiles = useMemo(() => {
