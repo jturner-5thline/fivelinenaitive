@@ -611,7 +611,7 @@ function RowBlock({
             {/* Fill handle — small blue square at bottom-right */}
             {showFillHandle && (
               <div
-                className="absolute bottom-0 right-0 w-2 h-2 bg-primary rounded-sm cursor-crosshair z-10 translate-x-[3px] translate-y-[3px] hover:scale-150 transition-transform"
+                className="absolute bottom-[-1px] right-[-1px] w-[7px] h-[7px] bg-primary border border-background rounded-[1px] cursor-crosshair z-10 hover:scale-150 transition-transform"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
