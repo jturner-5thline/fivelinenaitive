@@ -50,7 +50,7 @@ const CellConfigContext = createContext<{
   setInspecting: (s: InspectorState | null) => void;
 }>({ inspecting: null, setInspecting: () => {} });
 
-export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig }: Props) {
+export function BDFinancialTable({ sections, quarters, compact, visibleIndices, getCellConfig, onCellConfigSaved }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowKey: string; col: number } | null>(null);
   const [editValue, setEditValue] = useState('');
