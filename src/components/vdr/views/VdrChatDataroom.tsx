@@ -230,10 +230,7 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
   const handleBulkDelete = useCallback(async () => {
     if (!deleteConfirmDialog) return;
     const docsToDelete = documents.filter(d => deleteConfirmDialog.includes(d.id));
-    for (const doc of docsToDelete) {
-      await vdrDocs.deleteDocument(doc);
-    }
-    toast.success(`Deleted ${docsToDelete.length} file(s)`);
+    await vdrDocs.deleteDocuments(docsToDelete);
     setSelectedFileIds(new Set());
     setDeleteConfirmDialog(null);
   }, [deleteConfirmDialog, documents, vdrDocs]);
