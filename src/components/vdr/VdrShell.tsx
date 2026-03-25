@@ -158,7 +158,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         upload_batch_id: batchId,
         deal_id: dealId,
         name: f.name,
-        metadata: { size: f.size, type: f.type } as Record<string, unknown>,
+        metadata: { size: f.size, type: f.type } as Record<string, string | number>,
         uploaded_by: user.id,
         mapping_status: 'mapped' as const,
       }));
