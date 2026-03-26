@@ -20,6 +20,7 @@ import { DefaultChecklistSettings } from '@/components/settings/DefaultChecklist
 import { LenderMatchingSettings } from '@/components/settings/LenderMatchingSettings';
 import { ScheduledReportsSettings } from '@/components/settings/ScheduledReportsSettings';
 import { SLARulesSettings } from '@/components/settings/SLARulesSettings';
+import { StaleAlertSettings } from '@/components/settings/StaleAlertSettings';
 import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettings';
 import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
