@@ -99,7 +99,7 @@ export default function PartnersPipeline() {
 
   const owners = useMemo(() => {
     const map = new Map<string, { display_name: string; avatar_url?: string }>();
-    teamMembers.forEach((m: any) => map.set(m.user_id, { display_name: m.display_name || m.email || '', avatar_url: m.avatar_url }));
+    teamMembers.forEach((m) => map.set(m.id, { display_name: m.display_name || m.email || '', avatar_url: m.avatar_url || undefined }));
     return map;
   }, [teamMembers]);
 

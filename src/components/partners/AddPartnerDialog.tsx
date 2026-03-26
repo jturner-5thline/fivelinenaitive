@@ -76,8 +76,8 @@ export function AddPartnerDialog({ open, onOpenChange, defaultStageId }: { open:
             <Select value={ownerId} onValueChange={setOwnerId}>
               <SelectTrigger><SelectValue placeholder="Select owner" /></SelectTrigger>
               <SelectContent>
-                {teamMembers.map((m: any) => (
-                  <SelectItem key={m.user_id} value={m.user_id}>{m.display_name || m.email}</SelectItem>
+                {teamMembers.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.display_name || m.email}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
