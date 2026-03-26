@@ -260,6 +260,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
             const mappingRows = Array.from(assignment.checklistIds).map(checklistId => ({
               uploaded_item_id: insertedItems[0].id,
               checklist_item_id: checklistId,
+              created_by: user.id,
             }));
             const { error: mapError } = await supabase.from('uploaded_item_checklist_mapping').insert(mappingRows);
             if (mapError) {
