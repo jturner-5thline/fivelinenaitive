@@ -640,6 +640,7 @@ const handler = async (req: Request): Promise<Response> => {
                       ${actorHtml}
                       <p style="color: #4a4a4a; font-size: 15px; line-height: 1.6; margin: 0 0 16px 0;">${message}</p>
                       ${changesHtml}
+                      ${'buildDetailHtml' in template && typeof template.buildDetailHtml === 'function' ? template.buildDetailHtml(payload) : ''}
                       ${actionUrl ? `
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                           <tr>
