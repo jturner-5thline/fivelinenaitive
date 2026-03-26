@@ -261,6 +261,7 @@ export default function Settings() {
                     {isVisible('suggestions') && <SuggestionSettings />}
                     {isVisible('scheduled-reports') && <ScheduledReportsSettings />}
                     {isVisible('sla-rules') && <SLARulesSettings />}
+                    {isVisible('stale-alerts') && <StaleAlertSettings isAdmin={isAdmin} />}
                     {isVisible('zapier') && (
                       <LinkCard to="/integrations?tab=zapier" title="Zapier" description="Manage Zapier webhooks and event triggers" />
                     )}
