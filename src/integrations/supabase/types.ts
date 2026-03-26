@@ -9193,6 +9193,104 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_pipeline_stages: {
+        Row: {
+          color: string | null
+          company_id: string
+          created_at: string | null
+          definition: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          company_id: string
+          created_at?: string | null
+          definition?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          company_id?: string
+          created_at?: string | null
+          definition?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_pipeline_stages_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partners: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          firm_type: string | null
+          id: string
+          metadata: Json | null
+          name: string
+          notes: string | null
+          owner_id: string | null
+          sort_order_in_stage: number | null
+          stage_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          firm_type?: string | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          notes?: string | null
+          owner_id?: string | null
+          sort_order_in_stage?: number | null
+          stage_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          firm_type?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          notes?: string | null
+          owner_id?: string | null
+          sort_order_in_stage?: number | null
+          stage_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partners_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partners_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "partner_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           approval_requested_at: string | null

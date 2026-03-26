@@ -1,11 +1,12 @@
 import { Helmet } from "react-helmet-async";
-import { Users, Mail } from "lucide-react";
+import { Users, Mail, Handshake } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { lazy, Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const EmailDesigner = lazy(() => import("./EmailDesigner"));
+const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
 export default function SalesBD() {
   return (
@@ -26,6 +27,9 @@ export default function SalesBD() {
             <TabsList className="mb-4">
               <TabsTrigger value="overview" className="gap-1.5">
                 <Users className="h-3.5 w-3.5" /> Overview
+              </TabsTrigger>
+              <TabsTrigger value="partners-pipeline" className="gap-1.5">
+                <Handshake className="h-3.5 w-3.5" /> Partners Pipeline
               </TabsTrigger>
               <TabsTrigger value="email-designer" className="gap-1.5">
                 <Mail className="h-3.5 w-3.5" /> Email Designer
@@ -55,6 +59,12 @@ export default function SalesBD() {
                   monitor referral partnerships, and analyze your sales funnel performance.
                 </p>
               </div>
+            </TabsContent>
+
+            <TabsContent value="partners-pipeline">
+              <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+                <PartnersPipeline />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="email-designer">
