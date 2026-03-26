@@ -384,10 +384,60 @@ function buildTaskAssignedHtml(data: NotificationPayload, actionUrl: string, app
 </html>`;
 }
 
-const notificationTemplates: Record<string, { subject: string; getMessage: (data: NotificationPayload) => string }> = {
+const notificationTemplates: Record<string, { subject: string; getMessage: (data: NotificationPayload) => string; buildDetailHtml?: (data: Record<string, any>) => string }> = {
   deal_created: {
     subject: 'New Deal Created',
     getMessage: (data) => buildChangeSummary(data) || `A new deal "${data.deal_name}" has been created.`,
+    buildDetailHtml: (data: Record<string, any>) => {
+      const deal = data._deal_details as Record<string, any> | undefined;
+      if (!deal) return '';
+
+      const fmtCurrency = (val: number | null | undefined) => val != null
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val)
+        : null;
+
+      const fields: Array<[string, string | null]> = [
+        ['Deal Name', deal.company || data.deal_name || null],
+        ['Amount', fmtCurrency(deal.value)],
+        ['Deal Type', deal.deal_type],
+        ['Stage', deal.stage],
+        ['Manager', deal.manager],
+        ['Deal Owner', deal.deal_owner],
+        ['Analyst', deal.analyst],
+        ['Engagement', deal.engagement_type],
+        ['Business Model', deal.business_model],
+        ['Contact', deal.contact],
+        ['Contact Info', deal.contact_info],
+        ['Referred By', deal.referred_by],
+        ['Sourced Via', deal.sourced_via],
+      ];
+      const visibleFields = fields.filter(([, v]) => v != null && v !== '');
+
+      const narrativeHtml = deal.narrative
+        ? `<tr><td style="padding: 12px 16px; border-top: 1px solid #eee;">
+            <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; font-weight: 600;">Narrative</p>
+            <p style="margin: 0; color: #4a4a4a; font-size: 14px; line-height: 1.6;">${deal.narrative}</p>
+          </td></tr>`
+        : '';
+
+      return `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 20px 0 0 0; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+          <tr>
+            <td style="background: #f3f0ff; padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">
+              <strong style="color: #1a1a1a; font-size: 15px;">📋 Deal Details</strong>
+            </td>
+          </tr>
+          ${visibleFields.length > 0 ? `<tr><td style="padding: 12px 16px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+              ${visibleFields.map(([label, value]) => `<tr>
+                <td style="padding: 5px 0; color: #6b7280; font-size: 13px; width: 120px; vertical-align: top; font-weight: 600;">${label}</td>
+                <td style="padding: 5px 0; color: #1a1a1a; font-size: 13px; vertical-align: top;">${value}</td>
+              </tr>`).join('')}
+            </table>
+          </td></tr>` : ''}
+          ${narrativeHtml}
+        </table>`;
+    },
   },
   deal_updated: {
     subject: 'Deal Updated',
@@ -579,6 +629,22 @@ const handler = async (req: Request): Promise<Response> => {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
+    }
+
+    // Enrich deal_created with full deal details from DB
+    if (payload.type === 'deal_created' && payload.deal_id) {
+      try {
+        const { data: dealData } = await supabaseAdmin
+          .from('deals')
+          .select('company, value, deal_type, stage, manager, deal_owner, analyst, engagement_type, business_model, contact, contact_info, narrative, referred_by, sourced_via')
+          .eq('id', payload.deal_id)
+          .single();
+        if (dealData) {
+          (payload as any)._deal_details = dealData;
+        }
+      } catch (e) {
+        console.log("Could not fetch deal details for enrichment:", e);
+      }
     }
 
     const message = template.getMessage(payload);
