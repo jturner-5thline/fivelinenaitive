@@ -20,6 +20,7 @@ import { DefaultChecklistSettings } from '@/components/settings/DefaultChecklist
 import { LenderMatchingSettings } from '@/components/settings/LenderMatchingSettings';
 import { ScheduledReportsSettings } from '@/components/settings/ScheduledReportsSettings';
 import { SLARulesSettings } from '@/components/settings/SLARulesSettings';
+import { StaleAlertSettings } from '@/components/settings/StaleAlertSettings';
 import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettings';
 import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
@@ -59,6 +60,7 @@ const SETTINGS_SECTIONS = [
   { id: 'scheduled-reports', keywords: ['scheduled', 'reports', 'report', 'automation', 'pipeline', 'summary', 'recurring'] },
   { id: 'sla-rules', keywords: ['sla', 'rules', 'stale', 'alert', 'monitoring', 'deal', 'activity', 'timeout'] },
   { id: 'zapier', keywords: ['zapier', 'webhook', 'integration', 'automation', 'connect', 'zap'] },
+  { id: 'stale-alerts', keywords: ['stale', 'deal', 'alert', 'email', 'notification', 'manager', 'admin', 'attention'] },
   { id: 'email-snippets', keywords: ['email', 'snippets', 'snippet', 'template', 'templates', 'reusable', 'tokens', 'hubspot'] },
   { id: 'email-labels', keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'] },
   { id: 'distribution-stats', keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'] },
@@ -69,7 +71,7 @@ const TABS = [
   { id: 'general', label: 'General', sectionIds: ['account', 'company', 'preferences', 'database'] },
   { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'writeup-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates', 'agreement-templates'] },
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
-  { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'zapier'] },
+  { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'stale-alerts', 'zapier'] },
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'distribution-stats'] },
 ];
 
@@ -259,6 +261,7 @@ export default function Settings() {
                     {isVisible('suggestions') && <SuggestionSettings />}
                     {isVisible('scheduled-reports') && <ScheduledReportsSettings />}
                     {isVisible('sla-rules') && <SLARulesSettings />}
+                    {isVisible('stale-alerts') && <StaleAlertSettings isAdmin={isAdmin} />}
                     {isVisible('zapier') && (
                       <LinkCard to="/integrations?tab=zapier" title="Zapier" description="Manage Zapier webhooks and event triggers" />
                     )}
