@@ -12,7 +12,7 @@ const FIRM_TYPES = ['Investment Bank', 'Broker', 'Advisor', 'Lender', 'Strategic
 
 export function AddPartnerDialog({ open, onOpenChange, defaultStageId }: { open: boolean; onOpenChange: (v: boolean) => void; defaultStageId: string | null }) {
   const { data: stages = [] } = usePipelineStages();
-  const { data: teamMembers = [] } = useTeamMembers();
+  const teamMembers = useTeamMembers();
   const create = useCreatePartner();
 
   const [name, setName] = useState('');
