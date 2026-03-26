@@ -96,6 +96,7 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 import { DataRoomV2 } from '@/components/deal/DataRoomV2';
 import { VdrShell } from '@/components/vdr/VdrShell';
+import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
