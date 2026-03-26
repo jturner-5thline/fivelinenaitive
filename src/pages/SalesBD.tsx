@@ -61,6 +61,12 @@ export default function SalesBD() {
               </div>
             </TabsContent>
 
+            <TabsContent value="partners-pipeline">
+              <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+                <PartnersPipeline />
+              </Suspense>
+            </TabsContent>
+
             <TabsContent value="email-designer">
               <Suspense fallback={<Skeleton className="h-96 w-full" />}>
                 <EmailDesigner />
