@@ -88,7 +88,7 @@ function StageColumn({
 export default function PartnersPipeline() {
   const { data: stages = [], isLoading: stagesLoading } = usePipelineStages();
   const { data: partners = [], isLoading: partnersLoading } = usePartners();
-  const { data: teamMembers = [] } = useTeamMembers();
+  const teamMembers = useTeamMembers();
   const updatePartner = useUpdatePartner();
 
   const [showConfigure, setShowConfigure] = useState(false);
