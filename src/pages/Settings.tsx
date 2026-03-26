@@ -71,7 +71,7 @@ const TABS = [
   { id: 'general', label: 'General', sectionIds: ['account', 'company', 'preferences', 'database'] },
   { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'writeup-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates', 'agreement-templates'] },
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
-  { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'zapier'] },
+  { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'stale-alerts', 'zapier'] },
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'distribution-stats'] },
 ];
 
