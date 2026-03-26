@@ -444,6 +444,56 @@ const notificationTemplates: Record<string, { subject: string; getMessage: (data
       }
       return `${count} lender sync requests have been received from Flex and are awaiting your review.`;
     },
+    buildDetailHtml: (data: Record<string, any>) => {
+      const summaries = data.lender_summaries as Array<Record<string, any>> | undefined;
+      if (!summaries || summaries.length === 0) return '';
+
+      const submittedAt = data.submitted_at
+        ? new Date(data.submitted_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+        : null;
+
+      const fmtCurrency = (val: number | null | undefined) => val != null ? `$${Number(val).toLocaleString()}` : null;
+      const fmtArray = (arr: string[] | null | undefined) => arr && arr.length > 0 ? arr.join(', ') : null;
+
+      let html = submittedAt
+        ? `<p style="color: #888; font-size: 12px; margin: 0 0 16px 0;">Submitted: ${submittedAt}</p>`
+        : '';
+
+      for (const lender of summaries) {
+        const fields: Array<[string, string | null]> = [
+          ['Type', lender.lender_type],
+          ['Contact', [lender.contact_name, lender.contact_title].filter(Boolean).join(', ') || null],
+          ['Email', lender.email],
+          ['Loan Types', fmtArray(lender.loan_types)],
+          ['Deal Size', lender.min_deal != null || lender.max_deal != null
+            ? `${fmtCurrency(lender.min_deal) || '—'} – ${fmtCurrency(lender.max_deal) || '—'}`
+            : null],
+          ['Min Revenue', fmtCurrency(lender.min_revenue)],
+          ['Geography', lender.geo],
+          ['Tier', lender.tier],
+          ['Industries', fmtArray(lender.industries)],
+        ];
+        const visibleFields = fields.filter(([, v]) => v != null);
+
+        html += `
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 16px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <tr>
+              <td style="background: #f3f0ff; padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">
+                <strong style="color: #1a1a1a; font-size: 15px;">${lender.name}</strong>
+              </td>
+            </tr>
+            ${visibleFields.length > 0 ? `<tr><td style="padding: 12px 16px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                ${visibleFields.map(([label, value]) => `<tr>
+                  <td style="padding: 4px 0; color: #6b7280; font-size: 13px; width: 110px; vertical-align: top;">${label}</td>
+                  <td style="padding: 4px 0; color: #1a1a1a; font-size: 13px; vertical-align: top;">${value}</td>
+                </tr>`).join('')}
+              </table>
+            </td></tr>` : ''}
+          </table>`;
+      }
+      return html;
+    },
   },
   task_assigned: {
     subject: 'New Task Assigned',
