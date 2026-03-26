@@ -1861,6 +1861,7 @@ export type Database = {
           id: string
           lender_matching_config: Json | null
           permission_settings: Json | null
+          stale_alert_config: Json | null
           updated_at: string
         }
         Insert: {
@@ -1879,6 +1880,7 @@ export type Database = {
           id?: string
           lender_matching_config?: Json | null
           permission_settings?: Json | null
+          stale_alert_config?: Json | null
           updated_at?: string
         }
         Update: {
@@ -1897,6 +1899,7 @@ export type Database = {
           id?: string
           lender_matching_config?: Json | null
           permission_settings?: Json | null
+          stale_alert_config?: Json | null
           updated_at?: string
         }
         Relationships: [

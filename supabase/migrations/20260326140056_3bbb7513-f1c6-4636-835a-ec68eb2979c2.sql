@@ -1,0 +1,1 @@
+ALTER TABLE public.company_settings ADD COLUMN IF NOT EXISTS stale_alert_config jsonb DEFAULT '{"enabled": true, "threshold_days": 14, "notify_managers": true, "notify_admins": true, "excluded_stages": ["archived", "on_hold", "closed_lost", "in_development"]}'::jsonb;
