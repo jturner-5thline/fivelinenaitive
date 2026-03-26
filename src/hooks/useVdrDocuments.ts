@@ -116,6 +116,21 @@ export function useVdrDocuments(dealId: string) {
     }
   }, [dealId, company?.id]);
 
+  // Realtime subscription for live sync across company users
+  useEffect(() => {
+    if (!dealId) return;
+    const channel = supabase
+      .channel(`vdr-docs-${dealId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'vdr_documents',
+        filter: `deal_id=eq.${dealId}`,
+      }, () => { fetchDocuments(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [dealId, fetchDocuments]);
+
   const triggerIngestion = useCallback(async (documentIds: string[]) => {
     if (!documentIds.length) return;
     try {
