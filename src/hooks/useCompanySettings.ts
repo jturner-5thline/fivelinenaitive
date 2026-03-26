@@ -30,7 +30,7 @@ export function useCompanySettings() {
         .maybeSingle();
 
       if (error) throw error;
-      setSettings(data);
+      setSettings(data as unknown as CompanySettings);
     } catch (error) {
       console.error('Error fetching company settings:', error);
     } finally {
