@@ -220,54 +220,85 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const handleUploadConfirm = useCallback(async () => {
     if (!pendingFiles || !user) return;
 
+    setIsUploading(true);
+    const statuses = new Map<number, 'pending' | 'uploading' | 'done' | 'error'>();
+    pendingFiles.forEach((_, i) => statuses.set(i, 'pending'));
+    setUploadStatuses(new Map(statuses));
+
     const batchId = crypto.randomUUID();
     let anyMappings = false;
+    let successCount = 0;
+    let failCount = 0;
 
     for (let i = 0; i < pendingFiles.length; i++) {
       const file = pendingFiles[i];
       const assignment = fileAssignments.get(i) || { folder: '/', checklistIds: new Set<string>() };
 
-      // Upload file to VDR
-      await vdrDocs.uploadFile(file, assignment.folder, 'dataroom');
+      statuses.set(i, 'uploading');
+      setUploadStatuses(new Map(statuses));
 
-      // Create uploaded_item + mappings if checklist items were selected
-      if (assignment.checklistIds.size > 0) {
-        anyMappings = true;
-        const { data: insertedItems, error } = await supabase
-          .from('uploaded_items')
-          .insert({
-            upload_batch_id: batchId,
-            deal_id: dealId,
-            name: file.name,
-            metadata: { size: file.size, type: file.type } as Record<string, string | number>,
-            uploaded_by: user.id,
-            mapping_status: 'mapped' as const,
-          })
-          .select('id');
+      try {
+        // Upload file to VDR
+        await vdrDocs.uploadFile(file, assignment.folder, 'dataroom');
 
-        if (!error && insertedItems?.length) {
-          const mappingRows = Array.from(assignment.checklistIds).map(checklistId => ({
-            uploaded_item_id: insertedItems[0].id,
-            checklist_item_id: checklistId,
-          }));
-          const { error: mapError } = await supabase.from('uploaded_item_checklist_mapping').insert(mappingRows);
-          if (mapError) {
-            console.error('Failed to insert checklist mappings:', mapError);
+        // Create uploaded_item + mappings if checklist items were selected
+        if (assignment.checklistIds.size > 0) {
+          anyMappings = true;
+          const { data: insertedItems, error } = await supabase
+            .from('uploaded_items')
+            .insert({
+              upload_batch_id: batchId,
+              deal_id: dealId,
+              name: file.name,
+              metadata: { size: file.size, type: file.type } as Record<string, string | number>,
+              uploaded_by: user.id,
+              mapping_status: 'mapped' as const,
+            })
+            .select('id');
+
+          if (!error && insertedItems?.length) {
+            const mappingRows = Array.from(assignment.checklistIds).map(checklistId => ({
+              uploaded_item_id: insertedItems[0].id,
+              checklist_item_id: checklistId,
+            }));
+            const { error: mapError } = await supabase.from('uploaded_item_checklist_mapping').insert(mappingRows);
+            if (mapError) {
+              console.error('Failed to insert checklist mappings:', mapError);
+            }
           }
         }
+
+        statuses.set(i, 'done');
+        setUploadStatuses(new Map(statuses));
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to upload ${file.name}:`, err);
+        statuses.set(i, 'error');
+        setUploadStatuses(new Map(statuses));
+        failCount++;
       }
     }
 
-    toast.success(`Uploaded ${pendingFiles.length} file(s)`);
     if (anyMappings) {
       setMappingRefreshKey(k => k + 1);
     }
-    setPendingFiles(null);
+
+    setIsUploading(false);
+
+    if (failCount === 0) {
+      toast.success(`${successCount} file${successCount > 1 ? 's' : ''} uploaded successfully`);
+      setPendingFiles(null);
+      setUploadStatuses(new Map());
+    } else {
+      toast.error(`${failCount} file${failCount > 1 ? 's' : ''} failed to upload`);
+    }
   }, [pendingFiles, fileAssignments, vdrDocs, dealId, user]);
 
   const handleCancel = useCallback(() => {
+    if (isUploading) return; // prevent closing during upload
     setPendingFiles(null);
-  }, []);
+    setUploadStatuses(new Map());
+  }, [isUploading]);
 
   // --- existing handlers below ---
 
