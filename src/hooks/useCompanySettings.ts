@@ -76,7 +76,7 @@ export function useCompanySettings() {
 
       setSettings(prev => prev 
         ? { ...prev, default_deal_stage_id: stageId }
-        : { id: '', company_id: company.id, default_deal_stage_id: stageId }
+        : { id: '', company_id: company.id, default_deal_stage_id: stageId, fpa_dashboard_config: null }
       );
       return true;
     } catch (error) {
