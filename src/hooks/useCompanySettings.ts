@@ -7,6 +7,7 @@ interface CompanySettings {
   id: string;
   company_id: string;
   default_deal_stage_id: string | null;
+  fpa_dashboard_config: Record<string, unknown> | null;
 }
 
 export function useCompanySettings() {
