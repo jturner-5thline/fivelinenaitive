@@ -3303,6 +3303,50 @@ export type Database = {
           },
         ]
       }
+      deal_audit_log: {
+        Row: {
+          action_type: string
+          created_at: string
+          deal_id: string
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          deal_id: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          deal_id?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_audit_log_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_call_transcripts: {
         Row: {
           call_date: string | null
@@ -12833,6 +12877,8 @@ export type Database = {
           company_id: string | null
           created_at: string
           deal_id: string
+          deleted_at: string | null
+          deleted_by: string | null
           entity_count: number | null
           file_path: string | null
           file_size: number | null
@@ -12853,6 +12899,8 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           deal_id: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           entity_count?: number | null
           file_path?: string | null
           file_size?: number | null
@@ -12873,6 +12921,8 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           deal_id?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           entity_count?: number | null
           file_path?: string | null
           file_size?: number | null
