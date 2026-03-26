@@ -1,11 +1,12 @@
 import { Helmet } from "react-helmet-async";
-import { Users, Mail } from "lucide-react";
+import { Users, Mail, Handshake } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { lazy, Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const EmailDesigner = lazy(() => import("./EmailDesigner"));
+const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
 export default function SalesBD() {
   return (
