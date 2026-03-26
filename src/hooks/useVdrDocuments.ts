@@ -11,6 +11,19 @@ export function useVdrDocuments(dealId: string) {
   const [documents, setDocuments] = useState<VdrDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Audit log helper — fire-and-forget
+  const logAudit = useCallback((
+    actionType: string, entityType: string, entityId?: string, entityName?: string, metadata?: Record<string, any>
+  ) => {
+    if (!user?.id || !dealId) return;
+    (supabase as any).from('deal_audit_log').insert({
+      deal_id: dealId, user_id: user.id,
+      action_type: actionType, entity_type: entityType,
+      entity_id: entityId || null, entity_name: entityName || null,
+      metadata: metadata || {},
+    }).then(({ error }: any) => { if (error) console.error('Audit log error:', error); });
+  }, [dealId, user?.id]);
+
   const fetchDocuments = useCallback(async () => {
     if (!dealId || !company?.id) return;
     const { data, error } = await (supabase as any)
@@ -18,6 +31,7 @@ export function useVdrDocuments(dealId: string) {
       .select('*')
       .eq('deal_id', dealId)
       .eq('company_id', company.id)
+      .is('deleted_at', null)
       .order('sort_order', { ascending: true })
       .order('filename', { ascending: true });
 
@@ -33,7 +47,6 @@ export function useVdrDocuments(dealId: string) {
   const syncFoldersWithCategories = useCallback(async () => {
     if (!dealId || !company?.id || !user?.id) return;
 
-    // Fetch categories from settings
     const { data: categories } = await supabase
       .from('data_room_checklist_categories')
       .select('name, position')
@@ -42,17 +55,16 @@ export function useVdrDocuments(dealId: string) {
     const categoryNames = (categories || []).map((c: any) => c.name as string);
     if (categoryNames.length === 0) return;
 
-    // Fetch existing root-level folders for this deal
     const { data: existingFolders } = await (supabase as any)
       .from('vdr_documents')
       .select('id, filename, sort_order')
       .eq('deal_id', dealId)
       .eq('is_folder', true)
-      .eq('folder_path', '/');
+      .eq('folder_path', '/')
+      .is('deleted_at', null);
 
     const existingNames = new Set((existingFolders || []).map((f: any) => f.filename as string));
 
-    // Insert any missing category folders
     const missingFolders = categoryNames
       .filter(name => !existingNames.has(name))
       .map((name, i) => ({
@@ -70,7 +82,6 @@ export function useVdrDocuments(dealId: string) {
       await (supabase as any).from('vdr_documents').insert(missingFolders);
     }
 
-    // Update sort_order of existing folders to match category positions
     for (const cat of categories || []) {
       const existing = (existingFolders || []).find((f: any) => f.filename === (cat as any).name);
       if (existing && existing.sort_order !== (cat as any).position) {
@@ -81,11 +92,9 @@ export function useVdrDocuments(dealId: string) {
       }
     }
 
-    // Remove folders that are not in the categories list (e.g. legacy "Team Communications")
     const categoryNameSet = new Set(categoryNames);
     const foldersToRemove = (existingFolders || []).filter((f: any) => !categoryNameSet.has(f.filename));
     for (const folder of foldersToRemove) {
-      // Only remove if the folder is empty (no children)
       const { count: childCount } = await (supabase as any)
         .from('vdr_documents')
         .select('id', { count: 'exact', head: true })
@@ -107,7 +116,6 @@ export function useVdrDocuments(dealId: string) {
     }
   }, [dealId, company?.id]);
 
-  // Trigger ingestion for newly uploaded documents
   const triggerIngestion = useCallback(async (documentIds: string[]) => {
     if (!documentIds.length) return;
     try {
@@ -117,7 +125,6 @@ export function useVdrDocuments(dealId: string) {
       if (error) {
         console.error('Ingestion error:', error);
       } else {
-        // Poll for completion
         const poll = async (attempts = 0) => {
           if (attempts > 30) return;
           await new Promise(r => setTimeout(r, 3000));
@@ -164,16 +171,19 @@ export function useVdrDocuments(dealId: string) {
     await fetchDocuments();
     toast.success(`Uploaded ${file.name}`);
 
-    // Fire-and-forget ingestion
+    logAudit('file_uploaded', 'file', inserted?.id, file.name, {
+      folder: folderPath, file_size: file.size, file_type: file.type,
+    });
+
     if (inserted?.id) {
       triggerIngestion([inserted.id]);
     }
-  }, [dealId, company?.id, user?.id, fetchDocuments, triggerIngestion]);
+  }, [dealId, company?.id, user?.id, fetchDocuments, triggerIngestion, logAudit]);
 
   const createFolder = useCallback(async (name: string, parentPath: string) => {
     if (!dealId || !company?.id || !user?.id) return;
 
-    await (supabase as any).from('vdr_documents').insert({
+    const { data: inserted } = await (supabase as any).from('vdr_documents').insert({
       deal_id: dealId,
       company_id: company.id,
       filename: name,
@@ -181,41 +191,69 @@ export function useVdrDocuments(dealId: string) {
       is_folder: true,
       source: 'dataroom',
       uploaded_by: user.id,
-    });
+    }).select('id').single();
 
     await fetchDocuments();
     toast.success(`Created folder "${name}"`);
-  }, [dealId, company?.id, user?.id, fetchDocuments]);
+    logAudit('folder_created', 'folder', inserted?.id, name, { parent_path: parentPath });
+  }, [dealId, company?.id, user?.id, fetchDocuments, logAudit]);
 
+  // Soft delete
   const deleteDocument = useCallback(async (doc: VdrDocument) => {
-    if (doc.file_path) {
-      await supabase.storage.from('vdr-files').remove([doc.file_path]);
-    }
-    await (supabase as any).from('vdr_documents').delete().eq('id', doc.id);
+    if (!user?.id) return;
+    await (supabase as any).from('vdr_documents')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+      .eq('id', doc.id);
     await fetchDocuments();
-    toast.success(`Deleted "${doc.filename}"`);
-  }, [fetchDocuments]);
+    toast.success(`Deleted "${doc.filename}" — recoverable for 14 days`);
+    logAudit('file_deleted', doc.is_folder ? 'folder' : 'file', doc.id, doc.filename, {
+      folder: doc.folder_path, file_size: doc.file_size,
+    });
+  }, [fetchDocuments, user?.id, logAudit]);
 
+  // Soft delete multiple
   const deleteDocuments = useCallback(async (docs: VdrDocument[]) => {
-    const filePaths = docs.filter(d => d.file_path).map(d => d.file_path!);
+    if (!user?.id) return;
     const ids = docs.map(d => d.id);
-    if (filePaths.length > 0) {
-      await supabase.storage.from('vdr-files').remove(filePaths);
-    }
-    await (supabase as any).from('vdr_documents').delete().in('id', ids);
+    await (supabase as any).from('vdr_documents')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+      .in('id', ids);
     await fetchDocuments();
-    toast.success(`Deleted ${docs.length} file(s)`);
-  }, [fetchDocuments]);
+    toast.success(`Deleted ${docs.length} file(s) — recoverable for 14 days`);
+    for (const doc of docs) {
+      logAudit('file_deleted', doc.is_folder ? 'folder' : 'file', doc.id, doc.filename, {
+        folder: doc.folder_path,
+      });
+    }
+  }, [fetchDocuments, user?.id, logAudit]);
+
+  // Restore soft-deleted file
+  const restoreDocument = useCallback(async (docId: string, docName?: string) => {
+    await (supabase as any).from('vdr_documents')
+      .update({ deleted_at: null, deleted_by: null })
+      .eq('id', docId);
+    await fetchDocuments();
+    toast.success(`Restored "${docName || 'file'}"`);
+    logAudit('file_restored', 'file', docId, docName);
+  }, [fetchDocuments, logAudit]);
 
   const renameDocument = useCallback(async (id: string, newName: string) => {
+    const doc = documents.find(d => d.id === id);
     await (supabase as any).from('vdr_documents').update({ filename: newName }).eq('id', id);
     await fetchDocuments();
-  }, [fetchDocuments]);
+    logAudit(doc?.is_folder ? 'folder_renamed' : 'file_renamed', doc?.is_folder ? 'folder' : 'file', id, newName, {
+      old_name: doc?.filename, new_name: newName,
+    });
+  }, [fetchDocuments, documents, logAudit]);
 
   const moveDocument = useCallback(async (id: string, newFolderPath: string) => {
+    const doc = documents.find(d => d.id === id);
     await (supabase as any).from('vdr_documents').update({ folder_path: newFolderPath }).eq('id', id);
     await fetchDocuments();
-  }, [fetchDocuments]);
+    logAudit('file_moved', 'file', id, doc?.filename, {
+      old_folder: doc?.folder_path, new_folder: newFolderPath,
+    });
+  }, [fetchDocuments, documents, logAudit]);
 
   const getDownloadUrl = useCallback(async (filePath: string) => {
     const { data } = await supabase.storage.from('vdr-files').createSignedUrl(filePath, 3600);
@@ -223,18 +261,29 @@ export function useVdrDocuments(dealId: string) {
   }, []);
 
   const toggleShareToDataroom = useCallback(async (docId: string, shared: boolean) => {
+    const doc = documents.find(d => d.id === docId);
     await (supabase as any).from('vdr_documents').update({ shared_to_dataroom: shared }).eq('id', docId);
     setDocuments(prev => prev.map(d => d.id === docId ? { ...d, shared_to_dataroom: shared } : d));
-  }, []);
+    logAudit(
+      shared ? 'file_shared_to_dataroom' : 'file_unshared_from_dataroom',
+      'file', docId, doc?.filename,
+    );
+  }, [documents, logAudit]);
 
   const bulkShareToDataroom = useCallback(async (docIds: string[], shared: boolean) => {
     await (supabase as any).from('vdr_documents').update({ shared_to_dataroom: shared }).in('id', docIds);
     setDocuments(prev => prev.map(d => docIds.includes(d.id) ? { ...d, shared_to_dataroom: shared } : d));
-  }, []);
+    for (const docId of docIds) {
+      const doc = documents.find(d => d.id === docId);
+      logAudit(
+        shared ? 'file_shared_to_dataroom' : 'file_unshared_from_dataroom',
+        'file', docId, doc?.filename,
+      );
+    }
+  }, [documents, logAudit]);
 
   const fileCount = documents.filter(d => !d.is_folder).length;
 
-  // Ingestion stats
   const ingestionStats = {
     pending: documents.filter(d => !d.is_folder && (d as any).ingestion_status === 'pending').length,
     processing: documents.filter(d => !d.is_folder && (d as any).ingestion_status === 'processing').length,
@@ -251,6 +300,7 @@ export function useVdrDocuments(dealId: string) {
     createFolder,
     deleteDocument,
     deleteDocuments,
+    restoreDocument,
     renameDocument,
     moveDocument,
     getDownloadUrl,
