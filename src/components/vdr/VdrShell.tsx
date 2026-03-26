@@ -22,7 +22,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { FolderOpen, FolderClosed, FileText, Search, Lock, Check, CheckCheck } from 'lucide-react';
+import { FolderOpen, FolderClosed, FileText, Search, Lock, Check, CheckCheck, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 
 interface VdrShellProps {
