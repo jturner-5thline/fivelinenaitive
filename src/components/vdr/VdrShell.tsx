@@ -406,6 +406,36 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
             </DialogTitle>
           </DialogHeader>
 
+          {isUploading ? (
+            /* Upload progress view */
+            <div className="min-h-[200px] space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>Uploading {pendingFiles?.length} file{(pendingFiles?.length || 0) > 1 ? 's' : ''}...</span>
+              </div>
+              <Progress value={pendingFiles ? Math.round(([...uploadStatuses.values()].filter(s => s === 'done' || s === 'error').length / pendingFiles.length) * 100) : 0} className="h-2" />
+              <div className="space-y-1 max-h-[300px] overflow-auto">
+                {pendingFiles?.map((file, i) => {
+                  const status = uploadStatuses.get(i) || 'pending';
+                  return (
+                    <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded text-xs">
+                      {status === 'done' ? (
+                        <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                      ) : status === 'error' ? (
+                        <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+                      ) : status === 'uploading' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary flex-shrink-0" />
+                      ) : (
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      )}
+                      <span className={cn("truncate flex-1", status === 'error' && "text-destructive")}>{file.name}</span>
+                      <span className="text-[10px] text-muted-foreground capitalize">{status}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
           <div className={cn("flex gap-4", !isSingleFile ? "min-h-[360px]" : "")}>
             {/* File list (left side, only for multi-file) */}
             {!isSingleFile && pendingFiles && (
@@ -566,13 +596,16 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
               </div>
             </div>
           </div>
+          )}
 
+          {!isUploading && (
           <DialogFooter className="flex justify-between sm:justify-between">
             <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
             <Button size="sm" onClick={handleUploadConfirm} disabled={!isSingleFile && !allFilesAssigned}>
               Upload{pendingFiles && pendingFiles.length > 1 ? ` ${pendingFiles.length} files` : ''}
             </Button>
           </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>
