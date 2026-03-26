@@ -2632,6 +2632,10 @@ export default function DealDetail() {
                     <TabsTrigger value="communication" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Comms
                     </TabsTrigger>
+                    <TabsTrigger value="activity-log" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
+                      <History className="h-3.5 w-3.5" />
+                      Activity
+                    </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
                    <div className="flex items-center gap-2 ml-auto flex-shrink-0">
