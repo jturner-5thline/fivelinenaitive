@@ -22,7 +22,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { FolderOpen, FolderClosed, FileText, Search, Lock, Check, CheckCheck } from 'lucide-react';
+import { FolderOpen, FolderClosed, FileText, Search, Lock, Check, CheckCheck, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 
 interface VdrShellProps {
@@ -63,6 +64,8 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [mappingRefreshKey, setMappingRefreshKey] = useState(0);
   const [mappingSearch, setMappingSearch] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatuses, setUploadStatuses] = useState<Map<number, 'pending' | 'uploading' | 'done' | 'error'>>(new Map());
 
   // Per-file assignments: Map<fileIndex, FileAssignment>
   const [fileAssignments, setFileAssignments] = useState<Map<number, FileAssignment>>(new Map());
@@ -217,54 +220,85 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const handleUploadConfirm = useCallback(async () => {
     if (!pendingFiles || !user) return;
 
+    setIsUploading(true);
+    const statuses = new Map<number, 'pending' | 'uploading' | 'done' | 'error'>();
+    pendingFiles.forEach((_, i) => statuses.set(i, 'pending'));
+    setUploadStatuses(new Map(statuses));
+
     const batchId = crypto.randomUUID();
     let anyMappings = false;
+    let successCount = 0;
+    let failCount = 0;
 
     for (let i = 0; i < pendingFiles.length; i++) {
       const file = pendingFiles[i];
       const assignment = fileAssignments.get(i) || { folder: '/', checklistIds: new Set<string>() };
 
-      // Upload file to VDR
-      await vdrDocs.uploadFile(file, assignment.folder, 'dataroom');
+      statuses.set(i, 'uploading');
+      setUploadStatuses(new Map(statuses));
 
-      // Create uploaded_item + mappings if checklist items were selected
-      if (assignment.checklistIds.size > 0) {
-        anyMappings = true;
-        const { data: insertedItems, error } = await supabase
-          .from('uploaded_items')
-          .insert({
-            upload_batch_id: batchId,
-            deal_id: dealId,
-            name: file.name,
-            metadata: { size: file.size, type: file.type } as Record<string, string | number>,
-            uploaded_by: user.id,
-            mapping_status: 'mapped' as const,
-          })
-          .select('id');
+      try {
+        // Upload file to VDR
+        await vdrDocs.uploadFile(file, assignment.folder, 'dataroom');
 
-        if (!error && insertedItems?.length) {
-          const mappingRows = Array.from(assignment.checklistIds).map(checklistId => ({
-            uploaded_item_id: insertedItems[0].id,
-            checklist_item_id: checklistId,
-          }));
-          const { error: mapError } = await supabase.from('uploaded_item_checklist_mapping').insert(mappingRows);
-          if (mapError) {
-            console.error('Failed to insert checklist mappings:', mapError);
+        // Create uploaded_item + mappings if checklist items were selected
+        if (assignment.checklistIds.size > 0) {
+          anyMappings = true;
+          const { data: insertedItems, error } = await supabase
+            .from('uploaded_items')
+            .insert({
+              upload_batch_id: batchId,
+              deal_id: dealId,
+              name: file.name,
+              metadata: { size: file.size, type: file.type } as Record<string, string | number>,
+              uploaded_by: user.id,
+              mapping_status: 'mapped' as const,
+            })
+            .select('id');
+
+          if (!error && insertedItems?.length) {
+            const mappingRows = Array.from(assignment.checklistIds).map(checklistId => ({
+              uploaded_item_id: insertedItems[0].id,
+              checklist_item_id: checklistId,
+            }));
+            const { error: mapError } = await supabase.from('uploaded_item_checklist_mapping').insert(mappingRows);
+            if (mapError) {
+              console.error('Failed to insert checklist mappings:', mapError);
+            }
           }
         }
+
+        statuses.set(i, 'done');
+        setUploadStatuses(new Map(statuses));
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to upload ${file.name}:`, err);
+        statuses.set(i, 'error');
+        setUploadStatuses(new Map(statuses));
+        failCount++;
       }
     }
 
-    toast.success(`Uploaded ${pendingFiles.length} file(s)`);
     if (anyMappings) {
       setMappingRefreshKey(k => k + 1);
     }
-    setPendingFiles(null);
+
+    setIsUploading(false);
+
+    if (failCount === 0) {
+      toast.success(`${successCount} file${successCount > 1 ? 's' : ''} uploaded successfully`);
+      setPendingFiles(null);
+      setUploadStatuses(new Map());
+    } else {
+      toast.error(`${failCount} file${failCount > 1 ? 's' : ''} failed to upload`);
+    }
   }, [pendingFiles, fileAssignments, vdrDocs, dealId, user]);
 
   const handleCancel = useCallback(() => {
+    if (isUploading) return; // prevent closing during upload
     setPendingFiles(null);
-  }, []);
+    setUploadStatuses(new Map());
+  }, [isUploading]);
 
   // --- existing handlers below ---
 
@@ -372,6 +406,36 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
             </DialogTitle>
           </DialogHeader>
 
+          {isUploading ? (
+            /* Upload progress view */
+            <div className="min-h-[200px] space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>Uploading {pendingFiles?.length} file{(pendingFiles?.length || 0) > 1 ? 's' : ''}...</span>
+              </div>
+              <Progress value={pendingFiles ? Math.round(([...uploadStatuses.values()].filter(s => s === 'done' || s === 'error').length / pendingFiles.length) * 100) : 0} className="h-2" />
+              <div className="space-y-1 max-h-[300px] overflow-auto">
+                {pendingFiles?.map((file, i) => {
+                  const status = uploadStatuses.get(i) || 'pending';
+                  return (
+                    <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded text-xs">
+                      {status === 'done' ? (
+                        <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                      ) : status === 'error' ? (
+                        <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+                      ) : status === 'uploading' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary flex-shrink-0" />
+                      ) : (
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      )}
+                      <span className={cn("truncate flex-1", status === 'error' && "text-destructive")}>{file.name}</span>
+                      <span className="text-[10px] text-muted-foreground capitalize">{status}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
           <div className={cn("flex gap-4", !isSingleFile ? "min-h-[360px]" : "")}>
             {/* File list (left side, only for multi-file) */}
             {!isSingleFile && pendingFiles && (
@@ -532,13 +596,16 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
               </div>
             </div>
           </div>
+          )}
 
+          {!isUploading && (
           <DialogFooter className="flex justify-between sm:justify-between">
             <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
             <Button size="sm" onClick={handleUploadConfirm} disabled={!isSingleFile && !allFilesAssigned}>
               Upload{pendingFiles && pendingFiles.length > 1 ? ` ${pendingFiles.length} files` : ''}
             </Button>
           </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>
