@@ -64,6 +64,8 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [mappingRefreshKey, setMappingRefreshKey] = useState(0);
   const [mappingSearch, setMappingSearch] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatuses, setUploadStatuses] = useState<Map<number, 'pending' | 'uploading' | 'done' | 'error'>>(new Map());
 
   // Per-file assignments: Map<fileIndex, FileAssignment>
   const [fileAssignments, setFileAssignments] = useState<Map<number, FileAssignment>>(new Map());
