@@ -7,6 +7,7 @@ interface CompanySettings {
   id: string;
   company_id: string;
   default_deal_stage_id: string | null;
+  fpa_dashboard_config: Record<string, unknown> | null;
 }
 
 export function useCompanySettings() {
@@ -29,7 +30,7 @@ export function useCompanySettings() {
         .maybeSingle();
 
       if (error) throw error;
-      setSettings(data);
+      setSettings(data as unknown as CompanySettings);
     } catch (error) {
       console.error('Error fetching company settings:', error);
     } finally {
@@ -75,7 +76,7 @@ export function useCompanySettings() {
 
       setSettings(prev => prev 
         ? { ...prev, default_deal_stage_id: stageId }
-        : { id: '', company_id: company.id, default_deal_stage_id: stageId }
+        : { id: '', company_id: company.id, default_deal_stage_id: stageId, fpa_dashboard_config: null }
       );
       return true;
     } catch (error) {
@@ -85,6 +86,28 @@ export function useCompanySettings() {
     }
   }, [company?.id, settings]);
 
+  const updateSettings = useCallback(async (patch: Partial<Record<string, unknown>>) => {
+    if (!company?.id) return;
+    try {
+      if (settings) {
+        const { error } = await supabase
+          .from('company_settings')
+          .update(patch as any)
+          .eq('company_id', company.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('company_settings')
+          .insert({ company_id: company.id, ...patch } as any);
+        if (error) throw error;
+      }
+      await fetchSettings();
+    } catch (error) {
+      console.error('Error updating company settings:', error);
+      throw error;
+    }
+  }, [company?.id, settings, fetchSettings]);
+
   const defaultStageId = settings?.default_deal_stage_id ?? 
     (company?.id ? null : localStorage.getItem('defaultDealStageId'));
 
@@ -93,6 +116,7 @@ export function useCompanySettings() {
     isLoading,
     defaultStageId,
     updateDefaultStage,
+    updateSettings,
     refetch: fetchSettings,
   };
 }

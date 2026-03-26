@@ -31,6 +31,7 @@ import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
 import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
 import { DistributionStatsSettings } from '@/components/settings/DistributionStatsSettings';
 import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
+import { KPICardSettings } from '@/components/settings/KPICardSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
@@ -64,6 +65,7 @@ const SETTINGS_SECTIONS = [
   { id: 'email-snippets', keywords: ['email', 'snippets', 'snippet', 'template', 'templates', 'reusable', 'tokens', 'hubspot'] },
   { id: 'email-labels', keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'] },
   { id: 'distribution-stats', keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'] },
+  { id: 'kpi-card-settings', keywords: ['kpi', 'summary', 'card', 'metrics', 'dashboard', 'format', 'trend', 'comparison'] },
 ];
 
 // Tab definitions with which section IDs belong to each
@@ -73,6 +75,7 @@ const TABS = [
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
   { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'stale-alerts', 'zapier'] },
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'distribution-stats'] },
+  { id: 'metrics', label: 'Metrics', sectionIds: ['kpi-card-settings'] },
 ];
 
 function LinkCard({ to, title, description, badge }: { to: string; title: string; description: string; badge?: number }) {
@@ -273,6 +276,11 @@ export default function Settings() {
                   {isVisible('email-snippets') && <EmailSnippetsSettings />}
                   {isVisible('email-labels') && <EmailLabelsSettings />}
                   {isVisible('distribution-stats') && <DistributionStatsSettings />}
+                </TabsContent>
+
+                {/* Metrics Tab */}
+                <TabsContent value="metrics" className="space-y-4 mt-4">
+                  {isVisible('kpi-card-settings') && <KPICardSettings isAdmin={isAdmin} />}
                 </TabsContent>
               </Tabs>
             )}
