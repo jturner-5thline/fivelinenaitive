@@ -277,6 +277,11 @@ export default function Settings() {
                   {isVisible('email-labels') && <EmailLabelsSettings />}
                   {isVisible('distribution-stats') && <DistributionStatsSettings />}
                 </TabsContent>
+
+                {/* Metrics Tab */}
+                <TabsContent value="metrics" className="space-y-4 mt-4">
+                  {isVisible('kpi-card-settings') && <KPICardSettings isAdmin={isAdmin} />}
+                </TabsContent>
               </Tabs>
             )}
           </div>
