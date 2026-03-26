@@ -60,6 +60,7 @@ const SETTINGS_SECTIONS = [
   { id: 'scheduled-reports', keywords: ['scheduled', 'reports', 'report', 'automation', 'pipeline', 'summary', 'recurring'] },
   { id: 'sla-rules', keywords: ['sla', 'rules', 'stale', 'alert', 'monitoring', 'deal', 'activity', 'timeout'] },
   { id: 'zapier', keywords: ['zapier', 'webhook', 'integration', 'automation', 'connect', 'zap'] },
+  { id: 'stale-alerts', keywords: ['stale', 'deal', 'alert', 'email', 'notification', 'manager', 'admin', 'attention'] },
   { id: 'email-snippets', keywords: ['email', 'snippets', 'snippet', 'template', 'templates', 'reusable', 'tokens', 'hubspot'] },
   { id: 'email-labels', keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'] },
   { id: 'distribution-stats', keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'] },
