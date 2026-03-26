@@ -300,6 +300,22 @@ serve(async (req) => {
             : "update_existing";
 
           // Send notification to each admin
+          // Build detailed lender summaries for the email
+          const lenderSummaries = lendersToProcess.map((l) => ({
+            name: l.name,
+            lender_type: l.lender_type || null,
+            contact_name: l.contact_name || null,
+            contact_title: l.contact_title || null,
+            email: l.email || null,
+            loan_types: l.loan_types || null,
+            min_deal: l.min_deal || null,
+            max_deal: l.max_deal || null,
+            min_revenue: l.min_revenue || null,
+            geo: l.geo || null,
+            tier: l.tier || null,
+            industries: l.industries || null,
+          }));
+
           for (const admin of adminUsers) {
             try {
               await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
@@ -314,6 +330,8 @@ serve(async (req) => {
                   lender_name: firstLenderName,
                   sync_request_type: primaryType,
                   sync_count: totalPending,
+                  lender_summaries: lenderSummaries,
+                  submitted_at: new Date().toISOString(),
                 }),
               });
             } catch (emailError) {
