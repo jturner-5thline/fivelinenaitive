@@ -28,6 +28,9 @@ export default function SalesBD() {
               <TabsTrigger value="overview" className="gap-1.5">
                 <Users className="h-3.5 w-3.5" /> Overview
               </TabsTrigger>
+              <TabsTrigger value="partners-pipeline" className="gap-1.5">
+                <Handshake className="h-3.5 w-3.5" /> Partners Pipeline
+              </TabsTrigger>
               <TabsTrigger value="email-designer" className="gap-1.5">
                 <Mail className="h-3.5 w-3.5" /> Email Designer
               </TabsTrigger>
