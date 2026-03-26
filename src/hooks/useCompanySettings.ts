@@ -86,6 +86,28 @@ export function useCompanySettings() {
     }
   }, [company?.id, settings]);
 
+  const updateSettings = useCallback(async (patch: Partial<Record<string, unknown>>) => {
+    if (!company?.id) return;
+    try {
+      if (settings) {
+        const { error } = await supabase
+          .from('company_settings')
+          .update(patch as any)
+          .eq('company_id', company.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('company_settings')
+          .insert({ company_id: company.id, ...patch } as any);
+        if (error) throw error;
+      }
+      await fetchSettings();
+    } catch (error) {
+      console.error('Error updating company settings:', error);
+      throw error;
+    }
+  }, [company?.id, settings, fetchSettings]);
+
   const defaultStageId = settings?.default_deal_stage_id ?? 
     (company?.id ? null : localStorage.getItem('defaultDealStageId'));
 
@@ -94,6 +116,7 @@ export function useCompanySettings() {
     isLoading,
     defaultStageId,
     updateDefaultStage,
+    updateSettings,
     refetch: fetchSettings,
   };
 }

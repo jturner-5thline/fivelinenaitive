@@ -31,6 +31,7 @@ import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
 import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
 import { DistributionStatsSettings } from '@/components/settings/DistributionStatsSettings';
 import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
+import { KPICardSettings } from '@/components/settings/KPICardSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
