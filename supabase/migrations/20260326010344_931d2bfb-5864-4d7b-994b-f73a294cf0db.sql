@@ -1,0 +1,1 @@
+ALTER TABLE public.uploaded_item_checklist_mapping ALTER COLUMN checklist_item_id TYPE text;
