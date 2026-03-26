@@ -4410,6 +4410,12 @@ export default function DealDetail() {
                   </div>
                 </TabsContent>
 
+                <TabsContent value="activity-log" className={cn("mt-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`activity-log-${tabDirection}`}>
+                  <div className="rounded-lg overflow-hidden mt-3 bg-card border border-border/30" style={{ height: 'calc(100vh - 190px)' }}>
+                    <DealActivityLogTab dealId={id!} />
+                  </div>
+                </TabsContent>
+
                 {hasDealSpaceAccess && (
                 <TabsContent value="deal-space" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-space-${tabDirection}`}>
                   <DealSpaceTab dealId={id!} dealData={{
