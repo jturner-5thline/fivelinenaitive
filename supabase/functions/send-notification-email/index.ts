@@ -631,6 +631,22 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // Enrich deal_created with full deal details from DB
+    if (payload.type === 'deal_created' && payload.deal_id) {
+      try {
+        const { data: dealData } = await supabaseAdmin
+          .from('deals')
+          .select('company, value, deal_type, stage, manager, deal_owner, analyst, engagement_type, business_model, contact, contact_info, narrative, referred_by, sourced_via')
+          .eq('id', payload.deal_id)
+          .single();
+        if (dealData) {
+          (payload as any)._deal_details = dealData;
+        }
+      } catch (e) {
+        console.log("Could not fetch deal details for enrichment:", e);
+      }
+    }
+
     const message = template.getMessage(payload);
     const changesHtml = buildChangesHtml(payload.changes);
     const changesText = buildChangesText(payload.changes);
