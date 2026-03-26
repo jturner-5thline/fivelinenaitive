@@ -15,7 +15,7 @@ const FIRM_TYPES = ['Investment Bank', 'Broker', 'Advisor', 'Lender', 'Strategic
 
 export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | null; onClose: () => void }) {
   const { data: stages = [] } = usePipelineStages();
-  const { data: teamMembers = [] } = useTeamMembers();
+  const teamMembers = useTeamMembers();
   const update = useUpdatePartner();
   const del = useDeletePartner();
 
