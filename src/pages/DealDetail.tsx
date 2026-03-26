@@ -96,6 +96,7 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 import { DataRoomV2 } from '@/components/deal/DataRoomV2';
 import { VdrShell } from '@/components/vdr/VdrShell';
+import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
@@ -2632,6 +2633,10 @@ export default function DealDetail() {
                     <TabsTrigger value="communication" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Comms
                     </TabsTrigger>
+                    <TabsTrigger value="activity-log" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
+                      <History className="h-3.5 w-3.5" />
+                      Activity
+                    </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
                    <div className="flex items-center gap-2 ml-auto flex-shrink-0">
@@ -4403,6 +4408,12 @@ export default function DealDetail() {
                 <TabsContent value="data-room" className={cn("mt-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`data-room-${tabDirection}`}>
                   <div className="rounded-lg overflow-hidden mt-3 bg-card" style={{ height: 'calc(100vh - 190px)' }}>
                     <VdrShell dealId={id!} embedded />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="activity-log" className={cn("mt-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`activity-log-${tabDirection}`}>
+                  <div className="rounded-lg overflow-hidden mt-3 bg-card border border-border/30" style={{ height: 'calc(100vh - 190px)' }}>
+                    <DealActivityLogTab dealId={id!} />
                   </div>
                 </TabsContent>
 
