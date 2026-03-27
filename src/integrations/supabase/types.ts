@@ -9193,6 +9193,63 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_memos: {
+        Row: {
+          benefit_from_them: string | null
+          benefit_from_us: string | null
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          icp: string | null
+          id: string
+          memo_type: string
+          partner_id: string
+          updated_at: string | null
+          who_are_they: string | null
+        }
+        Insert: {
+          benefit_from_them?: string | null
+          benefit_from_us?: string | null
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          icp?: string | null
+          id?: string
+          memo_type?: string
+          partner_id: string
+          updated_at?: string | null
+          who_are_they?: string | null
+        }
+        Update: {
+          benefit_from_them?: string | null
+          benefit_from_us?: string | null
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          icp?: string | null
+          id?: string
+          memo_type?: string
+          partner_id?: string
+          updated_at?: string | null
+          who_are_they?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_memos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_memos_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_pipeline_stages: {
         Row: {
           color: string | null

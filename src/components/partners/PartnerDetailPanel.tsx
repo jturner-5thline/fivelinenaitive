@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Pencil } from 'lucide-react';
+import { Trash2, Pencil, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { usePipelineStages, useUpdatePartner, useDeletePartner, type Partner } from '@/hooks/usePartnersPipeline';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { PartnerMemoModal } from '@/components/partners/PartnerMemoModal';
 import { format } from 'date-fns';
 
 const PARTNER_TYPES = ['Channel Partner', 'Bank'];
@@ -25,6 +26,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   const [stageId, setStageId] = useState('');
   const [ownerId, setOwnerId] = useState('');
   const [notes, setNotes] = useState('');
+  const [showMemo, setShowMemo] = useState(false);
 
   useEffect(() => {
     if (partner) {
@@ -58,6 +60,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   const ownerMember = teamMembers.find((m: any) => m.id === (editing ? ownerId : partner?.owner_id));
 
   return (
+    <>
     <Dialog open={!!partner} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-[90vw] w-[90vw] max-h-[88vh] h-[88vh] p-0 bg-slate-800 border-slate-700 text-white overflow-hidden">
         {partner && (
@@ -146,6 +149,13 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                 )}
               </div>
 
+              {/* Partner Memo Button */}
+              <div>
+                <Button size="sm" variant="outline" onClick={() => setShowMemo(true)} className="gap-1.5 w-full">
+                  <FileText className="h-3.5 w-3.5" /> Partner Memo
+                </Button>
+              </div>
+
               {/* Footer Actions */}
               <div className="flex items-center gap-2 pt-4 border-t border-slate-700 mt-4">
                 {editing ? (
@@ -231,5 +241,15 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
         )}
       </DialogContent>
     </Dialog>
+
+    {partner && (
+      <PartnerMemoModal
+        open={showMemo}
+        onOpenChange={setShowMemo}
+        partnerId={partner.id}
+        partnerName={partner.name}
+      />
+    )}
+    </>
   );
 }
