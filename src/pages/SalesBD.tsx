@@ -56,11 +56,11 @@ export default function SalesBD() {
               <div className="space-y-8">
                 <PartnersByStageCards onNavigateToStage={navigateToStage} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  <PartnerInsightsFeed />
                   <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
-                  <PartnerSourcedDeals />
                 </div>
+                <PartnerSourcedDeals />
                 <ReferralSourceLeaderboard />
-                <PartnerInsightsFeed />
               </div>
             </TabsContent>
 
