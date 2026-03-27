@@ -134,17 +134,22 @@ registerWorkflow('sales_email_send_nda', {
 
 registerWorkflow('deal_active_followup_task', {
   key: 'deal_active_followup_task',
-  name: 'New Deal → Follow-up Task',
-  description: 'Create recurring follow-up task when deal enters pipeline',
+  name: 'New Deal → Follow-up Task (Request Materials)',
+  description: 'Create recurring follow-up task when deal enters active pipeline to request materials',
   trigger: 'stage_change',
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
     await createWorkflowTask({
-      dealId: deal.id, title: 'Follow up until materials received',
-      assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
-      workflowKey: 'deal_active_followup_task', isRecurring: true,
+      dealId: deal.id,
+      title: 'Follow up on new deal - request materials',
+      description: `Deal: ${deal.name || 'Unknown'} (${deal.company_name || 'Unknown'})\nAction: Follow up to collect materials for nAItive.`,
+      assigneeId: deal.manager_id,
+      workflowOwnerId: ctx.workflowOwnerId,
+      workflowKey: 'deal_active_followup_task',
+      isRecurring: true,
       recurrenceRuleJson: { interval: 3, unit: 'days', stopOn: 'materials_added' },
-      dueOffsetDays: 3, companyId: ctx.companyId,
+      dueOffsetDays: 3,
+      companyId: ctx.companyId,
     });
   },
 });
@@ -315,10 +320,21 @@ registerWorkflow('proposal_sent_offer_move', {
 registerWorkflow('prop_issued_followup', {
   key: 'prop_issued_followup',
   name: 'Prop Issued → Follow-up',
+  description: 'Recurring follow-up after proposal is issued until manager decides to move forward',
   trigger: 'stage_change',
   triggerFilter: { to_stage: 'prop_issued' },
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
+    // Check for existing open task
+    const { data: existing } = await supabase
+      .from('wf_tasks')
+      .select('id')
+      .eq('deal_id', deal.id)
+      .eq('workflow_key', 'prop_issued_followup')
+      .eq('status', 'open')
+      .maybeSingle();
+    if (existing) return;
+
     await createWorkflowTask({
       dealId: deal.id, title: 'Follow up on proposal',
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
@@ -342,6 +358,7 @@ registerWorkflow('prop_forward_to_agreement', {
 registerWorkflow('agreement_pending_followup', {
   key: 'agreement_pending_followup',
   name: 'Agreement Pending → Follow-up',
+  description: 'Recurring follow-up after agreement is sent until manager decides to move forward',
   trigger: 'stage_change',
   triggerFilter: { to_stage: 'agreement_pending' },
   default_owner_role: 'manager',
