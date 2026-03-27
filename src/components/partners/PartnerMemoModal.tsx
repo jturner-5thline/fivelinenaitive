@@ -107,6 +107,7 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
         icp: memo.icp,
         benefit_from_us: memo.benefit_from_us,
         benefit_from_them: memo.benefit_from_them,
+        notes: memo.notes,
         created_by: user.id,
         updated_at: new Date().toISOString(),
       };
