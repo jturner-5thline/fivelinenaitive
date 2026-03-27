@@ -94,7 +94,8 @@ export default function PartnersPipeline() {
   const [showConfigure, setShowConfigure] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [addStageId, setAddStageId] = useState<string | null>(null);
-  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
+  const selectedPartner = useMemo(() => partners.find(p => p.id === selectedPartnerId) || null, [partners, selectedPartnerId]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const owners = useMemo(() => {
