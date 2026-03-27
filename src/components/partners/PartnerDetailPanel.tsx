@@ -18,9 +18,11 @@ import { format } from 'date-fns';
 const PARTNER_TYPES = ['Channel Partner', 'Bank'];
 
 export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | null; onClose: () => void }) {
+  const { user } = useAuth();
+  const { company } = useCompany();
   const { data: stages = [] } = usePipelineStages();
   const teamMembers = useTeamMembers();
-  const update = useUpdatePartner();
+  const updatePartner = useUpdatePartner();
   const del = useDeletePartner();
 
   const [editing, setEditing] = useState(false);
@@ -30,6 +32,33 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   const [ownerId, setOwnerId] = useState('');
   const [notes, setNotes] = useState('');
   const [showMemo, setShowMemo] = useState(false);
+  const [hasUnseenMemoChanges, setHasUnseenMemoChanges] = useState(false);
+
+  const checkUnseenMemoChanges = useCallback(async () => {
+    if (!partner?.id || !user?.id) { setHasUnseenMemoChanges(false); return; }
+
+    // Get user's read receipt
+    const { data: receipt } = await supabase
+      .from('partner_memo_read_receipts' as any)
+      .select('last_seen_audit_id')
+      .eq('partner_id', partner.id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // Get latest audit entry
+    const { data: latestAudit } = await supabase
+      .from('partner_memo_audit_log' as any)
+      .select('id')
+      .eq('partner_id', partner.id)
+      .order('changed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!latestAudit) { setHasUnseenMemoChanges(false); return; }
+
+    const lastSeenId = (receipt as any)?.last_seen_audit_id;
+    setHasUnseenMemoChanges(!lastSeenId || lastSeenId !== (latestAudit as any).id);
+  }, [partner?.id, user?.id]);
 
   useEffect(() => {
     if (partner) {
