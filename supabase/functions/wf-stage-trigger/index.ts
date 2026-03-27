@@ -164,15 +164,38 @@ const STAGE_WORKFLOWS: Record<
   prop_issued: [
     {
       key: "prop_issued_followup",
+      preCondition: async (deal: any, supabase: any) => {
+        // Check for existing open task
+        const { data: existing } = await supabase
+          .from("wf_tasks")
+          .select("id")
+          .eq("deal_id", deal.id)
+          .eq("workflow_key", "prop_issued_followup")
+          .eq("status", "open")
+          .maybeSingle();
+        if (existing) {
+          console.log(`[wf-stage-trigger] prop_issued_followup: open task already exists, skipping`);
+          return false;
+        }
+        return true;
+      },
       tasks: [
         {
           title: "Follow up on proposal",
-          assigneeRole: "manager",
+          assigneeRole: "manager" as const,
           dueOffsetDays: 4,
           isRecurring: true,
           recurrenceRuleJson: { interval: 4, unit: "days" },
+          recurrenceStopConditions: [
+            { field: "manager_move_forward_decision", operator: "is_true" },
+            { field: "pipeline", operator: "not_equals", value: "active" },
+          ],
         },
       ],
+      postTaskHook: async (deal: any, dueAt: string, supabase: any) => {
+        await supabase.from("deals").update({ next_follow_up_at: dueAt }).eq("id", deal.id);
+        await supabase.from("wf_deals").update({ next_follow_up_at: dueAt }).eq("id", deal.id);
+      },
       actions: [
         { type: "send_email", config: { template: "proposal_followup", subject: "Follow-up: Proposal for {deal_name}" } },
       ],
