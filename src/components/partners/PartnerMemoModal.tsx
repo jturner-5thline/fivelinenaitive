@@ -313,7 +313,7 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName, o
             </div>
 
             {/* Change History */}
-            <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+            <Collapsible open={historyOpen} onOpenChange={(v) => { setHistoryOpen(v); if (v && auditLog.length > 0) updateReadReceipt(); }}>
               <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-slate-400 uppercase tracking-wider font-semibold hover:text-slate-300 transition-colors">
                 {historyOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 Change History ({auditLog.length})
