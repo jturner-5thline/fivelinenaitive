@@ -130,8 +130,8 @@ export function PartnersByStageCards({ onNavigateToStage }: Props) {
       {/* Vertical bar chart */}
       {chartData.length > 0 && (
         <div className="mt-4 rounded-lg border border-border bg-card p-4">
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={chartData} margin={{ top: 24, right: 10, left: 0, bottom: 20 }}>
               <defs>
                 {chartData.map((d, i) => (
                   <linearGradient key={`g-${i}`} id={`stageGrad-${i}`} x1="0" y1="1" x2="0" y2="0">
@@ -140,15 +140,16 @@ export function PartnersByStageCards({ onNavigateToStage }: Props) {
                   </linearGradient>
                 ))}
               </defs>
-              <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <XAxis dataKey="name" tick={{ fill: '#e5e7eb', fontSize: 11 }} axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
+              <YAxis tick={{ fill: '#e5e7eb', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip
                 contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ color: 'hsl(var(--foreground))' }}
                 itemStyle={{ color: 'hsl(var(--foreground))' }}
                 cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
               />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={28}>
+              <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={56}>
+                <LabelList dataKey="count" position="top" fill="#e5e7eb" fontSize={12} fontWeight={600} />
                 {chartData.map((_, i) => (
                   <Cell key={i} fill={`url(#stageGrad-${i})`} />
                 ))}
