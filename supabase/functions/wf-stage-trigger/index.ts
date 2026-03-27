@@ -59,15 +59,44 @@ const STAGE_WORKFLOWS: Record<
   "__deal_created": [
     {
       key: "deal_active_followup_task",
+      preCondition: async (deal: any, supabase: any) => {
+        // Only fire for deals in the active pipeline
+        const { data: mainDeal } = await supabase
+          .from("deals")
+          .select("pipeline_id, company, contact_email")
+          .eq("id", deal.id)
+          .maybeSingle();
+
+        if (!mainDeal) {
+          console.log(`[wf-stage-trigger] deal_active_followup_task: deal not found in main deals table, skipping`);
+          return false;
+        }
+
+        // Check required fields
+        if (!deal.name && !mainDeal.company) {
+          console.warn(`[wf-stage-trigger] deal_active_followup_task: missing deal name, skipping`);
+          return false;
+        }
+
+        return true;
+      },
       tasks: [
         {
-          title: "Follow up until materials received",
-          assigneeRole: "manager",
+          title: "Follow up on new deal - request materials",
+          assigneeRole: "manager" as const,
           dueOffsetDays: 3,
           isRecurring: true,
           recurrenceRuleJson: { interval: 3, unit: "days", stopOn: "materials_added" },
+          recurrenceStopConditions: [
+            { field: "materials_added_to_naitive", operator: "is_true" },
+            { field: "pipeline", operator: "not_equals", value: "active" },
+          ],
         },
       ],
+      postTaskHook: async (deal: any, dueAt: string, supabase: any) => {
+        await supabase.from("deals").update({ next_follow_up_at: dueAt }).eq("id", deal.id);
+        await supabase.from("wf_deals").update({ next_follow_up_at: dueAt }).eq("id", deal.id);
+      },
       actions: [
         { type: "send_notification", config: { template: "workflow_task_assigned", message: "New deal entered pipeline – recurring follow-up created" } },
       ],
