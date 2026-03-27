@@ -189,6 +189,12 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
               <AutoExpandTextarea value={memo.benefit_from_them} onChange={v => update('benefit_from_them', v)} placeholder="What value do they provide to us…" />
             </div>
 
+            {/* 6. Notes */}
+            <div>
+              <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Notes</Label>
+              <AutoExpandTextarea value={memo.notes} onChange={v => update('notes', v)} placeholder="Additional notes..." />
+            </div>
+
             {/* Save */}
             <div className="pt-2 border-t border-slate-700">
               <Button onClick={handleSave} disabled={saving}>
