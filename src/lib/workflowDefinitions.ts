@@ -320,10 +320,21 @@ registerWorkflow('proposal_sent_offer_move', {
 registerWorkflow('prop_issued_followup', {
   key: 'prop_issued_followup',
   name: 'Prop Issued → Follow-up',
+  description: 'Recurring follow-up after proposal is issued until manager decides to move forward',
   trigger: 'stage_change',
   triggerFilter: { to_stage: 'prop_issued' },
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
+    // Check for existing open task
+    const { data: existing } = await supabase
+      .from('wf_tasks')
+      .select('id')
+      .eq('deal_id', deal.id)
+      .eq('workflow_key', 'prop_issued_followup')
+      .eq('status', 'open')
+      .maybeSingle();
+    if (existing) return;
+
     await createWorkflowTask({
       dealId: deal.id, title: 'Follow up on proposal',
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
