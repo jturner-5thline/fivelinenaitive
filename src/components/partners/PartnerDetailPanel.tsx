@@ -240,5 +240,15 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
         )}
       </DialogContent>
     </Dialog>
+
+    {partner && (
+      <PartnerMemoModal
+        open={showMemo}
+        onOpenChange={setShowMemo}
+        partnerId={partner.id}
+        partnerName={partner.name}
+      />
+    )}
+    </>
   );
 }
