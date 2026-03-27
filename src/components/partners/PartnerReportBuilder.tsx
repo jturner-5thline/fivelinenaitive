@@ -124,7 +124,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
 
   const groupedInsights = useMemo(() => {
     const groups: Record<SectionKey, InsightItem[]> = {
-      pipeline: [], deals: [], memos: [], leaderboard: [], insights: [],
+      pipeline: [], deals: [], leaderboard: [], insights: [],
     };
     for (const i of filteredInsights) {
       const section = TYPE_MAP[i.type] || 'insights';
