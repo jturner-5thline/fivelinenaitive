@@ -213,15 +213,6 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
       texts.deals = 'No deals referred during this period.';
     }
 
-    // Memos
-    if (groupedInsights.memos.length > 0) {
-      texts.memos = groupedInsights.memos
-        .map(i => `• ${i.summary}${i.userName ? ` — ${i.userName}` : ''} (${format(new Date(i.timestamp), 'MMM d, yyyy')})`)
-        .join('\n');
-    } else {
-      texts.memos = 'No memo updates during this period.';
-    }
-
     // Leaderboard
     if (dealsBySource.length > 0) {
       texts.leaderboard = 'Top Referral Sources:\n' +
