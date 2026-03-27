@@ -793,6 +793,16 @@ Deno.serve(async (req: Request) => {
 
         console.log(`[wf-stage-trigger] ✅ Workflow "${wfDef.key}" is ACTIVE – executing...`);
 
+        // Check pre-condition if defined
+        if (wfDef.preCondition) {
+          const shouldProceed = await wfDef.preCondition(deal, supabase);
+          if (!shouldProceed) {
+            console.log(`[wf-stage-trigger] ⏭️ Pre-condition not met for "${wfDef.key}" – skipping`);
+            workflowsSkipped++;
+            continue;
+          }
+        }
+
         // Resolve owner
         let ownerId = wfRow.default_owner_user_id;
         if (!ownerId) {
@@ -819,10 +829,8 @@ Deno.serve(async (req: Request) => {
         }
 
         // Create tasks
+        let lastDueAt: string | null = null;
         for (const taskDef of wfDef.tasks) {
-          // wf_tasks.assignee_id references wf_users, not auth.users
-          // For deals from the main table, we can't use auth user IDs directly
-          // Try to find a matching wf_user, otherwise set to null
           let assigneeWfUserId: string | null = null;
           const rawAssigneeId =
             taskDef.assigneeRole === "manager" ? deal.manager_id :
@@ -830,7 +838,6 @@ Deno.serve(async (req: Request) => {
             taskDef.assigneeRole === "ops" ? deal.ops_id : null;
 
           if (rawAssigneeId) {
-            // Check if this ID exists in wf_users
             const { data: wfUser } = await supabase
               .from("wf_users")
               .select("id")
@@ -839,7 +846,6 @@ Deno.serve(async (req: Request) => {
             assigneeWfUserId = wfUser?.id || null;
           }
 
-          // Same for owner
           let ownerWfUserId: string | null = null;
           if (ownerId) {
             const { data: wfOwner } = await supabase
@@ -851,12 +857,14 @@ Deno.serve(async (req: Request) => {
           }
 
           const dueAt = new Date(Date.now() + taskDef.dueOffsetDays * 86400000).toISOString();
+          lastDueAt = dueAt;
 
           console.log(`[wf-stage-trigger] Creating task: "${taskDef.title}" → assignee: ${assigneeWfUserId || 'null (no wf_user match)'} (${taskDef.assigneeRole}), due: ${dueAt}`);
 
           const { error: taskError } = await supabase.from("wf_tasks").insert({
             deal_id,
             title: taskDef.title,
+            description: taskDef.description || null,
             status: "open",
             assignee_id: assigneeWfUserId,
             created_by_id: ownerWfUserId,
@@ -865,6 +873,7 @@ Deno.serve(async (req: Request) => {
             trigger_source: "stage_change",
             is_recurring: taskDef.isRecurring || false,
             recurrence_rule_json: taskDef.recurrenceRuleJson || null,
+            recurrence_stop_conditions: taskDef.recurrenceStopConditions || null,
             due_at: dueAt,
             org_company_id: org_company_id || deal.org_company_id,
           });
@@ -874,6 +883,16 @@ Deno.serve(async (req: Request) => {
           } else {
             tasksCreated++;
             console.log(`[wf-stage-trigger] ✅ Task created: "${taskDef.title}"`);
+          }
+        }
+
+        // Run post-task hook (e.g., update next_follow_up_at)
+        if (wfDef.postTaskHook && lastDueAt) {
+          try {
+            await wfDef.postTaskHook(deal, lastDueAt, supabase);
+            console.log(`[wf-stage-trigger] ✅ Post-task hook executed for "${wfDef.key}"`);
+          } catch (hookErr) {
+            console.error(`[wf-stage-trigger] ❌ Post-task hook failed for "${wfDef.key}":`, hookErr);
           }
         }
 
