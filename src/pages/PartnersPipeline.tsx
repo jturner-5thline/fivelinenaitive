@@ -94,7 +94,8 @@ export default function PartnersPipeline() {
   const [showConfigure, setShowConfigure] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [addStageId, setAddStageId] = useState<string | null>(null);
-  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
+  const selectedPartner = useMemo(() => partners.find(p => p.id === selectedPartnerId) || null, [partners, selectedPartnerId]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const owners = useMemo(() => {
@@ -191,7 +192,7 @@ export default function PartnersPipeline() {
                 partners={partnersByStage.get(stage.id) || []}
                 owners={owners}
                 onAddPartnerHere={handleAddPartnerHere}
-                onClickPartner={setSelectedPartner}
+                onClickPartner={(p) => setSelectedPartnerId(p.id)}
               />
             ))}
           </div>
@@ -209,7 +210,7 @@ export default function PartnersPipeline() {
       {/* Modals */}
       <ConfigureStagesModal open={showConfigure} onOpenChange={setShowConfigure} />
       <AddPartnerDialog open={showAdd} onOpenChange={setShowAdd} defaultStageId={addStageId} />
-      <PartnerDetailPanel partner={selectedPartner} onClose={() => setSelectedPartner(null)} />
+      <PartnerDetailPanel partner={selectedPartner} onClose={() => setSelectedPartnerId(null)} />
     </div>
   );
 }
