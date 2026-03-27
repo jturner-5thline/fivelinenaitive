@@ -10658,35 +10658,70 @@ export type Database = {
       referral_sources: {
         Row: {
           company: string | null
+          company_id: string | null
+          contact_email: string | null
+          contact_name: string | null
           created_at: string
           email: string | null
           id: string
           name: string
+          notes: string | null
+          number_of_referrals: number
           phone: string | null
+          promoted_to_partner_id: string | null
+          relationship_owner_id: string | null
+          source_type: string | null
+          type: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           company?: string | null
+          company_id?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
           created_at?: string
           email?: string | null
           id?: string
           name: string
+          notes?: string | null
+          number_of_referrals?: number
           phone?: string | null
+          promoted_to_partner_id?: string | null
+          relationship_owner_id?: string | null
+          source_type?: string | null
+          type?: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           company?: string | null
+          company_id?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
           created_at?: string
           email?: string | null
           id?: string
           name?: string
+          notes?: string | null
+          number_of_referrals?: number
           phone?: string | null
+          promoted_to_partner_id?: string | null
+          relationship_owner_id?: string | null
+          source_type?: string | null
+          type?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "referral_sources_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_definitions: {
         Row: {
