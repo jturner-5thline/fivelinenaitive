@@ -9391,6 +9391,68 @@ export type Database = {
           },
         ]
       }
+      partner_stage_notes: {
+        Row: {
+          company_id: string
+          created_at: string
+          from_stage: string | null
+          id: string
+          note: string
+          partner_id: string
+          to_stage: string | null
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          from_stage?: string | null
+          id?: string
+          note: string
+          partner_id: string
+          to_stage?: string | null
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          from_stage?: string | null
+          id?: string
+          note?: string
+          partner_id?: string
+          to_stage?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_stage_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_stage_notes_from_stage_fkey"
+            columns: ["from_stage"]
+            isOneToOne: false
+            referencedRelation: "partner_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_stage_notes_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_stage_notes_to_stage_fkey"
+            columns: ["to_stage"]
+            isOneToOne: false
+            referencedRelation: "partner_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners: {
         Row: {
           company_id: string

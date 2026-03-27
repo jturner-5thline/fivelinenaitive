@@ -7,13 +7,21 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { usePipelineStages, useUpdatePartner, useDeletePartner, type Partner } from '@/hooks/usePartnersPipeline';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { PartnerMemoModal } from '@/components/partners/PartnerMemoModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
+
+interface StageNote {
+  note: string;
+  user_name: string;
+  created_at: string;
+}
 
 const PARTNER_TYPES = ['Channel', 'Branding', 'Connector'];
 
@@ -34,10 +42,18 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   const [showMemo, setShowMemo] = useState(false);
   const [hasUnseenMemoChanges, setHasUnseenMemoChanges] = useState(false);
 
+  // Stage move confirmation state
+  const [pendingStageId, setPendingStageId] = useState<string | null>(null);
+  const [stageMoveNote, setStageMoveNote] = useState('');
+  const [showStageMoveConfirm, setShowStageMoveConfirm] = useState(false);
+  const [stageMoveSubmitting, setStageMoveSubmitting] = useState(false);
+
+  // Latest stage note state
+  const [latestStageNote, setLatestStageNote] = useState<StageNote | null>(null);
+
   const checkUnseenMemoChanges = useCallback(async () => {
     if (!partner?.id || !user?.id) { setHasUnseenMemoChanges(false); return; }
 
-    // Get user's read receipt
     const { data: receipt } = await supabase
       .from('partner_memo_read_receipts' as any)
       .select('last_seen_audit_id')
@@ -45,7 +61,6 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
       .eq('user_id', user.id)
       .maybeSingle();
 
-    // Get latest audit entry
     const { data: latestAudit } = await supabase
       .from('partner_memo_audit_log' as any)
       .select('id')
@@ -60,6 +75,30 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
     setHasUnseenMemoChanges(!lastSeenId || lastSeenId !== (latestAudit as any).id);
   }, [partner?.id, user?.id]);
 
+  const fetchLatestStageNote = useCallback(async () => {
+    if (!partner?.id) { setLatestStageNote(null); return; }
+    const { data } = await supabase
+      .from('partner_stage_notes' as any)
+      .select('note, user_id, created_at')
+      .eq('partner_id', partner.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data) { setLatestStageNote(null); return; }
+    const d = data as any;
+    // Resolve user name
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name, email')
+      .eq('user_id', d.user_id)
+      .maybeSingle();
+    setLatestStageNote({
+      note: d.note,
+      user_name: (profile as any)?.display_name || (profile as any)?.email || 'Unknown',
+      created_at: d.created_at,
+    });
+  }, [partner?.id]);
+
   useEffect(() => {
     if (partner) {
       setName(partner.name);
@@ -69,8 +108,9 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
       setNotes(partner.notes);
       setEditing(false);
       checkUnseenMemoChanges();
+      fetchLatestStageNote();
     }
-  }, [partner, checkUnseenMemoChanges]);
+  }, [partner, checkUnseenMemoChanges, fetchLatestStageNote]);
 
   const handleSave = () => {
     if (!partner) return;
@@ -89,7 +129,51 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
     del.mutate(partner.id, { onSuccess: onClose });
   };
 
+  const handleStageSelect = (newStageId: string) => {
+    if (!partner || newStageId === partner.stage_id) return;
+    setPendingStageId(newStageId);
+    setStageMoveNote('');
+    setShowStageMoveConfirm(true);
+  };
+
+  const handleStageMoveConfirm = async () => {
+    if (!partner || !pendingStageId || !stageMoveNote.trim() || !user?.id || !company?.id) return;
+    setStageMoveSubmitting(true);
+    try {
+      // Insert stage note
+      await supabase.from('partner_stage_notes' as any).insert({
+        partner_id: partner.id,
+        user_id: user.id,
+        company_id: company.id,
+        from_stage: partner.stage_id || null,
+        to_stage: pendingStageId,
+        note: stageMoveNote.trim(),
+      });
+      // Move the partner
+      updatePartner.mutate({ id: partner.id, stage_id: pendingStageId }, {
+        onSuccess: () => {
+          fetchLatestStageNote();
+          toast.success('Partner moved to new stage');
+        },
+      });
+      setShowStageMoveConfirm(false);
+      setPendingStageId(null);
+      setStageMoveNote('');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to move stage');
+    } finally {
+      setStageMoveSubmitting(false);
+    }
+  };
+
+  const handleStageMoveCancel = () => {
+    setShowStageMoveConfirm(false);
+    setPendingStageId(null);
+    setStageMoveNote('');
+  };
+
   const currentStage = stages.find(s => s.id === (editing ? stageId : partner?.stage_id));
+  const pendingStageName = stages.find(s => s.id === pendingStageId)?.name || '';
   const ownerMember = teamMembers.find((m: any) => m.id === (editing ? ownerId : partner?.owner_id));
 
   return (
@@ -153,7 +237,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                   )}
                 </div>
 
-                {/* Stage */}
+                {/* Stage with popover for latest note */}
                 <div>
                   <Label className="text-xs text-slate-400 uppercase tracking-wider">Stage</Label>
                   {editing ? (
@@ -164,10 +248,27 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                       </SelectContent>
                     </Select>
                   ) : (
-                    <div className="flex items-center gap-2 mt-1">
-                      {currentStage && <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: currentStage.color }} />}
-                      <p className="text-sm text-white">{currentStage?.name || 'Unassigned'}</p>
-                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="flex items-center gap-2 mt-1 cursor-pointer hover:bg-slate-700/50 rounded px-1.5 py-1 -mx-1.5 transition-colors group">
+                          {currentStage && <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: currentStage.color }} />}
+                          <span className="text-sm text-white group-hover:underline">{currentStage?.name || 'Unassigned'}</span>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 bg-slate-900 border-slate-700 text-white p-3" side="right" align="start">
+                        {latestStageNote ? (
+                          <div className="space-y-1">
+                            <p className="text-xs text-slate-400">
+                              Moved by <span className="text-slate-300 font-medium">{latestStageNote.user_name}</span> on{' '}
+                              {format(new Date(latestStageNote.created_at), 'MMM d, yyyy')}
+                            </p>
+                            <p className="text-sm text-slate-200 leading-relaxed">{latestStageNote.note}</p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-500">No stage move note recorded.</p>
+                        )}
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
 
@@ -175,7 +276,10 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                 {!editing && (
                   <div>
                     <Label className="text-xs text-slate-400 uppercase tracking-wider">Move to Stage</Label>
-                    <Select value={partner.stage_id || ''} onValueChange={(v) => updatePartner.mutate({ id: partner.id, stage_id: v || null })}>
+                    <Select
+                      value={partner.stage_id || ''}
+                      onValueChange={handleStageSelect}
+                    >
                       <SelectTrigger className="mt-1.5 h-9 text-sm bg-slate-900 border-slate-600 text-white">
                         <SelectValue placeholder="Select stage" />
                       </SelectTrigger>
@@ -280,6 +384,38 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
             </div>
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+
+    {/* Stage Move Confirmation Dialog */}
+    <Dialog open={showStageMoveConfirm} onOpenChange={(v) => { if (!v) handleStageMoveCancel(); }}>
+      <DialogContent className="max-w-md bg-slate-800 border-slate-700 text-white">
+        <DialogHeader>
+          <DialogTitle className="text-lg">Move to {pendingStageName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-2">
+          <p className="text-sm text-slate-400">
+            Please provide a note explaining why this partner is being moved to <span className="text-white font-medium">{pendingStageName}</span>.
+          </p>
+          <Textarea
+            value={stageMoveNote}
+            onChange={e => setStageMoveNote(e.target.value)}
+            rows={3}
+            placeholder="Reason for stage change…"
+            className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2 pt-1">
+            <Button size="sm" variant="ghost" onClick={handleStageMoveCancel}>Cancel</Button>
+            <Button
+              size="sm"
+              onClick={handleStageMoveConfirm}
+              disabled={!stageMoveNote.trim() || stageMoveSubmitting}
+            >
+              {stageMoveSubmitting ? 'Moving…' : 'Confirm'}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
 
