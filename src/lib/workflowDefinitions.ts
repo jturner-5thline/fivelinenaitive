@@ -636,10 +636,14 @@ registerWorkflow('positive_lender_response', {
   handler: async (deal, ctx) => {
     await moveDealStage(deal.id, 'lenders_in_review');
     await createWorkflowTask({
-      dealId: deal.id, title: 'Weekly check on lender updates',
+      dealId: deal.id, title: 'Follow up: Lender Status',
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'positive_lender_response', isRecurring: true,
       recurrenceRuleJson: { interval: 7, unit: 'days' },
+      recurrenceStopConditions: [
+        { field: 'deal_stage_changed', operator: 'not_equals', value: 'submitted_to_lenders' },
+        { field: 'manager_move_forward_decision', operator: 'equals', value: true },
+      ],
       dueOffsetDays: 7, companyId: ctx.companyId,
     });
     // Create recurring calendar event for weekly lender check
