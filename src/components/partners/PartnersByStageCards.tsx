@@ -105,22 +105,22 @@ export function PartnersByStageCards({ onNavigateToStage }: Props) {
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+      <div className="flex flex-nowrap gap-3">
         {displayedStages.map(stage => {
           const count = countByStage.get(stage.id) || 0;
           return (
             <button
               key={stage.id}
               onClick={() => onNavigateToStage?.(stage.id)}
-              className="group flex flex-col gap-1 rounded-lg border border-border bg-card p-4 text-left hover:border-muted-foreground/40 hover:bg-muted/30 transition-all"
+              className="group flex flex-col gap-1 rounded-lg border border-border bg-card p-3 text-left hover:border-muted-foreground/40 hover:bg-muted/30 transition-all flex-1 min-w-0"
             >
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
-                <span className="text-xs text-muted-foreground truncate">{stage.name}</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
+                <span className="text-[11px] text-muted-foreground truncate">{stage.name}</span>
               </div>
-              <span className="text-2xl font-bold">{count}</span>
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground group-hover:text-primary transition-colors">
-                View partners <ChevronRight className="h-3 w-3" />
+              <span className="text-xl font-bold">{count}</span>
+              <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground group-hover:text-primary transition-colors">
+                View <ChevronRight className="h-2.5 w-2.5" />
               </div>
             </button>
           );
