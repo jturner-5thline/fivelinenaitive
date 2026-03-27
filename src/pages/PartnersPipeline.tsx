@@ -192,7 +192,7 @@ export default function PartnersPipeline() {
                 partners={partnersByStage.get(stage.id) || []}
                 owners={owners}
                 onAddPartnerHere={handleAddPartnerHere}
-                onClickPartner={setSelectedPartner}
+                onClickPartner={(p) => setSelectedPartnerId(p.id)}
               />
             ))}
           </div>
