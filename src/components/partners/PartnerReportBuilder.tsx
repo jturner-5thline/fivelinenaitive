@@ -189,7 +189,6 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
     const texts: Record<SectionKey, string> = {
       pipeline: '',
       deals: '',
-      memos: '',
       leaderboard: '',
       insights: '',
     };
