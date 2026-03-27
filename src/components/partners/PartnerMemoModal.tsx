@@ -202,6 +202,9 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName, o
         updated_at: new Date().toISOString(),
       };
 
+      // Sync firm_type to partners table
+      await supabase.from('partners' as any).update({ firm_type: memo.memo_type }).eq('id', partnerId);
+
       if (memo.id) {
         const { error } = await supabase
           .from('partner_memos' as any)
