@@ -80,28 +80,38 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   }, [partner?.id, user?.id]);
 
   const fetchLatestStageNote = useCallback(async () => {
-    if (!partner?.id) { setLatestStageNote(null); return; }
-    const { data } = await supabase
+    if (!partner?.id) { setLatestStageNote(null); setStageHistory([]); return; }
+    const { data: allNotes } = await supabase
       .from('partner_stage_notes' as any)
-      .select('note, user_id, created_at')
+      .select('note, user_id, created_at, from_stage, to_stage')
       .eq('partner_id', partner.id)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!data) { setLatestStageNote(null); return; }
-    const d = data as any;
-    // Resolve user name
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('display_name, email')
-      .eq('user_id', d.user_id)
-      .maybeSingle();
-    setLatestStageNote({
-      note: d.note,
-      user_name: (profile as any)?.display_name || (profile as any)?.email || 'Unknown',
-      created_at: d.created_at,
-    });
-  }, [partner?.id]);
+      .limit(50);
+    if (!allNotes || (allNotes as any[]).length === 0) {
+      setLatestStageNote(null); setStageHistory([]); return;
+    }
+    const notes = allNotes as any[];
+    // Resolve user names
+    const userIds = [...new Set(notes.map(n => n.user_id).filter(Boolean))];
+    let userMap: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase.from('profiles').select('user_id, display_name, email').in('user_id', userIds);
+      (profiles as any[] || []).forEach(p => { userMap[p.user_id] = p.display_name || p.email || 'Unknown'; });
+    }
+    // Build stage name lookup from current stages
+    const stageMap: Record<string, string> = {};
+    stages.forEach(s => { stageMap[s.id] = s.name; });
+
+    const mapped: StageNote[] = notes.map(n => ({
+      note: n.note,
+      user_name: userMap[n.user_id] || 'Unknown',
+      created_at: n.created_at,
+      from_stage_name: n.from_stage ? stageMap[n.from_stage] || 'Unknown' : undefined,
+      to_stage_name: n.to_stage ? stageMap[n.to_stage] || 'Unknown' : undefined,
+    }));
+    setLatestStageNote(mapped[0]);
+    setStageHistory(mapped);
+  }, [partner?.id, stages]);
 
   useEffect(() => {
     if (partner) {
