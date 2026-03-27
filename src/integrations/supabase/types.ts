@@ -5154,6 +5154,7 @@ export type Database = {
       }
       deals: {
         Row: {
+          agreement_sent: boolean
           analyst: string | null
           business_model: string | null
           closing_date: string | null
@@ -5173,11 +5174,14 @@ export type Database = {
           id: string
           is_flagged: boolean
           manager: string | null
+          manager_move_forward_decision: boolean
+          materials_added_to_naitive: boolean
           merged_hubspot_ids: string[] | null
           merged_into: string | null
           migrated_from_personal: boolean
           milestone_fee: number | null
           narrative: string | null
+          next_follow_up_at: string | null
           notes: string | null
           notes_updated_at: string | null
           pipeline_id: string | null
@@ -5195,6 +5199,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          agreement_sent?: boolean
           analyst?: string | null
           business_model?: string | null
           closing_date?: string | null
@@ -5214,11 +5219,14 @@ export type Database = {
           id?: string
           is_flagged?: boolean
           manager?: string | null
+          manager_move_forward_decision?: boolean
+          materials_added_to_naitive?: boolean
           merged_hubspot_ids?: string[] | null
           merged_into?: string | null
           migrated_from_personal?: boolean
           milestone_fee?: number | null
           narrative?: string | null
+          next_follow_up_at?: string | null
           notes?: string | null
           notes_updated_at?: string | null
           pipeline_id?: string | null
@@ -5236,6 +5244,7 @@ export type Database = {
           value?: number
         }
         Update: {
+          agreement_sent?: boolean
           analyst?: string | null
           business_model?: string | null
           closing_date?: string | null
@@ -5255,11 +5264,14 @@ export type Database = {
           id?: string
           is_flagged?: boolean
           manager?: string | null
+          manager_move_forward_decision?: boolean
+          materials_added_to_naitive?: boolean
           merged_hubspot_ids?: string[] | null
           merged_into?: string | null
           migrated_from_personal?: boolean
           milestone_fee?: number | null
           narrative?: string | null
+          next_follow_up_at?: string | null
           notes?: string | null
           notes_updated_at?: string | null
           pipeline_id?: string | null
@@ -13980,6 +13992,7 @@ export type Database = {
       }
       wf_deals: {
         Row: {
+          agreement_sent: boolean
           agreement_status: string | null
           analyst_id: string | null
           client_email: string | null
@@ -13990,7 +14003,10 @@ export type Database = {
           id: string
           last_client_touch_at: string | null
           manager_id: string | null
+          manager_move_forward_decision: boolean
+          materials_added_to_naitive: boolean
           name: string
+          next_follow_up_at: string | null
           ops_id: string | null
           org_company_id: string | null
           proposal_status: string | null
@@ -13998,6 +14014,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agreement_sent?: boolean
           agreement_status?: string | null
           analyst_id?: string | null
           client_email?: string | null
@@ -14008,7 +14025,10 @@ export type Database = {
           id?: string
           last_client_touch_at?: string | null
           manager_id?: string | null
+          manager_move_forward_decision?: boolean
+          materials_added_to_naitive?: boolean
           name: string
+          next_follow_up_at?: string | null
           ops_id?: string | null
           org_company_id?: string | null
           proposal_status?: string | null
@@ -14016,6 +14036,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agreement_sent?: boolean
           agreement_status?: string | null
           analyst_id?: string | null
           client_email?: string | null
@@ -14026,7 +14047,10 @@ export type Database = {
           id?: string
           last_client_touch_at?: string | null
           manager_id?: string | null
+          manager_move_forward_decision?: boolean
+          materials_added_to_naitive?: boolean
           name?: string
+          next_follow_up_at?: string | null
           ops_id?: string | null
           org_company_id?: string | null
           proposal_status?: string | null
@@ -14308,6 +14332,7 @@ export type Database = {
           is_recurring: boolean
           org_company_id: string | null
           recurrence_rule_json: Json | null
+          recurrence_stop_conditions: Json | null
           status: Database["public"]["Enums"]["wf_task_status"]
           title: string
           trigger_source: Database["public"]["Enums"]["wf_trigger_source"]
@@ -14326,6 +14351,7 @@ export type Database = {
           is_recurring?: boolean
           org_company_id?: string | null
           recurrence_rule_json?: Json | null
+          recurrence_stop_conditions?: Json | null
           status?: Database["public"]["Enums"]["wf_task_status"]
           title: string
           trigger_source?: Database["public"]["Enums"]["wf_trigger_source"]
@@ -14344,6 +14370,7 @@ export type Database = {
           is_recurring?: boolean
           org_company_id?: string | null
           recurrence_rule_json?: Json | null
+          recurrence_stop_conditions?: Json | null
           status?: Database["public"]["Enums"]["wf_task_status"]
           title?: string
           trigger_source?: Database["public"]["Enums"]["wf_trigger_source"]
