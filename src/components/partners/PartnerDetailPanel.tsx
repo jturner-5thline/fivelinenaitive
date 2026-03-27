@@ -226,8 +226,8 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
               </div>
             </div>
 
-            {/* Right Column - Content (~60%) */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-0">
+            {/* Right Column - Content (75%) */}
+            <div className="overflow-y-auto p-6 space-y-0 min-w-0">
               {/* Referred Deals */}
               <div className="pb-5">
                 <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">Referred Deals</h3>
