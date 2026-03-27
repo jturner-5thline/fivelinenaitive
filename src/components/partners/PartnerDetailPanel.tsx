@@ -52,6 +52,8 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
 
   // Latest stage note state
   const [latestStageNote, setLatestStageNote] = useState<StageNote | null>(null);
+  const [stageHistory, setStageHistory] = useState<StageNote[]>([]);
+  const [stageHistoryOpen, setStageHistoryOpen] = useState(false);
 
   const checkUnseenMemoChanges = useCallback(async () => {
     if (!partner?.id || !user?.id) { setHasUnseenMemoChanges(false); return; }
