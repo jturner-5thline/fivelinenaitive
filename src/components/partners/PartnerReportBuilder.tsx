@@ -474,33 +474,85 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
         </DialogHeader>
 
         <div className="space-y-6 mt-2">
-          {/* Date range */}
-          <div className="flex flex-wrap gap-4 items-end">
+          {/* Date range with quick filter */}
+          <div className="flex flex-wrap gap-3 items-end">
+            {/* Quick Filter */}
+            <div className="space-y-1">
+              <Label className="text-xs">Period</Label>
+              <Select value={quickFilter} onValueChange={v => applyQuickFilter(v)}>
+                <SelectTrigger className="w-[160px] h-9 text-sm">
+                  <SelectValue placeholder="Custom" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Quarters</SelectLabel>
+                    <SelectItem value="q1">Q1 (Jan – Mar)</SelectItem>
+                    <SelectItem value="q2">Q2 (Apr – Jun)</SelectItem>
+                    <SelectItem value="q3">Q3 (Jul – Sep)</SelectItem>
+                    <SelectItem value="q4">Q4 (Oct – Dec)</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Annual</SelectLabel>
+                    <SelectItem value="full_year">Full Year</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Rolling</SelectLabel>
+                    <SelectItem value="past_3m">Past 3 Months</SelectItem>
+                    <SelectItem value="past_6m">Past 6 Months</SelectItem>
+                    <SelectItem value="ttm">TTM (12 Months)</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Manual</SelectLabel>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Year selector — visible for quarter/annual presets */}
+            {['q1', 'q2', 'q3', 'q4', 'full_year'].includes(quickFilter) && (
+              <div className="space-y-1">
+                <Label className="text-xs">Year</Label>
+                <Select value={filterYear.toString()} onValueChange={handleYearChange}>
+                  <SelectTrigger className="w-[90px] h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2024">2024</SelectItem>
+                    <SelectItem value="2025">2025</SelectItem>
+                    <SelectItem value="2026">2026</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* From */}
             <div className="space-y-1">
               <Label className="text-xs">From</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn('w-[160px] justify-start text-left font-normal', !dateFrom && 'text-muted-foreground')}>
+                  <Button variant="outline" size="sm" className={cn('w-[150px] justify-start text-left font-normal', !dateFrom && 'text-muted-foreground')}>
                     <CalendarIcon className="mr-2 h-3.5 w-3.5" />
                     {format(dateFrom, 'MMM d, yyyy')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateFrom} onSelect={d => d && setDateFrom(d)} className="p-3 pointer-events-auto" />
+                  <Calendar mode="single" selected={dateFrom} onSelect={d => d && handleManualDateFrom(d)} className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
             </div>
+            {/* To */}
             <div className="space-y-1">
               <Label className="text-xs">To</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn('w-[160px] justify-start text-left font-normal', !dateTo && 'text-muted-foreground')}>
+                  <Button variant="outline" size="sm" className={cn('w-[150px] justify-start text-left font-normal', !dateTo && 'text-muted-foreground')}>
                     <CalendarIcon className="mr-2 h-3.5 w-3.5" />
                     {format(dateTo, 'MMM d, yyyy')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateTo} onSelect={d => d && setDateTo(d)} className="p-3 pointer-events-auto" />
+                  <Calendar mode="single" selected={dateTo} onSelect={d => d && handleManualDateTo(d)} className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
             </div>
