@@ -358,6 +358,7 @@ registerWorkflow('prop_forward_to_agreement', {
 registerWorkflow('agreement_pending_followup', {
   key: 'agreement_pending_followup',
   name: 'Agreement Pending → Follow-up',
+  description: 'Recurring follow-up after agreement is sent until manager decides to move forward',
   trigger: 'stage_change',
   triggerFilter: { to_stage: 'agreement_pending' },
   default_owner_role: 'manager',
