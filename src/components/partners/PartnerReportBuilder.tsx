@@ -734,6 +734,10 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
             margin: { left: margin, right: margin },
             head: [['Deal', 'Date']],
             body: dealRows,
+            didDrawPage: () => {
+              doc.setFillColor(BG[0], BG[1], BG[2]);
+              doc.rect(0, 0, pageW, pageH, 'F');
+            },
             headStyles: {
               fillColor: [CARD_BG[0], CARD_BG[1], CARD_BG[2]],
               textColor: [...ACCENT_BLUE],
