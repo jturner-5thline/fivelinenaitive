@@ -104,60 +104,63 @@ export function PartnersByStageCards({ onNavigateToStage }: Props) {
         </Popover>
       </div>
 
-      {/* Metric cards */}
-      <div className="flex flex-nowrap gap-3">
-        {displayedStages.map(stage => {
-          const count = countByStage.get(stage.id) || 0;
-          return (
-            <button
-              key={stage.id}
-              onClick={() => onNavigateToStage?.(stage.id)}
-              className="group flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-3 hover:border-muted-foreground/40 hover:bg-muted/30 transition-all flex-1 min-w-0"
-            >
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
-                <span className="text-[11px] text-muted-foreground truncate">{stage.name}</span>
-              </div>
-              <span className="text-xl font-bold">{count}</span>
-              <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground group-hover:text-primary transition-colors self-start">
-                View <ChevronRight className="h-2.5 w-2.5" />
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Vertical bar chart */}
-      {chartData.length > 0 && (
-        <div className="mt-4 rounded-lg border border-border bg-card p-4">
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={chartData} margin={{ top: 24, right: 10, left: 0, bottom: 20 }}>
-              <defs>
-                {chartData.map((d, i) => (
-                  <linearGradient key={`g-${i}`} id={`stageGrad-${i}`} x1="0" y1="1" x2="0" y2="0">
-                    <stop offset="0%" stopColor={d.color} stopOpacity={0.9} />
-                    <stop offset="100%" stopColor={lighten(d.color, 0.25)} stopOpacity={1} />
-                  </linearGradient>
-                ))}
-              </defs>
-              <XAxis dataKey="name" tick={{ fill: '#e5e7eb', fontSize: 11 }} axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
-              <YAxis tick={{ fill: '#e5e7eb', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip
-                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: 'hsl(var(--foreground))' }}
-                itemStyle={{ color: 'hsl(var(--foreground))' }}
-                cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
-              />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={56}>
-                <LabelList dataKey="count" position="top" fill="#e5e7eb" fontSize={12} fontWeight={600} />
-                {chartData.map((_, i) => (
-                  <Cell key={i} fill={`url(#stageGrad-${i})`} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Side-by-side: cards (35%) + chart (65%) */}
+      <div className="grid grid-cols-1 md:grid-cols-[35%_1fr] gap-4 items-stretch">
+        {/* Metric cards in 2-col grid */}
+        <div className="grid grid-cols-2 gap-2 auto-rows-fr">
+          {displayedStages.map(stage => {
+            const count = countByStage.get(stage.id) || 0;
+            return (
+              <button
+                key={stage.id}
+                onClick={() => onNavigateToStage?.(stage.id)}
+                className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-border bg-card p-3 hover:border-muted-foreground/40 hover:bg-muted/30 transition-all min-w-0"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
+                  <span className="text-[11px] text-muted-foreground truncate">{stage.name}</span>
+                </div>
+                <span className="text-xl font-bold">{count}</span>
+                <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground group-hover:text-primary transition-colors">
+                  View <ChevronRight className="h-2.5 w-2.5" />
+                </div>
+              </button>
+            );
+          })}
         </div>
-      )}
+
+        {/* Bar chart */}
+        {chartData.length > 0 && (
+          <div className="rounded-lg border border-border bg-card p-4 min-h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 24, right: 10, left: 0, bottom: 20 }}>
+                <defs>
+                  {chartData.map((d, i) => (
+                    <linearGradient key={`g-${i}`} id={`stageGrad-${i}`} x1="0" y1="1" x2="0" y2="0">
+                      <stop offset="0%" stopColor={d.color} stopOpacity={0.9} />
+                      <stop offset="100%" stopColor={lighten(d.color, 0.25)} stopOpacity={1} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <XAxis dataKey="name" tick={{ fill: '#e5e7eb', fontSize: 11 }} axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
+                <YAxis tick={{ fill: '#e5e7eb', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  itemStyle={{ color: 'hsl(var(--foreground))' }}
+                  cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
+                />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={56}>
+                  <LabelList dataKey="count" position="top" fill="#e5e7eb" fontSize={12} fontWeight={600} />
+                  {chartData.map((_, i) => (
+                    <Cell key={i} fill={`url(#stageGrad-${i})`} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
