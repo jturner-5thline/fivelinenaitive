@@ -21,6 +21,8 @@ interface StageNote {
   note: string;
   user_name: string;
   created_at: string;
+  from_stage_name?: string;
+  to_stage_name?: string;
 }
 
 const PARTNER_TYPES = ['Channel', 'Branding', 'Connector'];
