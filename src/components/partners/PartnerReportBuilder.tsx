@@ -6,7 +6,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { FileDown, CalendarIcon, Users, Handshake, DollarSign, TrendingUp, ArrowRightLeft } from 'lucide-react';
+import { FileDown, CalendarIcon, Users, Handshake, DollarSign, TrendingUp, ArrowRightLeft, AlertCircle } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +14,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { usePartners, usePipelineStages } from '@/hooks/usePartnersPipeline';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList,
-  PieChart, Pie, Legend,
+  PieChart, Pie,
 } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -40,17 +40,16 @@ const SECTIONS = [
   { key: 'pipeline', label: 'Pipeline Movements' },
   { key: 'deals', label: 'Deals Referred' },
   { key: 'leaderboard', label: 'Leaderboard Highlights' },
-  { key: 'insights', label: 'Insights Feed' },
 ] as const;
 
 type SectionKey = typeof SECTIONS[number]['key'];
 
-const TYPE_MAP: Record<string, SectionKey> = {
+const TYPE_MAP: Record<string, SectionKey | 'feed'> = {
   stage_move: 'pipeline',
   new_deal: 'deals',
-  memo_update: 'insights',
-  new_partner: 'insights',
-  stale_alert: 'insights',
+  memo_update: 'feed',
+  new_partner: 'feed',
+  stale_alert: 'feed',
 };
 
 function fmtAbbrevValue(val: number): string {
@@ -63,7 +62,12 @@ function fmtAbbrevValue(val: number): string {
   return val < 0 ? `(${formatted})` : formatted;
 }
 
-const DONUT_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
+const DONUT_COLORS = [
+  ['#3b82f6', '#60a5fa'],
+  ['#10b981', '#34d399'],
+  ['#f59e0b', '#fbbf24'],
+  ['#64748b', '#94a3b8'],
+];
 
 function stageColorToHex(color: string): string {
   const map: Record<string, string> = {
@@ -87,6 +91,9 @@ function lighten(hex: string, pct: number): string {
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
 }
 
+const MIN_INSIGHTS = 3;
+const MAX_INSIGHTS = 5;
+
 export function PartnerReportBuilder({ open, onClose, insights, period }: Props) {
   const { user } = useAuth();
   const { company } = useCompany();
@@ -101,9 +108,11 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
   );
   const [execSummary, setExecSummary] = useState('');
   const [commentary, setCommentary] = useState<Record<SectionKey, string>>({
-    pipeline: '', deals: '', leaderboard: '', insights: '',
+    pipeline: '', deals: '', leaderboard: '',
   });
   const [exporting, setExporting] = useState(false);
+  const [selectedInsightIds, setSelectedInsightIds] = useState<Set<string>>(new Set());
+  const [insightCommentary, setInsightCommentary] = useState<Record<string, string>>({});
 
   const barChartRef = useRef<HTMLDivElement>(null);
   const pieChartRef = useRef<HTMLDivElement>(null);
@@ -122,16 +131,47 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
     return insights.filter(i => i.timestamp >= from && i.timestamp <= to);
   }, [insights, dateFrom, dateTo]);
 
+  // Feed insights (all types that go into the selectable list)
+  const feedInsights = useMemo(() => {
+    return filteredInsights.filter(i => {
+      const mapped = TYPE_MAP[i.type];
+      return mapped === 'feed' || !mapped;
+    });
+  }, [filteredInsights]);
+
+  // All insights for the feed (including pipeline/deals types for the selectable list)
+  const allSelectableInsights = useMemo(() => {
+    return filteredInsights.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  }, [filteredInsights]);
+
   const groupedInsights = useMemo(() => {
     const groups: Record<SectionKey, InsightItem[]> = {
-      pipeline: [], deals: [], leaderboard: [], insights: [],
+      pipeline: [], deals: [], leaderboard: [],
     };
     for (const i of filteredInsights) {
-      const section = TYPE_MAP[i.type] || 'insights';
-      groups[section].push(i);
+      const section = TYPE_MAP[i.type];
+      if (section && section !== 'feed' && groups[section]) {
+        groups[section].push(i);
+      }
     }
     return groups;
   }, [filteredInsights]);
+
+  const toggleInsight = (id: string) => {
+    setSelectedInsightIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        if (next.size >= MAX_INSIGHTS) return prev;
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectedCount = selectedInsightIds.size;
+  const canExport = selectedCount >= MIN_INSIGHTS;
 
   // --- Metrics ---
   const fromISO = dateFrom.toISOString();
@@ -177,12 +217,14 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
     const sorted = Array.from(counts.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-    const top = sorted.slice(0, 5);
-    const otherCount = sorted.slice(5).reduce((s, e) => s + e.value, 0);
-    const result = top.map((e, idx) => ({ ...e, fill: DONUT_COLORS[idx % DONUT_COLORS.length] }));
-    if (otherCount > 0) result.push({ name: 'Other', value: otherCount, fill: '#64748b' });
+    const top = sorted.slice(0, 3);
+    const otherCount = sorted.slice(3).reduce((s, e) => s + e.value, 0);
+    const result = top.map((e, idx) => ({ ...e, colorPair: DONUT_COLORS[idx] }));
+    if (otherCount > 0) result.push({ name: 'Other', value: otherCount, colorPair: DONUT_COLORS[3] });
     return result;
   }, [groupedInsights.deals]);
+
+  const donutTotal = dealsBySource.reduce((s, e) => s + e.value, 0);
 
   // --- Pre-populated section text ---
   const sectionText = useMemo(() => {
@@ -190,10 +232,8 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
       pipeline: '',
       deals: '',
       leaderboard: '',
-      insights: '',
     };
 
-    // Pipeline
     if (groupedInsights.pipeline.length > 0) {
       texts.pipeline = groupedInsights.pipeline
         .map(i => `• ${i.summary}${i.userName ? ` — ${i.userName}` : ''} (${format(new Date(i.timestamp), 'MMM d, yyyy')})`)
@@ -202,7 +242,6 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
       texts.pipeline = 'No pipeline movements during this period.';
     }
 
-    // Deals
     if (groupedInsights.deals.length > 0) {
       texts.deals = `${totalDealsReferred} deal(s) referred during this period with a total estimated value of ${fmtAbbrevValue(totalReferredValue)}.\n\n` +
         groupedInsights.deals
@@ -212,7 +251,6 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
       texts.deals = 'No deals referred during this period.';
     }
 
-    // Leaderboard
     if (dealsBySource.length > 0) {
       texts.leaderboard = 'Top Referral Sources:\n' +
         dealsBySource.map((s, i) => `${i + 1}. ${s.name} — ${s.value} deal(s)`).join('\n');
@@ -220,22 +258,11 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
       texts.leaderboard = 'No referral data available for this period.';
     }
 
-    // Insights
-    const otherInsights = groupedInsights.insights;
-    if (otherInsights.length > 0) {
-      texts.insights = otherInsights
-        .map(i => `• ${i.summary}${i.userName ? ` — ${i.userName}` : ''} (${format(new Date(i.timestamp), 'MMM d, yyyy')})`)
-        .join('\n');
-    } else {
-      texts.insights = 'No additional insights during this period.';
-    }
-
     return texts;
   }, [groupedInsights, totalDealsReferred, totalReferredValue, dealsBySource]);
 
-  // Editable text per section — start from pre-populated
   const [editedText, setEditedText] = useState<Record<SectionKey, string | null>>({
-    pipeline: null, deals: null, leaderboard: null, insights: null,
+    pipeline: null, deals: null, leaderboard: null,
   });
 
   const getSectionContent = (key: SectionKey) => editedText[key] ?? sectionText[key];
@@ -250,9 +277,9 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
   }, []);
 
   const exportPDF = async () => {
+    if (!canExport) return;
     setExporting(true);
     try {
-      // Capture charts first
       const [barImg, pieImg] = await Promise.all([
         captureChartAsImage(barChartRef),
         captureChartAsImage(pieChartRef),
@@ -337,19 +364,16 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
       if (barImg) {
         ensureSpace(70);
         addHeading('Partners by Stage');
-        const imgW = contentW;
-        const imgH = 55;
-        doc.addImage(barImg, 'PNG', margin, y, imgW, imgH);
-        y += imgH + 10;
+        doc.addImage(barImg, 'PNG', margin, y, contentW, 55);
+        y += 65;
       }
 
       if (pieImg && dealsBySource.length > 0) {
         ensureSpace(70);
         addHeading('Deals by Referral Source');
         const imgW = contentW * 0.6;
-        const imgH = 55;
-        doc.addImage(pieImg, 'PNG', margin + (contentW - imgW) / 2, y, imgW, imgH);
-        y += imgH + 10;
+        doc.addImage(pieImg, 'PNG', margin + (contentW - imgW) / 2, y, imgW, 55);
+        y += 65;
       }
 
       // Exec summary
@@ -372,6 +396,23 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
           doc.text('Commentary:', margin, y);
           y += 5;
           addParagraph(note);
+        }
+      }
+
+      // Selected Insights
+      const selectedItems = allSelectableInsights.filter(i => selectedInsightIds.has(i.id));
+      if (selectedItems.length > 0) {
+        addHeading('Selected Insights');
+        for (const item of selectedItems) {
+          addParagraph(`• ${item.summary}${item.userName ? ` — ${item.userName}` : ''} (${format(new Date(item.timestamp), 'MMM d, yyyy')})`);
+          const note = insightCommentary[item.id];
+          if (note?.trim()) {
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
+            doc.text('Commentary:', margin, y);
+            y += 5;
+            addParagraph(note);
+          }
         }
       }
 
@@ -481,41 +522,70 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
               </ResponsiveContainer>
             </div>
 
-            {/* Donut chart */}
-            <div ref={pieChartRef} className="rounded-lg border border-border bg-card p-4 min-h-[220px]">
-              <p className="text-xs font-semibold text-muted-foreground mb-2">Deals by Referral Source</p>
+            {/* Donut chart — redesigned */}
+            <div ref={pieChartRef} className="rounded-lg border border-border bg-card p-5 min-h-[280px] flex flex-col items-center">
+              <p className="text-xs font-semibold text-muted-foreground mb-4 self-start">Deals by Referral Source</p>
               {dealsBySource.length > 0 ? (
-                <ResponsiveContainer width="100%" height={180}>
-                  <PieChart>
-                    <defs>
-                      {dealsBySource.map((d, i) => (
-                        <linearGradient key={i} id={`pg-${i}`} x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0%" stopColor={d.fill} stopOpacity={1} />
-                          <stop offset="100%" stopColor={lighten(d.fill, 0.2)} stopOpacity={0.85} />
-                        </linearGradient>
-                      ))}
-                    </defs>
-                    <Pie
-                      data={dealsBySource}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={35}
-                      outerRadius={60}
-                      paddingAngle={2}
-                      label={({ name, value }) => `${name}: ${value}`}
-                    >
-                      {dealsBySource.map((_, i) => (
-                        <Cell key={i} fill={`url(#pg-${i})`} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend wrapperStyle={{ fontSize: 10 }} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <>
+                  <div className="relative" style={{ width: 200, height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <defs>
+                          {dealsBySource.map((d, i) => (
+                            <linearGradient key={i} id={`rpg-${i}`} x1="0" y1="0" x2="1" y2="1">
+                              <stop offset="0%" stopColor={d.colorPair[0]} stopOpacity={1} />
+                              <stop offset="100%" stopColor={d.colorPair[1]} stopOpacity={0.9} />
+                            </linearGradient>
+                          ))}
+                        </defs>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: 8,
+                            fontSize: 12,
+                          }}
+                          formatter={(value: number, name: string) => [`${value} deal${value !== 1 ? 's' : ''}`, name]}
+                        />
+                        <Pie
+                          data={dealsBySource}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={90}
+                          paddingAngle={3}
+                          strokeWidth={0}
+                        >
+                          {dealsBySource.map((_, i) => (
+                            <Cell key={i} fill={`url(#rpg-${i})`} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    {/* Center label */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-2xl font-bold">{donutTotal}</span>
+                      <span className="text-[10px] text-muted-foreground">deals</span>
+                    </div>
+                  </div>
+                  {/* Legend below */}
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">
+                    {dealsBySource.map((e, i) => (
+                      <div key={e.name} className="flex items-center gap-2">
+                        <span
+                          className="h-3 w-3 rounded-sm shrink-0"
+                          style={{ background: `linear-gradient(135deg, ${e.colorPair[0]}, ${e.colorPair[1]})` }}
+                        />
+                        <span className="text-xs text-foreground">{e.name}</span>
+                        <span className="text-xs text-muted-foreground">({e.value})</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <div className="flex items-center justify-center h-[180px] text-xs text-muted-foreground italic">
+                <div className="flex items-center justify-center flex-1 text-xs text-muted-foreground italic">
                   No referral data for this period.
                 </div>
               )}
@@ -554,9 +624,83 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
             );
           })}
 
+          {/* Insights Feed — selectable with 3-5 limit */}
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold">Insights Feed</h4>
+              <span className={cn(
+                'text-xs font-medium px-2 py-0.5 rounded-full',
+                selectedCount < MIN_INSIGHTS
+                  ? 'bg-destructive/20 text-destructive'
+                  : selectedCount >= MAX_INSIGHTS
+                    ? 'bg-amber-500/20 text-amber-400'
+                    : 'bg-primary/20 text-primary'
+              )}>
+                Selected: {selectedCount}/{selectedCount < MIN_INSIGHTS ? `${MIN_INSIGHTS} minimum` : `${MAX_INSIGHTS} maximum`}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Select {MIN_INSIGHTS}–{MAX_INSIGHTS} insights to include in the report. Each selected insight can have optional commentary.
+            </p>
+
+            {allSelectableInsights.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic py-4 text-center">No insights available for this period.</p>
+            ) : (
+              <div className="max-h-[320px] overflow-y-auto space-y-2 pr-1">
+                {allSelectableInsights.map(item => {
+                  const isSelected = selectedInsightIds.has(item.id);
+                  const isDisabled = !isSelected && selectedCount >= MAX_INSIGHTS;
+                  return (
+                    <div key={item.id} className={cn(
+                      'rounded-lg border p-3 space-y-2 transition-colors',
+                      isSelected ? 'border-primary/50 bg-primary/5' : 'border-border',
+                      isDisabled && 'opacity-50'
+                    )}>
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <Checkbox
+                          checked={isSelected}
+                          disabled={isDisabled}
+                          onCheckedChange={() => toggleInsight(item.id)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm leading-snug">{item.summary}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            {item.userName && `${item.userName} · `}
+                            {format(new Date(item.timestamp), 'MMM d, yyyy')}
+                          </p>
+                        </div>
+                      </label>
+                      {isSelected && (
+                        <Textarea
+                          placeholder="Optional commentary for this insight..."
+                          value={insightCommentary[item.id] || ''}
+                          onChange={e => setInsightCommentary(prev => ({ ...prev, [item.id]: e.target.value }))}
+                          className="min-h-[40px] text-sm ml-7"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {!canExport && selectedCount > 0 && (
+              <div className="flex items-center gap-2 text-xs text-destructive mt-1">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Select at least {MIN_INSIGHTS} insights to export
+              </div>
+            )}
+          </div>
+
           {/* Export button */}
-          <div className="flex justify-end">
-            <Button onClick={exportPDF} disabled={exporting} className="gap-2">
+          <div className="flex items-center justify-end gap-3">
+            {!canExport && (
+              <span className="text-xs text-muted-foreground">
+                Select at least {MIN_INSIGHTS} insights to export
+              </span>
+            )}
+            <Button onClick={exportPDF} disabled={exporting || !canExport} className="gap-2">
               <FileDown className="h-4 w-4" />
               {exporting ? 'Generating...' : 'Export to PDF'}
             </Button>
