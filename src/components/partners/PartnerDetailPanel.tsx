@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Trash2, Pencil, FileText } from 'lucide-react';
+import { Trash2, Pencil, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,8 @@ interface StageNote {
   note: string;
   user_name: string;
   created_at: string;
+  from_stage_name?: string;
+  to_stage_name?: string;
 }
 
 const PARTNER_TYPES = ['Channel', 'Branding', 'Connector'];
@@ -50,6 +52,8 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
 
   // Latest stage note state
   const [latestStageNote, setLatestStageNote] = useState<StageNote | null>(null);
+  const [stageHistory, setStageHistory] = useState<StageNote[]>([]);
+  const [stageHistoryOpen, setStageHistoryOpen] = useState(false);
 
   const checkUnseenMemoChanges = useCallback(async () => {
     if (!partner?.id || !user?.id) { setHasUnseenMemoChanges(false); return; }
@@ -76,28 +80,38 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   }, [partner?.id, user?.id]);
 
   const fetchLatestStageNote = useCallback(async () => {
-    if (!partner?.id) { setLatestStageNote(null); return; }
-    const { data } = await supabase
+    if (!partner?.id) { setLatestStageNote(null); setStageHistory([]); return; }
+    const { data: allNotes } = await supabase
       .from('partner_stage_notes' as any)
-      .select('note, user_id, created_at')
+      .select('note, user_id, created_at, from_stage, to_stage')
       .eq('partner_id', partner.id)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!data) { setLatestStageNote(null); return; }
-    const d = data as any;
-    // Resolve user name
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('display_name, email')
-      .eq('user_id', d.user_id)
-      .maybeSingle();
-    setLatestStageNote({
-      note: d.note,
-      user_name: (profile as any)?.display_name || (profile as any)?.email || 'Unknown',
-      created_at: d.created_at,
-    });
-  }, [partner?.id]);
+      .limit(50);
+    if (!allNotes || (allNotes as any[]).length === 0) {
+      setLatestStageNote(null); setStageHistory([]); return;
+    }
+    const notes = allNotes as any[];
+    // Resolve user names
+    const userIds = [...new Set(notes.map(n => n.user_id).filter(Boolean))];
+    let userMap: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase.from('profiles').select('user_id, display_name, email').in('user_id', userIds);
+      (profiles as any[] || []).forEach(p => { userMap[p.user_id] = p.display_name || p.email || 'Unknown'; });
+    }
+    // Build stage name lookup from current stages
+    const stageMap: Record<string, string> = {};
+    stages.forEach(s => { stageMap[s.id] = s.name; });
+
+    const mapped: StageNote[] = notes.map(n => ({
+      note: n.note,
+      user_name: userMap[n.user_id] || 'Unknown',
+      created_at: n.created_at,
+      from_stage_name: n.from_stage ? stageMap[n.from_stage] || 'Unknown' : undefined,
+      to_stage_name: n.to_stage ? stageMap[n.to_stage] || 'Unknown' : undefined,
+    }));
+    setLatestStageNote(mapped[0]);
+    setStageHistory(mapped);
+  }, [partner?.id, stages]);
 
   useEffect(() => {
     if (partner) {
@@ -255,14 +269,43 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                           <span className="text-sm text-white group-hover:underline">{currentStage?.name || 'Unassigned'}</span>
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-72 bg-slate-900 border-slate-700 text-white p-3" side="right" align="start">
+                      <PopoverContent className="w-80 bg-slate-900 border-slate-700 text-white p-3" side="right" align="start">
                         {latestStageNote ? (
-                          <div className="space-y-1">
-                            <p className="text-xs text-slate-400">
-                              Moved by <span className="text-slate-300 font-medium">{latestStageNote.user_name}</span> on{' '}
-                              {format(new Date(latestStageNote.created_at), 'MMM d, yyyy')}
-                            </p>
-                            <p className="text-sm text-slate-200 leading-relaxed">{latestStageNote.note}</p>
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <p className="text-xs text-slate-400">
+                                Moved by <span className="text-slate-300 font-medium">{latestStageNote.user_name}</span> on{' '}
+                                {format(new Date(latestStageNote.created_at), 'MMM d, yyyy')}
+                              </p>
+                              <p className="text-sm text-slate-200 leading-relaxed">{latestStageNote.note}</p>
+                            </div>
+
+                            {stageHistory.length > 1 && (
+                              <div className="border-t border-slate-700 pt-2">
+                                <button
+                                  onClick={() => setStageHistoryOpen(!stageHistoryOpen)}
+                                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-300 transition-colors font-medium"
+                                >
+                                  {stageHistoryOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                  View Stage History ({stageHistory.length})
+                                </button>
+                                {stageHistoryOpen && (
+                                  <div className="mt-2 space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                                    {stageHistory.map((entry, i) => (
+                                      <div key={i} className="text-xs">
+                                        <p className="text-slate-300">
+                                          <span className="font-medium">{entry.from_stage_name || '—'}</span>
+                                          {' → '}
+                                          <span className="font-medium">{entry.to_stage_name || '—'}</span>
+                                        </p>
+                                        <p className="text-slate-400 mt-0.5 italic">"{entry.note}"</p>
+                                        <p className="text-slate-500 mt-0.5">{entry.user_name}, {format(new Date(entry.created_at), 'MMM d, yyyy')}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <p className="text-xs text-slate-500">No stage move note recorded.</p>
