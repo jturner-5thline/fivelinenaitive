@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +31,31 @@ const EMPTY_MEMO: MemoData = {
   benefit_from_us: '',
   benefit_from_them: '',
 };
+
+function AutoExpandTextarea({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  const resize = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }, []);
+
+  useEffect(() => { resize(); }, [value, resize]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={e => { onChange(e.target.value); }}
+      onInput={resize}
+      placeholder={placeholder}
+      rows={2}
+      className="mt-2 w-full resize-none overflow-hidden rounded-md border bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    />
+  );
+}
 
 export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }: PartnerMemoModalProps) {
   const { company } = useCompany();
@@ -126,68 +150,39 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
             {/* 1. Type */}
             <div>
               <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Type</Label>
-              <RadioGroup
-                value={memo.memo_type}
-                onValueChange={(v) => update('memo_type', v)}
-                className="flex gap-4 mt-2"
-              >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="Channel" id="memo-channel" className="border-slate-500 text-blue-400" />
-                  <Label htmlFor="memo-channel" className="text-sm text-white cursor-pointer">Channel</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="Branding" id="memo-branding" className="border-slate-500 text-blue-400" />
-                  <Label htmlFor="memo-branding" className="text-sm text-white cursor-pointer">Branding</Label>
-                </div>
-              </RadioGroup>
+              <Select value={memo.memo_type} onValueChange={(v) => update('memo_type', v)}>
+                <SelectTrigger className="mt-1.5 bg-slate-900 border-slate-600 text-white w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Channel">Channel</SelectItem>
+                  <SelectItem value="Branding">Branding</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* 2. Who are they */}
             <div>
               <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Who are they / What do they do</Label>
-              <Textarea
-                value={memo.who_are_they}
-                onChange={e => update('who_are_they', e.target.value)}
-                rows={3}
-                placeholder="Describe the partner organization…"
-                className="mt-2 bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
-              />
+              <AutoExpandTextarea value={memo.who_are_they} onChange={v => update('who_are_they', v)} placeholder="Describe the partner organization…" />
             </div>
 
             {/* 3. ICP */}
             <div>
               <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">ICP (Ideal Client Profile)</Label>
-              <Textarea
-                value={memo.icp}
-                onChange={e => update('icp', e.target.value)}
-                rows={3}
-                placeholder="Describe their ideal client profile…"
-                className="mt-2 bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
-              />
+              <AutoExpandTextarea value={memo.icp} onChange={v => update('icp', v)} placeholder="Describe their ideal client profile…" />
             </div>
 
             {/* 4. What do they benefit from us? */}
             <div>
               <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">What do they benefit from us?</Label>
-              <Textarea
-                value={memo.benefit_from_us}
-                onChange={e => update('benefit_from_us', e.target.value)}
-                rows={3}
-                placeholder="What value do we provide to them…"
-                className="mt-2 bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
-              />
+              <AutoExpandTextarea value={memo.benefit_from_us} onChange={v => update('benefit_from_us', v)} placeholder="What value do we provide to them…" />
             </div>
 
             {/* 5. What do we benefit from them? */}
             <div>
               <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">What do we benefit from them?</Label>
-              <Textarea
-                value={memo.benefit_from_them}
-                onChange={e => update('benefit_from_them', e.target.value)}
-                rows={3}
-                placeholder="What value do they provide to us…"
-                className="mt-2 bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
-              />
+              <AutoExpandTextarea value={memo.benefit_from_them} onChange={v => update('benefit_from_them', v)} placeholder="What value do they provide to us…" />
             </div>
 
             {/* Save */}
