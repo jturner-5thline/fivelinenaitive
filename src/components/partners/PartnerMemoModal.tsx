@@ -248,7 +248,7 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
         {loading ? (
           <div className="p-6 text-center text-slate-400 text-sm">Loading memo…</div>
         ) : (
-          <div className="p-6 space-y-6">
+          <div className="p-6 pt-3 space-y-6">
             {/* 1. Type */}
             <div>
               <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Type</Label>
