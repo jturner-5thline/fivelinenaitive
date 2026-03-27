@@ -9203,6 +9203,7 @@ export type Database = {
           icp: string | null
           id: string
           memo_type: string
+          notes: string | null
           partner_id: string
           updated_at: string | null
           who_are_they: string | null
@@ -9216,6 +9217,7 @@ export type Database = {
           icp?: string | null
           id?: string
           memo_type?: string
+          notes?: string | null
           partner_id: string
           updated_at?: string | null
           who_are_they?: string | null
@@ -9229,6 +9231,7 @@ export type Database = {
           icp?: string | null
           id?: string
           memo_type?: string
+          notes?: string | null
           partner_id?: string
           updated_at?: string | null
           who_are_they?: string | null

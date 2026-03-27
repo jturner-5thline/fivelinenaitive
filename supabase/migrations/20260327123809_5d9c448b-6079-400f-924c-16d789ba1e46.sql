@@ -1,0 +1,1 @@
+ALTER TABLE public.partner_memos ADD COLUMN notes TEXT DEFAULT '';
