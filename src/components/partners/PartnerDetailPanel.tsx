@@ -247,7 +247,15 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-sm text-white mt-1">{(ownerMember as any)?.display_name || 'Unassigned'}</p>
+                    <Select value={partner.owner_id || 'unassigned'} onValueChange={(v) => updatePartner.mutate({ id: partner.id, owner_id: v === 'unassigned' ? null : v })}>
+                      <SelectTrigger className="mt-1.5 bg-slate-900 border-slate-600 text-white"><SelectValue placeholder="Select owner" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {teamMembers.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>{m.display_name || m.email}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 </div>
 
