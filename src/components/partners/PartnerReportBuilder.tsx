@@ -39,7 +39,6 @@ interface Props {
 const SECTIONS = [
   { key: 'pipeline', label: 'Pipeline Movements' },
   { key: 'deals', label: 'Deals Referred' },
-  { key: 'memos', label: 'Partner Memo Updates' },
   { key: 'leaderboard', label: 'Leaderboard Highlights' },
   { key: 'insights', label: 'Insights Feed' },
 ] as const;
