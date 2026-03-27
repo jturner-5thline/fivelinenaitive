@@ -278,6 +278,7 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName, o
                 <SelectContent>
                   <SelectItem value="Channel">Channel</SelectItem>
                   <SelectItem value="Branding">Branding</SelectItem>
+                  <SelectItem value="Connector">Connector</SelectItem>
                 </SelectContent>
               </Select>
             </div>
