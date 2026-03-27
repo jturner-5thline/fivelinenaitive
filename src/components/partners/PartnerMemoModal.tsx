@@ -226,7 +226,11 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName, o
           old_value: c.oldVal,
           new_value: c.newVal,
         }));
-        await supabase.from('partner_memo_audit_log' as any).insert(auditEntries);
+        const { data: insertedAudit } = await supabase.from('partner_memo_audit_log' as any).insert(auditEntries).select('id').order('changed_at', { ascending: false });
+        // Update own read receipt so saver doesn't see badge for own changes
+        if (insertedAudit && (insertedAudit as any[]).length > 0) {
+          await updateReadReceipt((insertedAudit as any[])[0].id);
+        }
         fetchAuditLog();
       }
 
