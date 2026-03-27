@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { usePipelineStages, useUpdatePartner, useDeletePartner, type Partner } from '@/hooks/usePartnersPipeline';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -60,163 +59,175 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
 
   return (
     <Dialog open={!!partner} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-slate-800 border-slate-700 text-white">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-white">{partner?.name || 'Partner Details'}</DialogTitle>
-        </DialogHeader>
-
+      <DialogContent className="max-w-[90vw] w-[90vw] max-h-[88vh] h-[88vh] p-0 bg-slate-800 border-slate-700 text-white overflow-hidden">
         {partner && (
-          <Tabs defaultValue="details" className="mt-2">
-            <TabsList className="bg-slate-900 border border-slate-700">
-              <TabsTrigger value="details" className="data-[state=active]:bg-slate-700 data-[state=active]:text-white text-slate-400">Details</TabsTrigger>
-              <TabsTrigger value="deals" className="data-[state=active]:bg-slate-700 data-[state=active]:text-white text-slate-400">Referred Deals</TabsTrigger>
-              <TabsTrigger value="activity" className="data-[state=active]:bg-slate-700 data-[state=active]:text-white text-slate-400">Activity</TabsTrigger>
-              <TabsTrigger value="notes" className="data-[state=active]:bg-slate-700 data-[state=active]:text-white text-slate-400">Notes</TabsTrigger>
-            </TabsList>
+          <div className="flex h-full">
+            {/* Left Column - Partner Info (~40%) */}
+            <div className="w-[38%] border-r border-slate-700 p-6 flex flex-col">
+              {/* Header */}
+              <div className="mb-6">
+                {editing ? (
+                  <Input
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="text-xl font-semibold bg-slate-900 border-slate-600 text-white"
+                  />
+                ) : (
+                  <h2 className="text-xl font-semibold text-white">{partner.name}</h2>
+                )}
+                <p className="text-xs text-slate-500 mt-1">Added {format(new Date(partner.created_at), 'MMM d, yyyy')}</p>
+              </div>
 
-            {/* Details Tab */}
-            <TabsContent value="details" className="mt-4 space-y-4">
-              {editing ? (
-                <>
-                  <div className="space-y-1.5">
-                    <Label className="text-slate-300">Name</Label>
-                    <Input value={name} onChange={e => setName(e.target.value)} className="bg-slate-900 border-slate-600 text-white" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-slate-300">Type</Label>
+              {/* Fields */}
+              <div className="space-y-5 flex-1">
+                {/* Type */}
+                <div>
+                  <Label className="text-xs text-slate-400 uppercase tracking-wider">Type</Label>
+                  {editing ? (
                     <Select value={firmType} onValueChange={setFirmType}>
-                      <SelectTrigger className="bg-slate-900 border-slate-600 text-white"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="mt-1.5 bg-slate-900 border-slate-600 text-white"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {PARTNER_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-slate-300">Stage</Label>
-                    <Select value={stageId} onValueChange={setStageId}>
-                      <SelectTrigger className="bg-slate-900 border-slate-600 text-white"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-slate-300">Relationship Owner</Label>
+                  ) : (
+                    <p className="text-sm text-white mt-1">{partner.firm_type || '—'}</p>
+                  )}
+                </div>
+
+                {/* Relationship Owner */}
+                <div>
+                  <Label className="text-xs text-slate-400 uppercase tracking-wider">Relationship Owner</Label>
+                  {editing ? (
                     <Select value={ownerId} onValueChange={setOwnerId}>
-                      <SelectTrigger className="bg-slate-900 border-slate-600 text-white"><SelectValue placeholder="Select owner" /></SelectTrigger>
+                      <SelectTrigger className="mt-1.5 bg-slate-900 border-slate-600 text-white"><SelectValue placeholder="Select owner" /></SelectTrigger>
                       <SelectContent>
                         {teamMembers.map((m) => (
                           <SelectItem key={m.id} value={m.id}>{m.display_name || m.email}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="flex gap-2 pt-2">
-                    <Button size="sm" onClick={handleSave} disabled={update.isPending}>Save</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
-                  </div>
-                </>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Type</p>
-                    <p className="text-sm text-white">{partner.firm_type || '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Stage</p>
-                    <div className="flex items-center gap-1.5">
-                      {currentStage && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: currentStage.color }} />}
+                  ) : (
+                    <p className="text-sm text-white mt-1">{(ownerMember as any)?.display_name || 'Unassigned'}</p>
+                  )}
+                </div>
+
+                {/* Stage */}
+                <div>
+                  <Label className="text-xs text-slate-400 uppercase tracking-wider">Stage</Label>
+                  {editing ? (
+                    <Select value={stageId} onValueChange={setStageId}>
+                      <SelectTrigger className="mt-1.5 bg-slate-900 border-slate-600 text-white"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1">
+                      {currentStage && <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: currentStage.color }} />}
                       <p className="text-sm text-white">{currentStage?.name || 'Unassigned'}</p>
                     </div>
-                  </div>
+                  )}
+                </div>
+
+                {/* Move to Stage (non-edit mode quick action) */}
+                {!editing && (
                   <div>
-                    <p className="text-xs text-slate-400 mb-1">Relationship Owner</p>
-                    <p className="text-sm text-white">{(ownerMember as any)?.display_name || 'Unassigned'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Created</p>
-                    <p className="text-sm text-white">{format(new Date(partner.created_at), 'MMM d, yyyy')}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-xs text-slate-400 mb-1">Move to Stage</p>
+                    <Label className="text-xs text-slate-400 uppercase tracking-wider">Move to Stage</Label>
                     <Select value={partner.stage_id || ''} onValueChange={(v) => update.mutate({ id: partner.id, stage_id: v || null })}>
-                      <SelectTrigger className="h-8 text-xs bg-slate-900 border-slate-600 text-white w-48">
-                        <SelectValue placeholder="Move to Stage" />
+                      <SelectTrigger className="mt-1.5 h-9 text-sm bg-slate-900 border-slate-600 text-white">
+                        <SelectValue placeholder="Select stage" />
                       </SelectTrigger>
                       <SelectContent>
                         {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex items-center gap-2 pt-4 border-t border-slate-700 mt-4">
+                {editing ? (
+                  <>
+                    <Button size="sm" onClick={handleSave} disabled={update.isPending}>Save</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+                  </>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="gap-1.5">
+                    <Pencil className="h-3.5 w-3.5" /> Edit
+                  </Button>
+                )}
+                <div className="ml-auto">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="destructive" className="gap-1.5">
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete partner?</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently remove {partner.name} from the pipeline.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
-              )}
-            </TabsContent>
-
-            {/* Referred Deals Tab */}
-            <TabsContent value="deals" className="mt-4">
-              <div className="rounded-lg border border-slate-700 p-6 text-center">
-                <p className="text-sm text-slate-400">No referred deals found for this partner.</p>
-                <p className="text-xs text-slate-500 mt-1">Deals where this partner is set as the referral source will appear here.</p>
-              </div>
-            </TabsContent>
-
-            {/* Activity Tab */}
-            <TabsContent value="activity" className="mt-4">
-              <div className="rounded-lg border border-slate-700 p-6 text-center">
-                <p className="text-sm text-slate-400">No activity history yet.</p>
-                <p className="text-xs text-slate-500 mt-1">Meetings, emails, and logged interactions with this partner will appear here.</p>
-              </div>
-            </TabsContent>
-
-            {/* Notes Tab */}
-            <TabsContent value="notes" className="mt-4 space-y-3">
-              <Textarea
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                rows={6}
-                placeholder="Write notes about this partner..."
-                className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
-              />
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (!partner) return;
-                  update.mutate({ id: partner.id, notes });
-                }}
-                disabled={update.isPending || notes === partner.notes}
-              >
-                Save Notes
-              </Button>
-            </TabsContent>
-
-            {/* Footer actions */}
-            <div className="flex items-center gap-2 pt-4 mt-4 border-t border-slate-700">
-              {!editing && (
-                <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="gap-1.5">
-                  <Pencil className="h-3.5 w-3.5" /> Edit
-                </Button>
-              )}
-              <div className="ml-auto">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="destructive" className="gap-1.5">
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete partner?</AlertDialogTitle>
-                      <AlertDialogDescription>This will permanently remove {partner.name} from the pipeline.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
             </div>
-          </Tabs>
+
+            {/* Right Column - Content (~60%) */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-0">
+              {/* Referred Deals */}
+              <div className="pb-5">
+                <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">Referred Deals</h3>
+                <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4 text-center">
+                  <p className="text-sm text-slate-400">No referred deals found.</p>
+                  <p className="text-xs text-slate-500 mt-1">Deals where this partner is the referral source will appear here.</p>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-700" />
+
+              {/* Activity History */}
+              <div className="py-5">
+                <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">Activity History</h3>
+                <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4 text-center">
+                  <p className="text-sm text-slate-400">No activity history yet.</p>
+                  <p className="text-xs text-slate-500 mt-1">Meetings, emails, and interactions will appear here.</p>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-700" />
+
+              {/* Notes */}
+              <div className="pt-5">
+                <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">Notes</h3>
+                <Textarea
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  rows={5}
+                  placeholder="Write notes about this partner..."
+                  className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
+                />
+                <Button
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    if (!partner) return;
+                    update.mutate({ id: partner.id, notes });
+                  }}
+                  disabled={update.isPending || notes === partner.notes}
+                >
+                  Save Notes
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>
