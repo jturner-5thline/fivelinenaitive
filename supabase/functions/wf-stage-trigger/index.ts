@@ -228,7 +228,7 @@ const STAGE_WORKFLOWS: Record<
           recurrenceRuleJson: { interval: 4, unit: "days" },
           recurrenceStopConditions: [
             { field: "manager_move_forward_decision", operator: "is_true" },
-            { field: "pipeline", operator: "not_equals", value: "active" },
+            { field: "pipeline_id", operator: "not_equals", value: "active" },
           ],
         },
       ],
