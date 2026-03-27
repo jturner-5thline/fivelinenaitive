@@ -60,6 +60,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   const ownerMember = teamMembers.find((m: any) => m.id === (editing ? ownerId : partner?.owner_id));
 
   return (
+    <>
     <Dialog open={!!partner} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-[90vw] w-[90vw] max-h-[88vh] h-[88vh] p-0 bg-slate-800 border-slate-700 text-white overflow-hidden">
         {partner && (
