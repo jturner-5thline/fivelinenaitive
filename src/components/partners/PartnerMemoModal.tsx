@@ -16,6 +16,7 @@ interface PartnerMemoModalProps {
   onOpenChange: (open: boolean) => void;
   partnerId: string;
   partnerName: string;
+  onReadReceiptUpdated?: () => void;
 }
 
 interface MemoData {
