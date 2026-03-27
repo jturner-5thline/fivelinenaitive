@@ -22,6 +22,7 @@ interface MemoData {
   icp: string;
   benefit_from_us: string;
   benefit_from_them: string;
+  notes: string;
 }
 
 const EMPTY_MEMO: MemoData = {
@@ -30,6 +31,7 @@ const EMPTY_MEMO: MemoData = {
   icp: '',
   benefit_from_us: '',
   benefit_from_them: '',
+  notes: '',
 };
 
 function AutoExpandTextarea({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
@@ -84,6 +86,7 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
             icp: d.icp || '',
             benefit_from_us: d.benefit_from_us || '',
             benefit_from_them: d.benefit_from_them || '',
+            notes: d.notes || '',
           });
         } else {
           setMemo(EMPTY_MEMO);
@@ -104,6 +107,7 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
         icp: memo.icp,
         benefit_from_us: memo.benefit_from_us,
         benefit_from_them: memo.benefit_from_them,
+        notes: memo.notes,
         created_by: user.id,
         updated_at: new Date().toISOString(),
       };
@@ -183,6 +187,12 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
             <div>
               <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">What do we benefit from them?</Label>
               <AutoExpandTextarea value={memo.benefit_from_them} onChange={v => update('benefit_from_them', v)} placeholder="What value do they provide to us…" />
+            </div>
+
+            {/* 6. Notes */}
+            <div>
+              <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Notes</Label>
+              <AutoExpandTextarea value={memo.notes} onChange={v => update('notes', v)} placeholder="Additional notes..." />
             </div>
 
             {/* Save */}
