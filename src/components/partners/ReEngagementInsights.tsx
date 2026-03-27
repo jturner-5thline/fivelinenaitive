@@ -106,10 +106,11 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
   const displayed = showAll ? stalePartners : stalePartners.slice(0, 5);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
+    <div className="rounded-lg border border-border bg-card p-5 flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Partners Needing Attention</h3>
+          <AlertTriangle className="h-4 w-4 text-amber-400" />
+          <h3 className="text-sm font-semibold tracking-wide text-muted-foreground">Partners Needing Attention</h3>
           {stalePartners.length > 0 && (
             <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
               {stalePartners.length}
@@ -119,11 +120,11 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-              <Settings className="h-3.5 w-3.5 text-slate-400" />
+              <Settings className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64">
-            <p className="text-xs font-medium text-slate-400 mb-3">Inactivity Thresholds</p>
+            <p className="text-xs font-medium text-muted-foreground mb-3">Inactivity Thresholds</p>
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label className="text-xs">No activity (days)</Label>
@@ -161,27 +162,27 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
       </div>
 
       {stalePartners.length === 0 ? (
-        <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-6 text-center">
-          <p className="text-sm text-slate-400">All partners are active — no alerts right now.</p>
+        <div className="flex-1 min-h-0 rounded-lg border border-border bg-background/50 flex items-center justify-center p-6">
+          <p className="text-sm text-muted-foreground">All partners are active — no alerts right now.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="flex-1 min-h-0 space-y-2 overflow-y-auto">
           {displayed.map(sp => (
             <div
               key={sp.id}
-              className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-3 hover:border-slate-600 transition-colors"
+              className="flex items-center justify-between rounded-lg border border-border bg-background/50 px-4 py-3 hover:border-muted-foreground/40 transition-colors"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{sp.name}</p>
-                  <p className="text-xs text-slate-400">{sp.reason}</p>
+                  <p className="text-sm font-medium truncate">{sp.name}</p>
+                  <p className="text-xs text-muted-foreground">{sp.reason}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs text-slate-400">{sp.stageName}</p>
-                  <p className="text-[10px] text-slate-500">Last: {sp.lastActivityType}</p>
+                  <p className="text-xs text-muted-foreground">{sp.stageName}</p>
+                  <p className="text-[10px] text-muted-foreground/60">Last: {sp.lastActivityType}</p>
                 </div>
                 <Button
                   variant="ghost"
