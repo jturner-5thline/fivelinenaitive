@@ -16,7 +16,7 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { ConfigureStagesModal } from '@/components/partners/ConfigureStagesModal';
 import { AddPartnerDialog } from '@/components/partners/AddPartnerDialog';
 import { PartnerDetailPanel } from '@/components/partners/PartnerDetailPanel';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
 
 function SortablePartnerCard({ partner, owners, onClick }: { partner: Partner; owners: Map<string, { display_name: string; avatar_url?: string }>; onClick: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: partner.id });
