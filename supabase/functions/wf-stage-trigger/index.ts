@@ -866,7 +866,7 @@ Deno.serve(async (req: Request) => {
           const { error: taskError } = await supabase.from("wf_tasks").insert({
             deal_id,
             title: taskDef.title,
-            description: taskDef.description || null,
+            description: (taskDef.descriptionFn ? taskDef.descriptionFn(deal) : taskDef.description) || null,
             status: "open",
             assignee_id: assigneeWfUserId,
             created_by_id: ownerWfUserId,
