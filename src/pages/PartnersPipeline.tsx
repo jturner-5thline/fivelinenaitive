@@ -210,7 +210,7 @@ export default function PartnersPipeline() {
       {/* Modals */}
       <ConfigureStagesModal open={showConfigure} onOpenChange={setShowConfigure} />
       <AddPartnerDialog open={showAdd} onOpenChange={setShowAdd} defaultStageId={addStageId} />
-      <PartnerDetailPanel partner={selectedPartner} onClose={() => setSelectedPartner(null)} />
+      <PartnerDetailPanel partner={selectedPartner} onClose={() => setSelectedPartnerId(null)} />
     </div>
   );
 }
