@@ -39,16 +39,20 @@ const STAGE_WORKFLOWS: Record<
     key: string;
     tasks: Array<{
       title: string;
+      description?: string;
       assigneeRole: "manager" | "analyst" | "ops";
       dueOffsetDays: number;
       isRecurring?: boolean;
       recurrenceRuleJson?: Record<string, unknown>;
+      recurrenceStopConditions?: Array<{ field: string; operator: string; value?: unknown }>;
     }>;
+    preCondition?: (deal: any, supabase: any) => Promise<boolean>;
     moveTo?: string;
     actions?: Array<{
       type: "send_email" | "create_calendar_event" | "send_notification";
       config: Record<string, unknown>;
     }>;
+    postTaskHook?: (deal: any, dueAt: string, supabase: any) => Promise<void>;
   }>
 > = {
   // === NEW DEAL ENTRY (fires on deal creation or initial pipeline entry) ===
