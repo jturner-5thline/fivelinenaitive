@@ -10,40 +10,40 @@ import { ArrowRight, RotateCcw } from "lucide-react";
 interface ManagerDecisionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onDecisionMade?: () => void;
   task: {
     id: string;
     title: string;
+    description?: string | null;
     workflow_key?: string;
     deal_id: string;
-    deal?: { id: string; name?: string; company_name?: string } | null;
+    deal?: { id: string; name?: string; company_name?: string; stage?: string } | null;
     recurrence_stop_conditions?: Array<{ field: string; operator: string; value?: unknown }> | null;
   };
 }
 
-export function ManagerDecisionDialog({ open, onOpenChange, task }: ManagerDecisionDialogProps) {
+export function ManagerDecisionDialog({ open, onOpenChange, onDecisionMade, task }: ManagerDecisionDialogProps) {
   const [loading, setLoading] = useState(false);
   const qc = useQueryClient();
 
   const dealName = task.deal?.name || task.deal?.company_name || "Unknown Deal";
+  const dealStage = task.deal?.stage || "Unknown Stage";
 
   const handleMoveForward = async () => {
     setLoading(true);
     try {
-      // Update the deal's manager_move_forward_decision flag
       const { error: dealError } = await supabase
         .from("deals")
         .update({ manager_move_forward_decision: true })
         .eq("id", task.deal_id);
 
       if (dealError) {
-        // Try wf_deals as fallback
         await supabase
           .from("wf_deals")
           .update({ manager_move_forward_decision: true } as any)
           .eq("id", task.deal_id);
       }
 
-      // Also update wf_deals
       await supabase
         .from("wf_deals")
         .update({ manager_move_forward_decision: true } as any)
@@ -51,7 +51,8 @@ export function ManagerDecisionDialog({ open, onOpenChange, task }: ManagerDecis
 
       qc.invalidateQueries({ queryKey: ["wf_tasks"] });
       qc.invalidateQueries({ queryKey: ["wf_deals"] });
-      toast.success("Decision recorded — follow-up chain will stop on next cycle");
+      toast.success("Deal will move forward. Recurring follow-ups will stop.");
+      onDecisionMade?.();
       onOpenChange(false);
     } catch (err) {
       console.error("Failed to update decision:", err);
@@ -62,7 +63,7 @@ export function ManagerDecisionDialog({ open, onOpenChange, task }: ManagerDecis
   };
 
   const handleKeepFollowing = () => {
-    toast.info("Recurrence will continue as scheduled");
+    toast.info("Continuing follow-ups.");
     onOpenChange(false);
   };
 
@@ -79,9 +80,15 @@ export function ManagerDecisionDialog({ open, onOpenChange, task }: ManagerDecis
         <div className="space-y-3 py-2">
           <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
             <p className="text-sm font-medium text-foreground">{task.title}</p>
-            {task.workflow_key && (
-              <Badge variant="outline" className="text-xs">{task.workflow_key}</Badge>
+            {task.description && (
+              <p className="text-xs text-muted-foreground whitespace-pre-line">{task.description}</p>
             )}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {task.workflow_key && (
+                <Badge variant="outline" className="text-xs">{task.workflow_key}</Badge>
+              )}
+              <Badge variant="secondary" className="text-xs">Stage: {dealStage}</Badge>
+            </div>
           </div>
         </div>
 
@@ -98,7 +105,7 @@ export function ManagerDecisionDialog({ open, onOpenChange, task }: ManagerDecis
           <Button
             onClick={handleMoveForward}
             disabled={loading}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
           >
             <ArrowRight className="h-4 w-4" />
             {loading ? "Saving..." : "Move Deal Forward"}

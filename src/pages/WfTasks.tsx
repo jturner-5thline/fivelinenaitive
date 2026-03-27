@@ -99,6 +99,7 @@ export default function WfTasks({ embedded }: { embedded?: boolean }) {
           open={!!decisionTask}
           onOpenChange={(open) => !open && setDecisionTask(null)}
           task={decisionTask}
+          onDecisionMade={() => setDecisionTask(null)}
         />
       )}
     </div>
