@@ -307,18 +307,168 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
     if (!ref.current) return null;
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(ref.current, { backgroundColor: '#0f172a', scale: 2 });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const canvas = await html2canvas(ref.current, {
+        backgroundColor: '#0f1419',
+        scale: 2,
+        useCORS: true,
+      });
       return canvas.toDataURL('image/png');
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }, []);
+
+  const buildPdfBarChartImage = useCallback(async (): Promise<string> => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 520;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    const bg = '#0f1419';
+    const card = '#1e293b';
+    const border = '#334155';
+    const text = '#f1f5f9';
+    const muted = '#94a3b8';
+
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = card;
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 2;
+    const rx = 24;
+    ctx.beginPath();
+    ctx.moveTo(rx, 0);
+    ctx.lineTo(canvas.width - rx, 0);
+    ctx.quadraticCurveTo(canvas.width, 0, canvas.width, rx);
+    ctx.lineTo(canvas.width, canvas.height - rx);
+    ctx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - rx, canvas.height);
+    ctx.lineTo(rx, canvas.height);
+    ctx.quadraticCurveTo(0, canvas.height, 0, canvas.height - rx);
+    ctx.lineTo(0, rx);
+    ctx.quadraticCurveTo(0, 0, rx, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    const padding = { top: 70, right: 40, bottom: 120, left: 70 };
+    const chartW = canvas.width - padding.left - padding.right;
+    const chartH = canvas.height - padding.top - padding.bottom;
+    const maxValue = Math.max(...stageChartData.map(d => d.count), 1);
+    const barSlot = chartW / Math.max(stageChartData.length, 1);
+    const barW = Math.min(80, barSlot * 0.62);
+
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= maxValue; i++) {
+      const y = padding.top + chartH - (i / maxValue) * chartH;
+      ctx.beginPath();
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(canvas.width - padding.right, y);
+      ctx.stroke();
+
+      ctx.fillStyle = muted;
+      ctx.font = '20px system-ui';
+      ctx.textAlign = 'right';
+      ctx.fillText(String(i), padding.left - 12, y + 6);
+    }
+
+    stageChartData.forEach((item, index) => {
+      const x = padding.left + index * barSlot + (barSlot - barW) / 2;
+      const h = maxValue === 0 ? 0 : (item.count / maxValue) * chartH;
+      const y = padding.top + chartH - h;
+      const grad = ctx.createLinearGradient(0, y, 0, y + Math.max(h, 1));
+      grad.addColorStop(0, lighten(item.color, 0.2));
+      grad.addColorStop(1, item.color);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(x, y, barW, h, [10, 10, 0, 0]);
+      ctx.fill();
+
+      ctx.fillStyle = text;
+      ctx.font = '700 22px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(item.count), x + barW / 2, y - 12);
+
+      ctx.save();
+      ctx.translate(x + barW / 2, canvas.height - 58);
+      ctx.rotate(-Math.PI / 7.5);
+      ctx.fillStyle = text;
+      ctx.font = '18px system-ui';
+      ctx.textAlign = 'right';
+      ctx.fillText(item.name, 0, 0);
+      ctx.restore();
+    });
+
+    return canvas.toDataURL('image/png');
+  }, [stageChartData]);
+
+  const buildPdfReferralChartImage = useCallback(async (): Promise<string> => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 560;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    const bg = '#0f1419';
+    const card = '#1e293b';
+    const border = '#334155';
+    const text = '#f1f5f9';
+    const muted = '#94a3b8';
+
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = card;
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, canvas.width, canvas.height, 24);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = text;
+    ctx.font = '700 24px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${donutTotal}`, canvas.width / 2, 170);
+    ctx.fillStyle = muted;
+    ctx.font = '18px system-ui';
+    ctx.fillText('total deals', canvas.width / 2, 200);
+
+    let legendY = 270;
+    const itemWidth = 320;
+    dealsBySource.forEach((item, index) => {
+      const col = index % 2;
+      const row = Math.floor(index / 2);
+      const x = 120 + col * 420;
+      const y = legendY + row * 70;
+      const grad = ctx.createLinearGradient(x, y, x + 26, y + 26);
+      grad.addColorStop(0, item.colorPair[0]);
+      grad.addColorStop(1, item.colorPair[1]);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(x, y, 26, 26, 6);
+      ctx.fill();
+
+      ctx.fillStyle = text;
+      ctx.font = '600 22px system-ui';
+      ctx.textAlign = 'left';
+      ctx.fillText(item.name, x + 40, y + 18);
+      ctx.fillStyle = muted;
+      ctx.font = '18px system-ui';
+      ctx.fillText(`${item.value} deal${item.value !== 1 ? 's' : ''}`, x + 40, y + 45);
+    });
+
+    return canvas.toDataURL('image/png');
+  }, [dealsBySource, donutTotal]);
 
   const exportPDF = async () => {
     if (!canExport) return;
     setExporting(true);
     try {
       const [barImg, pieImg] = await Promise.all([
-        captureChartAsImage(barChartRef),
-        captureChartAsImage(pieChartRef),
+        buildPdfBarChartImage(),
+        dealsBySource.length > 0 ? buildPdfReferralChartImage() : Promise.resolve(''),
       ]);
 
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
