@@ -5,6 +5,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useDashboardPreference } from '@/hooks/useDashboardPreference';
 import { Trophy, Medal, Award, BarChart3, Inbox } from 'lucide-react';
 import { subMonths } from 'date-fns';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 type TimePeriod = '3m' | '6m' | '12m';
 
@@ -25,6 +26,14 @@ interface LeaderEntry {
   count: number;
 }
 
+const DONUT_GRADIENT_PAIRS = [
+  ['#3b82f6', '#06b6d4'], // blue → cyan
+  ['#a855f7', '#ec4899'], // purple → pink
+  ['#22c55e', '#14b8a6'], // green → teal
+  ['#f59e0b', '#eab308'], // amber → yellow
+  ['#ef4444', '#f97316'], // red → orange
+];
+
 function RankIcon({ rank }: { rank: number }) {
   if (rank === 1) return <Trophy className="h-4 w-4 text-yellow-400" />;
   if (rank === 2) return <Medal className="h-4 w-4 text-gray-300" />;
@@ -32,7 +41,70 @@ function RankIcon({ rank }: { rank: number }) {
   return <span className="h-4 w-4 flex items-center justify-center text-xs text-muted-foreground font-medium">{rank}</span>;
 }
 
-function LeaderList({ title, entries, maxCount, icon }: { title: string; entries: LeaderEntry[]; maxCount: number; icon: React.ReactNode }) {
+function DonutChart({ entries, gradientPrefix }: { entries: LeaderEntry[]; gradientPrefix: string }) {
+  const total = entries.reduce((s, e) => s + e.count, 0);
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative" style={{ width: 140, height: 140 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <defs>
+              {entries.map((_, i) => (
+                <linearGradient key={`${gradientPrefix}-${i}`} id={`${gradientPrefix}-${i}`} x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor={DONUT_GRADIENT_PAIRS[i % 5][0]} />
+                  <stop offset="100%" stopColor={DONUT_GRADIENT_PAIRS[i % 5][1]} />
+                </linearGradient>
+              ))}
+            </defs>
+            <Tooltip
+              contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+              labelStyle={{ color: 'hsl(var(--foreground))' }}
+              itemStyle={{ color: 'hsl(var(--foreground))' }}
+            />
+            <Pie
+              data={entries}
+              dataKey="count"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={40}
+              outerRadius={65}
+              strokeWidth={0}
+              paddingAngle={2}
+            >
+              {entries.map((_, i) => (
+                <Cell key={i} fill={`url(#${gradientPrefix}-${i})`} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-xl font-bold">{total}</span>
+          <span className="text-[10px] text-muted-foreground">deals</span>
+        </div>
+      </div>
+      {/* Legend */}
+      <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
+        {entries.map((e, i) => (
+          <div key={e.name} className="flex items-center gap-1.5">
+            <span
+              className="h-2 w-2 rounded-full shrink-0"
+              style={{ background: `linear-gradient(135deg, ${DONUT_GRADIENT_PAIRS[i % 5][0]}, ${DONUT_GRADIENT_PAIRS[i % 5][1]})` }}
+            />
+            <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{e.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LeaderColumn({ title, entries, maxCount, icon, gradientPrefix }: {
+  title: string; entries: LeaderEntry[]; maxCount: number; icon: React.ReactNode; gradientPrefix: string;
+}) {
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-4">
@@ -45,27 +117,37 @@ function LeaderList({ title, entries, maxCount, icon }: { title: string; entries
           <p className="text-sm">No referral data for this period.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {entries.map((entry, i) => {
-            const pct = maxCount > 0 ? (entry.count / maxCount) * 100 : 0;
-            return (
-              <div key={entry.name} className="flex items-center gap-3">
-                <RankIcon rank={i + 1} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium truncate">{entry.name}</span>
-                    <span className="text-xs text-muted-foreground ml-2 shrink-0">{entry.count} deal{entry.count !== 1 ? 's' : ''}</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${pct}%` }}
-                    />
+        <div className="flex gap-4 items-start">
+          {/* List */}
+          <div className="flex-1 space-y-3 min-w-0">
+            {entries.map((entry, i) => {
+              const pct = maxCount > 0 ? (entry.count / maxCount) * 100 : 0;
+              return (
+                <div key={entry.name} className="flex items-center gap-3">
+                  <RankIcon rank={i + 1} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium truncate">{entry.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2 shrink-0">{entry.count} deal{entry.count !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${pct}%`,
+                          background: `linear-gradient(90deg, ${DONUT_GRADIENT_PAIRS[i % 5][0]}, ${DONUT_GRADIENT_PAIRS[i % 5][1]})`,
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+          {/* Donut */}
+          <div className="hidden sm:block shrink-0">
+            <DonutChart entries={entries} gradientPrefix={gradientPrefix} />
+          </div>
         </div>
       )}
     </div>
@@ -146,18 +228,20 @@ export function ReferralSourceLeaderboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <LeaderList
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <LeaderColumn
           title="Top Sources for Deals on Board"
           entries={boardLeaders}
           maxCount={boardMax}
           icon={<Trophy className="h-4 w-4 text-yellow-400" />}
+          gradientPrefix="board"
         />
-        <LeaderList
+        <LeaderColumn
           title="Top Sources for Signed Clients"
           entries={signedLeaders}
           maxCount={signedMax}
           icon={<Medal className="h-4 w-4 text-primary" />}
+          gradientPrefix="signed"
         />
       </div>
     </div>
