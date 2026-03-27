@@ -47,7 +47,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
         .eq('company_id', company!.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as { partner_id: string; created_at: string; to_stage: string }[];
+      return (data || []) as unknown as { partner_id: string; created_at: string; to_stage: string }[];
     },
   });
 
