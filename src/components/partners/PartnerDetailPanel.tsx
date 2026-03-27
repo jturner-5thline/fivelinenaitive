@@ -73,7 +73,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
 
   const handleSave = () => {
     if (!partner) return;
-    update.mutate({
+    updatePartner.mutate({
       id: partner.id,
       name: name.trim(),
       firm_type: firmType,
@@ -169,7 +169,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                 {!editing && (
                   <div>
                     <Label className="text-xs text-slate-400 uppercase tracking-wider">Move to Stage</Label>
-                    <Select value={partner.stage_id || ''} onValueChange={(v) => update.mutate({ id: partner.id, stage_id: v || null })}>
+                    <Select value={partner.stage_id || ''} onValueChange={(v) => updatePartner.mutate({ id: partner.id, stage_id: v || null })}>
                       <SelectTrigger className="mt-1.5 h-9 text-sm bg-slate-900 border-slate-600 text-white">
                         <SelectValue placeholder="Select stage" />
                       </SelectTrigger>
@@ -192,7 +192,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
               <div className="flex items-center gap-2 pt-4 border-t border-slate-700 mt-4">
                 {editing ? (
                   <>
-                    <Button size="sm" onClick={handleSave} disabled={update.isPending}>Save</Button>
+                    <Button size="sm" onClick={handleSave} disabled={updatePartner.isPending}>Save</Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
                   </>
                 ) : (
@@ -261,9 +261,9 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                   className="mt-2"
                   onClick={() => {
                     if (!partner) return;
-                    update.mutate({ id: partner.id, notes });
+                    updatePartner.mutate({ id: partner.id, notes });
                   }}
-                  disabled={update.isPending || notes === partner.notes}
+                  disabled={updatePartner.isPending || notes === partner.notes}
                 >
                   Save Notes
                 </Button>
