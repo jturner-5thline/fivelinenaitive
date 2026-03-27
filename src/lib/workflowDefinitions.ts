@@ -382,6 +382,17 @@ registerWorkflow('agreement_pending_followup', {
   triggerFilter: { to_stage: 'agreement_pending' },
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
+    // Pre-condition: check agreement_sent
+    const { data: mainDeal } = await supabase
+      .from('deals')
+      .select('agreement_sent')
+      .eq('id', deal.id)
+      .maybeSingle();
+    if (!mainDeal?.agreement_sent) {
+      console.warn('[WF] agreement_pending_followup: agreement not sent yet, skipping');
+      return;
+    }
+
     await createWorkflowTask({
       dealId: deal.id, title: 'Follow up on agreement',
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
@@ -389,6 +400,10 @@ registerWorkflow('agreement_pending_followup', {
       recurrenceRuleJson: { interval: 4, unit: 'days' },
       dueOffsetDays: 4, companyId: ctx.companyId,
     });
+
+    // Update next_follow_up_at on the deal
+    const dueAt = new Date(Date.now() + 4 * 86400000).toISOString();
+    await supabase.from('deals').update({ next_follow_up_at: dueAt }).eq('id', deal.id);
   },
 });
 
