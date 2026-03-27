@@ -236,7 +236,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
 
   // Editable text per section — start from pre-populated
   const [editedText, setEditedText] = useState<Record<SectionKey, string | null>>({
-    pipeline: null, deals: null, memos: null, leaderboard: null, insights: null,
+    pipeline: null, deals: null, leaderboard: null, insights: null,
   });
 
   const getSectionContent = (key: SectionKey) => editedText[key] ?? sectionText[key];
