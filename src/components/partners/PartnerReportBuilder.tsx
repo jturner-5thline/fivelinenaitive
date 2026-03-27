@@ -39,7 +39,6 @@ interface Props {
 const SECTIONS = [
   { key: 'pipeline', label: 'Pipeline Movements' },
   { key: 'deals', label: 'Deals Referred' },
-  { key: 'memos', label: 'Partner Memo Updates' },
   { key: 'leaderboard', label: 'Leaderboard Highlights' },
   { key: 'insights', label: 'Insights Feed' },
 ] as const;
@@ -49,10 +48,20 @@ type SectionKey = typeof SECTIONS[number]['key'];
 const TYPE_MAP: Record<string, SectionKey> = {
   stage_move: 'pipeline',
   new_deal: 'deals',
-  memo_update: 'memos',
+  memo_update: 'insights',
   new_partner: 'insights',
   stale_alert: 'insights',
 };
+
+function fmtAbbrevValue(val: number): string {
+  const abs = Math.abs(val);
+  let formatted: string;
+  if (abs >= 1_000_000_000) formatted = `$${(abs / 1_000_000_000).toFixed(2)}B`;
+  else if (abs >= 1_000_000) formatted = `$${(abs / 1_000_000).toFixed(2)}MM`;
+  else if (abs >= 1_000) formatted = `$${(abs / 1_000).toFixed(2)}K`;
+  else formatted = `$${abs.toFixed(2)}`;
+  return val < 0 ? `(${formatted})` : formatted;
+}
 
 const DONUT_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
@@ -92,7 +101,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
   );
   const [execSummary, setExecSummary] = useState('');
   const [commentary, setCommentary] = useState<Record<SectionKey, string>>({
-    pipeline: '', deals: '', memos: '', leaderboard: '', insights: '',
+    pipeline: '', deals: '', leaderboard: '', insights: '',
   });
   const [exporting, setExporting] = useState(false);
 
@@ -115,7 +124,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
 
   const groupedInsights = useMemo(() => {
     const groups: Record<SectionKey, InsightItem[]> = {
-      pipeline: [], deals: [], memos: [], leaderboard: [], insights: [],
+      pipeline: [], deals: [], leaderboard: [], insights: [],
     };
     for (const i of filteredInsights) {
       const section = TYPE_MAP[i.type] || 'insights';
@@ -165,10 +174,14 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
       const src = m ? m[1] : 'Unknown';
       counts.set(src, (counts.get(src) || 0) + 1);
     }
-    return Array.from(counts.entries())
-      .map(([name, value], idx) => ({ name, value, fill: DONUT_COLORS[idx % DONUT_COLORS.length] }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 7);
+    const sorted = Array.from(counts.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    const top = sorted.slice(0, 5);
+    const otherCount = sorted.slice(5).reduce((s, e) => s + e.value, 0);
+    const result = top.map((e, idx) => ({ ...e, fill: DONUT_COLORS[idx % DONUT_COLORS.length] }));
+    if (otherCount > 0) result.push({ name: 'Other', value: otherCount, fill: '#64748b' });
+    return result;
   }, [groupedInsights.deals]);
 
   // --- Pre-populated section text ---
@@ -176,7 +189,6 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
     const texts: Record<SectionKey, string> = {
       pipeline: '',
       deals: '',
-      memos: '',
       leaderboard: '',
       insights: '',
     };
@@ -192,21 +204,12 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
 
     // Deals
     if (groupedInsights.deals.length > 0) {
-      texts.deals = `${totalDealsReferred} deal(s) referred during this period with a total estimated value of $${totalReferredValue.toLocaleString()}.\n\n` +
+      texts.deals = `${totalDealsReferred} deal(s) referred during this period with a total estimated value of ${fmtAbbrevValue(totalReferredValue)}.\n\n` +
         groupedInsights.deals
           .map(i => `• ${i.summary} (${format(new Date(i.timestamp), 'MMM d, yyyy')})`)
           .join('\n');
     } else {
       texts.deals = 'No deals referred during this period.';
-    }
-
-    // Memos
-    if (groupedInsights.memos.length > 0) {
-      texts.memos = groupedInsights.memos
-        .map(i => `• ${i.summary}${i.userName ? ` — ${i.userName}` : ''} (${format(new Date(i.timestamp), 'MMM d, yyyy')})`)
-        .join('\n');
-    } else {
-      texts.memos = 'No memo updates during this period.';
     }
 
     // Leaderboard
@@ -232,7 +235,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
 
   // Editable text per section — start from pre-populated
   const [editedText, setEditedText] = useState<Record<SectionKey, string | null>>({
-    pipeline: null, deals: null, memos: null, leaderboard: null, insights: null,
+    pipeline: null, deals: null, leaderboard: null, insights: null,
   });
 
   const getSectionContent = (key: SectionKey) => editedText[key] ?? sectionText[key];
@@ -316,7 +319,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
         ['Total Partners', partners.length.toString()],
         ['Partners Added', newPartnersCount.toString()],
         ['Deals Referred', totalDealsReferred.toString()],
-        ['Referred Value', `$${totalReferredValue.toLocaleString()}`],
+        ['Referred Value', fmtAbbrevValue(totalReferredValue)],
         ['Stage Movements', stageMovesCount.toString()],
       ];
       autoTable(doc, {
@@ -381,7 +384,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
   const metricCards = [
     { label: 'Total Partners', value: partners.length, icon: Users, color: 'text-blue-400' },
     { label: 'Deals Referred', value: totalDealsReferred, icon: Handshake, color: 'text-green-400' },
-    { label: 'Referred Value', value: `$${totalReferredValue.toLocaleString()}`, icon: DollarSign, color: 'text-amber-400' },
+    { label: 'Referred Value', value: fmtAbbrevValue(totalReferredValue), icon: DollarSign, color: 'text-amber-400' },
     { label: 'Partners Added', value: newPartnersCount, icon: TrendingUp, color: 'text-cyan-400' },
     { label: 'Stage Movements', value: stageMovesCount, icon: ArrowRightLeft, color: 'text-purple-400' },
   ];
