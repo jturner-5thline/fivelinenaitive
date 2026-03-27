@@ -60,6 +60,7 @@ export default function SalesBD() {
                   <PartnerSourcedDeals />
                 </div>
                 <ReferralSourceLeaderboard />
+                <PartnerInsightsFeed />
               </div>
             </TabsContent>
 
