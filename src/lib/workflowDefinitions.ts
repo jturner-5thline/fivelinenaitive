@@ -149,13 +149,17 @@ registerWorkflow('deal_active_followup_task', {
 
     await createWorkflowTask({
       dealId: deal.id,
-      title: 'Follow up on new deal - request materials',
+      title: 'Follow up: NDA & Materials',
       description,
       assigneeId: deal.manager_id,
       workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'deal_active_followup_task',
       isRecurring: true,
       recurrenceRuleJson: { interval: 3, unit: 'days', stopOn: 'materials_added' },
+      recurrenceStopConditions: [
+        { field: 'deal_stage_changed', operator: 'not_equals', value: 'nda_needs_list_sent' },
+        { field: 'prop_issued', operator: 'is_true' },
+      ],
       dueOffsetDays: 3,
       companyId: ctx.companyId,
     });
