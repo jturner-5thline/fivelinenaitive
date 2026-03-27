@@ -68,8 +68,9 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
       setOwnerId(partner.owner_id || '');
       setNotes(partner.notes);
       setEditing(false);
+      checkUnseenMemoChanges();
     }
-  }, [partner]);
+  }, [partner, checkUnseenMemoChanges]);
 
   const handleSave = () => {
     if (!partner) return;
