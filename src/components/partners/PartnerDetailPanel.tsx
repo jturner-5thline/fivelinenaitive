@@ -97,9 +97,9 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
     <Dialog open={!!partner} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-[90vw] w-[90vw] max-h-[88vh] h-[88vh] p-0 bg-slate-800 border-slate-700 text-white overflow-hidden">
         {partner && (
-          <div className="flex h-full">
-            {/* Left Column - Partner Info (~40%) */}
-            <div className="w-[38%] border-r border-slate-700 p-6 flex flex-col">
+          <div className="grid h-full overflow-auto md:overflow-hidden" style={{ gridTemplateColumns: 'minmax(280px, 25%) 1fr' }}>
+            {/* Left Column - Partner Info (25%) */}
+            <div className="border-r border-slate-700 p-6 flex flex-col md:overflow-y-auto">
               {/* Header */}
               <div className="mb-6">
                 {editing ? (
