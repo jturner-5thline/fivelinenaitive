@@ -127,28 +127,28 @@ export function PartnersByStageCards({ onNavigateToStage }: Props) {
         })}
       </div>
 
-      {/* Horizontal bar chart */}
+      {/* Vertical bar chart */}
       {chartData.length > 0 && (
         <div className="mt-4 rounded-lg border border-border bg-card p-4">
-          <ResponsiveContainer width="100%" height={Math.max(chartData.length * 40 + 20, 120)}>
-            <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <defs>
                 {chartData.map((d, i) => (
-                  <linearGradient key={`g-${i}`} id={`stageGrad-${i}`} x1="0" y1="0" x2="1" y2="0">
+                  <linearGradient key={`g-${i}`} id={`stageGrad-${i}`} x1="0" y1="1" x2="0" y2="0">
                     <stop offset="0%" stopColor={d.color} stopOpacity={0.9} />
                     <stop offset="100%" stopColor={lighten(d.color, 0.25)} stopOpacity={1} />
                   </linearGradient>
                 ))}
               </defs>
-              <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" width={120} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip
                 contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ color: 'hsl(var(--foreground))' }}
                 itemStyle={{ color: 'hsl(var(--foreground))' }}
                 cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
               />
-              <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={20}>
+              <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={28}>
                 {chartData.map((_, i) => (
                   <Cell key={i} fill={`url(#stageGrad-${i})`} />
                 ))}
