@@ -496,7 +496,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
         const cx = margin + i * (cardW + 3);
         drawCard(cx, y, cardW, cardH);
         // Colored top accent
-        doc.setFillColor(...m.color);
+        doc.setFillColor(m.color[0], m.color[1], m.color[2]);
         doc.roundedRect(cx, y, cardW, 1.5, 1, 1, 'F');
         // Value
         doc.setFontSize(16);
