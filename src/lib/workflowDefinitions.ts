@@ -149,13 +149,17 @@ registerWorkflow('deal_active_followup_task', {
 
     await createWorkflowTask({
       dealId: deal.id,
-      title: 'Follow up on new deal - request materials',
+      title: 'Follow up: NDA & Materials',
       description,
       assigneeId: deal.manager_id,
       workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'deal_active_followup_task',
       isRecurring: true,
       recurrenceRuleJson: { interval: 3, unit: 'days', stopOn: 'materials_added' },
+      recurrenceStopConditions: [
+        { field: 'deal_stage_changed', operator: 'not_equals', value: 'nda_needs_list_sent' },
+        { field: 'prop_issued', operator: 'is_true' },
+      ],
       dueOffsetDays: 3,
       companyId: ctx.companyId,
     });
@@ -351,10 +355,13 @@ registerWorkflow('prop_issued_followup', {
     }
 
     await createWorkflowTask({
-      dealId: deal.id, title: 'Follow up on proposal',
+      dealId: deal.id, title: 'Follow up: Pre-Credit Needs',
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'prop_issued_followup', isRecurring: true,
       recurrenceRuleJson: { interval: 4, unit: 'days' },
+      recurrenceStopConditions: [
+        { field: 'deal_stage_changed', operator: 'not_equals', value: 'pre_credit_needs' },
+      ],
       dueOffsetDays: 4, companyId: ctx.companyId,
     });
 
@@ -398,6 +405,10 @@ registerWorkflow('agreement_pending_followup', {
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'agreement_pending_followup', isRecurring: true,
       recurrenceRuleJson: { interval: 4, unit: 'days' },
+      recurrenceStopConditions: [
+        { field: 'manager_move_forward_decision', operator: 'equals', value: true },
+        { field: 'deal_stage_changed', operator: 'not_equals', value: 'agreement_pending' },
+      ],
       dueOffsetDays: 4, companyId: ctx.companyId,
     });
 
@@ -625,10 +636,14 @@ registerWorkflow('positive_lender_response', {
   handler: async (deal, ctx) => {
     await moveDealStage(deal.id, 'lenders_in_review');
     await createWorkflowTask({
-      dealId: deal.id, title: 'Weekly check on lender updates',
+      dealId: deal.id, title: 'Follow up: Lender Status',
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'positive_lender_response', isRecurring: true,
       recurrenceRuleJson: { interval: 7, unit: 'days' },
+      recurrenceStopConditions: [
+        { field: 'deal_stage_changed', operator: 'not_equals', value: 'submitted_to_lenders' },
+        { field: 'manager_move_forward_decision', operator: 'equals', value: true },
+      ],
       dueOffsetDays: 7, companyId: ctx.companyId,
     });
     // Create recurring calendar event for weekly lender check

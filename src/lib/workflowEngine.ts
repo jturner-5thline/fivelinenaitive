@@ -119,6 +119,7 @@ export async function createWorkflowTask(params: {
   triggerSource?: string;
   isRecurring?: boolean;
   recurrenceRuleJson?: any;
+  recurrenceStopConditions?: Array<{ field: string; operator: string; value?: any }>;
   dueOffsetDays?: number;
   companyId?: string | null;
 }) {
@@ -137,6 +138,7 @@ export async function createWorkflowTask(params: {
     trigger_source: (params.triggerSource || 'stage_change') as any,
     is_recurring: params.isRecurring || false,
     recurrence_rule_json: params.recurrenceRuleJson,
+    recurrence_stop_conditions: params.recurrenceStopConditions || null,
     due_at: dueAt,
     org_company_id: params.companyId,
     status: 'open',
