@@ -106,7 +106,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
   const displayed = showAll ? stalePartners : stalePartners.slice(0, 5);
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5 flex flex-col h-full">
+    <div className="rounded-lg border border-border bg-card p-5 flex flex-col max-h-[520px]">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-400" />
