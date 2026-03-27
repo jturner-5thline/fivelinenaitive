@@ -26,6 +26,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   const [stageId, setStageId] = useState('');
   const [ownerId, setOwnerId] = useState('');
   const [notes, setNotes] = useState('');
+  const [showMemo, setShowMemo] = useState(false);
 
   useEffect(() => {
     if (partner) {
