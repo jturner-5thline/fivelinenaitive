@@ -101,7 +101,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
   );
   const [execSummary, setExecSummary] = useState('');
   const [commentary, setCommentary] = useState<Record<SectionKey, string>>({
-    pipeline: '', deals: '', memos: '', leaderboard: '', insights: '',
+    pipeline: '', deals: '', leaderboard: '', insights: '',
   });
   const [exporting, setExporting] = useState(false);
 
