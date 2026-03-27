@@ -104,6 +104,8 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
 
   const [dateFrom, setDateFrom] = useState<Date>(subDays(new Date(), periodDays));
   const [dateTo, setDateTo] = useState<Date>(new Date());
+  const [quickFilter, setQuickFilter] = useState<string>('custom');
+  const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
   const [enabledSections, setEnabledSections] = useState<Set<SectionKey>>(
     new Set(SECTIONS.map(s => s.key))
   );
@@ -114,6 +116,39 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
   const [exporting, setExporting] = useState(false);
   const [selectedInsightIds, setSelectedInsightIds] = useState<Set<string>>(new Set());
   const [insightCommentary, setInsightCommentary] = useState<Record<string, string>>({});
+
+  const applyQuickFilter = (key: string, year?: number) => {
+    const y = year ?? filterYear;
+    setQuickFilter(key);
+    switch (key) {
+      case 'q1': setDateFrom(new Date(y, 0, 1)); setDateTo(new Date(y, 2, 31)); break;
+      case 'q2': setDateFrom(new Date(y, 3, 1)); setDateTo(new Date(y, 5, 30)); break;
+      case 'q3': setDateFrom(new Date(y, 6, 1)); setDateTo(new Date(y, 8, 30)); break;
+      case 'q4': setDateFrom(new Date(y, 9, 1)); setDateTo(new Date(y, 11, 31)); break;
+      case 'full_year': setDateFrom(new Date(y, 0, 1)); setDateTo(new Date(y, 11, 31)); break;
+      case 'past_3m': setDateFrom(subMonths(new Date(), 3)); setDateTo(new Date()); break;
+      case 'past_6m': setDateFrom(subMonths(new Date(), 6)); setDateTo(new Date()); break;
+      case 'ttm': setDateFrom(subMonths(new Date(), 12)); setDateTo(new Date()); break;
+      default: break;
+    }
+  };
+
+  const handleManualDateFrom = (d: Date) => {
+    setDateFrom(d);
+    setQuickFilter('custom');
+  };
+  const handleManualDateTo = (d: Date) => {
+    setDateTo(d);
+    setQuickFilter('custom');
+  };
+
+  const handleYearChange = (y: string) => {
+    const year = parseInt(y, 10);
+    setFilterYear(year);
+    if (quickFilter !== 'custom' && !['past_3m', 'past_6m', 'ttm'].includes(quickFilter)) {
+      applyQuickFilter(quickFilter, year);
+    }
+  };
 
   const barChartRef = useRef<HTMLDivElement>(null);
   const pieChartRef = useRef<HTMLDivElement>(null);
