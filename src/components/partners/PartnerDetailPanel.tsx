@@ -284,6 +284,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
         onOpenChange={setShowMemo}
         partnerId={partner.id}
         partnerName={partner.name}
+        onReadReceiptUpdated={() => setHasUnseenMemoChanges(false)}
       />
     )}
     </>
