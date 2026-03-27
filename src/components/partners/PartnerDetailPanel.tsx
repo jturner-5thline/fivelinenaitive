@@ -184,8 +184,11 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
 
               {/* Partner Memo Button */}
               <div>
-                <Button size="sm" variant="outline" onClick={() => setShowMemo(true)} className="gap-1.5 w-full">
+                <Button size="sm" variant="outline" onClick={() => setShowMemo(true)} className="gap-1.5 w-full relative">
                   <FileText className="h-3.5 w-3.5" /> Partner Memo
+                  {hasUnseenMemoChanges && (
+                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-orange-500 ring-2 ring-slate-800" />
+                  )}
                 </Button>
               </div>
 
