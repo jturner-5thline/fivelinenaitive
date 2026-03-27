@@ -40,6 +40,7 @@ const STAGE_WORKFLOWS: Record<
     tasks: Array<{
       title: string;
       description?: string;
+      descriptionFn?: (deal: any) => string;
       assigneeRole: "manager" | "analyst" | "ops";
       dueOffsetDays: number;
       isRecurring?: boolean;
