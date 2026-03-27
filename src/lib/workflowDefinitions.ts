@@ -405,6 +405,10 @@ registerWorkflow('agreement_pending_followup', {
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'agreement_pending_followup', isRecurring: true,
       recurrenceRuleJson: { interval: 4, unit: 'days' },
+      recurrenceStopConditions: [
+        { field: 'manager_move_forward_decision', operator: 'equals', value: true },
+        { field: 'deal_stage_changed', operator: 'not_equals', value: 'agreement_pending' },
+      ],
       dueOffsetDays: 4, companyId: ctx.companyId,
     });
 
