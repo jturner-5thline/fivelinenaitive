@@ -144,33 +144,35 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName, o
     if (!open || !partnerId) return;
     setLoading(true);
     setHistoryOpen(false);
-    supabase
-      .from('partner_memos' as any)
-      .select('*')
-      .eq('partner_id', partnerId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Error loading memo:', error);
-        } else if (data) {
-          const d = data as any;
-          const loaded: MemoData = {
-            id: d.id,
-            memo_type: d.memo_type || 'Channel',
-            who_are_they: d.who_are_they || '',
-            icp: d.icp || '',
-            benefit_from_us: d.benefit_from_us || '',
-            benefit_from_them: d.benefit_from_them || '',
-            notes: d.notes || '',
-          };
-          setMemo(loaded);
-          setSavedMemo(loaded);
-        } else {
-          setMemo(EMPTY_MEMO);
-          setSavedMemo(EMPTY_MEMO);
-        }
-        setLoading(false);
-      });
+
+    // Load memo and partner firm_type in parallel
+    Promise.all([
+      supabase.from('partner_memos' as any).select('*').eq('partner_id', partnerId).maybeSingle(),
+      supabase.from('partners' as any).select('firm_type').eq('id', partnerId).maybeSingle(),
+    ]).then(([memoResult, partnerResult]) => {
+      const partnerType = (partnerResult.data as any)?.firm_type || 'Channel';
+
+      if (memoResult.error) {
+        console.error('Error loading memo:', memoResult.error);
+      } else if (memoResult.data) {
+        const d = memoResult.data as any;
+        const loaded: MemoData = {
+          id: d.id,
+          memo_type: partnerType,
+          who_are_they: d.who_are_they || '',
+          icp: d.icp || '',
+          benefit_from_us: d.benefit_from_us || '',
+          benefit_from_them: d.benefit_from_them || '',
+          notes: d.notes || '',
+        };
+        setMemo(loaded);
+        setSavedMemo(loaded);
+      } else {
+        setMemo({ ...EMPTY_MEMO, memo_type: partnerType });
+        setSavedMemo({ ...EMPTY_MEMO, memo_type: partnerType });
+      }
+      setLoading(false);
+    });
     fetchAuditLog();
   }, [open, partnerId, fetchAuditLog]);
 
@@ -199,6 +201,9 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName, o
         created_by: user.id,
         updated_at: new Date().toISOString(),
       };
+
+      // Sync firm_type to partners table
+      await supabase.from('partners' as any).update({ firm_type: memo.memo_type }).eq('id', partnerId);
 
       if (memo.id) {
         const { error } = await supabase

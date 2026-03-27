@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { format } from 'date-fns';
 
-const PARTNER_TYPES = ['Channel Partner', 'Bank'];
+const PARTNER_TYPES = ['Channel', 'Branding', 'Connector'];
 
 export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | null; onClose: () => void }) {
   const { user } = useAuth();
@@ -127,7 +127,12 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-sm text-white mt-1">{partner.firm_type || '—'}</p>
+                    <Select value={partner.firm_type || ''} onValueChange={(v) => updatePartner.mutate({ id: partner.id, firm_type: v })}>
+                      <SelectTrigger className="mt-1.5 bg-slate-900 border-slate-600 text-white"><SelectValue placeholder="Select type" /></SelectTrigger>
+                      <SelectContent>
+                        {PARTNER_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   )}
                 </div>
 
