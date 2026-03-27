@@ -27,6 +27,18 @@ const DEFAULT_CONFIG: StaleAlertConfig = {
   excluded_stages: ['archived', 'on_hold', 'closed_lost', 'in_development'],
 };
 
+function formatValue(value: number | null): string {
+  if (!value) return '—';
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
+  return `$${value.toLocaleString()}`;
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function buildEmailHtml(
   recipientName: string,
   staleDeals: any[],
@@ -34,23 +46,66 @@ function buildEmailHtml(
   isAdmin: boolean
 ): string {
   const now = new Date();
-  const dealsList = staleDeals.slice(0, 10).map(deal => {
+
+  const dealCards = staleDeals.slice(0, 10).map(deal => {
     const updatedAt = new Date(deal.updated_at);
     const daysSinceUpdate = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
-    return `<tr>
-      <td style="padding: 12px; border-bottom: 1px solid #eee;">
-        <strong>${deal.company}</strong><br>
-        <span style="color: #666; font-size: 14px;">${deal.stage}${deal.manager ? ` · ${deal.manager}` : ''}</span>
-      </td>
-      <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; color: #dc2626;">
-        ${daysSinceUpdate} days ago
-      </td>
-    </tr>`;
+    const urgencyColor = daysSinceUpdate >= thresholdDays * 2 ? '#dc2626' : daysSinceUpdate >= thresholdDays * 1.5 ? '#ea580c' : '#f59e0b';
+
+    const detailRows: string[] = [];
+    if (deal.value) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Value:</strong> ${formatValue(deal.value)}</td>`);
+    if (deal.deal_type) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Type:</strong> ${deal.deal_type}</td>`);
+    if (deal.manager) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Manager:</strong> ${deal.manager}</td>`);
+    if (deal.deal_owner) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Owner:</strong> ${deal.deal_owner}</td>`);
+    if (deal.closing_date) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Closing:</strong> ${formatDate(deal.closing_date)}</td>`);
+    if (deal.contact) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Contact:</strong> ${deal.contact}</td>`);
+    if (deal.engagement_type) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Engagement:</strong> ${deal.engagement_type}</td>`);
+
+    // Build 2-column detail grid
+    let detailGrid = '';
+    for (let i = 0; i < detailRows.length; i += 2) {
+      detailGrid += `<tr>${detailRows[i]}${detailRows[i + 1] || '<td></td>'}</tr>`;
+    }
+
+    const narrativeSnippet = deal.narrative
+      ? `<p style="margin: 8px 0 0; font-size: 12px; color: #6b7280; line-height: 1.4; border-top: 1px solid #f3f4f6; padding-top: 8px;">${deal.narrative.substring(0, 120)}${deal.narrative.length > 120 ? '…' : ''}</p>`
+      : '';
+
+    return `
+      <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; border-left: 4px solid ${urgencyColor};">
+        <table style="width: 100%;">
+          <tr>
+            <td>
+              <strong style="font-size: 16px; color: #111827;">${deal.company}</strong>
+            </td>
+            <td style="text-align: right;">
+              <span style="background: ${urgencyColor}15; color: ${urgencyColor}; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px;">
+                ${daysSinceUpdate} days inactive
+              </span>
+            </td>
+          </tr>
+        </table>
+        <div style="margin-top: 4px; margin-bottom: 8px;">
+          <span style="display: inline-block; background: #f3f4f6; color: #374151; font-size: 12px; padding: 2px 8px; border-radius: 4px; margin-right: 6px;">${deal.stage}</span>
+          <span style="display: inline-block; background: #f0fdf4; color: #166534; font-size: 12px; padding: 2px 8px; border-radius: 4px;">${deal.status}</span>
+        </div>
+        ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
+        ${narrativeSnippet}
+        <div style="margin-top: 10px;">
+          <a href="https://fivelinenaitive.lovable.app/deals/${deal.id}" style="color: #7c3aed; font-size: 13px; font-weight: 500; text-decoration: none;">View Deal →</a>
+        </div>
+      </div>`;
   }).join('');
 
   const subtitle = isAdmin
     ? `the following company deals haven't been updated in ${thresholdDays}+ days`
     : `the following deals assigned to you haven't been updated in ${thresholdDays}+ days`;
+
+  // Summary stats
+  const totalValue = staleDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+  const avgDays = Math.round(staleDeals.reduce((sum, d) => {
+    return sum + Math.floor((now.getTime() - new Date(d.updated_at).getTime()) / (1000 * 60 * 60 * 24));
+  }, 0) / staleDeals.length);
 
   return `
     <!DOCTYPE html>
@@ -60,29 +115,39 @@ function buildEmailHtml(
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px; background-color: #f5f5f5;">
-      <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 8px;">Deals Need Attention</h1>
-        <p style="color: #666; font-size: 16px; margin-bottom: 24px;">
+        <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
           Hi ${recipientName || 'there'}, ${subtitle}:
         </p>
-        
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-          <thead>
-            <tr style="background: #f5f5f5;">
-              <th style="padding: 12px; text-align: left; font-weight: 600;">Deal</th>
-              <th style="padding: 12px; text-align: right; font-weight: 600;">Last Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${dealsList}
-          </tbody>
+
+        <!-- Summary Bar -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; background: #faf5ff; border-radius: 8px;">
+          <tr>
+            <td style="padding: 16px; text-align: center; border-right: 1px solid #e9d5ff;">
+              <div style="font-size: 24px; font-weight: 700; color: #7c3aed;">${staleDeals.length}</div>
+              <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Stale Deals</div>
+            </td>
+            <td style="padding: 16px; text-align: center; border-right: 1px solid #e9d5ff;">
+              <div style="font-size: 24px; font-weight: 700; color: #7c3aed;">${formatValue(totalValue)}</div>
+              <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Total Value</div>
+            </td>
+            <td style="padding: 16px; text-align: center;">
+              <div style="font-size: 24px; font-weight: 700; color: #dc2626;">${avgDays}d</div>
+              <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Avg Inactive</div>
+            </td>
+          </tr>
         </table>
 
-        ${staleDeals.length > 10 ? `<p style="color: #666; font-size: 14px; margin-bottom: 24px;">...and ${staleDeals.length - 10} more deals</p>` : ''}
+        ${dealCards}
 
-        <a href="https://fivelinenaitive.lovable.app/deals" style="display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600;">
-          Review Deals
-        </a>
+        ${staleDeals.length > 10 ? `<p style="color: #666; font-size: 14px; margin-bottom: 24px;">...and ${staleDeals.length - 10} more deals needing attention</p>` : ''}
+
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="https://fivelinenaitive.lovable.app/deals" style="display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600;">
+            Review All Deals
+          </a>
+        </div>
 
         <p style="color: #999; font-size: 14px; margin-top: 32px; border-top: 1px solid #eee; padding-top: 24px;">
           You can configure stale deal alerts in Settings &gt; Automation.
@@ -135,7 +200,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Get all active deals for this company
       const { data: deals, error: dealsError } = await supabaseAdmin
         .from('deals')
-        .select('id, company, stage, value, updated_at, manager, status')
+        .select('id, company, stage, value, updated_at, manager, status, deal_type, deal_owner, closing_date, contact, engagement_type, narrative')
         .eq('company_id', settings.company_id)
         .order('updated_at', { ascending: true });
 
