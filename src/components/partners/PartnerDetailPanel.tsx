@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { usePipelineStages, useUpdatePartner, useDeletePartner, type Partner } from '@/hooks/usePartnersPipeline';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { PartnerMemoModal } from '@/components/partners/PartnerMemoModal';
+import { PartnerLinkedCompanyContacts } from '@/components/partners/PartnerLinkedCompanyContacts';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
