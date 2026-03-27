@@ -174,10 +174,14 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
       const src = m ? m[1] : 'Unknown';
       counts.set(src, (counts.get(src) || 0) + 1);
     }
-    return Array.from(counts.entries())
-      .map(([name, value], idx) => ({ name, value, fill: DONUT_COLORS[idx % DONUT_COLORS.length] }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 7);
+    const sorted = Array.from(counts.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    const top = sorted.slice(0, 5);
+    const otherCount = sorted.slice(5).reduce((s, e) => s + e.value, 0);
+    const result = top.map((e, idx) => ({ ...e, fill: DONUT_COLORS[idx % DONUT_COLORS.length] }));
+    if (otherCount > 0) result.push({ name: 'Other', value: otherCount, fill: '#64748b' });
+    return result;
   }, [groupedInsights.deals]);
 
   // --- Pre-populated section text ---
