@@ -107,7 +107,7 @@ export function PartnerSourcedDeals() {
             <DollarSign className="h-3.5 w-3.5" /> Referred Value
           </div>
           <span className="text-2xl font-bold">
-            ${totalValue >= 1_000_000 ? `${(totalValue / 1_000_000).toFixed(1)}M` : totalValue >= 1_000 ? `${(totalValue / 1_000).toFixed(0)}k` : totalValue.toLocaleString()}
+            {totalValue >= 1_000_000_000 ? `$${(totalValue / 1_000_000_000).toFixed(2)}B` : totalValue >= 1_000_000 ? `$${(totalValue / 1_000_000).toFixed(2)}MM` : totalValue >= 1_000 ? `$${(totalValue / 1_000).toFixed(2)}K` : `$${totalValue.toFixed(2)}`}
           </span>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center">

@@ -192,11 +192,15 @@ export function ReferralSourceLeaderboard() {
       }
     }
 
-    const toSorted = (m: Map<string, number>): LeaderEntry[] =>
-      [...m.entries()]
+    const toSorted = (m: Map<string, number>): LeaderEntry[] => {
+      const sorted = [...m.entries()]
         .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+        .sort((a, b) => b.count - a.count);
+      const top = sorted.slice(0, 5);
+      const otherCount = sorted.slice(5).reduce((s, e) => s + e.count, 0);
+      if (otherCount > 0) top.push({ name: 'Other', count: otherCount });
+      return top;
+    };
 
     return { boardLeaders: toSorted(boardMap), signedLeaders: toSorted(signedMap) };
   }, [deals]);
