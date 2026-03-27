@@ -16,6 +16,7 @@ interface PartnerMemoModalProps {
   onOpenChange: (open: boolean) => void;
   partnerId: string;
   partnerName: string;
+  onReadReceiptUpdated?: () => void;
 }
 
 interface MemoData {
@@ -80,7 +81,7 @@ function AutoExpandTextarea({ value, onChange, placeholder }: { value: string; o
   );
 }
 
-export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }: PartnerMemoModalProps) {
+export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName, onReadReceiptUpdated }: PartnerMemoModalProps) {
   const { company } = useCompany();
   const { user } = useAuth();
   const [memo, setMemo] = useState<MemoData>(EMPTY_MEMO);
@@ -89,6 +90,20 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
   const [saving, setSaving] = useState(false);
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  const updateReadReceipt = useCallback(async (latestAuditId?: string) => {
+    if (!partnerId || !user?.id || !company?.id) return;
+    const auditId = latestAuditId || auditLog[0]?.id;
+    if (!auditId) return;
+    await supabase.from('partner_memo_read_receipts' as any).upsert({
+      partner_id: partnerId,
+      user_id: user.id,
+      company_id: company.id,
+      last_seen_audit_id: auditId,
+      last_seen_at: new Date().toISOString(),
+    }, { onConflict: 'partner_id,user_id' });
+    onReadReceiptUpdated?.();
+  }, [partnerId, user?.id, company?.id, auditLog, onReadReceiptUpdated]);
 
   const fetchAuditLog = useCallback(async () => {
     if (!partnerId) return;
@@ -211,7 +226,11 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
           old_value: c.oldVal,
           new_value: c.newVal,
         }));
-        await supabase.from('partner_memo_audit_log' as any).insert(auditEntries);
+        const { data: insertedAudit } = await supabase.from('partner_memo_audit_log' as any).insert(auditEntries).select('id').order('changed_at', { ascending: false });
+        // Update own read receipt so saver doesn't see badge for own changes
+        if (insertedAudit && (insertedAudit as any[]).length > 0) {
+          await updateReadReceipt((insertedAudit as any[])[0].id);
+        }
         fetchAuditLog();
       }
 
@@ -294,7 +313,7 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
             </div>
 
             {/* Change History */}
-            <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+            <Collapsible open={historyOpen} onOpenChange={(v) => { setHistoryOpen(v); if (v && auditLog.length > 0) updateReadReceipt(); }}>
               <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-slate-400 uppercase tracking-wider font-semibold hover:text-slate-300 transition-colors">
                 {historyOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 Change History ({auditLog.length})

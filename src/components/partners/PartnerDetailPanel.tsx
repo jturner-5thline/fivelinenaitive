@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Trash2, Pencil, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,14 +10,19 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { usePipelineStages, useUpdatePartner, useDeletePartner, type Partner } from '@/hooks/usePartnersPipeline';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { PartnerMemoModal } from '@/components/partners/PartnerMemoModal';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { format } from 'date-fns';
 
 const PARTNER_TYPES = ['Channel Partner', 'Bank'];
 
 export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | null; onClose: () => void }) {
+  const { user } = useAuth();
+  const { company } = useCompany();
   const { data: stages = [] } = usePipelineStages();
   const teamMembers = useTeamMembers();
-  const update = useUpdatePartner();
+  const updatePartner = useUpdatePartner();
   const del = useDeletePartner();
 
   const [editing, setEditing] = useState(false);
@@ -27,6 +32,33 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   const [ownerId, setOwnerId] = useState('');
   const [notes, setNotes] = useState('');
   const [showMemo, setShowMemo] = useState(false);
+  const [hasUnseenMemoChanges, setHasUnseenMemoChanges] = useState(false);
+
+  const checkUnseenMemoChanges = useCallback(async () => {
+    if (!partner?.id || !user?.id) { setHasUnseenMemoChanges(false); return; }
+
+    // Get user's read receipt
+    const { data: receipt } = await supabase
+      .from('partner_memo_read_receipts' as any)
+      .select('last_seen_audit_id')
+      .eq('partner_id', partner.id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // Get latest audit entry
+    const { data: latestAudit } = await supabase
+      .from('partner_memo_audit_log' as any)
+      .select('id')
+      .eq('partner_id', partner.id)
+      .order('changed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!latestAudit) { setHasUnseenMemoChanges(false); return; }
+
+    const lastSeenId = (receipt as any)?.last_seen_audit_id;
+    setHasUnseenMemoChanges(!lastSeenId || lastSeenId !== (latestAudit as any).id);
+  }, [partner?.id, user?.id]);
 
   useEffect(() => {
     if (partner) {
@@ -36,12 +68,13 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
       setOwnerId(partner.owner_id || '');
       setNotes(partner.notes);
       setEditing(false);
+      checkUnseenMemoChanges();
     }
-  }, [partner]);
+  }, [partner, checkUnseenMemoChanges]);
 
   const handleSave = () => {
     if (!partner) return;
-    update.mutate({
+    updatePartner.mutate({
       id: partner.id,
       name: name.trim(),
       firm_type: firmType,
@@ -137,7 +170,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                 {!editing && (
                   <div>
                     <Label className="text-xs text-slate-400 uppercase tracking-wider">Move to Stage</Label>
-                    <Select value={partner.stage_id || ''} onValueChange={(v) => update.mutate({ id: partner.id, stage_id: v || null })}>
+                    <Select value={partner.stage_id || ''} onValueChange={(v) => updatePartner.mutate({ id: partner.id, stage_id: v || null })}>
                       <SelectTrigger className="mt-1.5 h-9 text-sm bg-slate-900 border-slate-600 text-white">
                         <SelectValue placeholder="Select stage" />
                       </SelectTrigger>
@@ -151,8 +184,11 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
 
               {/* Partner Memo Button */}
               <div>
-                <Button size="sm" variant="outline" onClick={() => setShowMemo(true)} className="gap-1.5 w-full">
+                <Button size="sm" variant="outline" onClick={() => setShowMemo(true)} className="gap-1.5 w-full relative">
                   <FileText className="h-3.5 w-3.5" /> Partner Memo
+                  {hasUnseenMemoChanges && (
+                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-orange-500 ring-2 ring-slate-800" />
+                  )}
                 </Button>
               </div>
 
@@ -160,7 +196,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
               <div className="flex items-center gap-2 pt-4 border-t border-slate-700 mt-4">
                 {editing ? (
                   <>
-                    <Button size="sm" onClick={handleSave} disabled={update.isPending}>Save</Button>
+                    <Button size="sm" onClick={handleSave} disabled={updatePartner.isPending}>Save</Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
                   </>
                 ) : (
@@ -229,9 +265,9 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                   className="mt-2"
                   onClick={() => {
                     if (!partner) return;
-                    update.mutate({ id: partner.id, notes });
+                    updatePartner.mutate({ id: partner.id, notes });
                   }}
-                  disabled={update.isPending || notes === partner.notes}
+                  disabled={updatePartner.isPending || notes === partner.notes}
                 >
                   Save Notes
                 </Button>
@@ -248,6 +284,7 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
         onOpenChange={setShowMemo}
         partnerId={partner.id}
         partnerName={partner.name}
+        onReadReceiptUpdated={() => setHasUnseenMemoChanges(false)}
       />
     )}
     </>
