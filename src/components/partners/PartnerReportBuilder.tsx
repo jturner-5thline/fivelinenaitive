@@ -385,7 +385,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
   const metricCards = [
     { label: 'Total Partners', value: partners.length, icon: Users, color: 'text-blue-400' },
     { label: 'Deals Referred', value: totalDealsReferred, icon: Handshake, color: 'text-green-400' },
-    { label: 'Referred Value', value: `$${totalReferredValue.toLocaleString()}`, icon: DollarSign, color: 'text-amber-400' },
+    { label: 'Referred Value', value: fmtAbbrevValue(totalReferredValue), icon: DollarSign, color: 'text-amber-400' },
     { label: 'Partners Added', value: newPartnersCount, icon: TrendingUp, color: 'text-cyan-400' },
     { label: 'Stage Movements', value: stageMovesCount, icon: ArrowRightLeft, color: 'text-purple-400' },
   ];
