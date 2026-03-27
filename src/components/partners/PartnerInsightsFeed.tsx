@@ -205,15 +205,13 @@ export function PartnerInsightsFeed() {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5 flex flex-col max-h-[520px]">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <Lightbulb className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold tracking-wide text-muted-foreground">Partner Insights</h3>
-          {insights.length > 0 && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{insights.length}</Badge>
-          )}
+          <Lightbulb className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-semibold">Partner Insights</h3>
+          <Badge variant="secondary" className="text-xs">{insights.length}</Badge>
         </div>
         <div className="flex items-center gap-2">
           {/* Time period */}
@@ -236,7 +234,7 @@ export function PartnerInsightsFeed() {
           {/* Type filter */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 h-7">
+              <Button variant="outline" size="sm" className="gap-1.5">
                 <Filter className="h-3.5 w-3.5" /> Filter
               </Button>
             </PopoverTrigger>
@@ -255,14 +253,14 @@ export function PartnerInsightsFeed() {
           </Popover>
 
           {/* Draft Report */}
-          <Button size="sm" className="gap-1.5 h-7" onClick={() => setShowReport(true)}>
+          <Button size="sm" className="gap-1.5" onClick={() => setShowReport(true)}>
             <FileDown className="h-3.5 w-3.5" /> Draft Report
           </Button>
         </div>
       </div>
 
       {/* Feed */}
-      <div className="rounded-lg border border-border bg-background/50 divide-y divide-border overflow-y-auto max-h-[420px] scrollbar-thin">
+      <div className="rounded-lg border border-border bg-card divide-y divide-border max-h-[420px] overflow-y-auto">
         {insights.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
             <Lightbulb className="h-8 w-8 opacity-30" />
