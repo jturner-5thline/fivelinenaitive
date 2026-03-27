@@ -96,25 +96,25 @@ export function PartnerSourcedDeals() {
       <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3">Partner-Sourced Deals</h3>
 
       <div className="grid grid-cols-3 gap-3 mb-3">
-        <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
-          <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+        <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <Hash className="h-3.5 w-3.5" /> Total Referred
           </div>
-          <span className="text-2xl font-bold text-white">{matchedDeals.length}</span>
+          <span className="text-2xl font-bold">{matchedDeals.length}</span>
         </div>
-        <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
-          <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+        <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <DollarSign className="h-3.5 w-3.5" /> Referred Value
           </div>
-          <span className="text-2xl font-bold text-white">
+          <span className="text-2xl font-bold">
             ${totalValue >= 1_000_000 ? `${(totalValue / 1_000_000).toFixed(1)}M` : totalValue >= 1_000 ? `${(totalValue / 1_000).toFixed(0)}k` : totalValue.toLocaleString()}
           </span>
         </div>
-        <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
-          <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+        <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <TrendingUp className="h-3.5 w-3.5" /> Conversion Rate
           </div>
-          <span className="text-2xl font-bold text-white">{conversionRate}%</span>
+          <span className="text-2xl font-bold">{conversionRate}%</span>
         </div>
       </div>
 
