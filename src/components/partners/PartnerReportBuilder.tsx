@@ -320,7 +320,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
         ['Total Partners', partners.length.toString()],
         ['Partners Added', newPartnersCount.toString()],
         ['Deals Referred', totalDealsReferred.toString()],
-        ['Referred Value', `$${totalReferredValue.toLocaleString()}`],
+        ['Referred Value', fmtAbbrevValue(totalReferredValue)],
         ['Stage Movements', stageMovesCount.toString()],
       ];
       autoTable(doc, {
