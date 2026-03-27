@@ -22,7 +22,6 @@ function SortablePartnerCard({ partner, owners, onClick }: { partner: Partner; o
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: partner.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const owner = partner.owner_id ? owners.get(partner.owner_id) : null;
-  const initials = owner?.display_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 
   return (
     <div
@@ -37,15 +36,16 @@ function SortablePartnerCard({ partner, owners, onClick }: { partner: Partner; o
         <span className="font-medium text-sm text-white truncate">{partner.name}</span>
         <GripVertical data-drag-handle className="h-4 w-4 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </div>
-      <p className="text-xs text-slate-400 mt-0.5">{partner.firm_type}</p>
-      <div className="flex items-center justify-between mt-2">
-        <span className="text-xs text-slate-500">0 active deals</span>
-        {owner && (
-          <Avatar className="h-5 w-5 text-[9px]">
-            <AvatarFallback className="bg-slate-700 text-slate-300">{initials}</AvatarFallback>
-          </Avatar>
+      <p className="text-xs text-slate-400 mt-0.5">{partner.firm_type || 'Other'}</p>
+      <div className="flex items-center gap-1.5 mt-2">
+        <User className="h-3.5 w-3.5 shrink-0" style={{ color: owner ? 'hsl(var(--primary))' : undefined }} />
+        {owner ? (
+          <span className="text-xs font-medium truncate" style={{ color: 'hsl(var(--primary))' }}>{owner.display_name}</span>
+        ) : (
+          <span className="text-xs text-slate-500">Unassigned</span>
         )}
       </div>
+      <p className="text-xs text-slate-500 mt-1.5">0 active deals</p>
     </div>
   );
 }
