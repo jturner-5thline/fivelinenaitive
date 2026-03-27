@@ -355,10 +355,13 @@ registerWorkflow('prop_issued_followup', {
     }
 
     await createWorkflowTask({
-      dealId: deal.id, title: 'Follow up on proposal',
+      dealId: deal.id, title: 'Follow up: Pre-Credit Needs',
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'prop_issued_followup', isRecurring: true,
       recurrenceRuleJson: { interval: 4, unit: 'days' },
+      recurrenceStopConditions: [
+        { field: 'deal_stage_changed', operator: 'not_equals', value: 'pre_credit_needs' },
+      ],
       dueOffsetDays: 4, companyId: ctx.companyId,
     });
 
