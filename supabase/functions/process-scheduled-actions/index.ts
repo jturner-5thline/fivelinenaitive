@@ -6,6 +6,59 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ── Recurrence stop-condition helpers ──────────────────────────────
+
+interface StopCondition {
+  field: string;
+  operator: string;
+  value?: unknown;
+}
+
+function evaluateStopConditions(
+  conditions: StopCondition[] | null | undefined,
+  task: Record<string, unknown>,
+  deal: Record<string, unknown>
+): boolean {
+  if (!conditions || !Array.isArray(conditions) || conditions.length === 0) return false;
+
+  return conditions.some((c) => {
+    const dealValue = deal[c.field];
+
+    // Special: deal_stage_changed  – stop if deal stage no longer equals the expected value
+    if (c.field === 'deal_stage_changed' && c.operator === 'not_equals') {
+      return deal.stage !== c.value;
+    }
+
+    // Special: manager_move_forward_decision
+    if (c.field === 'manager_move_forward_decision' && c.operator === 'equals' && c.value === true) {
+      return dealValue === true;
+    }
+    if (c.field === 'manager_move_forward_decision' && c.operator === 'is_true') {
+      return dealValue === true;
+    }
+
+    // Special: prop_issued – stop if deal has moved past nda_materials_stage
+    if (c.field === 'prop_issued' && c.operator === 'equals' && c.value === true) {
+      const pastStages = ['closing', 'closed_won', 'closed_lost', 'funded', 'agreement_pending'];
+      return pastStages.includes(String(deal.stage || ''));
+    }
+
+    // Generic operators
+    switch (c.operator) {
+      case 'is_true':
+        return dealValue === true;
+      case 'is_false':
+        return dealValue === false || dealValue === null || dealValue === undefined;
+      case 'equals':
+        return dealValue === c.value;
+      case 'not_equals':
+        return dealValue !== c.value;
+      default:
+        return false;
+    }
+  });
+}
+
 interface ScheduledAction {
   id: string;
   workflow_run_id: string;
