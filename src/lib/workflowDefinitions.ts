@@ -139,10 +139,18 @@ registerWorkflow('deal_active_followup_task', {
   trigger: 'stage_change',
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
+    // Pre-condition: check required fields
+    if (!deal.name) {
+      console.warn('[WF] deal_active_followup_task: missing deal name, skipping');
+      return;
+    }
+
+    const description = `Deal: ${deal.name || 'Unknown'} (${deal.company_name || ''})\nContact: ${deal.contact_email || 'N/A'}\nAction: Follow up to collect materials for nAItive.`;
+
     await createWorkflowTask({
       dealId: deal.id,
       title: 'Follow up on new deal - request materials',
-      description: `Deal: ${deal.name || 'Unknown'} (${deal.company_name || 'Unknown'})\nAction: Follow up to collect materials for nAItive.`,
+      description,
       assigneeId: deal.manager_id,
       workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'deal_active_followup_task',
@@ -151,6 +159,10 @@ registerWorkflow('deal_active_followup_task', {
       dueOffsetDays: 3,
       companyId: ctx.companyId,
     });
+
+    // Update next_follow_up_at on the deal
+    const dueAt = new Date(Date.now() + 3 * 86400000).toISOString();
+    await supabase.from('deals').update({ next_follow_up_at: dueAt }).eq('id', deal.id);
   },
 });
 
