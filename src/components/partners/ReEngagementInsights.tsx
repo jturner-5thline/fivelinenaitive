@@ -106,7 +106,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
   const displayed = showAll ? stalePartners : stalePartners.slice(0, 5);
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5 flex flex-col h-full">
+    <div className="rounded-lg border border-border bg-card p-5 flex flex-col max-h-[520px]">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-400" />
@@ -162,11 +162,11 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
       </div>
 
       {stalePartners.length === 0 ? (
-        <div className="flex-1 min-h-0 rounded-lg border border-border bg-background/50 flex items-center justify-center p-6">
+        <div className="rounded-lg border border-border bg-background/50 flex items-center justify-center p-6">
           <p className="text-sm text-muted-foreground">All partners are active — no alerts right now.</p>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 space-y-2 overflow-y-auto">
+        <div className="space-y-2 overflow-y-auto max-h-[420px] scrollbar-thin">
           {displayed.map(sp => (
             <div
               key={sp.id}

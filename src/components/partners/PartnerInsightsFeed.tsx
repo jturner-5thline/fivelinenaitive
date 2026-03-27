@@ -205,7 +205,7 @@ export function PartnerInsightsFeed() {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5 flex flex-col h-full">
+    <div className="rounded-lg border border-border bg-card p-5 flex flex-col max-h-[520px]">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <div className="flex items-center gap-2">
@@ -262,7 +262,7 @@ export function PartnerInsightsFeed() {
       </div>
 
       {/* Feed */}
-      <div className="flex-1 min-h-0 rounded-lg border border-border bg-background/50 divide-y divide-border overflow-y-auto">
+      <div className="rounded-lg border border-border bg-background/50 divide-y divide-border overflow-y-auto max-h-[420px] scrollbar-thin">
         {insights.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
             <Lightbulb className="h-8 w-8 opacity-30" />
