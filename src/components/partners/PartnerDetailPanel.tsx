@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Trash2, Pencil, FileText } from 'lucide-react';
+import { Trash2, Pencil, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
