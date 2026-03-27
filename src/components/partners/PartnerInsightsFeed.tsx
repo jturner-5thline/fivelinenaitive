@@ -205,7 +205,7 @@ export function PartnerInsightsFeed() {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5 flex flex-col h-full">
+    <div className="rounded-lg border border-border bg-card p-5 flex flex-col max-h-[520px]">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <div className="flex items-center gap-2">
