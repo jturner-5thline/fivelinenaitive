@@ -9193,6 +9193,54 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_memo_audit_log: {
+        Row: {
+          changed_at: string
+          company_id: string
+          field_changed: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          partner_id: string
+          user_id: string | null
+        }
+        Insert: {
+          changed_at?: string
+          company_id: string
+          field_changed: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          partner_id: string
+          user_id?: string | null
+        }
+        Update: {
+          changed_at?: string
+          company_id?: string
+          field_changed?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          partner_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_memo_audit_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_memo_audit_log_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_memos: {
         Row: {
           benefit_from_them: string | null
