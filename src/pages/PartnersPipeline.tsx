@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Handshake, Plus, Settings, MoreHorizontal, GripVertical, Users } from 'lucide-react';
+import { Handshake, Plus, Settings, MoreHorizontal, GripVertical, Users, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
