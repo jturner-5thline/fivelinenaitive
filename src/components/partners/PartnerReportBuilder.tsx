@@ -399,8 +399,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
 
       const renderTextBlock = (body: string, color = textSecondary) => {
         const lines = body
-          .split('
-')
+          .split('\n')
           .map((line) => line.trim())
           .filter(Boolean);
 
