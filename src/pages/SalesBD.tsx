@@ -56,6 +56,7 @@ export default function SalesBD() {
                 <PartnersByStageCards onNavigateToStage={navigateToStage} />
                 <PartnerSourcedDeals />
                 <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
+                <ReferralSourceLeaderboard />
               </div>
             </TabsContent>
 
