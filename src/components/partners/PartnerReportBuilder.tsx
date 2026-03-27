@@ -205,7 +205,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
 
     // Deals
     if (groupedInsights.deals.length > 0) {
-      texts.deals = `${totalDealsReferred} deal(s) referred during this period with a total estimated value of $${totalReferredValue.toLocaleString()}.\n\n` +
+      texts.deals = `${totalDealsReferred} deal(s) referred during this period with a total estimated value of ${fmtAbbrevValue(totalReferredValue)}.\n\n` +
         groupedInsights.deals
           .map(i => `• ${i.summary} (${format(new Date(i.timestamp), 'MMM d, yyyy')})`)
           .join('\n');
