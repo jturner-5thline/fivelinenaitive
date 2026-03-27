@@ -148,6 +148,13 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                 )}
               </div>
 
+              {/* Partner Memo Button */}
+              <div>
+                <Button size="sm" variant="outline" onClick={() => setShowMemo(true)} className="gap-1.5 w-full">
+                  <FileText className="h-3.5 w-3.5" /> Partner Memo
+                </Button>
+              </div>
+
               {/* Footer Actions */}
               <div className="flex items-center gap-2 pt-4 border-t border-slate-700 mt-4">
                 {editing ? (
