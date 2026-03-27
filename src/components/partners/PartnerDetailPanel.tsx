@@ -269,14 +269,43 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                           <span className="text-sm text-white group-hover:underline">{currentStage?.name || 'Unassigned'}</span>
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-72 bg-slate-900 border-slate-700 text-white p-3" side="right" align="start">
+                      <PopoverContent className="w-80 bg-slate-900 border-slate-700 text-white p-3" side="right" align="start">
                         {latestStageNote ? (
-                          <div className="space-y-1">
-                            <p className="text-xs text-slate-400">
-                              Moved by <span className="text-slate-300 font-medium">{latestStageNote.user_name}</span> on{' '}
-                              {format(new Date(latestStageNote.created_at), 'MMM d, yyyy')}
-                            </p>
-                            <p className="text-sm text-slate-200 leading-relaxed">{latestStageNote.note}</p>
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <p className="text-xs text-slate-400">
+                                Moved by <span className="text-slate-300 font-medium">{latestStageNote.user_name}</span> on{' '}
+                                {format(new Date(latestStageNote.created_at), 'MMM d, yyyy')}
+                              </p>
+                              <p className="text-sm text-slate-200 leading-relaxed">{latestStageNote.note}</p>
+                            </div>
+
+                            {stageHistory.length > 1 && (
+                              <div className="border-t border-slate-700 pt-2">
+                                <button
+                                  onClick={() => setStageHistoryOpen(!stageHistoryOpen)}
+                                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-300 transition-colors font-medium"
+                                >
+                                  {stageHistoryOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                  View Stage History ({stageHistory.length})
+                                </button>
+                                {stageHistoryOpen && (
+                                  <div className="mt-2 space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                                    {stageHistory.map((entry, i) => (
+                                      <div key={i} className="text-xs">
+                                        <p className="text-slate-300">
+                                          <span className="font-medium">{entry.from_stage_name || '—'}</span>
+                                          {' → '}
+                                          <span className="font-medium">{entry.to_stage_name || '—'}</span>
+                                        </p>
+                                        <p className="text-slate-400 mt-0.5 italic">"{entry.note}"</p>
+                                        <p className="text-slate-500 mt-0.5">{entry.user_name}, {format(new Date(entry.created_at), 'MMM d, yyyy')}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <p className="text-xs text-slate-500">No stage move note recorded.</p>
