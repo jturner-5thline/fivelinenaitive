@@ -162,7 +162,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
       </div>
 
       {stalePartners.length === 0 ? (
-        <div className="flex-1 min-h-0 rounded-lg border border-border bg-background/50 flex items-center justify-center p-6">
+        <div className="rounded-lg border border-border bg-background/50 flex items-center justify-center p-6">
           <p className="text-sm text-muted-foreground">All partners are active — no alerts right now.</p>
         </div>
       ) : (
