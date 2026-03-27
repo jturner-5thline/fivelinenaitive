@@ -84,13 +84,14 @@ const STAGE_WORKFLOWS: Record<
       tasks: [
         {
           title: "Follow up on new deal - request materials",
+          descriptionFn: (deal: any) => `Deal: ${deal.name || 'Unknown'} (${deal.company_name || ''})\nContact: ${deal.contact_email || 'N/A'}\nAction: Follow up to collect materials for nAItive.`,
           assigneeRole: "manager" as const,
           dueOffsetDays: 3,
           isRecurring: true,
           recurrenceRuleJson: { interval: 3, unit: "days", stopOn: "materials_added" },
           recurrenceStopConditions: [
             { field: "materials_added_to_naitive", operator: "is_true" },
-            { field: "pipeline", operator: "not_equals", value: "active" },
+            { field: "pipeline_id", operator: "not_equals", value: "active" },
           ],
         },
       ],
