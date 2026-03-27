@@ -9193,6 +9193,78 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_companies: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          partner_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          partner_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          partner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_companies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_companies_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_contacts: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          partner_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          partner_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          partner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_contacts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_memo_audit_log: {
         Row: {
           changed_at: string

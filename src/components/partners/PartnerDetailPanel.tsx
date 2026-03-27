@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { usePipelineStages, useUpdatePartner, useDeletePartner, type Partner } from '@/hooks/usePartnersPipeline';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { PartnerMemoModal } from '@/components/partners/PartnerMemoModal';
+import { PartnerLinkedCompanyContacts } from '@/components/partners/PartnerLinkedCompanyContacts';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -388,8 +389,15 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
 
             {/* Right Column - Content (75%) */}
             <div className="overflow-y-auto p-6 space-y-0 min-w-0">
-              {/* Referred Deals */}
+              {/* Linked Company & Contacts */}
               <div className="pb-5">
+                <PartnerLinkedCompanyContacts partnerId={partner.id} />
+              </div>
+
+              <div className="border-t border-slate-700" />
+
+              {/* Referred Deals */}
+              <div className="py-5">
                 <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">Referred Deals</h3>
                 <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4 text-center">
                   <p className="text-sm text-slate-400">No referred deals found.</p>
