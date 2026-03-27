@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { format } from 'date-fns';
 
-const PARTNER_TYPES = ['Channel Partner', 'Bank'];
+const PARTNER_TYPES = ['Channel', 'Branding', 'Connector'];
 
 export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | null; onClose: () => void }) {
   const { user } = useAuth();
