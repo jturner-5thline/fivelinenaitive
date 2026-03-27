@@ -22,6 +22,7 @@ interface MemoData {
   icp: string;
   benefit_from_us: string;
   benefit_from_them: string;
+  notes: string;
 }
 
 const EMPTY_MEMO: MemoData = {
@@ -30,6 +31,7 @@ const EMPTY_MEMO: MemoData = {
   icp: '',
   benefit_from_us: '',
   benefit_from_them: '',
+  notes: '',
 };
 
 function AutoExpandTextarea({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
