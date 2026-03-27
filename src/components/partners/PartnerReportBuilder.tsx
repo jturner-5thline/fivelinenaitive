@@ -48,10 +48,20 @@ type SectionKey = typeof SECTIONS[number]['key'];
 const TYPE_MAP: Record<string, SectionKey> = {
   stage_move: 'pipeline',
   new_deal: 'deals',
-  memo_update: 'memos',
+  memo_update: 'insights',
   new_partner: 'insights',
   stale_alert: 'insights',
 };
+
+function fmtAbbrevValue(val: number): string {
+  const abs = Math.abs(val);
+  let formatted: string;
+  if (abs >= 1_000_000_000) formatted = `$${(abs / 1_000_000_000).toFixed(2)}B`;
+  else if (abs >= 1_000_000) formatted = `$${(abs / 1_000_000).toFixed(2)}MM`;
+  else if (abs >= 1_000) formatted = `$${(abs / 1_000).toFixed(2)}K`;
+  else formatted = `$${abs.toFixed(2)}`;
+  return val < 0 ? `(${formatted})` : formatted;
+}
 
 const DONUT_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
