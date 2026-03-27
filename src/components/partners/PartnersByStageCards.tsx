@@ -112,14 +112,14 @@ export function PartnersByStageCards({ onNavigateToStage }: Props) {
             <button
               key={stage.id}
               onClick={() => onNavigateToStage?.(stage.id)}
-              className="group flex flex-col gap-1 rounded-lg border border-border bg-card p-3 text-left hover:border-muted-foreground/40 hover:bg-muted/30 transition-all flex-1 min-w-0"
+              className="group flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-3 hover:border-muted-foreground/40 hover:bg-muted/30 transition-all flex-1 min-w-0"
             >
-              <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
                 <span className="text-[11px] text-muted-foreground truncate">{stage.name}</span>
               </div>
               <span className="text-xl font-bold">{count}</span>
-              <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground group-hover:text-primary transition-colors">
+              <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground group-hover:text-primary transition-colors self-start">
                 View <ChevronRight className="h-2.5 w-2.5" />
               </div>
             </button>
