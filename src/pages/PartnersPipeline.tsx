@@ -169,6 +169,9 @@ export default function PartnersPipeline() {
         </div>
       </div>
 
+      {/* Referral Sources */}
+      <ReferralSourcesSection />
+
       {/* Kanban Board */}
       {isLoading ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
