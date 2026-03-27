@@ -1,14 +1,28 @@
 import { Helmet } from "react-helmet-async";
 import { Users, Mail, Handshake } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PartnersByStageCards } from "@/components/partners/PartnersByStageCards";
+import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
+import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
+import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
+import { usePartners } from "@/hooks/usePartnersPipeline";
 
 const EmailDesigner = lazy(() => import("./EmailDesigner"));
 const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
 export default function SalesBD() {
+  const [activeTab, setActiveTab] = useState("email-designer");
+  const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
+  const { data: partners = [] } = usePartners();
+  const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
+
+  const navigateToStage = (stageId: string) => {
+    setActiveTab("partners-pipeline");
+    // Could pass stageId filter in the future
+  };
+
   return (
     <>
       <Helmet>
@@ -23,7 +37,7 @@ export default function SalesBD() {
             </p>
           </div>
 
-          <Tabs defaultValue="email-designer">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="overview" className="gap-1.5">
                 <Users className="h-3.5 w-3.5" /> Overview
@@ -37,27 +51,10 @@ export default function SalesBD() {
             </TabsList>
 
             <TabsContent value="overview">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Coming Soon</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription>
-                      Sales tracking and BD tools will be available here.
-                    </CardDescription>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="mt-12 flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-                <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold">Sales & Business Development</h3>
-                <p className="text-muted-foreground max-w-md mt-2">
-                  This page will help you manage outreach campaigns, track prospective clients,
-                  monitor referral partnerships, and analyze your sales funnel performance.
-                </p>
+              <div className="space-y-8">
+                <PartnersByStageCards onNavigateToStage={navigateToStage} />
+                <PartnerSourcedDeals />
+                <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
               </div>
             </TabsContent>
 
@@ -75,6 +72,8 @@ export default function SalesBD() {
           </Tabs>
         </div>
       </div>
+
+      <PartnerDetailPanel partner={viewPartner} onClose={() => setViewPartnerId(null)} />
     </>
   );
 }
