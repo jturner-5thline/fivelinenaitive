@@ -81,7 +81,7 @@ function AutoExpandTextarea({ value, onChange, placeholder }: { value: string; o
   );
 }
 
-export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }: PartnerMemoModalProps) {
+export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName, onReadReceiptUpdated }: PartnerMemoModalProps) {
   const { company } = useCompany();
   const { user } = useAuth();
   const [memo, setMemo] = useState<MemoData>(EMPTY_MEMO);
@@ -90,6 +90,20 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
   const [saving, setSaving] = useState(false);
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  const updateReadReceipt = useCallback(async (latestAuditId?: string) => {
+    if (!partnerId || !user?.id || !company?.id) return;
+    const auditId = latestAuditId || auditLog[0]?.id;
+    if (!auditId) return;
+    await supabase.from('partner_memo_read_receipts' as any).upsert({
+      partner_id: partnerId,
+      user_id: user.id,
+      company_id: company.id,
+      last_seen_audit_id: auditId,
+      last_seen_at: new Date().toISOString(),
+    }, { onConflict: 'partner_id,user_id' });
+    onReadReceiptUpdated?.();
+  }, [partnerId, user?.id, company?.id, auditLog, onReadReceiptUpdated]);
 
   const fetchAuditLog = useCallback(async () => {
     if (!partnerId) return;
