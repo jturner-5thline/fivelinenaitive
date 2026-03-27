@@ -6,6 +6,59 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ── Recurrence stop-condition helpers ──────────────────────────────
+
+interface StopCondition {
+  field: string;
+  operator: string;
+  value?: unknown;
+}
+
+function evaluateStopConditions(
+  conditions: StopCondition[] | null | undefined,
+  task: Record<string, unknown>,
+  deal: Record<string, unknown>
+): boolean {
+  if (!conditions || !Array.isArray(conditions) || conditions.length === 0) return false;
+
+  return conditions.some((c) => {
+    const dealValue = deal[c.field];
+
+    // Special: deal_stage_changed  – stop if deal stage no longer equals the expected value
+    if (c.field === 'deal_stage_changed' && c.operator === 'not_equals') {
+      return deal.stage !== c.value;
+    }
+
+    // Special: manager_move_forward_decision
+    if (c.field === 'manager_move_forward_decision' && c.operator === 'equals' && c.value === true) {
+      return dealValue === true;
+    }
+    if (c.field === 'manager_move_forward_decision' && c.operator === 'is_true') {
+      return dealValue === true;
+    }
+
+    // Special: prop_issued – stop if deal has moved past nda_materials_stage
+    if (c.field === 'prop_issued' && c.operator === 'equals' && c.value === true) {
+      const pastStages = ['closing', 'closed_won', 'closed_lost', 'funded', 'agreement_pending'];
+      return pastStages.includes(String(deal.stage || ''));
+    }
+
+    // Generic operators
+    switch (c.operator) {
+      case 'is_true':
+        return dealValue === true;
+      case 'is_false':
+        return dealValue === false || dealValue === null || dealValue === undefined;
+      case 'equals':
+        return dealValue === c.value;
+      case 'not_equals':
+        return dealValue !== c.value;
+      default:
+        return false;
+    }
+  });
+}
+
 interface ScheduledAction {
   id: string;
   workflow_run_id: string;
@@ -120,6 +173,125 @@ serve(async (req) => {
         });
       }
     }
+
+    // ── Process recurring wf_tasks ────────────────────────────────
+    console.log('[recurring-tasks] Checking for due recurring tasks...');
+    const { data: dueTasks, error: recurError } = await supabase
+      .from('wf_tasks')
+      .select('*')
+      .eq('is_recurring', true)
+      .eq('status', 'open')
+      .lte('due_at', now)
+      .limit(100);
+
+    if (recurError) {
+      console.error('[recurring-tasks] Fetch error:', recurError);
+    }
+
+    let recurCompleted = 0;
+    let recurRenewed = 0;
+
+    if (dueTasks && dueTasks.length > 0) {
+      console.log(`[recurring-tasks] Found ${dueTasks.length} due recurring tasks`);
+
+      for (const task of dueTasks) {
+        const dealId = task.deal_id;
+
+        // Fetch associated deal (try wf_deals first, then deals)
+        let deal: Record<string, unknown> | null = null;
+        const { data: wfDeal } = await supabase
+          .from('wf_deals')
+          .select('*')
+          .eq('id', dealId)
+          .maybeSingle();
+
+        if (wfDeal) {
+          deal = wfDeal;
+        } else {
+          const { data: mainDeal } = await supabase
+            .from('deals')
+            .select('*')
+            .eq('id', dealId)
+            .maybeSingle();
+          deal = mainDeal;
+        }
+
+        if (!deal) {
+          console.log(`[recurring-tasks] Deal ${dealId} not found, marking task done`);
+          await supabase.from('wf_tasks').update({ status: 'done' }).eq('id', task.id);
+          recurCompleted++;
+          continue;
+        }
+
+        // Evaluate stop conditions
+        const stopConditions: StopCondition[] | null = task.recurrence_stop_conditions;
+
+        if (evaluateStopConditions(stopConditions, task, deal)) {
+          console.log(`[recurring-tasks] Stop condition met for "${task.title}" – completing`);
+          await supabase.from('wf_tasks').update({ status: 'done' }).eq('id', task.id);
+          await supabase.from('deals').update({ next_follow_up_at: null }).eq('id', dealId);
+          await supabase.from('wf_deals').update({ next_follow_up_at: null }).eq('id', dealId);
+          recurCompleted++;
+          continue;
+        }
+
+        // No stop condition met → create next occurrence
+        const recurrenceRule = task.recurrence_rule_json as Record<string, unknown> | null;
+        const intervalDays = (recurrenceRule?.interval as number) || 3;
+        const newDueAt = new Date(Date.now() + intervalDays * 86400000).toISOString();
+
+        console.log(`[recurring-tasks] Renewing "${task.title}" – next due: ${newDueAt}`);
+
+        const { error: insertErr } = await supabase.from('wf_tasks').insert({
+          deal_id: task.deal_id,
+          title: task.title,
+          description: task.description,
+          status: 'open',
+          assignee_id: task.assignee_id,
+          created_by_id: task.created_by_id,
+          workflow_owner_id: task.workflow_owner_id,
+          workflow_key: task.workflow_key,
+          trigger_source: task.trigger_source,
+          is_recurring: true,
+          recurrence_rule_json: task.recurrence_rule_json,
+          recurrence_stop_conditions: task.recurrence_stop_conditions,
+          due_at: newDueAt,
+          org_company_id: task.org_company_id,
+        });
+
+        if (insertErr) {
+          console.error(`[recurring-tasks] Insert error for "${task.title}":`, insertErr);
+          continue;
+        }
+
+        // Complete old task
+        await supabase.from('wf_tasks').update({ status: 'done' }).eq('id', task.id);
+
+        // Update next_follow_up_at on the deal
+        await supabase.from('deals').update({ next_follow_up_at: newDueAt }).eq('id', dealId);
+        await supabase.from('wf_deals').update({ next_follow_up_at: newDueAt }).eq('id', dealId);
+
+        // Log renewal
+        await supabase.from('wf_workflows_log').insert({
+          workflow_name: `recurring_renewal_${task.workflow_key || 'unknown'}`,
+          trigger_type: 'stage_change',
+          deal_id: dealId,
+          org_company_id: task.org_company_id,
+          metadata_json: {
+            action: 'recurring_renewal',
+            old_task_id: task.id,
+            new_due_at: newDueAt,
+            interval_days: intervalDays,
+          },
+        });
+
+        recurRenewed++;
+        results.push({ actionId: task.id, success: true, message: `Recurring task "${task.title}" renewed` });
+      }
+    }
+
+    console.log(`[recurring-tasks] Done. Completed: ${recurCompleted}, Renewed: ${recurRenewed}`);
+    // ── End recurring tasks ────────────────────────────────────────
 
     const successCount = results.filter(r => r.success).length;
     const failedCount = results.filter(r => !r.success).length;
