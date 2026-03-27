@@ -9241,6 +9241,55 @@ export type Database = {
           },
         ]
       }
+      partner_memo_read_receipts: {
+        Row: {
+          company_id: string
+          id: string
+          last_seen_at: string
+          last_seen_audit_id: string | null
+          partner_id: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          last_seen_at?: string
+          last_seen_audit_id?: string | null
+          partner_id: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          last_seen_at?: string
+          last_seen_audit_id?: string | null
+          partner_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_memo_read_receipts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_memo_read_receipts_last_seen_audit_id_fkey"
+            columns: ["last_seen_audit_id"]
+            isOneToOne: false
+            referencedRelation: "partner_memo_audit_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_memo_read_receipts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_memos: {
         Row: {
           benefit_from_them: string | null
