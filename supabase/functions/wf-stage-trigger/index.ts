@@ -204,15 +204,36 @@ const STAGE_WORKFLOWS: Record<
   agreement_pending: [
     {
       key: "agreement_pending_followup",
+      preCondition: async (deal: any, supabase: any) => {
+        // Check that agreement has been sent
+        const { data: mainDeal } = await supabase
+          .from("deals")
+          .select("agreement_sent")
+          .eq("id", deal.id)
+          .maybeSingle();
+        if (!mainDeal?.agreement_sent) {
+          console.warn(`[wf-stage-trigger] agreement_pending_followup: agreement not sent yet, skipping`);
+          return false;
+        }
+        return true;
+      },
       tasks: [
         {
           title: "Follow up on agreement",
-          assigneeRole: "manager",
+          assigneeRole: "manager" as const,
           dueOffsetDays: 4,
           isRecurring: true,
           recurrenceRuleJson: { interval: 4, unit: "days" },
+          recurrenceStopConditions: [
+            { field: "manager_move_forward_decision", operator: "is_true" },
+            { field: "pipeline", operator: "not_equals", value: "active" },
+          ],
         },
       ],
+      postTaskHook: async (deal: any, dueAt: string, supabase: any) => {
+        await supabase.from("deals").update({ next_follow_up_at: dueAt }).eq("id", deal.id);
+        await supabase.from("wf_deals").update({ next_follow_up_at: dueAt }).eq("id", deal.id);
+      },
       actions: [
         { type: "send_email", config: { template: "agreement_followup", subject: "Follow-up: Agreement for {deal_name}" } },
       ],
