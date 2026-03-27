@@ -166,7 +166,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
           <p className="text-sm text-muted-foreground">All partners are active — no alerts right now.</p>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 space-y-2 overflow-y-auto">
+        <div className="space-y-2 overflow-y-auto max-h-[420px] scrollbar-thin">
           {displayed.map(sp => (
             <div
               key={sp.id}
