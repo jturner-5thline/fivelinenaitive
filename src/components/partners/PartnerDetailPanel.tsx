@@ -97,9 +97,9 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
     <Dialog open={!!partner} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-[90vw] w-[90vw] max-h-[88vh] h-[88vh] p-0 bg-slate-800 border-slate-700 text-white overflow-hidden">
         {partner && (
-          <div className="flex h-full">
-            {/* Left Column - Partner Info (~40%) */}
-            <div className="w-[38%] border-r border-slate-700 p-6 flex flex-col">
+          <div className="grid h-full overflow-auto md:overflow-hidden grid-cols-1 md:[grid-template-columns:minmax(280px,25%)_1fr]">
+            {/* Left Column - Partner Info (25%) */}
+            <div className="border-b md:border-b-0 md:border-r border-slate-700 p-6 flex flex-col md:overflow-y-auto">
               {/* Header */}
               <div className="mb-6">
                 {editing ? (
@@ -226,8 +226,8 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
               </div>
             </div>
 
-            {/* Right Column - Content (~60%) */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-0">
+            {/* Right Column - Content (75%) */}
+            <div className="overflow-y-auto p-6 space-y-0 min-w-0">
               {/* Referred Deals */}
               <div className="pb-5">
                 <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">Referred Deals</h3>
