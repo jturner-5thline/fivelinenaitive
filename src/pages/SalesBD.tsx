@@ -7,6 +7,7 @@ import { PartnersByStageCards } from "@/components/partners/PartnersByStageCards
 import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
 import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
 import { ReferralSourceLeaderboard } from "@/components/partners/ReferralSourceLeaderboard";
+import { PartnerInsightsFeed } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 
@@ -59,6 +60,7 @@ export default function SalesBD() {
                   <PartnerSourcedDeals />
                 </div>
                 <ReferralSourceLeaderboard />
+                <PartnerInsightsFeed />
               </div>
             </TabsContent>
 
