@@ -86,6 +86,7 @@ export function PartnerMemoModal({ open, onOpenChange, partnerId, partnerName }:
             icp: d.icp || '',
             benefit_from_us: d.benefit_from_us || '',
             benefit_from_them: d.benefit_from_them || '',
+            notes: d.notes || '',
           });
         } else {
           setMemo(EMPTY_MEMO);
