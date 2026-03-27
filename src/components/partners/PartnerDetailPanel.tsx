@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Pencil } from 'lucide-react';
+import { Trash2, Pencil, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { usePipelineStages, useUpdatePartner, useDeletePartner, type Partner } from '@/hooks/usePartnersPipeline';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { PartnerMemoModal } from '@/components/partners/PartnerMemoModal';
 import { format } from 'date-fns';
 
 const PARTNER_TYPES = ['Channel Partner', 'Bank'];
