@@ -204,15 +204,27 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth: CRON_SECRET for scheduled invocations
+  // Auth: service role key or CRON_SECRET
   const authHeader = req.headers.get('Authorization');
   const expectedSecret = Deno.env.get('CRON_SECRET');
-  if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
-    console.error('[deal-summaries] Unauthorized - invalid CRON_SECRET');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const token = authHeader?.replace('Bearer ', '');
+  if (token !== expectedSecret && token !== serviceRoleKey) {
+    console.error('[deal-summaries] Unauthorized');
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
+  // Parse body for test mode
+  let testMode: { enabled: boolean; email?: string; types?: string[] } = { enabled: false };
+  try {
+    const body = await req.json();
+    if (body?.test && body?.email) {
+      testMode = { enabled: true, email: body.email, types: body.types || ['daily', 'weekly'] };
+      console.log(`[deal-summaries] TEST MODE: sending ${testMode.types?.join(', ')} to ${testMode.email}`);
+    }
+  } catch { /* no body = normal cron mode */ }
 
   const resendApiKey = Deno.env.get('RESEND_API_KEY');
   if (!resendApiKey) {
