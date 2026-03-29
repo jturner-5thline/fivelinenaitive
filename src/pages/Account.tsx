@@ -7,6 +7,7 @@ import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { CompanySettings } from '@/components/settings/CompanySettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { SecuritySettings } from '@/components/settings/SecuritySettings';
+import { DealSummarySettings } from '@/components/settings/DealSummarySettings';
 
 export default function Account() {
   return (
@@ -38,6 +39,8 @@ export default function Account() {
             <CompanySettings />
 
             <SecuritySettings />
+
+            <DealSummarySettings />
 
             <NotificationSettings />
           </div>
