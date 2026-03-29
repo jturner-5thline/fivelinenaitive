@@ -9030,6 +9030,53 @@ export type Database = {
           },
         ]
       }
+      org_notification_defaults: {
+        Row: {
+          company_id: string
+          created_at: string
+          daily_deal_summary_enabled: boolean
+          daily_deal_summary_time_et: string | null
+          daily_deal_summary_weekdays_only: boolean
+          id: string
+          updated_at: string
+          weekly_deal_summary_day_et: string | null
+          weekly_deal_summary_enabled: boolean
+          weekly_deal_summary_time_et: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          daily_deal_summary_enabled?: boolean
+          daily_deal_summary_time_et?: string | null
+          daily_deal_summary_weekdays_only?: boolean
+          id?: string
+          updated_at?: string
+          weekly_deal_summary_day_et?: string | null
+          weekly_deal_summary_enabled?: boolean
+          weekly_deal_summary_time_et?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          daily_deal_summary_enabled?: boolean
+          daily_deal_summary_time_et?: string | null
+          daily_deal_summary_weekdays_only?: boolean
+          id?: string
+          updated_at?: string
+          weekly_deal_summary_day_et?: string | null
+          weekly_deal_summary_enabled?: boolean
+          weekly_deal_summary_time_et?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_notification_defaults_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_tracking_settings: {
         Row: {
           company_id: string
@@ -12742,6 +12789,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_deal_summary_preferences: {
+        Row: {
+          created_at: string
+          daily_deal_summary_enabled: boolean | null
+          daily_deal_summary_time_et: string | null
+          id: string
+          last_daily_deal_summary_sent_at: string | null
+          last_weekly_deal_summary_sent_at: string | null
+          updated_at: string
+          user_id: string
+          weekly_deal_summary_day_et: string | null
+          weekly_deal_summary_enabled: boolean | null
+          weekly_deal_summary_time_et: string | null
+        }
+        Insert: {
+          created_at?: string
+          daily_deal_summary_enabled?: boolean | null
+          daily_deal_summary_time_et?: string | null
+          id?: string
+          last_daily_deal_summary_sent_at?: string | null
+          last_weekly_deal_summary_sent_at?: string | null
+          updated_at?: string
+          user_id: string
+          weekly_deal_summary_day_et?: string | null
+          weekly_deal_summary_enabled?: boolean | null
+          weekly_deal_summary_time_et?: string | null
+        }
+        Update: {
+          created_at?: string
+          daily_deal_summary_enabled?: boolean | null
+          daily_deal_summary_time_et?: string | null
+          id?: string
+          last_daily_deal_summary_sent_at?: string | null
+          last_weekly_deal_summary_sent_at?: string | null
+          updated_at?: string
+          user_id?: string
+          weekly_deal_summary_day_et?: string | null
+          weekly_deal_summary_enabled?: boolean | null
+          weekly_deal_summary_time_et?: string | null
+        }
+        Relationships: []
       }
       user_notification_preferences: {
         Row: {
