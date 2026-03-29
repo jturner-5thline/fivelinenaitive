@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
     }
   } catch { /* no body = normal cron mode */ }
 
-  // Auth: service role key, CRON_SECRET, or test mode (test emails only)
+  // Auth: service role key or CRON_SECRET (test mode bypasses for internal use)
   const authHeader = req.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '') || '';
   const expectedSecret = Deno.env.get('CRON_SECRET');
