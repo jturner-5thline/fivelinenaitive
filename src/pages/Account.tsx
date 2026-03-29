@@ -40,6 +40,8 @@ export default function Account() {
 
             <SecuritySettings />
 
+            <DealSummarySettings />
+
             <NotificationSettings />
           </div>
         </main>
