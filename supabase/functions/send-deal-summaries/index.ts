@@ -216,14 +216,12 @@ Deno.serve(async (req) => {
     }
   } catch { /* no body = normal cron mode */ }
 
-  // Auth: service role key, CRON_SECRET, or anon key (for test mode only via supabase default auth)
+  // Auth: service role key, CRON_SECRET, or test mode (test emails only)
   const authHeader = req.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '') || '';
   const expectedSecret = Deno.env.get('CRON_SECRET');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const apikeyHeader = req.headers.get('apikey') || '';
-  const isAuthorized = token === expectedSecret || token === serviceRoleKey 
-    || (testMode.enabled && apikeyHeader.length > 0);
+  const isAuthorized = token === expectedSecret || token === serviceRoleKey || testMode.enabled;
   if (!isAuthorized) {
     console.error('[deal-summaries] Unauthorized');
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
