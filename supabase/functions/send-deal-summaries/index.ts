@@ -337,59 +337,52 @@ Deno.serve(async (req) => {
     const results: { userId: string; type: string; success: boolean; error?: string }[] = [];
     const todayETStr = `${etNow.getFullYear()}-${String(etNow.getMonth() + 1).padStart(2, '0')}-${String(etNow.getDate()).padStart(2, '0')}`;
 
-    // ── TEST MODE: find a user with deals and send test emails ──
+    // ── TEST MODE: send with fake sample data ──
     if (testMode.enabled) {
-      // Find any user with deals to use as data source
-      let testUserId: string | null = null;
-      for (const eff of effectiveUsers) {
-        testUserId = eff.userId;
-        break;
-      }
-      // If no user in effectiveUsers, pick any user with deals
-      if (!testUserId) {
-        const { data: anyDeal } = await supabaseAdmin.from('deals').select('user_id').limit(1).single();
-        testUserId = anyDeal?.user_id || null;
-      }
-      if (!testUserId) {
-        return new Response(JSON.stringify({ error: 'No users with deals found for test' }), {
-          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+      const useFakeData = testMode.types?.includes('fake') || true; // always use fake for visual testing
+      const userName = 'Jordan';
 
-      // Get profile
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('display_name, first_name')
-        .eq('user_id', testUserId)
-        .maybeSingle();
-      const userName = profile?.first_name || profile?.display_name || 'there';
+      const fakeDeals = [
+        { company: 'Meridian Capital Partners', stage: 'Pre-Credit Needs', value: 12500000, created_at: new Date().toISOString(), contact_email: 'sarah@meridiancap.com', contact_name: 'Sarah Chen' },
+        { company: 'Blackstone Realty Group', stage: 'NDA & Materials Sent', value: 8750000, created_at: new Date(Date.now() - 86400000).toISOString(), contact_email: 'mike@blackstonerealty.com', contact_name: 'Mike Rodriguez' },
+        { company: 'Summit Ridge Holdings', stage: 'Submitted to Lenders', value: 22000000, created_at: new Date(Date.now() - 172800000).toISOString(), contact_email: 'jlee@summitridge.com', contact_name: 'Jennifer Lee' },
+        { company: 'Cornerstone Development LLC', stage: 'Agreement Pending', value: 5200000, created_at: new Date(Date.now() - 259200000).toISOString(), contact_email: 'dave@cornerstonedev.com', contact_name: 'David Park' },
+      ];
 
-      // Get deals
-      const { data: deals } = await supabaseAdmin
-        .from('deals')
-        .select('id, company, stage, value, created_at, contact_email, contact_name')
-        .eq('user_id', testUserId);
+      const fakeActionItems = [
+        { title: 'Follow up on NDA signature — awaiting countersign from borrower counsel', deal_name: 'Meridian Capital Partners' },
+        { title: 'Request updated rent roll and T-12 operating statement', deal_name: 'Blackstone Realty Group' },
+        { title: 'Schedule pre-credit call with underwriting team', deal_name: 'Summit Ridge Holdings' },
+        { title: 'Review and send engagement letter for client approval', deal_name: 'Cornerstone Development LLC' },
+        { title: 'Upload environmental Phase I report to data room', deal_name: 'Meridian Capital Partners' },
+        { title: 'Confirm property insurance binder with carrier', deal_name: 'Blackstone Realty Group' },
+      ];
 
-      const dealIds = (deals || []).map(d => d.id);
-      const dealNameMap: Record<string, string> = {};
-      (deals || []).forEach(d => { dealNameMap[d.id] = d.company || 'Unknown'; });
+      const fakeLenderActivity = [
+        { description: 'JPMorgan Chase submitted initial term sheet — 5.75% fixed, 75% LTV', deal_name: 'Summit Ridge Holdings' },
+        { description: 'Wells Fargo requested additional collateral documentation', deal_name: 'Meridian Capital Partners' },
+        { description: 'PNC Bank declined — leverage too high for current program', deal_name: 'Blackstone Realty Group' },
+        { description: 'Signature Bank moved to full underwriting review', deal_name: 'Summit Ridge Holdings' },
+        { description: 'KeyBank updated rate lock to 6.10% — expires April 15', deal_name: 'Cornerstone Development LLC' },
+      ];
 
-      const windowStart = new Date(Date.now() - 7 * 86400000).toISOString();
+      const fakeMilestoneActivity = [
+        { title: 'Appraisal ordered with CBRE — estimated delivery April 8', deal_name: 'Summit Ridge Holdings', completed: false },
+        { title: 'Title search completed — no liens found', deal_name: 'Meridian Capital Partners', completed: true },
+        { title: 'Environmental Phase II cleared — no further action required', deal_name: 'Blackstone Realty Group', completed: true },
+        { title: 'Borrower financial statements received and uploaded', deal_name: 'Cornerstone Development LLC', completed: true },
+        { title: 'Zoning confirmation letter pending from municipality', deal_name: 'Summit Ridge Holdings', completed: false },
+      ];
 
-      const [actionRes, lenderRes, milestoneRes] = await Promise.all([
-        supabaseAdmin.from('wf_tasks').select('title, description, deal_id, status').in('deal_id', dealIds).in('status', ['open', 'pending']).limit(20),
-        supabaseAdmin.from('activity_logs').select('description, deal_id, created_at, activity_type').in('deal_id', dealIds).in('activity_type', ['lender_added', 'lender_updated', 'lender_status_changed', 'lender_note_added']).gte('created_at', windowStart).order('created_at', { ascending: false }).limit(15),
-        supabaseAdmin.from('activity_logs').select('description, deal_id, created_at, activity_type').in('deal_id', dealIds).in('activity_type', ['milestone_added', 'milestone_completed', 'milestone_updated']).gte('created_at', windowStart).order('created_at', { ascending: false }).limit(15),
-      ]);
-
-      const enrichedActions = (actionRes.data || []).map(a => ({ ...a, deal_name: dealNameMap[a.deal_id] || '' }));
-      const enrichedLender = (lenderRes.data || []).map(l => ({ ...l, deal_name: dealNameMap[l.deal_id] || '' }));
-      const enrichedMilestones = (milestoneRes.data || []).map(m => ({ title: m.description, deal_name: dealNameMap[m.deal_id] || '', completed: m.activity_type === 'milestone_completed' }));
-
-      const newDeals = (deals || []).filter(d => d.created_at >= windowStart);
-      const emailData = { deals: newDeals, actionItems: enrichedActions, lenderActivity: enrichedLender, milestoneActivity: enrichedMilestones };
+      const emailData = {
+        deals: fakeDeals,
+        actionItems: fakeActionItems,
+        lenderActivity: fakeLenderActivity,
+        milestoneActivity: fakeMilestoneActivity,
+      };
 
       for (const type of (testMode.types || ['daily', 'weekly'])) {
+        if (type === 'fake') continue;
         const email = buildSummaryEmail(type as 'daily' | 'weekly', userName, emailData);
         await resend.emails.send({
           from: 'naitive <noreply@updates.naitive.co>',
@@ -403,7 +396,7 @@ Deno.serve(async (req) => {
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           },
         });
-        results.push({ userId: testUserId, type, success: true });
+        results.push({ userId: 'test', type, success: true });
         console.log(`[deal-summaries] TEST ${type} sent to ${testMode.email}`);
       }
 
