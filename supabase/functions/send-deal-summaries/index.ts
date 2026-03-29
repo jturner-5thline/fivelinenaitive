@@ -204,11 +204,26 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth: CRON_SECRET for scheduled invocations
+  // Parse body for test mode
+  let testMode: { enabled: boolean; email?: string; types?: string[] } = { enabled: false };
+  let bodyParsed = false;
+  try {
+    const body = await req.json();
+    bodyParsed = true;
+    if (body?.test && body?.email) {
+      testMode = { enabled: true, email: body.email, types: body.types || ['daily', 'weekly'] };
+      console.log(`[deal-summaries] TEST MODE: sending ${testMode.types?.join(', ')} to ${testMode.email}`);
+    }
+  } catch { /* no body = normal cron mode */ }
+
+  // Auth: service role key or CRON_SECRET (test mode bypasses for internal use)
   const authHeader = req.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '') || '';
   const expectedSecret = Deno.env.get('CRON_SECRET');
-  if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
-    console.error('[deal-summaries] Unauthorized - invalid CRON_SECRET');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const isAuthorized = token === expectedSecret || token === serviceRoleKey || testMode.enabled;
+  if (!isAuthorized) {
+    console.error('[deal-summaries] Unauthorized');
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -321,6 +336,81 @@ Deno.serve(async (req) => {
 
     const results: { userId: string; type: string; success: boolean; error?: string }[] = [];
     const todayETStr = `${etNow.getFullYear()}-${String(etNow.getMonth() + 1).padStart(2, '0')}-${String(etNow.getDate()).padStart(2, '0')}`;
+
+    // ── TEST MODE: find a user with deals and send test emails ──
+    if (testMode.enabled) {
+      // Find any user with deals to use as data source
+      let testUserId: string | null = null;
+      for (const eff of effectiveUsers) {
+        testUserId = eff.userId;
+        break;
+      }
+      // If no user in effectiveUsers, pick any user with deals
+      if (!testUserId) {
+        const { data: anyDeal } = await supabaseAdmin.from('deals').select('user_id').limit(1).single();
+        testUserId = anyDeal?.user_id || null;
+      }
+      if (!testUserId) {
+        return new Response(JSON.stringify({ error: 'No users with deals found for test' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Get profile
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('display_name, first_name')
+        .eq('user_id', testUserId)
+        .maybeSingle();
+      const userName = profile?.first_name || profile?.display_name || 'there';
+
+      // Get deals
+      const { data: deals } = await supabaseAdmin
+        .from('deals')
+        .select('id, company, stage, value, created_at, contact_email, contact_name')
+        .eq('user_id', testUserId);
+
+      const dealIds = (deals || []).map(d => d.id);
+      const dealNameMap: Record<string, string> = {};
+      (deals || []).forEach(d => { dealNameMap[d.id] = d.company || 'Unknown'; });
+
+      const windowStart = new Date(Date.now() - 7 * 86400000).toISOString();
+
+      const [actionRes, lenderRes, milestoneRes] = await Promise.all([
+        supabaseAdmin.from('wf_tasks').select('title, description, deal_id, status').in('deal_id', dealIds).in('status', ['open', 'pending']).limit(20),
+        supabaseAdmin.from('activity_logs').select('description, deal_id, created_at, activity_type').in('deal_id', dealIds).in('activity_type', ['lender_added', 'lender_updated', 'lender_status_changed', 'lender_note_added']).gte('created_at', windowStart).order('created_at', { ascending: false }).limit(15),
+        supabaseAdmin.from('activity_logs').select('description, deal_id, created_at, activity_type').in('deal_id', dealIds).in('activity_type', ['milestone_added', 'milestone_completed', 'milestone_updated']).gte('created_at', windowStart).order('created_at', { ascending: false }).limit(15),
+      ]);
+
+      const enrichedActions = (actionRes.data || []).map(a => ({ ...a, deal_name: dealNameMap[a.deal_id] || '' }));
+      const enrichedLender = (lenderRes.data || []).map(l => ({ ...l, deal_name: dealNameMap[l.deal_id] || '' }));
+      const enrichedMilestones = (milestoneRes.data || []).map(m => ({ title: m.description, deal_name: dealNameMap[m.deal_id] || '', completed: m.activity_type === 'milestone_completed' }));
+
+      const newDeals = (deals || []).filter(d => d.created_at >= windowStart);
+      const emailData = { deals: newDeals, actionItems: enrichedActions, lenderActivity: enrichedLender, milestoneActivity: enrichedMilestones };
+
+      for (const type of (testMode.types || ['daily', 'weekly'])) {
+        const email = buildSummaryEmail(type as 'daily' | 'weekly', userName, emailData);
+        await resend.emails.send({
+          from: 'naitive <noreply@updates.naitive.co>',
+          reply_to: 'support@naitive.co',
+          to: [testMode.email!],
+          subject: `[TEST] ${email.subject}`,
+          html: email.html,
+          text: email.text,
+          headers: {
+            'List-Unsubscribe': '<https://naitive.co/unsubscribe>',
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
+        });
+        results.push({ userId: testUserId, type, success: true });
+        console.log(`[deal-summaries] TEST ${type} sent to ${testMode.email}`);
+      }
+
+      return new Response(JSON.stringify({ success: true, testMode: true, processed: results.length, results }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     for (const eff of effectiveUsers) {
       // Check daily
