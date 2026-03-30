@@ -94,7 +94,8 @@ export function useContacts(params: ContactsListParams = {}) {
     queryFn: async () => {
       let query = supabase
         .from('contacts')
-        .select(LIST_COLUMNS, { count: 'exact' });
+        .select(LIST_COLUMNS, { count: 'exact' })
+        .eq('org_company_id', company!.id);
 
       // Server-side search
       if (search?.trim()) {
