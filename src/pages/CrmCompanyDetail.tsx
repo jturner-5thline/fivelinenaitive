@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Building2, Users, Briefcase, Globe, MapPin, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Building2, Users, Briefcase, Globe, MapPin, Trash2, X, CheckSquare } from 'lucide-react';
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
