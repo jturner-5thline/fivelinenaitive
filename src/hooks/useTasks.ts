@@ -414,6 +414,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
       queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
     },
     onError: () => toast.error('Failed to update task'),
   });
