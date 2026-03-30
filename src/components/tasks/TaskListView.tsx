@@ -187,13 +187,18 @@ export function TaskListView({
   const overdueTasks = tasks.filter(t =>
     t.due_date && t.due_date < todayStr && t.status !== 'complete'
   );
+  const overdueTaskIds = new Set(overdueTasks.map(task => task.id));
 
   // Build groups based on groupBy mode
   let groups: { key: string; label: string; tasks: Task[] }[];
   if (groupBy === 'focus') groups = getFocusGroups(tasks);
   else if (groupBy === 'time') groups = getTimeGroups(tasks);
   else if (groupBy === 'priority') groups = getPriorityGroups(tasks);
-  else groups = statusGroups.map(g => ({ key: g.key, label: g.label, tasks: tasks.filter(t => t.status === g.key) }));
+  else groups = statusGroups.map(g => ({
+    key: g.key,
+    label: g.label,
+    tasks: tasks.filter(t => t.status === g.key && !overdueTaskIds.has(t.id)),
+  }));
 
   const allTaskIds = tasks.map(t => t.id);
   const draggedTask = dragActiveId ? tasks.find(t => t.id === dragActiveId) : null;
