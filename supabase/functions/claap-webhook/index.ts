@@ -34,12 +34,232 @@ interface ClaapWebhookPayload {
   };
 }
 
+/** Dice coefficient for fuzzy matching */
+function diceCoefficient(a: string, b: string): number {
+  const s1 = a.toLowerCase().trim();
+  const s2 = b.toLowerCase().trim();
+  if (s1 === s2) return 1;
+  if (s1.length < 2 || s2.length < 2) return 0;
+  const bigrams1 = new Map<string, number>();
+  for (let i = 0; i < s1.length - 1; i++) {
+    const bg = s1.substring(i, i + 2);
+    bigrams1.set(bg, (bigrams1.get(bg) || 0) + 1);
+  }
+  let inter = 0;
+  for (let i = 0; i < s2.length - 1; i++) {
+    const bg = s2.substring(i, i + 2);
+    const c = bigrams1.get(bg) || 0;
+    if (c > 0) { bigrams1.set(bg, c - 1); inter++; }
+  }
+  return (2.0 * inter) / (s1.length - 1 + (s2.length - 1));
+}
+
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+}
+
+interface MatchResult {
+  matched: boolean;
+  matchType: "lender" | "company" | "contact" | null;
+  matchSource: string | null;
+  lenderId: string | null;
+  crmCompanyId: string | null;
+  contactId: string | null;
+  dealIds: string[];
+  callType: string | null;
+}
+
+async function runSmartMatching(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  title: string | null,
+  participants: Array<{ name: string; email: string; domain: string; is_internal: boolean }>,
+  configCompanyId: string | null,
+): Promise<MatchResult> {
+  const result: MatchResult = {
+    matched: false, matchType: null, matchSource: null,
+    lenderId: null, crmCompanyId: null, contactId: null,
+    dealIds: [], callType: null,
+  };
+
+  const externalParticipants = participants.filter(p => !p.is_internal);
+  const externalEmails = externalParticipants.map(p => p.email).filter(Boolean);
+  const externalDomains = [...new Set(externalParticipants.map(p => p.domain).filter(Boolean))];
+  const titleLower = (title || "").toLowerCase();
+
+  // ---- 1. Contact match (email exact match) ----
+  if (externalEmails.length > 0) {
+    const { data: contactMatches } = await supabaseAdmin
+      .from("contacts")
+      .select("id, crm_company_id, first_name, last_name, email")
+      .in("email", externalEmails)
+      .limit(10);
+
+    if (contactMatches && contactMatches.length > 0) {
+      const contact = contactMatches[0];
+      result.matched = true;
+      result.matchType = "contact";
+      result.matchSource = `Contact email match: ${contact.email}`;
+      result.contactId = contact.id;
+      result.crmCompanyId = contact.crm_company_id || null;
+      result.callType = "Contact Call";
+
+      // Find deals linked to this contact
+      const { data: contactDeals } = await supabaseAdmin
+        .from("contact_deals")
+        .select("deal_id")
+        .eq("contact_id", contact.id);
+      if (contactDeals) result.dealIds = contactDeals.map(cd => cd.deal_id);
+
+      return result;
+    }
+  }
+
+  // ---- 2. Company match (domain or name) ----
+  for (const domain of externalDomains) {
+    const { data: companyMatches } = await supabaseAdmin
+      .from("crm_companies")
+      .select("id, name, domain, additional_domains")
+      .or(`domain.ilike.%${domain}%,additional_domains.cs.{${domain}}`)
+      .limit(5);
+
+    if (companyMatches && companyMatches.length > 0) {
+      const company = companyMatches[0];
+      result.matched = true;
+      result.matchType = "company";
+      result.matchSource = `Company domain match: ${domain} → ${company.name}`;
+      result.crmCompanyId = company.id;
+      result.callType = "Company Call";
+
+      // Find deals linked to this company
+      const { data: deals } = await supabaseAdmin
+        .from("deals")
+        .select("id")
+        .eq("status", "active")
+        .ilike("company", `%${company.name}%`)
+        .limit(5);
+      if (deals) result.dealIds = deals.map(d => d.id);
+
+      return result;
+    }
+  }
+
+  // Company name match from title
+  if (titleLower) {
+    const { data: allCompanies } = await supabaseAdmin
+      .from("crm_companies")
+      .select("id, name")
+      .limit(500);
+
+    if (allCompanies) {
+      for (const co of allCompanies) {
+        const coName = normalizeName(co.name);
+        if (coName.length >= 3 && titleLower.includes(coName)) {
+          result.matched = true;
+          result.matchType = "company";
+          result.matchSource = `Company name in title: "${co.name}"`;
+          result.crmCompanyId = co.id;
+          result.callType = "Company Call";
+          return result;
+        }
+        if (diceCoefficient(coName, normalizeName(title || "")) > 0.5) {
+          result.matched = true;
+          result.matchType = "company";
+          result.matchSource = `Fuzzy company name match: "${co.name}"`;
+          result.crmCompanyId = co.id;
+          result.callType = "Company Call";
+          return result;
+        }
+      }
+    }
+  }
+
+  // ---- 3. Lender match (name in title or domain match) ----
+  if (configCompanyId) {
+    // Check lender names against title
+    if (titleLower) {
+      const { data: lenders } = await supabaseAdmin
+        .from("master_lenders")
+        .select("id, name")
+        .eq("company_id", configCompanyId)
+        .limit(500);
+
+      if (lenders) {
+        for (const lender of lenders) {
+          const lenderName = normalizeName(lender.name);
+          if (lenderName.length >= 3 && titleLower.includes(lenderName)) {
+            result.matched = true;
+            result.matchType = "lender";
+            result.matchSource = `Lender name in title: "${lender.name}"`;
+            result.lenderId = lender.id;
+            result.callType = "Lender Call";
+
+            // Find deals with this lender
+            const { data: dealLenders } = await supabaseAdmin
+              .from("deal_lenders")
+              .select("deal_id")
+              .eq("name", lender.name)
+              .limit(10);
+            if (dealLenders) result.dealIds = dealLenders.map(dl => dl.deal_id);
+            return result;
+          }
+          if (diceCoefficient(lenderName, normalizeName(title || "")) > 0.45) {
+            result.matched = true;
+            result.matchType = "lender";
+            result.matchSource = `Fuzzy lender name match: "${lender.name}"`;
+            result.lenderId = lender.id;
+            result.callType = "Lender Call";
+            return result;
+          }
+        }
+      }
+    }
+
+    // Check lender contact domains against participant domains
+    for (const domain of externalDomains) {
+      const { data: lenderContacts } = await supabaseAdmin
+        .from("lender_contacts")
+        .select("lender_id, email")
+        .ilike("email", `%@${domain}`)
+        .limit(5);
+
+      if (lenderContacts && lenderContacts.length > 0) {
+        result.matched = true;
+        result.matchType = "lender";
+        result.matchSource = `Lender contact domain match: ${domain}`;
+        result.lenderId = lenderContacts[0].lender_id;
+        result.callType = "Lender Call";
+        return result;
+      }
+    }
+
+    // Check participant names against lender contact names
+    for (const participant of externalParticipants) {
+      if (!participant.name) continue;
+      const { data: lenderContacts } = await supabaseAdmin
+        .from("lender_contacts")
+        .select("lender_id, name")
+        .ilike("name", `%${participant.name}%`)
+        .limit(3);
+
+      if (lenderContacts && lenderContacts.length > 0) {
+        result.matched = true;
+        result.matchType = "lender";
+        result.matchSource = `Lender contact name match: ${participant.name}`;
+        result.lenderId = lenderContacts[0].lender_id;
+        result.callType = "Lender Call";
+        return result;
+      }
+    }
+  }
+
+  return result;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Always return 200 quickly; log errors for retry
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -57,6 +277,77 @@ Deno.serve(async (req) => {
 
   try {
     const eventType = payload.event;
+
+    // Handle force-sync from UI
+    if (eventType === "force_sync") {
+      const skippedCallId = (payload.data as unknown as { skipped_call_id: string }).skipped_call_id;
+      const userId = (payload.data as unknown as { user_id: string }).user_id;
+
+      if (!skippedCallId) throw new Error("Missing skipped_call_id");
+
+      const { data: skippedCall } = await supabaseAdmin
+        .from("claap_skipped_calls")
+        .select("*")
+        .eq("id", skippedCallId)
+        .single();
+
+      if (!skippedCall) throw new Error("Skipped call not found");
+
+      // Mark as force synced
+      await supabaseAdmin
+        .from("claap_skipped_calls")
+        .update({ force_synced: true, force_synced_by: userId, force_synced_at: new Date().toISOString() })
+        .eq("id", skippedCallId);
+
+      // Create a meeting record from the skipped call data
+      const meetingRecord = {
+        claap_id: skippedCall.claap_id,
+        title: skippedCall.title,
+        recording_url: skippedCall.recording_url,
+        organizer_email: skippedCall.organizer_email,
+        duration_seconds: skippedCall.duration_seconds,
+        started_at: skippedCall.started_at,
+        company_id: skippedCall.company_id,
+        status: "pending_review" as const,
+        call_type: "Force Synced",
+        match_source: "Manually force synced by admin",
+      };
+
+      await supabaseAdmin
+        .from("claap_meetings")
+        .upsert(meetingRecord, { onConflict: "claap_id" });
+
+      // Insert participants
+      const participants = skippedCall.participants as Array<{ name: string; email: string; domain: string; is_internal: boolean }> || [];
+      const { data: meeting } = await supabaseAdmin
+        .from("claap_meetings")
+        .select("id")
+        .eq("claap_id", skippedCall.claap_id)
+        .single();
+
+      if (meeting && participants.length > 0) {
+        await supabaseAdmin
+          .from("claap_meeting_participants")
+          .delete()
+          .eq("meeting_id", meeting.id);
+
+        await supabaseAdmin
+          .from("claap_meeting_participants")
+          .insert(participants.map(p => ({
+            meeting_id: meeting.id,
+            name: p.name,
+            email: p.email,
+            domain: p.domain,
+            is_internal: p.is_internal,
+          })));
+      }
+
+      return new Response(JSON.stringify({ ok: true, status: "force_synced", meeting_id: meeting?.id }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!["recording.completed", "recording.updated"].includes(eventType)) {
       return new Response(JSON.stringify({ ok: true, note: "event ignored" }), {
         status: 200,
@@ -92,8 +383,7 @@ Deno.serve(async (req) => {
     }
     if (!transcript) transcriptMissing = true;
 
-    // Resolve internal domains from config
-    // Try to find config for the organizer's company
+    // Resolve config
     let internalDomains = ["5thlinefinancing.com", "5thline.co"];
     let configCompanyId: string | null = null;
     let minDurationSeconds = 300;
@@ -103,9 +393,9 @@ Deno.serve(async (req) => {
     ];
     let fallbackAdminUserId: string | null = null;
     let taskExpiryDays = 7;
+    let syncAllCalls = false;
 
     if (organizerEmail) {
-      // Find the organizer's company
       const { data: profileData } = await supabaseAdmin
         .from("profiles")
         .select("user_id")
@@ -134,6 +424,7 @@ Deno.serve(async (req) => {
             if (configData.excluded_title_patterns?.length) excludedTitlePatterns = configData.excluded_title_patterns;
             fallbackAdminUserId = configData.fallback_admin_user_id;
             taskExpiryDays = configData.task_expiry_days || 7;
+            syncAllCalls = configData.sync_all_calls || false;
           }
         }
       }
@@ -153,8 +444,98 @@ Deno.serve(async (req) => {
     const hasExternalParticipant = classifiedParticipants.some((p) => !p.is_internal);
     const hasInternalParticipant = classifiedParticipants.some((p) => p.is_internal);
 
-    // Upsert meeting record
-    const meetingRecord = {
+    // ==========================================
+    // EXCLUSION FILTER (basic filters first)
+    // ==========================================
+    let excluded = false;
+    let exclusionReason = "";
+
+    if (!hasExternalParticipant) {
+      excluded = true;
+      exclusionReason = "All participants are internal (no external participants)";
+    }
+
+    if (!excluded && !hasInternalParticipant) {
+      excluded = true;
+      exclusionReason = "No internal participant found on the call";
+    }
+
+    if (!excluded && data.title) {
+      const titleLower = data.title.toLowerCase().trim();
+      for (const pattern of excludedTitlePatterns) {
+        if (titleLower.includes(pattern.toLowerCase())) {
+          excluded = true;
+          exclusionReason = `Title matches excluded pattern: "${pattern}"`;
+          break;
+        }
+      }
+    }
+
+    if (!excluded && data.durationSeconds && data.durationSeconds < minDurationSeconds) {
+      excluded = true;
+      exclusionReason = `Duration (${data.durationSeconds}s) under minimum (${minDurationSeconds}s)`;
+    }
+
+    if (excluded) {
+      // Log to skipped calls
+      await supabaseAdmin
+        .from("claap_skipped_calls")
+        .upsert({
+          claap_id: claapId,
+          company_id: configCompanyId,
+          title: data.title || null,
+          recording_url: data.url || data.videoUrl || null,
+          duration_seconds: data.durationSeconds || null,
+          organizer_email: organizerEmail,
+          participants: classifiedParticipants,
+          started_at: data.meeting?.startingAt || data.createdAt || null,
+          skip_reason: exclusionReason,
+          match_attempts: { stage: "basic_filter" },
+        }, { onConflict: "claap_id" });
+
+      return new Response(JSON.stringify({ ok: true, status: "skipped", reason: exclusionReason }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ==========================================
+    // SMART MATCHING (lender / company / contact)
+    // ==========================================
+    const matchResult = await runSmartMatching(
+      supabaseAdmin,
+      data.title || null,
+      classifiedParticipants,
+      configCompanyId,
+    );
+
+    // If not matched AND sync_all_calls is OFF → skip
+    if (!matchResult.matched && !syncAllCalls) {
+      await supabaseAdmin
+        .from("claap_skipped_calls")
+        .upsert({
+          claap_id: claapId,
+          company_id: configCompanyId,
+          title: data.title || null,
+          recording_url: data.url || data.videoUrl || null,
+          duration_seconds: data.durationSeconds || null,
+          organizer_email: organizerEmail,
+          participants: classifiedParticipants,
+          started_at: data.meeting?.startingAt || data.createdAt || null,
+          skip_reason: "No matching lender, company, or contact found",
+          match_attempts: { stage: "smart_matching", checked: ["contacts", "crm_companies", "lenders"] },
+        }, { onConflict: "claap_id" });
+
+      return new Response(JSON.stringify({ ok: true, status: "skipped", reason: "No match found" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ==========================================
+    // MATCHED — save meeting
+    // ==========================================
+    const meetingRecord: Record<string, unknown> = {
       claap_id: claapId,
       title: data.title || null,
       recording_url: data.url || data.videoUrl || null,
@@ -166,7 +547,12 @@ Deno.serve(async (req) => {
       no_internal_participant: !hasInternalParticipant,
       company_id: configCompanyId,
       raw_payload: payload as unknown as Record<string, unknown>,
-      status: "pending_review" as const,
+      status: "pending_review",
+      call_type: matchResult.callType || (syncAllCalls ? "Unmatched (sync all)" : null),
+      match_source: matchResult.matchSource || (syncAllCalls ? "Synced via sync_all_calls setting" : null),
+      matched_lender_id: matchResult.lenderId,
+      matched_crm_company_id: matchResult.crmCompanyId,
+      matched_contact_id: matchResult.contactId,
     };
 
     const { data: meeting, error: meetingError } = await supabaseAdmin
@@ -199,67 +585,8 @@ Deno.serve(async (req) => {
     }
 
     // ==========================================
-    // EXCLUSION FILTER
+    // ROUTING ENGINE (existing logic)
     // ==========================================
-    let excluded = false;
-    let exclusionReason = "";
-
-    // 1. No external participants
-    if (!hasExternalParticipant) {
-      excluded = true;
-      exclusionReason = "All participants are internal (no external participants)";
-    }
-
-    // 2. No internal participant
-    if (!excluded && !hasInternalParticipant) {
-      excluded = true;
-      exclusionReason = "No internal participant found on the call";
-      await supabaseAdmin
-        .from("claap_meetings")
-        .update({ no_internal_participant: true, status: "excluded", exclusion_reason: exclusionReason })
-        .eq("id", meetingId);
-
-      return new Response(JSON.stringify({ ok: true, meeting_id: meetingId, status: "excluded", reason: exclusionReason }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // 3. Title matches excluded patterns
-    if (!excluded && data.title) {
-      const titleLower = data.title.toLowerCase().trim();
-      for (const pattern of excludedTitlePatterns) {
-        if (titleLower.includes(pattern.toLowerCase())) {
-          excluded = true;
-          exclusionReason = `Title matches excluded pattern: "${pattern}"`;
-          break;
-        }
-      }
-    }
-
-    // 4. Duration under threshold
-    if (!excluded && data.durationSeconds && data.durationSeconds < minDurationSeconds) {
-      excluded = true;
-      exclusionReason = `Duration (${data.durationSeconds}s) under minimum (${minDurationSeconds}s)`;
-    }
-
-    if (excluded) {
-      await supabaseAdmin
-        .from("claap_meetings")
-        .update({ status: "excluded", exclusion_reason: exclusionReason })
-        .eq("id", meetingId);
-
-      return new Response(JSON.stringify({ ok: true, meeting_id: meetingId, status: "excluded", reason: exclusionReason }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ==========================================
-    // ROUTING ENGINE
-    // ==========================================
-
-    // Step 1: Detect meeting intent from title
     const financingReviewPattern = /^(?:(.+?)\s*<>\s*5th\s*line|5th\s*line\s*<>\s*(.+?))\s*(?:financing\s*review)?$/i;
     let extractedCompanyName: string | null = null;
     let isFinancingReview = false;
@@ -272,7 +599,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 2: Resolve external participants to contacts
+    // Resolve external participants to contacts
     const externalParticipants = classifiedParticipants.filter((p) => !p.is_internal);
     const unresolvedParticipants: typeof externalParticipants = [];
     const resolvedContactIds: string[] = [];
@@ -282,7 +609,6 @@ Deno.serve(async (req) => {
         unresolvedParticipants.push(participant);
         continue;
       }
-      // Look up profiles by email
       const { data: contact } = await supabaseAdmin
         .from("profiles")
         .select("id, user_id")
@@ -291,7 +617,6 @@ Deno.serve(async (req) => {
 
       if (contact) {
         resolvedContactIds.push(contact.id);
-        // Mark participant as resolved
         await supabaseAdmin
           .from("claap_meeting_participants")
           .update({ contact_id: contact.id, resolved: true })
@@ -302,13 +627,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 3: Resolve company from external domains
+    // Resolve company from external domains
     const externalDomains = [...new Set(externalParticipants.map((p) => p.domain).filter(Boolean))];
-    let resolvedCompanyId: string | null = null;
+    let resolvedCompanyId: string | null = matchResult.crmCompanyId ? null : null;
     let unresolvedDomains: string[] = [];
 
     for (const domain of externalDomains) {
-      // Try to match company by website_url containing the domain
       const { data: companyMatch } = await supabaseAdmin
         .from("companies")
         .select("id")
@@ -323,7 +647,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // If company name extracted from title, try matching by name
     if (!resolvedCompanyId && extractedCompanyName) {
       const { data: companyMatch } = await supabaseAdmin
         .from("companies")
@@ -336,11 +659,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 4: Resolve deal
+    // Resolve deal
     let resolvedDealId: string | null = null;
     let multipleDealCandidates: string[] = [];
 
-    if (resolvedCompanyId) {
+    // Use smart match deal IDs first
+    if (matchResult.dealIds.length === 1) {
+      resolvedDealId = matchResult.dealIds[0];
+    } else if (matchResult.dealIds.length > 1) {
+      multipleDealCandidates = matchResult.dealIds;
+    }
+
+    if (!resolvedDealId && resolvedCompanyId) {
       const { data: activeDeals } = await supabaseAdmin
         .from("deals")
         .select("id")
@@ -350,12 +680,11 @@ Deno.serve(async (req) => {
 
       if (activeDeals && activeDeals.length === 1) {
         resolvedDealId = activeDeals[0].id;
-      } else if (activeDeals && activeDeals.length > 1) {
+      } else if (activeDeals && activeDeals.length > 1 && !multipleDealCandidates.length) {
         multipleDealCandidates = activeDeals.map((d) => d.id);
       }
     }
 
-    // If no company resolved, try matching by deal company name
     if (!resolvedDealId && extractedCompanyName && !multipleDealCandidates.length) {
       const { data: dealMatch } = await supabaseAdmin
         .from("deals")
@@ -372,7 +701,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 5: Resolve organizer (deal manager)
+    // Resolve organizer
     let organizerUserId: string | null = null;
     if (organizerEmail) {
       const { data: orgProfile } = await supabaseAdmin
@@ -390,7 +719,6 @@ Deno.serve(async (req) => {
     if (resolvedCompanyId) updateData.company_id = resolvedCompanyId;
     if (resolvedDealId) updateData.deal_id = resolvedDealId;
 
-    // Determine final status
     let finalStatus: string;
     const needsTasks =
       unresolvedParticipants.length > 0 ||
@@ -417,7 +745,6 @@ Deno.serve(async (req) => {
     if (resolvedDealId && finalStatus === "routed") {
       const linkedBy = organizerUserId || fallbackAdminUserId || null;
 
-      // Insert into deal_claap_recordings (ignore conflict if already linked)
       await supabaseAdmin
         .from("deal_claap_recordings")
         .upsert({
@@ -430,22 +757,23 @@ Deno.serve(async (req) => {
           recorder_name: data.recorder?.name || null,
           recorder_email: data.recorder?.email || null,
           linked_by: linkedBy,
-          notes: "Auto-linked by Claap routing engine",
+          notes: `Auto-linked by Claap routing engine (${matchResult.callType || "matched"})`,
         }, { onConflict: "deal_id,recording_id" });
 
-      // Log activity on the deal timeline
       await supabaseAdmin
         .from("activity_logs")
         .insert({
           deal_id: resolvedDealId,
           activity_type: "claap_recording_linked",
-          description: `Claap recording linked: ${data.title || "Untitled recording"}`,
+          description: `Claap recording linked: ${data.title || "Untitled recording"} (${matchResult.callType || "matched"})`,
           user_id: linkedBy,
           user_display_name: data.recorder?.name || null,
           metadata: {
             claap_id: claapId,
             recording_url: data.url || data.videoUrl || null,
             source: "claap_webhook_auto",
+            call_type: matchResult.callType,
+            match_source: matchResult.matchSource,
           },
         });
     }
@@ -453,11 +781,9 @@ Deno.serve(async (req) => {
     // ==========================================
     // CREATE ROUTING TASKS
     // ==========================================
-
     const tasksToCreate: Array<Record<string, unknown>> = [];
     const expiresAt = new Date(Date.now() + taskExpiryDays * 24 * 60 * 60 * 1000).toISOString();
 
-    // Contact confirmation tasks
     if (unresolvedParticipants.length > 0 && taskAssignee) {
       tasksToCreate.push({
         meeting_id: meetingId,
@@ -475,7 +801,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Company confirmation task
     if (unresolvedDomains.length > 0 && !resolvedCompanyId && taskAssignee) {
       tasksToCreate.push({
         meeting_id: meetingId,
@@ -489,7 +814,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Deal disambiguation task
     if (multipleDealCandidates.length > 0 && taskAssignee) {
       tasksToCreate.push({
         meeting_id: meetingId,
@@ -503,7 +827,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Deal creation prompt
     if (isFinancingReview && !resolvedDealId && multipleDealCandidates.length === 0 && taskAssignee) {
       tasksToCreate.push({
         meeting_id: meetingId,
@@ -527,7 +850,7 @@ Deno.serve(async (req) => {
         .insert(tasksToCreate);
     }
 
-    // Trigger AI analysis asynchronously (non-blocking)
+    // Trigger AI analysis asynchronously
     if (transcript && !transcriptMissing) {
       try {
         const analyzeUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/claap-analyze-meeting`;
@@ -547,6 +870,11 @@ Deno.serve(async (req) => {
         meeting_id: meetingId,
         status: finalStatus,
         tasks_created: tasksToCreate.length,
+        match: {
+          type: matchResult.matchType,
+          source: matchResult.matchSource,
+          call_type: matchResult.callType,
+        },
         resolved: {
           company: !!resolvedCompanyId,
           deal: !!resolvedDealId,
@@ -561,7 +889,6 @@ Deno.serve(async (req) => {
   } catch (error: unknown) {
     console.error("Claap webhook error:", error);
 
-    // Log error for retry
     try {
       await supabaseAdmin.from("claap_webhook_errors").insert({
         event_type: payload?.event || "unknown",
@@ -572,7 +899,6 @@ Deno.serve(async (req) => {
       console.error("Failed to log webhook error:", logErr);
     }
 
-    // Return 200 to prevent Claap from retrying indefinitely
     return new Response(
       JSON.stringify({ ok: true, note: "error logged for retry" }),
       {
