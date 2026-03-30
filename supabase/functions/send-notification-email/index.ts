@@ -817,34 +817,129 @@ const handler = async (req: Request): Promise<Response> => {
     const payload: NotificationPayload = await req.json();
     console.log("Processing notification:", payload.type, "changed_by:", payload.changed_by);
 
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(payload.user_id);
-    if (userError || !userData.user?.email) {
-      console.log("User not found or no email:", userError);
-      return new Response(JSON.stringify({ error: "User not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+    // --- Resolve recipients ---
+    // For lender events, send to ALL admins + deal manager + deal analyst
+    const isLenderEvent = payload.type === 'lender_added' || payload.type === 'lender_updated';
+
+    interface Recipient { email: string; user_id: string; profile: Record<string, any> }
+    const recipients: Recipient[] = [];
+
+    if (isLenderEvent && payload.deal_id) {
+      // 1. Fetch deal to get manager, analyst, deal_owner, company_id
+      const { data: dealData } = await supabaseAdmin
+        .from('deals')
+        .select('company, manager, analyst, deal_owner, company_id')
+        .eq('id', payload.deal_id)
+        .single();
+
+      const companyId = dealData?.company_id;
+      const dealManagerName = dealData?.manager || dealData?.deal_owner || null;
+      const dealAnalystName = dealData?.analyst || null;
+
+      // 2. Find all admin/owner members for the company
+      if (companyId) {
+        const { data: adminMembers } = await supabaseAdmin
+          .from('company_members')
+          .select('user_id, role')
+          .eq('company_id', companyId)
+          .in('role', ['admin', 'owner']);
+
+        if (adminMembers) {
+          for (const m of adminMembers) {
+            const { data: p } = await supabaseAdmin.from('profiles').select('*').eq('user_id', m.user_id).single();
+            if (p) {
+              const { data: u } = await supabaseAdmin.auth.admin.getUserById(m.user_id);
+              if (u?.user?.email) {
+                recipients.push({ email: u.user.email, user_id: m.user_id, profile: p as Record<string, any> });
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Find deal manager by display_name match
+      if (dealManagerName) {
+        const { data: managerProfiles } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .ilike('display_name', dealManagerName);
+        if (managerProfiles) {
+          for (const p of managerProfiles) {
+            if (!recipients.some(r => r.user_id === p.user_id)) {
+              const { data: u } = await supabaseAdmin.auth.admin.getUserById(p.user_id);
+              if (u?.user?.email) {
+                recipients.push({ email: u.user.email, user_id: p.user_id, profile: p as Record<string, any> });
+              }
+            }
+          }
+        }
+      }
+
+      // 4. Find deal analyst by display_name match
+      if (dealAnalystName) {
+        const { data: analystProfiles } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .ilike('display_name', dealAnalystName);
+        if (analystProfiles) {
+          for (const p of analystProfiles) {
+            if (!recipients.some(r => r.user_id === p.user_id)) {
+              const { data: u } = await supabaseAdmin.auth.admin.getUserById(p.user_id);
+              if (u?.user?.email) {
+                recipients.push({ email: u.user.email, user_id: p.user_id, profile: p as Record<string, any> });
+              }
+            }
+          }
+        }
+      }
+
+      // 5. Always include the original user_id (deal creator) as fallback
+      if (!recipients.some(r => r.user_id === payload.user_id)) {
+        const { data: u } = await supabaseAdmin.auth.admin.getUserById(payload.user_id);
+        const { data: p } = await supabaseAdmin.from('profiles').select('*').eq('user_id', payload.user_id).single();
+        if (u?.user?.email && p) {
+          recipients.push({ email: u.user.email, user_id: payload.user_id, profile: p as Record<string, any> });
+        }
+      }
+
+      console.log(`Lender event: resolved ${recipients.length} recipients for deal ${payload.deal_id}`);
+    } else {
+      // Non-lender events: single recipient (original behavior)
+      const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(payload.user_id);
+      if (userError || !userData.user?.email) {
+        console.log("User not found or no email:", userError);
+        return new Response(JSON.stringify({ error: "User not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('user_id', payload.user_id)
+        .single();
+      if (profileError || !profile) {
+        console.log("Profile error:", profileError);
+        return new Response(JSON.stringify({ error: "Profile not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      const preferenceKey = preferenceMap[payload.type];
+      const profileData = profile as Record<string, any>;
+      if (!profileData.email_notifications || (preferenceKey && !profileData[preferenceKey])) {
+        console.log("Notifications disabled for this type:", payload.type);
+        return new Response(JSON.stringify({ skipped: true, reason: "notifications_disabled" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      recipients.push({ email: userData.user.email, user_id: payload.user_id, profile: profileData });
     }
 
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .eq('user_id', payload.user_id)
-      .single();
-
-    if (profileError || !profile) {
-      console.log("Profile error:", profileError);
-      return new Response(JSON.stringify({ error: "Profile not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
-
-    const preferenceKey = preferenceMap[payload.type];
-    const profileData = profile as Record<string, any>;
-    if (!profileData.email_notifications || (preferenceKey && !profileData[preferenceKey])) {
-      console.log("Notifications disabled for this type:", payload.type);
-      return new Response(JSON.stringify({ skipped: true, reason: "notifications_disabled" }), {
+    if (recipients.length === 0) {
+      console.log("No recipients resolved");
+      return new Response(JSON.stringify({ skipped: true, reason: "no_recipients" }), {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
@@ -969,22 +1064,40 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
 
-    const emailResponse = await resend.emails.send({
-      from: "naitive <noreply@updates.naitive.co>",
-      reply_to: "support@naitive.co",
-      to: [userData.user.email],
-      subject: emailSubject,
-      headers: {
-        "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
-      text: `${template.subject}\n\n${message}${payload.changed_by ? `\nBy: ${payload.changed_by}` : ''}${changesText}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnaitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
-      html: emailHtml,
-    });
+    // --- Send to all recipients ---
+    const preferenceKey = preferenceMap[payload.type];
+    const results: any[] = [];
+    for (const recipient of recipients) {
+      // Check per-recipient notification preferences
+      const profileData = recipient.profile;
+      if (!profileData.email_notifications || (preferenceKey && !profileData[preferenceKey])) {
+        console.log(`Skipping ${recipient.email}: notifications disabled`);
+        results.push({ email: recipient.email, skipped: true, reason: 'notifications_disabled' });
+        continue;
+      }
 
-    console.log("Email sent successfully:", emailResponse);
+      try {
+        const emailResponse = await resend.emails.send({
+          from: "naitive <noreply@updates.naitive.co>",
+          reply_to: "support@naitive.co",
+          to: [recipient.email],
+          subject: emailSubject,
+          headers: {
+            "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
+          text: `${template.subject}\n\n${message}${payload.changed_by ? `\nBy: ${payload.changed_by}` : ''}${changesText}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnaitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
+          html: emailHtml,
+        });
+        console.log(`Email sent to ${recipient.email}:`, emailResponse);
+        results.push({ email: recipient.email, success: true, emailResponse });
+      } catch (sendErr: any) {
+        console.error(`Failed to send to ${recipient.email}:`, sendErr);
+        results.push({ email: recipient.email, success: false, error: sendErr.message });
+      }
+    }
 
-    return new Response(JSON.stringify({ success: true, emailResponse }), {
+    return new Response(JSON.stringify({ success: true, recipients: results.length, results }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
