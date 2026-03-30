@@ -358,6 +358,7 @@ Deno.serve(async (req) => {
         }
 
         if (excluded) {
+          console.log(`  SKIPPED: "${title}" — ${exclusionReason}`);
           await supabaseAdmin.from("claap_skipped_calls").upsert({
             claap_id: claapId,
             company_id: companyId,
