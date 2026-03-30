@@ -155,6 +155,11 @@ export function useCrmCompanies(params: CrmCompaniesListParams = {}) {
         }
       }
 
+      // Advanced filters
+      if (advancedFilters.length > 0) {
+        query = applyFiltersToQuery(query, advancedFilters, matchMode);
+      }
+
       const from = page * pageSize;
       const to = from + pageSize - 1;
 
