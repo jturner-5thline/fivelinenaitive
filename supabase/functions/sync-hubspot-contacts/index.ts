@@ -148,9 +148,17 @@ Deno.serve(async (req) => {
     const columnsCreated: string[] = [];
 
     if (!skipSchemaSetup) {
-      const { data: colRows, error: colError } = await supabase.rpc('exec_sql_readonly', {
-        sql: "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'contacts'"
-      }).catch(() => ({ data: null, error: { message: 'rpc not found' } }));
+      let colRows: any = null;
+      let colError: any = null;
+      try {
+        const result = await supabase.rpc('exec_sql_readonly', {
+          sql: "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'contacts'"
+        });
+        colRows = result.data;
+        colError = result.error;
+      } catch {
+        colError = { message: 'rpc not found' };
+      }
 
       // Fallback: try a dummy select to see what columns exist
       if (!colRows) {
@@ -202,11 +210,14 @@ Deno.serve(async (req) => {
         // Execute in batches of 20 to avoid too-long SQL
         for (let i = 0; i < alterStatements.length; i += 20) {
           const batch = alterStatements.slice(i, i + 20).join('\n');
-          const { error: alterError } = await supabase.rpc('exec_sql', { sql: batch }).catch(async () => {
+          let alterError: any = null;
+          try {
+            const result = await supabase.rpc('exec_sql', { sql: batch });
+            alterError = result.error;
+          } catch {
             // Fallback: execute one at a time via raw SQL
             for (const stmt of alterStatements.slice(i, i + 20)) {
               try {
-                // Use the Postgres connection directly via supabase
                 const resp = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
                   method: 'POST',
                   headers: {
@@ -219,12 +230,11 @@ Deno.serve(async (req) => {
                 if (!resp.ok) {
                   console.warn(`[sync-hubspot-contacts] ALTER failed: ${stmt.slice(0, 100)}`);
                 }
-              } catch (e) {
+              } catch (e: any) {
                 console.warn(`[sync-hubspot-contacts] ALTER error: ${e.message}`);
               }
             }
-            return { error: null };
-          });
+          }
           if (alterError) {
             console.warn(`[sync-hubspot-contacts] Batch ALTER error: ${alterError.message}`);
           }
