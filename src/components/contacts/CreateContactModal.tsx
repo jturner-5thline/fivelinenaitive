@@ -33,12 +33,6 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
     crm_company_id: defaultCompanyId || '' as string,
   });
 
-  const selectedCompany = companies.find(c => c.id === form.crm_company_id);
-
-  const filteredCompanies = companySearch.trim()
-    ? companies.filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase()))
-    : companies.slice(0, 20);
-
   const handleSubmit = () => {
     if (!form.first_name && !form.last_name && !form.email) return;
     const payload = { ...form, crm_company_id: form.crm_company_id || null };
