@@ -31,7 +31,7 @@ function normalizeName(name: string): string {
 
 interface MatchResult {
   matched: boolean;
-  matchType: "lender" | "company" | "contact" | null;
+  matchType: "lender" | "company" | "contact" | "deal" | null;
   matchSource: string | null;
   lenderId: string | null;
   crmCompanyId: string | null;
@@ -163,6 +163,36 @@ async function runSmartMatching(
         result.matchSource = `Lender contact name match: ${participant.name}`;
         result.lenderId = lenderContacts[0].lender_id; result.callType = "Lender Call";
         return result;
+      }
+    }
+  }
+
+  // ---- 4. Deal name match (title contains deal company name) ----
+  if (titleLower) {
+    let dealQuery = supabaseAdmin
+      .from("deals")
+      .select("id, company")
+      .eq("status", "active")
+      .limit(500);
+    if (configCompanyId) dealQuery = dealQuery.eq("company_id", configCompanyId);
+
+    const { data: deals } = await dealQuery;
+    if (deals) {
+      for (const deal of deals) {
+        if (!deal.company) continue;
+        const dealName = normalizeName(deal.company);
+        if (dealName.length >= 3 && titleLower.includes(dealName)) {
+          result.matched = true; result.matchType = "deal";
+          result.matchSource = `Deal name in title: "${deal.company}"`;
+          result.dealIds = [deal.id]; result.callType = "Deal Call";
+          return result;
+        }
+        if (dealName.length >= 4 && diceCoefficient(dealName, normalizeName(title || "")) > 0.5) {
+          result.matched = true; result.matchType = "deal";
+          result.matchSource = `Fuzzy deal name match: "${deal.company}"`;
+          result.dealIds = [deal.id]; result.callType = "Deal Call";
+          return result;
+        }
       }
     }
   }
