@@ -310,12 +310,16 @@ Deno.serve(async (req) => {
       if (existingSkipped) { alreadyExists++; processed++; continue; }
 
       try {
-        const title = recording.title || recording.name || null;
+        const title = recording.title || recording.name || recording.topic || null;
         const organizerEmail = recording.recorder?.email || recording.organizer?.email || null;
-        const durationSeconds = recording.duration_seconds || recording.durationSeconds || null;
+        const rawDuration = recording.duration_seconds || recording.durationSeconds || null;
+        const durationSeconds = rawDuration != null ? Math.floor(Number(rawDuration)) : null;
         const recordingUrl = recording.url || recording.video_url || recording.videoUrl || null;
         const startedAt = recording.meeting?.startingAt || recording.started_at || recording.created_at || recording.createdAt || null;
         const participants = recording.meeting?.participants || recording.participants || [];
+
+        processedTitles.push(title || "(no title)");
+        console.log(`Processing: "${title}" | duration=${rawDuration} | claap_id=${claapId} | participants=${participants.length}`);
 
         // Classify participants
         const classifiedParticipants = participants.map((p: any) => {
