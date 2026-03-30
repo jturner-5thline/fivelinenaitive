@@ -1048,6 +1048,7 @@ export type Database = {
           internal_domains: string[]
           is_active: boolean
           min_duration_seconds: number
+          sync_all_calls: boolean
           task_expiry_days: number
           updated_at: string
         }
@@ -1060,6 +1061,7 @@ export type Database = {
           internal_domains?: string[]
           is_active?: boolean
           min_duration_seconds?: number
+          sync_all_calls?: boolean
           task_expiry_days?: number
           updated_at?: string
         }
@@ -1072,6 +1074,7 @@ export type Database = {
           internal_domains?: string[]
           is_active?: boolean
           min_duration_seconds?: number
+          sync_all_calls?: boolean
           task_expiry_days?: number
           updated_at?: string
         }
@@ -1146,6 +1149,7 @@ export type Database = {
       claap_meetings: {
         Row: {
           ai_summary: string | null
+          call_type: string | null
           claap_id: string
           company_id: string | null
           created_at: string
@@ -1154,6 +1158,10 @@ export type Database = {
           exclusion_reason: string | null
           id: string
           key_decisions: string[] | null
+          match_source: string | null
+          matched_contact_id: string | null
+          matched_crm_company_id: string | null
+          matched_lender_id: string | null
           next_steps: string[] | null
           no_internal_participant: boolean | null
           organizer_email: string | null
@@ -1170,6 +1178,7 @@ export type Database = {
         }
         Insert: {
           ai_summary?: string | null
+          call_type?: string | null
           claap_id: string
           company_id?: string | null
           created_at?: string
@@ -1178,6 +1187,10 @@ export type Database = {
           exclusion_reason?: string | null
           id?: string
           key_decisions?: string[] | null
+          match_source?: string | null
+          matched_contact_id?: string | null
+          matched_crm_company_id?: string | null
+          matched_lender_id?: string | null
           next_steps?: string[] | null
           no_internal_participant?: boolean | null
           organizer_email?: string | null
@@ -1194,6 +1207,7 @@ export type Database = {
         }
         Update: {
           ai_summary?: string | null
+          call_type?: string | null
           claap_id?: string
           company_id?: string | null
           created_at?: string
@@ -1202,6 +1216,10 @@ export type Database = {
           exclusion_reason?: string | null
           id?: string
           key_decisions?: string[] | null
+          match_source?: string | null
+          matched_contact_id?: string | null
+          matched_crm_company_id?: string | null
+          matched_lender_id?: string | null
           next_steps?: string[] | null
           no_internal_participant?: boolean | null
           organizer_email?: string | null
@@ -1332,6 +1350,68 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "claap_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_skipped_calls: {
+        Row: {
+          claap_id: string
+          company_id: string | null
+          created_at: string
+          duration_seconds: number | null
+          force_synced: boolean
+          force_synced_at: string | null
+          force_synced_by: string | null
+          id: string
+          match_attempts: Json | null
+          organizer_email: string | null
+          participants: Json | null
+          recording_url: string | null
+          skip_reason: string
+          started_at: string | null
+          title: string | null
+        }
+        Insert: {
+          claap_id: string
+          company_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          force_synced?: boolean
+          force_synced_at?: string | null
+          force_synced_by?: string | null
+          id?: string
+          match_attempts?: Json | null
+          organizer_email?: string | null
+          participants?: Json | null
+          recording_url?: string | null
+          skip_reason: string
+          started_at?: string | null
+          title?: string | null
+        }
+        Update: {
+          claap_id?: string
+          company_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          force_synced?: boolean
+          force_synced_at?: string | null
+          force_synced_by?: string | null
+          id?: string
+          match_attempts?: Json | null
+          organizer_email?: string | null
+          participants?: Json | null
+          recording_url?: string | null
+          skip_reason?: string
+          started_at?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_skipped_calls_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
