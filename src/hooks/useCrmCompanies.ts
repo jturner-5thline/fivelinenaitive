@@ -115,7 +115,8 @@ export function useCrmCompanies(params: CrmCompaniesListParams = {}) {
     queryFn: async () => {
       let query = supabase
         .from('crm_companies')
-        .select(LIST_COLUMNS, { count: 'exact' });
+        .select(LIST_COLUMNS, { count: 'exact' })
+        .eq('org_company_id', company!.id);
 
       // Server-side search
       if (search?.trim()) {

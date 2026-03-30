@@ -15,11 +15,44 @@ Deno.serve(async (req: Request) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const admin = createClient(supabaseUrl, serviceKey);
 
-    console.log('[match-contacts] Running SQL-based domain matching...');
+    // Determine org_company_id from caller or request body
+    let orgCompanyId: string | null = null;
+    let body: any = {};
+    try { body = await req.json(); } catch { /* no body */ }
+    orgCompanyId = body?.org_company_id || null;
 
-    // Run domain matching entirely in SQL — much more efficient than JS loops
-    // This UPDATE joins contacts with crm_companies by extracting the email domain
-    // and matching against the normalized company domain
+    if (!orgCompanyId) {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader) {
+        const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: { user } } = await userClient.auth.getUser();
+        if (user?.id) {
+          const { data: membership } = await admin
+            .from('company_members').select('company_id')
+            .eq('user_id', user.id).limit(1).single();
+          if (membership) orgCompanyId = membership.company_id;
+        }
+      }
+    }
+
+    if (!orgCompanyId) {
+      // Fallback to 5th Line
+      const { data: co } = await admin.from('companies').select('id')
+        .or('primary_domain.eq.5thline.co,name.ilike.%5th Line%').limit(1).single();
+      if (co) orgCompanyId = co.id;
+    }
+
+    if (!orgCompanyId) {
+      return new Response(JSON.stringify({ error: 'Could not determine org' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`[match-contacts] Running SQL-based domain matching for org ${orgCompanyId}...`);
+
+    // Scoped to the same org_company_id
     const matchSql = `
       WITH contact_domains AS (
         SELECT
@@ -36,6 +69,7 @@ Deno.serve(async (req: Request) => {
         FROM contacts c
         WHERE c.email IS NOT NULL
           AND c.crm_company_id IS NULL
+          AND c.org_company_id = '${orgCompanyId}'
           AND split_part(c.email, '@', 2) != ''
       ),
       company_domains AS (
@@ -52,6 +86,7 @@ Deno.serve(async (req: Request) => {
           ) AS norm_domain
         FROM crm_companies cc
         WHERE cc.domain IS NOT NULL AND cc.domain != ''
+          AND cc.org_company_id = '${orgCompanyId}'
       ),
       matches AS (
         SELECT DISTINCT ON (cd.contact_id)
@@ -70,20 +105,23 @@ Deno.serve(async (req: Request) => {
     const { error: execErr } = await admin.rpc('exec_sql', { sql: matchSql });
     if (execErr) throw execErr;
 
-    // Get counts
+    // Get counts scoped to this org
     const { count: totalContacts } = await admin
       .from('contacts')
       .select('id', { count: 'exact', head: true })
+      .eq('org_company_id', orgCompanyId)
       .not('email', 'is', null);
 
     const { count: matchedCount } = await admin
       .from('contacts')
       .select('id', { count: 'exact', head: true })
+      .eq('org_company_id', orgCompanyId)
       .not('crm_company_id', 'is', null);
 
     const { count: unmatchedCount } = await admin
       .from('contacts')
       .select('id', { count: 'exact', head: true })
+      .eq('org_company_id', orgCompanyId)
       .not('email', 'is', null)
       .is('crm_company_id', null);
 
