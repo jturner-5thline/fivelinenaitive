@@ -904,6 +904,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (payload.type === 'task_assigned') {
       emailHtml = buildTaskAssignedHtml(payload, actionUrl || appUrl, appUrl);
+    } else if (payload.type === 'deal_updated') {
+      emailHtml = buildDealUpdatedHtml(payload, actionUrl || appUrl, appUrl);
     } else {
       const actorHtml = payload.changed_by
         ? `<p style="color: #888; font-size: 13px; margin: 0 0 16px 0;">By: <strong style="color: #555;">${payload.changed_by}</strong> · ${new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>`
