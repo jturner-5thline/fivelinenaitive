@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
+import type { FilterRule, MatchMode } from '@/lib/filterTypes';
+import { applyFiltersToQuery } from '@/lib/filterUtils';
 
 export interface CrmCompany {
   id: string;
@@ -92,6 +94,8 @@ export interface CrmCompaniesListParams {
   lifecycleStage?: string;
   status?: string;
   quickFilter?: string;
+  advancedFilters?: FilterRule[];
+  matchMode?: MatchMode;
 }
 
 export interface PaginatedResult<T> {
@@ -104,10 +108,10 @@ export interface PaginatedResult<T> {
 
 export function useCrmCompanies(params: CrmCompaniesListParams = {}) {
   const { company } = useCompany();
-  const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter } = params;
+  const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter, advancedFilters = [], matchMode = 'all' } = params;
 
   return useQuery<PaginatedResult<CrmCompany>>({
-    queryKey: ['crm-companies', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter],
+    queryKey: ['crm-companies', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter, advancedFilters, matchMode],
     queryFn: async () => {
       let query = supabase
         .from('crm_companies')
@@ -149,6 +153,11 @@ export function useCrmCompanies(params: CrmCompaniesListParams = {}) {
             break;
           }
         }
+      }
+
+      // Advanced filters
+      if (advancedFilters.length > 0) {
+        query = applyFiltersToQuery(query, advancedFilters, matchMode);
       }
 
       const from = page * pageSize;

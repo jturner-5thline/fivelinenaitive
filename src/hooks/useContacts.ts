@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
+import type { FilterRule, MatchMode } from '@/lib/filterTypes';
+import { applyFiltersToQuery } from '@/lib/filterUtils';
 
 export interface Contact {
   id: string;
@@ -71,6 +73,8 @@ export interface ContactsListParams {
   lifecycleStage?: string;
   status?: string;
   quickFilter?: string;
+  advancedFilters?: FilterRule[];
+  matchMode?: MatchMode;
 }
 
 export interface PaginatedResult<T> {
@@ -83,10 +87,10 @@ export interface PaginatedResult<T> {
 
 export function useContacts(params: ContactsListParams = {}) {
   const { company } = useCompany();
-  const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter } = params;
+  const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter, advancedFilters = [], matchMode = 'all' } = params;
 
   return useQuery<PaginatedResult<Contact>>({
-    queryKey: ['contacts', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter],
+    queryKey: ['contacts', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter, advancedFilters, matchMode],
     queryFn: async () => {
       let query = supabase
         .from('contacts')
@@ -123,6 +127,11 @@ export function useContacts(params: ContactsListParams = {}) {
             break;
           }
         }
+      }
+
+      // Advanced filters
+      if (advancedFilters.length > 0) {
+        query = applyFiltersToQuery(query, advancedFilters, matchMode);
       }
 
       const from = page * pageSize;

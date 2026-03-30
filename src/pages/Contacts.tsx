@@ -12,6 +12,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { AdvancedFilterBuilder } from '@/components/filters/AdvancedFilterBuilder';
+import { CONTACT_CORE_FIELDS } from '@/lib/filterFieldDefinitions';
+import type { FilterRule, MatchMode } from '@/lib/filterTypes';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 export default function Contacts() {
   const [showCreate, setShowCreate] = useState(false);
@@ -19,6 +23,9 @@ export default function Contacts() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [isSyncingContacts, setIsSyncingContacts] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
+  const [matchMode, setMatchMode] = useState<MatchMode>('all');
+  const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
 
   const handleSyncContacts = async () => {
@@ -60,6 +67,8 @@ export default function Contacts() {
     page,
     pageSize,
     quickFilter,
+    advancedFilters: debouncedFilters,
+    matchMode,
   });
 
   const contacts = result?.data ?? [];
@@ -68,6 +77,11 @@ export default function Contacts() {
 
   const handleQuickFilterChange = (value: string) => {
     setQuickFilter(value);
+    setPage(0);
+  };
+
+  const handleFiltersChange = (filters: FilterRule[]) => {
+    setAdvancedFilters(filters);
     setPage(0);
   };
 
@@ -102,6 +116,15 @@ export default function Contacts() {
               </Button>
             </div>
           </div>
+
+          {/* Advanced Filters */}
+          <AdvancedFilterBuilder
+            availableFields={CONTACT_CORE_FIELDS}
+            filters={advancedFilters}
+            onFiltersChange={handleFiltersChange}
+            matchMode={matchMode}
+            onMatchModeChange={setMatchMode}
+          />
 
           {/* Quick filters */}
           <Tabs value={quickFilter} onValueChange={handleQuickFilterChange}>
