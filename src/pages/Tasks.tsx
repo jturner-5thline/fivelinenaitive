@@ -1,4 +1,5 @@
 import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ClaapRoutingTasksBadge } from '@/components/integrations/claap/ClaapRoutingTasksBadge';
 import { useQuery } from '@tanstack/react-query';
