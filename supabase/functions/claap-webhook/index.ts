@@ -776,6 +776,23 @@ Deno.serve(async (req) => {
             match_source: matchResult.matchSource,
           },
         });
+
+      // Store transcript in claap_transcripts for AI copilot indexing
+      if (transcript || data.title) {
+        await supabaseAdmin
+          .from("claap_transcripts")
+          .upsert({
+            deal_id: resolvedDealId,
+            claap_meeting_id: meetingId,
+            transcript_text: transcript || null,
+            summary: null, // Will be filled by claap-analyze-meeting
+            participants: classifiedParticipants.map(p => ({ name: p.name, email: p.email, is_internal: p.is_internal })),
+            duration_seconds: data.durationSeconds || null,
+            recorded_at: data.meeting?.startingAt || data.createdAt || null,
+            call_type: matchResult.callType || null,
+            match_source: matchResult.matchSource || null,
+          }, { onConflict: "claap_meeting_id" });
+      }
     }
 
     // ==========================================
