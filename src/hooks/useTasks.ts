@@ -73,6 +73,27 @@ export interface TaskActivityEvent {
 export type TaskOwnerFilter = 'mine' | 'others' | 'all';
 const TASKS_KEY = ['my-tasks'];
 
+function buildBaseTasksQuery() {
+  return supabase
+    .from('tasks')
+    .select('*')
+    .is('archived_at', null)
+    .is('parent_task_id', null);
+}
+
+function sortAndDedupeTasks(tasks: Task[]) {
+  const byId = new Map<string, Task>();
+  tasks.forEach(task => {
+    if (!byId.has(task.id)) byId.set(task.id, task);
+  });
+
+  return Array.from(byId.values()).sort((a, b) => {
+    const positionDelta = (a.position ?? 0) - (b.position ?? 0);
+    if (positionDelta !== 0) return positionDelta;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
 function calculateNextDueDate(currentDueDate: string | null, rule: string): string | null {
   if (!currentDueDate) return null;
   const date = new Date(currentDueDate + 'T00:00:00');
@@ -111,17 +132,53 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     enabled: !!user,
     queryFn: async () => {
       if (!user) return [];
-      let query = supabase
-        .from('tasks')
-        .select('*')
-        .is('archived_at', null)
-        .is('parent_task_id', null)
+
+      if (ownerFilter === 'mine') {
+        const [assignedResult, collaboratorResult] = await Promise.all([
+          buildBaseTasksQuery()
+            .eq('assigned_to', user.id)
+            .order('position', { ascending: true })
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('task_collaborators' as any)
+            .select('task_id')
+            .eq('user_id', user.id),
+        ]);
+
+        if (assignedResult.error) throw assignedResult.error;
+        if (collaboratorResult.error) throw collaboratorResult.error;
+
+        const assignedTasks = (assignedResult.data || []) as Task[];
+        const collaboratorRows = (collaboratorResult.data || []) as unknown as { task_id: string }[];
+        const collaboratorTaskIds = [...new Set(collaboratorRows
+          .map(row => row.task_id)
+          .filter(Boolean))];
+
+        const assignedTaskIds = new Set(assignedTasks.map(task => task.id));
+        const missingCollaboratorTaskIds = collaboratorTaskIds.filter(taskId => !assignedTaskIds.has(taskId));
+
+        if (missingCollaboratorTaskIds.length === 0) {
+          return sortAndDedupeTasks(assignedTasks);
+        }
+
+        const { data: collaboratorTasks, error: collaboratorTasksError } = await buildBaseTasksQuery()
+          .in('id', missingCollaboratorTaskIds)
+          .order('position', { ascending: true })
+          .order('created_at', { ascending: false });
+
+        if (collaboratorTasksError) throw collaboratorTasksError;
+
+        return sortAndDedupeTasks([
+          ...assignedTasks,
+          ...((collaboratorTasks || []) as Task[]),
+        ]);
+      }
+
+      let query = buildBaseTasksQuery()
         .order('position', { ascending: true })
         .order('created_at', { ascending: false });
 
-      if (ownerFilter === 'mine') {
-        query = query.eq('assigned_to', user.id);
-      } else if (ownerFilter === 'others') {
+      if (ownerFilter === 'others') {
         query = query.neq('assigned_to', user.id);
         if (company?.id) {
           query = query.eq('company_id', company.id);
@@ -135,7 +192,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as Task[];
+      return sortAndDedupeTasks((data || []) as Task[]);
     },
   });
 

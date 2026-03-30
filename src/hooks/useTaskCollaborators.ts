@@ -58,7 +58,10 @@ export function useTaskCollaborators(taskId: string | null) {
         .insert({ task_id: taskId, user_id: userId });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+    },
   });
 
   const removeCollaborator = useMutation({
@@ -71,7 +74,10 @@ export function useTaskCollaborators(taskId: string | null) {
         .eq('user_id', userId);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+    },
   });
 
   return { collaborators, isLoading, addCollaborator, removeCollaborator };
