@@ -443,6 +443,7 @@ const notificationTemplates: Record<string, { subject: string; getMessage: (data
     subject: 'Deal Updated',
     getMessage: (data) => buildChangeSummary(data) || `Deal "${data.deal_name}" has been updated.`,
   },
+
   stage_changed: {
     subject: 'Deal Stage Changed',
     getMessage: (data) => buildChangeSummary(data) || `Deal "${data.deal_name}" stage changed from "${data.old_value}" to "${data.new_value}".`,
