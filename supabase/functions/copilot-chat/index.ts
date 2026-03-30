@@ -450,14 +450,14 @@ function selectTools(page: string, entityType?: string) {
   ]);
 
   if (page.includes("lender")) {
-    ["get_deal_lenders", "search_lenders", "update_lender_status"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "search_lenders", "update_lender_status", "get_deal_call_transcripts"].forEach(n => coreNames.add(n));
   } else if (page.includes("deals") || page.includes("pipeline")) {
-    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items", "get_deal_call_transcripts"].forEach(n => coreNames.add(n));
   } else if (page.includes("task")) {
     // Tasks page: core + task tools only
   } else {
     // Dashboard and other pages: core + some deal read tools
-    ["get_deal_lenders", "get_deal_health"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "get_deal_health", "get_deal_call_transcripts"].forEach(n => coreNames.add(n));
   }
 
   return tools.filter(t => coreNames.has(t.function.name));
