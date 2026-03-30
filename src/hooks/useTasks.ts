@@ -312,6 +312,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
       queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
       if (user && data) {
         const taskUrl = `https://naitive.co/tasks?task=${(data as any).id}`;
         const { data: assigneeProfile } = await supabase
