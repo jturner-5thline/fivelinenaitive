@@ -1565,35 +1565,102 @@ export default function Lenders() {
                 <p className="text-xs text-muted-foreground">Separate multiple industries with commas</p>
               </div>
               <Separator />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="contactName">Contact Name</Label>
-                  <Input
-                    id="contactName"
-                    value={form.contactName}
-                    onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-                    placeholder="Primary contact"
-                  />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Contacts</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => setForm(prev => ({
+                      ...prev,
+                      contacts: [...prev.contacts, emptyContact(false)],
+                    }))}
+                  >
+                    <Plus className="h-3 w-3" /> Add Contact
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contactTitle">Contact Title</Label>
-                  <Input
-                    id="contactTitle"
-                    value={form.contactTitle}
-                    onChange={(e) => setForm({ ...form, contactTitle: e.target.value })}
-                    placeholder="e.g., VP"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="email@example.com"
-                />
+                {form.contacts.map((contact, idx) => (
+                  <div key={idx} className="space-y-2 p-3 rounded-lg border bg-muted/30 relative">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs">
+                        <input
+                          type="radio"
+                          name="primaryContact"
+                          checked={contact.isPrimary}
+                          onChange={() => setForm(prev => ({
+                            ...prev,
+                            contacts: prev.contacts.map((c, i) => ({ ...c, isPrimary: i === idx })),
+                          }))}
+                          className="accent-primary"
+                        />
+                        {contact.isPrimary ? (
+                          <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">Primary</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">Set as primary</span>
+                        )}
+                      </label>
+                      {form.contacts.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                          onClick={() => setForm(prev => {
+                            const next = prev.contacts.filter((_, i) => i !== idx);
+                            // If removed was primary, promote first
+                            if (contact.isPrimary && next.length > 0) next[0].isPrimary = true;
+                            return { ...prev, contacts: next };
+                          })}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Name"
+                        value={contact.name}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, name: e.target.value } : c),
+                        }))}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        placeholder="Title (e.g., VP)"
+                        value={contact.title}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, title: e.target.value } : c),
+                        }))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Email"
+                        type="email"
+                        value={contact.email}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, email: e.target.value } : c),
+                        }))}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        placeholder="Phone (optional)"
+                        value={contact.phone}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, phone: e.target.value } : c),
+                        }))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Notes / Description</Label>
