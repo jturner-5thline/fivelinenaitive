@@ -8,6 +8,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { HubSpotDealSync } from './hubspot/HubSpotDealSync';
 import { HubSpotMappingOverview } from './hubspot/HubSpotMappingOverview';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ExternalLink } from 'lucide-react';
 
 interface HubSpotSyncSettingsModalProps {
   open: boolean;
