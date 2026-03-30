@@ -243,8 +243,7 @@ export function ClaapSyncSettings() {
                     ))}
                   </ScrollArea>
                 </div>
-              )
-              </div>
+              )}
             </div>
           )}
           <Button
