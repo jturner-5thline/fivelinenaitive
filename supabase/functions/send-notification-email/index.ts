@@ -384,6 +384,233 @@ function buildTaskAssignedHtml(data: NotificationPayload, actionUrl: string, app
 </html>`;
 }
 
+// Build enriched deal_updated email HTML (dark theme, matching task_assigned style)
+function buildDealUpdatedHtml(data: NotificationPayload, actionUrl: string, appUrl: string): string {
+  const actor = data.changed_by || 'Someone';
+  const year = new Date().getFullYear();
+  const timestamp = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const deal = (data as any)._deal_details as Record<string, any> | undefined;
+
+  // Build changes table
+  let changesTableHtml = '';
+  if (data.changes && data.changes.length > 0) {
+    const changeRows = data.changes.map(c => {
+      const fieldLabel = c.field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const oldVal = c.old || '—';
+      const newVal = c.new || '—';
+      return `
+        <tr>
+          <td style="padding: 10px 14px; border-bottom: 1px solid #2d2d52; color: #94a3b8; font-size: 13px; font-weight: 600; white-space: nowrap; width: 120px; vertical-align: top;">${fieldLabel}</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid #2d2d52; color: #ef4444; font-size: 13px; text-decoration: line-through; opacity: 0.7; vertical-align: top;">${oldVal}</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid #2d2d52; vertical-align: top;">
+            <span style="color: #22c55e; font-size: 13px; font-weight: 600;">${newVal}</span>
+          </td>
+        </tr>`;
+    }).join('');
+
+    changesTableHtml = `
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 20px 0 0 0; background: #1e293b; border-radius: 8px; border: 1px solid #334155; overflow: hidden;">
+        <tr>
+          <td style="padding: 14px 14px 6px 14px;">
+            <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; font-weight: 600;">📝 What Changed</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 0 0 4px 0;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+              <thead>
+                <tr style="background: #0f172a;">
+                  <th style="padding: 8px 14px; text-align: left; font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; border-bottom: 1px solid #2d2d52;">Field</th>
+                  <th style="padding: 8px 14px; text-align: left; font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; border-bottom: 1px solid #2d2d52;">Before</th>
+                  <th style="padding: 8px 14px; text-align: left; font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; border-bottom: 1px solid #2d2d52;">After</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${changeRows}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      </table>`;
+  }
+
+  // Build deal context card from enriched data
+  let dealCardHtml = '';
+  if (deal) {
+    const fmtCurrency = (val: number | null | undefined) => val != null
+      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val)
+      : null;
+    const dealFields: Array<[string, string | null]> = [
+      ['Company', deal.company || null],
+      ['Amount', fmtCurrency(deal.value)],
+      ['Stage', deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : null],
+      ['Status', deal.status ? deal.status.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : null],
+      ['Manager', deal.manager || null],
+      ['Deal Owner', deal.deal_owner || null],
+      ['Analyst', deal.analyst || null],
+      ['Engagement', deal.engagement_type ? deal.engagement_type.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : null],
+      ['Contact', deal.contact || null],
+      ['Referred By', deal.referred_by || null],
+    ];
+    const visible = dealFields.filter(([, v]) => v != null && v !== '');
+
+    if (visible.length > 0) {
+      // Build two-column grid for deal fields
+      const rows: string[] = [];
+      for (let i = 0; i < visible.length; i += 2) {
+        const left = visible[i];
+        const right = visible[i + 1];
+        rows.push(`
+          <tr>
+            <td style="padding: 5px 0; color: #64748b; font-size: 12px; width: 80px; vertical-align: top;">${left[0]}</td>
+            <td style="padding: 5px 12px 5px 0; color: #e2e8f0; font-size: 13px; font-weight: 500; vertical-align: top;">${left[1]}</td>
+            ${right ? `
+              <td style="padding: 5px 0; color: #64748b; font-size: 12px; width: 80px; vertical-align: top;">${right[0]}</td>
+              <td style="padding: 5px 0; color: #e2e8f0; font-size: 13px; font-weight: 500; vertical-align: top;">${right[1]}</td>
+            ` : '<td></td><td></td>'}
+          </tr>`);
+      }
+
+      dealCardHtml = `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 20px 0 0 0; background: #1e293b; border-radius: 8px; border: 1px solid #334155;">
+          <tr>
+            <td style="padding: 14px 20px 6px 20px;">
+              <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; font-weight: 600;">📋 Current Deal Snapshot</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 20px 16px 20px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                ${rows.join('')}
+              </table>
+            </td>
+          </tr>
+          ${deal.narrative ? `
+          <tr>
+            <td style="padding: 0 20px 16px 20px; border-top: 1px solid #334155;">
+              <p style="margin: 10px 0 4px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600;">Narrative</p>
+              <p style="margin: 0; color: #94a3b8; font-size: 13px; line-height: 1.5;">${(deal.narrative as string).substring(0, 300)}${(deal.narrative as string).length > 300 ? '…' : ''}</p>
+            </td>
+          </tr>` : ''}
+        </table>`;
+    }
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>Deal Updated</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+  <div style="display: none; max-height: 0; overflow: hidden;">
+    ${actor} updated ${data.deal_name || 'a deal'}${data.changes && data.changes.length > 0 ? ': ' + data.changes.map(c => c.field).join(', ') : ''}
+    &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+  </div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #0f172a;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+        <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width: 560px; width: 100%;">
+
+          <!-- Logo -->
+          <tr>
+            <td style="padding: 0 0 24px 0; text-align: center;">
+              <span style="font-size: 22px; font-weight: 700; color: #f8fafc; letter-spacing: -0.5px;">naitive</span>
+            </td>
+          </tr>
+
+          <!-- Main Card -->
+          <tr>
+            <td style="background: #1a1a2e; border-radius: 12px; border: 1px solid #2d2d52;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+
+                <!-- Header -->
+                <tr>
+                  <td style="padding: 28px 28px 0 28px;">
+                    <p style="margin: 0 0 6px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #8B5CF6; font-weight: 700;">Deal Updated</p>
+                    <h1 style="margin: 0; font-size: 22px; font-weight: 600; color: #f1f5f9; line-height: 1.3;">${data.deal_name || 'Untitled Deal'}</h1>
+                  </td>
+                </tr>
+
+                <!-- Actor + Timestamp -->
+                <tr>
+                  <td style="padding: 16px 28px 0 28px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="width: 32px; height: 32px; border-radius: 16px; background: linear-gradient(135deg, #8B5CF6, #D946EF); text-align: center; vertical-align: middle; color: #fff; font-size: 14px; font-weight: 600;">${actor.charAt(0).toUpperCase()}</td>
+                        <td style="padding-left: 10px; vertical-align: middle;">
+                          <p style="margin: 0; color: #e2e8f0; font-size: 14px; font-weight: 500;">${actor}</p>
+                          <p style="margin: 2px 0 0 0; color: #64748b; font-size: 12px;">${timestamp}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Changes Table -->
+                <tr>
+                  <td style="padding: 4px 28px 0 28px;">
+                    ${changesTableHtml || '<p style="color: #94a3b8; font-size: 14px; margin: 16px 0 0 0;">Deal details were updated.</p>'}
+                  </td>
+                </tr>
+
+                <!-- Deal Context Card -->
+                <tr>
+                  <td style="padding: 4px 28px 0 28px;">
+                    ${dealCardHtml}
+                  </td>
+                </tr>
+
+                <!-- CTA Button -->
+                <tr>
+                  <td style="padding: 24px 28px 28px 28px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td align="center">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td style="border-radius: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%);">
+                                <a href="${actionUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none;">View Deal in Naitive</a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 0 0 0; text-align: center;">
+              <p style="color: #475569; font-size: 12px; margin: 0 0 6px 0;">
+                You're receiving this because you have deal update notifications enabled.
+              </p>
+              <p style="color: #475569; font-size: 12px; margin: 0 0 6px 0;">
+                © ${year} naitive. All rights reserved.
+              </p>
+              <p style="color: #475569; font-size: 12px; margin: 0;">
+                <a href="${appUrl}/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
+                &nbsp;|&nbsp;
+                <a href="${appUrl}/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 const notificationTemplates: Record<string, { subject: string; getMessage: (data: NotificationPayload) => string; buildDetailHtml?: (data: Record<string, any>) => string }> = {
   deal_created: {
     subject: 'New Deal Created',
