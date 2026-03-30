@@ -664,11 +664,13 @@ export default function Lenders() {
     }
 
     setIsSaving(true);
+    const primaryContact = form.contacts.find(c => c.isPrimary) || form.contacts[0];
     const lenderData: MasterLenderInsert = {
       name: form.name.trim(),
-      contact_name: form.contactName.trim() || null,
-      contact_title: form.contactTitle.trim() || null,
-      email: form.email.trim() || null,
+      contact_name: primaryContact?.name.trim() || null,
+      contact_title: primaryContact?.title.trim() || null,
+      email: primaryContact?.email.trim() || null,
+      contact_phone: primaryContact?.phone.trim() || null,
       lender_type: form.lenderType.trim() || null,
       loan_types: form.loanTypes.split(',').map(p => p.trim()).filter(p => p) || null,
       min_deal: form.minDeal ? parseFloat(form.minDeal) : null,
@@ -679,8 +681,9 @@ export default function Lenders() {
     };
 
     try {
+      let lenderId = editingLenderId;
+
       if (editingLenderId) {
-        // Check if name changed and new name already exists
         const existingLender = masterLenders.find(l => l.id === editingLenderId);
         if (existingLender && lenderData.name.toLowerCase() !== existingLender.name.toLowerCase() && 
             masterLenders.some(l => l.name.toLowerCase() === lenderData.name.toLowerCase())) {
@@ -688,14 +691,34 @@ export default function Lenders() {
           return;
         }
         await updateMasterLender(editingLenderId, lenderData);
+        // Delete old contacts and re-insert
+        await supabase.from('lender_contacts').delete().eq('lender_id', editingLenderId);
         toast({ title: 'Lender updated', description: `${lenderData.name} has been updated.` });
       } else {
         if (masterLenders.some(l => l.name.toLowerCase() === lenderData.name.toLowerCase())) {
           toast({ title: 'Error', description: 'A lender with this name already exists', variant: 'destructive' });
           return;
         }
-        await addMasterLender(lenderData);
+        const newLender = await addMasterLender(lenderData);
+        lenderId = newLender?.id ?? null;
         toast({ title: 'Lender added', description: `${lenderData.name} has been added.` });
+      }
+
+      // Insert contacts into lender_contacts
+      if (lenderId) {
+        const contactsToInsert = form.contacts
+          .filter(c => c.name.trim())
+          .map(c => ({
+            lender_id: lenderId!,
+            name: c.name.trim(),
+            title: c.title.trim() || null,
+            email: c.email.trim() || null,
+            phone: c.phone.trim() || null,
+            is_primary: c.isPrimary,
+          }));
+        if (contactsToInsert.length > 0) {
+          await supabase.from('lender_contacts').insert(contactsToInsert);
+        }
       }
 
       setIsDialogOpen(false);
