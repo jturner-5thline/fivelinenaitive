@@ -149,7 +149,8 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         if (collaboratorResult.error) throw collaboratorResult.error;
 
         const assignedTasks = (assignedResult.data || []) as Task[];
-        const collaboratorTaskIds = [...new Set(((collaboratorResult.data || []) as { task_id: string }[])
+        const collaboratorRows = (collaboratorResult.data || []) as unknown as { task_id: string }[];
+        const collaboratorTaskIds = [...new Set(collaboratorRows
           .map(row => row.task_id)
           .filter(Boolean))];
 
@@ -182,7 +183,6 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         if (company?.id) {
           query = query.eq('company_id', company.id);
         }
-      } else if (ownerFilter === 'others') {
       } else {
         // 'all' — fetch all company tasks
         if (company?.id) {
