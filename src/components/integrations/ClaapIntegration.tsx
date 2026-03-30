@@ -185,29 +185,32 @@ export function ClaapIntegration() {
         )}
 
         {isEnabled && (
-          <div className="flex items-center justify-between">
-            {canManage && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSendTestWebhook}
-                disabled={testingWebhook}
-              >
-                {testingWebhook ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <FlaskConical className="h-4 w-4 mr-2" />
-                )}
-                Send Test Webhook
+          <>
+            <ClaapSyncSettings />
+            <div className="flex items-center justify-between">
+              {canManage && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSendTestWebhook}
+                  disabled={testingWebhook}
+                >
+                  {testingWebhook ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <FlaskConical className="h-4 w-4 mr-2" />
+                  )}
+                  Send Test Webhook
+                </Button>
+              )}
+              <Button variant="outline" size="sm" asChild>
+                <a href="https://app.claap.io" target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open Claap
+                </a>
               </Button>
-            )}
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://app.claap.io" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Open Claap
-              </a>
-            </Button>
-          </div>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
