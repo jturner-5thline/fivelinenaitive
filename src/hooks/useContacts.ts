@@ -87,10 +87,10 @@ export interface PaginatedResult<T> {
 
 export function useContacts(params: ContactsListParams = {}) {
   const { company } = useCompany();
-  const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter } = params;
+  const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter, advancedFilters = [], matchMode = 'all' } = params;
 
   return useQuery<PaginatedResult<Contact>>({
-    queryKey: ['contacts', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter],
+    queryKey: ['contacts', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter, advancedFilters, matchMode],
     queryFn: async () => {
       let query = supabase
         .from('contacts')
