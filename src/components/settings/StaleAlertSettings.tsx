@@ -6,7 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Bell, Loader2, Save } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Bell, Loader2, Save, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
@@ -19,6 +21,10 @@ interface StaleAlertConfig {
   notify_admins: boolean;
   excluded_stages: string[];
   allowed_pipeline_ids: string[] | null;
+  always_notify_emails: string[];
+  include_flagged: boolean;
+  include_lenders_needing_update: boolean;
+  lender_stale_days: number;
 }
 
 interface Pipeline {
@@ -34,6 +40,10 @@ const DEFAULT_CONFIG: StaleAlertConfig = {
   notify_admins: true,
   excluded_stages: ['archived', 'on_hold', 'closed_lost', 'in_development'],
   allowed_pipeline_ids: null,
+  always_notify_emails: [],
+  include_flagged: true,
+  include_lenders_needing_update: true,
+  lender_stale_days: 14,
 };
 
 export function StaleAlertSettings({ isAdmin }: { isAdmin: boolean }) {
@@ -42,6 +52,7 @@ export function StaleAlertSettings({ isAdmin }: { isAdmin: boolean }) {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
 
   useEffect(() => {
     if (!company?.id) return;
@@ -78,7 +89,7 @@ export function StaleAlertSettings({ isAdmin }: { isAdmin: boolean }) {
         .update({ stale_alert_config: config as unknown as Json })
         .eq('company_id', company.id);
       if (error) throw error;
-      toast.success('Stale alert settings saved');
+      toast.success('Deal attention alert settings saved');
     } catch {
       toast.error('Failed to save settings');
     } finally {
@@ -91,11 +102,9 @@ export function StaleAlertSettings({ isAdmin }: { isAdmin: boolean }) {
       const current = prev.allowed_pipeline_ids || pipelines.map(p => p.id);
       if (checked) {
         const updated = [...current, pipelineId];
-        // If all pipelines are selected, set to null (all pipelines)
         return { ...prev, allowed_pipeline_ids: updated.length >= pipelines.length ? null : updated };
       } else {
         const updated = current.filter(id => id !== pipelineId);
-        // Don't allow empty — at least one pipeline must be selected
         return { ...prev, allowed_pipeline_ids: updated.length === 0 ? current : updated };
       }
     });
@@ -104,6 +113,21 @@ export function StaleAlertSettings({ isAdmin }: { isAdmin: boolean }) {
   const isPipelineSelected = (pipelineId: string) => {
     if (config.allowed_pipeline_ids === null) return true;
     return config.allowed_pipeline_ids.includes(pipelineId);
+  };
+
+  const handleAddEmail = () => {
+    const email = newEmail.trim().toLowerCase();
+    if (!email || !email.includes('@')) return;
+    if (config.always_notify_emails.includes(email)) {
+      toast.error('Email already added');
+      return;
+    }
+    setConfig(prev => ({ ...prev, always_notify_emails: [...prev.always_notify_emails, email] }));
+    setNewEmail('');
+  };
+
+  const handleRemoveEmail = (email: string) => {
+    setConfig(prev => ({ ...prev, always_notify_emails: prev.always_notify_emails.filter(e => e !== email) }));
   };
 
   if (isLoading) {
@@ -122,16 +146,16 @@ export function StaleAlertSettings({ isAdmin }: { isAdmin: boolean }) {
         <div className="flex items-center gap-2">
           <Bell className="h-5 w-5" />
           <div>
-            <CardTitle className="text-lg">Stale Deal Email Alerts</CardTitle>
-            <CardDescription>Configure who receives email notifications for deals that need attention</CardDescription>
+            <CardTitle className="text-lg">Deals Needing Attention Alerts</CardTitle>
+            <CardDescription>Configure daily email alerts for stale, flagged, and lender-needing-update deals</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label>Enable Stale Deal Emails</Label>
-            <p className="text-sm text-muted-foreground">Send email alerts when deals haven't been updated</p>
+            <Label>Enable Deal Attention Emails</Label>
+            <p className="text-sm text-muted-foreground">Send daily emails summarizing deals needing attention (7am ET)</p>
           </div>
           <Switch
             checked={config.enabled}
@@ -142,26 +166,55 @@ export function StaleAlertSettings({ isAdmin }: { isAdmin: boolean }) {
 
         <Separator />
 
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Stale Threshold</Label>
-            <p className="text-sm text-muted-foreground">Days without updates before a deal is flagged</p>
+        {/* Attention Criteria */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">What triggers an alert?</Label>
+
+          <div className="flex items-center justify-between py-1">
+            <div className="space-y-0.5">
+              <Label className="text-sm">Stale Deals</Label>
+              <p className="text-xs text-muted-foreground">Deals not updated within the threshold</p>
+            </div>
+            <Select
+              value={String(config.threshold_days)}
+              onValueChange={(v) => setConfig(p => ({ ...p, threshold_days: parseInt(v) }))}
+              disabled={!isAdmin}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7 days</SelectItem>
+                <SelectItem value="14">14 days</SelectItem>
+                <SelectItem value="21">21 days</SelectItem>
+                <SelectItem value="30">30 days</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select
-            value={String(config.threshold_days)}
-            onValueChange={(v) => setConfig(p => ({ ...p, threshold_days: parseInt(v) }))}
-            disabled={!isAdmin}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 days</SelectItem>
-              <SelectItem value="14">14 days</SelectItem>
-              <SelectItem value="21">21 days</SelectItem>
-              <SelectItem value="30">30 days</SelectItem>
-            </SelectContent>
-          </Select>
+
+          <div className="flex items-center justify-between py-1">
+            <div className="space-y-0.5">
+              <Label className="text-sm">Flagged Deals</Label>
+              <p className="text-xs text-muted-foreground">Include deals marked as flagged for discussion</p>
+            </div>
+            <Switch
+              checked={config.include_flagged}
+              onCheckedChange={(v) => setConfig(p => ({ ...p, include_flagged: v }))}
+              disabled={!isAdmin}
+            />
+          </div>
+
+          <div className="flex items-center justify-between py-1">
+            <div className="space-y-0.5">
+              <Label className="text-sm">Lenders Needing Update</Label>
+              <p className="text-xs text-muted-foreground">Deals with active lenders not updated within threshold</p>
+            </div>
+            <Switch
+              checked={config.include_lenders_needing_update}
+              onCheckedChange={(v) => setConfig(p => ({ ...p, include_lenders_needing_update: v }))}
+              disabled={!isAdmin}
+            />
+          </div>
         </div>
 
         <Separator />
@@ -171,7 +224,7 @@ export function StaleAlertSettings({ isAdmin }: { isAdmin: boolean }) {
             <div className="space-y-3">
               <div className="space-y-0.5">
                 <Label className="text-sm font-medium">Monitored Pipelines</Label>
-                <p className="text-xs text-muted-foreground">Only deals in selected pipelines will trigger stale alerts. Deals in unselected pipelines are ignored.</p>
+                <p className="text-xs text-muted-foreground">Only deals in selected pipelines will trigger alerts</p>
               </div>
 
               <div className="space-y-2 pl-1">
@@ -206,8 +259,8 @@ export function StaleAlertSettings({ isAdmin }: { isAdmin: boolean }) {
 
           <div className="flex items-center justify-between py-1">
             <div className="space-y-0.5">
-              <Label className="text-sm">Deal Managers</Label>
-              <p className="text-xs text-muted-foreground">Each manager receives alerts only for their own deals</p>
+              <Label className="text-sm">Deal Managers & Analysts</Label>
+              <p className="text-xs text-muted-foreground">Each receives alerts only for deals they're assigned to</p>
             </div>
             <Switch
               checked={config.notify_managers}
@@ -227,6 +280,49 @@ export function StaleAlertSettings({ isAdmin }: { isAdmin: boolean }) {
               disabled={!isAdmin}
             />
           </div>
+        </div>
+
+        <Separator />
+
+        {/* Always-notify emails */}
+        <div className="space-y-3">
+          <div className="space-y-0.5">
+            <Label className="text-sm font-medium">Always Notify (All Deals)</Label>
+            <p className="text-xs text-muted-foreground">These users always receive a summary of ALL deals needing attention, regardless of role</p>
+          </div>
+
+          {config.always_notify_emails.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {config.always_notify_emails.map(email => (
+                <Badge key={email} variant="secondary" className="gap-1 pr-1">
+                  {email}
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleRemoveEmail(email)}
+                      className="ml-1 hover:bg-muted rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {isAdmin && (
+            <div className="flex gap-2">
+              <Input
+                placeholder="email@company.com"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddEmail()}
+                className="flex-1"
+              />
+              <Button variant="outline" size="sm" onClick={handleAddEmail}>
+                Add
+              </Button>
+            </div>
+          )}
         </div>
 
         {isAdmin && (
