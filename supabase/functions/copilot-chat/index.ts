@@ -420,6 +420,22 @@ const tools = [
       },
     },
   },
+  // ── CALL TRANSCRIPTS ──
+  {
+    type: "function",
+    function: {
+      name: "get_deal_call_transcripts",
+      description: "Get Claap call transcripts for a deal. Use when user asks about what was discussed in calls/meetings, what a lender said, or wants to reference call recordings. Returns summaries and transcript text.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+          search: { type: "string", description: "Optional search term to filter transcripts by content" },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
