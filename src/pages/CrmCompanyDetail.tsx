@@ -273,9 +273,9 @@ export default function CrmCompanyDetail() {
                     <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => setShowLinkContact(true)}>
                       <Plus className="h-3 w-3 mr-1" /> Link Existing
                     </Button>
-                    <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => setShowCreateContact(true)}>
-                      <Plus className="h-3 w-3 mr-1" /> Create New
-                    </Button>
+                  </div>
+                  <div className="mt-1">
+                    <InlineQuickAddContact companyId={company.id} companyName={company.name} />
                   </div>
                 </CardContent>
               </Card>
