@@ -64,6 +64,22 @@ export default function Contacts() {
     }
   };
 
+  const handleMatchCompanies = async () => {
+    setIsMatching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('match-contacts-companies');
+      if (error) throw error;
+      const r = data as { matched?: number; unmatched?: number; total?: number; error?: string };
+      if (r.error) throw new Error(r.error);
+      toast.success(`Matched ${r.matched} of ${r.total} contacts to companies`);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    } catch (error: any) {
+      toast.error('Failed to match contacts', { description: error.message });
+    } finally {
+      setIsMatching(false);
+    }
+  };
+
   const { data: result, isLoading, isFetching } = useContacts({
     page,
     pageSize,
