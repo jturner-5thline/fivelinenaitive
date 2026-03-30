@@ -94,6 +94,7 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
         description: description.trim() || undefined,
         assigned_to: assignedTo || undefined,
         contact_id: contactId,
+        crm_company_id: crmCompanyId || undefined,
         priority,
         due_date: dueDate || undefined,
         status,
