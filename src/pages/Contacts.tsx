@@ -117,6 +117,15 @@ export default function Contacts() {
             </div>
           </div>
 
+          {/* Advanced Filters */}
+          <AdvancedFilterBuilder
+            availableFields={CONTACT_CORE_FIELDS}
+            filters={advancedFilters}
+            onFiltersChange={handleFiltersChange}
+            matchMode={matchMode}
+            onMatchModeChange={setMatchMode}
+          />
+
           {/* Quick filters */}
           <Tabs value={quickFilter} onValueChange={handleQuickFilterChange}>
             <TabsList>
