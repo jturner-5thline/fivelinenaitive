@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Search, MoreHorizontal, ArrowUpDown, UserPlus, ChevronDown, Building2, Briefcase, Trash2 } from 'lucide-react';
 import { Contact, LIFECYCLE_STAGES, CONTACT_STATUSES, useDeleteContact } from '@/hooks/useContacts';
+import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { useLinkContactToCompany, useLinkContactToDeal, useAllDeals } from '@/hooks/useCrmLinks';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
