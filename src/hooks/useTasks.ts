@@ -284,6 +284,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           section_id: task.section_id || null,
           deal_id: task.deal_id || null,
           contact_id: task.contact_id || null,
+          crm_company_id: task.crm_company_id || null,
           company_id: membership?.company_id || null,
         } as any)
         .select()
