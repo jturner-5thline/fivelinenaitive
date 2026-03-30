@@ -97,10 +97,10 @@ export function applyFiltersToQuery(
   return query;
 }
 
-function applyOneRule<T extends { or: (s: string) => T; filter: (col: string, op: string, val: any) => T; ilike: (col: string, val: string) => T; eq: (col: string, val: any) => T; neq: (col: string, val: any) => T; gt: (col: string, val: any) => T; lt: (col: string, val: any) => T; gte: (col: string, val: any) => T; lte: (col: string, val: any) => T; is: (col: string, val: any) => T; not: (col: string, op: string, val: any) => T; in: (col: string, vals: any[]) => T }>(
-  query: T,
+function applyOneRule(
+  query: any,
   r: FilterRule,
-): T {
+): any {
   const f = r.field;
   const v = r.value;
   const op = r.operator;
