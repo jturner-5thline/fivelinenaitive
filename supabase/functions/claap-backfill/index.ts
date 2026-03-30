@@ -31,7 +31,7 @@ function normalizeName(name: string): string {
 
 interface MatchResult {
   matched: boolean;
-  matchType: "lender" | "company" | "contact" | null;
+  matchType: "lender" | "company" | "contact" | "deal" | null;
   matchSource: string | null;
   lenderId: string | null;
   crmCompanyId: string | null;
