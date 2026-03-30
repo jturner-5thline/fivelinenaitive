@@ -129,12 +129,22 @@ interface LenderInfo {
   relationshipOwners?: string | null;
 }
 
+interface LenderFormContact {
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  isPrimary: boolean;
+}
+
+const emptyContact = (isPrimary = false): LenderFormContact => ({
+  name: '', title: '', email: '', phone: '', isPrimary,
+});
+
 interface LenderForm {
   id?: string;
   name: string;
-  contactName: string;
-  contactTitle: string;
-  email: string;
+  contacts: LenderFormContact[];
   lenderType: string;
   loanTypes: string;
   minDeal: string;
@@ -146,9 +156,7 @@ interface LenderForm {
 
 const emptyForm: LenderForm = {
   name: '',
-  contactName: '',
-  contactTitle: '',
-  email: '',
+  contacts: [emptyContact(true)],
   lenderType: '',
   loanTypes: '',
   minDeal: '',
@@ -656,11 +664,13 @@ export default function Lenders() {
     }
 
     setIsSaving(true);
+    const primaryContact = form.contacts.find(c => c.isPrimary) || form.contacts[0];
     const lenderData: MasterLenderInsert = {
       name: form.name.trim(),
-      contact_name: form.contactName.trim() || null,
-      contact_title: form.contactTitle.trim() || null,
-      email: form.email.trim() || null,
+      contact_name: primaryContact?.name.trim() || null,
+      contact_title: primaryContact?.title.trim() || null,
+      email: primaryContact?.email.trim() || null,
+      contact_phone: primaryContact?.phone.trim() || null,
       lender_type: form.lenderType.trim() || null,
       loan_types: form.loanTypes.split(',').map(p => p.trim()).filter(p => p) || null,
       min_deal: form.minDeal ? parseFloat(form.minDeal) : null,
@@ -671,8 +681,9 @@ export default function Lenders() {
     };
 
     try {
+      let lenderId = editingLenderId;
+
       if (editingLenderId) {
-        // Check if name changed and new name already exists
         const existingLender = masterLenders.find(l => l.id === editingLenderId);
         if (existingLender && lenderData.name.toLowerCase() !== existingLender.name.toLowerCase() && 
             masterLenders.some(l => l.name.toLowerCase() === lenderData.name.toLowerCase())) {
@@ -680,14 +691,34 @@ export default function Lenders() {
           return;
         }
         await updateMasterLender(editingLenderId, lenderData);
+        // Delete old contacts and re-insert
+        await supabase.from('lender_contacts').delete().eq('lender_id', editingLenderId);
         toast({ title: 'Lender updated', description: `${lenderData.name} has been updated.` });
       } else {
         if (masterLenders.some(l => l.name.toLowerCase() === lenderData.name.toLowerCase())) {
           toast({ title: 'Error', description: 'A lender with this name already exists', variant: 'destructive' });
           return;
         }
-        await addMasterLender(lenderData);
+        const newLender = await addMasterLender(lenderData);
+        lenderId = newLender?.id ?? null;
         toast({ title: 'Lender added', description: `${lenderData.name} has been added.` });
+      }
+
+      // Insert contacts into lender_contacts
+      if (lenderId) {
+        const contactsToInsert = form.contacts
+          .filter(c => c.name.trim())
+          .map(c => ({
+            lender_id: lenderId!,
+            name: c.name.trim(),
+            title: c.title.trim() || null,
+            email: c.email.trim() || null,
+            phone: c.phone.trim() || null,
+            is_primary: c.isPrimary,
+          }));
+        if (contactsToInsert.length > 0) {
+          await supabase.from('lender_contacts').insert(contactsToInsert);
+        }
       }
 
       setIsDialogOpen(false);
@@ -1534,35 +1565,102 @@ export default function Lenders() {
                 <p className="text-xs text-muted-foreground">Separate multiple industries with commas</p>
               </div>
               <Separator />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="contactName">Contact Name</Label>
-                  <Input
-                    id="contactName"
-                    value={form.contactName}
-                    onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-                    placeholder="Primary contact"
-                  />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Contacts</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => setForm(prev => ({
+                      ...prev,
+                      contacts: [...prev.contacts, emptyContact(false)],
+                    }))}
+                  >
+                    <Plus className="h-3 w-3" /> Add Contact
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contactTitle">Contact Title</Label>
-                  <Input
-                    id="contactTitle"
-                    value={form.contactTitle}
-                    onChange={(e) => setForm({ ...form, contactTitle: e.target.value })}
-                    placeholder="e.g., VP"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="email@example.com"
-                />
+                {form.contacts.map((contact, idx) => (
+                  <div key={idx} className="space-y-2 p-3 rounded-lg border bg-muted/30 relative">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs">
+                        <input
+                          type="radio"
+                          name="primaryContact"
+                          checked={contact.isPrimary}
+                          onChange={() => setForm(prev => ({
+                            ...prev,
+                            contacts: prev.contacts.map((c, i) => ({ ...c, isPrimary: i === idx })),
+                          }))}
+                          className="accent-primary"
+                        />
+                        {contact.isPrimary ? (
+                          <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">Primary</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">Set as primary</span>
+                        )}
+                      </label>
+                      {form.contacts.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                          onClick={() => setForm(prev => {
+                            const next = prev.contacts.filter((_, i) => i !== idx);
+                            // If removed was primary, promote first
+                            if (contact.isPrimary && next.length > 0) next[0].isPrimary = true;
+                            return { ...prev, contacts: next };
+                          })}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Name"
+                        value={contact.name}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, name: e.target.value } : c),
+                        }))}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        placeholder="Title (e.g., VP)"
+                        value={contact.title}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, title: e.target.value } : c),
+                        }))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Email"
+                        type="email"
+                        value={contact.email}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, email: e.target.value } : c),
+                        }))}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        placeholder="Phone (optional)"
+                        value={contact.phone}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, phone: e.target.value } : c),
+                        }))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Notes / Description</Label>
