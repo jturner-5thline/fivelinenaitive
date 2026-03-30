@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
+import { useTaskViewTabs } from '@/hooks/useTaskViewTabs';
+import { TaskTabBar, applyTabFilter } from '@/components/tasks/TaskTabBar';
 import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
