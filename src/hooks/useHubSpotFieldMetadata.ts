@@ -260,7 +260,7 @@ export function useSeedFieldMetadata() {
 
       const fields = objectType === 'contact' ? CONTACT_DEFAULT_FIELDS : COMPANY_DEFAULT_FIELDS;
 
-      const rows = fields.map((f) => ({
+      const rows = fields.map((f: any) => ({
         object_type: objectType,
         internal_name: f.internal_name,
         label: f.label,
