@@ -6,8 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateContact, LIFECYCLE_STAGES, CONTACT_STATUSES } from '@/hooks/useContacts';
-import { useCrmCompanies } from '@/hooks/useCrmCompanies';
-import { Search } from 'lucide-react';
+import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
 import { cn } from '@/lib/utils';
 
 interface CreateContactModalProps {
@@ -18,10 +17,6 @@ interface CreateContactModalProps {
 
 export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateContactModalProps) {
   const createContact = useCreateContact();
-  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
-  const companies = companiesResult?.data ?? [];
-  const [companySearch, setCompanySearch] = useState('');
-  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -37,12 +32,6 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
     description: '',
     crm_company_id: defaultCompanyId || '' as string,
   });
-
-  const selectedCompany = companies.find(c => c.id === form.crm_company_id);
-
-  const filteredCompanies = companySearch.trim()
-    ? companies.filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase()))
-    : companies.slice(0, 20);
 
   const handleSubmit = () => {
     if (!form.first_name && !form.last_name && !form.email) return;
@@ -83,48 +72,11 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
           {/* Company selector */}
           <div className="space-y-1.5 col-span-2">
             <Label className="text-xs">Company</Label>
-            <div className="relative">
-              {selectedCompany ? (
-                <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-background">
-                  <span className="text-sm flex-1">{selectedCompany.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => setForm(p => ({ ...p, crm_company_id: '' }))}
-                    className="text-muted-foreground hover:text-foreground"
-                  >×</button>
-                </div>
-              ) : (
-                <>
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search companies..."
-                    value={companySearch}
-                    onChange={e => { setCompanySearch(e.target.value); setShowCompanyDropdown(true); }}
-                    onFocus={() => setShowCompanyDropdown(true)}
-                    className="pl-8"
-                  />
-                  {showCompanyDropdown && filteredCompanies.length > 0 && (
-                    <div className="absolute z-50 top-full mt-1 w-full border rounded-md bg-popover shadow-md max-h-[200px] overflow-y-auto">
-                      {filteredCompanies.map(c => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50"
-                          onClick={() => {
-                            setForm(p => ({ ...p, crm_company_id: c.id }));
-                            setCompanySearch('');
-                            setShowCompanyDropdown(false);
-                          }}
-                        >
-                          <p className="font-medium">{c.name}</p>
-                          {c.domain && <p className="text-xs text-muted-foreground">{c.domain}</p>}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            <CompanyComboBox
+              value={form.crm_company_id}
+              onChange={(id) => setForm(p => ({ ...p, crm_company_id: id }))}
+              email={form.email}
+            />
           </div>
 
           <div className="space-y-1.5">
