@@ -73,6 +73,8 @@ export interface ContactsListParams {
   lifecycleStage?: string;
   status?: string;
   quickFilter?: string;
+  advancedFilters?: FilterRule[];
+  matchMode?: MatchMode;
 }
 
 export interface PaginatedResult<T> {
