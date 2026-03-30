@@ -376,8 +376,10 @@ Deno.serve(async (req) => {
 
         // Smart matching
         const matchResult = await runSmartMatching(supabaseAdmin, title, classifiedParticipants, companyId);
+        console.log(`  Match result for "${title}": matched=${matchResult.matched}, type=${matchResult.matchType}, source=${matchResult.matchSource}`);
 
         if (!matchResult.matched && !syncAllCalls) {
+          console.log(`  NO MATCH: "${title}" — skipping`);
           await supabaseAdmin.from("claap_skipped_calls").upsert({
             claap_id: claapId,
             company_id: companyId,
