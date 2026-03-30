@@ -209,7 +209,9 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
               </TableRow>
             ) : (
               filtered.map(contact => {
-                const companyName = (contact as any).crm_company_id ? companyMap.get((contact as any).crm_company_id) : null;
+                const crmCompany = (contact as any).crm_company;
+                const companyName = crmCompany?.name || null;
+                const companyId = (contact as any).crm_company_id;
                 return (
                   <TableRow
                     key={contact.id}
