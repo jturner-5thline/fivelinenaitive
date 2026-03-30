@@ -24,11 +24,27 @@ export default function CrmCompanies() {
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-hubspot-companies');
-      if (error) throw error;
-      const result = data as { count?: number; error?: string };
-      if (result.error) throw new Error(result.error);
-      toast.success(`Synced ${result.count || 0} companies from HubSpot`);
+      let afterCursor: string | undefined;
+      let totalSynced = 0;
+      let pass = 0;
+
+      do {
+        pass++;
+        const body = afterCursor ? { after: afterCursor } : {};
+        const { data, error } = await supabase.functions.invoke('sync-hubspot-companies', { body });
+        if (error) throw error;
+        const result = data as { count?: number; error?: string; timed_out?: boolean; resume_after?: string };
+        if (result.error) throw new Error(result.error);
+
+        totalSynced += result.count || 0;
+        afterCursor = result.timed_out ? result.resume_after : undefined;
+
+        if (result.timed_out) {
+          toast.info(`Synced ${totalSynced} companies so far, continuing...`);
+        }
+      } while (afterCursor);
+
+      toast.success(`Synced ${totalSynced} companies from HubSpot`);
       queryClient.invalidateQueries({ queryKey: ['crm-companies'] });
     } catch (error: any) {
       toast.error('Failed to sync companies', { description: error.message });
