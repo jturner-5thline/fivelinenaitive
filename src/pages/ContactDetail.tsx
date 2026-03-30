@@ -17,6 +17,7 @@ import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSuggestions';
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
+import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
