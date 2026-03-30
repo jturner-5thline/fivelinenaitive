@@ -225,11 +225,8 @@ Deno.serve(async (req) => {
 
     console.log(`[sync-hubspot-companies] Org company: ${orgCompanyId}, caller: ${callerUserId}`);
 
-    // 1. Fetch all property names
-    const propertyNames = await fetchAllPropertyNames(accessToken);
-
-    // 2. Fetch all companies from HubSpot
-    const hsCompanies = await fetchAllCompanies(accessToken, propertyNames);
+    // 1. Fetch all companies from HubSpot with essential properties
+    const hsCompanies = await fetchAllCompanies(accessToken);
     console.log(`[sync-hubspot-companies] Total HubSpot companies: ${hsCompanies.length}`);
 
     if (hsCompanies.length === 0) {
