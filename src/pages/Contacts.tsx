@@ -80,6 +80,11 @@ export default function Contacts() {
     setPage(0);
   };
 
+  const handleFiltersChange = (filters: FilterRule[]) => {
+    setAdvancedFilters(filters);
+    setPage(0);
+  };
+
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
     setPage(0);
