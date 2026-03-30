@@ -41,7 +41,7 @@ const ESSENTIAL_PROPERTIES = [
 async function fetchAllCompanies(accessToken: string): Promise<any[]> {
   const all: any[] = [];
   let after: string | undefined;
-  const propsParam = propertyNames.join(',');
+  const propsParam = ESSENTIAL_PROPERTIES;
 
   do {
     let endpoint = `/crm/v3/objects/companies?limit=100&properties=${propsParam}`;
