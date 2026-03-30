@@ -23,6 +23,9 @@ export default function Contacts() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [isSyncingContacts, setIsSyncingContacts] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
+  const [matchMode, setMatchMode] = useState<MatchMode>('all');
+  const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
 
   const handleSyncContacts = async () => {
