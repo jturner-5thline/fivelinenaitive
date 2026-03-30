@@ -21,6 +21,7 @@ export interface Task {
   parent_task_id: string | null;
   deal_id: string | null;
   contact_id: string | null;
+  crm_company_id: string | null;
   company_id: string | null;
   title: string;
   description: string | null;
