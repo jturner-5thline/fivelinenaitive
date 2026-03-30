@@ -155,10 +155,13 @@ export function ClaapSyncSettings() {
         totalExists += result.already_exists || 0;
         totalErrors += result.errors || 0;
         batchesDone++;
+        if (result.error_details) allErrorDetails = [...allErrorDetails, ...result.error_details];
+        if (result.processed_titles) allTitles = [...allTitles, ...result.processed_titles];
 
         setBackfillProgress({
           running: true, processed: totalProcessed, matched: totalMatched,
           skipped: totalSkipped, alreadyExists: totalExists, errors: totalErrors, batchesDone,
+          errorDetails: allErrorDetails, processedTitles: allTitles,
         });
 
         if (!result.has_more || !result.next_cursor) break;
