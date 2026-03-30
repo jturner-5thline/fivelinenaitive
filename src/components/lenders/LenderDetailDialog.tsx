@@ -1824,6 +1824,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
               </>
             )}
 
+            {/* Call Recordings */}
+            {lender?.id && (
+              <ClaapCallsSection entityType="lender" entityId={lender.id} entityName={lender.name} />
+            )}
+
             {/* Active Deals - Always visible */}
             <section>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
