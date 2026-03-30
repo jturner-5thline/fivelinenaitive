@@ -303,6 +303,32 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
+      // Analysts get only deals they're tagged on
+      for (const deal of staleDeals) {
+        if (!deal.analyst) continue;
+        const analystId = nameToUserId[deal.analyst.toLowerCase()];
+        if (!analystId) continue;
+
+        const profile = profiles.find(p => p.user_id === analystId);
+        if (!profile || !profile.email_notifications || !profile.notify_stale_alerts) continue;
+        if (!emailMap[analystId]) continue;
+
+        // Skip if already an admin recipient (they already see all deals)
+        if (recipientDeals[analystId]?.isAdmin) continue;
+
+        if (!recipientDeals[analystId]) {
+          recipientDeals[analystId] = {
+            deals: [],
+            isAdmin: false,
+            name: profile.display_name || 'there',
+          };
+        }
+        // Avoid duplicate deal entries if analyst is also the manager
+        if (!recipientDeals[analystId].deals.some((d: any) => d.id === deal.id)) {
+          recipientDeals[analystId].deals.push(deal);
+        }
+      }
+
       // Send emails
       for (const [userId, recipient] of Object.entries(recipientDeals)) {
         if (recipient.deals.length === 0) continue;
