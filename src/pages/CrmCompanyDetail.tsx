@@ -32,7 +32,8 @@ export default function CrmCompanyDetail() {
   const { data: subsidiaries = [] } = useCrmSubsidiaries(id);
   const { data: companyDeals = [] } = useCrmCompanyDeals(id);
   const deleteCompany = useDeleteCrmCompany();
-  const { data: allContacts = [] } = useContacts();
+  const { data: allContactsResult } = useContacts({ pageSize: 1000 });
+  const allContacts = allContactsResult?.data ?? [];
   const { data: allDeals = [] } = useAllDeals();
   const linkContact = useLinkContactToCompany();
   const unlinkContact = useUnlinkContactFromCompany();

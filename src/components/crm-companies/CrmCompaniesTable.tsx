@@ -52,7 +52,8 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
   const [createContactCompanyId, setCreateContactCompanyId] = useState<string | null>(null);
   const [deleteCompanyId, setDeleteCompanyId] = useState<string | null>(null);
 
-  const { data: allContacts = [] } = useContacts();
+  const { data: allContactsResult } = useContacts({ pageSize: 1000 });
+  const allContacts = allContactsResult?.data ?? [];
   const linkContact = useLinkContactToCompany();
   const deleteCompany = useDeleteCrmCompany();
 
