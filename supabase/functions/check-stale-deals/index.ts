@@ -17,6 +17,7 @@ interface StaleAlertConfig {
   notify_managers: boolean;
   notify_admins: boolean;
   excluded_stages: string[];
+  allowed_pipeline_ids: string[] | null; // null = all pipelines, array = only these pipelines
 }
 
 const DEFAULT_CONFIG: StaleAlertConfig = {
@@ -25,6 +26,7 @@ const DEFAULT_CONFIG: StaleAlertConfig = {
   notify_managers: true,
   notify_admins: true,
   excluded_stages: ['archived', 'on_hold', 'closed_lost', 'in_development'],
+  allowed_pipeline_ids: null,
 };
 
 function formatValue(value: number | null): string {
