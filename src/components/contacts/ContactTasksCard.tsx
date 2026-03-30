@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 interface ContactTasksCardProps {
   contactId: string;
   contactName: string;
+  crmCompanyId?: string | null;
   externalShowCreate?: boolean;
   onExternalShowCreateChange?: (v: boolean) => void;
 }
