@@ -105,20 +105,23 @@ Deno.serve(async (req: Request) => {
     const { error: execErr } = await admin.rpc('exec_sql', { sql: matchSql });
     if (execErr) throw execErr;
 
-    // Get counts
+    // Get counts scoped to this org
     const { count: totalContacts } = await admin
       .from('contacts')
       .select('id', { count: 'exact', head: true })
+      .eq('org_company_id', orgCompanyId)
       .not('email', 'is', null);
 
     const { count: matchedCount } = await admin
       .from('contacts')
       .select('id', { count: 'exact', head: true })
+      .eq('org_company_id', orgCompanyId)
       .not('crm_company_id', 'is', null);
 
     const { count: unmatchedCount } = await admin
       .from('contacts')
       .select('id', { count: 'exact', head: true })
+      .eq('org_company_id', orgCompanyId)
       .not('email', 'is', null)
       .is('crm_company_id', null);
 
