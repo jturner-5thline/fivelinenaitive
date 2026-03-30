@@ -97,10 +97,10 @@ export function useContacts(params: ContactsListParams = {}) {
 
       // Server-side filters
       if (lifecycleStage && lifecycleStage !== 'all') {
-        query = query.eq('lifecycle_stage', lifecycleStage);
+        query = query.eq('lifecycle_stage', lifecycleStage as any);
       }
       if (status && status !== 'all') {
-        query = query.eq('status', status);
+        query = query.eq('status', status as any);
       }
 
       // Quick filters (tab filters from the page)
