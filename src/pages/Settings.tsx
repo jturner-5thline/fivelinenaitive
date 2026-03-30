@@ -284,6 +284,13 @@ export default function Settings() {
                 <TabsContent value="metrics" className="space-y-4 mt-4">
                   {isVisible('kpi-card-settings') && <KPICardSettings isAdmin={isAdmin} />}
                 </TabsContent>
+
+                {/* CRM Tab */}
+                <TabsContent value="crm" className="space-y-4 mt-4">
+                  {isVisible('field-layout') && (
+                    <LinkCard to="/field-layout-editor" title="Field Layout Editor" description="Configure how contact and company fields are displayed on detail pages" />
+                  )}
+                </TabsContent>
               </Tabs>
             )}
           </div>
