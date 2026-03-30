@@ -818,8 +818,10 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Processing notification:", payload.type, "changed_by:", payload.changed_by);
 
     // --- Resolve recipients ---
-    // For lender events, send to ALL admins + deal manager + deal analyst
+    // For lender events: send to ALL admins + deal manager + deal analyst
+    // For deal_updated: send to original user + deal analyst
     const isLenderEvent = payload.type === 'lender_added' || payload.type === 'lender_updated';
+    const isDealUpdated = payload.type === 'deal_updated';
 
     interface Recipient { email: string; user_id: string; profile: Record<string, any> }
     const recipients: Recipient[] = [];
@@ -903,8 +905,45 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       console.log(`Lender event: resolved ${recipients.length} recipients for deal ${payload.deal_id}`);
+    } else if (isDealUpdated && payload.deal_id) {
+      // Deal updated: send to original user + analyst(s) tagged on the deal
+      // 1. Add the original user (deal owner / person who triggered)
+      const { data: origUser } = await supabaseAdmin.auth.admin.getUserById(payload.user_id);
+      const { data: origProfile } = await supabaseAdmin.from('profiles').select('*').eq('user_id', payload.user_id).single();
+      if (origUser?.user?.email && origProfile) {
+        recipients.push({ email: origUser.user.email, user_id: payload.user_id, profile: origProfile as Record<string, any> });
+      }
+
+      // 2. Fetch deal analyst name
+      const { data: dealData } = await supabaseAdmin
+        .from('deals')
+        .select('analyst')
+        .eq('id', payload.deal_id)
+        .single();
+
+      const dealAnalystName = dealData?.analyst || null;
+
+      // 3. Resolve analyst by display_name match and add if not already a recipient
+      if (dealAnalystName) {
+        const { data: analystProfiles } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .ilike('display_name', dealAnalystName);
+        if (analystProfiles) {
+          for (const p of analystProfiles) {
+            if (!recipients.some(r => r.user_id === p.user_id)) {
+              const { data: u } = await supabaseAdmin.auth.admin.getUserById(p.user_id);
+              if (u?.user?.email) {
+                recipients.push({ email: u.user.email, user_id: p.user_id, profile: p as Record<string, any> });
+              }
+            }
+          }
+        }
+      }
+
+      console.log(`Deal updated: resolved ${recipients.length} recipients for deal ${payload.deal_id}`);
     } else {
-      // Non-lender events: single recipient (original behavior)
+      // Non-lender, non-deal-updated events: single recipient (original behavior)
       const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(payload.user_id);
       if (userError || !userData.user?.email) {
         console.log("User not found or no email:", userError);
