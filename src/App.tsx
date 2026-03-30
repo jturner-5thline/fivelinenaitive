@@ -80,7 +80,7 @@ const PendingApproval = lazy(lazyRetry(() => import("./pages/PendingApproval")))
 const PendingCompanyApproval = lazy(lazyRetry(() => import("./pages/PendingCompanyApproval")));
 const Homepage = lazy(lazyRetry(() => import("./pages/Homepage")));
 const Promo = lazy(lazyRetry(() => import("./pages/Promo")));
-
+const FieldLayoutEditorPage = lazy(lazyRetry(() => import("./pages/FieldLayoutEditorPage")));
 /** Forces DealDetail to fully remount when navigating between deals */
 function DealDetailKeyedWrapper() {
   const { id } = useParams<{ id: string }>();
@@ -191,6 +191,9 @@ const App = () => (
                           } />
                           <Route path="/crm-companies/:id" element={
                             <ProtectedRoute><AppLayout><CrmCompanyDetail /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/field-layout-editor" element={
+                            <ProtectedRoute><AppLayout><FieldLayoutEditorPage /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/hr" element={
                             <ProtectedRoute><AppLayout><HR /></AppLayout></ProtectedRoute>

@@ -66,6 +66,7 @@ const SETTINGS_SECTIONS = [
   { id: 'email-labels', keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'] },
   { id: 'distribution-stats', keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'] },
   { id: 'kpi-card-settings', keywords: ['kpi', 'summary', 'card', 'metrics', 'dashboard', 'format', 'trend', 'comparison'] },
+  { id: 'field-layout', keywords: ['field', 'layout', 'editor', 'hubspot', 'contacts', 'companies', 'crm', 'fields', 'sections'] },
 ];
 
 // Tab definitions with which section IDs belong to each
@@ -76,6 +77,7 @@ const TABS = [
   { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'stale-alerts', 'zapier'] },
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'distribution-stats'] },
   { id: 'metrics', label: 'Metrics', sectionIds: ['kpi-card-settings'] },
+  { id: 'crm', label: 'CRM', sectionIds: ['field-layout'] },
 ];
 
 function LinkCard({ to, title, description, badge }: { to: string; title: string; description: string; badge?: number }) {
@@ -281,6 +283,13 @@ export default function Settings() {
                 {/* Metrics Tab */}
                 <TabsContent value="metrics" className="space-y-4 mt-4">
                   {isVisible('kpi-card-settings') && <KPICardSettings isAdmin={isAdmin} />}
+                </TabsContent>
+
+                {/* CRM Tab */}
+                <TabsContent value="crm" className="space-y-4 mt-4">
+                  {isVisible('field-layout') && (
+                    <LinkCard to="/field-layout-editor" title="Field Layout Editor" description="Configure how contact and company fields are displayed on detail pages" />
+                  )}
                 </TabsContent>
               </Tabs>
             )}
