@@ -578,10 +578,10 @@ export function useCrmCompanyTasks(companyId: string | undefined) {
       if (!companyId) return [];
 
       // Get tasks directly on this company
-      const { data: directTasks, error: directError } = await supabase
+      const { data: directTasks, error: directError } = await (supabase
         .from('tasks')
         .select('*')
-        .eq('crm_company_id' as any, companyId)
+        .eq('crm_company_id', companyId) as any)
         .is('archived_at', null)
         .order('created_at', { ascending: false });
       if (directError) throw directError;
