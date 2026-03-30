@@ -5,9 +5,9 @@ import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 
 export interface TaskTabFilterConfig {
-  // Each condition is optional. If set, it filters tasks accordingly.
-  has_deal?: boolean; // true = deal_id IS NOT NULL, false = deal_id IS NULL
-  has_lender?: boolean; // true = lender_id IS NOT NULL, false = lender_id IS NULL
+  has_deal?: boolean;
+  has_lender?: boolean;
+  has_crm_company?: boolean;
   specific_deal_id?: string;
   specific_lender_id?: string;
   created_by_me?: boolean;
