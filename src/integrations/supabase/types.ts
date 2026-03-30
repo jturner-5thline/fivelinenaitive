@@ -2228,7 +2228,7 @@ export type Database = {
           additional_emails: string[] | null
           ae_owner_id: string | null
           behavioral_score: number | null
-          buying_role: Database["public"]["Enums"]["contact_buying_role"] | null
+          buying_role: string | null
           campaign: string | null
           company_id: string | null
           contact_score: number | null
@@ -2670,9 +2670,7 @@ export type Database = {
           lead_source: string | null
           lead_source_latest: string | null
           lead_source_original: string | null
-          lifecycle_stage:
-            | Database["public"]["Enums"]["contact_lifecycle_stage"]
-            | null
+          lifecycle_stage: string | null
           linkedin_url: string | null
           locale: string | null
           migrated_from_hubspot: boolean | null
@@ -2689,7 +2687,7 @@ export type Database = {
           seniority: string | null
           sms_opt_in: boolean | null
           source_system: string | null
-          status: Database["public"]["Enums"]["contact_status"] | null
+          status: string | null
           synced_with_hubspot: boolean | null
           tags: string[] | null
           timezone: string | null
@@ -2705,9 +2703,7 @@ export type Database = {
           additional_emails?: string[] | null
           ae_owner_id?: string | null
           behavioral_score?: number | null
-          buying_role?:
-            | Database["public"]["Enums"]["contact_buying_role"]
-            | null
+          buying_role?: string | null
           campaign?: string | null
           company_id?: string | null
           contact_score?: number | null
@@ -3153,9 +3149,7 @@ export type Database = {
           lead_source?: string | null
           lead_source_latest?: string | null
           lead_source_original?: string | null
-          lifecycle_stage?:
-            | Database["public"]["Enums"]["contact_lifecycle_stage"]
-            | null
+          lifecycle_stage?: string | null
           linkedin_url?: string | null
           locale?: string | null
           migrated_from_hubspot?: boolean | null
@@ -3172,7 +3166,7 @@ export type Database = {
           seniority?: string | null
           sms_opt_in?: boolean | null
           source_system?: string | null
-          status?: Database["public"]["Enums"]["contact_status"] | null
+          status?: string | null
           synced_with_hubspot?: boolean | null
           tags?: string[] | null
           timezone?: string | null
@@ -3188,9 +3182,7 @@ export type Database = {
           additional_emails?: string[] | null
           ae_owner_id?: string | null
           behavioral_score?: number | null
-          buying_role?:
-            | Database["public"]["Enums"]["contact_buying_role"]
-            | null
+          buying_role?: string | null
           campaign?: string | null
           company_id?: string | null
           contact_score?: number | null
@@ -3636,9 +3628,7 @@ export type Database = {
           lead_source?: string | null
           lead_source_latest?: string | null
           lead_source_original?: string | null
-          lifecycle_stage?:
-            | Database["public"]["Enums"]["contact_lifecycle_stage"]
-            | null
+          lifecycle_stage?: string | null
           linkedin_url?: string | null
           locale?: string | null
           migrated_from_hubspot?: boolean | null
@@ -3655,7 +3645,7 @@ export type Database = {
           seniority?: string | null
           sms_opt_in?: boolean | null
           source_system?: string | null
-          status?: Database["public"]["Enums"]["contact_status"] | null
+          status?: string | null
           synced_with_hubspot?: boolean | null
           tags?: string[] | null
           timezone?: string | null
@@ -3797,7 +3787,7 @@ export type Database = {
           additional_domains: string[] | null
           annual_revenue: number | null
           arr: number | null
-          company_type: Database["public"]["Enums"]["crm_company_type"] | null
+          company_type: string | null
           contract_end_date: string | null
           contract_start_date: string | null
           created_at: string
@@ -3819,9 +3809,7 @@ export type Database = {
           key_products: string[] | null
           last_activity_date: string | null
           last_modified_by: string | null
-          lifecycle_stage:
-            | Database["public"]["Enums"]["crm_company_lifecycle"]
-            | null
+          lifecycle_stage: string | null
           linkedin_url: string | null
           logo_url: string | null
           main_contact_email: string | null
@@ -3840,7 +3828,7 @@ export type Database = {
           revenue_band: string | null
           segment: string | null
           source_system: string | null
-          status: Database["public"]["Enums"]["crm_company_status"] | null
+          status: string | null
           sub_industry: string | null
           synced_with_hubspot: boolean | null
           tags: string[] | null
@@ -3853,7 +3841,7 @@ export type Database = {
           additional_domains?: string[] | null
           annual_revenue?: number | null
           arr?: number | null
-          company_type?: Database["public"]["Enums"]["crm_company_type"] | null
+          company_type?: string | null
           contract_end_date?: string | null
           contract_start_date?: string | null
           created_at?: string
@@ -3875,9 +3863,7 @@ export type Database = {
           key_products?: string[] | null
           last_activity_date?: string | null
           last_modified_by?: string | null
-          lifecycle_stage?:
-            | Database["public"]["Enums"]["crm_company_lifecycle"]
-            | null
+          lifecycle_stage?: string | null
           linkedin_url?: string | null
           logo_url?: string | null
           main_contact_email?: string | null
@@ -3896,7 +3882,7 @@ export type Database = {
           revenue_band?: string | null
           segment?: string | null
           source_system?: string | null
-          status?: Database["public"]["Enums"]["crm_company_status"] | null
+          status?: string | null
           sub_industry?: string | null
           synced_with_hubspot?: boolean | null
           tags?: string[] | null
@@ -3909,7 +3895,7 @@ export type Database = {
           additional_domains?: string[] | null
           annual_revenue?: number | null
           arr?: number | null
-          company_type?: Database["public"]["Enums"]["crm_company_type"] | null
+          company_type?: string | null
           contract_end_date?: string | null
           contract_start_date?: string | null
           created_at?: string
@@ -3931,9 +3917,7 @@ export type Database = {
           key_products?: string[] | null
           last_activity_date?: string | null
           last_modified_by?: string | null
-          lifecycle_stage?:
-            | Database["public"]["Enums"]["crm_company_lifecycle"]
-            | null
+          lifecycle_stage?: string | null
           linkedin_url?: string | null
           logo_url?: string | null
           main_contact_email?: string | null
@@ -3952,7 +3936,7 @@ export type Database = {
           revenue_band?: string | null
           segment?: string | null
           source_system?: string | null
-          status?: Database["public"]["Enums"]["crm_company_status"] | null
+          status?: string | null
           sub_industry?: string | null
           synced_with_hubspot?: boolean | null
           tags?: string[] | null
@@ -17017,55 +17001,12 @@ export type Database = {
         | "approved"
         | "sent"
       company_role: "owner" | "admin" | "member"
-      contact_buying_role:
-        | "economic_buyer"
-        | "champion"
-        | "influencer"
-        | "user"
-        | "blocker"
-        | "legal"
-        | "finance"
-        | "other"
-      contact_lifecycle_stage:
-        | "subscriber"
-        | "lead"
-        | "mql"
-        | "sql"
-        | "opportunity"
-        | "customer"
-        | "evangelist"
-        | "other"
-      contact_status:
-        | "new"
-        | "working"
-        | "meeting_scheduled"
-        | "no_show"
-        | "no_fit"
-        | "nurture"
-        | "bad_data"
-        | "converted"
-        | "closed"
       copilot_preference_category:
         | "formatting"
         | "terminology"
         | "behavior"
         | "domain_knowledge"
       copilot_preference_source: "manual" | "thumbs_down" | "chat_command"
-      crm_company_lifecycle:
-        | "target"
-        | "engaged"
-        | "opportunity"
-        | "customer"
-        | "expansion"
-        | "churn_risk"
-      crm_company_status: "active" | "inactive" | "target" | "churned"
-      crm_company_type:
-        | "customer"
-        | "prospect"
-        | "partner"
-        | "vendor"
-        | "internal"
-        | "other"
       data_access_scope: "all" | "team" | "own" | "none"
       feature_status: "disabled" | "staging" | "deployed" | "james_only"
       financial_column_type: "actual" | "projection"
@@ -17294,37 +17235,6 @@ export const Constants = {
         "sent",
       ],
       company_role: ["owner", "admin", "member"],
-      contact_buying_role: [
-        "economic_buyer",
-        "champion",
-        "influencer",
-        "user",
-        "blocker",
-        "legal",
-        "finance",
-        "other",
-      ],
-      contact_lifecycle_stage: [
-        "subscriber",
-        "lead",
-        "mql",
-        "sql",
-        "opportunity",
-        "customer",
-        "evangelist",
-        "other",
-      ],
-      contact_status: [
-        "new",
-        "working",
-        "meeting_scheduled",
-        "no_show",
-        "no_fit",
-        "nurture",
-        "bad_data",
-        "converted",
-        "closed",
-      ],
       copilot_preference_category: [
         "formatting",
         "terminology",
@@ -17332,23 +17242,6 @@ export const Constants = {
         "domain_knowledge",
       ],
       copilot_preference_source: ["manual", "thumbs_down", "chat_command"],
-      crm_company_lifecycle: [
-        "target",
-        "engaged",
-        "opportunity",
-        "customer",
-        "expansion",
-        "churn_risk",
-      ],
-      crm_company_status: ["active", "inactive", "target", "churned"],
-      crm_company_type: [
-        "customer",
-        "prospect",
-        "partner",
-        "vendor",
-        "internal",
-        "other",
-      ],
       data_access_scope: ["all", "team", "own", "none"],
       feature_status: ["disabled", "staging", "deployed", "james_only"],
       financial_column_type: ["actual", "projection"],
