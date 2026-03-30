@@ -44,6 +44,7 @@ export interface Task {
   assignee_profile?: { display_name: string; avatar_url: string | null; email: string } | null;
   creator_profile?: { display_name: string; avatar_url: string | null; email: string } | null;
   deal?: { company: string } | null;
+  contact?: { full_name: string } | null;
   project?: { name: string; color: string; icon: string } | null;
   subtasks?: Task[];
 }
