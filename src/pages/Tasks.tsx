@@ -1,9 +1,12 @@
 import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClaapRoutingTasksBadge } from '@/components/integrations/claap/ClaapRoutingTasksBadge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
+import { useTaskViewTabs } from '@/hooks/useTaskViewTabs';
+import { TaskTabBar, applyTabFilter } from '@/components/tasks/TaskTabBar';
 import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
@@ -66,12 +69,21 @@ type SortBy = 'due_date' | 'priority' | 'created_at' | 'title' | 'deal';
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
+  const { tabs: viewTabs2, createTab, updateTab, deleteTab: deleteViewTab, reorderTabs } = useTaskViewTabs();
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView } = useTaskSavedViews();
   const { templates, applyTemplate } = useTaskTemplates();
   const teamMembers = useTeamMembers();
   const { labels, createLabel } = useTaskLabels();
+
+  // Auto-select first tab when tabs load
+  useEffect(() => {
+    if (viewTabs2.length > 0 && !activeTabId) {
+      setActiveTabId(viewTabs2[0].id);
+    }
+  }, [viewTabs2, activeTabId]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
@@ -158,8 +170,15 @@ export default function Tasks() {
     return false;
   });
 
+  // Get user for tab filtering
+  const { user } = useAuth();
+  const activeTab = viewTabs2.find(t => t.id === activeTabId);
+  const tabFilteredTasks = activeTab && Object.keys(activeTab.filter_config).length > 0
+    ? applyTabFilter(viewMode === 'focus' ? focusTasks : tasks, activeTab.filter_config, user?.id)
+    : (viewMode === 'focus' ? focusTasks : tasks);
+
   // Filter and sort (starred items float to top)
-  const filtered = (viewMode === 'focus' ? focusTasks : tasks)
+  const filtered = tabFilteredTasks
     .filter(t => {
       if (filterStatus === 'incomplete' && t.status === 'complete') return false;
       if (filterStatus !== 'all' && filterStatus !== 'incomplete' && t.status !== filterStatus) return false;
@@ -478,6 +497,26 @@ export default function Tasks() {
             <ClaapRoutingTasksBadge />
           </div>
         </div>
+
+        {/* Custom Tab Bar */}
+        {viewTabs2.length > 0 && (
+          <TaskTabBar
+            tabs={viewTabs2}
+            activeTabId={activeTabId}
+            onSelectTab={setActiveTabId}
+            tasks={tasks}
+            userId={user?.id}
+            onCreateTab={(data) => createTab.mutate(data)}
+            onUpdateTab={(data) => updateTab.mutate(data)}
+            onDeleteTab={(id) => {
+              if (id === activeTabId && viewTabs2.length > 1) {
+                setActiveTabId(viewTabs2[0].id !== id ? viewTabs2[0].id : viewTabs2[1]?.id || null);
+              }
+              deleteViewTab.mutate(id);
+            }}
+            onReorderTabs={(ids) => reorderTabs.mutate(ids)}
+          />
+        )}
 
         {/* KPI Cards */}
         <TaskKPICards tasks={tasks} />

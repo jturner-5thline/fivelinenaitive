@@ -13769,6 +13769,50 @@ export type Database = {
           },
         ]
       }
+      task_view_tabs: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          filter_config: Json
+          icon: string | null
+          id: string
+          is_default: boolean
+          name: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          filter_config?: Json
+          icon?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          filter_config?: Json
+          icon?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_view_tabs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_watchers: {
         Row: {
           created_at: string
