@@ -48,7 +48,7 @@ import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
   SlidersHorizontal, Group, Trash2, BarChart3,
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
-  Tag, ClipboardList, Users, Briefcase, AlertTriangle,
+  Tag, ClipboardList, Users, Briefcase, AlertTriangle, Building2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isPast, addDays, startOfDay } from 'date-fns';
