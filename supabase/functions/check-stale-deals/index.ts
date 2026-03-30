@@ -17,6 +17,7 @@ interface StaleAlertConfig {
   notify_managers: boolean;
   notify_admins: boolean;
   excluded_stages: string[];
+  allowed_pipeline_ids: string[] | null; // null = all pipelines, array = only these pipelines
 }
 
 const DEFAULT_CONFIG: StaleAlertConfig = {
@@ -25,6 +26,7 @@ const DEFAULT_CONFIG: StaleAlertConfig = {
   notify_managers: true,
   notify_admins: true,
   excluded_stages: ['archived', 'on_hold', 'closed_lost', 'in_development'],
+  allowed_pipeline_ids: null,
 };
 
 function formatValue(value: number | null): string {
@@ -198,11 +200,18 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       // Get all active deals for this company
-      const { data: deals, error: dealsError } = await supabaseAdmin
+      let dealsQuery = supabaseAdmin
         .from('deals')
-        .select('id, company, stage, value, updated_at, manager, analyst, status, deal_type, deal_owner, closing_date, contact, engagement_type, narrative')
+        .select('id, company, stage, value, updated_at, manager, analyst, status, deal_type, deal_owner, closing_date, contact, engagement_type, narrative, pipeline_id')
         .eq('company_id', settings.company_id)
         .order('updated_at', { ascending: true });
+
+      // Filter by allowed pipelines if configured
+      if (config.allowed_pipeline_ids && config.allowed_pipeline_ids.length > 0) {
+        dealsQuery = dealsQuery.in('pipeline_id', config.allowed_pipeline_ids);
+      }
+
+      const { data: deals, error: dealsError } = await dealsQuery;
 
       if (dealsError) {
         console.error(`Error fetching deals for company ${settings.company_id}:`, dealsError);
