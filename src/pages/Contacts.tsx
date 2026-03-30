@@ -12,6 +12,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { AdvancedFilterBuilder } from '@/components/filters/AdvancedFilterBuilder';
+import { CONTACT_CORE_FIELDS } from '@/lib/filterFieldDefinitions';
+import type { FilterRule, MatchMode } from '@/lib/filterTypes';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 export default function Contacts() {
   const [showCreate, setShowCreate] = useState(false);
