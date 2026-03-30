@@ -1096,6 +1096,60 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         total_lenders: lenders.length,
       };
     }
+    // ── CALL TRANSCRIPTS ──
+    case "get_deal_call_transcripts": {
+      let query = supabase
+        .from("claap_transcripts")
+        .select("id, transcript_text, summary, participants, duration_seconds, recorded_at, call_type, match_source, claap_meeting_id")
+        .eq("deal_id", args.deal_id)
+        .order("recorded_at", { ascending: false });
+
+      const { data: transcripts } = await query;
+
+      if (!transcripts || transcripts.length === 0) {
+        return { has_transcripts: false, message: "No call transcripts found for this deal." };
+      }
+
+      // Also get meeting titles
+      const meetingIds = transcripts.map((t: any) => t.claap_meeting_id);
+      const { data: meetings } = await supabase
+        .from("claap_meetings")
+        .select("id, title, recording_url, ai_summary")
+        .in("id", meetingIds);
+
+      const meetingMap = new Map((meetings || []).map((m: any) => [m.id, m]));
+
+      let results = transcripts.map((t: any) => {
+        const meeting = meetingMap.get(t.claap_meeting_id);
+        return {
+          title: meeting?.title || "Untitled Call",
+          recording_url: meeting?.recording_url,
+          call_type: t.call_type,
+          recorded_at: t.recorded_at,
+          duration_minutes: t.duration_seconds ? Math.round(t.duration_seconds / 60) : null,
+          participants: t.participants,
+          summary: t.summary || meeting?.ai_summary || null,
+          transcript_preview: t.transcript_text ? t.transcript_text.slice(0, 2000) : null,
+          has_full_transcript: !!t.transcript_text,
+        };
+      });
+
+      // Filter by search term if provided
+      if (args.search) {
+        const searchLower = args.search.toLowerCase();
+        results = results.filter((r: any) =>
+          r.transcript_preview?.toLowerCase().includes(searchLower) ||
+          r.summary?.toLowerCase().includes(searchLower) ||
+          r.title?.toLowerCase().includes(searchLower)
+        );
+      }
+
+      return {
+        has_transcripts: true,
+        total_calls: results.length,
+        calls: results,
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
