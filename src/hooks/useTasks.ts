@@ -569,3 +569,49 @@ export function useContactTasks(contactId: string | undefined) {
     enabled: !!contactId,
   });
 }
+
+export function useCrmCompanyTasks(companyId: string | undefined) {
+  return useQuery({
+    queryKey: ['crm-company-tasks', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+
+      // Get tasks directly on this company
+      const { data: directTasks, error: directError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('crm_company_id' as any, companyId)
+        .is('archived_at', null)
+        .order('created_at', { ascending: false });
+      if (directError) throw directError;
+
+      // Get tasks on affiliated contacts
+      const { data: contactIds } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('crm_company_id', companyId);
+
+      let contactTasks: Task[] = [];
+      if (contactIds && contactIds.length > 0) {
+        const ids = contactIds.map(c => c.id);
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .in('contact_id', ids)
+          .is('archived_at', null)
+          .order('created_at', { ascending: false });
+        if (!error && data) contactTasks = data as Task[];
+      }
+
+      // Dedupe
+      const byId = new Map<string, Task>();
+      (directTasks || []).forEach(t => byId.set(t.id, t as Task));
+      contactTasks.forEach(t => { if (!byId.has(t.id)) byId.set(t.id, t); });
+
+      return Array.from(byId.values()).sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    },
+    enabled: !!companyId,
+  });
+}
