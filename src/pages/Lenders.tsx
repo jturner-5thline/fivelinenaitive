@@ -129,12 +129,22 @@ interface LenderInfo {
   relationshipOwners?: string | null;
 }
 
+interface LenderFormContact {
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  isPrimary: boolean;
+}
+
+const emptyContact = (isPrimary = false): LenderFormContact => ({
+  name: '', title: '', email: '', phone: '', isPrimary,
+});
+
 interface LenderForm {
   id?: string;
   name: string;
-  contactName: string;
-  contactTitle: string;
-  email: string;
+  contacts: LenderFormContact[];
   lenderType: string;
   loanTypes: string;
   minDeal: string;
@@ -146,9 +156,7 @@ interface LenderForm {
 
 const emptyForm: LenderForm = {
   name: '',
-  contactName: '',
-  contactTitle: '',
-  email: '',
+  contacts: [emptyContact(true)],
   lenderType: '',
   loanTypes: '',
   minDeal: '',
