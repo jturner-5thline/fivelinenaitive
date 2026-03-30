@@ -11175,6 +11175,64 @@ export type Database = {
           },
         ]
       }
+      pending_lender_notifications: {
+        Row: {
+          change_summary: Json
+          changed_by: string | null
+          changed_by_name: string | null
+          company_id: string
+          created_at: string
+          deal_id: string
+          id: string
+          lender_id: string | null
+          lender_name: string
+        }
+        Insert: {
+          change_summary?: Json
+          changed_by?: string | null
+          changed_by_name?: string | null
+          company_id: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          lender_id?: string | null
+          lender_name: string
+        }
+        Update: {
+          change_summary?: Json
+          changed_by?: string | null
+          changed_by_name?: string | null
+          company_id?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          lender_id?: string | null
+          lender_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_lender_notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_lender_notifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_lender_notifications_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "deal_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           approval_requested_at: string | null
