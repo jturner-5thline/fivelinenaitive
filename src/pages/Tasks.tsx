@@ -68,12 +68,21 @@ type SortBy = 'due_date' | 'priority' | 'created_at' | 'title' | 'deal';
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
+  const { tabs: viewTabs2, createTab, updateTab, deleteTab: deleteViewTab, reorderTabs } = useTaskViewTabs();
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView } = useTaskSavedViews();
   const { templates, applyTemplate } = useTaskTemplates();
   const teamMembers = useTeamMembers();
   const { labels, createLabel } = useTaskLabels();
+
+  // Auto-select first tab when tabs load
+  useEffect(() => {
+    if (viewTabs2.length > 0 && !activeTabId) {
+      setActiveTabId(viewTabs2[0].id);
+    }
+  }, [viewTabs2, activeTabId]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
