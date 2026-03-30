@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown, History, Clock, MessageSquare as MessageSquareIcon } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown, History, Clock, MessageSquare as MessageSquareIcon, Video } from 'lucide-react';
+import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CopyableText } from '@/components/ui/CopyableText';
 import { LenderNotesPopover, LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
 import {
@@ -1821,6 +1822,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   }
                 })}
               </>
+            )}
+
+            {/* Call Recordings */}
+            {lender?.id && (
+              <ClaapCallsSection entityType="lender" entityId={lender.id} entityName={lender.name} />
             )}
 
             {/* Active Deals - Always visible */}

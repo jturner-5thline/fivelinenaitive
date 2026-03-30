@@ -18,6 +18,7 @@ import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { CrmCompanyTasksCard } from '@/components/crm/CrmCompanyTasksCard';
 import { InlineQuickAddContact } from '@/components/crm/InlineQuickAddContact';
+import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -318,6 +319,15 @@ export default function CrmCompanyDetail() {
                 companyName={company.name}
                 externalShowCreate={showCreateTask}
                 onExternalShowCreateChange={setShowCreateTask}
+              />
+
+              {/* Call Recordings */}
+              <ClaapCallsSection
+                entityType="company"
+                entityId={company.id}
+                entityName={company.name}
+                entityDomain={(company as any)?.domain}
+                contactIds={contacts.map((c: any) => c.id)}
               />
 
               {subsidiaries.length > 0 && (
