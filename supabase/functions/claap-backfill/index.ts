@@ -167,6 +167,36 @@ async function runSmartMatching(
     }
   }
 
+  // ---- 4. Deal name match (title contains deal company name) ----
+  if (titleLower) {
+    let dealQuery = supabaseAdmin
+      .from("deals")
+      .select("id, company")
+      .eq("status", "active")
+      .limit(500);
+    if (configCompanyId) dealQuery = dealQuery.eq("company_id", configCompanyId);
+
+    const { data: deals } = await dealQuery;
+    if (deals) {
+      for (const deal of deals) {
+        if (!deal.company) continue;
+        const dealName = normalizeName(deal.company);
+        if (dealName.length >= 3 && titleLower.includes(dealName)) {
+          result.matched = true; result.matchType = "deal";
+          result.matchSource = `Deal name in title: "${deal.company}"`;
+          result.dealIds = [deal.id]; result.callType = "Deal Call";
+          return result;
+        }
+        if (dealName.length >= 4 && diceCoefficient(dealName, normalizeName(title || "")) > 0.5) {
+          result.matched = true; result.matchType = "deal";
+          result.matchSource = `Fuzzy deal name match: "${deal.company}"`;
+          result.dealIds = [deal.id]; result.callType = "Deal Call";
+          return result;
+        }
+      }
+    }
+  }
+
   return result;
 }
 
