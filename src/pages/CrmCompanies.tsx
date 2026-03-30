@@ -32,6 +32,8 @@ export default function CrmCompanies() {
     page,
     pageSize,
     quickFilter,
+    advancedFilters: debouncedFilters,
+    matchMode,
   });
 
   const companies = result?.data ?? [];
