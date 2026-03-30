@@ -86,10 +86,13 @@ export function HubSpotSyncSettingsModal({ open, onClose }: HubSpotSyncSettingsM
           <Separator />
 
           {/* Data Usage Note */}
-          <div className="rounded-lg border border-border/50 p-3 bg-muted/30 mb-2">
+          <div className="rounded-lg border border-border/50 p-3 bg-muted/30 mb-2 space-y-2">
             <p className="text-xs text-muted-foreground">
               <strong>Data Usage:</strong> nAItive uses your HubSpot data to power deal analysis, scoring, and workflow automation. To add, edit, or manage CRM records, open HubSpot directly.
             </p>
+            <Link to="/field-layout-editor" className="text-xs text-primary flex items-center gap-1 hover:underline">
+              <ExternalLink className="h-3 w-3" /> Configure Field Layout Editor
+            </Link>
           </div>
         </div>
 
