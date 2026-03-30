@@ -1,4 +1,5 @@
 import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ClaapRoutingTasksBadge } from '@/components/integrations/claap/ClaapRoutingTasksBadge';
 import { useQuery } from '@tanstack/react-query';
@@ -47,7 +48,7 @@ import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
   SlidersHorizontal, Group, Trash2, BarChart3,
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
-  Tag, ClipboardList, Users, Briefcase, AlertTriangle,
+  Tag, ClipboardList, Users, Briefcase, AlertTriangle, Building2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isPast, addDays, startOfDay } from 'date-fns';
@@ -1010,9 +1011,12 @@ function SortableBoardCard({ task, priorityPill, todayStr, selectedTaskId, onSel
           {pill.label}
         </span>
       </div>
-      {/* Middle: deal */}
-      {task.deal?.company && (
-        <p className="text-xs mt-2 truncate" style={{ color: '#3b7eff' }}>{task.deal.company}</p>
+      {/* Middle: deal chip */}
+      {task.deal_id && task.deal?.company && (
+        <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold mt-2 hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(30,58,95,0.6)', color: '#93c5fd' }} onClick={e => e.stopPropagation()}>
+          <Building2 className="h-2.5 w-2.5 shrink-0" />
+          <span className="truncate">{task.deal.company}</span>
+        </Link>
       )}
       {/* Bottom: avatar + date */}
       <div className="flex items-center justify-between mt-3">

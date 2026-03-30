@@ -156,6 +156,9 @@ export function TaskCalendarView({ tasks, onSelectTask, onUpdateTask, selectedTa
                     >
                       {daysOverdue >= 8 && <AlertTriangle className="h-2.5 w-2.5 inline mr-0.5 -mt-0.5" />}
                       {task.title.length > 20 ? task.title.slice(0, 20) + '…' : task.title}
+                      {task.deal_id && (task as any).deal?.company && (
+                        <span className="ml-0.5 opacity-70">· {(task as any).deal.company}</span>
+                      )}
                     </div>
                   );
                 })}

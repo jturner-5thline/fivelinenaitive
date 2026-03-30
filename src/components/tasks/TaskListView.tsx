@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/popover';
 import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
-  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle,
+  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -538,7 +538,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         </button>
       </div>
 
-      {/* Title */}
+      {/* Title + Deal subtitle */}
       <div className="min-w-0" onClick={e => e.stopPropagation()}>
         {editingTitle ? (
           <Input value={titleValue} onChange={e => setTitleValue(e.target.value)} onBlur={handleSaveTitle}
@@ -554,6 +554,12 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
             >
               {task.title}
             </span>
+            {task.deal_id && task.deal?.company && (
+              <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium mt-0.5 -mx-0.5 hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(30,58,95,0.6)', color: '#93c5fd' }} onClick={e => e.stopPropagation()}>
+                <Building2 className="h-2.5 w-2.5" />
+                {task.deal.company}
+              </Link>
+            )}
             {task.status === 'blocked' && blockerNote && (
               <span className="text-[11px] italic block px-1 -mx-1 mt-0.5" style={{ color: '#ff4d4d' }}>
                 {blockerNote}
@@ -604,12 +610,11 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
 
       <div className="min-w-0" onClick={e => e.stopPropagation()}>
         {task.deal_id && task.deal ? (
-          <Link to={`/deal/${task.deal_id}`} className="text-[11px] hover:underline truncate block" style={{ color: '#3b7eff' }} onClick={e => e.stopPropagation()}>
-            {task.deal.company}
+          <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(30,58,95,0.6)', color: '#93c5fd' }} onClick={e => e.stopPropagation()}>
+            <Building2 className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate">{task.deal.company}</span>
           </Link>
-        ) : (
-          <span className="text-[11px]" style={{ color: '#8b92a5' }}>—</span>
-        )}
+        ) : null}
       </div>
 
       {/* Due date - relative */}
