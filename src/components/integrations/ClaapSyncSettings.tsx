@@ -234,7 +234,7 @@ export function ClaapSyncSettings() {
                   </ScrollArea>
                 </div>
               )}
-              {backfillProgress.processedTitles.length > 0 && (
+              {backfillProgress.processedTitles?.length > 0 && (
                 <div className="mt-2 space-y-1">
                   <span className="text-xs font-medium text-muted-foreground">Processed titles:</span>
                   <ScrollArea className="max-h-24">
