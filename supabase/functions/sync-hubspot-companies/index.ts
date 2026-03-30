@@ -9,58 +9,33 @@ const HUBSPOT_API_BASE = 'https://api.hubapi.com';
 
 async function hubspotRequest(endpoint: string, accessToken: string): Promise<any> {
   const url = `${HUBSPOT_API_BASE}${endpoint}`;
-  console.log(`[sync-hubspot-companies] GET ${url}`);
-
   const response = await fetch(url, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
   });
-
   const text = await response.text();
   if (!response.ok) {
-    console.error(`[sync-hubspot-companies] API error ${response.status}: ${text}`);
+    console.error(`[sync-hubspot-companies] API error ${response.status}: ${text.slice(0, 200)}`);
     throw new Error(`HubSpot API error: ${response.status}`);
   }
-
   return text ? JSON.parse(text) : null;
 }
 
-// Only request properties we actually map — keeps URL short and avoids timeouts
 const ESSENTIAL_PROPERTIES = [
   'name', 'domain', 'website', 'industry', 'numberofemployees',
   'description', 'phone', 'city', 'state', 'country', 'zip', 'address',
   'annualrevenue', 'lifecyclestage', 'type', 'linkedin_company_page',
-  'twitterhandle', 'hs_object_id', 'recent_deal_amount', 'recent_deal_close_date',
+  'twitterhandle', 'recent_deal_amount', 'recent_deal_close_date',
   'total_revenue', 'founded_year', 'is_public', 'hs_lead_status',
-  'hubspot_owner_id', 'num_associated_contacts', 'num_associated_deals',
-  'hs_num_open_deals', 'hs_total_deal_value', 'hs_additional_domains',
+  'num_associated_contacts', 'num_associated_deals',
 ].join(',');
-
-async function fetchAllCompanies(accessToken: string): Promise<any[]> {
-  const all: any[] = [];
-  let after: string | undefined;
-  const propsParam = ESSENTIAL_PROPERTIES;
-
-  do {
-    let endpoint = `/crm/v3/objects/companies?limit=100&properties=${propsParam}`;
-    if (after) endpoint += `&after=${after}`;
-
-    const data = await hubspotRequest(endpoint, accessToken);
-    const results = data.results || [];
-    all.push(...results);
-    after = data.paging?.next?.after;
-    console.log(`[sync-hubspot-companies] Fetched ${results.length} companies (total: ${all.length}), next: ${after || 'none'}`);
-  } while (after);
-
-  return all;
-}
 
 function mapEmployeeRange(count: string | null | undefined): string | null {
   if (!count) return null;
   const n = parseInt(count, 10);
-  if (isNaN(n)) return count; // might already be a range string
+  if (isNaN(n)) return count;
   if (n <= 10) return '1-10';
   if (n <= 50) return '11-50';
   if (n <= 200) return '51-200';
@@ -74,52 +49,26 @@ function mapEmployeeRange(count: string | null | undefined): string | null {
 function mapCompanyType(hsType: string | null | undefined): string {
   if (!hsType) return 'prospect';
   const lower = hsType.toLowerCase();
-  if (lower.includes('customer') || lower === 'customer') return 'customer';
+  if (lower.includes('customer')) return 'customer';
   if (lower.includes('partner')) return 'partner';
   if (lower.includes('vendor') || lower === 'reseller') return 'vendor';
-  if (lower.includes('prospect')) return 'prospect';
   return 'prospect';
 }
 
 function mapLifecycleStage(hsStage: string | null | undefined): string {
   if (!hsStage) return 'target';
-  const lower = hsStage.toLowerCase();
   const mapping: Record<string, string> = {
-    subscriber: 'target',
-    lead: 'target',
-    marketingqualifiedlead: 'engaged',
-    salesqualifiedlead: 'engaged',
-    opportunity: 'opportunity',
-    customer: 'customer',
-    evangelist: 'expansion',
-    other: 'target',
+    subscriber: 'target', lead: 'target',
+    marketingqualifiedlead: 'engaged', salesqualifiedlead: 'engaged',
+    opportunity: 'opportunity', customer: 'customer',
+    evangelist: 'expansion', other: 'target',
   };
-  return mapping[lower] || 'target';
+  return mapping[hsStage.toLowerCase()] || 'target';
 }
-
-// Known mapped fields - everything else goes to custom_fields
-const MAPPED_PROPS = new Set([
-  'name', 'domain', 'website', 'industry', 'numberofemployees',
-  'description', 'phone', 'city', 'state', 'country', 'zip', 'address',
-  'annualrevenue', 'lifecyclestage', 'type', 'linkedin_company_page',
-  'twitterhandle', 'hs_object_id',
-]);
 
 function mapHubSpotCompany(hs: any, orgCompanyId: string, createdBy: string | null): Record<string, any> {
   const props = hs.properties || {};
   const domain = props.domain || null;
-
-  // Collect unmapped properties into custom_fields
-  const customFields: Record<string, any> = {};
-  const rawProps: Record<string, any> = {};
-  for (const [key, val] of Object.entries(props)) {
-    rawProps[key] = val;
-    if (!MAPPED_PROPS.has(key) && val !== null && val !== '') {
-      customFields[key] = val;
-    }
-  }
-  customFields['hubspot_raw_properties'] = rawProps;
-
   const empCount = props.numberofemployees ? parseInt(props.numberofemployees, 10) : null;
 
   return {
@@ -146,7 +95,16 @@ function mapHubSpotCompany(hs: any, orgCompanyId: string, createdBy: string | nu
     company_type: mapCompanyType(props.type),
     linkedin_url: props.linkedin_company_page || null,
     twitter_url: props.twitterhandle ? `https://twitter.com/${props.twitterhandle}` : null,
-    custom_fields: customFields,
+    custom_fields: {
+      recent_deal_amount: props.recent_deal_amount,
+      recent_deal_close_date: props.recent_deal_close_date,
+      total_revenue: props.total_revenue,
+      founded_year: props.founded_year,
+      is_public: props.is_public,
+      hs_lead_status: props.hs_lead_status,
+      num_associated_contacts: props.num_associated_contacts,
+      num_associated_deals: props.num_associated_deals,
+    },
     org_company_id: orgCompanyId,
     created_by: createdBy,
   };
@@ -169,7 +127,16 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get caller info from JWT if available
+    // Parse optional cursor from request body for resumable sync
+    let resumeAfter: string | undefined;
+    let skipDelete = false;
+    try {
+      const body = await req.json();
+      resumeAfter = body?.after;
+      skipDelete = !!body?.after; // Don't delete if resuming
+    } catch { /* no body */ }
+
+    // Get caller info
     let callerUserId: string | null = null;
     const authHeader = req.headers.get('authorization');
     if (authHeader) {
@@ -180,107 +147,101 @@ Deno.serve(async (req) => {
       callerUserId = user?.id || null;
     }
 
-    // Find the org company that owns the HubSpot integration
-    // Look for 5th Line or any company with a HubSpot integration
+    // Find org company
     let orgCompanyId: string | null = null;
-
-    // Try to get from caller's company membership
     if (callerUserId) {
       const { data: membership } = await supabase
-        .from('company_members')
-        .select('company_id')
-        .eq('user_id', callerUserId)
-        .limit(1)
-        .single();
+        .from('company_members').select('company_id')
+        .eq('user_id', callerUserId).limit(1).single();
       if (membership) orgCompanyId = membership.company_id;
     }
-
-    // Fallback: find company with integrations
     if (!orgCompanyId) {
       const { data: integration } = await supabase
-        .from('integrations')
-        .select('company_id')
-        .eq('provider', 'hubspot')
-        .limit(1)
-        .single();
+        .from('integrations').select('company_id')
+        .eq('provider', 'hubspot').limit(1).single();
       if (integration) orgCompanyId = integration.company_id;
     }
-
-    // Last fallback: 5th Line company
     if (!orgCompanyId) {
       const { data: co } = await supabase
-        .from('companies')
-        .select('id')
+        .from('companies').select('id')
         .or('primary_domain.eq.5thline.co,name.ilike.%5th Line%')
-        .limit(1)
-        .single();
+        .limit(1).single();
       if (co) orgCompanyId = co.id;
     }
-
     if (!orgCompanyId) {
       return new Response(JSON.stringify({ error: 'Could not determine org company' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`[sync-hubspot-companies] Org company: ${orgCompanyId}, caller: ${callerUserId}`);
+    console.log(`[sync-hubspot-companies] Org: ${orgCompanyId}, caller: ${callerUserId}, resume: ${resumeAfter || 'none'}`);
 
-    // 1. Fetch all companies from HubSpot with essential properties
-    const hsCompanies = await fetchAllCompanies(accessToken);
-    console.log(`[sync-hubspot-companies] Total HubSpot companies: ${hsCompanies.length}`);
-
-    if (hsCompanies.length === 0) {
-      return new Response(JSON.stringify({ success: true, count: 0, message: 'No companies found in HubSpot' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Delete existing if this is a fresh sync (not a resume)
+    if (!skipDelete) {
+      const { error: deleteError } = await supabase
+        .from('crm_companies').delete().eq('org_company_id', orgCompanyId);
+      if (deleteError) console.error(`[sync-hubspot-companies] Delete error: ${deleteError.message}`);
+      else console.log(`[sync-hubspot-companies] Cleared existing companies`);
     }
 
-    // 3. Map all companies
-    const mapped = hsCompanies.map(hs => mapHubSpotCompany(hs, orgCompanyId!, callerUserId));
+    // Stream: fetch a page, insert immediately, move to next
+    const startTime = Date.now();
+    const MAX_RUNTIME_MS = 120_000; // 120s safety margin (wall time is 150s)
+    let after = resumeAfter;
+    let totalFetched = 0;
+    let totalInserted = 0;
+    let lastAfter: string | undefined;
+    let timedOut = false;
 
-    // 4. Delete existing crm_companies for this org (replace fake/seed data)
-    const { error: deleteError } = await supabase
-      .from('crm_companies')
-      .delete()
-      .eq('org_company_id', orgCompanyId);
-    
-    if (deleteError) {
-      console.error(`[sync-hubspot-companies] Delete error: ${deleteError.message}`);
-      // Continue anyway - might be no rows
-    }
-
-    // 5. Insert in batches of 50
-    let inserted = 0;
-    const batchSize = 50;
-    const errors: string[] = [];
-
-    for (let i = 0; i < mapped.length; i += batchSize) {
-      const batch = mapped.slice(i, i + batchSize);
-      const { error: insertError, data: insertData } = await supabase
-        .from('crm_companies')
-        .insert(batch)
-        .select('id');
-
-      if (insertError) {
-        console.error(`[sync-hubspot-companies] Insert batch error: ${insertError.message}`);
-        errors.push(insertError.message);
-      } else {
-        inserted += (insertData || []).length;
+    do {
+      // Check time budget
+      if (Date.now() - startTime > MAX_RUNTIME_MS) {
+        console.log(`[sync-hubspot-companies] Time budget exceeded at ${totalFetched} companies`);
+        timedOut = true;
+        break;
       }
-    }
 
-    console.log(`[sync-hubspot-companies] Synced ${inserted}/${mapped.length} companies`);
+      let endpoint = `/crm/v3/objects/companies?limit=100&properties=${ESSENTIAL_PROPERTIES}`;
+      if (after) endpoint += `&after=${after}`;
+
+      const data = await hubspotRequest(endpoint, accessToken);
+      const results = data.results || [];
+      totalFetched += results.length;
+      lastAfter = data.paging?.next?.after;
+
+      if (results.length > 0) {
+        const mapped = results.map((hs: any) => mapHubSpotCompany(hs, orgCompanyId!, callerUserId));
+        const { data: insertData, error: insertError } = await supabase
+          .from('crm_companies').insert(mapped).select('id');
+        
+        if (insertError) {
+          console.error(`[sync-hubspot-companies] Insert error: ${insertError.message}`);
+        } else {
+          totalInserted += (insertData || []).length;
+        }
+      }
+
+      after = lastAfter;
+      if (totalFetched % 1000 === 0) {
+        console.log(`[sync-hubspot-companies] Progress: ${totalFetched} fetched, ${totalInserted} inserted`);
+      }
+    } while (after);
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`[sync-hubspot-companies] Done: ${totalInserted}/${totalFetched} in ${duration}s, timedOut=${timedOut}`);
 
     return new Response(JSON.stringify({
       success: true,
-      count: inserted,
-      total_in_hubspot: hsCompanies.length,
-      errors: errors.length > 0 ? errors : undefined,
+      count: totalInserted,
+      total_fetched: totalFetched,
+      duration_seconds: parseFloat(duration),
+      timed_out: timedOut,
+      resume_after: timedOut ? lastAfter : undefined,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error(`[sync-hubspot-companies] Fatal error: ${err.message}`);
+    console.error(`[sync-hubspot-companies] Fatal: ${err.message}`);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
