@@ -230,7 +230,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
                       {companyName ? (
                         <span
                           className="text-primary hover:underline cursor-pointer"
-                          onClick={e => { e.stopPropagation(); navigate(`/crm-companies/${(contact as any).crm_company_id}`); }}
+                          onClick={e => { e.stopPropagation(); navigate(`/crm-companies/${companyId}`); }}
                         >{companyName}</span>
                       ) : '—'}
                     </TableCell>
