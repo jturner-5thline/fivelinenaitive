@@ -498,6 +498,26 @@ export default function Tasks() {
           </div>
         </div>
 
+        {/* Custom Tab Bar */}
+        {viewTabs2.length > 0 && (
+          <TaskTabBar
+            tabs={viewTabs2}
+            activeTabId={activeTabId}
+            onSelectTab={setActiveTabId}
+            tasks={tasks}
+            userId={user?.id}
+            onCreateTab={(data) => createTab.mutate(data)}
+            onUpdateTab={(data) => updateTab.mutate(data)}
+            onDeleteTab={(id) => {
+              if (id === activeTabId && viewTabs2.length > 1) {
+                setActiveTabId(viewTabs2[0].id !== id ? viewTabs2[0].id : viewTabs2[1]?.id || null);
+              }
+              deleteViewTab.mutate(id);
+            }}
+            onReorderTabs={(ids) => reorderTabs.mutate(ids)}
+          />
+        )}
+
         {/* KPI Cards */}
         <TaskKPICards tasks={tasks} />
 
