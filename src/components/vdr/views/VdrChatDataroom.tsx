@@ -520,22 +520,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
                 From: {doc.folder_path === '/' ? 'Root' : doc.folder_path.replace(/^\/|\/$/g, '')}
               </span>
             )}
-            {docTags && docTags.length > 0 && (
-              <div className="flex gap-0.5 flex-shrink-0">
-                {docTags.slice(0, 2).map((t, i) => (
-                  <span
-                    key={i}
-                    className={cn('px-1 py-px rounded text-[8px] leading-tight border', getTagColor(t.account_category))}
-                    title={`${t.account_category} (${Math.round(t.confidence_score * 100)}%)`}
-                  >
-                    {t.account_category.length > 8 ? t.account_category.slice(0, 7) + '…' : t.account_category}
-                  </span>
-                ))}
-                {docTags.length > 2 && (
-                  <span className="text-[8px] text-muted-foreground">+{docTags.length - 2}</span>
-                )}
-              </div>
-            )}
             {/* Hover action area */}
             <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
               {!isDataroomView && (
@@ -646,19 +630,6 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
             <span className="text-[9px] text-muted-foreground/60 flex-shrink-0 truncate max-w-[80px]" title={doc.folder_path}>
               {doc.folder_path === '/' ? 'Root' : doc.folder_path.replace(/^\/|\/$/g, '')}
             </span>
-            {docTags && docTags.length > 0 && (
-              <div className="flex gap-0.5 flex-shrink-0">
-                {docTags.slice(0, 2).map((t, i) => (
-                  <span
-                    key={i}
-                    className={cn('px-1 py-px rounded text-[8px] leading-tight border', getTagColor(t.account_category))}
-                    title={`${t.account_category} (${Math.round(t.confidence_score * 100)}%)`}
-                  >
-                    {t.account_category.length > 8 ? t.account_category.slice(0, 7) + '…' : t.account_category}
-                  </span>
-                ))}
-              </div>
-            )}
             {/* Hover action area */}
             <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
               {!isDataroomView && (
