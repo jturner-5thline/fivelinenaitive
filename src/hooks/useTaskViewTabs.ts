@@ -5,9 +5,9 @@ import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 
 export interface TaskTabFilterConfig {
-  // Each condition is optional. If set, it filters tasks accordingly.
-  has_deal?: boolean; // true = deal_id IS NOT NULL, false = deal_id IS NULL
-  has_lender?: boolean; // true = lender_id IS NOT NULL, false = lender_id IS NULL
+  has_deal?: boolean;
+  has_lender?: boolean;
+  has_crm_company?: boolean;
   specific_deal_id?: string;
   specific_lender_id?: string;
   created_by_me?: boolean;
@@ -33,7 +33,8 @@ const DEFAULT_TABS: Omit<TaskViewTab, 'id' | 'user_id' | 'company_id' | 'created
   { name: 'All Tasks', filter_config: {}, sort_order: 0, icon: 'list-todo', is_default: true },
   { name: 'Deal Tasks', filter_config: { has_deal: true }, sort_order: 1, icon: 'briefcase', is_default: true },
   { name: 'Lender Tasks', filter_config: { has_lender: true }, sort_order: 2, icon: 'landmark', is_default: true },
-  { name: 'Personal', filter_config: { has_deal: false, has_lender: false }, sort_order: 3, icon: 'user', is_default: true },
+  { name: 'Company Tasks', filter_config: { has_crm_company: true }, sort_order: 3, icon: 'folder', is_default: true },
+  { name: 'Personal', filter_config: { has_deal: false, has_lender: false }, sort_order: 4, icon: 'user', is_default: true },
 ];
 
 export function useTaskViewTabs() {

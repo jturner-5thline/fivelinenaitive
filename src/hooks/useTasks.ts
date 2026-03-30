@@ -21,6 +21,7 @@ export interface Task {
   parent_task_id: string | null;
   deal_id: string | null;
   contact_id: string | null;
+  crm_company_id: string | null;
   company_id: string | null;
   title: string;
   description: string | null;
@@ -45,6 +46,7 @@ export interface Task {
   creator_profile?: { display_name: string; avatar_url: string | null; email: string } | null;
   deal?: { company: string } | null;
   contact?: { full_name: string } | null;
+  crm_company?: { name: string } | null;
   project?: { name: string; color: string; icon: string } | null;
   subtasks?: Task[];
 }
@@ -245,9 +247,25 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     },
   });
 
+  // Fetch CRM company names for tasks with crm_company_id
+  const crmCompanyIds = [...new Set(tasks.map(t => t.crm_company_id).filter(Boolean))] as string[];
+  const { data: crmCompanies = [] } = useQuery({
+    queryKey: ['task-crm-companies', crmCompanyIds.sort().join(',')],
+    enabled: crmCompanyIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('crm_companies')
+        .select('id, name')
+        .in('id', crmCompanyIds);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
   const dealMap = Object.fromEntries(deals.map(d => [d.id, { company: d.company }]));
   const contactMap = Object.fromEntries(contacts.map(c => [c.id, { full_name: c.full_name }]));
+  const crmCompanyMap = Object.fromEntries(crmCompanies.map(c => [c.id, { name: c.name }]));
 
   const enrichedTasks = tasks.map(t => ({
     ...t,
@@ -255,10 +273,11 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     creator_profile: profileMap[t.assigned_by] || null,
     deal: t.deal_id ? dealMap[t.deal_id] || null : null,
     contact: t.contact_id ? contactMap[t.contact_id] || null : null,
+    crm_company: t.crm_company_id ? crmCompanyMap[t.crm_company_id] || null : null,
   }));
 
   const createTask = useMutation({
-    mutationFn: async (task: { title: string; description?: string; assigned_to?: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string }) => {
+    mutationFn: async (task: { title: string; description?: string; assigned_to?: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string; crm_company_id?: string }) => {
       if (!user) throw new Error('Not authenticated');
       // Get company_id
       const { data: membership } = await supabase
@@ -282,6 +301,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           section_id: task.section_id || null,
           deal_id: task.deal_id || null,
           contact_id: task.contact_id || null,
+          crm_company_id: task.crm_company_id || null,
           company_id: membership?.company_id || null,
         } as any)
         .select()
@@ -292,6 +312,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
       queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
       if (user && data) {
         const taskUrl = `https://naitive.co/tasks?task=${(data as any).id}`;
         const { data: assigneeProfile } = await supabase
@@ -393,6 +414,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
       queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
     },
     onError: () => toast.error('Failed to update task'),
   });
@@ -547,5 +569,51 @@ export function useContactTasks(contactId: string | undefined) {
       return (data || []) as Task[];
     },
     enabled: !!contactId,
+  });
+}
+
+export function useCrmCompanyTasks(companyId: string | undefined) {
+  return useQuery({
+    queryKey: ['crm-company-tasks', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+
+      // Get tasks directly on this company
+      const { data: directTasks, error: directError } = await (supabase
+        .from('tasks')
+        .select('*')
+        .eq('crm_company_id', companyId) as any)
+        .is('archived_at', null)
+        .order('created_at', { ascending: false });
+      if (directError) throw directError;
+
+      // Get tasks on affiliated contacts
+      const { data: contactIds } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('crm_company_id', companyId);
+
+      let contactTasks: Task[] = [];
+      if (contactIds && contactIds.length > 0) {
+        const ids = contactIds.map(c => c.id);
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .in('contact_id', ids)
+          .is('archived_at', null)
+          .order('created_at', { ascending: false });
+        if (!error && data) contactTasks = data as Task[];
+      }
+
+      // Dedupe
+      const byId = new Map<string, Task>();
+      (directTasks || []).forEach(t => byId.set(t.id, t as Task));
+      contactTasks.forEach(t => { if (!byId.has(t.id)) byId.set(t.id, t); });
+
+      return Array.from(byId.values()).sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    },
+    enabled: !!companyId,
   });
 }

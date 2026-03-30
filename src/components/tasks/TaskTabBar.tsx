@@ -29,6 +29,8 @@ export function applyTabFilter(tasks: Task[], config: TaskTabFilterConfig, userI
     if (config.has_deal === false && t.deal_id) return false;
     if (config.has_lender === true && !(t as any).lender_id) return false;
     if (config.has_lender === false && (t as any).lender_id) return false;
+    if (config.has_crm_company === true && !t.crm_company_id) return false;
+    if (config.has_crm_company === false && t.crm_company_id) return false;
     if (config.specific_deal_id && t.deal_id !== config.specific_deal_id) return false;
     if (config.specific_lender_id && (t as any).lender_id !== config.specific_lender_id) return false;
     if (config.created_by_me && userId && t.assigned_by !== userId) return false;

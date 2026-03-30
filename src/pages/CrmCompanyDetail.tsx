@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Building2, Users, Briefcase, Globe, MapPin, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Building2, Users, Briefcase, Globe, MapPin, Trash2, X, CheckSquare } from 'lucide-react';
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { useContacts } from '@/hooks/useContacts';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
+import { CrmCompanyTasksCard } from '@/components/crm/CrmCompanyTasksCard';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -46,6 +47,7 @@ export default function CrmCompanyDetail() {
   const [showCreateContact, setShowCreateContact] = useState(false);
   const [showLinkDeal, setShowLinkDeal] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
 
   if (isLoading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!company) return <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4"><p className="text-muted-foreground">Company not found</p><Button variant="outline" onClick={() => navigate('/crm-companies')}>Back</Button></div>;
@@ -119,6 +121,7 @@ export default function CrmCompanyDetail() {
               <Button variant="outline" size="sm" onClick={() => handleLogActivity('call')}><Phone className="h-4 w-4 mr-1" /> Call</Button>
               <Button variant="outline" size="sm" onClick={() => handleLogActivity('meeting')}><Calendar className="h-4 w-4 mr-1" /> Meeting</Button>
               <Button variant="outline" size="sm" onClick={() => handleLogActivity('email')}><Mail className="h-4 w-4 mr-1" /> Email</Button>
+              <Button variant="outline" size="sm" onClick={() => setShowCreateTask(true)}><CheckSquare className="h-4 w-4 mr-1" /> Task</Button>
               <Button variant="destructive" size="sm" onClick={() => setShowDelete(true)}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>
             </div>
           </div>
@@ -307,6 +310,14 @@ export default function CrmCompanyDetail() {
                   </Button>
                 </CardContent>
               </Card>
+
+              {/* Tasks */}
+              <CrmCompanyTasksCard
+                companyId={company.id}
+                companyName={company.name}
+                externalShowCreate={showCreateTask}
+                onExternalShowCreateChange={setShowCreateTask}
+              />
 
               {subsidiaries.length > 0 && (
                 <Card>

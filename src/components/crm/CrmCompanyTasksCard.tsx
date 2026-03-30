@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useContactTasks, useMyTasks } from '@/hooks/useTasks';
+import { useCrmCompanyTasks, useMyTasks } from '@/hooks/useTasks';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -17,10 +17,9 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-interface ContactTasksCardProps {
-  contactId: string;
-  contactName: string;
-  crmCompanyId?: string | null;
+interface CrmCompanyTasksCardProps {
+  companyId: string;
+  companyName: string;
   externalShowCreate?: boolean;
   onExternalShowCreateChange?: (v: boolean) => void;
 }
@@ -46,8 +45,8 @@ const priorityColor: Record<string, string> = {
   low: 'text-muted-foreground',
 };
 
-export function ContactTasksCard({ contactId, contactName, crmCompanyId, externalShowCreate, onExternalShowCreateChange }: ContactTasksCardProps) {
-  const { data: tasks = [], isLoading } = useContactTasks(contactId);
+export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate, onExternalShowCreateChange }: CrmCompanyTasksCardProps) {
+  const { data: tasks = [], isLoading } = useCrmCompanyTasks(companyId);
   const { createTask, updateTask } = useMyTasks();
   const teamMembers = useTeamMembers();
   const { user } = useAuth();
@@ -69,11 +68,8 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
     }
   }, [externalShowCreate]);
 
-  // Default assignee to current user
   useEffect(() => {
-    if (user && !assignedTo) {
-      setAssignedTo(user.id);
-    }
+    if (user && !assignedTo) setAssignedTo(user.id);
   }, [user]);
 
   const resetForm = () => {
@@ -93,8 +89,7 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
         title: title.trim(),
         description: description.trim() || undefined,
         assigned_to: assignedTo || undefined,
-        contact_id: contactId,
-        crm_company_id: crmCompanyId || undefined,
+        crm_company_id: companyId,
         priority,
         due_date: dueDate || undefined,
         status,
@@ -106,9 +101,7 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
           setIsCreateOpen(false);
           setIsSubmitting(false);
         },
-        onError: () => {
-          setIsSubmitting(false);
-        },
+        onError: () => setIsSubmitting(false),
       }
     );
   };
@@ -156,17 +149,11 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
                 const assignee = memberMap.get(task.assigned_to);
                 return (
                   <div key={task.id} className="flex items-start gap-2 p-1.5 rounded-md hover:bg-muted/30 group">
-                    <button
-                      onClick={() => handleToggle(task)}
-                      className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-primary transition-colors"
-                    >
+                    <button onClick={() => handleToggle(task)} className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-primary transition-colors">
                       <Circle className="h-3.5 w-3.5" />
                     </button>
                     <div className="flex-1 min-w-0">
-                      <p
-                        className="text-xs font-medium cursor-pointer hover:text-primary truncate"
-                        onClick={() => navigate(`/tasks?task=${task.id}`)}
-                      >
+                      <p className="text-xs font-medium cursor-pointer hover:text-primary truncate" onClick={() => navigate(`/tasks?task=${task.id}`)}>
                         {task.title}
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -204,10 +191,7 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
             <div className="space-y-1 mb-2 opacity-60">
               {completedTasks.slice(0, 3).map(task => (
                 <div key={task.id} className="flex items-center gap-2 p-1.5 rounded-md">
-                  <button
-                    onClick={() => handleToggle(task)}
-                    className="flex-shrink-0 text-green-500 hover:text-muted-foreground transition-colors"
-                  >
+                  <button onClick={() => handleToggle(task)} className="flex-shrink-0 text-green-500 hover:text-muted-foreground transition-colors">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   </button>
                   <p className="text-xs line-through text-muted-foreground truncate">{task.title}</p>
@@ -221,39 +205,25 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
         </CardContent>
       </Card>
 
-      {/* Full Create Task Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsCreateOpen(open); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-sm">Create Task for {contactName}</DialogTitle>
+            <DialogTitle className="text-sm">Create Task for {companyName}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
               <Label className="text-xs">Task title</Label>
-              <Input
-                placeholder="e.g. Follow up with contact"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                className="mt-1"
-                autoFocus
-              />
+              <Input placeholder="e.g. Follow up with company" value={title} onChange={e => setTitle(e.target.value)} className="mt-1" autoFocus />
             </div>
             <div>
               <Label className="text-xs">Description (optional)</Label>
-              <Textarea
-                placeholder="Add any extra details…"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                className="mt-1 min-h-[60px]"
-              />
+              <Textarea placeholder="Add any extra details…" value={description} onChange={e => setDescription(e.target.value)} className="mt-1 min-h-[60px]" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Assign to</Label>
                 <Select value={assignedTo} onValueChange={setAssignedTo}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select member" />
-                  </SelectTrigger>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select member" /></SelectTrigger>
                   <SelectContent>
                     {teamMembers.map(member => (
                       <SelectItem key={member.id} value={member.id}>
@@ -271,50 +241,29 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
               </div>
               <div>
                 <Label className="text-xs">Due date (optional)</Label>
-                <Input
-                  type="date"
-                  value={dueDate}
-                  onChange={e => setDueDate(e.target.value)}
-                  className="mt-1"
-                />
+                <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="mt-1" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Priority</Label>
                 <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRIORITY_OPTIONS.map(p => (
-                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>{PRIORITY_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-xs">Status</Label>
                 <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map(s => (
-                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => { resetForm(); setIsCreateOpen(false); }}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={!title.trim() || isSubmitting}>
-              {isSubmitting ? 'Creating…' : 'Create Task'}
-            </Button>
+            <Button variant="ghost" onClick={() => { resetForm(); setIsCreateOpen(false); }}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={!title.trim() || isSubmitting}>{isSubmitting ? 'Creating…' : 'Create Task'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -162,6 +162,9 @@ export function TaskCalendarView({ tasks, onSelectTask, onUpdateTask, selectedTa
                       {task.contact_id && (task as any).contact?.full_name && (
                         <span className="ml-0.5 opacity-70">· {(task as any).contact.full_name}</span>
                       )}
+                      {task.crm_company_id && (task as any).crm_company?.name && (
+                        <span className="ml-0.5 opacity-70">· {(task as any).crm_company.name}</span>
+                      )}
                     </div>
                   );
                 })}
