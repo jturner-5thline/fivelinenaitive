@@ -9006,6 +9006,111 @@ export type Database = {
           },
         ]
       }
+      hubspot_pipeline_stage_map: {
+        Row: {
+          company_id: string
+          created_at: string
+          hubspot_dealstage_id: string
+          hubspot_pipeline_id: string
+          id: string
+          naitive_pipeline_id: string
+          naitive_stage_name: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          hubspot_dealstage_id: string
+          hubspot_pipeline_id: string
+          id?: string
+          naitive_pipeline_id: string
+          naitive_stage_name: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          hubspot_dealstage_id?: string
+          hubspot_pipeline_id?: string
+          id?: string
+          naitive_pipeline_id?: string
+          naitive_stage_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hubspot_pipeline_stage_map_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hubspot_pipeline_stage_map_naitive_pipeline_id_fkey"
+            columns: ["naitive_pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hubspot_sync_logs: {
+        Row: {
+          action: string
+          company_id: string | null
+          created_at: string
+          deal_id: string | null
+          direction: string
+          error_message: string | null
+          hubspot_deal_id: string | null
+          id: string
+          request_payload: Json | null
+          response_payload: Json | null
+          status: string
+        }
+        Insert: {
+          action: string
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          direction?: string
+          error_message?: string | null
+          hubspot_deal_id?: string | null
+          id?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status: string
+        }
+        Update: {
+          action?: string
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          direction?: string
+          error_message?: string | null
+          hubspot_deal_id?: string | null
+          id?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hubspot_sync_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hubspot_sync_logs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hubspot_sync_runs: {
         Row: {
           error_count: number
