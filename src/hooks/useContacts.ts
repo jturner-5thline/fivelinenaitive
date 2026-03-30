@@ -133,7 +133,7 @@ export function useContacts(params: ContactsListParams = {}) {
       if (error) throw error;
       const totalCount = count ?? 0;
       return {
-        data: (data || []) as Contact[],
+        data: (data || []) as unknown as Contact[],
         totalCount,
         page,
         pageSize,
