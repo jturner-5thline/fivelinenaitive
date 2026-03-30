@@ -2244,6 +2244,8 @@ export type Database = {
           first_name: string | null
           fit_score: number | null
           full_name: string | null
+          hs_additional_emails_raw: string | null
+          hs_address: string | null
           hs_annualrevenue: string | null
           hs_associatedcompanyid: number | null
           hs_associatedcompanylastupdated: number | null
@@ -2251,13 +2253,16 @@ export type Database = {
           hs_behavioral_lead_scoring_2025_threshold: string | null
           hs_business_revenue_modeldate_picker: string | null
           hs_capital_ask: string | null
+          hs_city: string | null
           hs_closedate: string | null
+          hs_company_name: string | null
           hs_company_size: string | null
           hs_contact_source: string | null
           hs_contact_status: string | null
           hs_contact_type: string | null
           hs_conversion_source_at_time_of_mql: string | null
           hs_conversion_source_at_time_of_paid_lead: string | null
+          hs_country: string | null
           hs_created_or_updated_by_amplemarket: string | null
           hs_csat_expectations_met: string | null
           hs_csat_future_openness: string | null
@@ -2600,6 +2605,7 @@ export type Database = {
           hs_military_status: string | null
           hs_no_clear_path_to_profitability_breakeven_date_picker: string | null
           hs_notes_last_contacted: string | null
+          hs_notes_last_updated: string | null
           hs_notes_next_activity_date: string | null
           hs_num_associated_deals: number | null
           hs_num_contacted_notes: number | null
@@ -2633,6 +2639,7 @@ export type Database = {
           hs_school: string | null
           hs_service_interest: string | null
           hs_start_date: string | null
+          hs_state: string | null
           hs_surveymonkeyeventlastupdated: number | null
           hs_total_revenue: number | null
           hs_twitterbio: string | null
@@ -2647,6 +2654,7 @@ export type Database = {
           hs_webinareventlastupdated: number | null
           hs_what_do_you_hope_to_get_out_of_this_event: string | null
           hs_work_email: string | null
+          hs_zip: string | null
           hs_zoom_webinar_attendance_average_duration: number | null
           hs_zoom_webinar_attendance_count: number | null
           hs_zoom_webinar_joinlink: string | null
@@ -2715,6 +2723,8 @@ export type Database = {
           first_name?: string | null
           fit_score?: number | null
           full_name?: string | null
+          hs_additional_emails_raw?: string | null
+          hs_address?: string | null
           hs_annualrevenue?: string | null
           hs_associatedcompanyid?: number | null
           hs_associatedcompanylastupdated?: number | null
@@ -2722,13 +2732,16 @@ export type Database = {
           hs_behavioral_lead_scoring_2025_threshold?: string | null
           hs_business_revenue_modeldate_picker?: string | null
           hs_capital_ask?: string | null
+          hs_city?: string | null
           hs_closedate?: string | null
+          hs_company_name?: string | null
           hs_company_size?: string | null
           hs_contact_source?: string | null
           hs_contact_status?: string | null
           hs_contact_type?: string | null
           hs_conversion_source_at_time_of_mql?: string | null
           hs_conversion_source_at_time_of_paid_lead?: string | null
+          hs_country?: string | null
           hs_created_or_updated_by_amplemarket?: string | null
           hs_csat_expectations_met?: string | null
           hs_csat_future_openness?: string | null
@@ -3075,6 +3088,7 @@ export type Database = {
             | string
             | null
           hs_notes_last_contacted?: string | null
+          hs_notes_last_updated?: string | null
           hs_notes_next_activity_date?: string | null
           hs_num_associated_deals?: number | null
           hs_num_contacted_notes?: number | null
@@ -3108,6 +3122,7 @@ export type Database = {
           hs_school?: string | null
           hs_service_interest?: string | null
           hs_start_date?: string | null
+          hs_state?: string | null
           hs_surveymonkeyeventlastupdated?: number | null
           hs_total_revenue?: number | null
           hs_twitterbio?: string | null
@@ -3122,6 +3137,7 @@ export type Database = {
           hs_webinareventlastupdated?: number | null
           hs_what_do_you_hope_to_get_out_of_this_event?: string | null
           hs_work_email?: string | null
+          hs_zip?: string | null
           hs_zoom_webinar_attendance_average_duration?: number | null
           hs_zoom_webinar_attendance_count?: number | null
           hs_zoom_webinar_joinlink?: string | null
@@ -3190,6 +3206,8 @@ export type Database = {
           first_name?: string | null
           fit_score?: number | null
           full_name?: string | null
+          hs_additional_emails_raw?: string | null
+          hs_address?: string | null
           hs_annualrevenue?: string | null
           hs_associatedcompanyid?: number | null
           hs_associatedcompanylastupdated?: number | null
@@ -3197,13 +3215,16 @@ export type Database = {
           hs_behavioral_lead_scoring_2025_threshold?: string | null
           hs_business_revenue_modeldate_picker?: string | null
           hs_capital_ask?: string | null
+          hs_city?: string | null
           hs_closedate?: string | null
+          hs_company_name?: string | null
           hs_company_size?: string | null
           hs_contact_source?: string | null
           hs_contact_status?: string | null
           hs_contact_type?: string | null
           hs_conversion_source_at_time_of_mql?: string | null
           hs_conversion_source_at_time_of_paid_lead?: string | null
+          hs_country?: string | null
           hs_created_or_updated_by_amplemarket?: string | null
           hs_csat_expectations_met?: string | null
           hs_csat_future_openness?: string | null
@@ -3550,6 +3571,7 @@ export type Database = {
             | string
             | null
           hs_notes_last_contacted?: string | null
+          hs_notes_last_updated?: string | null
           hs_notes_next_activity_date?: string | null
           hs_num_associated_deals?: number | null
           hs_num_contacted_notes?: number | null
@@ -3583,6 +3605,7 @@ export type Database = {
           hs_school?: string | null
           hs_service_interest?: string | null
           hs_start_date?: string | null
+          hs_state?: string | null
           hs_surveymonkeyeventlastupdated?: number | null
           hs_total_revenue?: number | null
           hs_twitterbio?: string | null
@@ -3597,6 +3620,7 @@ export type Database = {
           hs_webinareventlastupdated?: number | null
           hs_what_do_you_hope_to_get_out_of_this_event?: string | null
           hs_work_email?: string | null
+          hs_zip?: string | null
           hs_zoom_webinar_attendance_average_duration?: number | null
           hs_zoom_webinar_attendance_count?: number | null
           hs_zoom_webinar_joinlink?: string | null
