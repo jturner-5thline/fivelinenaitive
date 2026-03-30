@@ -188,7 +188,7 @@ export function HubSpotIntegration() {
     }
   };
 
-
+  const handleCreateContact = async () => {
     try {
       await hubspot.createContact.mutateAsync(newContact);
       setIsCreateContactOpen(false);
