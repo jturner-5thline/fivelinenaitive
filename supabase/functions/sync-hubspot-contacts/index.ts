@@ -148,9 +148,17 @@ Deno.serve(async (req) => {
     const columnsCreated: string[] = [];
 
     if (!skipSchemaSetup) {
-      const { data: colRows, error: colError } = await supabase.rpc('exec_sql_readonly', {
-        sql: "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'contacts'"
-      }).catch(() => ({ data: null, error: { message: 'rpc not found' } }));
+      let colRows: any = null;
+      let colError: any = null;
+      try {
+        const result = await supabase.rpc('exec_sql_readonly', {
+          sql: "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'contacts'"
+        });
+        colRows = result.data;
+        colError = result.error;
+      } catch {
+        colError = { message: 'rpc not found' };
+      }
 
       // Fallback: try a dummy select to see what columns exist
       if (!colRows) {
