@@ -1,0 +1,156 @@
+import { useState, useEffect, useRef } from 'react';
+import { Search, Plus, Building2, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { useCrmCompanies, useCreateCrmCompany } from '@/hooks/useCrmCompanies';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+
+interface CompanyComboBoxProps {
+  value: string; // crm_company_id
+  onChange: (companyId: string) => void;
+  email?: string;
+}
+
+export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps) {
+  const navigate = useNavigate();
+  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
+  const companies = companiesResult?.data ?? [];
+  const createCompany = useCreateCrmCompany();
+
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const [domainSuggested, setDomainSuggested] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const selectedCompany = companies.find(c => c.id === value);
+
+  // Domain auto-matching from email
+  useEffect(() => {
+    if (!email || domainSuggested || value) return;
+    const atIdx = email.indexOf('@');
+    if (atIdx < 0) return;
+    const domain = email.slice(atIdx + 1).toLowerCase();
+    if (!domain || domain.includes(' ') || !domain.includes('.')) return;
+
+    // Common free email providers to skip
+    const freeProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com'];
+    if (freeProviders.includes(domain)) return;
+
+    const match = companies.find(c => {
+      const cDomain = c.domain?.toLowerCase()?.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '');
+      const additionalDomains = (c.additional_domains || []).map((d: string) => d.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, ''));
+      return cDomain === domain || additionalDomains.includes(domain);
+    });
+
+    if (match) {
+      onChange(match.id);
+      setDomainSuggested(true);
+    } else {
+      // Pre-fill search with domain name (without TLD) as a suggestion
+      const domainName = domain.split('.')[0];
+      setSearch(domainName);
+      setDomainSuggested(true);
+    }
+  }, [email, companies, value, domainSuggested, onChange]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = search.trim()
+    ? companies.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+    : companies.slice(0, 20);
+
+  const exactMatch = search.trim() && companies.some(c => c.name.toLowerCase() === search.toLowerCase().trim());
+
+  const handleCreateNew = async () => {
+    const name = search.trim();
+    if (!name) return;
+    try {
+      const result = await createCompany.mutateAsync({ name } as any);
+      onChange(result.id);
+      setSearch('');
+      setOpen(false);
+      toast.success(
+        <span>
+          {name} was created as a new company —{' '}
+          <span
+            className="underline cursor-pointer font-medium"
+            onClick={() => navigate(`/crm-companies/${result.id}`)}
+          >
+            Add details
+          </span>
+        </span>
+      );
+    } catch {}
+  };
+
+  if (selectedCompany) {
+    return (
+      <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-background">
+        <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+        <span className="text-sm flex-1 truncate">{selectedCompany.name}</span>
+        <button
+          type="button"
+          onClick={() => { onChange(''); setDomainSuggested(false); }}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder="Search or create company..."
+        value={search}
+        onChange={e => { setSearch(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        className="pl-8"
+      />
+      {open && (
+        <div className="absolute z-50 top-full mt-1 w-full border rounded-md bg-popover shadow-md max-h-[220px] overflow-y-auto">
+          {filtered.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50"
+              onClick={() => {
+                onChange(c.id);
+                setSearch('');
+                setOpen(false);
+              }}
+            >
+              <p className="font-medium">{c.name}</p>
+              {c.domain && <p className="text-xs text-muted-foreground">{c.domain}</p>}
+            </button>
+          ))}
+          {filtered.length === 0 && !search.trim() && (
+            <p className="text-xs text-muted-foreground text-center py-3">No companies yet</p>
+          )}
+          {search.trim() && !exactMatch && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 border-t flex items-center gap-2 text-primary font-medium"
+              onClick={handleCreateNew}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Create "{search.trim()}"
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
