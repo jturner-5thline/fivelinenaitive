@@ -27,14 +27,18 @@ async function hubspotRequest(endpoint: string, accessToken: string): Promise<an
   return text ? JSON.parse(text) : null;
 }
 
-async function fetchAllPropertyNames(accessToken: string): Promise<string[]> {
-  const data = await hubspotRequest('/crm/v3/properties/companies', accessToken);
-  const names = (data.results || []).map((p: any) => p.name);
-  console.log(`[sync-hubspot-companies] Found ${names.length} company properties`);
-  return names;
-}
+// Only request properties we actually map — keeps URL short and avoids timeouts
+const ESSENTIAL_PROPERTIES = [
+  'name', 'domain', 'website', 'industry', 'numberofemployees',
+  'description', 'phone', 'city', 'state', 'country', 'zip', 'address',
+  'annualrevenue', 'lifecyclestage', 'type', 'linkedin_company_page',
+  'twitterhandle', 'hs_object_id', 'recent_deal_amount', 'recent_deal_close_date',
+  'total_revenue', 'founded_year', 'is_public', 'hs_lead_status',
+  'hubspot_owner_id', 'num_associated_contacts', 'num_associated_deals',
+  'hs_num_open_deals', 'hs_total_deal_value', 'hs_additional_domains',
+].join(',');
 
-async function fetchAllCompanies(accessToken: string, propertyNames: string[]): Promise<any[]> {
+async function fetchAllCompanies(accessToken: string): Promise<any[]> {
   const all: any[] = [];
   let after: string | undefined;
   const propsParam = propertyNames.join(',');
