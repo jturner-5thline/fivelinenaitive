@@ -219,8 +219,31 @@ export function ClaapSyncSettings() {
                 <span>Skipped: {backfillProgress.skipped}</span>
                 <span>Already synced: {backfillProgress.alreadyExists}</span>
                 {backfillProgress.errors > 0 && (
-                  <span className="text-destructive">Errors: {backfillProgress.errors}</span>
+                  <span className="text-destructive col-span-2">Errors: {backfillProgress.errors}</span>
                 )}
+              </div>
+              {backfillProgress.errorDetails.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <span className="text-xs font-medium text-destructive">Error details:</span>
+                  <ScrollArea className="max-h-32">
+                    {backfillProgress.errorDetails.map((e, i) => (
+                      <div key={i} className="text-xs text-destructive/80 truncate">
+                        • {e.title || e.claap_id}: {e.error}
+                      </div>
+                    ))}
+                  </ScrollArea>
+                </div>
+              )}
+              {backfillProgress.processedTitles.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">Processed titles:</span>
+                  <ScrollArea className="max-h-24">
+                    {backfillProgress.processedTitles.map((t, i) => (
+                      <div key={i} className="text-xs text-muted-foreground truncate">• {t}</div>
+                    ))}
+                  </ScrollArea>
+                </div>
+              )
               </div>
             </div>
           )}
