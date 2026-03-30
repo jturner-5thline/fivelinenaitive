@@ -245,9 +245,17 @@ export function HubSpotIntegration() {
                 <CardDescription>Sync contacts, deals, companies, and activities</CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {getStatusBadge()}
-              <Button onClick={handleTestConnection} disabled={isTestingConnection} variant="outline">
+              <Button onClick={handleSyncCompanies} disabled={isSyncingCompanies} variant="outline" size="sm">
+                {isSyncingCompanies ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Building2 className="h-4 w-4 mr-2" />
+                )}
+                Sync Companies
+              </Button>
+              <Button onClick={handleTestConnection} disabled={isTestingConnection} variant="outline" size="sm">
                 {isTestingConnection ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
