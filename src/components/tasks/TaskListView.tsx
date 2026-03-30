@@ -610,12 +610,11 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
 
       <div className="min-w-0" onClick={e => e.stopPropagation()}>
         {task.deal_id && task.deal ? (
-          <Link to={`/deal/${task.deal_id}`} className="text-[11px] hover:underline truncate block" style={{ color: '#3b7eff' }} onClick={e => e.stopPropagation()}>
-            {task.deal.company}
+          <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(30,58,95,0.6)', color: '#93c5fd' }} onClick={e => e.stopPropagation()}>
+            <Building2 className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate">{task.deal.company}</span>
           </Link>
-        ) : (
-          <span className="text-[11px]" style={{ color: '#8b92a5' }}>—</span>
-        )}
+        ) : null}
       </div>
 
       {/* Due date - relative */}
