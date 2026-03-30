@@ -192,6 +192,9 @@ const App = () => (
                           <Route path="/crm-companies/:id" element={
                             <ProtectedRoute><AppLayout><CrmCompanyDetail /></AppLayout></ProtectedRoute>
                           } />
+                          <Route path="/field-layout-editor" element={
+                            <ProtectedRoute><AppLayout><FieldLayoutEditorPage /></AppLayout></ProtectedRoute>
+                          } />
                           <Route path="/hr" element={
                             <ProtectedRoute><AppLayout><HR /></AppLayout></ProtectedRoute>
                           } />
