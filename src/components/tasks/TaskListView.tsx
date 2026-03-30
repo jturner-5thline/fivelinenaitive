@@ -560,6 +560,12 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
                 {task.deal.company}
               </Link>
             )}
+            {task.contact_id && (task as any).contact?.full_name && (
+              <Link to={`/contacts/${task.contact_id}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium mt-0.5 -mx-0.5 hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(75,30,95,0.6)', color: '#d8b4fe' }} onClick={e => e.stopPropagation()}>
+                <User className="h-2.5 w-2.5" />
+                {(task as any).contact.full_name}
+              </Link>
+            )}
             {task.status === 'blocked' && blockerNote && (
               <span className="text-[11px] italic block px-1 -mx-1 mt-0.5" style={{ color: '#ff4d4d' }}>
                 {blockerNote}
