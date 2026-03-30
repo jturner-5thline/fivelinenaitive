@@ -121,11 +121,13 @@ export function ClaapSyncSettings() {
       return;
     }
 
-    setBackfillProgress({ running: true, processed: 0, matched: 0, skipped: 0, alreadyExists: 0, errors: 0, batchesDone: 0 });
+    setBackfillProgress({ running: true, processed: 0, matched: 0, skipped: 0, alreadyExists: 0, errors: 0, batchesDone: 0, errorDetails: [], processedTitles: [] });
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     let cursor: string | null = null;
     let totalProcessed = 0, totalMatched = 0, totalSkipped = 0, totalExists = 0, totalErrors = 0;
     let batchesDone = 0;
+    let allErrorDetails: Array<{ claap_id: string; title: string | null; error: string }> = [];
+    let allTitles: string[] = [];
 
     try {
       for (let i = 0; i < 50; i++) {
