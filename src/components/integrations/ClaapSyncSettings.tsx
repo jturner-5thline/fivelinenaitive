@@ -15,6 +15,15 @@ import { Progress } from '@/components/ui/progress';
 export function ClaapSyncSettings() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [backfillProgress, setBackfillProgress] = useState<{
+    running: boolean;
+    processed: number;
+    matched: number;
+    skipped: number;
+    alreadyExists: number;
+    errors: number;
+    batchesDone: number;
+  } | null>(null);
 
   // Fetch company config
   const { data: config, isLoading: configLoading } = useQuery({
