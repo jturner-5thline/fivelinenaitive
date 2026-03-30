@@ -90,6 +90,8 @@ export function ContactTasksCard({ contactId, contactName, externalShowCreate, o
     createTask.mutate(
       {
         title: title.trim(),
+        description: description.trim() || undefined,
+        assigned_to: assignedTo || undefined,
         contact_id: contactId,
         priority,
         due_date: dueDate || undefined,
