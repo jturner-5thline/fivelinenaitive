@@ -276,6 +276,10 @@ Deno.serve(async (req) => {
     const nextCursor = claapData.result?.cursor || claapData.cursor || claapData.next_cursor || null;
 
     let processed = 0, matched = 0, skipped = 0, alreadyExists = 0, errors = 0;
+    const errorDetails: Array<{ claap_id: string; title: string | null; error: string }> = [];
+    const processedTitles: string[] = [];
+
+    console.log(`Backfill: fetched ${recordings.length} recordings from Claap API`);
 
     for (const recording of recordings) {
       // Check time budget
