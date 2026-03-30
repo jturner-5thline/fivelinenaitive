@@ -531,6 +531,8 @@ Deno.serve(async (req) => {
       skipped,
       already_exists: alreadyExists,
       errors,
+      error_details: errorDetails,
+      processed_titles: processedTitles,
       total_in_batch: recordings.length,
       next_cursor: nextCursor || null,
       has_more: !!nextCursor,
