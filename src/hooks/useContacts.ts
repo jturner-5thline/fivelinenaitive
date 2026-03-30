@@ -64,7 +64,7 @@ export interface Contact {
   ae_owner?: { display_name: string | null; avatar_url: string | null } | null;
 }
 
-const LIST_COLUMNS = 'id, first_name, last_name, full_name, email, phone_work, job_title, lifecycle_stage, status, contact_score, primary_company_id, lead_source, last_activity_date, created_at, hubspot_contact_id, synced_with_hubspot, crm_company_id';
+const LIST_COLUMNS = 'id, first_name, last_name, full_name, email, phone_work, job_title, lifecycle_stage, status, contact_score, primary_company_id, lead_source, last_activity_date, created_at, hubspot_contact_id, synced_with_hubspot, crm_company_id, crm_company:crm_companies!crm_company_id(id, name)';
 
 export interface ContactsListParams {
   page?: number;

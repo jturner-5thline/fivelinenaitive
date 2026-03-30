@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, Upload, RefreshCw, Loader2, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
@@ -23,6 +23,7 @@ export default function Contacts() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [isSyncingContacts, setIsSyncingContacts] = useState(false);
+  const [isMatching, setIsMatching] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
   const [matchMode, setMatchMode] = useState<MatchMode>('all');
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
@@ -60,6 +61,22 @@ export default function Contacts() {
       toast.error('Failed to sync contacts', { description: error.message });
     } finally {
       setIsSyncingContacts(false);
+    }
+  };
+
+  const handleMatchCompanies = async () => {
+    setIsMatching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('match-contacts-companies');
+      if (error) throw error;
+      const r = data as { matched?: number; unmatched?: number; total?: number; error?: string };
+      if (r.error) throw new Error(r.error);
+      toast.success(`Matched ${r.matched} of ${r.total} contacts to companies`);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    } catch (error: any) {
+      toast.error('Failed to match contacts', { description: error.message });
+    } finally {
+      setIsMatching(false);
     }
   };
 
@@ -107,6 +124,10 @@ export default function Contacts() {
               <Button variant="outline" size="sm" onClick={handleSyncContacts} disabled={isSyncingContacts}>
                 {isSyncingContacts ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
                 Sync HubSpot
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleMatchCompanies} disabled={isMatching}>
+                {isMatching ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Link2 className="h-4 w-4 mr-1.5" />}
+                Match Companies
               </Button>
               <Button variant="outline" size="sm">
                 <Upload className="h-4 w-4 mr-1.5" /> Import

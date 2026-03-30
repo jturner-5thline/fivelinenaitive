@@ -65,13 +65,6 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
   const linkToDeal = useLinkContactToDeal();
   const deleteContact = useDeleteContact();
 
-  // Build a lookup for company names
-  const companyMap = useMemo(() => {
-    const map = new Map<string, string>();
-    companies.forEach(c => map.set(c.id, c.name));
-    return map;
-  }, [companies]);
-
   const filtered = useMemo(() => {
     let result = [...contacts];
 
@@ -219,7 +212,9 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
               </TableRow>
             ) : (
               filtered.map(contact => {
-                const companyName = (contact as any).crm_company_id ? companyMap.get((contact as any).crm_company_id) : null;
+                const crmCompany = (contact as any).crm_company;
+                const companyName = crmCompany?.name || null;
+                const companyId = (contact as any).crm_company_id;
                 return (
                   <TableRow
                     key={contact.id}
@@ -238,7 +233,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
                       {companyName ? (
                         <span
                           className="text-primary hover:underline cursor-pointer"
-                          onClick={e => { e.stopPropagation(); navigate(`/crm-companies/${(contact as any).crm_company_id}`); }}
+                          onClick={e => { e.stopPropagation(); navigate(`/crm-companies/${companyId}`); }}
                         >{companyName}</span>
                       ) : '—'}
                     </TableCell>
