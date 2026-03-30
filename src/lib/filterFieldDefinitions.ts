@@ -1,0 +1,42 @@
+import type { FilterField } from './filterTypes';
+
+export const CONTACT_CORE_FIELDS: FilterField[] = [
+  { name: 'first_name', label: 'First Name', type: 'text', category: 'Contact Info' },
+  { name: 'last_name', label: 'Last Name', type: 'text', category: 'Contact Info' },
+  { name: 'email', label: 'Email', type: 'text', category: 'Contact Info' },
+  { name: 'phone_work', label: 'Work Phone', type: 'text', category: 'Contact Info' },
+  { name: 'phone_mobile', label: 'Mobile Phone', type: 'text', category: 'Contact Info' },
+  { name: 'job_title', label: 'Job Title', type: 'text', category: 'Contact Info' },
+  { name: 'lifecycle_stage', label: 'Lifecycle Stage', type: 'enum', category: 'Status' },
+  { name: 'status', label: 'Status', type: 'enum', category: 'Status' },
+  { name: 'lead_source', label: 'Lead Source', type: 'text', category: 'Marketing' },
+  { name: 'city', label: 'City', type: 'text', category: 'Location' },
+  { name: 'state', label: 'State', type: 'text', category: 'Location' },
+  { name: 'country', label: 'Country', type: 'text', category: 'Location' },
+  { name: 'contact_score', label: 'Score', type: 'number', category: 'Scoring' },
+  { name: 'created_at', label: 'Created Date', type: 'date', category: 'Dates' },
+  { name: 'updated_at', label: 'Updated Date', type: 'date', category: 'Dates' },
+  { name: 'last_activity_date', label: 'Last Activity', type: 'date', category: 'Dates' },
+  { name: 'synced_with_hubspot', label: 'Synced with HubSpot', type: 'boolean', category: 'System' },
+];
+
+export const COMPANY_CORE_FIELDS: FilterField[] = [
+  { name: 'name', label: 'Company Name', type: 'text', category: 'Company Info' },
+  { name: 'domain', label: 'Domain', type: 'text', category: 'Company Info' },
+  { name: 'industry', label: 'Industry', type: 'text', category: 'Company Info' },
+  { name: 'lifecycle_stage', label: 'Lifecycle Stage', type: 'enum', category: 'Status' },
+  { name: 'status', label: 'Status', type: 'enum', category: 'Status' },
+  { name: 'company_type', label: 'Company Type', type: 'enum', category: 'Status' },
+  { name: 'segment', label: 'Segment', type: 'text', category: 'Classification' },
+  { name: 'employee_range', label: 'Employee Range', type: 'text', category: 'Company Info' },
+  { name: 'annual_revenue', label: 'Annual Revenue', type: 'number', category: 'Financials' },
+  { name: 'arr', label: 'ARR', type: 'number', category: 'Financials' },
+  { name: 'hq_city', label: 'HQ City', type: 'text', category: 'Location' },
+  { name: 'hq_state', label: 'HQ State', type: 'text', category: 'Location' },
+  { name: 'hq_country', label: 'HQ Country', type: 'text', category: 'Location' },
+  { name: 'created_at', label: 'Created Date', type: 'date', category: 'Dates' },
+  { name: 'updated_at', label: 'Updated Date', type: 'date', category: 'Dates' },
+  { name: 'last_activity_date', label: 'Last Activity', type: 'date', category: 'Dates' },
+  { name: 'renewal_date', label: 'Renewal Date', type: 'date', category: 'Dates' },
+  { name: 'synced_with_hubspot', label: 'Synced with HubSpot', type: 'boolean', category: 'System' },
+];
