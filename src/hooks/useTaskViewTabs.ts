@@ -33,7 +33,8 @@ const DEFAULT_TABS: Omit<TaskViewTab, 'id' | 'user_id' | 'company_id' | 'created
   { name: 'All Tasks', filter_config: {}, sort_order: 0, icon: 'list-todo', is_default: true },
   { name: 'Deal Tasks', filter_config: { has_deal: true }, sort_order: 1, icon: 'briefcase', is_default: true },
   { name: 'Lender Tasks', filter_config: { has_lender: true }, sort_order: 2, icon: 'landmark', is_default: true },
-  { name: 'Personal', filter_config: { has_deal: false, has_lender: false }, sort_order: 3, icon: 'user', is_default: true },
+  { name: 'Company Tasks', filter_config: { has_crm_company: true }, sort_order: 3, icon: 'folder', is_default: true },
+  { name: 'Personal', filter_config: { has_deal: false, has_lender: false }, sort_order: 4, icon: 'user', is_default: true },
 ];
 
 export function useTaskViewTabs() {
