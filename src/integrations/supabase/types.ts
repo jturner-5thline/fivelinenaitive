@@ -7530,6 +7530,71 @@ export type Database = {
           },
         ]
       }
+      hubspot_field_metadata: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          group_name: string | null
+          hubspot_field_type: string | null
+          hubspot_type: string | null
+          id: string
+          internal_name: string
+          is_mapped: boolean
+          is_read_only: boolean
+          is_system: boolean
+          label: string
+          mapped_column_name: string | null
+          mapped_column_type: string | null
+          object_type: string
+          options: Json | null
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          group_name?: string | null
+          hubspot_field_type?: string | null
+          hubspot_type?: string | null
+          id?: string
+          internal_name: string
+          is_mapped?: boolean
+          is_read_only?: boolean
+          is_system?: boolean
+          label: string
+          mapped_column_name?: string | null
+          mapped_column_type?: string | null
+          object_type: string
+          options?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          group_name?: string | null
+          hubspot_field_type?: string | null
+          hubspot_type?: string | null
+          id?: string
+          internal_name?: string
+          is_mapped?: boolean
+          is_read_only?: boolean
+          is_system?: boolean
+          label?: string
+          mapped_column_name?: string | null
+          mapped_column_type?: string | null
+          object_type?: string
+          options?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hubspot_field_metadata_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hubspot_integration_configs: {
         Row: {
           company_id: string | null
@@ -7573,6 +7638,133 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hubspot_layout_configs: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          object_type: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          object_type: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          object_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hubspot_layout_configs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hubspot_layout_section_fields: {
+        Row: {
+          column_span: number
+          created_at: string
+          display_order: number
+          field_metadata_id: string
+          id: string
+          is_required: boolean
+          is_visible: boolean
+          section_id: string
+          updated_at: string
+        }
+        Insert: {
+          column_span?: number
+          created_at?: string
+          display_order?: number
+          field_metadata_id: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          section_id: string
+          updated_at?: string
+        }
+        Update: {
+          column_span?: number
+          created_at?: string
+          display_order?: number
+          field_metadata_id?: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          section_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hubspot_layout_section_fields_field_metadata_id_fkey"
+            columns: ["field_metadata_id"]
+            isOneToOne: false
+            referencedRelation: "hubspot_field_metadata"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hubspot_layout_section_fields_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "hubspot_layout_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hubspot_layout_sections: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          is_collapsed_default: boolean
+          layout_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_collapsed_default?: boolean
+          layout_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_collapsed_default?: boolean
+          layout_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hubspot_layout_sections_layout_id_fkey"
+            columns: ["layout_id"]
+            isOneToOne: false
+            referencedRelation: "hubspot_layout_configs"
             referencedColumns: ["id"]
           },
         ]
