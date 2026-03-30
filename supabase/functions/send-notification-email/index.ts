@@ -859,12 +859,12 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Enrich deal_created with full deal details from DB
-    if (payload.type === 'deal_created' && payload.deal_id) {
+    // Enrich deal_created and deal_updated with full deal details from DB
+    if ((payload.type === 'deal_created' || payload.type === 'deal_updated') && payload.deal_id) {
       try {
         const { data: dealData } = await supabaseAdmin
           .from('deals')
-          .select('company, value, deal_type, stage, manager, deal_owner, analyst, engagement_type, business_model, contact, contact_info, narrative, referred_by, sourced_via')
+          .select('company, value, deal_type, stage, status, manager, deal_owner, analyst, engagement_type, business_model, contact, contact_info, narrative, referred_by, sourced_via')
           .eq('id', payload.deal_id)
           .single();
         if (dealData) {
