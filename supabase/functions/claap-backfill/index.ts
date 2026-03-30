@@ -443,7 +443,12 @@ Deno.serve(async (req) => {
           .select("id")
           .single();
 
-        if (meetingError) { console.error("Meeting insert error:", meetingError); errors++; processed++; continue; }
+        if (meetingError) {
+          const errMsg = `Meeting insert error for "${title}": ${meetingError.message} (code: ${meetingError.code})`;
+          console.error(errMsg);
+          errorDetails.push({ claap_id: claapId, title, error: errMsg });
+          errors++; processed++; continue;
+        }
         const meetingId = meeting.id;
 
         // Insert participants
