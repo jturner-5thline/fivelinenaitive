@@ -826,6 +826,12 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               </Badge>
             )}
             <div className="ml-auto flex items-center gap-1">
+              <VdrExportButton
+                dealId={dealId}
+                dealName={currentDeal?.company || 'Deal'}
+                documents={documents}
+                isDataroomView={isDataroomView}
+              />
               {!isDataroomView && renderViewToggle(rightView, setRightView)}
               {isDataroomView && canPushToFlex && (
                 <Button
