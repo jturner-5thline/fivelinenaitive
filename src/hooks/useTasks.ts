@@ -247,9 +247,25 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     },
   });
 
+  // Fetch CRM company names for tasks with crm_company_id
+  const crmCompanyIds = [...new Set(tasks.map(t => t.crm_company_id).filter(Boolean))] as string[];
+  const { data: crmCompanies = [] } = useQuery({
+    queryKey: ['task-crm-companies', crmCompanyIds.sort().join(',')],
+    enabled: crmCompanyIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('crm_companies')
+        .select('id, name')
+        .in('id', crmCompanyIds);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
   const dealMap = Object.fromEntries(deals.map(d => [d.id, { company: d.company }]));
   const contactMap = Object.fromEntries(contacts.map(c => [c.id, { full_name: c.full_name }]));
+  const crmCompanyMap = Object.fromEntries(crmCompanies.map(c => [c.id, { name: c.name }]));
 
   const enrichedTasks = tasks.map(t => ({
     ...t,
@@ -257,6 +273,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     creator_profile: profileMap[t.assigned_by] || null,
     deal: t.deal_id ? dealMap[t.deal_id] || null : null,
     contact: t.contact_id ? contactMap[t.contact_id] || null : null,
+    crm_company: t.crm_company_id ? crmCompanyMap[t.crm_company_id] || null : null,
   }));
 
   const createTask = useMutation({
