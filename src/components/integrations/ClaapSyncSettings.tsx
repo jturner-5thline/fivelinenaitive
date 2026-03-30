@@ -222,7 +222,7 @@ export function ClaapSyncSettings() {
                   <span className="text-destructive col-span-2">Errors: {backfillProgress.errors}</span>
                 )}
               </div>
-              {backfillProgress.errorDetails.length > 0 && (
+              {backfillProgress.errorDetails?.length > 0 && (
                 <div className="mt-2 space-y-1">
                   <span className="text-xs font-medium text-destructive">Error details:</span>
                   <ScrollArea className="max-h-32">
