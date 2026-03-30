@@ -27,6 +27,8 @@ export interface ClaapMeeting {
   no_internal_participant: boolean;
   company_id: string | null;
   deal_id: string | null;
+  call_type: string | null;
+  match_source: string | null;
   created_at: string;
   updated_at: string;
 }

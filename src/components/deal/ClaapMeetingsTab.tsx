@@ -60,6 +60,11 @@ export function ClaapMeetingCard({ meeting, compact = false }: { meeting: ClaapM
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            {meeting.call_type && (
+              <Badge variant="outline" className="text-xs">
+                {meeting.call_type}
+              </Badge>
+            )}
             {sentimentBadge && (
               <Badge variant={sentimentBadge.variant} className="text-xs">{sentimentBadge.label}</Badge>
             )}

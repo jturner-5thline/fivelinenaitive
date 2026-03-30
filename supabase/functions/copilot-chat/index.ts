@@ -420,6 +420,22 @@ const tools = [
       },
     },
   },
+  // ── CALL TRANSCRIPTS ──
+  {
+    type: "function",
+    function: {
+      name: "get_deal_call_transcripts",
+      description: "Get Claap call transcripts for a deal. Use when user asks about what was discussed in calls/meetings, what a lender said, or wants to reference call recordings. Returns summaries and transcript text.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+          search: { type: "string", description: "Optional search term to filter transcripts by content" },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -434,14 +450,14 @@ function selectTools(page: string, entityType?: string) {
   ]);
 
   if (page.includes("lender")) {
-    ["get_deal_lenders", "search_lenders", "update_lender_status"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "search_lenders", "update_lender_status", "get_deal_call_transcripts"].forEach(n => coreNames.add(n));
   } else if (page.includes("deals") || page.includes("pipeline")) {
-    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items", "get_deal_call_transcripts"].forEach(n => coreNames.add(n));
   } else if (page.includes("task")) {
     // Tasks page: core + task tools only
   } else {
     // Dashboard and other pages: core + some deal read tools
-    ["get_deal_lenders", "get_deal_health"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "get_deal_health", "get_deal_call_transcripts"].forEach(n => coreNames.add(n));
   }
 
   return tools.filter(t => coreNames.has(t.function.name));
@@ -1078,6 +1094,60 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         open_outstanding_items: outstanding.length,
         active_lenders: activeLenders.length,
         total_lenders: lenders.length,
+      };
+    }
+    // ── CALL TRANSCRIPTS ──
+    case "get_deal_call_transcripts": {
+      let query = supabase
+        .from("claap_transcripts")
+        .select("id, transcript_text, summary, participants, duration_seconds, recorded_at, call_type, match_source, claap_meeting_id")
+        .eq("deal_id", args.deal_id)
+        .order("recorded_at", { ascending: false });
+
+      const { data: transcripts } = await query;
+
+      if (!transcripts || transcripts.length === 0) {
+        return { has_transcripts: false, message: "No call transcripts found for this deal." };
+      }
+
+      // Also get meeting titles
+      const meetingIds = transcripts.map((t: any) => t.claap_meeting_id);
+      const { data: meetings } = await supabase
+        .from("claap_meetings")
+        .select("id, title, recording_url, ai_summary")
+        .in("id", meetingIds);
+
+      const meetingMap = new Map((meetings || []).map((m: any) => [m.id, m]));
+
+      let results = transcripts.map((t: any) => {
+        const meeting = meetingMap.get(t.claap_meeting_id);
+        return {
+          title: meeting?.title || "Untitled Call",
+          recording_url: meeting?.recording_url,
+          call_type: t.call_type,
+          recorded_at: t.recorded_at,
+          duration_minutes: t.duration_seconds ? Math.round(t.duration_seconds / 60) : null,
+          participants: t.participants,
+          summary: t.summary || meeting?.ai_summary || null,
+          transcript_preview: t.transcript_text ? t.transcript_text.slice(0, 2000) : null,
+          has_full_transcript: !!t.transcript_text,
+        };
+      });
+
+      // Filter by search term if provided
+      if (args.search) {
+        const searchLower = args.search.toLowerCase();
+        results = results.filter((r: any) =>
+          r.transcript_preview?.toLowerCase().includes(searchLower) ||
+          r.summary?.toLowerCase().includes(searchLower) ||
+          r.title?.toLowerCase().includes(searchLower)
+        );
+      }
+
+      return {
+        has_transcripts: true,
+        total_calls: results.length,
+        calls: results,
       };
     }
     default:

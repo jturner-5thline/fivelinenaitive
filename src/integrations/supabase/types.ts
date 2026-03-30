@@ -1416,6 +1416,63 @@ export type Database = {
           },
         ]
       }
+      claap_transcripts: {
+        Row: {
+          call_type: string | null
+          claap_meeting_id: string
+          created_at: string
+          deal_id: string
+          duration_seconds: number | null
+          id: string
+          match_source: string | null
+          participants: Json | null
+          recorded_at: string | null
+          summary: string | null
+          transcript_text: string | null
+        }
+        Insert: {
+          call_type?: string | null
+          claap_meeting_id: string
+          created_at?: string
+          deal_id: string
+          duration_seconds?: number | null
+          id?: string
+          match_source?: string | null
+          participants?: Json | null
+          recorded_at?: string | null
+          summary?: string | null
+          transcript_text?: string | null
+        }
+        Update: {
+          call_type?: string | null
+          claap_meeting_id?: string
+          created_at?: string
+          deal_id?: string
+          duration_seconds?: number | null
+          id?: string
+          match_source?: string | null
+          participants?: Json | null
+          recorded_at?: string | null
+          summary?: string | null
+          transcript_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_transcripts_claap_meeting_id_fkey"
+            columns: ["claap_meeting_id"]
+            isOneToOne: true
+            referencedRelation: "claap_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_transcripts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       claap_webhook_errors: {
         Row: {
           created_at: string
