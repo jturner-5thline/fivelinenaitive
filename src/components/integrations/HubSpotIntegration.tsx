@@ -124,6 +124,22 @@ export function HubSpotIntegration() {
     }
   };
 
+  const handleSyncCompanies = async () => {
+    setIsSyncingCompanies(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-hubspot-companies');
+      if (error) throw error;
+      const result = data as { count?: number; error?: string };
+      if (result.error) throw new Error(result.error);
+      toast.success(`Synced ${result.count || 0} companies from HubSpot`);
+      queryClient.invalidateQueries({ queryKey: ['crm-companies'] });
+    } catch (error: any) {
+      toast.error("Failed to sync companies", { description: error.message });
+    } finally {
+      setIsSyncingCompanies(false);
+    }
+  };
+
   const handleCreateContact = async () => {
     try {
       await hubspot.createContact.mutateAsync(newContact);
