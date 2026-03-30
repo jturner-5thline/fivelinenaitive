@@ -1,14 +1,21 @@
-import { useState, useEffect } from 'react';
-import { CheckSquare, Plus, Circle, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { CheckSquare, Plus, Circle, CheckCircle2, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { useContactTasks } from '@/hooks/useTasks';
-import { useMyTasks } from '@/hooks/useTasks';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useContactTasks, useMyTasks } from '@/hooks/useTasks';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface ContactTasksCardProps {
   contactId: string;
@@ -17,28 +24,88 @@ interface ContactTasksCardProps {
   onExternalShowCreateChange?: (v: boolean) => void;
 }
 
+const PRIORITY_OPTIONS = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'urgent', label: 'Urgent' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'not_started', label: 'Not Started' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'blocked', label: 'Blocked' },
+  { value: 'complete', label: 'Complete' },
+];
+
+const priorityColor: Record<string, string> = {
+  urgent: 'text-red-400',
+  high: 'text-orange-400',
+  medium: 'text-yellow-400',
+  low: 'text-muted-foreground',
+};
+
 export function ContactTasksCard({ contactId, contactName, externalShowCreate, onExternalShowCreateChange }: ContactTasksCardProps) {
   const { data: tasks = [], isLoading } = useContactTasks(contactId);
   const { createTask, updateTask } = useMyTasks();
-  const [showCreate, setShowCreate] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
+  const teamMembers = useTeamMembers();
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [assignedTo, setAssignedTo] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [priority, setPriority] = useState('medium');
+  const [status, setStatus] = useState('not_started');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (externalShowCreate) {
-      setShowCreate(true);
+      setIsCreateOpen(true);
       onExternalShowCreateChange?.(false);
     }
   }, [externalShowCreate]);
 
-  const handleCreate = () => {
-    if (!newTitle.trim()) return;
+  // Default assignee to current user
+  useEffect(() => {
+    if (user && !assignedTo) {
+      setAssignedTo(user.id);
+    }
+  }, [user]);
+
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setAssignedTo(user?.id || '');
+    setDueDate('');
+    setPriority('medium');
+    setStatus('not_started');
+  };
+
+  const handleCreate = async () => {
+    if (!title.trim()) return;
+    setIsSubmitting(true);
     createTask.mutate(
-      { title: newTitle.trim(), contact_id: contactId },
+      {
+        title: title.trim(),
+        description: description.trim() || undefined,
+        assigned_to: assignedTo || undefined,
+        contact_id: contactId,
+        priority,
+        due_date: dueDate || undefined,
+        status,
+      },
       {
         onSuccess: () => {
-          setNewTitle('');
-          setShowCreate(false);
+          toast.success('Task created');
+          resetForm();
+          setIsCreateOpen(false);
+          setIsSubmitting(false);
+        },
+        onError: () => {
+          setIsSubmitting(false);
         },
       }
     );
@@ -49,114 +116,206 @@ export function ContactTasksCard({ contactId, contactName, externalShowCreate, o
     updateTask.mutate({ id: task.id, status: newStatus });
   };
 
+  const memberMap = useMemo(() => {
+    const map = new Map<string, any>();
+    teamMembers.forEach(m => map.set(m.id, m));
+    return map;
+  }, [teamMembers]);
+
+  const getInitials = (member: any) => {
+    if (!member) return '?';
+    return (member.display_name || '').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
+  };
+
   const activeTasks = tasks.filter(t => t.status !== 'complete');
   const completedTasks = tasks.filter(t => t.status === 'complete');
 
-  const priorityColor: Record<string, string> = {
-    urgent: 'text-red-400',
-    high: 'text-orange-400',
-    medium: 'text-yellow-400',
-    low: 'text-muted-foreground',
-  };
-
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-1.5">
-          <CheckSquare className="h-4 w-4" /> Tasks ({activeTasks.length})
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {activeTasks.length === 0 && completedTasks.length === 0 && !showCreate && (
-          <p className="text-xs text-muted-foreground text-center py-4">No tasks yet</p>
-        )}
+    <>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <CheckSquare className="h-4 w-4" /> Tasks ({activeTasks.length})
+            </span>
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setIsCreateOpen(true)}>
+              <Plus className="h-3 w-3" /> Add Task
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activeTasks.length === 0 && completedTasks.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-4">No tasks yet</p>
+          )}
 
-        {activeTasks.length > 0 && (
-          <div className="space-y-1.5 mb-2">
-            {activeTasks.map(task => (
-              <div
-                key={task.id}
-                className="flex items-start gap-2 p-1.5 rounded-md hover:bg-muted/30 group"
-              >
-                <button
-                  onClick={() => handleToggle(task)}
-                  className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <Circle className="h-3.5 w-3.5" />
-                </button>
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="text-xs font-medium cursor-pointer hover:text-primary truncate"
-                    onClick={() => navigate(`/tasks?task=${task.id}`)}
-                  >
-                    {task.title}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    {task.due_date && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {format(new Date(task.due_date), 'MMM d')}
-                      </span>
-                    )}
-                    <span className={cn('text-[10px]', priorityColor[task.priority] || 'text-muted-foreground')}>
-                      {task.priority}
-                    </span>
+          {activeTasks.length > 0 && (
+            <div className="space-y-1.5 mb-2">
+              {activeTasks.map(task => {
+                const assignee = memberMap.get(task.assigned_to);
+                return (
+                  <div key={task.id} className="flex items-start gap-2 p-1.5 rounded-md hover:bg-muted/30 group">
+                    <button
+                      onClick={() => handleToggle(task)}
+                      className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Circle className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-xs font-medium cursor-pointer hover:text-primary truncate"
+                        onClick={() => navigate(`/tasks?task=${task.id}`)}
+                      >
+                        {task.title}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {assignee && (
+                          <div className="flex items-center gap-1">
+                            <Avatar className="h-3.5 w-3.5">
+                              <AvatarImage src={assignee.avatar_url || undefined} />
+                              <AvatarFallback className="text-[7px]">{getInitials(assignee)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-[10px] text-muted-foreground">{assignee.display_name}</span>
+                          </div>
+                        )}
+                        {task.due_date && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {format(new Date(task.due_date), 'MMM d')}
+                          </span>
+                        )}
+                        <Badge variant="outline" className={cn('text-[9px] px-1 py-0 h-4', priorityColor[task.priority])}>
+                          {task.priority}
+                        </Badge>
+                        {task.status !== 'not_started' && (
+                          <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
+                            {STATUS_OPTIONS.find(s => s.value === task.status)?.label || task.status}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+
+          {completedTasks.length > 0 && (
+            <div className="space-y-1 mb-2 opacity-60">
+              {completedTasks.slice(0, 3).map(task => (
+                <div key={task.id} className="flex items-center gap-2 p-1.5 rounded-md">
+                  <button
+                    onClick={() => handleToggle(task)}
+                    className="flex-shrink-0 text-green-500 hover:text-muted-foreground transition-colors"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </button>
+                  <p className="text-xs line-through text-muted-foreground truncate">{task.title}</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+              {completedTasks.length > 3 && (
+                <p className="text-[10px] text-muted-foreground text-center">+{completedTasks.length - 3} more completed</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {completedTasks.length > 0 && (
-          <div className="space-y-1 mb-2 opacity-60">
-            {completedTasks.slice(0, 3).map(task => (
-              <div
-                key={task.id}
-                className="flex items-center gap-2 p-1.5 rounded-md"
-              >
-                <button
-                  onClick={() => handleToggle(task)}
-                  className="flex-shrink-0 text-green-500 hover:text-muted-foreground transition-colors"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                </button>
-                <p className="text-xs line-through text-muted-foreground truncate">{task.title}</p>
+      {/* Full Create Task Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsCreateOpen(open); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Create Task for {contactName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Task title</Label>
+              <Input
+                placeholder="e.g. Follow up with contact"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                className="mt-1"
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Description (optional)</Label>
+              <Textarea
+                placeholder="Add any extra details…"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                className="mt-1 min-h-[60px]"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Assign to</Label>
+                <Select value={assignedTo} onValueChange={setAssignedTo}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers.map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={member.avatar_url || undefined} />
+                            <AvatarFallback className="text-[8px]">{getInitials(member)}</AvatarFallback>
+                          </Avatar>
+                          {member.display_name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            ))}
-            {completedTasks.length > 3 && (
-              <p className="text-[10px] text-muted-foreground text-center">+{completedTasks.length - 3} more completed</p>
-            )}
-          </div>
-        )}
-
-        {showCreate ? (
-          <div className="space-y-2">
-            <Input
-              autoFocus
-              placeholder="Task title..."
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') handleCreate();
-                if (e.key === 'Escape') { setShowCreate(false); setNewTitle(''); }
-              }}
-              className="h-8 text-xs"
-            />
-            <div className="flex items-center gap-1.5">
-              <Button size="sm" className="h-7 text-xs" onClick={handleCreate} disabled={!newTitle.trim() || createTask.isPending}>
-                Add Task
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setShowCreate(false); setNewTitle(''); }}>
-                Cancel
-              </Button>
+              <div>
+                <Label className="text-xs">Due date (optional)</Label>
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Priority</Label>
+                <Select value={priority} onValueChange={setPriority}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRIORITY_OPTIONS.map(p => (
+                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map(s => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-        ) : (
-          <Button variant="ghost" size="sm" className="w-full mt-1 text-xs" onClick={() => setShowCreate(true)}>
-            <Plus className="h-3 w-3 mr-1" /> Add Task
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { resetForm(); setIsCreateOpen(false); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} disabled={!title.trim() || isSubmitting}>
+              {isSubmitting ? 'Creating…' : 'Create Task'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

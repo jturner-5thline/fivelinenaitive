@@ -44,6 +44,7 @@ export interface Task {
   assignee_profile?: { display_name: string; avatar_url: string | null; email: string } | null;
   creator_profile?: { display_name: string; avatar_url: string | null; email: string } | null;
   deal?: { company: string } | null;
+  contact?: { full_name: string } | null;
   project?: { name: string; color: string; icon: string } | null;
   subtasks?: Task[];
 }
@@ -226,18 +227,38 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
     },
   });
 
+  // Fetch contact names for tasks with contact_id
+  const contactIds = [...new Set(tasks.map(t => t.contact_id).filter(Boolean))] as string[];
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['task-contacts', contactIds.sort().join(',')],
+    enabled: contactIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, full_name, first_name, last_name')
+        .in('id', contactIds);
+      if (error) throw error;
+      return (data || []).map(c => ({
+        id: c.id,
+        full_name: c.full_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Contact',
+      }));
+    },
+  });
+
   const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
   const dealMap = Object.fromEntries(deals.map(d => [d.id, { company: d.company }]));
+  const contactMap = Object.fromEntries(contacts.map(c => [c.id, { full_name: c.full_name }]));
 
   const enrichedTasks = tasks.map(t => ({
     ...t,
     assignee_profile: profileMap[t.assigned_to] || null,
     creator_profile: profileMap[t.assigned_by] || null,
     deal: t.deal_id ? dealMap[t.deal_id] || null : null,
+    contact: t.contact_id ? contactMap[t.contact_id] || null : null,
   }));
 
   const createTask = useMutation({
-    mutationFn: async (task: { title: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string }) => {
+    mutationFn: async (task: { title: string; description?: string; assigned_to?: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string }) => {
       if (!user) throw new Error('Not authenticated');
       // Get company_id
       const { data: membership } = await supabase
@@ -251,7 +272,8 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         .from('tasks')
         .insert({
           title: task.title,
-          assigned_to: user.id,
+          description: task.description || null,
+          assigned_to: task.assigned_to || user.id,
           assigned_by: user.id,
           priority: task.priority || 'medium',
           due_date: task.due_date || null,

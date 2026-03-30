@@ -159,6 +159,9 @@ export function TaskCalendarView({ tasks, onSelectTask, onUpdateTask, selectedTa
                       {task.deal_id && (task as any).deal?.company && (
                         <span className="ml-0.5 opacity-70">· {(task as any).deal.company}</span>
                       )}
+                      {task.contact_id && (task as any).contact?.full_name && (
+                        <span className="ml-0.5 opacity-70">· {(task as any).contact.full_name}</span>
+                      )}
                     </div>
                   );
                 })}

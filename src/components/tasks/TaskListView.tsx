@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/popover';
 import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
-  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2,
+  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -558,6 +558,12 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
               <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium mt-0.5 -mx-0.5 hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(30,58,95,0.6)', color: '#93c5fd' }} onClick={e => e.stopPropagation()}>
                 <Building2 className="h-2.5 w-2.5" />
                 {task.deal.company}
+              </Link>
+            )}
+            {task.contact_id && (task as any).contact?.full_name && (
+              <Link to={`/contacts/${task.contact_id}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium mt-0.5 -mx-0.5 hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(75,30,95,0.6)', color: '#d8b4fe' }} onClick={e => e.stopPropagation()}>
+                <User className="h-2.5 w-2.5" />
+                {(task as any).contact.full_name}
               </Link>
             )}
             {task.status === 'blocked' && blockerNote && (
