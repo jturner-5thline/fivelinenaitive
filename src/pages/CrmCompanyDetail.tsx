@@ -180,6 +180,13 @@ export default function CrmCompanyDetail() {
                   <CardContent className="flex flex-wrap gap-1">{company.tags.map(t => <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>)}</CardContent>
                 </Card>
               )}
+
+              {/* Dynamic HubSpot fields */}
+              <DynamicFieldRenderer
+                objectType="company"
+                record={company}
+                onFieldUpdate={(field, value) => handleQuickUpdate(field, value)}
+              />
             </div>
 
             {/* Center: Activity Timeline */}
