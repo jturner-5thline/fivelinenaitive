@@ -292,7 +292,7 @@ export function useContactDeals(contactId: string | undefined) {
       if (!contactId) return [];
       const { data, error } = await supabase
         .from('contact_deals')
-        .select('*, deal:deals(id, company, stage, value, close_date, status)')
+        .select('*, deal:deals(id, company, stage, value, closing_date, status)')
         .eq('contact_id', contactId);
       if (error) throw error;
       return data || [];
