@@ -1,18 +1,57 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, Building2, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { CrmCompaniesTable } from '@/components/crm-companies/CrmCompaniesTable';
 import { CreateCrmCompanyModal } from '@/components/crm-companies/CreateCrmCompanyModal';
 import { DealsHeader } from '@/components/deals/DealsHeader';
-import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export default function CrmCompanies() {
   const { data: companies = [], isLoading } = useCrmCompanies();
   const [showCreate, setShowCreate] = useState(false);
   const [quickFilter, setQuickFilter] = useState('all');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const queryClient = useQueryClient();
+
+  const hasSyncedCompanies = companies.some(c => c.synced_with_hubspot);
+  const showSyncBanner = !isLoading && companies.length === 0;
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      let afterCursor: string | undefined;
+      let totalSynced = 0;
+      let pass = 0;
+
+      do {
+        pass++;
+        const body = afterCursor ? { after: afterCursor } : {};
+        const { data, error } = await supabase.functions.invoke('sync-hubspot-companies', { body });
+        if (error) throw error;
+        const result = data as { count?: number; error?: string; timed_out?: boolean; resume_after?: string };
+        if (result.error) throw new Error(result.error);
+
+        totalSynced += result.count || 0;
+        afterCursor = result.timed_out ? result.resume_after : undefined;
+
+        if (result.timed_out) {
+          toast.info(`Synced ${totalSynced} companies so far, continuing...`);
+        }
+      } while (afterCursor);
+
+      toast.success(`Synced ${totalSynced} companies from HubSpot`);
+      queryClient.invalidateQueries({ queryKey: ['crm-companies'] });
+    } catch (error: any) {
+      toast.error('Failed to sync companies', { description: error.message });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const filtered = (() => {
     switch (quickFilter) {
@@ -45,10 +84,27 @@ export default function CrmCompanies() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Companies</h1>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleSync} disabled={isSyncing}>
+                {isSyncing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                Sync HubSpot
+              </Button>
               <Button variant="outline" size="sm"><Upload className="h-4 w-4 mr-1.5" /> Import</Button>
               <Button size="sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Company</Button>
             </div>
           </div>
+
+          {showSyncBanner && (
+            <div className="rounded-lg border border-border bg-muted/50 p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">No companies yet</p>
+                <p className="text-xs text-muted-foreground">Sync your HubSpot companies to populate this page.</p>
+              </div>
+              <Button size="sm" onClick={handleSync} disabled={isSyncing}>
+                {isSyncing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Building2 className="h-4 w-4 mr-1.5" />}
+                Sync from HubSpot
+              </Button>
+            </div>
+          )}
 
           <Tabs value={quickFilter} onValueChange={setQuickFilter}>
             <TabsList>

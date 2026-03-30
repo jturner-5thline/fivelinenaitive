@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,8 +78,10 @@ import {
 
 export function HubSpotIntegration() {
   const hubspot = useHubSpot();
+  const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isSyncingCompanies, setIsSyncingCompanies] = useState(false);
   const [activeTab, setActiveTab] = useState("contacts");
   
   // Search states
@@ -117,6 +121,36 @@ export function HubSpotIntegration() {
       toast.error("Failed to connect to HubSpot", { description: error.message });
     } finally {
       setIsTestingConnection(false);
+    }
+  };
+
+  const handleSyncCompanies = async () => {
+    setIsSyncingCompanies(true);
+    try {
+      let afterCursor: string | undefined;
+      let totalSynced = 0;
+
+      do {
+        const body = afterCursor ? { after: afterCursor } : {};
+        const { data, error } = await supabase.functions.invoke('sync-hubspot-companies', { body });
+        if (error) throw error;
+        const result = data as { count?: number; error?: string; timed_out?: boolean; resume_after?: string };
+        if (result.error) throw new Error(result.error);
+
+        totalSynced += result.count || 0;
+        afterCursor = result.timed_out ? result.resume_after : undefined;
+
+        if (result.timed_out) {
+          toast.info(`Synced ${totalSynced} companies so far, continuing...`);
+        }
+      } while (afterCursor);
+
+      toast.success(`Synced ${totalSynced} companies from HubSpot`);
+      queryClient.invalidateQueries({ queryKey: ['crm-companies'] });
+    } catch (error: any) {
+      toast.error("Failed to sync companies", { description: error.message });
+    } finally {
+      setIsSyncingCompanies(false);
     }
   };
 
@@ -225,9 +259,17 @@ export function HubSpotIntegration() {
                 <CardDescription>Sync contacts, deals, companies, and activities</CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {getStatusBadge()}
-              <Button onClick={handleTestConnection} disabled={isTestingConnection} variant="outline">
+              <Button onClick={handleSyncCompanies} disabled={isSyncingCompanies} variant="outline" size="sm">
+                {isSyncingCompanies ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Building2 className="h-4 w-4 mr-2" />
+                )}
+                Sync Companies
+              </Button>
+              <Button onClick={handleTestConnection} disabled={isTestingConnection} variant="outline" size="sm">
                 {isTestingConnection ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
