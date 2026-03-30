@@ -23,6 +23,9 @@ export default function CrmCompanies() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
+  const [matchMode, setMatchMode] = useState<MatchMode>('all');
+  const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
 
   const { data: result, isLoading, isFetching } = useCrmCompanies({
