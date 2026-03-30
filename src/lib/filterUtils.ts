@@ -71,11 +71,11 @@ function ruleToFilterString(r: FilterRule): string | null {
  * Apply advanced FilterRules to a Supabase query builder.
  * Works with AND (chain) or OR (.or()) logic.
  */
-export function applyFiltersToQuery<T extends { or: (s: string) => T; filter: (col: string, op: string, val: any) => T }>(
-  query: T,
+export function applyFiltersToQuery(
+  query: any,
   filters: FilterRule[],
   matchMode: MatchMode,
-): T {
+): any {
   // Only keep complete rules
   const complete = filters.filter(
     (r) => r.field && r.operator,
