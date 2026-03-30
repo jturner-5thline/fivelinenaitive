@@ -125,6 +125,10 @@ export default function Contacts() {
                 {isSyncingContacts ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
                 Sync HubSpot
               </Button>
+              <Button variant="outline" size="sm" onClick={handleMatchCompanies} disabled={isMatching}>
+                {isMatching ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Link2 className="h-4 w-4 mr-1.5" />}
+                Match Companies
+              </Button>
               <Button variant="outline" size="sm">
                 <Upload className="h-4 w-4 mr-1.5" /> Import
               </Button>
