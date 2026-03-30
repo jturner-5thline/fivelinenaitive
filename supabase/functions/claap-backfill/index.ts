@@ -403,11 +403,19 @@ Deno.serve(async (req) => {
             { headers: { "X-Claap-Key": claapApiKey, "Content-Type": "application/json" } },
           );
           if (txResp.ok) {
-            const txData = await txResp.json();
-            transcript = txData.result?.transcript || null;
+            const contentType = txResp.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) {
+              const txData = await txResp.json();
+              transcript = txData.result?.transcript || txData.transcript || null;
+            } else {
+              // Plain text response
+              transcript = await txResp.text();
+            }
+          } else {
+            await txResp.text(); // consume body
           }
         } catch (e) {
-          console.error(`Failed to fetch transcript for ${claapId}:`, e);
+          console.error(`Failed to fetch transcript for ${claapId}:`, e instanceof Error ? e.message : e);
         }
 
         // Save meeting
