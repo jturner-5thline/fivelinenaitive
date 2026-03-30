@@ -515,7 +515,9 @@ Deno.serve(async (req) => {
 
         matched++; processed++;
       } catch (err) {
-        console.error(`Error processing recording ${claapId}:`, err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(`Error processing recording ${claapId}: ${errMsg}`);
+        errorDetails.push({ claap_id: claapId, title: recording.title || recording.name || null, error: errMsg });
         errors++; processed++;
       }
     }
