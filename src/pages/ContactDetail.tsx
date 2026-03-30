@@ -225,6 +225,13 @@ export default function ContactDetail() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Dynamic HubSpot fields */}
+              <DynamicFieldRenderer
+                objectType="contact"
+                record={contact}
+                onFieldUpdate={(field, value) => handleQuickUpdate(field, value)}
+              />
             </div>
 
             {/* Center: Activity Timeline */}
