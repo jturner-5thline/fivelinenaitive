@@ -66,6 +66,7 @@ const SETTINGS_SECTIONS = [
   { id: 'email-labels', keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'] },
   { id: 'distribution-stats', keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'] },
   { id: 'kpi-card-settings', keywords: ['kpi', 'summary', 'card', 'metrics', 'dashboard', 'format', 'trend', 'comparison'] },
+  { id: 'field-layout', keywords: ['field', 'layout', 'editor', 'hubspot', 'contacts', 'companies', 'crm', 'fields', 'sections'] },
 ];
 
 // Tab definitions with which section IDs belong to each
