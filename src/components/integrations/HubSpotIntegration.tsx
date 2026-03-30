@@ -82,6 +82,7 @@ export function HubSpotIntegration() {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isSyncingCompanies, setIsSyncingCompanies] = useState(false);
+  const [isSyncingContacts, setIsSyncingContacts] = useState(false);
   const [activeTab, setActiveTab] = useState("contacts");
   
   // Search states
@@ -151,6 +152,39 @@ export function HubSpotIntegration() {
       toast.error("Failed to sync companies", { description: error.message });
     } finally {
       setIsSyncingCompanies(false);
+    }
+  };
+
+  const handleSyncContacts = async () => {
+    setIsSyncingContacts(true);
+    try {
+      let afterCursor: string | undefined;
+      let columnMap: Record<string, string> | undefined;
+      let totalSynced = 0;
+
+      do {
+        const body: any = {};
+        if (afterCursor) { body.after = afterCursor; body.columnMap = columnMap; }
+        const { data, error } = await supabase.functions.invoke('sync-hubspot-contacts', { body });
+        if (error) throw error;
+        const result = data as any;
+        if (result.error) throw new Error(result.error);
+
+        totalSynced += result.count || 0;
+        afterCursor = result.timed_out ? result.resume_after : undefined;
+        columnMap = result.column_map;
+
+        if (result.timed_out) {
+          toast.info(`Synced ${totalSynced} contacts so far, continuing...`);
+        }
+      } while (afterCursor);
+
+      toast.success(`Synced ${totalSynced} contacts from HubSpot`);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    } catch (error: any) {
+      toast.error("Failed to sync contacts", { description: error.message });
+    } finally {
+      setIsSyncingContacts(false);
     }
   };
 
@@ -268,6 +302,14 @@ export function HubSpotIntegration() {
                   <Building2 className="h-4 w-4 mr-2" />
                 )}
                 Sync Companies
+              </Button>
+              <Button onClick={handleSyncContacts} disabled={isSyncingContacts} variant="outline" size="sm">
+                {isSyncingContacts ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Users className="h-4 w-4 mr-2" />
+                )}
+                Sync Contacts
               </Button>
               <Button onClick={handleTestConnection} disabled={isTestingConnection} variant="outline" size="sm">
                 {isTestingConnection ? (

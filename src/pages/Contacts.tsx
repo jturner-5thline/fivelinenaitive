@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
@@ -9,13 +9,52 @@ import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export default function Contacts() {
   const [showCreate, setShowCreate] = useState(false);
   const [quickFilter, setQuickFilter] = useState('all');
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+  const [isSyncingContacts, setIsSyncingContacts] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleSyncContacts = async () => {
+    setIsSyncingContacts(true);
+    try {
+      let afterCursor: string | undefined;
+      let columnMap: Record<string, string> | undefined;
+      let totalSynced = 0;
+      let columnsCreated: string[] = [];
+
+      do {
+        const body: any = {};
+        if (afterCursor) { body.after = afterCursor; body.columnMap = columnMap; }
+        const { data, error } = await supabase.functions.invoke('sync-hubspot-contacts', { body });
+        if (error) throw error;
+        const result = data as any;
+        if (result.error) throw new Error(result.error);
+
+        totalSynced += result.count || 0;
+        if (result.columns_created?.length) columnsCreated = [...columnsCreated, ...result.columns_created];
+        afterCursor = result.timed_out ? result.resume_after : undefined;
+        columnMap = result.column_map;
+
+        if (result.timed_out) {
+          toast.info(`Synced ${totalSynced} contacts so far, continuing...`);
+        }
+      } while (afterCursor);
+
+      toast.success(`Synced ${totalSynced} contacts from HubSpot${columnsCreated.length ? ` (${columnsCreated.length} new fields)` : ''}`);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    } catch (error: any) {
+      toast.error('Failed to sync contacts', { description: error.message });
+    } finally {
+      setIsSyncingContacts(false);
+    }
+  };
 
   const { data: result, isLoading, isFetching } = useContacts({
     page,
@@ -51,6 +90,10 @@ export default function Contacts() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleSyncContacts} disabled={isSyncingContacts}>
+                {isSyncingContacts ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                Sync HubSpot
+              </Button>
               <Button variant="outline" size="sm">
                 <Upload className="h-4 w-4 mr-1.5" /> Import
               </Button>

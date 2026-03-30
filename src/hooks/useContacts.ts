@@ -54,6 +54,8 @@ export interface Contact {
   created_at: string;
   updated_at: string;
   org_company_id: string | null;
+  // Dynamic HubSpot columns
+  [key: string]: any;
   // Joined
   primary_company?: { id: string; name: string; industry: string | null } | null;
   sdr_owner?: { display_name: string | null; avatar_url: string | null } | null;
