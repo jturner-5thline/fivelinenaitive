@@ -23,6 +23,8 @@ export function ClaapSyncSettings() {
     alreadyExists: number;
     errors: number;
     batchesDone: number;
+    errorDetails: Array<{ claap_id: string; title: string | null; error: string }>;
+    processedTitles: string[];
   } | null>(null);
 
   // Fetch company config
