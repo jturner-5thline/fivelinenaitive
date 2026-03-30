@@ -7,39 +7,49 @@ import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { CrmCompaniesTable } from '@/components/crm-companies/CrmCompaniesTable';
 import { CreateCrmCompanyModal } from '@/components/crm-companies/CreateCrmCompanyModal';
 import { DealsHeader } from '@/components/deals/DealsHeader';
+import { TablePagination } from '@/components/shared/TablePagination';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export default function CrmCompanies() {
-  const { data: companies = [], isLoading } = useCrmCompanies();
   const [showCreate, setShowCreate] = useState(false);
   const [quickFilter, setQuickFilter] = useState('all');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
   const [isSyncing, setIsSyncing] = useState(false);
   const queryClient = useQueryClient();
 
-  const hasSyncedCompanies = companies.some(c => c.synced_with_hubspot);
-  const showSyncBanner = !isLoading && companies.length === 0;
+  const { data: result, isLoading, isFetching } = useCrmCompanies({
+    page,
+    pageSize,
+    quickFilter,
+  });
+
+  const companies = result?.data ?? [];
+  const totalCount = result?.totalCount ?? 0;
+  const totalPages = result?.totalPages ?? 0;
+
+  const showSyncBanner = !isLoading && totalCount === 0;
 
   const handleSync = async () => {
     setIsSyncing(true);
     try {
       let afterCursor: string | undefined;
       let totalSynced = 0;
-      let pass = 0;
 
       do {
-        pass++;
         const body = afterCursor ? { after: afterCursor } : {};
         const { data, error } = await supabase.functions.invoke('sync-hubspot-companies', { body });
         if (error) throw error;
-        const result = data as { count?: number; error?: string; timed_out?: boolean; resume_after?: string };
-        if (result.error) throw new Error(result.error);
+        const r = data as { count?: number; error?: string; timed_out?: boolean; resume_after?: string };
+        if (r.error) throw new Error(r.error);
 
-        totalSynced += result.count || 0;
-        afterCursor = result.timed_out ? result.resume_after : undefined;
+        totalSynced += r.count || 0;
+        afterCursor = r.timed_out ? r.resume_after : undefined;
 
-        if (result.timed_out) {
+        if (r.timed_out) {
           toast.info(`Synced ${totalSynced} companies so far, continuing...`);
         }
       } while (afterCursor);
@@ -53,23 +63,15 @@ export default function CrmCompanies() {
     }
   };
 
-  const filtered = (() => {
-    switch (quickFilter) {
-      case 'customers': return companies.filter(c => c.lifecycle_stage === 'customer');
-      case 'prospects': return companies.filter(c => c.company_type === 'prospect');
-      case 'churn_risk': return companies.filter(c => c.lifecycle_stage === 'churn_risk');
-      case 'no_activity_30d': return companies.filter(c => {
-        if (!c.last_activity_date) return true;
-        return Date.now() - new Date(c.last_activity_date).getTime() > 30 * 86400000;
-      });
-      case 'renewal_90d': return companies.filter(c => {
-        if (!c.renewal_date) return false;
-        const diff = new Date(c.renewal_date).getTime() - Date.now();
-        return diff > 0 && diff < 90 * 86400000;
-      });
-      default: return companies;
-    }
-  })();
+  const handleQuickFilterChange = (value: string) => {
+    setQuickFilter(value);
+    setPage(0);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setPage(0);
+  };
 
   return (
     <>
@@ -106,9 +108,9 @@ export default function CrmCompanies() {
             </div>
           )}
 
-          <Tabs value={quickFilter} onValueChange={setQuickFilter}>
+          <Tabs value={quickFilter} onValueChange={handleQuickFilterChange}>
             <TabsList>
-              <TabsTrigger value="all">All ({companies.length})</TabsTrigger>
+              <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
               <TabsTrigger value="customers">Customers</TabsTrigger>
               <TabsTrigger value="prospects">Prospects</TabsTrigger>
               <TabsTrigger value="churn_risk">Churn Risk</TabsTrigger>
@@ -118,9 +120,45 @@ export default function CrmCompanies() {
           </Tabs>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-9 flex-1 max-w-sm" />
+                <Skeleton className="h-9 w-[150px]" />
+                <Skeleton className="h-9 w-[130px]" />
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 p-3 border-b last:border-b-0">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-6 w-6 rounded" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
-            <CrmCompaniesTable companies={filtered} />
+            <>
+              <div className={isFetching ? 'opacity-60 pointer-events-none transition-opacity' : ''}>
+                <CrmCompaniesTable companies={companies} />
+              </div>
+              <TablePagination
+                page={page}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                onPageSizeChange={handlePageSizeChange}
+                isLoading={isFetching}
+              />
+            </>
           )}
         </main>
       </div>
