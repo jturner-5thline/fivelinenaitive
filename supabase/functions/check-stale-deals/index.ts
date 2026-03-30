@@ -200,7 +200,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Get all active deals for this company
       const { data: deals, error: dealsError } = await supabaseAdmin
         .from('deals')
-        .select('id, company, stage, value, updated_at, manager, status, deal_type, deal_owner, closing_date, contact, engagement_type, narrative')
+        .select('id, company, stage, value, updated_at, manager, analyst, status, deal_type, deal_owner, closing_date, contact, engagement_type, narrative')
         .eq('company_id', settings.company_id)
         .order('updated_at', { ascending: true });
 
