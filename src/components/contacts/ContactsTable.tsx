@@ -57,19 +57,10 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
   const [linkDealContactId, setLinkDealContactId] = useState<string | null>(null);
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
 
-  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
-  const companies = companiesResult?.data ?? [];
   const { data: deals = [] } = useAllDeals();
   const linkToCompany = useLinkContactToCompany();
   const linkToDeal = useLinkContactToDeal();
   const deleteContact = useDeleteContact();
-
-  // Build a lookup for company names
-  const companyMap = useMemo(() => {
-    const map = new Map<string, string>();
-    companies.forEach(c => map.set(c.id, c.name));
-    return map;
-  }, [companies]);
 
   const filtered = useMemo(() => {
     let result = [...contacts];
