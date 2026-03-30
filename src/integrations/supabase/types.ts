@@ -15600,6 +15600,8 @@ export type Database = {
         }
         Returns: string
       }
+      exec_sql: { Args: { sql: string }; Returns: undefined }
+      exec_sql_readonly: { Args: { sql: string }; Returns: Json[] }
       find_companies_by_domain: {
         Args: { _domain: string }
         Returns: {
