@@ -294,6 +294,9 @@ export default function ContactDetail() {
               {/* AI Field Suggestions */}
               <ContactFieldSuggestions contactId={contact.id} companyId={(contact as any)?.org_company_id} />
 
+              {/* Call Recordings */}
+              <ClaapCallsSection entityType="contact" entityId={contact.id} entityEmail={contact.email} />
+
               {/* Company */}
               <Card>
                 <CardHeader className="pb-2">

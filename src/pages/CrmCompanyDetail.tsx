@@ -321,6 +321,15 @@ export default function CrmCompanyDetail() {
                 onExternalShowCreateChange={setShowCreateTask}
               />
 
+              {/* Call Recordings */}
+              <ClaapCallsSection
+                entityType="company"
+                entityId={company.id}
+                entityName={company.name}
+                entityDomain={(company as any)?.domain}
+                contactIds={contacts.map((c: any) => c.id)}
+              />
+
               {subsidiaries.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1.5"><Building2 className="h-4 w-4" /> Subsidiaries ({subsidiaries.length})</CardTitle></CardHeader>
