@@ -122,6 +122,15 @@ export default function CrmCompanies() {
             </div>
           )}
 
+          {/* Advanced Filters */}
+          <AdvancedFilterBuilder
+            availableFields={COMPANY_CORE_FIELDS}
+            filters={advancedFilters}
+            onFiltersChange={handleFiltersChange}
+            matchMode={matchMode}
+            onMatchModeChange={setMatchMode}
+          />
+
           <Tabs value={quickFilter} onValueChange={handleQuickFilterChange}>
             <TabsList>
               <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
