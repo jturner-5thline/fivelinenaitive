@@ -170,8 +170,15 @@ export default function Tasks() {
     return false;
   });
 
+  // Get user for tab filtering
+  const { user } = useAuth();
+  const activeTab = viewTabs2.find(t => t.id === activeTabId);
+  const tabFilteredTasks = activeTab && Object.keys(activeTab.filter_config).length > 0
+    ? applyTabFilter(viewMode === 'focus' ? focusTasks : tasks, activeTab.filter_config, user?.id)
+    : (viewMode === 'focus' ? focusTasks : tasks);
+
   // Filter and sort (starred items float to top)
-  const filtered = (viewMode === 'focus' ? focusTasks : tasks)
+  const filtered = tabFilteredTasks
     .filter(t => {
       if (filterStatus === 'incomplete' && t.status === 'complete') return false;
       if (filterStatus !== 'all' && filterStatus !== 'incomplete' && t.status !== filterStatus) return false;
