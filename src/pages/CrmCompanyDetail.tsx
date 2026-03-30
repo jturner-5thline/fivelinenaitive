@@ -17,6 +17,7 @@ import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchMo
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { CrmCompanyTasksCard } from '@/components/crm/CrmCompanyTasksCard';
+import { InlineQuickAddContact } from '@/components/crm/InlineQuickAddContact';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
