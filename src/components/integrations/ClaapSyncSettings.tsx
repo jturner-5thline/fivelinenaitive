@@ -23,6 +23,8 @@ export function ClaapSyncSettings() {
     alreadyExists: number;
     errors: number;
     batchesDone: number;
+    errorDetails: Array<{ claap_id: string; title: string | null; error: string }>;
+    processedTitles: string[];
   } | null>(null);
 
   // Fetch company config
@@ -119,11 +121,13 @@ export function ClaapSyncSettings() {
       return;
     }
 
-    setBackfillProgress({ running: true, processed: 0, matched: 0, skipped: 0, alreadyExists: 0, errors: 0, batchesDone: 0 });
+    setBackfillProgress({ running: true, processed: 0, matched: 0, skipped: 0, alreadyExists: 0, errors: 0, batchesDone: 0, errorDetails: [], processedTitles: [] });
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     let cursor: string | null = null;
     let totalProcessed = 0, totalMatched = 0, totalSkipped = 0, totalExists = 0, totalErrors = 0;
     let batchesDone = 0;
+    let allErrorDetails: Array<{ claap_id: string; title: string | null; error: string }> = [];
+    let allTitles: string[] = [];
 
     try {
       for (let i = 0; i < 50; i++) {
@@ -151,10 +155,13 @@ export function ClaapSyncSettings() {
         totalExists += result.already_exists || 0;
         totalErrors += result.errors || 0;
         batchesDone++;
+        if (result.error_details) allErrorDetails = [...allErrorDetails, ...result.error_details];
+        if (result.processed_titles) allTitles = [...allTitles, ...result.processed_titles];
 
         setBackfillProgress({
           running: true, processed: totalProcessed, matched: totalMatched,
           skipped: totalSkipped, alreadyExists: totalExists, errors: totalErrors, batchesDone,
+          errorDetails: allErrorDetails, processedTitles: allTitles,
         });
 
         if (!result.has_more || !result.next_cursor) break;
@@ -212,9 +219,31 @@ export function ClaapSyncSettings() {
                 <span>Skipped: {backfillProgress.skipped}</span>
                 <span>Already synced: {backfillProgress.alreadyExists}</span>
                 {backfillProgress.errors > 0 && (
-                  <span className="text-destructive">Errors: {backfillProgress.errors}</span>
+                  <span className="text-destructive col-span-2">Errors: {backfillProgress.errors}</span>
                 )}
               </div>
+              {backfillProgress.errorDetails.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <span className="text-xs font-medium text-destructive">Error details:</span>
+                  <ScrollArea className="max-h-32">
+                    {backfillProgress.errorDetails.map((e, i) => (
+                      <div key={i} className="text-xs text-destructive/80 truncate">
+                        • {e.title || e.claap_id}: {e.error}
+                      </div>
+                    ))}
+                  </ScrollArea>
+                </div>
+              )}
+              {backfillProgress.processedTitles.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">Processed titles:</span>
+                  <ScrollArea className="max-h-24">
+                    {backfillProgress.processedTitles.map((t, i) => (
+                      <div key={i} className="text-xs text-muted-foreground truncate">• {t}</div>
+                    ))}
+                  </ScrollArea>
+                </div>
+              )}
             </div>
           )}
           <Button

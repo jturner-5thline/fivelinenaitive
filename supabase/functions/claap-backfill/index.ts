@@ -276,6 +276,10 @@ Deno.serve(async (req) => {
     const nextCursor = claapData.result?.cursor || claapData.cursor || claapData.next_cursor || null;
 
     let processed = 0, matched = 0, skipped = 0, alreadyExists = 0, errors = 0;
+    const errorDetails: Array<{ claap_id: string; title: string | null; error: string }> = [];
+    const processedTitles: string[] = [];
+
+    console.log(`Backfill: fetched ${recordings.length} recordings from Claap API`);
 
     for (const recording of recordings) {
       // Check time budget
@@ -306,12 +310,16 @@ Deno.serve(async (req) => {
       if (existingSkipped) { alreadyExists++; processed++; continue; }
 
       try {
-        const title = recording.title || recording.name || null;
+        const title = recording.title || recording.name || recording.topic || null;
         const organizerEmail = recording.recorder?.email || recording.organizer?.email || null;
-        const durationSeconds = recording.duration_seconds || recording.durationSeconds || null;
+        const rawDuration = recording.duration_seconds || recording.durationSeconds || null;
+        const durationSeconds = rawDuration != null ? Math.floor(Number(rawDuration)) : null;
         const recordingUrl = recording.url || recording.video_url || recording.videoUrl || null;
         const startedAt = recording.meeting?.startingAt || recording.started_at || recording.created_at || recording.createdAt || null;
         const participants = recording.meeting?.participants || recording.participants || [];
+
+        processedTitles.push(title || "(no title)");
+        console.log(`Processing: "${title}" | duration=${rawDuration} | claap_id=${claapId} | participants=${participants.length}`);
 
         // Classify participants
         const classifiedParticipants = participants.map((p: any) => {
@@ -350,6 +358,7 @@ Deno.serve(async (req) => {
         }
 
         if (excluded) {
+          console.log(`  SKIPPED: "${title}" — ${exclusionReason}`);
           await supabaseAdmin.from("claap_skipped_calls").upsert({
             claap_id: claapId,
             company_id: companyId,
@@ -367,8 +376,10 @@ Deno.serve(async (req) => {
 
         // Smart matching
         const matchResult = await runSmartMatching(supabaseAdmin, title, classifiedParticipants, companyId);
+        console.log(`  Match result for "${title}": matched=${matchResult.matched}, type=${matchResult.matchType}, source=${matchResult.matchSource}`);
 
         if (!matchResult.matched && !syncAllCalls) {
+          console.log(`  NO MATCH: "${title}" — skipping`);
           await supabaseAdmin.from("claap_skipped_calls").upsert({
             claap_id: claapId,
             company_id: companyId,
@@ -392,11 +403,19 @@ Deno.serve(async (req) => {
             { headers: { "X-Claap-Key": claapApiKey, "Content-Type": "application/json" } },
           );
           if (txResp.ok) {
-            const txData = await txResp.json();
-            transcript = txData.result?.transcript || null;
+            const contentType = txResp.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) {
+              const txData = await txResp.json();
+              transcript = txData.result?.transcript || txData.transcript || null;
+            } else {
+              // Plain text response
+              transcript = await txResp.text();
+            }
+          } else {
+            await txResp.text(); // consume body
           }
         } catch (e) {
-          console.error(`Failed to fetch transcript for ${claapId}:`, e);
+          console.error(`Failed to fetch transcript for ${claapId}:`, e instanceof Error ? e.message : e);
         }
 
         // Save meeting
@@ -424,7 +443,12 @@ Deno.serve(async (req) => {
           .select("id")
           .single();
 
-        if (meetingError) { console.error("Meeting insert error:", meetingError); errors++; processed++; continue; }
+        if (meetingError) {
+          const errMsg = `Meeting insert error for "${title}": ${meetingError.message} (code: ${meetingError.code})`;
+          console.error(errMsg);
+          errorDetails.push({ claap_id: claapId, title, error: errMsg });
+          errors++; processed++; continue;
+        }
         const meetingId = meeting.id;
 
         // Insert participants
@@ -491,7 +515,9 @@ Deno.serve(async (req) => {
 
         matched++; processed++;
       } catch (err) {
-        console.error(`Error processing recording ${claapId}:`, err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(`Error processing recording ${claapId}: ${errMsg}`);
+        errorDetails.push({ claap_id: claapId, title: recording.title || recording.name || null, error: errMsg });
         errors++; processed++;
       }
     }
@@ -505,6 +531,8 @@ Deno.serve(async (req) => {
       skipped,
       already_exists: alreadyExists,
       errors,
+      error_details: errorDetails,
+      processed_titles: processedTitles,
       total_in_batch: recordings.length,
       next_cursor: nextCursor || null,
       has_more: !!nextCursor,
