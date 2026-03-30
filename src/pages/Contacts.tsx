@@ -67,6 +67,8 @@ export default function Contacts() {
     page,
     pageSize,
     quickFilter,
+    advancedFilters: debouncedFilters,
+    matchMode,
   });
 
   const contacts = result?.data ?? [];
