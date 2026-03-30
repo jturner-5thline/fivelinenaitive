@@ -78,8 +78,10 @@ import {
 
 export function HubSpotIntegration() {
   const hubspot = useHubSpot();
+  const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isSyncingCompanies, setIsSyncingCompanies] = useState(false);
   const [activeTab, setActiveTab] = useState("contacts");
   
   // Search states
