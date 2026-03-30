@@ -19,8 +19,9 @@ export function FloatingCopilotDrawer() {
   const { hasPageAccess, isLoading } = usePageAccessFlags();
   const copilotEnabled = hasPageAccess('copilot_widget');
 
-  // Hide on onboarding and auth pages, or if copilot access is disabled
-  if (!user || location.pathname === '/onboarding' || location.pathname === '/auth') return null;
+  // Hide on landing, auth, login, and public pages
+  const hiddenPaths = ['/', '/home', '/homepage', '/login', '/auth', '/onboarding', '/create-account', '/waitlist', '/join'];
+  if (!user || hiddenPaths.includes(location.pathname)) return null;
   if (isLoading || !copilotEnabled) return null;
 
   const content = (
