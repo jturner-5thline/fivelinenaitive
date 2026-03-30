@@ -303,6 +303,14 @@ export function HubSpotIntegration() {
                 )}
                 Sync Companies
               </Button>
+              <Button onClick={handleSyncContacts} disabled={isSyncingContacts} variant="outline" size="sm">
+                {isSyncingContacts ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Users className="h-4 w-4 mr-2" />
+                )}
+                Sync Contacts
+              </Button>
               <Button onClick={handleTestConnection} disabled={isTestingConnection} variant="outline" size="sm">
                 {isTestingConnection ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
