@@ -1,19 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, Filter, Clock, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw, Filter, Clock, AlertTriangle, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 
 export function ClaapSyncSettings() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [backfillProgress, setBackfillProgress] = useState<{
+    running: boolean;
+    processed: number;
+    matched: number;
+    skipped: number;
+    alreadyExists: number;
+    errors: number;
+    batchesDone: number;
+  } | null>(null);
 
   // Fetch company config
   const { data: config, isLoading: configLoading } = useQuery({
@@ -102,6 +112,68 @@ export function ClaapSyncSettings() {
     onError: (err: any) => toast.error('Force sync failed', { description: err.message }),
   });
 
+  // Backfill historical calls
+  const runBackfill = async () => {
+    if (!config?.company_id) {
+      toast.error('No company configuration found');
+      return;
+    }
+
+    setBackfillProgress({ running: true, processed: 0, matched: 0, skipped: 0, alreadyExists: 0, errors: 0, batchesDone: 0 });
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    let cursor: string | null = null;
+    let totalProcessed = 0, totalMatched = 0, totalSkipped = 0, totalExists = 0, totalErrors = 0;
+    let batchesDone = 0;
+
+    try {
+      for (let i = 0; i < 50; i++) {
+        const response = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/claap-backfill`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              company_id: config.company_id,
+              days_back: 45,
+              batch_size: 20,
+              cursor,
+              time_budget_ms: 50000,
+            }),
+          }
+        );
+
+        const result = await response.json();
+        if (!result.ok) throw new Error(result.error || 'Backfill failed');
+
+        totalProcessed += result.processed || 0;
+        totalMatched += result.matched || 0;
+        totalSkipped += result.skipped || 0;
+        totalExists += result.already_exists || 0;
+        totalErrors += result.errors || 0;
+        batchesDone++;
+
+        setBackfillProgress({
+          running: true, processed: totalProcessed, matched: totalMatched,
+          skipped: totalSkipped, alreadyExists: totalExists, errors: totalErrors, batchesDone,
+        });
+
+        if (!result.has_more || !result.next_cursor) break;
+        cursor = result.next_cursor;
+      }
+
+      toast.success('Historical backfill complete', {
+        description: `Processed: ${totalProcessed} | Matched: ${totalMatched} | Skipped: ${totalSkipped} | Already synced: ${totalExists}`,
+        duration: 10000,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['claap-skipped-calls'] });
+    } catch (err: any) {
+      toast.error('Backfill failed', { description: err.message });
+    } finally {
+      setBackfillProgress(prev => prev ? { ...prev, running: false } : null);
+    }
+  };
+
   if (configLoading) {
     return (
       <Card>
@@ -114,6 +186,54 @@ export function ClaapSyncSettings() {
 
   return (
     <div className="space-y-4">
+      {/* Historical Backfill */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Historical Sync
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Fetch all Claap recordings from the past 45 days and apply smart matching to route them to deals, companies, and contacts.
+          </p>
+          {backfillProgress && (
+            <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium">
+                  {backfillProgress.running ? `Processing batch ${backfillProgress.batchesDone}...` : 'Complete'}
+                </span>
+                {backfillProgress.running && <Loader2 className="h-3 w-3 animate-spin" />}
+              </div>
+              <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                <span>Processed: {backfillProgress.processed}</span>
+                <span>Matched: {backfillProgress.matched}</span>
+                <span>Skipped: {backfillProgress.skipped}</span>
+                <span>Already synced: {backfillProgress.alreadyExists}</span>
+                {backfillProgress.errors > 0 && (
+                  <span className="text-destructive">Errors: {backfillProgress.errors}</span>
+                )}
+              </div>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={runBackfill}
+            disabled={backfillProgress?.running}
+            className="w-full"
+          >
+            {backfillProgress?.running ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            {backfillProgress?.running ? 'Syncing...' : 'Sync Historical Calls (Last 45 Days)'}
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Sync Mode Toggle */}
       <Card>
         <CardHeader className="pb-3">
