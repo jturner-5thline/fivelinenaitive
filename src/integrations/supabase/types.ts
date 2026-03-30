@@ -4380,6 +4380,41 @@ export type Database = {
           },
         ]
       }
+      data_room_exports: {
+        Row: {
+          data_room_type: string
+          deal_id: string
+          exported_at: string
+          file_count: number
+          id: string
+          user_id: string
+        }
+        Insert: {
+          data_room_type: string
+          deal_id: string
+          exported_at?: string
+          file_count?: number
+          id?: string
+          user_id: string
+        }
+        Update: {
+          data_room_type?: string
+          deal_id?: string
+          exported_at?: string
+          file_count?: number
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_exports_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_room_file_permissions: {
         Row: {
           can_delete: boolean

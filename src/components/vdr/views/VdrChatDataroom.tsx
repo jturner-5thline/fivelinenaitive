@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText, FileSpreadsheet, Presentation, Eye, Upload, Loader2, CheckCircle2, AlertCircle, Tag, X, Send, FolderPlus, Pencil, Trash2, List, FolderTree, ClipboardList, PackagePlus, Share2, ArrowRightFromLine } from 'lucide-react';
+import { VdrExportButton } from '../VdrExportButton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -825,6 +826,12 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
               </Badge>
             )}
             <div className="ml-auto flex items-center gap-1">
+              <VdrExportButton
+                dealId={dealId}
+                dealName={currentDeal?.company || 'Deal'}
+                documents={documents}
+                isDataroomView={isDataroomView}
+              />
               {!isDataroomView && renderViewToggle(rightView, setRightView)}
               {isDataroomView && canPushToFlex && (
                 <Button
