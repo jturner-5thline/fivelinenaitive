@@ -168,7 +168,6 @@ Deno.serve(async (req) => {
             migrated_from_hubspot: true,
             org_company_id: orgCompanyId,
             created_by: callerUserId,
-            full_name: [props.firstname, props.lastname].filter(Boolean).join(' ') || null,
             custom_fields: { hubspot_raw_properties: props },
           };
 
