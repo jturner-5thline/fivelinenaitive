@@ -90,6 +90,10 @@ export default function Contacts() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleSyncContacts} disabled={isSyncingContacts}>
+                {isSyncingContacts ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                Sync HubSpot
+              </Button>
               <Button variant="outline" size="sm">
                 <Upload className="h-4 w-4 mr-1.5" /> Import
               </Button>
