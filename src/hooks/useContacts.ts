@@ -60,21 +60,88 @@ export interface Contact {
   ae_owner?: { display_name: string | null; avatar_url: string | null } | null;
 }
 
-export function useContacts() {
-  const { company } = useCompany();
+const LIST_COLUMNS = 'id, first_name, last_name, full_name, email, phone_work, job_title, lifecycle_stage, status, contact_score, primary_company_id, lead_source, last_activity_date, created_at, hubspot_contact_id, synced_with_hubspot, crm_company_id';
 
-  return useQuery({
-    queryKey: ['contacts', company?.id],
+export interface ContactsListParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  lifecycleStage?: string;
+  status?: string;
+  quickFilter?: string;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export function useContacts(params: ContactsListParams = {}) {
+  const { company } = useCompany();
+  const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter } = params;
+
+  return useQuery<PaginatedResult<Contact>>({
+    queryKey: ['contacts', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('contacts')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select(LIST_COLUMNS, { count: 'exact' });
+
+      // Server-side search
+      if (search?.trim()) {
+        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,job_title.ilike.%${search}%`);
+      }
+
+      // Server-side filters
+      if (lifecycleStage && lifecycleStage !== 'all') {
+        query = query.eq('lifecycle_stage', lifecycleStage as any);
+      }
+      if (status && status !== 'all') {
+        query = query.eq('status', status as any);
+      }
+
+      // Quick filters (tab filters from the page)
+      if (quickFilter && quickFilter !== 'all') {
+        switch (quickFilter) {
+          case 'new_leads':
+            query = query.eq('status', 'new');
+            break;
+          case 'meeting_scheduled':
+            query = query.eq('status', 'meeting_scheduled');
+            break;
+          case 'high_score':
+            query = query.gte('contact_score', 70);
+            break;
+          case 'no_activity_7d': {
+            const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+            query = query.or(`last_activity_date.is.null,last_activity_date.lt.${sevenDaysAgo}`);
+            break;
+          }
+        }
+      }
+
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
-      return (data || []) as Contact[];
+      const totalCount = count ?? 0;
+      return {
+        data: (data || []) as unknown as Contact[],
+        totalCount,
+        page,
+        pageSize,
+        totalPages: Math.ceil(totalCount / pageSize),
+      };
     },
     enabled: !!company?.id,
+    placeholderData: (prev) => prev,
   });
 }
 

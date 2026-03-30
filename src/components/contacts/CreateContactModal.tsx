@@ -18,7 +18,8 @@ interface CreateContactModalProps {
 
 export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateContactModalProps) {
   const createContact = useCreateContact();
-  const { data: companies = [] } = useCrmCompanies();
+  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
+  const companies = companiesResult?.data ?? [];
   const [companySearch, setCompanySearch] = useState('');
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [form, setForm] = useState({

@@ -1,37 +1,41 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload, Download } from 'lucide-react';
+import { Plus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
 import { ContactsTable } from '@/components/contacts/ContactsTable';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { DealsHeader } from '@/components/deals/DealsHeader';
+import { TablePagination } from '@/components/shared/TablePagination';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
 
 export default function Contacts() {
-  const { data: contacts = [], isLoading } = useContacts();
   const [showCreate, setShowCreate] = useState(false);
   const [quickFilter, setQuickFilter] = useState('all');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
 
-  const filteredContacts = (() => {
-    switch (quickFilter) {
-      case 'new_leads':
-        return contacts.filter(c => c.status === 'new');
-      case 'meeting_scheduled':
-        return contacts.filter(c => c.status === 'meeting_scheduled');
-      case 'high_score':
-        return contacts.filter(c => c.contact_score >= 70);
-      case 'no_activity_7d':
-        return contacts.filter(c => {
-          if (!c.last_activity_date) return true;
-          const diff = Date.now() - new Date(c.last_activity_date).getTime();
-          return diff > 7 * 24 * 60 * 60 * 1000;
-        });
-      default:
-        return contacts;
-    }
-  })();
+  const { data: result, isLoading, isFetching } = useContacts({
+    page,
+    pageSize,
+    quickFilter,
+  });
+
+  const contacts = result?.data ?? [];
+  const totalCount = result?.totalCount ?? 0;
+  const totalPages = result?.totalPages ?? 0;
+
+  const handleQuickFilterChange = (value: string) => {
+    setQuickFilter(value);
+    setPage(0);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setPage(0);
+  };
 
   return (
     <>
@@ -57,9 +61,9 @@ export default function Contacts() {
           </div>
 
           {/* Quick filters */}
-          <Tabs value={quickFilter} onValueChange={setQuickFilter}>
+          <Tabs value={quickFilter} onValueChange={handleQuickFilterChange}>
             <TabsList>
-              <TabsTrigger value="all">All ({contacts.length})</TabsTrigger>
+              <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
               <TabsTrigger value="new_leads">New Leads</TabsTrigger>
               <TabsTrigger value="meeting_scheduled">Meeting Scheduled</TabsTrigger>
               <TabsTrigger value="high_score">High Score</TabsTrigger>
@@ -69,11 +73,44 @@ export default function Contacts() {
 
           {/* Content */}
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-9 flex-1 max-w-sm" />
+                <Skeleton className="h-9 w-[150px]" />
+                <Skeleton className="h-9 w-[150px]" />
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 p-3 border-b last:border-b-0">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-4 w-12" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
-            <ContactsTable contacts={filteredContacts} />
+            <>
+              <div className={isFetching ? 'opacity-60 pointer-events-none transition-opacity' : ''}>
+                <ContactsTable contacts={contacts} />
+              </div>
+              <TablePagination
+                page={page}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                onPageSizeChange={handlePageSizeChange}
+                isLoading={isFetching}
+              />
+            </>
           )}
         </main>
       </div>

@@ -43,7 +43,8 @@ export default function ContactDetail() {
   // CRM company info
   const crmCompanyId = (contact as any)?.crm_company_id;
   const { data: crmCompany } = useContactCrmCompany(crmCompanyId);
-  const { data: companies = [] } = useCrmCompanies();
+  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
+  const companies = companiesResult?.data ?? [];
   const { data: deals = [] } = useAllDeals();
   const linkToCompany = useLinkContactToCompany();
   const unlinkFromCompany = useUnlinkContactFromCompany();

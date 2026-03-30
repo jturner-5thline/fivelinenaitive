@@ -83,19 +83,93 @@ export const CRM_COMPANY_LIFECYCLES = [
   { value: 'churn_risk', label: 'Churn Risk' },
 ];
 
-export function useCrmCompanies() {
+const LIST_COLUMNS = 'id, name, domain, logo_url, industry, lifecycle_stage, status, segment, annual_revenue, arr, employee_range, company_type, created_at, hubspot_company_id, synced_with_hubspot, hq_city, hq_country, last_activity_date, renewal_date';
+
+export interface CrmCompaniesListParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  lifecycleStage?: string;
+  status?: string;
+  quickFilter?: string;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export function useCrmCompanies(params: CrmCompaniesListParams = {}) {
   const { company } = useCompany();
-  return useQuery({
-    queryKey: ['crm-companies', company?.id],
+  const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter } = params;
+
+  return useQuery<PaginatedResult<CrmCompany>>({
+    queryKey: ['crm-companies', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('crm_companies')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select(LIST_COLUMNS, { count: 'exact' });
+
+      // Server-side search
+      if (search?.trim()) {
+        query = query.or(`name.ilike.%${search}%,domain.ilike.%${search}%,industry.ilike.%${search}%`);
+      }
+
+      // Server-side filters
+      if (lifecycleStage && lifecycleStage !== 'all') {
+        query = query.eq('lifecycle_stage', lifecycleStage as any);
+      }
+      if (status && status !== 'all') {
+        query = query.eq('status', status as any);
+      }
+
+      // Quick filters (tab filters from the page)
+      if (quickFilter && quickFilter !== 'all') {
+        switch (quickFilter) {
+          case 'customers':
+            query = query.eq('lifecycle_stage', 'customer');
+            break;
+          case 'prospects':
+            query = query.eq('company_type', 'prospect');
+            break;
+          case 'churn_risk':
+            query = query.eq('lifecycle_stage', 'churn_risk');
+            break;
+          case 'no_activity_30d':
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+            query = query.or(`last_activity_date.is.null,last_activity_date.lt.${thirtyDaysAgo}`);
+            break;
+          case 'renewal_90d': {
+            const now = new Date().toISOString();
+            const ninetyDays = new Date(Date.now() + 90 * 86400000).toISOString();
+            query = query.gt('renewal_date', now).lt('renewal_date', ninetyDays);
+            break;
+          }
+        }
+      }
+
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
       if (error) throw error;
-      return (data || []) as CrmCompany[];
+      const totalCount = count ?? 0;
+      return {
+        data: (data || []) as CrmCompany[],
+        totalCount,
+        page,
+        pageSize,
+        totalPages: Math.ceil(totalCount / pageSize),
+      };
     },
     enabled: !!company?.id,
+    placeholderData: (prev) => prev,
   });
 }
 
