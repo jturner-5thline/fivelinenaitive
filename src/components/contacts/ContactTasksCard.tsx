@@ -46,7 +46,7 @@ const priorityColor: Record<string, string> = {
   low: 'text-muted-foreground',
 };
 
-export function ContactTasksCard({ contactId, contactName, externalShowCreate, onExternalShowCreateChange }: ContactTasksCardProps) {
+export function ContactTasksCard({ contactId, contactName, crmCompanyId, externalShowCreate, onExternalShowCreateChange }: ContactTasksCardProps) {
   const { data: tasks = [], isLoading } = useContactTasks(contactId);
   const { createTask, updateTask } = useMyTasks();
   const teamMembers = useTeamMembers();
