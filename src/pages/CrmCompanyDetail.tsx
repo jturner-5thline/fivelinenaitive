@@ -47,6 +47,7 @@ export default function CrmCompanyDetail() {
   const [showCreateContact, setShowCreateContact] = useState(false);
   const [showLinkDeal, setShowLinkDeal] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
 
   if (isLoading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!company) return <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4"><p className="text-muted-foreground">Company not found</p><Button variant="outline" onClick={() => navigate('/crm-companies')}>Back</Button></div>;
