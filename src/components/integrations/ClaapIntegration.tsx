@@ -8,6 +8,7 @@ import { useIntegrations } from '@/hooks/useIntegrations';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ClaapSyncSettings } from './ClaapSyncSettings';
 
 const ALLOWED_EMAIL = 'jturner@5thline.co';
 
