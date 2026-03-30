@@ -82,6 +82,7 @@ export function HubSpotIntegration() {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isSyncingCompanies, setIsSyncingCompanies] = useState(false);
+  const [isSyncingContacts, setIsSyncingContacts] = useState(false);
   const [activeTab, setActiveTab] = useState("contacts");
   
   // Search states
