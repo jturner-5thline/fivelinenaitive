@@ -1,20 +1,22 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { DuplicateCluster } from '@/hooks/useDealDuplicates';
 import { Deal, STATUS_CONFIG, STAGE_CONFIG } from '@/types/deal';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Check, Crown, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { usePipelines } from '@/hooks/usePipelines';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -24,11 +26,11 @@ interface DealMergeDrawerProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type MergeField = 'name' | 'company' | 'stage' | 'status' | 'value' | 'manager' | 'dealOwner' | 'analyst' | 'engagementType' | 'contact' | 'notes' | 'narrative';
+type MergeField = 'company' | 'stage' | 'status' | 'value' | 'manager' | 'dealOwner' | 'analyst' | 'engagementType' | 'contact' | 'notes' | 'narrative' | 'pipelineId';
 
 const MERGE_FIELDS: { key: MergeField; label: string }[] = [
   { key: 'company', label: 'Company Name' },
-  { key: 'name', label: 'Deal Name' },
+  { key: 'pipelineId', label: 'Pipeline' },
   { key: 'stage', label: 'Stage' },
   { key: 'status', label: 'Status' },
   { key: 'value', label: 'Deal Value' },
@@ -41,37 +43,117 @@ const MERGE_FIELDS: { key: MergeField; label: string }[] = [
   { key: 'narrative', label: 'Narrative' },
 ];
 
+// Stage ordering for "most advanced" logic
+const STAGE_ORDER: string[] = [
+  'prospect', 'qualification', 'engaged', 'submitted-to-lenders', 'lenders-in-review',
+  'write-up-pending', 'client-strategy-review', 'final-credit-items',
+  'due-diligence', 'in-due-diligence', 'under-loi', 'term-sheet', 'terms-issued',
+  'closing', 'funded-invoiced', 'closed-won',
+];
+
+function getSmartDefaults(deals: Deal[]): Record<MergeField, string> {
+  const first = deals[0];
+  const defaults = Object.fromEntries(MERGE_FIELDS.map(f => [f.key, first.id])) as Record<MergeField, string>;
+
+  // Value: highest
+  const highestValue = deals.reduce((best, d) => (d.value || 0) > (best.value || 0) ? d : best, deals[0]);
+  if (highestValue.value) defaults.value = highestValue.id;
+
+  // Manager: first non-empty
+  const withManager = deals.find(d => d.manager && d.manager.trim());
+  if (withManager) defaults.manager = withManager.id;
+
+  // Deal Owner: first non-empty
+  const withOwner = deals.find(d => d.dealOwner && d.dealOwner.trim());
+  if (withOwner) defaults.dealOwner = withOwner.id;
+
+  // Stage: most advanced
+  const mostAdvanced = deals.reduce((best, d) => {
+    const bestIdx = STAGE_ORDER.indexOf(best.stage);
+    const dIdx = STAGE_ORDER.indexOf(d.stage);
+    return dIdx > bestIdx ? d : best;
+  }, deals[0]);
+  defaults.stage = mostAdvanced.id;
+
+  // Lenders count is not a merge field but stage from most advanced helps
+
+  // Notes: first non-empty
+  const withNotes = deals.find(d => d.notes && d.notes.trim());
+  if (withNotes) defaults.notes = withNotes.id;
+
+  // Narrative: first non-empty
+  const withNarrative = deals.find(d => d.narrative && d.narrative.trim());
+  if (withNarrative) defaults.narrative = withNarrative.id;
+
+  // Contact: first non-empty
+  const withContact = deals.find(d => d.contact && d.contact.trim());
+  if (withContact) defaults.contact = withContact.id;
+
+  return defaults;
+}
+
 export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawerProps) {
   const { refreshDeals } = useDealsContext();
+  const { pipelines } = usePipelines();
   const [isMerging, setIsMerging] = useState(false);
 
-  // Primary deal = most recently updated
   const deals = cluster?.deals || [];
-  const [primaryDealId, setPrimaryDealId] = useState<string>(deals[0]?.id || '');
 
-  // Selected values per field — default to primary deal's values
-  const [selections, setSelections] = useState<Record<MergeField, string>>(() => {
-    const primary = deals[0];
-    if (!primary) return {} as Record<MergeField, string>;
-    return Object.fromEntries(MERGE_FIELDS.map(f => [f.key, primary.id])) as Record<MergeField, string>;
-  });
+  const [primaryDealId, setPrimaryDealId] = useState<string>('');
+  const [selections, setSelections] = useState<Record<MergeField, string>>({} as any);
+  const [mergedName, setMergedName] = useState('');
 
-  // Reset when cluster changes
-  useMemo(() => {
-    if (deals.length > 0) {
+  const pipelineMap = useMemo(() => {
+    const map = new Map<string, string>();
+    pipelines.forEach(p => map.set(p.id, p.name));
+    return map;
+  }, [pipelines]);
+
+  // Reset state when cluster changes
+  useEffect(() => {
+    if (deals.length > 0 && open) {
       setPrimaryDealId(deals[0].id);
-      setSelections(Object.fromEntries(MERGE_FIELDS.map(f => [f.key, deals[0].id])) as Record<MergeField, string>);
+      setSelections(getSmartDefaults(deals));
+      setMergedName(cluster?.primaryName || deals[0].company || deals[0].name);
     }
-  }, [cluster?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cluster?.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getFieldValue = (deal: Deal, field: MergeField): string => {
-    const val = deal[field];
-    if (val === null || val === undefined) return '—';
+    if (field === 'pipelineId') {
+      return deal.pipelineId ? pipelineMap.get(deal.pipelineId) || deal.pipelineId : '—';
+    }
+    const val = deal[field as keyof Deal];
+    if (val === null || val === undefined || val === '') return '—';
     if (field === 'value') return `$${Number(val).toLocaleString()}`;
     if (field === 'stage') return STAGE_CONFIG[val as string]?.label || String(val);
     if (field === 'status') return STATUS_CONFIG[val as string]?.label || String(val);
+    if (field === 'notes' || field === 'narrative') {
+      const s = String(val);
+      return s.length > 80 ? s.slice(0, 80) + '…' : s;
+    }
     return String(val);
   };
+
+  // Compute merged preview
+  const mergedPreview = useMemo(() => {
+    if (deals.length === 0) return {};
+    const preview: Record<string, string> = { name: mergedName };
+    for (const field of MERGE_FIELDS) {
+      const sourceDeal = deals.find(d => d.id === selections[field.key]) || deals[0];
+      preview[field.key] = getFieldValue(sourceDeal, field.key);
+    }
+    // Lenders: combine from all
+    const totalLenders = deals.reduce((sum, d) => sum + (d.lenders?.length || 0), 0);
+    preview.lenders = `${totalLenders} lenders (combined)`;
+    return preview;
+  }, [deals, selections, mergedName, pipelineMap]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedFeeCount = MERGE_FIELDS.filter(f => {
+    const deal = deals.find(d => d.id === selections[f.key]);
+    if (!deal) return false;
+    const val = deal[f.key as keyof Deal];
+    return val !== null && val !== undefined && val !== '' && val !== '—';
+  }).length;
 
   const handleMerge = async () => {
     if (!cluster || deals.length < 2) return;
@@ -82,11 +164,11 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
       const otherDeals = deals.filter(d => d.id !== primaryDealId);
 
       // Build merged field values
-      const mergedData: Record<string, any> = {};
+      const mergedData: Record<string, any> = { name: mergedName, company: mergedName };
       for (const field of MERGE_FIELDS) {
         const sourceDealId = selections[field.key];
         const sourceDeal = deals.find(d => d.id === sourceDealId) || primary;
-        const val = sourceDeal[field.key];
+        const val = sourceDeal[field.key as keyof Deal];
         if (val !== undefined && val !== null) {
           mergedData[field.key] = val;
         }
@@ -126,30 +208,22 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
           .eq('id', primaryDealId);
       }
 
-      // Archive other deals with merged_into reference
+      // Delete other deals
       for (const deal of otherDeals) {
         const { error } = await supabase
           .from('deals')
-          .update({
-            status: 'archived',
-            merged_into: primaryDealId,
-          })
+          .delete()
           .eq('id', deal.id);
         if (error) throw error;
       }
 
       await refreshDeals();
       onOpenChange(false);
-      toast({
-        title: 'Deals merged successfully',
-        description: `${otherDeals.length} deal${otherDeals.length !== 1 ? 's' : ''} archived and merged into ${primary.company || primary.name}.`,
+      toast.success('Deals merged successfully', {
+        description: `${otherDeals.length} duplicate${otherDeals.length !== 1 ? 's' : ''} removed. "${mergedName}" updated.`,
       });
     } catch (error: any) {
-      toast({
-        title: 'Merge failed',
-        description: error.message || 'Something went wrong.',
-        variant: 'destructive',
-      });
+      toast.error('Merge failed', { description: error.message || 'Something went wrong.' });
     } finally {
       setIsMerging(false);
     }
@@ -158,97 +232,135 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
   if (!cluster) return null;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl">
-        <SheetHeader>
-          <SheetTitle>Merge Deals</SheetTitle>
-          <SheetDescription>
-            Select the value to keep for each field. Click a cell to choose it. The primary deal survives; others are archived.
-          </SheetDescription>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[85vw] w-[85vw] max-h-[80vh] h-[80vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
+          <DialogTitle className="text-lg">Merge {cluster.primaryName} Deals</DialogTitle>
+          <DialogDescription>
+            Select which value to keep for each field. The primary deal survives; duplicates are deleted.
+          </DialogDescription>
+        </DialogHeader>
 
-        <ScrollArea className="h-[calc(100vh-220px)] mt-4 pr-4">
-          {/* Primary deal selector */}
-          <div className="mb-4">
-            <p className="text-xs font-medium text-muted-foreground mb-2">PRIMARY DEAL (survives after merge)</p>
-            <div className="flex flex-wrap gap-2">
-              {deals.map(deal => (
-                <button
-                  key={deal.id}
-                  onClick={() => setPrimaryDealId(deal.id)}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-all',
-                    primaryDealId === deal.id
-                      ? 'border-primary bg-primary/10 text-foreground'
-                      : 'border-border text-muted-foreground hover:border-muted-foreground/40'
-                  )}
-                >
-                  {primaryDealId === deal.id && <Crown className="h-3.5 w-3.5 text-primary" />}
-                  {deal.company || deal.name}
-                </button>
-              ))}
+        <ScrollArea className="flex-1 px-6">
+          <div className="py-4 space-y-5">
+            {/* Merged deal name */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Merged Deal Name</label>
+              <Input
+                value={mergedName}
+                onChange={e => setMergedName(e.target.value)}
+                className="max-w-md"
+              />
             </div>
-          </div>
 
-          {/* Field comparison table */}
-          <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground w-[120px]">Field</th>
-                  {deals.map(deal => (
-                    <th key={deal.id} className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        {deal.id === primaryDealId && <Crown className="h-3 w-3 text-primary" />}
-                        <span className="truncate">{deal.company || deal.name}</span>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {MERGE_FIELDS.map(field => (
-                  <tr key={field.key} className="border-b border-border last:border-0">
-                    <td className="px-3 py-2 text-xs font-medium text-muted-foreground">{field.label}</td>
-                    {deals.map(deal => {
-                      const isSelected = selections[field.key] === deal.id;
-                      const value = getFieldValue(deal, field.key);
-                      return (
-                        <td key={deal.id} className="px-1 py-1">
-                          <button
-                            onClick={() => setSelections(prev => ({ ...prev, [field.key]: deal.id }))}
-                            className={cn(
-                              'w-full text-left px-2 py-1.5 rounded-md text-xs transition-all',
-                              isSelected
-                                ? 'bg-primary/15 border border-primary/40 text-foreground'
-                                : 'hover:bg-muted/50 text-muted-foreground border border-transparent'
-                            )}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              {isSelected && <Check className="h-3 w-3 text-primary shrink-0" />}
-                              <span className="truncate">{value}</span>
-                            </div>
-                          </button>
-                        </td>
-                      );
-                    })}
-                  </tr>
+            {/* Primary deal selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Primary Deal (survives after merge)</label>
+              <div className="flex flex-wrap gap-2">
+                {deals.map(deal => (
+                  <button
+                    key={deal.id}
+                    onClick={() => setPrimaryDealId(deal.id)}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-all',
+                      primaryDealId === deal.id
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border text-muted-foreground hover:border-muted-foreground/40'
+                    )}
+                  >
+                    {primaryDealId === deal.id && <Crown className="h-3.5 w-3.5 text-primary" />}
+                    {deal.company || deal.name}
+                  </button>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
 
-          {/* Info about what happens */}
-          <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground space-y-1">
-            <p>• The primary deal will be updated with selected values</p>
-            <p>• Notes from all deals will be concatenated</p>
-            <p>• {deals.length - 1} deal{deals.length > 2 ? 's' : ''} will be archived with a reference to the primary</p>
-            <p>• HubSpot IDs from archived deals will be preserved to prevent re-import</p>
+            {/* Comparison table + merged preview */}
+            <div className="rounded-lg border border-border overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground sticky left-0 bg-muted/30 min-w-[120px]">Field</th>
+                    {deals.map(deal => (
+                      <th key={deal.id} className="text-left px-3 py-2 text-xs font-medium text-muted-foreground min-w-[180px]">
+                        <div className="flex items-center gap-1.5">
+                          {deal.id === primaryDealId && <Crown className="h-3 w-3 text-primary shrink-0" />}
+                          <span className="truncate">{deal.company || deal.name}</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground/60">
+                          Updated {format(new Date(deal.updatedAt), 'MMM d, yyyy')}
+                        </span>
+                      </th>
+                    ))}
+                    <th className="text-left px-3 py-2 text-xs font-medium text-primary min-w-[180px] bg-primary/5 border-l border-border">
+                      Merged Result
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Lenders row (informational) */}
+                  <tr className="border-b border-border">
+                    <td className="px-3 py-2 text-xs font-medium text-muted-foreground sticky left-0 bg-background">Lenders</td>
+                    {deals.map(deal => (
+                      <td key={deal.id} className="px-3 py-2 text-xs text-muted-foreground">
+                        {deal.lenders?.length || 0} lenders
+                      </td>
+                    ))}
+                    <td className="px-3 py-2 text-xs text-primary bg-primary/5 border-l border-border font-medium">
+                      {mergedPreview.lenders}
+                    </td>
+                  </tr>
+
+                  {MERGE_FIELDS.map(field => (
+                    <tr key={field.key} className="border-b border-border last:border-0">
+                      <td className="px-3 py-2 text-xs font-medium text-muted-foreground sticky left-0 bg-background">{field.label}</td>
+                      {deals.map(deal => {
+                        const isSelected = selections[field.key] === deal.id;
+                        const value = getFieldValue(deal, field.key);
+                        return (
+                          <td key={deal.id} className="px-1 py-1">
+                            <button
+                              onClick={() => setSelections(prev => ({ ...prev, [field.key]: deal.id }))}
+                              className={cn(
+                                'w-full text-left px-2 py-1.5 rounded-md text-xs transition-all',
+                                isSelected
+                                  ? 'bg-primary/15 border border-primary/40 text-foreground'
+                                  : 'hover:bg-muted/50 text-muted-foreground border border-transparent'
+                              )}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                {isSelected && <Check className="h-3 w-3 text-primary shrink-0" />}
+                                <span className="truncate max-w-[150px]">{value}</span>
+                              </div>
+                            </button>
+                          </td>
+                        );
+                      })}
+                      <td className="px-3 py-2 text-xs text-foreground bg-primary/5 border-l border-border font-medium">
+                        <span className="truncate block max-w-[150px]">{mergedPreview[field.key] || '—'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Info */}
+            <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground space-y-1">
+              <p>• The primary deal will be updated with all selected values</p>
+              <p>• Notes from all deals will be concatenated</p>
+              <p>• {deals.length - 1} duplicate deal{deals.length > 2 ? 's' : ''} will be permanently deleted</p>
+              <p>• HubSpot IDs from deleted deals will be preserved to prevent re-import</p>
+            </div>
           </div>
         </ScrollArea>
 
-        <div className="absolute bottom-0 left-0 right-0 border-t border-border bg-background p-4">
-          <div className="flex justify-end gap-2">
+        {/* Footer */}
+        <div className="border-t border-border px-6 py-4 flex items-center justify-between shrink-0">
+          <span className="text-xs text-muted-foreground">
+            {deals.length} deals · {selectedFeeCount} fields resolved · Primary: {deals.find(d => d.id === primaryDealId)?.company || '—'}
+          </span>
+          <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isMerging}>
               Cancel
             </Button>
@@ -259,12 +371,12 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
                   Merging...
                 </>
               ) : (
-                'Confirm Merge'
+                `Merge ${deals.length} Deals`
               )}
             </Button>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
