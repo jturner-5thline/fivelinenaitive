@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import { differenceInDays } from 'date-fns';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 
 interface NotificationsBarProps {
   deals: Deal[];
