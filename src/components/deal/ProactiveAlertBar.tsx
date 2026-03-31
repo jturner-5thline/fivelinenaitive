@@ -54,14 +54,7 @@ export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete 
     const now = new Date();
 
     // Stale lenders — only for deals at or past "Submitted to Lenders"
-    const postSubmissionStages = [
-      'submitted-to-lenders', 'lenders-in-review', 'terms-issued',
-      'in-due-diligence', 'funded-invoiced', 'closed-won', 'closed-lost',
-    ];
-    const dealStage = (deal.stage || '').toLowerCase();
-    const isPostSubmission = postSubmissionStages.includes(dealStage);
-
-    if (isPostSubmission) {
+    if (isPostSubmissionDealStage(deal.stage)) {
       const excludedLenderStages = ['passed', 'on hold', 'on deck', 'not a fit', 'unresponsive'];
       const activeLenders = (deal.lenders || []).filter(l => 
         (l.trackingStatus === 'active' || !l.trackingStatus) &&

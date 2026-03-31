@@ -170,6 +170,7 @@ import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 import { useAdminRole } from '@/hooks/useAdminRole';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { Label } from '@/components/ui/label';
 
 // Editable deal tile for lender "About" tab - extracted to avoid hooks-in-map
