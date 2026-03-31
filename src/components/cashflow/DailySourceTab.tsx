@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, memo } from 'react';
+import { useState, useCallback, useRef, memo, useMemo } from 'react';
 import { ChevronDown, ChevronRight, Upload } from 'lucide-react';
 import type { DailyData, DailyRowStructure, RecurringTag } from './types';
 import { fmt } from './formatters';
@@ -97,7 +97,6 @@ export const DailySourceTab = memo(function DailySourceTab({
   const knownKeys = new Set(rowStructure.rows.map(r => `row_${r.row_num}`));
   Object.keys(data.rows).forEach(key => {
     if (!knownKeys.has(key)) {
-      // Guess section from row number
       const num = parseInt(key.replace('row_', ''));
       if (num >= 27 && num < 38) sections[2].rows.push(key);
       else if (num >= 40 && num < 59) sections[3].rows.push(key);
@@ -105,8 +104,8 @@ export const DailySourceTab = memo(function DailySourceTab({
     }
   });
 
-  const visibleDates = data.dates.slice(0, 30); // Show first 30 days for performance
-  const dateIndices = visibleDates.map((_, i) => i);
+  const visibleDates = data.dates;
+  const dateIndices = useMemo(() => visibleDates.map((_, i) => i), [visibleDates]);
 
   const getRecurring = (rowKey: string) => recurringTags.find(t => t.rowKey === rowKey);
 
