@@ -98,9 +98,15 @@ export function useCashFlowImport(companyId: string | undefined) {
         isLoading: false,
       });
 
+      // Format readable date range for toast
+      const fmtDate = (iso: string) => {
+        const [y, m, d] = iso.split('-');
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return `${months[parseInt(m) - 1]} ${parseInt(d)}, ${y}`;
+      };
       toast.success('Cash flow data imported', {
         id: loadingToast,
-        description: `${diagnostics.dateColumnCount} days (${diagnostics.firstDate} → ${diagnostics.lastDate}), ${diagnostics.dataRowCount} rows, ${diagnostics.importedValueCount.toLocaleString()} values`,
+        description: `Imported ${diagnostics.dateColumnCount} days from ${fmtDate(diagnostics.firstDate)} to ${fmtDate(diagnostics.lastDate)}, ${diagnostics.dataRowCount} rows`,
       });
     } catch (err) {
       console.error('Import failed:', err);

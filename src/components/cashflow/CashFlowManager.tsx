@@ -30,7 +30,9 @@ const QUARTER_RANGES: Record<string, [number, number]> = {
 function getAvailableYears(dates: string[]): number[] {
   const years = new Set<number>();
   for (const d of dates) {
-    years.add(parseInt(d.slice(0, 4)));
+    const y = parseInt(d.slice(0, 4));
+    // Exclude 2024 — it's only the starting balance date (Dec 31)
+    if (y >= 2025) years.add(y);
   }
   return Array.from(years).sort();
 }

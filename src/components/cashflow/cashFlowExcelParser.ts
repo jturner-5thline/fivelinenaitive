@@ -164,59 +164,41 @@ function isActualsForecastRow(row: ExcelJS.Row, firstDateCol: number, lastDateCo
   return labelCount >= 3;
 }
 
-function findDateHeaderRange(worksheet: ExcelJS.Worksheet, maxScanRows: number, maxCol: number) {
-  let best = { rowNum: -1, startCol: -1, endCol: -1, length: 0 };
+function findDateHeaderRow(worksheet: ExcelJS.Worksheet, maxScanRows: number, maxCol: number) {
+  let bestRow = -1;
+  let bestCount = 0;
 
   for (let r = 1; r <= maxScanRows; r++) {
     const row = worksheet.getRow(r);
-    let currentStart = -1;
-    let currentEnd = -1;
-    let currentLength = 0;
-    let previousDate: Date | null = null;
-
-    const finalize = () => {
-      if (currentLength > best.length) {
-        best = { rowNum: r, startCol: currentStart, endCol: currentEnd, length: currentLength };
-      }
-      currentStart = -1;
-      currentEnd = -1;
-      currentLength = 0;
-      previousDate = null;
-    };
-
+    let count = 0;
     for (let c = 1; c <= maxCol; c++) {
-      const parsedDate = parseDateLike(row.getCell(c).value);
-      if (!parsedDate) {
-        if (currentLength > 0) finalize();
-        continue;
-      }
-
-      if (!previousDate) {
-        currentStart = c;
-        currentEnd = c;
-        currentLength = 1;
-        previousDate = parsedDate;
-        continue;
-      }
-
-      const diff = dayDiff(previousDate, parsedDate);
-      if (diff === 1) {
-        currentEnd = c;
-        currentLength += 1;
-        previousDate = parsedDate;
-      } else {
-        finalize();
-        currentStart = c;
-        currentEnd = c;
-        currentLength = 1;
-        previousDate = parsedDate;
-      }
+      if (parseDateLike(row.getCell(c).value)) count++;
     }
-
-    if (currentLength > 0) finalize();
+    if (count > bestCount) {
+      bestCount = count;
+      bestRow = r;
+    }
   }
 
-  return best;
+  return bestRow;
+}
+
+/** Collect ALL date columns from the header row, skipping non-date columns (YTD Total etc.) */
+function collectDateColumns(worksheet: ExcelJS.Worksheet, dateRowNum: number, maxCol: number): { col: number; date: Date }[] {
+  const result: { col: number; date: Date }[] = [];
+  const row = worksheet.getRow(dateRowNum);
+
+  for (let c = 1; c <= maxCol; c++) {
+    const parsed = parseDateLike(row.getCell(c).value);
+    if (parsed) {
+      result.push({ col: c, date: parsed });
+    }
+    // Non-date columns (YTD Total, blanks, text) are simply skipped
+  }
+
+  // Sort by date to ensure chronological order
+  result.sort((a, b) => a.date.getTime() - b.date.getTime());
+  return result;
 }
 
 export async function parseCashFlowExcel(file: File): Promise<{
@@ -249,38 +231,35 @@ export async function parseCashFlowExcel(file: File): Promise<{
 
   const maxScanRows = Math.min(30, worksheet.rowCount || 30);
   const maxCol = getWorksheetMaxCol(worksheet);
-  const dateRange = findDateHeaderRange(worksheet, maxScanRows, maxCol);
+  const dateRowNum = findDateHeaderRow(worksheet, maxScanRows, maxCol);
 
-  if (dateRange.rowNum === -1 || dateRange.length < 10) {
+  if (dateRowNum === -1) {
     throw new Error('Could not find the daily date header row with sequential dates.');
   }
 
-  const dateRowNum = dateRange.rowNum;
-  const firstDateCol = dateRange.startCol;
-  const lastDateCol = dateRange.endCol;
-
-  const dates: string[] = [];
-  let previousDate: Date | null = null;
-  for (let c = firstDateCol; c <= lastDateCol; c++) {
-    const parsedDate = parseDateLike(worksheet.getRow(dateRowNum).getCell(c).value);
-    if (!parsedDate) break;
-    if (previousDate && dayDiff(previousDate, parsedDate) !== 1) break;
-    dates.push(toDateKey(parsedDate));
-    previousDate = parsedDate;
-  }
-
-  if (dates.length < 10) {
+  const dateColumns = collectDateColumns(worksheet, dateRowNum, maxCol);
+  if (dateColumns.length < 10) {
     throw new Error('Could not extract the daily date columns from the spreadsheet.');
   }
+
+  const firstDateCol = dateColumns[0].col;
+  const lastDateCol = dateColumns[dateColumns.length - 1].col;
+  const dates: string[] = dateColumns.map(dc => toDateKey(dc.date));
+  // Map from sequential index to actual spreadsheet column
+  const dateColMap: number[] = dateColumns.map(dc => dc.col);
 
   let forecastStartIndex: number | null = null;
   for (let r = Math.max(1, dateRowNum - 3); r <= dateRowNum + 1; r++) {
     const row = worksheet.getRow(r);
-    for (let c = firstDateCol; c < firstDateCol + dates.length; c++) {
+    for (let c = firstDateCol; c <= lastDateCol; c++) {
       const text = getCellText(row.getCell(c)).toUpperCase();
       if (text.includes('FORECAST')) {
-        forecastStartIndex = c - firstDateCol;
-        break;
+        // Find which dateColMap index this column corresponds to
+        const idx = dateColMap.indexOf(c);
+        if (idx >= 0) { forecastStartIndex = idx; break; }
+        // If exact col not in map, find first date col >= c
+        const nearIdx = dateColMap.findIndex(col => col >= c);
+        if (nearIdx >= 0) { forecastStartIndex = nearIdx; break; }
       }
     }
     if (forecastStartIndex !== null) break;
@@ -326,7 +305,7 @@ export async function parseCashFlowExcel(file: File): Promise<{
     if (!labelText) continue;
     if (isActualsForecastRow(row, firstDateCol, lastDateCol)) continue;
     if (isWeekNumberRow(row, firstDateCol, lastDateCol, labelText)) continue;
-    if (/YTD\s*TOTAL/i.test(labelText)) break;
+    if (/YTD\s*TOTAL/i.test(labelText)) continue; // skip YTD rows, don't break
 
     if (/BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH.*ON.*HAND|^BEGINNING/i.test(labelText)) {
       currentSection = 'balance_begin';
@@ -346,8 +325,8 @@ export async function parseCashFlowExcel(file: File): Promise<{
 
     const values: number[] = [];
     let hasAnyNumericValues = false;
-    for (let c = firstDateCol; c < firstDateCol + dates.length; c++) {
-      const numericValue = getCellNumberOrNull(row.getCell(c));
+    for (let i = 0; i < dateColMap.length; i++) {
+      const numericValue = getCellNumberOrNull(row.getCell(dateColMap[i]));
       if (numericValue !== null) hasAnyNumericValues = true;
       values.push(numericValue ?? 0);
     }
