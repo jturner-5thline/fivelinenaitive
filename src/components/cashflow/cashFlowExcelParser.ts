@@ -325,8 +325,8 @@ export async function parseCashFlowExcel(file: File): Promise<{
 
     const values: number[] = [];
     let hasAnyNumericValues = false;
-    for (let c = firstDateCol; c < firstDateCol + dates.length; c++) {
-      const numericValue = getCellNumberOrNull(row.getCell(c));
+    for (let i = 0; i < dateColMap.length; i++) {
+      const numericValue = getCellNumberOrNull(row.getCell(dateColMap[i]));
       if (numericValue !== null) hasAnyNumericValues = true;
       values.push(numericValue ?? 0);
     }
