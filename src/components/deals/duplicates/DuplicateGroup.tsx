@@ -74,9 +74,10 @@ export function DuplicateGroup({ cluster, onMerge }: DuplicateGroupProps) {
   );
 }
 
-function DealComparisonCard({ deal, onNavigate }: { deal: Deal; onNavigate: () => void }) {
+function DealComparisonCard({ deal, pipelineMap, onNavigate }: { deal: Deal; pipelineMap: Map<string, string>; onNavigate: () => void }) {
   const stageLabel = STAGE_CONFIG[deal.stage]?.label || deal.stage;
   const statusConfig = STATUS_CONFIG[deal.status];
+  const pipelineName = deal.pipelineId ? pipelineMap.get(deal.pipelineId) || '—' : '—';
 
   return (
     <div className="rounded-lg border border-border bg-background/50 p-3 space-y-2">
