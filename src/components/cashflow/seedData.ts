@@ -118,11 +118,13 @@ function generateDailyData(): DailyData {
       row_17: { label: 'Chase 2681-5LCA', entity: '5LCA', values: chase2681Begin },
       row_19: { label: 'Chase 0661-5LFS', entity: '5LFS', values: chase0661Begin },
       row_20: { label: 'Chase 3965-5LT', entity: '5LT', values: chase3965Begin },
+      row_20b: { label: 'M&T Bank Balance', entity: 'ALL', values: dates.map(() => 46000) },
       row_21: { label: 'ENDING BANK BALANCE | CASH ON HAND', entity: 'ALL', values: endBalance },
       row_22: { label: 'Chase 8630-5LC', entity: '5LC', values: chase8630End },
       row_23: { label: 'Chase 2681-5LCA', entity: '5LCA', values: chase2681End },
       row_24: { label: 'Chase 0661-5LFS', entity: '5LFS', values: chase0661End },
       row_25: { label: 'Chase 3965-5LT', entity: '5LT', values: chase3965End },
+      row_25b: { label: 'M&T Bank Balance', entity: 'ALL', values: dates.map(() => 46000) },
       // Receipts
       row_27: { label: 'Revenue Deposits', entity: '5LC', values: revenueDeposits5LC },
       row_28: { label: 'Revenue Deposits', entity: '5LCA', values: revenueDeposits5LCA },
