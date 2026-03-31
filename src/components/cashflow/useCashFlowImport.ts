@@ -20,7 +20,6 @@ export function useCashFlowImport(companyId: string | undefined) {
     isLoading: true,
   });
 
-  // Load existing import from DB on mount
   useEffect(() => {
     if (!companyId) {
       setState(prev => ({ ...prev, isLoading: false }));
@@ -66,15 +65,16 @@ export function useCashFlowImport(companyId: string | undefined) {
       return;
     }
 
+    const loadingToast = toast.loading('Importing cash flow data…');
     setState(prev => ({ ...prev, isLoading: true }));
 
     try {
-      const { dailyData, rowStructure } = await parseCashFlowExcel(file);
+      const { dailyData, rowStructure, diagnostics } = await parseCashFlowExcel(file);
+      console.info('Cash flow import diagnostics', diagnostics);
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Upsert into cash_flow_imports
       const { error } = await supabase
         .from('cash_flow_imports')
         .upsert({
@@ -86,7 +86,10 @@ export function useCashFlowImport(companyId: string | undefined) {
           updated_at: new Date().toISOString(),
         }, { onConflict: 'company_id' });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Cash flow import upsert failed', { companyId, error });
+        throw error;
+      }
 
       setState({
         dailyData,
@@ -96,11 +99,13 @@ export function useCashFlowImport(companyId: string | undefined) {
       });
 
       toast.success('Cash flow data imported', {
-        description: `${dailyData.dates.length} days, ${Object.keys(dailyData.rows).length} rows from "${file.name}"`,
+        id: loadingToast,
+        description: `${diagnostics.dateColumnCount} days (${diagnostics.firstDate} → ${diagnostics.lastDate}), ${diagnostics.dataRowCount} rows, ${diagnostics.importedValueCount.toLocaleString()} values`,
       });
     } catch (err) {
       console.error('Import failed:', err);
       toast.error('Import failed', {
+        id: loadingToast,
         description: err instanceof Error ? err.message : 'Unknown error',
       });
       setState(prev => ({ ...prev, isLoading: false }));

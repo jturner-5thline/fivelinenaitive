@@ -59,10 +59,6 @@ function getCellNumberOrNull(cell: ExcelJS.Cell): number | null {
   return null;
 }
 
-function getCellNumber(cell: ExcelJS.Cell): number {
-  return getCellNumberOrNull(cell) ?? 0;
-}
-
 function excelSerialToDate(serialNumber: number): Date {
   return new Date((serialNumber - 25569) * MS_PER_DAY);
 }
@@ -115,6 +111,18 @@ function dayDiff(previous: Date, current: Date): number {
   return Math.round((current.getTime() - previous.getTime()) / MS_PER_DAY);
 }
 
+function getWorksheetMaxCol(worksheet: ExcelJS.Worksheet): number {
+  let maxCol = Math.max(worksheet.actualColumnCount || 0, worksheet.columnCount || 0);
+  const rowsToScan = Math.min(worksheet.rowCount || 60, 60);
+
+  for (let r = 1; r <= rowsToScan; r++) {
+    const row = worksheet.getRow(r);
+    maxCol = Math.max(maxCol, row.actualCellCount || 0, row.cellCount || 0);
+  }
+
+  return Math.min(Math.max(maxCol, 1), 1000);
+}
+
 function getCombinedRowLabel(row: ExcelJS.Row, firstDateCol: number): string {
   const parts: string[] = [];
 
@@ -140,8 +148,8 @@ function isWeekNumberRow(row: ExcelJS.Row, firstDateCol: number, lastDateCol: nu
   for (let c = firstDateCol; c <= Math.min(lastDateCol, firstDateCol + 20); c++) {
     const value = getCellNumberOrNull(row.getCell(c));
     if (value === null) continue;
-    checkedCount++;
-    if (Number.isInteger(value) && value >= 1 && value <= 53) integerCount++;
+    checkedCount += 1;
+    if (Number.isInteger(value) && value >= 1 && value <= 53) integerCount += 1;
   }
 
   return checkedCount >= 5 && integerCount === checkedCount;
@@ -151,7 +159,7 @@ function isActualsForecastRow(row: ExcelJS.Row, firstDateCol: number, lastDateCo
   let labelCount = 0;
   for (let c = firstDateCol; c <= Math.min(lastDateCol, firstDateCol + 40); c++) {
     const text = getCellText(row.getCell(c)).toUpperCase();
-    if (text.includes('ACTUAL') || text.includes('FORECAST')) labelCount++;
+    if (text.includes('ACTUAL') || text.includes('FORECAST')) labelCount += 1;
   }
   return labelCount >= 3;
 }
@@ -215,6 +223,18 @@ export async function parseCashFlowExcel(file: File): Promise<{
   dailyData: DailyData;
   rowStructure: DailyRowStructure;
   forecastStartIndex: number | null;
+  diagnostics: {
+    worksheetName: string;
+    dateColumnCount: number;
+    dataRowCount: number;
+    importedValueCount: number;
+    firstDate: string;
+    lastDate: string;
+    firstDataRow: number;
+    lastDataRow: number;
+    firstDateCol: number;
+    lastDateCol: number;
+  };
 }> {
   const buffer = await file.arrayBuffer();
   const workbook = new ExcelJS.Workbook();
@@ -228,7 +248,7 @@ export async function parseCashFlowExcel(file: File): Promise<{
   if (!worksheet) throw new Error('No worksheet found in the Excel file');
 
   const maxScanRows = Math.min(30, worksheet.rowCount || 30);
-  const maxCol = Math.min(worksheet.columnCount || 600, 600);
+  const maxCol = getWorksheetMaxCol(worksheet);
   const dateRange = findDateHeaderRange(worksheet, maxScanRows, maxCol);
 
   if (dateRange.rowNum === -1 || dateRange.length < 10) {
@@ -256,16 +276,14 @@ export async function parseCashFlowExcel(file: File): Promise<{
   let forecastStartIndex: number | null = null;
   for (let r = Math.max(1, dateRowNum - 3); r <= dateRowNum + 1; r++) {
     const row = worksheet.getRow(r);
-    let hasForecast = false;
     for (let c = firstDateCol; c < firstDateCol + dates.length; c++) {
       const text = getCellText(row.getCell(c)).toUpperCase();
       if (text.includes('FORECAST')) {
         forecastStartIndex = c - firstDateCol;
-        hasForecast = true;
         break;
       }
     }
-    if (hasForecast) break;
+    if (forecastStartIndex !== null) break;
   }
 
   let firstDataRow = -1;
@@ -306,8 +324,8 @@ export async function parseCashFlowExcel(file: File): Promise<{
     const labelText = getCombinedRowLabel(row, firstDateCol);
 
     if (!labelText) continue;
-    if (isActualsForecastRow(row, firstDateCol, lastDataRow)) continue;
-    if (isWeekNumberRow(row, firstDateCol, lastDataRow, labelText)) continue;
+    if (isActualsForecastRow(row, firstDateCol, lastDateCol)) continue;
+    if (isWeekNumberRow(row, firstDateCol, lastDateCol, labelText)) continue;
     if (/YTD\s*TOTAL/i.test(labelText)) break;
 
     if (/BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH.*ON.*HAND|^BEGINNING/i.test(labelText)) {
@@ -369,6 +387,21 @@ export async function parseCashFlowExcel(file: File): Promise<{
     );
   }
 
+  const diagnostics = {
+    worksheetName: worksheet.name,
+    dateColumnCount: dates.length,
+    dataRowCount: structureRows.length,
+    importedValueCount: dates.length * structureRows.length,
+    firstDate: dates[0],
+    lastDate: dates[dates.length - 1],
+    firstDataRow,
+    lastDataRow,
+    firstDateCol,
+    lastDateCol,
+  };
+
+  console.info('Cash flow parser result', diagnostics);
+
   const jan1Index = dates.indexOf('2025-01-01');
   if (jan1Index >= 0) {
     const beginCashRow = Object.values(rows).find((row) => /BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH.*ON.*HAND/i.test(row.label));
@@ -381,5 +414,6 @@ export async function parseCashFlowExcel(file: File): Promise<{
     dailyData: { dates, rows },
     rowStructure: { rows: structureRows },
     forecastStartIndex,
+    diagnostics,
   };
 }
