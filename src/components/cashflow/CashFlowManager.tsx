@@ -5,8 +5,9 @@ import type {
   ExportFlag, RoleMode, ActiveTab, ThemeMode,
 } from './types';
 import {
-  SEED_DAILY_DATA, SEED_WEEKLY_DATA, SEED_SIDEBAR_DATA, SEED_ROW_STRUCTURE,
+  SEED_DAILY_DATA, SEED_SIDEBAR_DATA, SEED_ROW_STRUCTURE,
 } from './seedData';
+import { aggregateDailyToWeekly } from './dailyToWeekly';
 import { CashFlowHeader } from './CashFlowHeader';
 import { DailySourceTab } from './DailySourceTab';
 import { WeeklyReportTab } from './WeeklyReportTab';
