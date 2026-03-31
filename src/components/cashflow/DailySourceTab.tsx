@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, memo } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Upload } from 'lucide-react';
 import type { DailyData, DailyRowStructure, RecurringTag } from './types';
 import { fmt } from './formatters';
 import { useGridWheelPassthrough } from './useGridWheelPassthrough';
@@ -14,6 +14,8 @@ interface DailySourceTabProps {
   onRowAdd: (section: string, label: string, entity: string) => void;
   onRowRename: (rowKey: string, newLabel: string) => void;
   onRecurringTag: (rowKey: string, frequency: string, date: string) => void;
+  onImportExcel?: () => void;
+  isImportLoading?: boolean;
 }
 
 interface EditingCell {
@@ -23,7 +25,7 @@ interface EditingCell {
 
 export const DailySourceTab = memo(function DailySourceTab({
   data, rowStructure, recurringTags, isAdmin,
-  onCellEdit, onRowRemove, onRowAdd, onRowRename,
+  onCellEdit, onRowRemove, onRowAdd, onRowRename, onImportExcel, isImportLoading,
 }: DailySourceTabProps) {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
@@ -119,6 +121,20 @@ export const DailySourceTab = memo(function DailySourceTab({
 
   return (
     <div className="cf-main">
+      {/* Import controls */}
+      {isAdmin && onImportExcel && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
+          <button
+            className="cf-btn cf-btn-primary"
+            onClick={onImportExcel}
+            disabled={isImportLoading}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+          >
+            <Upload size={14} />
+            {isImportLoading ? 'Importing…' : 'Import Excel'}
+          </button>
+        </div>
+      )}
       <div ref={gridWrapRef} className="cf-table-card">
       <div className="cf-grid-wrap">
         <table className="cf-grid">

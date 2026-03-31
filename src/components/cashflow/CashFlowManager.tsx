@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type {
   DailyData, WeeklyData, SidebarData, RecurringTag,
   PlanSnapshot, UndoSnapshot, ActivityLogEntry, ExportArchiveEntry,
@@ -12,6 +12,8 @@ import { DailySourceTab } from './DailySourceTab';
 import { WeeklyReportTab } from './WeeklyReportTab';
 import { ExportModal } from './ExportModal';
 import { ActivityLogDialog } from './ActivityLogDialog';
+import { useCashFlowImport } from './useCashFlowImport';
+import { useCompany } from '@/hooks/useCompany';
 import './cashflow.css';
 
 function deepClone<T>(obj: T): T {
@@ -19,10 +21,21 @@ function deepClone<T>(obj: T): T {
 }
 
 export function CashFlowManager() {
-  // Master data
+  const { company } = useCompany();
+  const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Master data — use imported data if available, otherwise fall back to seed
   const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(SEED_DAILY_DATA));
   const [weeklyData, setWeeklyData] = useState<WeeklyData>(() => deepClone(SEED_WEEKLY_DATA));
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => deepClone(SEED_SIDEBAR_DATA));
+
+  // When imported data loads, replace dailyData
+  useEffect(() => {
+    if (isImported && importedDailyData) {
+      setDailyData(deepClone(importedDailyData));
+    }
+  }, [isImported, importedDailyData]);
 
   // Sandbox data (viewer mode)
   const [sandboxDaily, setSandboxDaily] = useState<DailyData | null>(null);
@@ -300,11 +313,26 @@ export function CashFlowManager() {
         </div>
       )}
 
+      {/* Hidden file input for Excel import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            importFile(file);
+            e.target.value = ''; // reset so same file can be re-imported
+          }
+        }}
+      />
+
       {/* Main content */}
       {activeTab === 'daily' ? (
         <DailySourceTab
           data={getDaily()}
-          rowStructure={SEED_ROW_STRUCTURE}
+          rowStructure={isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE}
           recurringTags={recurringTags}
           isAdmin={role === 'admin'}
           onCellEdit={handleCellEdit}
@@ -312,6 +340,8 @@ export function CashFlowManager() {
           onRowAdd={handleRowAdd}
           onRowRename={handleRowRename}
           onRecurringTag={handleRecurringTag}
+          onImportExcel={() => fileInputRef.current?.click()}
+          isImportLoading={isImportLoading}
         />
       ) : (
         <WeeklyReportTab
