@@ -202,12 +202,12 @@
   overflow-x: auto;
   overscroll-behavior: contain;
 }
+
 .cf-table-card {
   background: var(--color-surface-2);
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-lg);
   padding: var(--space-3);
-  overflow: hidden;
 }
 .cf-table-card .cf-grid-wrap {
   margin: calc(-1 * var(--space-3));
@@ -334,9 +334,8 @@ tr:hover .cf-row-remove { opacity: 1; }
 /* Weekly layout */
 .cf-weekly-layout {
   display: flex;
-  overflow: hidden;
 }
-.cf-weekly-main { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; overflow: hidden; padding: var(--space-3); gap: var(--space-3); }
+.cf-weekly-main { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; padding: var(--space-3); gap: var(--space-3); }
 .cf-weekly-sidebar {
   flex: 0 0 300px;
   width: 300px; max-width: 300px;
