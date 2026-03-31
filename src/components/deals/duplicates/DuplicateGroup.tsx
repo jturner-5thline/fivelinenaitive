@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DuplicateCluster } from '@/hooks/useDealDuplicates';
 import { Deal, STATUS_CONFIG, STAGE_CONFIG } from '@/types/deal';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { ChevronDown, ChevronRight, Merge, ExternalLink } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { usePipelines } from '@/hooks/usePipelines';
 
 interface DuplicateGroupProps {
   cluster: DuplicateCluster;
@@ -16,6 +17,13 @@ interface DuplicateGroupProps {
 export function DuplicateGroup({ cluster, onMerge }: DuplicateGroupProps) {
   const [isOpen, setIsOpen] = useState(true);
   const navigate = useNavigate();
+  const { pipelines } = usePipelines();
+
+  const pipelineMap = useMemo(() => {
+    const map = new Map<string, string>();
+    pipelines.forEach(p => map.set(p.id, p.name));
+    return map;
+  }, [pipelines]);
 
   const similarityPercent = Math.round(cluster.similarity * 100);
 
@@ -56,7 +64,7 @@ export function DuplicateGroup({ cluster, onMerge }: DuplicateGroupProps) {
           <div className="border-t border-border px-4 py-3">
             <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(cluster.deals.length, 3)}, 1fr)` }}>
               {cluster.deals.map(deal => (
-                <DealComparisonCard key={deal.id} deal={deal} onNavigate={() => navigate(`/deals/${deal.id}`)} />
+                <DealComparisonCard key={deal.id} deal={deal} pipelineMap={pipelineMap} onNavigate={() => navigate(`/deals/${deal.id}`)} />
               ))}
             </div>
           </div>
@@ -66,9 +74,10 @@ export function DuplicateGroup({ cluster, onMerge }: DuplicateGroupProps) {
   );
 }
 
-function DealComparisonCard({ deal, onNavigate }: { deal: Deal; onNavigate: () => void }) {
+function DealComparisonCard({ deal, pipelineMap, onNavigate }: { deal: Deal; pipelineMap: Map<string, string>; onNavigate: () => void }) {
   const stageLabel = STAGE_CONFIG[deal.stage]?.label || deal.stage;
   const statusConfig = STATUS_CONFIG[deal.status];
+  const pipelineName = deal.pipelineId ? pipelineMap.get(deal.pipelineId) || '—' : '—';
 
   return (
     <div className="rounded-lg border border-border bg-background/50 p-3 space-y-2">
@@ -80,6 +89,7 @@ function DealComparisonCard({ deal, onNavigate }: { deal: Deal; onNavigate: () =
       </div>
 
       <div className="space-y-1.5 text-xs text-muted-foreground">
+        <Row label="Pipeline" value={pipelineName} />
         <Row label="Stage" value={stageLabel} />
         <Row label="Status" value={statusConfig?.label || deal.status} />
         <Row label="Value" value={deal.value ? `$${deal.value.toLocaleString()}` : '—'} />
