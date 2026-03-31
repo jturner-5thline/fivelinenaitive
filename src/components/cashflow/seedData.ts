@@ -96,7 +96,8 @@ function generateDailyData(): DailyData {
   );
 
   // Beginning balance total — cascaded: day 0 uses seed, subsequent days carry forward
-  const seedBeginBalance = chase8630Begin[0] + chase2681Begin[0] + chase0661Begin[0] + chase3965Begin[0];
+  const mtBankBalance = 46000;
+  const seedBeginBalance = chase8630Begin[0] + chase2681Begin[0] + chase0661Begin[0] + chase3965Begin[0] + mtBankBalance;
   const beginBalance: number[] = new Array(dates.length);
   const endBalance: number[] = new Array(dates.length);
   for (let i = 0; i < dates.length; i++) {
