@@ -198,23 +198,18 @@ export function FlexEngagementTrendsChart({ dealId }: FlexEngagementTrendsChartP
           ))}
         </div>
       </div>
-      <CardContent>
+      <CardContent className="flex-1 px-4 pb-4 pt-0">
         {isLoading ? (
-          <div className="h-[280px] flex items-center justify-center">
+          <div className="h-[200px] flex items-center justify-center">
             <Skeleton className="h-full w-full" />
           </div>
         ) : !hasActivity ? (
-          <div className="h-[280px] flex flex-col items-center justify-center">
-            <TrendingUp className="h-8 w-8 text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground text-center">
-              No FLEx engagement recorded in the last {days} days.
-            </p>
-            <p className="text-xs text-muted-foreground text-center mt-1">
-              Engagement will appear here as lenders interact with this deal on FLEx.
-            </p>
+          <div className="h-[200px] flex flex-col items-center justify-center">
+            <TrendingUp className="h-6 w-6 text-muted-foreground/40 mb-2" />
+            <p className="text-xs text-muted-foreground">No engagement in the last {days} days</p>
           </div>
         ) : (
-          <div className="h-[280px]">
+          <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               {renderChart()}
             </ResponsiveContainer>
