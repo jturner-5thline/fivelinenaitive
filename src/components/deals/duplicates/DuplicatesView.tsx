@@ -6,6 +6,7 @@ import { SearchX } from 'lucide-react';
 interface DuplicatesViewProps {
   clusters: DuplicateCluster[];
   onMerge: (cluster: DuplicateCluster) => void;
+  onDealDeleted?: () => void;
 }
 
 export function DuplicatesView({ clusters, onMerge }: DuplicatesViewProps) {
