@@ -184,15 +184,16 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                     <td className="cf-label-col">{rowDef.key}</td>
                     {visibleWeeks.map(([weekKey, entry]) => {
                       const val = (entry[rowDef.key] as number) || 0;
+                      const displayVal = rowDef.section === 'disbursements' && !isTotal && val > 0 ? -val : val;
                       const planEntry = activePlan?.weeklyData[weekKey];
                       const planVal = planEntry ? ((planEntry[rowDef.key] as number) || 0) : null;
 
                       return (
                         <td
                           key={weekKey}
-                          className={val > 0 ? 'cf-val-pos' : val < 0 ? 'cf-val-neg' : ''}
+                          className={displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}
                         >
-                          <div>{fmtAbbrev(rowDef.section === 'disbursements' && !isTotal && val > 0 ? -val : val)}</div>
+                          <div>{fmtAbbrev(displayVal)}</div>
                           {planVal !== null && renderVariance(val, planVal)}
                         </td>
                       );
