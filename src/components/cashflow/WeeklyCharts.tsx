@@ -40,7 +40,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
     const textColor = isDark ? '#8892a8' : '#5a6070';
 
     // Chart 1: Cash Balance & Liquidity
-    chart1Instance.current = new Chart(chart1Ref.current, {
+    chart1Instance.current = new Chart(canvas1, {
       type: 'line',
       data: {
         labels,
