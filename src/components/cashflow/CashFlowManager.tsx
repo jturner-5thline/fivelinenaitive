@@ -128,9 +128,9 @@ export function CashFlowManager() {
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [recurringTags, setRecurringTags] = useState<RecurringTag[]>([]);
 
-  // Date filter state
-  const [filterYear, setFilterYear] = useState<string>('all');
-  const [filterQuarter, setFilterQuarter] = useState<string>('all');
+  // Date filter state (multi-select: empty array = show all)
+  const [filterYears, setFilterYears] = useState<string[]>([]);
+  const [filterQuarters, setFilterQuarters] = useState<string[]>([]);
 
   // Undo
   const [undoStack, setUndoStack] = useState<UndoSnapshot[]>([]);
@@ -152,13 +152,13 @@ export function CashFlowManager() {
   const getWeekly = useCallback(() => role === 'viewer' && sandboxWeekly ? sandboxWeekly : weeklyData, [role, sandboxWeekly, weeklyData]);
   const getSidebar = useCallback(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
 
-  // Available years derived from daily data (use raw dailyData directly for stable dependency)
+  // Available years derived from daily data
   const rawDaily = role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData;
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
 
   // Filtered data
-  const filteredDaily = useMemo(() => filterDailyByPeriod(getDaily(), filterYear, filterQuarter), [getDaily, filterYear, filterQuarter]);
-  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(getWeekly(), filterYear, filterQuarter), [getWeekly, filterYear, filterQuarter]);
+  const filteredDaily = useMemo(() => filterDailyByPeriod(getDaily(), filterYears, filterQuarters), [getDaily, filterYears, filterQuarters]);
+  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(getWeekly(), filterYears, filterQuarters), [getWeekly, filterYears, filterQuarters]);
 
   const setActiveData = useCallback((setter: 'daily' | 'weekly' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
