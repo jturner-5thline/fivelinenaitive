@@ -7,9 +7,10 @@ interface DuplicatesViewProps {
   clusters: DuplicateCluster[];
   onMerge: (cluster: DuplicateCluster) => void;
   onDealDeleted?: () => void;
+  onNotDuplicate?: (cluster: DuplicateCluster) => Promise<void>;
 }
 
-export function DuplicatesView({ clusters, onMerge, onDealDeleted }: DuplicatesViewProps) {
+export function DuplicatesView({ clusters, onMerge, onDealDeleted, onNotDuplicate }: DuplicatesViewProps) {
   if (clusters.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -30,7 +31,13 @@ export function DuplicatesView({ clusters, onMerge, onDealDeleted }: DuplicatesV
         Found {clusters.length} group{clusters.length !== 1 ? 's' : ''} of potential duplicates
       </p>
       {clusters.map(cluster => (
-        <DuplicateGroup key={cluster.id} cluster={cluster} onMerge={() => onMerge(cluster)} onDealDeleted={onDealDeleted} />
+        <DuplicateGroup
+          key={cluster.id}
+          cluster={cluster}
+          onMerge={() => onMerge(cluster)}
+          onDealDeleted={onDealDeleted}
+          onNotDuplicate={onNotDuplicate}
+        />
       ))}
     </div>
   );
