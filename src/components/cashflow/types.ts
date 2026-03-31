@@ -47,7 +47,7 @@ export interface WeeklySummary {
 }
 
 export interface DailyRowMeta {
-  row_num: number;
+  row_num: number | string;
   label: string;
   entity: string;
   section: 'balance_begin' | 'balance_end' | 'receipts' | 'disbursements' | 'transfers' | 'summary';

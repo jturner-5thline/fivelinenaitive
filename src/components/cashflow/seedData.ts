@@ -96,7 +96,8 @@ function generateDailyData(): DailyData {
   );
 
   // Beginning balance total — cascaded: day 0 uses seed, subsequent days carry forward
-  const seedBeginBalance = chase8630Begin[0] + chase2681Begin[0] + chase0661Begin[0] + chase3965Begin[0];
+  const mtBankBalance = 46000;
+  const seedBeginBalance = chase8630Begin[0] + chase2681Begin[0] + chase0661Begin[0] + chase3965Begin[0] + mtBankBalance;
   const beginBalance: number[] = new Array(dates.length);
   const endBalance: number[] = new Array(dates.length);
   for (let i = 0; i < dates.length; i++) {
@@ -118,11 +119,13 @@ function generateDailyData(): DailyData {
       row_17: { label: 'Chase 2681-5LCA', entity: '5LCA', values: chase2681Begin },
       row_19: { label: 'Chase 0661-5LFS', entity: '5LFS', values: chase0661Begin },
       row_20: { label: 'Chase 3965-5LT', entity: '5LT', values: chase3965Begin },
+      row_20b: { label: 'M&T Bank Balance', entity: 'ALL', values: dates.map(() => 46000) },
       row_21: { label: 'ENDING BANK BALANCE | CASH ON HAND', entity: 'ALL', values: endBalance },
       row_22: { label: 'Chase 8630-5LC', entity: '5LC', values: chase8630End },
       row_23: { label: 'Chase 2681-5LCA', entity: '5LCA', values: chase2681End },
       row_24: { label: 'Chase 0661-5LFS', entity: '5LFS', values: chase0661End },
       row_25: { label: 'Chase 3965-5LT', entity: '5LT', values: chase3965End },
+      row_25b: { label: 'M&T Bank Balance', entity: 'ALL', values: dates.map(() => 46000) },
       // Receipts
       row_27: { label: 'Revenue Deposits', entity: '5LC', values: revenueDeposits5LC },
       row_28: { label: 'Revenue Deposits', entity: '5LCA', values: revenueDeposits5LCA },
@@ -283,11 +286,14 @@ function generateDailyRowStructure(): DailyRowStructure {
       { row_num: 17, label: 'Chase 2681-5LCA', entity: '5LCA', section: 'balance_begin', is_total: false, is_protected: false, indent: true },
       { row_num: 19, label: 'Chase 0661-5LFS', entity: '5LFS', section: 'balance_begin', is_total: false, is_protected: false, indent: true },
       { row_num: 20, label: 'Chase 3965-5LT', entity: '5LT', section: 'balance_begin', is_total: false, is_protected: false, indent: true },
+      // M&T Bank Balance uses string key "20b" — rowStructure uses row_num for ordering only; the DailySourceTab maps via `row_${row_num}`
+      { row_num: '20b', label: 'M&T Bank Balance', entity: 'ALL', section: 'balance_begin', is_total: false, is_protected: false, indent: true },
       { row_num: 21, label: 'ENDING BANK BALANCE | CASH ON HAND', entity: 'ALL', section: 'balance_end', is_total: true, is_protected: true, indent: false },
       { row_num: 22, label: 'Chase 8630-5LC', entity: '5LC', section: 'balance_end', is_total: false, is_protected: false, indent: true },
       { row_num: 23, label: 'Chase 2681-5LCA', entity: '5LCA', section: 'balance_end', is_total: false, is_protected: false, indent: true },
       { row_num: 24, label: 'Chase 0661-5LFS', entity: '5LFS', section: 'balance_end', is_total: false, is_protected: false, indent: true },
       { row_num: 25, label: 'Chase 3965-5LT', entity: '5LT', section: 'balance_end', is_total: false, is_protected: false, indent: true },
+      { row_num: '25b', label: 'M&T Bank Balance', entity: 'ALL', section: 'balance_end', is_total: false, is_protected: false, indent: true },
       { row_num: 27, label: 'Revenue Deposits', entity: '5LC', section: 'receipts', is_total: false, is_protected: false, indent: true },
       { row_num: 28, label: 'Revenue Deposits', entity: '5LCA', section: 'receipts', is_total: false, is_protected: false, indent: true },
       { row_num: 29, label: 'Customer Payments', entity: '5LFS', section: 'receipts', is_total: false, is_protected: false, indent: true },

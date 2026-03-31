@@ -139,7 +139,23 @@ export function CashFlowManager() {
 
   useEffect(() => {
     if (isImported && importedDailyData) {
-      setDailyData(deepClone(importedDailyData));
+      const data = deepClone(importedDailyData);
+      const dateCount = data.dates.length;
+      // Inject M&T Bank Balance rows if not present in imported data
+      const hasMtBegin = Object.values(data.rows).some(r => /M&T\s*Bank\s*Balance/i.test(r.label) && Object.entries(data.rows).some(([k]) => {
+        const struct = importedRowStructure?.rows.find(s => `row_${s.row_num}` === k);
+        return struct?.section === 'balance_begin';
+      }));
+      if (!hasMtBegin) {
+        data.rows['row_mt_begin'] = { label: 'M&T Bank Balance', entity: 'ALL', values: new Array(dateCount).fill(46000) };
+      }
+      const hasMtEnd = Object.values(data.rows).some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
+      if (!hasMtEnd || !hasMtBegin) {
+        if (!data.rows['row_mt_end']) {
+          data.rows['row_mt_end'] = { label: 'M&T Bank Balance', entity: 'ALL', values: new Array(dateCount).fill(46000) };
+        }
+      }
+      setDailyData(data);
     }
   }, [isImported, importedDailyData]);
 
@@ -424,12 +440,33 @@ export function CashFlowManager() {
     return () => window.removeEventListener('keydown', handler);
   }, [performUndo]);
 
+  const rowStructure = useMemo(() => {
+    const base = isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE;
+    const hasMtInStruct = base.rows.some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
+    if (hasMtInStruct) return base;
+
+    const rows = [...base.rows];
+    const lastBeginIdx = rows.reduce((acc, r, i) => r.section === 'balance_begin' && !r.is_total ? i : acc, -1);
+    if (lastBeginIdx >= 0) {
+      rows.splice(lastBeginIdx + 1, 0, {
+        row_num: 'mt_begin', label: 'M&T Bank Balance', entity: 'ALL',
+        section: 'balance_begin', is_total: false, is_protected: false, indent: true,
+      });
+    }
+    const lastEndIdx = rows.reduce((acc, r, i) => r.section === 'balance_end' && !r.is_total ? i : acc, -1);
+    if (lastEndIdx >= 0) {
+      rows.splice(lastEndIdx + 1, 0, {
+        row_num: 'mt_end', label: 'M&T Bank Balance', entity: 'ALL',
+        section: 'balance_end', is_total: false, is_protected: false, indent: true,
+      });
+    }
+    return { rows };
+  }, [isImported, importedRowStructure]);
+
   // Show skeleton while import data is loading
   if (isImportLoading && !isImported) {
     return <CashFlowSkeleton />;
   }
-
-  const rowStructure = isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE;
 
   return (
     <div className="cf-root" data-theme={theme}>
