@@ -313,11 +313,26 @@ export function CashFlowManager() {
         </div>
       )}
 
+      {/* Hidden file input for Excel import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            importFile(file);
+            e.target.value = ''; // reset so same file can be re-imported
+          }
+        }}
+      />
+
       {/* Main content */}
       {activeTab === 'daily' ? (
         <DailySourceTab
           data={getDaily()}
-          rowStructure={SEED_ROW_STRUCTURE}
+          rowStructure={isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE}
           recurringTags={recurringTags}
           isAdmin={role === 'admin'}
           onCellEdit={handleCellEdit}
@@ -325,6 +340,8 @@ export function CashFlowManager() {
           onRowAdd={handleRowAdd}
           onRowRename={handleRowRename}
           onRecurringTag={handleRecurringTag}
+          onImportExcel={() => fileInputRef.current?.click()}
+          isImportLoading={isImportLoading}
         />
       ) : (
         <WeeklyReportTab
