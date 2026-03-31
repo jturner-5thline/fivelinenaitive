@@ -229,11 +229,13 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
     }
   };
 
-  if (!cluster) return null;
+  if (!cluster || deals.length < 2) {
+    return <Dialog open={false} onOpenChange={onOpenChange}><DialogContent className="hidden" /></Dialog>;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[85vw] w-[85vw] max-h-[80vh] h-[80vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-[85vw] w-[85vw] max-h-[80vh] h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
           <DialogTitle className="text-lg">Merge {cluster.primaryName} Deals</DialogTitle>
           <DialogDescription>
