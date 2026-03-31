@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, memo } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { DailyData, DailyRowStructure, RecurringTag } from './types';
 import { fmt } from './formatters';
+import { useGridWheelPassthrough } from './useGridWheelPassthrough';
 
 interface DailySourceTabProps {
   data: DailyData;
@@ -30,6 +32,12 @@ export const DailySourceTab = memo(function DailySourceTab({
   const [newRowName, setNewRowName] = useState('');
   const [newRowEntity, setNewRowEntity] = useState('5LC');
   const inputRef = useRef<HTMLInputElement>(null);
+  const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  const toggleSection = useCallback((section: string) => {
+    setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  }, []);
 
   const handleCellClick = useCallback((rowKey: string, colIdx: number, currentVal: number) => {
     if (!isAdmin) return;
@@ -112,7 +120,7 @@ export const DailySourceTab = memo(function DailySourceTab({
   return (
     <div className="cf-main">
       <div className="cf-table-card">
-      <div className="cf-grid-wrap">
+      <div ref={gridWrapRef} className="cf-grid-wrap">
         <table className="cf-grid">
           <thead>
             <tr>
@@ -158,6 +166,8 @@ export const DailySourceTab = memo(function DailySourceTab({
                   addable={section.addable}
                   onAddRow={() => setAddRowSection(section.key)}
                   dateCount={visibleDates.length}
+                  collapsed={collapsedSections[section.cssClass]}
+                  onToggleCollapse={() => toggleSection(section.cssClass)}
                 />
               );
             })}
@@ -216,6 +226,8 @@ interface SectionBlockProps {
   addable: boolean;
   onAddRow: () => void;
   dateCount: number;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 function SectionBlock({
@@ -223,15 +235,23 @@ function SectionBlock({
   editingCell, editingLabel, editValue, inputRef, isAdmin, getRecurring,
   onCellClick, onEditValueChange, onCommitCell, onCancelCell,
   onLabelDblClick, onCommitLabel, onCancelLabel, onRowRemove,
-  addable, onAddRow, dateCount,
+  addable, onAddRow, dateCount, collapsed, onToggleCollapse,
 }: SectionBlockProps) {
   if (!sectionLabel) return null;
+  const isCollapsible = cssClass === 'receipts' || cssClass === 'disbursements';
 
   return (
     <>
       {/* Section header */}
-      <tr className={`cf-section-header ${cssClass}`}>
-        <td className="cf-label-col" colSpan={dateCount + 1}>{sectionLabel}</td>
+      <tr
+        className={`cf-section-header ${cssClass}`}
+        style={isCollapsible ? { cursor: 'pointer' } : undefined}
+        onClick={isCollapsible ? onToggleCollapse : undefined}
+      >
+        <td className="cf-label-col" colSpan={dateCount + 1} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {isCollapsible && (collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
+          {sectionLabel}
+        </td>
       </tr>
       {/* Data rows */}
       {rowKeys.map(rowKey => {
@@ -242,6 +262,9 @@ function SectionBlock({
         const isProtected = meta?.is_protected ?? false;
         const indent = meta?.indent ?? false;
         const recurring = getRecurring(rowKey);
+
+        // Hide detail rows when collapsed (keep totals visible)
+        if (!isTotal && collapsed) return null;
 
         return (
           <tr key={rowKey} className={`${isTotal ? 'cf-total-row' : ''} ${indent ? 'cf-indent' : ''}`}>

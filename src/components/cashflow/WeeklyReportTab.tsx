@@ -1,8 +1,10 @@
 import { useState, memo, useCallback } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode } from './types';
 import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
 import { WeeklySidebar } from './WeeklySidebar';
+import { useGridWheelPassthrough } from './useGridWheelPassthrough';
 
 interface WeeklyReportTabProps {
   weeklyData: WeeklyData;
@@ -79,6 +81,12 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
 
   const [savePlanOpen, setSavePlanOpen] = useState(false);
   const [planName, setPlanName] = useState('');
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
+
+  const toggleSection = useCallback((section: string) => {
+    setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  }, []);
 
   const activePlan = activePlanId ? planSnapshots.find(p => p.id === activePlanId) : null;
 
@@ -151,7 +159,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         </div>
 
         {/* Weekly grid */}
-        <div className="cf-grid-wrap" style={{ borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}>
+        <div ref={gridWrapRef} className="cf-grid-wrap" style={{ borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}>
           <table className="cf-grid">
             <thead>
               <tr>
@@ -169,9 +177,17 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
             <tbody>
               {WEEKLY_ROW_ORDER.map((rowDef) => {
                 if ('isHeader' in rowDef && rowDef.isHeader) {
+                  const isCollapsible = rowDef.section === 'receipts' || rowDef.section === 'disbursements';
+                  const isCollapsed = collapsedSections[rowDef.section];
                   return (
-                    <tr key={rowDef.key} className={`cf-section-header ${getSectionClass(rowDef.section)}`}>
-                      <td className="cf-label-col" colSpan={visibleWeeks.length + 1}>
+                    <tr
+                      key={rowDef.key}
+                      className={`cf-section-header ${getSectionClass(rowDef.section)}`}
+                      style={isCollapsible ? { cursor: 'pointer' } : undefined}
+                      onClick={isCollapsible ? () => toggleSection(rowDef.section) : undefined}
+                    >
+                      <td className="cf-label-col" colSpan={visibleWeeks.length + 1} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {isCollapsible && (isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
                         {rowDef.label}
                       </td>
                     </tr>
@@ -179,6 +195,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 }
 
                 const isTotal = rowDef.isTotal;
+                // Hide detail rows when section is collapsed (but keep totals visible)
+                if (!isTotal && collapsedSections[rowDef.section]) {
+                  return null;
+                }
                 return (
                   <tr key={rowDef.key} className={isTotal ? 'cf-total-row' : 'cf-indent'}>
                     <td className="cf-label-col">{rowDef.key}</td>
