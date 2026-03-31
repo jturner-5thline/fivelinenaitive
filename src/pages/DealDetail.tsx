@@ -2630,9 +2630,6 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="communication" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
-                      Comms
-                    </TabsTrigger>
                     <TabsTrigger value="activity-log" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       <History className="h-3.5 w-3.5" />
                       Activity
