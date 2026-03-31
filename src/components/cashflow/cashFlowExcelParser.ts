@@ -305,7 +305,7 @@ export async function parseCashFlowExcel(file: File): Promise<{
     if (!labelText) continue;
     if (isActualsForecastRow(row, firstDateCol, lastDateCol)) continue;
     if (isWeekNumberRow(row, firstDateCol, lastDateCol, labelText)) continue;
-    if (/YTD\s*TOTAL/i.test(labelText)) break;
+    if (/YTD\s*TOTAL/i.test(labelText)) continue; // skip YTD rows, don't break
 
     if (/BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH.*ON.*HAND|^BEGINNING/i.test(labelText)) {
       currentSection = 'balance_begin';
