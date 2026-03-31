@@ -16,7 +16,9 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
   const chart2Instance = useRef<Chart | null>(null);
 
   useEffect(() => {
-    if (!chart1Ref.current || !chart2Ref.current) return;
+    const canvas1 = chart1Ref.current;
+    const canvas2 = chart2Ref.current;
+    if (!canvas1 || !canvas2) return;
 
     // Destroy existing
     chart1Instance.current?.destroy();
@@ -38,7 +40,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
     const textColor = isDark ? '#8892a8' : '#5a6070';
 
     // Chart 1: Cash Balance & Liquidity
-    chart1Instance.current = new Chart(chart1Ref.current, {
+    chart1Instance.current = new Chart(canvas1, {
       type: 'line',
       data: {
         labels,
@@ -82,6 +84,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        resizeDelay: 200,
         plugins: {
           legend: { position: 'bottom', labels: { font: { size: 10 }, color: textColor, boxWidth: 12 } },
           tooltip: {
@@ -103,7 +106,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
     });
 
     // Chart 2: Cash In vs Cash Out
-    chart2Instance.current = new Chart(chart2Ref.current, {
+    chart2Instance.current = new Chart(canvas2, {
       type: 'line',
       data: {
         labels,
@@ -131,6 +134,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        resizeDelay: 200,
         plugins: {
           legend: { position: 'bottom', labels: { font: { size: 10 }, color: textColor, boxWidth: 12 } },
           tooltip: {

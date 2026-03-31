@@ -72,10 +72,9 @@
   font-variant-numeric: tabular-nums lining-nums;
   background: var(--color-bg);
   color: var(--color-text);
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  height: 100%;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  contain: layout style;
 }
 
 /* Header */
@@ -196,12 +195,11 @@
 }
 
 /* Main content */
-.cf-main { overflow: hidden; display: flex; flex-direction: column; }
+.cf-main { display: flex; flex-direction: column; }
 
 /* Grid table */
 .cf-grid-wrap {
-  flex: 1;
-  overflow: auto;
+  overflow-x: auto;
   overscroll-behavior: contain;
 }
 
@@ -320,10 +318,8 @@ tr:hover .cf-row-remove { opacity: 1; }
 /* Weekly layout */
 .cf-weekly-layout {
   display: flex;
-  flex: 1;
-  overflow: hidden;
 }
-.cf-weekly-main { flex: 1; overflow: auto; display: flex; flex-direction: column; }
+.cf-weekly-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cf-weekly-sidebar {
   width: 300px;
   background: var(--color-surface);
@@ -341,12 +337,14 @@ tr:hover .cf-row-remove { opacity: 1; }
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
   padding: var(--space-3);
+  contain: layout style;
 }
 .cf-chart-card {
   background: var(--color-surface-2);
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-lg);
   padding: var(--space-3);
+  contain: layout;
 }
 .cf-chart-title {
   font-size: var(--text-sm);
