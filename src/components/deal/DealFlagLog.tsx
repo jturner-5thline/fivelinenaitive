@@ -35,9 +35,9 @@ export function DealFlagLog({ dealId }: DealFlagLogProps) {
 
   return (
     <Card>
-      <CardHeader className="py-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Flag className="h-4 w-4" />
+      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 space-y-0">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Flag className="h-3.5 w-3.5 text-muted-foreground" />
           Flag Log
           {activeFlags.length > 0 && (
             <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
@@ -46,7 +46,7 @@ export function DealFlagLog({ dealId }: DealFlagLogProps) {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 px-4 pb-4">
         <div className="space-y-2 max-h-[350px] overflow-y-auto">
           {flagNotes.map((flag) => {
             const author = flag.user_id ? authors[flag.user_id] : null;
