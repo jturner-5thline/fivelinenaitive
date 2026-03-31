@@ -411,17 +411,21 @@ export function CashFlowManager() {
   const handleOpenActivityLog = useCallback(() => setActivityLogOpen(true), []);
   const handleCloseActivityLog = useCallback(() => setActivityLogOpen(false), []);
 
-  // Keyboard: Escape closes dialogs
+  // Keyboard: Escape closes dialogs, Ctrl+Z for undo
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setExportOpen(false);
         setActivityLogOpen(false);
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        performUndo();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [performUndo]);
 
   // Show skeleton while import data is loading
   if (isImportLoading && !isImported) {
