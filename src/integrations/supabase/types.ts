@@ -7031,6 +7031,41 @@ export type Database = {
           },
         ]
       }
+      duplicate_deal_suppressions: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          deal_ids: string[]
+          id: string
+          suppression_key: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          deal_ids: string[]
+          id?: string
+          suppression_key: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          deal_ids?: string[]
+          id?: string
+          suppression_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "duplicate_deal_suppressions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_block_library: {
         Row: {
           block_json: Json
