@@ -33,6 +33,7 @@ export function aggregateDailyToWeekly(daily: DailyData): WeeklyData {
   // Identify key rows by label
   const beginCashKey = findRowKey(rows, /BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH.*ON.*HAND/i);
   const endCashKey = findRowKey(rows, /ENDING.*(?:BANK.*BALANCE|CASH.*(?:Net\s*Balance)?)/i);
+  const mtBalanceBeginKey = findRowKey(rows, /M&T\s*Bank\s*Balance/i);
   const totalReceiptsKey = findRowKey(rows, /TOTAL\s*CASH\s*RECEIPTS|^TOTAL\s*RECEIPTS$/i);
   const totalDisbKey = findRowKey(rows, /TOTAL\s*(?:CASH\s*)?DISBURSEMENTS/i);
   const totalTransfersKey = findRowKey(rows, /TOTAL\s*TRANSFERS/i);
