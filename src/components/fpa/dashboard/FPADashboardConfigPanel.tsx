@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, RotateCcw, LayoutDashboard, BarChart3, Eye, Layers, Users } from 'lucide-react';
 import { type FPADashboardConfig, DEFAULT_FPA_CONFIG } from '@/hooks/useFPADashboardConfig';
-import { useFPATabPermissions, type TabPermissions } from '@/hooks/useFPATabPermissions';
+import { useFPATabPermissions, type TabPermissions, type PermissionUser } from '@/hooks/useFPATabPermissions';
 import { FPAPermissionsTab } from './FPAPermissionsTab';
 import { toast } from 'sonner';
 
@@ -70,7 +70,7 @@ function ToggleSection({
 export function FPADashboardConfigPanel({ open, onOpenChange, config, onSave, isSaving }: FPADashboardConfigPanelProps) {
   const [local, setLocal] = useState<FPADashboardConfig>(config);
   const {
-    permissions, savePermissions, isSaving: permsSaving, isPermissionsAdmin, currentEmail,
+    permissions, savePermissions, isSaving: permsSaving, isPermissionsAdmin, currentEmail, companyUsers,
   } = useFPATabPermissions();
   const [localPerms, setLocalPerms] = useState<TabPermissions>(permissions);
   const [activeTab, setActiveTab] = useState('visibility');
@@ -149,6 +149,7 @@ export function FPADashboardConfigPanel({ open, onOpenChange, config, onSave, is
                     permissions={localPerms}
                     onChange={setLocalPerms}
                     currentEmail={currentEmail}
+                    companyUsers={companyUsers}
                   />
                 </div>
               </ScrollArea>
