@@ -185,7 +185,7 @@ export function CashFlowManager() {
 
   // Data accessors — stable references
   const rawDaily = useMemo(() => role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData, [role, sandboxDaily, dailyData]);
-  const rawWeekly = useMemo(() => role === 'viewer' && sandboxWeekly ? sandboxWeekly : weeklyData, [role, sandboxWeekly, weeklyData]);
+  const rawWeekly = useMemo(() => aggregateDailyToWeekly(rawDaily), [rawDaily]);
   const rawSidebar = useMemo(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
 
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
