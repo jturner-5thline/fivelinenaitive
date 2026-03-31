@@ -89,6 +89,7 @@ function DealComparisonCard({ deal, pipelineMap, onNavigate }: { deal: Deal; pip
       </div>
 
       <div className="space-y-1.5 text-xs text-muted-foreground">
+        <Row label="Pipeline" value={pipelineName} />
         <Row label="Stage" value={stageLabel} />
         <Row label="Status" value={statusConfig?.label || deal.status} />
         <Row label="Value" value={deal.value ? `$${deal.value.toLocaleString()}` : '—'} />
