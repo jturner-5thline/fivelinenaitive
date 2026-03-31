@@ -19,15 +19,15 @@ export function DealFlagLog({ dealId }: DealFlagLogProps) {
 
   if (flagNotes.length === 0) {
     return (
-      <Card className="h-full flex flex-col">
-        <CardHeader className="py-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Flag className="h-4 w-4" />
-            Flag Log
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground text-center">No flags yet</p>
+      <Card className="h-auto">
+        <CardContent className="flex items-center gap-3 py-4 px-4">
+          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+            <Flag className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">No flags</p>
+            <p className="text-[11px] text-muted-foreground/70">Flags added to this deal will appear here.</p>
+          </div>
         </CardContent>
       </Card>
     );
