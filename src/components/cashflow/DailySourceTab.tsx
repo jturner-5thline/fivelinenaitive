@@ -14,6 +14,8 @@ interface DailySourceTabProps {
   onRowAdd: (section: string, label: string, entity: string) => void;
   onRowRename: (rowKey: string, newLabel: string) => void;
   onRecurringTag: (rowKey: string, frequency: string, date: string) => void;
+  onImportExcel?: () => void;
+  isImportLoading?: boolean;
 }
 
 interface EditingCell {
