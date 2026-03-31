@@ -10,18 +10,15 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 
-interface DealActivityChartProps {
-  dealId: string;
-}
+// ─── constants ────────────────────────────────────────────────────────────────
+const CHART_HEIGHT = 200; // px — must match FlexEngagementTrendsChart
+
+interface DealActivityChartProps { dealId: string; }
 
 interface DealActivityDetailItem {
-  id: string;
-  activity_type: string;
-  description: string | null;
-  created_at: string;
-  metadata: Record<string, any> | null;
-  user_display_name?: string | null;
-  source: 'activity' | 'claap';
+  id: string; activity_type: string; description: string | null;
+  created_at: string; metadata: Record<string, any> | null;
+  user_display_name?: string | null; source: 'activity' | 'claap';
 }
 
 const ACTIVITY_TYPE_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -40,22 +37,18 @@ const ACTIVITY_TYPE_LABELS: Record<string, { label: string; icon: React.ReactNod
   claap_recording_linked: { label: 'Call recording', icon: <Video className="h-3.5 w-3.5" /> },
 };
 
-function formatCallDuration(seconds: number | null | undefined) {
-  if (!seconds || seconds <= 0) return '—';
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m ${remainingSeconds > 0 ? `${remainingSeconds}s` : ''}`.trim();
-  return `${remainingSeconds}s`;
+function formatCallDuration(s: number | null | undefined) {
+  if (!s || s <= 0) return '—';
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = Math.floor(s % 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m${r > 0 ? ` ${r}s` : ''}`;
+  return `${r}s`;
 }
 
-function getCallTypeBadgeVariant(callType: string | null | undefined): 'default' | 'secondary' | 'outline' {
-  if (!callType) return 'outline';
-  const normalized = callType.toLowerCase();
-  if (normalized.includes('deal')) return 'default';
-  if (normalized.includes('lender')) return 'secondary';
-  return 'outline';
+function getCallTypeBadgeVariant(ct: string | null | undefined): 'default' | 'secondary' | 'outline' {
+  if (!ct) return 'outline';
+  const n = ct.toLowerCase();
+  return n.includes('deal') ? 'default' : n.includes('lender') ? 'secondary' : 'outline';
 }
 
 function useActivityDetailsForDate(dealId: string | undefined, date: string | null) {
@@ -63,59 +56,16 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
     queryKey: ['deal-activity-details', dealId, date],
     queryFn: async () => {
       if (!dealId || !date) return [];
-      const dayStart = startOfDay(parseISO(date));
-      const dayEnd = endOfDay(parseISO(date));
-      const [
-        { data: activityLogs, error: activityError },
-        { data: claapMeetings, error: claapError },
-      ] = await Promise.all([
-        supabase
-          .from('activity_logs')
-          .select('id, activity_type, description, created_at, metadata, user_display_name')
-          .eq('deal_id', dealId)
-          .gte('created_at', dayStart.toISOString())
-          .lte('created_at', dayEnd.toISOString())
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('claap_meetings')
-          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary')
-          .eq('deal_id', dealId)
-          .order('started_at', { ascending: false }),
+      const dayStart = startOfDay(parseISO(date)), dayEnd = endOfDay(parseISO(date));
+      const [{ data: al, error: ae }, { data: cm, error: ce }] = await Promise.all([
+        supabase.from('activity_logs').select('id, activity_type, description, created_at, metadata, user_display_name').eq('deal_id', dealId).gte('created_at', dayStart.toISOString()).lte('created_at', dayEnd.toISOString()).order('created_at', { ascending: false }),
+        supabase.from('claap_meetings').select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary').eq('deal_id', dealId).order('started_at', { ascending: false }),
       ]);
-      if (activityError) throw activityError;
-      if (claapError) throw claapError;
-      const INTERNAL = [
-        'deal_created', 'deal_updated', 'stage_changed', 'status_changed',
-        'lender_added', 'lender_updated', 'lender_removed', 'lender_deleted',
-        'lender_stage_change', 'lender_substage_change', 'lender_notes_updated',
-        'note_added', 'status_note_added', 'attachment_added', 'attachment_deleted',
-        'document_added', 'milestone_added', 'milestone_completed', 'milestone_deleted',
-        'value_updated', 'flex_push',
-      ];
-      const filteredActivityLogs: DealActivityDetailItem[] = (activityLogs || [])
-        .filter((a) => !INTERNAL.includes(a.activity_type))
-        .map((a) => ({
-          ...a,
-          metadata: a.metadata && typeof a.metadata === 'object' && !Array.isArray(a.metadata) ? a.metadata as Record<string, any> : null,
-          source: 'activity',
-        }));
-      const mappedClaapMeetings: DealActivityDetailItem[] = (claapMeetings || [])
-        .filter((m) => {
-          const at = m.started_at || m.created_at;
-          if (!at) return false;
-          const t = new Date(at).getTime();
-          return t >= dayStart.getTime() && t <= dayEnd.getTime();
-        })
-        .map((m) => ({
-          id: `claap-${m.id}`,
-          activity_type: 'claap_recording_linked',
-          description: m.title || 'Untitled call recording',
-          created_at: m.started_at || m.created_at,
-          metadata: { recording_url: m.recording_url, transcript: m.transcript, ai_summary: m.ai_summary, duration_seconds: m.duration_seconds, call_type: m.call_type },
-          user_display_name: null,
-          source: 'claap',
-        }));
-      return [...filteredActivityLogs, ...mappedClaapMeetings].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      if (ae) throw ae; if (ce) throw ce;
+      const INTERNAL = ['deal_created','deal_updated','stage_changed','status_changed','lender_added','lender_updated','lender_removed','lender_deleted','lender_stage_change','lender_substage_change','lender_notes_updated','note_added','status_note_added','attachment_added','attachment_deleted','document_added','milestone_added','milestone_completed','milestone_deleted','value_updated','flex_push'];
+      const filtered: DealActivityDetailItem[] = (al || []).filter(a => !INTERNAL.includes(a.activity_type)).map(a => ({ ...a, metadata: a.metadata && typeof a.metadata === 'object' && !Array.isArray(a.metadata) ? a.metadata as Record<string,any> : null, source: 'activity' }));
+      const mapped: DealActivityDetailItem[] = (cm || []).filter(m => { const at = m.started_at || m.created_at; if (!at) return false; const t = new Date(at).getTime(); return t >= dayStart.getTime() && t <= dayEnd.getTime(); }).map(m => ({ id: `claap-${m.id}`, activity_type: 'claap_recording_linked', description: m.title || 'Untitled call recording', created_at: m.started_at || m.created_at, metadata: { recording_url: m.recording_url, transcript: m.transcript, ai_summary: m.ai_summary, duration_seconds: m.duration_seconds, call_type: m.call_type }, user_display_name: null, source: 'claap' }));
+      return [...filtered, ...mapped].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     },
     enabled: !!dealId && !!date,
   });
@@ -129,76 +79,62 @@ export function DealActivityChart({ dealId }: DealActivityChartProps) {
 
   const { data: rawChartDates } = useQuery({
     queryKey: ['deal-activity-chart-dates', dealId, 14],
-    queryFn: async () => {
-      const map: Record<string, string> = {};
-      for (let i = 13; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const iso = format(d, 'yyyy-MM-dd');
-        const display = format(d, 'MMM d');
-        map[display] = iso;
-      }
-      return map;
-    },
+    queryFn: async () => { const map: Record<string, string> = {}; for (let i = 13; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); map[format(d, 'MMM d')] = format(d, 'yyyy-MM-dd'); } return map; },
     enabled: !!dealId,
   });
 
   const handleBarClick = (data: any) => {
     if (data?.activeLabel && rawChartDates) {
-      const isoDate = rawChartDates[data.activeLabel];
-      if (isoDate) setSelectedDate(prev => prev === isoDate ? null : isoDate);
+      const iso = rawChartDates[data.activeLabel];
+      if (iso) setSelectedDate(prev => prev === iso ? null : iso);
     }
   };
 
   const { data: dayActivities, isLoading: isLoadingDetails } = useActivityDetailsForDate(dealId, selectedDate);
-
   const filteredDayActivities = useMemo(() => {
     if (!dayActivities) return [];
-    if (activityFilter === 'calls') return dayActivities.filter((a) => a.activity_type === 'claap_recording_linked');
-    if (activityFilter === 'activity') return dayActivities.filter((a) => a.activity_type !== 'claap_recording_linked');
+    if (activityFilter === 'calls') return dayActivities.filter(a => a.activity_type === 'claap_recording_linked');
+    if (activityFilter === 'activity') return dayActivities.filter(a => a.activity_type !== 'claap_recording_linked');
     return dayActivities;
   }, [activityFilter, dayActivities]);
-
   const hasActivity = chartData && chartData.some(d => d.views > 0);
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 space-y-0">
-        <div>
-          <CardTitle className="text-sm font-medium">Deal Activity</CardTitle>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Last 14 days · Click bar for details</p>
-        </div>
-        {selectedDate && (
-          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-2" onClick={() => setSelectedDate(null)}>
-            <X className="h-2.5 w-2.5" /> Clear
-          </Button>
+      {/* ── Header ── fixed 44px, matches Engagement Trends */}
+      <CardHeader className="flex flex-row items-center justify-between min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0">
+        <CardTitle className="text-sm font-medium">Deal Activity</CardTitle>
+        {selectedDate ? (
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-2" onClick={() => setSelectedDate(null)}><X className="h-2.5 w-2.5" /> Clear</Button>
+        ) : (
+          <span className="text-[10px] text-muted-foreground">Last 14 days</span>
         )}
       </CardHeader>
-      <CardContent className="flex-1 px-4 pb-4 pt-0">
+
+      {/* ── Spacer row ── matches the metric-filter bar height in Engagement Trends */}
+      <div className="min-h-[28px] px-4 flex items-center">
+        <p className="text-[10px] text-muted-foreground">Click a bar for details</p>
+      </div>
+
+      {/* ── Body ── */}
+      <CardContent className="flex-1 px-4 pb-4 pt-0 min-h-0 flex flex-col">
         {isLoadingChart ? (
-          <div className="h-[200px] flex items-center justify-center">
+          <div style={{ height: CHART_HEIGHT }} className="flex items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : !hasActivity ? (
-          <div className="h-[200px] flex flex-col items-center justify-center">
+          <div style={{ height: CHART_HEIGHT }} className="flex flex-col items-center justify-center">
             <TrendingUp className="h-6 w-6 text-muted-foreground/40 mb-2" />
             <p className="text-xs text-muted-foreground">No activity in the last 14 days</p>
           </div>
         ) : (
-          <div className="h-[200px] cursor-pointer">
+          <div style={{ height: CHART_HEIGHT }} className="cursor-pointer">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }} onClick={handleBarClick}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} className="text-muted-foreground" />
                 <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} className="text-muted-foreground" allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                    fontSize: '11px',
-                  }}
-                />
+                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }} />
                 <Bar dataKey="views" name="Activity" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -212,19 +148,17 @@ export function DealActivityChart({ dealId }: DealActivityChartProps) {
               <Badge variant="secondary" className="text-[10px] h-4">{filteredDayActivities.length} events</Badge>
             </div>
             <div className="flex items-center gap-1">
-              {(['all', 'calls', 'activity'] as const).map((f) => (
+              {(['all','calls','activity'] as const).map(f => (
                 <Button key={f} variant={activityFilter === f ? 'default' : 'outline'} size="sm" className="h-5 px-2 text-[10px]" onClick={() => setActivityFilter(f)}>
                   {f === 'all' ? 'All' : f === 'calls' ? 'Calls' : 'Activity'}
                 </Button>
               ))}
             </div>
-            {isLoadingDetails ? (
-              <div className="space-y-1.5"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
-            ) : !filteredDayActivities.length ? (
-              <p className="text-xs text-muted-foreground py-2">No matching activity.</p>
-            ) : (
+            {isLoadingDetails ? <div className="space-y-1.5"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
+            : !filteredDayActivities.length ? <p className="text-xs text-muted-foreground py-2">No matching activity.</p>
+            : (
               <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                {filteredDayActivities.map((activity) => {
+                {filteredDayActivities.map(activity => {
                   const meta = activity.metadata;
                   const typeInfo = ACTIVITY_TYPE_LABELS[activity.activity_type] || { label: activity.activity_type.replace(/_/g, ' '), icon: <ExternalLink className="h-3 w-3" /> };
                   const lenderName = meta?.lender_name || meta?.lender_email;
@@ -241,27 +175,11 @@ export function DealActivityChart({ dealId }: DealActivityChartProps) {
                         {isCall ? (
                           <div className="mt-0.5 flex items-center gap-2 text-muted-foreground">
                             <span>{formatCallDuration(meta?.duration_seconds)}</span>
-                            {meta?.recording_url && (
-                              <a href={meta.recording_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">
-                                <ExternalLink className="h-2.5 w-2.5" /> Open
-                              </a>
-                            )}
-                            {transcriptText && (
-                              <button type="button" className="text-primary hover:underline inline-flex items-center gap-0.5" onClick={() => setExpandedTranscriptId(c => c === activity.id ? null : activity.id)}>
-                                <FileText className="h-2.5 w-2.5" /> Transcript
-                              </button>
-                            )}
+                            {meta?.recording_url && <a href={meta.recording_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5"><ExternalLink className="h-2.5 w-2.5" /> Open</a>}
+                            {transcriptText && <button type="button" className="text-primary hover:underline inline-flex items-center gap-0.5" onClick={() => setExpandedTranscriptId(c => c === activity.id ? null : activity.id)}><FileText className="h-2.5 w-2.5" /> Transcript</button>}
                           </div>
-                        ) : lenderName ? (
-                          <p className="text-muted-foreground">by {lenderName}</p>
-                        ) : activity.description ? (
-                          <p className="text-muted-foreground truncate">{activity.description}</p>
-                        ) : null}
-                        {isCall && expandedTranscriptId === activity.id && transcriptText && (
-                          <div className="mt-1.5 rounded border border-border/50 bg-background/80 p-1.5 text-[10px] text-muted-foreground whitespace-pre-wrap max-h-[120px] overflow-y-auto">
-                            {transcriptText}
-                          </div>
-                        )}
+                        ) : lenderName ? <p className="text-muted-foreground">by {lenderName}</p> : activity.description ? <p className="text-muted-foreground truncate">{activity.description}</p> : null}
+                        {isCall && expandedTranscriptId === activity.id && transcriptText && <div className="mt-1.5 rounded border border-border/50 bg-background/80 p-1.5 text-[10px] text-muted-foreground whitespace-pre-wrap max-h-[120px] overflow-y-auto">{transcriptText}</div>}
                       </div>
                       <span className="text-muted-foreground whitespace-nowrap shrink-0">{format(parseISO(activity.created_at), 'h:mm a')}</span>
                     </div>

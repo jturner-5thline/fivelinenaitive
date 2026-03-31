@@ -1,4 +1,4 @@
-import { Eye, Download, HelpCircle, FileText, FileSignature, ScrollText, ArrowDownToLine, FileCheck, ExternalLink, Users } from 'lucide-react';
+import { ExternalLink, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,9 +27,7 @@ function StatItem({ label, value, isLoading, highlight, lenders, popoverTitle }:
       {isLoading ? (
         <Skeleton className="h-4 w-6" />
       ) : (
-        <span className={`text-sm font-semibold tabular-nums ${highlight && value > 0 ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
-          {value}
-        </span>
+        <span className={`text-sm font-semibold tabular-nums ${highlight && value > 0 ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>{value}</span>
       )}
     </div>
   );
@@ -75,7 +73,8 @@ export function EngagementSummaryCard({ dealId }: EngagementSummaryCardProps) {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 space-y-0">
+      {/* ── Header ── fixed height, matches Tasks & Info Requests */}
+      <CardHeader className="flex flex-row items-center justify-between min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
           Engagement
@@ -85,6 +84,8 @@ export function EngagementSummaryCard({ dealId }: EngagementSummaryCardProps) {
           {stats?.flexUniqueLenders ?? 0} lenders
         </Badge>
       </CardHeader>
+
+      {/* ── Body ── flex-1 fills remaining height */}
       <CardContent className="flex-1 px-4 pb-4 pt-0">
         <div className="space-y-0.5">
           <StatItem label="Views" value={stats?.flexViews ?? 0} isLoading={isLoading} lenders={viewLenders} popoverTitle="Lenders who viewed" />

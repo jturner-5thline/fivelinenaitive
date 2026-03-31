@@ -142,7 +142,8 @@ export function FlexEngagementTrendsChart({ dealId }: FlexEngagementTrendsChartP
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 space-y-0">
+      {/* ── Header ── fixed 44px, matches Deal Activity */}
+      <CardHeader className="flex flex-row items-center justify-between min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
           Engagement Trends
@@ -179,7 +180,9 @@ export function FlexEngagementTrendsChart({ dealId }: FlexEngagementTrendsChartP
           </Select>
         </div>
       </CardHeader>
-      <div className="px-4 pb-2">
+
+      {/* ── Metric filter tabs ── fixed-height row so both chart cards stay aligned */}
+      <div className="min-h-[28px] px-4 flex items-center">
         <div className="flex flex-wrap gap-1">
           {METRIC_TABS.map(({ key, label, icon: Icon }) => (
             <button
@@ -198,18 +201,20 @@ export function FlexEngagementTrendsChart({ dealId }: FlexEngagementTrendsChartP
           ))}
         </div>
       </div>
+
+      {/* ── Body ── chart area with fixed height matching Deal Activity */}
       <CardContent className="flex-1 px-4 pb-4 pt-0">
         {isLoading ? (
-          <div className="h-[200px] flex items-center justify-center">
+          <div style={{ height: 200 }} className="flex items-center justify-center">
             <Skeleton className="h-full w-full" />
           </div>
         ) : !hasActivity ? (
-          <div className="h-[200px] flex flex-col items-center justify-center">
+          <div style={{ height: 200 }} className="flex flex-col items-center justify-center">
             <TrendingUp className="h-6 w-6 text-muted-foreground/40 mb-2" />
             <p className="text-xs text-muted-foreground">No engagement in the last {days} days</p>
           </div>
         ) : (
-          <div className="h-[200px]">
+          <div style={{ height: 200 }}>
             <ResponsiveContainer width="100%" height="100%">
               {renderChart()}
             </ResponsiveContainer>
