@@ -21,10 +21,21 @@ function deepClone<T>(obj: T): T {
 }
 
 export function CashFlowManager() {
-  // Master data
+  const { company } = useCompany();
+  const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Master data — use imported data if available, otherwise fall back to seed
   const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(SEED_DAILY_DATA));
   const [weeklyData, setWeeklyData] = useState<WeeklyData>(() => deepClone(SEED_WEEKLY_DATA));
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => deepClone(SEED_SIDEBAR_DATA));
+
+  // When imported data loads, replace dailyData
+  useEffect(() => {
+    if (isImported && importedDailyData) {
+      setDailyData(deepClone(importedDailyData));
+    }
+  }, [isImported, importedDailyData]);
 
   // Sandbox data (viewer mode)
   const [sandboxDaily, setSandboxDaily] = useState<DailyData | null>(null);
