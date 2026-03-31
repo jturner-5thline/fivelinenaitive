@@ -95,14 +95,14 @@ function generateDailyData(): DailyData {
     totalReceipts[i] + totalDisbursements[i] + totalTransfers[i]
   );
 
-  // Beginning balance total
-  const beginBalance = dates.map((_, i) =>
-    chase8630Begin[i] + chase2681Begin[i] + chase0661Begin[i] + chase3965Begin[i]
-  );
-
-  const endBalance = dates.map((_, i) =>
-    beginBalance[i] + netCashChange[i]
-  );
+  // Beginning balance total — cascaded: day 0 uses seed, subsequent days carry forward
+  const seedBeginBalance = chase8630Begin[0] + chase2681Begin[0] + chase0661Begin[0] + chase3965Begin[0];
+  const beginBalance: number[] = new Array(dates.length);
+  const endBalance: number[] = new Array(dates.length);
+  for (let i = 0; i < dates.length; i++) {
+    beginBalance[i] = i === 0 ? seedBeginBalance : endBalance[i - 1];
+    endBalance[i] = beginBalance[i] + netCashChange[i];
+  }
 
   // Ending bank balances (distributed proportionally)
   const chase8630End = dates.map((_, i) => chase8630Begin[i] + netCashChange[i] * 0.1);
@@ -164,6 +164,7 @@ function generateWeeklyData(daily: DailyData): WeeklyData {
   // Group dates into weeks (Mon-Sun)
   let weekStart = 0;
   let weekNum = 1;
+  let carryBeginCash: number | null = null;
 
   while (weekStart < dates.length) {
     const startDate = new Date(dates[weekStart]);
@@ -189,20 +190,25 @@ function generateWeeklyData(daily: DailyData): WeeklyData {
       return Math.round(sum * 100) / 100;
     };
 
-    const beginCash = daily.rows.row_15?.values[weekStart] || 0;
-    const endCash = daily.rows.row_72?.values[Math.min(weekEnd, dates.length - 1)] || 0;
     const totalReceipts = sumRange('row_38');
     const totalDisb = sumRange('row_59');
     const totalTransfers = sumRange('row_68');
     const netChange = sumRange('row_70');
 
+    const beginCash = carryBeginCash !== null
+      ? carryBeginCash
+      : Math.round(daily.rows.row_15?.values[weekStart] || 0);
+    const roundedNetChange = Math.round(netChange);
+    const endCash = beginCash + roundedNetChange;
+    carryBeginCash = endCash;
+
     weekly[weekKey] = {
       week_num: weekNum,
       week_ending: endDate,
-      "BEGINNING CASH": Math.round(beginCash),
-      "ENDING CASH": Math.round(endCash),
+      "BEGINNING CASH": beginCash,
+      "ENDING CASH": endCash,
       "Add'l Liquidity (Delayed Draw)": 250000,
-      "TOTAL CASH ON HAND": Math.round(endCash + 250000),
+      "TOTAL CASH ON HAND": endCash + 250000,
       "Revenue Deposits": sumRange('row_27') + sumRange('row_28'),
       "Customer Payments": sumRange('row_29'),
       "Consulting Fees": sumRange('row_30'),
