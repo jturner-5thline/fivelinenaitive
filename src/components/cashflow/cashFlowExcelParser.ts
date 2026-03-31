@@ -1,34 +1,6 @@
 import ExcelJS from 'exceljs';
 import type { DailyData, DailyRowStructure } from './types';
 
-/**
- * Parse 5th Line Capital daily cash flow spreadsheet.
- * Expects a sheet named "Cash Flow Weekly" with:
- *  - Date headers in row ~2, columns B onward
- *  - ACTUALS/FORECAST label row
- *  - Row structure matching 5th Line's cash flow layout
- */
-
-interface ParsedCashFlowRow {
-  label: string;
-  entity: string;
-  section: 'balance_begin' | 'balance_end' | 'receipts' | 'disbursements' | 'transfers' | 'summary';
-  is_total: boolean;
-  is_protected: boolean;
-  indent: boolean;
-  values: number[];
-}
-
-// Row label patterns to identify sections
-const ROW_PATTERNS: {
-  match: (label: string) => boolean;
-  section: ParsedCashFlowRow['section'];
-  is_total: boolean;
-  is_protected: boolean;
-  indent: boolean;
-  entity: string;
-}[] = [];
-
 function normalizeLabel(raw: string | null | undefined): string {
   if (!raw) return '';
   return String(raw).trim().replace(/\s+/g, ' ');
@@ -69,6 +41,21 @@ function getCellText(cell: ExcelJS.Cell): string {
   return String(v).trim();
 }
 
+function isDateValue(val: any): Date | null {
+  if (val instanceof Date) return val;
+  if (typeof val === 'number' && val > 40000 && val < 55000) {
+    // Excel serial date
+    return new Date((val - 25569) * 86400000);
+  }
+  if (typeof val === 'string') {
+    const parsed = new Date(val);
+    if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 2020 && parsed.getFullYear() <= 2030) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
 export async function parseCashFlowExcel(file: File): Promise<{
   dailyData: DailyData;
   rowStructure: DailyRowStructure;
@@ -81,140 +68,144 @@ export async function parseCashFlowExcel(file: File): Promise<{
   // Find the target sheet
   let worksheet = workbook.getWorksheet('Cash Flow Weekly');
   if (!worksheet) {
-    // Try partial match
     worksheet = workbook.worksheets.find(ws =>
       ws.name.toLowerCase().includes('cash flow') || ws.name.toLowerCase().includes('daily')
     );
   }
-  if (!worksheet) {
-    // Fall back to first sheet
-    worksheet = workbook.worksheets[0];
-  }
+  if (!worksheet) worksheet = workbook.worksheets[0];
   if (!worksheet) throw new Error('No worksheet found in the Excel file');
 
-  // Step 1: Find date header row and data columns
-  // Scan first 15 rows to find one with Date values starting from column B
+  const maxScanRows = 25;
+  const maxCol = Math.min(worksheet.columnCount || 500, 500);
+
+  // ── STEP 1: Find the date header row ──
+  // The date header row has MANY consecutive date values across columns.
+  // Row 5 might have a single date (last update) — we need the row with many dates.
   let dateRowNum = -1;
-  let forecastRowNum = -1;
-  const maxScanRows = 15;
+  let bestDateCount = 0;
 
   for (let r = 1; r <= maxScanRows; r++) {
     const row = worksheet.getRow(r);
-    const cellB = row.getCell(2);
-    const val = cellB.value;
-    // Check if it looks like a date
-    if (val instanceof Date) {
+    let dateCount = 0;
+    // Sample columns 2..min(50, maxCol) to count dates
+    const sampleEnd = Math.min(50, maxCol);
+    for (let c = 2; c <= sampleEnd; c++) {
+      const val = row.getCell(c).value;
+      if (isDateValue(val)) dateCount++;
+    }
+    // The date header row should have many dates (>10)
+    if (dateCount > bestDateCount && dateCount >= 5) {
+      bestDateCount = dateCount;
       dateRowNum = r;
-      break;
-    }
-    // Check for ACTUALS/FORECAST label
-    const text = getCellText(row.getCell(2));
-    if (/ACTUAL/i.test(text) || /FORECAST/i.test(text)) {
-      forecastRowNum = r;
-    }
-  }
-
-  // If no date row found by Date object, look for date strings
-  if (dateRowNum === -1) {
-    for (let r = 1; r <= maxScanRows; r++) {
-      const row = worksheet.getRow(r);
-      const cellB = row.getCell(2);
-      const text = getCellText(cellB);
-      if (/^\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}$/.test(text) || /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i.test(text)) {
-        dateRowNum = r;
-        break;
-      }
     }
   }
 
   if (dateRowNum === -1) {
-    // Fallback: assume row 2 has dates
-    dateRowNum = 2;
+    throw new Error('Could not find the date header row. Expected a row with many date values.');
   }
 
-  // Step 2: Extract dates from the date header row
+  // ── STEP 2: Determine label column ──
+  // Check if column A or B has the row labels by looking a few rows after dateRowNum
+  let labelCol = 1; // default column A
+  for (let r = dateRowNum + 1; r <= dateRowNum + 5; r++) {
+    const row = worksheet.getRow(r);
+    const a = getCellText(row.getCell(1));
+    const b = getCellText(row.getCell(2));
+    if (/BEGINNING|ENDING|CASH|BALANCE/i.test(a)) { labelCol = 1; break; }
+    if (/BEGINNING|ENDING|CASH|BALANCE/i.test(b)) { labelCol = 2; break; }
+  }
+  const dataStartCol = labelCol === 1 ? 2 : 3; // Data columns start after the label column
+
+  // ── STEP 3: Extract dates ──
   const dateRow = worksheet.getRow(dateRowNum);
   const dates: string[] = [];
-  const dataStartCol = 2; // Column B
-  let lastCol = worksheet.columnCount || 200;
-  // Limit to reasonable column count
-  if (lastCol > 500) lastCol = 500;
 
-  for (let c = dataStartCol; c <= lastCol; c++) {
-    const cell = dateRow.getCell(c);
-    const val = cell.value;
-
-    if (val instanceof Date) {
-      const iso = val.toISOString().split('T')[0];
-      dates.push(iso);
-    } else if (typeof val === 'number' && val > 40000 && val < 50000) {
-      // Excel serial date
-      const d = new Date((val - 25569) * 86400000);
+  for (let c = dataStartCol; c <= maxCol; c++) {
+    const val = dateRow.getCell(c).value;
+    const d = isDateValue(val);
+    if (d) {
       dates.push(d.toISOString().split('T')[0]);
-    } else if (val === null || val === undefined) {
-      // Stop at first empty date cell after we've found some dates
-      if (dates.length > 5) break;
-    } else {
-      const text = getCellText(cell);
-      if (!text && dates.length > 5) break;
-      // Try to parse as date
-      const parsed = new Date(text);
-      if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 2020) {
-        dates.push(parsed.toISOString().split('T')[0]);
-      } else if (dates.length > 5) {
-        break;
-      }
+    } else if (dates.length > 5) {
+      // Stop at first non-date cell after collecting dates
+      break;
     }
   }
 
-  if (dates.length === 0) throw new Error('Could not find date columns in the spreadsheet');
+  if (dates.length === 0) throw new Error('Could not extract dates from the date header row.');
 
   const numCols = dates.length;
 
-  // Step 3: Find forecast start index from ACTUALS/FORECAST row
+  // ── STEP 4: Find ACTUALS/FORECAST row (should be above dateRowNum) ──
+  let forecastRowNum = -1;
+  for (let r = 1; r < dateRowNum; r++) {
+    const row = worksheet.getRow(r);
+    let hasActual = false;
+    let hasForecast = false;
+    for (let c = dataStartCol; c <= Math.min(dataStartCol + 30, maxCol); c++) {
+      const text = getCellText(row.getCell(c)).toUpperCase();
+      if (text.includes('ACTUAL')) hasActual = true;
+      if (text.includes('FORECAST')) hasForecast = true;
+    }
+    if (hasActual || hasForecast) {
+      forecastRowNum = r;
+      break;
+    }
+  }
+
   let forecastStartIndex: number | null = null;
   if (forecastRowNum > 0) {
     const fRow = worksheet.getRow(forecastRowNum);
     for (let c = dataStartCol; c < dataStartCol + numCols; c++) {
-      const text = getCellText(fRow.getCell(c));
-      if (/FORECAST/i.test(text)) {
+      const text = getCellText(fRow.getCell(c)).toUpperCase();
+      if (text.includes('FORECAST')) {
         forecastStartIndex = c - dataStartCol;
         break;
       }
     }
   }
 
-  // Step 4: Scan all data rows below the date header
-  const dataStartRow = dateRowNum + 1;
-  // If there's a forecast label row between date row and data, skip it
-  const actualDataStart = forecastRowNum && forecastRowNum > dateRowNum ? forecastRowNum + 1 : dataStartRow;
+  // ── STEP 5: Find the first data row (search for "BEGINNING") ──
+  let firstDataRow = -1;
+  for (let r = dateRowNum + 1; r <= dateRowNum + 10; r++) {
+    const row = worksheet.getRow(r);
+    const label = normalizeLabel(getCellText(row.getCell(labelCol)));
+    if (/BEGINNING/i.test(label)) {
+      firstDataRow = r;
+      break;
+    }
+  }
 
-  // We need to identify row sections by scanning labels in column A
+  if (firstDataRow === -1) {
+    // Fallback: start 2 rows after dateRowNum (skip week number row)
+    firstDataRow = dateRowNum + 2;
+  }
+
+  // ── STEP 6: Parse data rows ──
   type SectionState = 'init' | 'balance_begin' | 'balance_end' | 'receipts' | 'disbursements' | 'transfers' | 'summary';
   let currentSection: SectionState = 'init';
 
   const rows: Record<string, { label: string; entity: string; values: number[] }> = {};
   const structureRows: DailyRowStructure['rows'] = [];
-  let rowCounter = 15; // Start numbering from 15 to match existing structure
+  let rowCounter = 15;
 
-  const maxRows = worksheet.rowCount || 100;
+  const maxDataRows = Math.min(worksheet.rowCount || 200, firstDataRow + 100);
 
-  for (let r = actualDataStart; r <= Math.min(maxRows, actualDataStart + 80); r++) {
+  for (let r = firstDataRow; r <= maxDataRows; r++) {
     const row = worksheet.getRow(r);
-    const labelText = normalizeLabel(getCellText(row.getCell(1)));
+    const labelText = normalizeLabel(getCellText(row.getCell(labelCol)));
 
-    if (!labelText) continue; // Skip empty rows
+    if (!labelText) continue;
 
-    // Determine section from label
-    if (/BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH.*ON.*HAND/i.test(labelText)) {
+    // Update section state based on label
+    if (/BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH/i.test(labelText)) {
       currentSection = 'balance_begin';
     } else if (/ENDING.*BANK.*BALANCE|ENDING.*CASH.*ON.*HAND/i.test(labelText)) {
       currentSection = 'balance_end';
-    } else if (/CASH\s*RECEIPTS|\(\s*\+\s*\)\s*CASH/i.test(labelText)) {
+    } else if (/\(\s*\+\s*\)\s*CASH\s*RECEIPTS|CASH\s*RECEIPTS/i.test(labelText)) {
       currentSection = 'receipts';
-    } else if (/CASH\s*DISBURSEMENTS|\(\s*[\-–]\s*\)\s*CASH/i.test(labelText)) {
+    } else if (/\(\s*[-–]\s*\)\s*CASH\s*DISBURSEMENTS|CASH\s*DISBURSEMENTS/i.test(labelText)) {
       currentSection = 'disbursements';
-    } else if (/INTERNAL\s*TRANSFERS|\(\s*\+\s*\).*\(\s*[\-–]\s*\).*TRANSFER/i.test(labelText)) {
+    } else if (/INTERNAL\s*TRANSFERS|\(\s*\+\s*\).*\(\s*[-–]\s*\).*TRANSFER/i.test(labelText)) {
       currentSection = 'transfers';
     } else if (/NET\s*CASH\s*CHANGE/i.test(labelText)) {
       currentSection = 'summary';
@@ -222,34 +213,32 @@ export async function parseCashFlowExcel(file: File): Promise<{
 
     if (currentSection === 'init') continue;
 
-    // Determine row properties
+    // Identify totals and section headers
     const isTotal = /^TOTAL|BEGINNING\s*BANK|ENDING\s*BANK|NET\s*CASH|ENDING\s*CASH/i.test(labelText)
       || /TOTAL\s*(CASH\s*)?RECEIPTS|TOTAL\s*(CASH\s*)?DISBURSEMENTS|TOTAL\s*TRANSFERS/i.test(labelText);
-    const isSectionHeader = /\(\s*\+\s*\)\s*CASH\s*RECEIPTS|\(\s*[\-–]\s*\)\s*CASH\s*DISBURSEMENTS|\(\s*\+\s*\).*\(\s*[\-–]\s*\).*TRANSFER/i.test(labelText);
+    const isSectionHeader = /^\(\s*\+\s*\)\s*CASH\s*RECEIPTS$|^\(\s*[-–]\s*\)\s*CASH\s*DISBURSEMENTS$|^\(\s*\+\s*\).*\(\s*[-–]\s*\).*TRANSFER/i.test(labelText);
 
-    if (isSectionHeader) continue; // Section headers are rendered by the UI, not as data rows
+    if (isSectionHeader) continue;
 
     const entity = extractEntity(labelText);
     const isProtected = isTotal;
     const indent = !isTotal;
 
-    // Extract values for each date column
+    // Extract values
     const values: number[] = [];
     for (let c = dataStartCol; c < dataStartCol + numCols; c++) {
       values.push(getCellNumber(row.getCell(c)));
     }
 
-    // Skip rows that are entirely zero/empty
+    // Skip all-zero detail rows
     const hasData = values.some(v => v !== 0);
     if (!hasData && indent) continue;
 
     const rowKey = `row_${rowCounter}`;
 
-    // Clean up label for display
+    // Clean up label
     let displayLabel = labelText;
-    // Remove entity suffix if present in label
-    displayLabel = displayLabel.replace(/\s*-\s*(5LC|5LCA|5LFS|5LT)\s*$/i, '');
-    // Remove "TOTAL" prefix duplication
+    displayLabel = displayLabel.replace(/\s*[-–]\s*(5LC|5LCA|5LFS|5LT)\s*$/i, '');
     displayLabel = displayLabel.replace(/^TOTAL\s+CASH\s+/i, 'TOTAL ');
 
     rows[rowKey] = { label: displayLabel, entity, values };
@@ -268,7 +257,11 @@ export async function parseCashFlowExcel(file: File): Promise<{
   }
 
   if (Object.keys(rows).length === 0) {
-    throw new Error('No data rows found in the spreadsheet. Check that the sheet has the expected layout.');
+    throw new Error(
+      `No data rows found. Detected date row at row ${dateRowNum} with ${dates.length} dates. ` +
+      `First data row search started at row ${firstDataRow}. Label column: ${labelCol}. ` +
+      `Check the sheet layout matches expected format.`
+    );
   }
 
   return {
