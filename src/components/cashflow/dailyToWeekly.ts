@@ -33,6 +33,7 @@ export function aggregateDailyToWeekly(daily: DailyData): WeeklyData {
   // Identify key rows by label
   const beginCashKey = findRowKey(rows, /BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH.*ON.*HAND/i);
   const endCashKey = findRowKey(rows, /ENDING.*(?:BANK.*BALANCE|CASH.*(?:Net\s*Balance)?)/i);
+  const mtBalanceBeginKey = findRowKey(rows, /M&T\s*Bank\s*Balance/i);
   const totalReceiptsKey = findRowKey(rows, /TOTAL\s*CASH\s*RECEIPTS|^TOTAL\s*RECEIPTS$/i);
   const totalDisbKey = findRowKey(rows, /TOTAL\s*(?:CASH\s*)?DISBURSEMENTS/i);
   const totalTransfersKey = findRowKey(rows, /TOTAL\s*TRANSFERS/i);
@@ -143,8 +144,8 @@ export function aggregateDailyToWeekly(daily: DailyData): WeeklyData {
       week_ending: endDate,
       "BEGINNING CASH": beginCash,
       "ENDING CASH": endCash,
-      "Add'l Liquidity (Delayed Draw)": 250000,
-      "TOTAL CASH ON HAND": endCash + 250000,
+      "Add'l Liquidity (Delayed Draw)": mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey].values[weekStart] || 0) : 0,
+      "TOTAL CASH ON HAND": endCash + (mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey].values[weekStart] || 0) : 0),
       "Revenue Deposits": Math.round(revDeposits),
       "Customer Payments": Math.round(custPay),
       "Consulting Fees": Math.round(consulting),
