@@ -982,6 +982,47 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_flow_imports: {
+        Row: {
+          company_id: string
+          daily_data: Json
+          file_name: string
+          id: string
+          imported_at: string
+          imported_by: string | null
+          row_structure: Json
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          daily_data?: Json
+          file_name?: string
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          row_structure?: Json
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          daily_data?: Json
+          file_name?: string
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          row_structure?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_flow_imports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_conversations: {
         Row: {
           created_at: string
