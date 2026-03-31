@@ -202,8 +202,33 @@
   color: var(--color-text-faint);
   font-weight: 500;
 }
+.cf-toggle-group {
+  display: flex;
+  gap: 2px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+.cf-toggle-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-interactive);
+}
+.cf-toggle-btn:hover {
+  background: var(--color-surface-offset);
+  color: var(--color-text);
+}
+.cf-toggle-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+}
 
-/* Viewer banner */
+
 .cf-viewer-banner {
   display: flex; align-items: center; justify-content: space-between;
   padding: var(--space-2) var(--space-4);
