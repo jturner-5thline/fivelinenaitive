@@ -30,7 +30,7 @@ export function DuplicatesView({ clusters, onMerge, onDealDeleted }: DuplicatesV
         Found {clusters.length} group{clusters.length !== 1 ? 's' : ''} of potential duplicates
       </p>
       {clusters.map(cluster => (
-        <DuplicateGroup key={cluster.id} cluster={cluster} onMerge={() => onMerge(cluster)} />
+        <DuplicateGroup key={cluster.id} cluster={cluster} onMerge={() => onMerge(cluster)} onDealDeleted={onDealDeleted} />
       ))}
     </div>
   );
