@@ -29,8 +29,7 @@ function getStaleDealAlerts(deals: Deal[], yellowThreshold: number): StaleDeal[]
   const now = new Date();
   const staleDeals: StaleDeal[] = [];
   
-  const postSubmissionStages = ['submitted-to-lenders', 'lenders-in-review', 'terms-issued', 'in-due-diligence', 'funded-invoiced', 'closed-won', 'closed-lost'];
-  deals.filter(d => postSubmissionStages.includes(d.stage)).forEach(deal => {
+  deals.filter(d => isPostSubmissionDealStage(d.stage)).forEach(deal => {
     let maxDays = 0;
     let staleLenderCount = 0;
     

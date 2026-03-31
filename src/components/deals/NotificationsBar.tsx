@@ -66,8 +66,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
   
   const staleDeals: StaleDeal[] = [];
   
-  const postSubmissionStages = ['submitted-to-lenders', 'lenders-in-review', 'terms-issued', 'in-due-diligence', 'funded-invoiced', 'closed-won', 'closed-lost'];
-  deals.filter(d => d.status !== 'archived' && d.status !== 'on-hold' && d.stage !== 'closed-lost' && postSubmissionStages.includes(d.stage)).forEach(deal => {
+  deals.filter(d => d.status !== 'archived' && d.status !== 'on-hold' && d.stage !== 'closed-lost' && isPostSubmissionDealStage(d.stage)).forEach(deal => {
     let maxDays = 0;
     let staleLenderCount = 0;
     
