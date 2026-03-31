@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, memo } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Upload } from 'lucide-react';
 import type { DailyData, DailyRowStructure, RecurringTag } from './types';
 import { fmt } from './formatters';
 import { useGridWheelPassthrough } from './useGridWheelPassthrough';
