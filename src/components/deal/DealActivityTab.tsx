@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck, ScrollText, ArrowDownToLine } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck, ScrollText, ArrowDownToLine, Video } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { useDealActivityStats, useDealActivityChart } from '@/hooks/useDealActivityStats';
@@ -26,6 +26,16 @@ interface FlexStatCardProps {
   highlight?: boolean;
   isLoading?: boolean;
   onClick?: () => void;
+}
+
+interface DealActivityDetailItem {
+  id: string;
+  activity_type: string;
+  description: string | null;
+  created_at: string;
+  metadata: Record<string, any> | null;
+  user_display_name?: string | null;
+  source: 'activity' | 'claap';
 }
 
 const FlexStatCard = ({ icon: _icon, label, value, highlight, isLoading, onClick }: FlexStatCardProps) => (
@@ -58,10 +68,30 @@ const ACTIVITY_TYPE_LABELS: Record<string, { label: string; icon: React.ReactNod
   flex_writeup_scrolled: { label: 'Read full write-up', icon: <FileCheck className="h-3.5 w-3.5" /> },
   deal_viewed: { label: 'Viewed deal', icon: <Eye className="h-3.5 w-3.5" /> },
   writeup_viewed: { label: 'Viewed writeup', icon: <FileCheck className="h-3.5 w-3.5" /> },
+  claap_recording_linked: { label: 'Call recording', icon: <Video className="h-3.5 w-3.5" /> },
 };
 
+function formatCallDuration(seconds: number | null | undefined) {
+  if (!seconds || seconds <= 0) return '—';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${remainingSeconds > 0 ? `${remainingSeconds}s` : ''}`.trim();
+  return `${remainingSeconds}s`;
+}
+
+function getCallTypeBadgeVariant(callType: string | null | undefined): 'default' | 'secondary' | 'outline' {
+  if (!callType) return 'outline';
+  const normalized = callType.toLowerCase();
+  if (normalized.includes('deal')) return 'default';
+  if (normalized.includes('lender')) return 'secondary';
+  return 'outline';
+}
+
 function useActivityDetailsForDate(dealId: string | undefined, date: string | null) {
-  return useQuery({
+  return useQuery<DealActivityDetailItem[]>({
     queryKey: ['deal-activity-details', dealId, date],
     queryFn: async () => {
       if (!dealId || !date) return [];
@@ -69,15 +99,26 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
       const dayStart = startOfDay(parseISO(date));
       const dayEnd = endOfDay(parseISO(date));
 
-      const { data, error } = await supabase
-        .from('activity_logs')
-        .select('id, activity_type, description, created_at, metadata, user_display_name')
-        .eq('deal_id', dealId)
-        .gte('created_at', dayStart.toISOString())
-        .lte('created_at', dayEnd.toISOString())
-        .order('created_at', { ascending: false });
+      const [
+        { data: activityLogs, error: activityError },
+        { data: claapMeetings, error: claapError },
+      ] = await Promise.all([
+        supabase
+          .from('activity_logs')
+          .select('id, activity_type, description, created_at, metadata, user_display_name')
+          .eq('deal_id', dealId)
+          .gte('created_at', dayStart.toISOString())
+          .lte('created_at', dayEnd.toISOString())
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('claap_meetings')
+          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary')
+          .eq('deal_id', dealId)
+          .order('started_at', { ascending: false }),
+      ]);
 
-      if (error) throw error;
+      if (activityError) throw activityError;
+      if (claapError) throw claapError;
 
       // Only return external activity
       const INTERNAL = [
@@ -88,7 +129,43 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
         'document_added', 'milestone_added', 'milestone_completed', 'milestone_deleted',
         'value_updated', 'flex_push',
       ];
-      return (data || []).filter(a => !INTERNAL.includes(a.activity_type));
+
+      const filteredActivityLogs: DealActivityDetailItem[] = (activityLogs || [])
+        .filter((activity) => !INTERNAL.includes(activity.activity_type))
+        .map((activity) => ({
+          ...activity,
+          metadata: activity.metadata && typeof activity.metadata === 'object' && !Array.isArray(activity.metadata)
+            ? activity.metadata as Record<string, any>
+            : null,
+          source: 'activity',
+        }));
+
+      const mappedClaapMeetings: DealActivityDetailItem[] = (claapMeetings || [])
+        .filter((meeting) => {
+          const activityAt = meeting.started_at || meeting.created_at;
+          if (!activityAt) return false;
+          const createdAt = new Date(activityAt).getTime();
+          return createdAt >= dayStart.getTime() && createdAt <= dayEnd.getTime();
+        })
+        .map((meeting) => ({
+          id: `claap-${meeting.id}`,
+          activity_type: 'claap_recording_linked',
+          description: meeting.title || 'Untitled call recording',
+          created_at: meeting.started_at || meeting.created_at,
+          metadata: {
+            recording_url: meeting.recording_url,
+            transcript: meeting.transcript,
+            ai_summary: meeting.ai_summary,
+            duration_seconds: meeting.duration_seconds,
+            call_type: meeting.call_type,
+          },
+          user_display_name: null,
+          source: 'claap',
+        }));
+
+      return [...filteredActivityLogs, ...mappedClaapMeetings].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     },
     enabled: !!dealId && !!date,
   });
@@ -99,6 +176,8 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
   const { data: chartData, isLoading: isLoadingChart } = useDealActivityChart(dealId, 14);
   const { data: lenderEngagement } = useFlexLenderEngagement(dealId);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [activityFilter, setActivityFilter] = useState<'all' | 'calls' | 'activity'>('all');
+  const [expandedTranscriptId, setExpandedTranscriptId] = useState<string | null>(null);
 
   // Reverse-map display label (e.g. "Feb 1") back to ISO date
   const displayToIso = chartData?.reduce<Record<string, string>>((acc, d) => {
@@ -136,6 +215,17 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
 
   const { data: dayActivities, isLoading: isLoadingDetails } = useActivityDetailsForDate(dealId, selectedDate);
 
+  const filteredDayActivities = useMemo(() => {
+    if (!dayActivities) return [];
+    if (activityFilter === 'calls') {
+      return dayActivities.filter((activity) => activity.activity_type === 'claap_recording_linked');
+    }
+    if (activityFilter === 'activity') {
+      return dayActivities.filter((activity) => activity.activity_type !== 'claap_recording_linked');
+    }
+    return dayActivities;
+  }, [activityFilter, dayActivities]);
+
   const hasActivity = chartData && chartData.some(d => d.views > 0);
 
   return (
@@ -150,7 +240,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium">Lender Activity (Last 14 Days)</CardTitle>
+            <CardTitle className="text-base font-medium">Deal Activity (Last 14 Days)</CardTitle>
             {selectedDate && (
               <Button
                 variant="ghost"
@@ -163,7 +253,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
               </Button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">Click a bar to see activity details</p>
+          <p className="text-xs text-muted-foreground">Click a bar to see activity details, including linked Claap calls</p>
         </CardHeader>
         <CardContent>
           {isLoadingChart ? (
@@ -174,10 +264,10 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
             <div className="h-[250px] flex flex-col items-center justify-center">
               <TrendingUp className="h-8 w-8 text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground text-center">
-                No lender activity recorded in the last 14 days.
+                No activity recorded in the last 14 days.
               </p>
               <p className="text-xs text-muted-foreground text-center mt-1">
-                Lender engagement and views will appear here.
+                Lender engagement and linked call recordings will appear here.
               </p>
             </div>
           ) : (
@@ -214,7 +304,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                   />
                   <Bar 
                     dataKey="views" 
-                    name="Lender Activity"
+                    name="Deal Activity"
                     fill="hsl(var(--primary))" 
                     radius={[4, 4, 0, 0]}
                   />
@@ -231,25 +321,44 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                   Activity on {format(parseISO(selectedDate), 'MMMM d, yyyy')}
                 </h4>
                 <Badge variant="secondary" className="text-xs">
-                  {dayActivities?.length ?? 0} event{(dayActivities?.length ?? 0) !== 1 ? 's' : ''}
+                  {filteredDayActivities.length} event{filteredDayActivities.length !== 1 ? 's' : ''}
                 </Badge>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {[
+                  { value: 'all' as const, label: 'All' },
+                  { value: 'calls' as const, label: 'Calls' },
+                  { value: 'activity' as const, label: 'Activity' },
+                ].map((filterOption) => (
+                  <Button
+                    key={filterOption.value}
+                    variant={activityFilter === filterOption.value ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setActivityFilter(filterOption.value)}
+                  >
+                    {filterOption.label}
+                  </Button>
+                ))}
               </div>
               {isLoadingDetails ? (
                 <div className="space-y-2">
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                 </div>
-              ) : !dayActivities?.length ? (
-                <p className="text-sm text-muted-foreground py-2">No external activity on this day.</p>
+              ) : !filteredDayActivities.length ? (
+                <p className="text-sm text-muted-foreground py-2">No matching activity for this filter on this day.</p>
               ) : (
                 <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
-                  {dayActivities.map((activity) => {
+                  {filteredDayActivities.map((activity) => {
                     const meta = activity.metadata as Record<string, any> | null;
                     const typeInfo = ACTIVITY_TYPE_LABELS[activity.activity_type] || {
                       label: activity.activity_type.replace(/_/g, ' '),
                       icon: <ExternalLink className="h-3.5 w-3.5" />,
                     };
                     const lenderName = meta?.lender_name || meta?.lender_email;
+                    const isCall = activity.activity_type === 'claap_recording_linked';
+                    const transcriptText = meta?.ai_summary || meta?.transcript;
 
                     return (
                       <div
@@ -258,12 +367,48 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                       >
                         <div className="mt-0.5 text-muted-foreground">{typeInfo.icon}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium capitalize">{typeInfo.label}</p>
-                          {lenderName && (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium capitalize">{isCall ? (activity.description || 'Untitled call recording') : typeInfo.label}</p>
+                            {isCall && meta?.call_type && (
+                              <Badge variant={getCallTypeBadgeVariant(meta.call_type)} className="text-[10px]">
+                                {meta.call_type}
+                              </Badge>
+                            )}
+                          </div>
+                          {isCall ? (
+                            <div className="mt-1 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                              <span>{formatCallDuration(meta?.duration_seconds)}</span>
+                              {meta?.recording_url && (
+                                <a
+                                  href={meta.recording_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Open recording
+                                </a>
+                              )}
+                              {transcriptText && (
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                                  onClick={() => setExpandedTranscriptId((current) => current === activity.id ? null : activity.id)}
+                                >
+                                  <FileText className="h-3 w-3" />
+                                  Transcript
+                                </button>
+                              )}
+                            </div>
+                          ) : lenderName ? (
                             <p className="text-xs text-muted-foreground">by {lenderName}</p>
-                          )}
-                          {activity.description && !lenderName && (
+                          ) : activity.description && !lenderName ? (
                             <p className="text-xs text-muted-foreground truncate">{activity.description}</p>
+                          ) : null}
+                          {isCall && expandedTranscriptId === activity.id && transcriptText && (
+                            <div className="mt-2 rounded-md border border-border/50 bg-background/80 p-2 text-xs text-muted-foreground whitespace-pre-wrap">
+                              {transcriptText}
+                            </div>
                           )}
                         </div>
                         <span className="text-xs text-muted-foreground whitespace-nowrap">

@@ -196,17 +196,30 @@ export function useDealActivityChart(dealId: string | undefined, days: number = 
       if (!dealId) return [];
 
       const startDate = subDays(new Date(), days - 1);
-      
-      // Fetch activities for the date range
-      const { data: activities, error } = await supabase
-        .from("activity_logs")
-        .select("activity_type, created_at")
-        .eq("deal_id", dealId)
-        .gte("created_at", startDate.toISOString());
 
-      if (error) {
-        console.error("Error fetching deal activity chart data:", error);
-        throw error;
+      const [
+        { data: activities, error: activitiesError },
+        { data: claapMeetings, error: claapError },
+      ] = await Promise.all([
+        supabase
+          .from("activity_logs")
+          .select("activity_type, created_at")
+          .eq("deal_id", dealId)
+          .gte("created_at", startDate.toISOString()),
+        supabase
+          .from("claap_meetings")
+          .select("id, started_at, created_at")
+          .eq("deal_id", dealId),
+      ]);
+
+      if (activitiesError) {
+        console.error("Error fetching deal activity chart activity logs:", activitiesError);
+        throw activitiesError;
+      }
+
+      if (claapError) {
+        console.error("Error fetching deal activity chart Claap meetings:", claapError);
+        throw claapError;
       }
 
       // Group by date - only track external views now
@@ -234,6 +247,20 @@ export function useDealActivityChart(dealId: string | undefined, days: number = 
           if (type.startsWith('flex_') || ACTIVITY_TYPE_MAPPINGS.views.includes(type)) {
             existing.views++;
           }
+        }
+      });
+
+      claapMeetings?.forEach((meeting) => {
+        const activityAt = meeting.started_at || meeting.created_at;
+        if (!activityAt) return;
+
+        const activityDate = parseISO(activityAt);
+        if (activityDate < startDate) return;
+
+        const date = format(activityDate, 'yyyy-MM-dd');
+        const existing = activityByDate.get(date);
+        if (existing) {
+          existing.views++;
         }
       });
 
@@ -266,6 +293,16 @@ export function useDealActivityChart(dealId: string | undefined, days: number = 
           schema: 'public', 
           table: 'activity_logs',
           filter: `deal_id=eq.${dealId}`
+        },
+        () => query.refetch()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'claap_meetings',
+          filter: `deal_id=eq.${dealId}`,
         },
         () => query.refetch()
       )
