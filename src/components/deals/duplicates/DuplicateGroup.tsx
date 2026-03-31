@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DuplicateCluster } from '@/hooks/useDealDuplicates';
 import { Deal, STATUS_CONFIG, STAGE_CONFIG } from '@/types/deal';
 import { Button } from '@/components/ui/button';
