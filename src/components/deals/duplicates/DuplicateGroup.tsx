@@ -3,7 +3,7 @@ import { DuplicateCluster } from '@/hooks/useDealDuplicates';
 import { Deal, STATUS_CONFIG, STAGE_CONFIG } from '@/types/deal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight, Merge, ExternalLink, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Merge, ExternalLink, Trash2, X } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -25,10 +25,13 @@ interface DuplicateGroupProps {
   cluster: DuplicateCluster;
   onMerge: () => void;
   onDealDeleted?: () => void;
+  onNotDuplicate?: (cluster: DuplicateCluster) => Promise<void>;
 }
 
-export function DuplicateGroup({ cluster, onMerge, onDealDeleted }: DuplicateGroupProps) {
+export function DuplicateGroup({ cluster, onMerge, onDealDeleted, onNotDuplicate }: DuplicateGroupProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [showNotDupConfirm, setShowNotDupConfirm] = useState(false);
+  const [isSuppressing, setIsSuppressing] = useState(false);
   const navigate = useNavigate();
   const { pipelines } = usePipelines();
 
@@ -40,50 +43,97 @@ export function DuplicateGroup({ cluster, onMerge, onDealDeleted }: DuplicateGro
 
   const similarityPercent = Math.round(cluster.similarity * 100);
 
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
-        <CollapsibleTrigger asChild>
-          <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
-            <div className="flex items-center gap-3">
-              {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-              <span className="font-medium text-foreground">{cluster.primaryName}</span>
-              <Badge variant="secondary" className="text-xs">
-                {cluster.deals.length} deals
-              </Badge>
-              <Badge 
-                variant="outline" 
-                className="text-xs border-amber-500/30 text-amber-400 bg-amber-500/10"
-              >
-                {similarityPercent}% match
-              </Badge>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                onMerge();
-              }}
-            >
-              <Merge className="h-3.5 w-3.5" />
-              Merge
-            </Button>
-          </button>
-        </CollapsibleTrigger>
+  const handleNotDuplicate = async () => {
+    if (!onNotDuplicate) return;
+    setIsSuppressing(true);
+    try {
+      await onNotDuplicate(cluster);
+      toast.success('Marked as not a duplicate');
+      setShowNotDupConfirm(false);
+    } catch (err: any) {
+      toast.error('Failed to suppress duplicate', { description: err.message });
+    } finally {
+      setIsSuppressing(false);
+    }
+  };
 
-        <CollapsibleContent>
-          <div className="border-t border-border px-4 py-3">
-            <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(cluster.deals.length, 3)}, 1fr)` }}>
-              {cluster.deals.map(deal => (
-                <DealComparisonCard key={deal.id} deal={deal} pipelineMap={pipelineMap} onNavigate={() => navigate(`/deals/${deal.id}`)} onDealDeleted={onDealDeleted} />
-              ))}
+  return (
+    <>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
+          <CollapsibleTrigger asChild>
+            <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+              <div className="flex items-center gap-3">
+                {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                <span className="font-medium text-foreground">{cluster.primaryName}</span>
+                <Badge variant="secondary" className="text-xs">
+                  {cluster.deals.length} deals
+                </Badge>
+                <Badge 
+                  variant="outline" 
+                  className="text-xs border-amber-500/30 text-amber-400 bg-amber-500/10"
+                >
+                  {similarityPercent}% match
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowNotDupConfirm(true);
+                  }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Not a Duplicate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMerge();
+                  }}
+                >
+                  <Merge className="h-3.5 w-3.5" />
+                  Merge
+                </Button>
+              </div>
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <div className="border-t border-border px-4 py-3">
+              <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(cluster.deals.length, 3)}, 1fr)` }}>
+                {cluster.deals.map(deal => (
+                  <DealComparisonCard key={deal.id} deal={deal} pipelineMap={pipelineMap} onNavigate={() => navigate(`/deals/${deal.id}`)} onDealDeleted={onDealDeleted} />
+                ))}
+              </div>
             </div>
-          </div>
-        </CollapsibleContent>
-      </div>
-    </Collapsible>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      <AlertDialog open={showNotDupConfirm} onOpenChange={setShowNotDupConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as Not a Duplicate?</AlertDialogTitle>
+            <AlertDialogDescription>
+              These deals are not the same deal and should no longer appear in the duplicate review list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSuppressing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleNotDuplicate} disabled={isSuppressing}>
+              {isSuppressing ? 'Saving…' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
