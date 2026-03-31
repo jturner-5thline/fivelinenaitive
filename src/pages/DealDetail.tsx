@@ -170,6 +170,7 @@ import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 import { useAdminRole } from '@/hooks/useAdminRole';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { Label } from '@/components/ui/label';
 
 // Editable deal tile for lender "About" tab - extracted to avoid hooks-in-map
@@ -331,6 +332,7 @@ const getLenderTimeInfo = (updatedAt?: string) => {
     text = `${weeks} wk${weeks > 1 ? 's' : ''} ago`;
   }
   
+  // Note: highlight classes are applied; stage-gating happens at the call site via isLenderStale
   let highlightClass = '';
   if (businessDays >= 5) {
     highlightClass = 'bg-destructive/20 text-destructive px-1.5 py-0.5 rounded';
@@ -945,12 +947,13 @@ export default function DealDetail() {
 
   // Helper to check if a lender is stale based on preferences
   const isLenderStale = useCallback((lender: DealLender) => {
+    if (!isPostSubmissionDealStage(deal?.stage)) return { isStale: false, isUrgent: false };
     if (!lender.updatedAt || lender.trackingStatus !== 'active') return { isStale: false, isUrgent: false };
     const daysSinceUpdate = differenceInDays(new Date(), new Date(lender.updatedAt));
     const isUrgent = daysSinceUpdate >= preferences.lenderUpdateRedDays;
     const isStale = daysSinceUpdate >= preferences.lenderUpdateYellowDays;
     return { isStale, isUrgent };
-  }, [preferences.lenderUpdateYellowDays, preferences.lenderUpdateRedDays]);
+  }, [preferences.lenderUpdateYellowDays, preferences.lenderUpdateRedDays, deal?.stage]);
 
   // View preferences - load from localStorage
   const savedViewPrefs = useMemo(() => {
@@ -1985,6 +1988,7 @@ export default function DealDetail() {
   // Calculate stale lenders for notification banner
   const staleLendersInfo = useMemo(() => {
     if (!deal?.lenders) return null;
+    if (!isPostSubmissionDealStage(deal.stage)) return null;
     const yellowThreshold = preferences.lenderUpdateYellowDays;
     const now = new Date();
     let staleLenderCount = 0;
@@ -3676,7 +3680,7 @@ export default function DealDetail() {
                                       {lender.trackingStatus !== 'passed' && (() => {
                                         const timeInfo = getLenderTimeInfo(lender.updatedAt);
                                         return timeInfo.text ? (
-                                          <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>
+                                          <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
                                             {timeInfo.text}
                                           </span>
                                         ) : null;
@@ -4081,7 +4085,7 @@ export default function DealDetail() {
                                               {lender.trackingStatus !== 'passed' && (() => {
                                                 const timeInfo = getLenderTimeInfo(lender.updatedAt);
                                                 return timeInfo.text ? (
-                                                  <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>
+                                                  <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
                                                     {timeInfo.text}
                                                   </span>
                                                 ) : null;

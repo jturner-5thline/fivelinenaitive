@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users, Target, Clock, Lightbulb, CalendarClock, CheckCircle2, TrendingUp, LayoutGrid, List, GalleryHorizontalEnd, SlidersHorizontal } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Link } from 'react-router-dom';
@@ -69,8 +70,7 @@ function getStaleLenderAlerts(deals: Deal[], yellowThreshold: number): StaleLend
   const now = new Date();
   const staleDeals: StaleLenderAlert[] = [];
   
-  const postSubmissionStages = ['submitted-to-lenders', 'lenders-in-review', 'terms-issued', 'in-due-diligence', 'funded-invoiced', 'closed-won', 'closed-lost'];
-  deals.filter(d => postSubmissionStages.includes(d.stage)).forEach(deal => {
+  deals.filter(d => isPostSubmissionDealStage(d.stage)).forEach(deal => {
     let maxDays = 0;
     let staleLenderCount = 0;
     
