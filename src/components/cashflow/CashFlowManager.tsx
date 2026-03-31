@@ -390,6 +390,53 @@ export function CashFlowManager() {
         </div>
       )}
 
+      {/* Date period filter */}
+      <div className="cf-filter-bar">
+        <div className="cf-filter-group">
+          <label className="cf-filter-label">Year</label>
+          <select
+            className="cf-select"
+            value={filterYear}
+            onChange={e => { setFilterYear(e.target.value); setFilterQuarter('all'); }}
+          >
+            <option value="all">All Years</option>
+            {availableYears.map(y => (
+              <option key={y} value={String(y)}>{y}</option>
+            ))}
+          </select>
+        </div>
+        {filterYear !== 'all' && (
+          <div className="cf-filter-group">
+            <label className="cf-filter-label">Quarter</label>
+            <select
+              className="cf-select"
+              value={filterQuarter}
+              onChange={e => setFilterQuarter(e.target.value)}
+            >
+              <option value="all">All Quarters</option>
+              <option value="Q1">Q1 (Jan–Mar)</option>
+              <option value="Q2">Q2 (Apr–Jun)</option>
+              <option value="Q3">Q3 (Jul–Sep)</option>
+              <option value="Q4">Q4 (Oct–Dec)</option>
+            </select>
+          </div>
+        )}
+        {(filterYear !== 'all' || filterQuarter !== 'all') && (
+          <button
+            className="cf-btn cf-btn-ghost"
+            style={{ fontSize: 11, marginLeft: 4 }}
+            onClick={() => { setFilterYear('all'); setFilterQuarter('all'); }}
+          >
+            Clear Filter
+          </button>
+        )}
+        <span className="cf-filter-summary">
+          {activeTab === 'daily'
+            ? `${filteredDaily.dates.length} days`
+            : `${Object.keys(filteredWeekly).length} weeks`}
+        </span>
+      </div>
+
       {/* Hidden file input for Excel import */}
       <input
         ref={fileInputRef}
@@ -400,7 +447,7 @@ export function CashFlowManager() {
           const file = e.target.files?.[0];
           if (file) {
             importFile(file);
-            e.target.value = ''; // reset so same file can be re-imported
+            e.target.value = '';
           }
         }}
       />
@@ -408,7 +455,7 @@ export function CashFlowManager() {
       {/* Main content */}
       {activeTab === 'daily' ? (
         <DailySourceTab
-          data={getDaily()}
+          data={filteredDaily}
           rowStructure={isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE}
           recurringTags={recurringTags}
           isAdmin={role === 'admin'}
@@ -422,7 +469,7 @@ export function CashFlowManager() {
         />
       ) : (
         <WeeklyReportTab
-          weeklyData={getWeekly()}
+          weeklyData={filteredWeekly}
           sidebarData={getSidebar()}
           theme={theme}
           isAdmin={role === 'admin'}
