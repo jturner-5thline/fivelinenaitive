@@ -8,6 +8,7 @@ import { Deal } from '@/types/deal';
 import { Link } from 'react-router-dom';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { cn } from '@/lib/utils';
 
 interface AlertsWidgetProps {
@@ -68,15 +69,17 @@ export function AlertsWidget({ deals }: AlertsWidgetProps) {
       let maxLenderDays = 0;
       let staleLenderCount = 0;
       
-      deal.lenders?.forEach(lender => {
-        if (lender.trackingStatus === 'active' && lender.updatedAt) {
-          const lenderDaysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
-          if (lenderDaysSinceUpdate >= staleLenderDays) {
-            staleLenderCount++;
-            maxLenderDays = Math.max(maxLenderDays, lenderDaysSinceUpdate);
+      if (isPostSubmissionDealStage(deal.stage)) {
+        deal.lenders?.forEach(lender => {
+          if (lender.trackingStatus === 'active' && lender.updatedAt) {
+            const lenderDaysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
+            if (lenderDaysSinceUpdate >= staleLenderDays) {
+              staleLenderCount++;
+              maxLenderDays = Math.max(maxLenderDays, lenderDaysSinceUpdate);
+            }
           }
-        }
-      });
+        });
+      }
 
       if (staleLenderCount > 0) {
         alertItems.push({

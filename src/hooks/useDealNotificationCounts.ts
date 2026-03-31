@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
-
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 let instanceCounter = 0;
 
 export function useDealNotificationCounts(dealIds: string[]) {
@@ -17,14 +17,16 @@ export function useDealNotificationCounts(dealIds: string[]) {
     }
 
     try {
-      // Filter out notifications for archived/in_development deals
+      // Only include deals that are still active and have reached post-submission stages
       const { data: activeDeals } = await supabase
         .from('deals')
-        .select('id')
+        .select('id, stage')
         .in('id', dealIds)
         .not('status', 'in', '("archived","in_development")');
 
-      const activeDealIds = (activeDeals || []).map(d => d.id);
+      const activeDealIds = (activeDeals || [])
+        .filter((deal) => isPostSubmissionDealStage(deal.stage))
+        .map((deal) => deal.id);
       if (activeDealIds.length === 0) {
         setFlexCounts({});
         return;

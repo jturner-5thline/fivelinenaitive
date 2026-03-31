@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify';
 import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { InlineStatusDropdown } from './InlineStatusDropdown';
 import { InlineStageDropdown } from './InlineStageDropdown';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -154,18 +155,24 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
   const notificationCount = useMemo(() => {
     if (isClosedOrArchived) return 0;
+
     let count = flexNotificationCount;
-    deal.lenders?.forEach(lender => {
-      if (lender.trackingStatus === 'active' && lender.updatedAt) {
-        const days = differenceInDays(new Date(), new Date(lender.updatedAt));
-        if (days >= preferences.staleDealsDays) count++;
-      }
-    });
+
+    if (isPostSubmissionDealStage(deal.stage)) {
+      deal.lenders?.forEach(lender => {
+        if (lender.trackingStatus === 'active' && lender.updatedAt) {
+          const days = differenceInDays(new Date(), new Date(lender.updatedAt));
+          if (days >= preferences.staleDealsDays) count++;
+        }
+      });
+    }
+
     deal.milestones?.forEach(m => {
       if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
     });
+
     return count;
-  }, [deal.lenders, deal.milestones, deal.status, deal.stage, preferences.staleDealsDays, flexNotificationCount, isClosedOrArchived]);
+  }, [deal.lenders, deal.milestones, deal.stage, preferences.staleDealsDays, flexNotificationCount, isClosedOrArchived]);
 
   const notesPlainText = useMemo(() => {
     if (!deal.notes || deal.notes === '<p></p>') return '';
