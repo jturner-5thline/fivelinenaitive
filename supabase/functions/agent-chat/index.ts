@@ -191,28 +191,7 @@ serve(async (req) => {
       throw new Error("No AI API key configured");
     }
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("Failed to get AI response");
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
+    if (!aiResponse?.content) {
       throw new Error("No response content from AI");
     }
 
@@ -226,7 +205,7 @@ serve(async (req) => {
       .eq("id", agentConfig.id);
 
     return new Response(
-      JSON.stringify({ content }),
+      JSON.stringify({ content: aiResponse.content }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
