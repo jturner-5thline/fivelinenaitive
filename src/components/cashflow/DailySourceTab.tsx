@@ -25,7 +25,7 @@ interface EditingCell {
 
 export const DailySourceTab = memo(function DailySourceTab({
   data, rowStructure, recurringTags, isAdmin,
-  onCellEdit, onRowRemove, onRowAdd, onRowRename,
+  onCellEdit, onRowRemove, onRowAdd, onRowRename, onImportExcel, isImportLoading,
 }: DailySourceTabProps) {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
