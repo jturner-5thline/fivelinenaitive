@@ -149,6 +149,7 @@ export function FPADashboardConfigPanel({ open, onOpenChange, config, onSave, is
                     permissions={localPerms}
                     onChange={setLocalPerms}
                     currentEmail={currentEmail}
+                    companyUsers={companyUsers}
                   />
                 </div>
               </ScrollArea>
