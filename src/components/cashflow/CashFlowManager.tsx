@@ -35,20 +35,27 @@ function getAvailableYears(dates: string[]): number[] {
   return Array.from(years).sort();
 }
 
-function filterDailyByPeriod(data: DailyData, year: string, quarter: string): DailyData {
-  if (year === 'all') return data;
-  const yearNum = parseInt(year);
+function filterDailyByPeriod(data: DailyData, years: string[], quarters: string[]): DailyData {
+  if (years.length === 0 && quarters.length === 0) return data;
+  const yearNums = years.map(Number);
   const indices: number[] = [];
 
   for (let i = 0; i < data.dates.length; i++) {
     const d = data.dates[i];
     const y = parseInt(d.slice(0, 4));
-    if (y !== yearNum) continue;
-    if (quarter !== 'all') {
-      const m = parseInt(d.slice(5, 7)) - 1;
-      const [qStart, qEnd] = QUARTER_RANGES[quarter];
-      if (m < qStart || m > qEnd) continue;
+    const m = parseInt(d.slice(5, 7)) - 1;
+
+    const yearMatch = yearNums.length === 0 || yearNums.includes(y);
+    if (!yearMatch) continue;
+
+    if (quarters.length > 0) {
+      const inQuarter = quarters.some(q => {
+        const [qStart, qEnd] = QUARTER_RANGES[q];
+        return m >= qStart && m <= qEnd;
+      });
+      if (!inQuarter) continue;
     }
+
     indices.push(i);
   }
 
@@ -67,19 +74,26 @@ function filterDailyByPeriod(data: DailyData, year: string, quarter: string): Da
   return { dates: filteredDates, rows: filteredRows };
 }
 
-function filterWeeklyByPeriod(data: WeeklyData, year: string, quarter: string): WeeklyData {
-  if (year === 'all') return data;
-  const yearNum = parseInt(year);
+function filterWeeklyByPeriod(data: WeeklyData, years: string[], quarters: string[]): WeeklyData {
+  if (years.length === 0 && quarters.length === 0) return data;
+  const yearNums = years.map(Number);
   const filtered: WeeklyData = {};
 
   for (const [key, entry] of Object.entries(data)) {
     const y = parseInt(key.slice(0, 4));
-    if (y !== yearNum) continue;
-    if (quarter !== 'all') {
-      const m = parseInt(key.slice(5, 7)) - 1;
-      const [qStart, qEnd] = QUARTER_RANGES[quarter];
-      if (m < qStart || m > qEnd) continue;
+    const m = parseInt(key.slice(5, 7)) - 1;
+
+    const yearMatch = yearNums.length === 0 || yearNums.includes(y);
+    if (!yearMatch) continue;
+
+    if (quarters.length > 0) {
+      const inQuarter = quarters.some(q => {
+        const [qStart, qEnd] = QUARTER_RANGES[q];
+        return m >= qStart && m <= qEnd;
+      });
+      if (!inQuarter) continue;
     }
+
     filtered[key] = entry;
   }
 
