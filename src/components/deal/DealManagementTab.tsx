@@ -17,7 +17,7 @@ interface DealManagementTabProps {
   lenderCount?: number;
 }
 
-export function DealManagementTab({ dealId }: DealManagementTabProps) {
+export function DealManagementTab({ dealId, dealName, dealValue, dealStage, dealType, dealStatus, lenderCount }: DealManagementTabProps) {
   const { flagNotes } = useFlagNotes(dealId);
   const hasFlags = flagNotes.length > 0;
 
