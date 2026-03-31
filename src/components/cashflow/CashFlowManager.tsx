@@ -332,14 +332,18 @@ export function CashFlowManager() {
   }, [pushUndo, setActiveData, logAction]);
 
   const handleSidebarAddItem = useCallback(() => {
-    pushUndo(`Add Cash-In item`);
-    setActiveData('sidebar', (prev: SidebarData) => {
-      const next = deepClone(prev);
-      next.cash_in_next_8_weeks.push({ name: 'New Item', amount: 0, date: new Date().toISOString().split('T')[0] });
-      return next;
-    });
-    logAction(`Add Cash-In item`);
-  }, [pushUndo, setActiveData, logAction]);
+    setAddCashInOpen(true);
+  }, []);
+
+  const handleCashInItemsAdded = useCallback(() => {
+    refreshCashInItems();
+    logAction('Added cash-in items from deals');
+  }, [refreshCashInItems, logAction]);
+
+  const handleRemoveCashInDbItem = useCallback(async (id: string) => {
+    await removeCashInDbItem(id);
+    logAction('Removed cash-in deal item');
+  }, [removeCashInDbItem, logAction]);
 
   const handleNoteEdit = useCallback((index: number, value: string) => {
     pushUndo(`Edit note ${index}`);
