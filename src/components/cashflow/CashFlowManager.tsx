@@ -409,40 +409,50 @@ export function CashFlowManager() {
       <div className="cf-filter-bar">
         <div className="cf-filter-group">
           <label className="cf-filter-label">Year</label>
-          <select
-            className="cf-select"
-            value={filterYear}
-            onChange={e => { setFilterYear(e.target.value); setFilterQuarter('all'); }}
-          >
-            <option value="all">All Years</option>
-            {availableYears.map(y => (
-              <option key={y} value={String(y)}>{y}</option>
-            ))}
-          </select>
-        </div>
-        {filterYear !== 'all' && (
-          <div className="cf-filter-group">
-            <label className="cf-filter-label">Quarter</label>
-            <select
-              className="cf-select"
-              value={filterQuarter}
-              onChange={e => setFilterQuarter(e.target.value)}
-            >
-              <option value="all">All Quarters</option>
-              <option value="Q1">Q1 (Jan–Mar)</option>
-              <option value="Q2">Q2 (Apr–Jun)</option>
-              <option value="Q3">Q3 (Jul–Sep)</option>
-              <option value="Q4">Q4 (Oct–Dec)</option>
-            </select>
+          <div className="cf-toggle-group">
+            {availableYears.map(y => {
+              const yStr = String(y);
+              const active = filterYears.includes(yStr);
+              return (
+                <button
+                  key={y}
+                  className={`cf-toggle-btn ${active ? 'active' : ''}`}
+                  onClick={() => setFilterYears(prev =>
+                    active ? prev.filter(v => v !== yStr) : [...prev, yStr]
+                  )}
+                >
+                  {y}
+                </button>
+              );
+            })}
           </div>
-        )}
-        {(filterYear !== 'all' || filterQuarter !== 'all') && (
+        </div>
+        <div className="cf-filter-group">
+          <label className="cf-filter-label">Quarter</label>
+          <div className="cf-toggle-group">
+            {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map(q => {
+              const active = filterQuarters.includes(q);
+              return (
+                <button
+                  key={q}
+                  className={`cf-toggle-btn ${active ? 'active' : ''}`}
+                  onClick={() => setFilterQuarters(prev =>
+                    active ? prev.filter(v => v !== q) : [...prev, q]
+                  )}
+                >
+                  {q}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {(filterYears.length > 0 || filterQuarters.length > 0) && (
           <button
             className="cf-btn cf-btn-ghost"
             style={{ fontSize: 11, marginLeft: 4 }}
-            onClick={() => { setFilterYear('all'); setFilterQuarter('all'); }}
+            onClick={() => { setFilterYears([]); setFilterQuarters([]); }}
           >
-            Clear Filter
+            Clear
           </button>
         )}
         <span className="cf-filter-summary">
