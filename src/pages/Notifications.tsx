@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAllActivities } from '@/hooks/useAllActivities';
 import { useNotificationReads } from '@/hooks/useNotificationReads';
