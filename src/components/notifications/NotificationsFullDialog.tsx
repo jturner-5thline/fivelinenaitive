@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users, Target, Clock, Lightbulb, CalendarClock, CheckCircle2, TrendingUp, LayoutGrid, List, GalleryHorizontalEnd, SlidersHorizontal } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Link } from 'react-router-dom';
