@@ -157,11 +157,18 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
               </ToggleGroup>
             </div>
         {isLoading && tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Loading tasks…</p>
+          <div className="flex items-center justify-center py-6">
+            <p className="text-xs text-muted-foreground">Loading tasks…</p>
+          </div>
         ) : tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No tasks yet. Create one to get started.</p>
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center mb-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground">No tasks yet</p>
+          </div>
         ) : displayedTasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">No tasks match this filter.</p>
+          <p className="text-xs text-muted-foreground text-center py-6">No tasks match this filter.</p>
         ) : (
           <ScrollArea className="max-h-[380px]">
           <div className="space-y-2">
