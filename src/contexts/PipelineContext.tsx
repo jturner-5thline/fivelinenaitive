@@ -20,41 +20,18 @@ const PipelineContext = createContext<PipelineContextType | undefined>(undefined
 export function PipelineProvider({ children }: { children: ReactNode }) {
   const { pipelines, isLoading, companyId, createPipeline, updatePipeline, deletePipeline, refetch } = usePipelines();
   
-  const [activePipelineId, setActivePipelineIdState] = useState<string | null>(() => {
-    return localStorage.getItem('active-pipeline-id');
-  });
+  const [activePipelineId, setActivePipelineIdState] = useState<string | null>(null);
 
-  // Track whether the user has made an explicit selection (including "All Deals" = null)
-  const [hasUserSelected, setHasUserSelected] = useState(() => {
-    return localStorage.getItem('active-pipeline-id') !== null || localStorage.getItem('pipeline-all-deals') === 'true';
-  });
-
-  // Auto-select default pipeline only on first load when no prior selection exists
+  // Always select the default pipeline when pipelines load
   useEffect(() => {
-    if (pipelines.length > 0 && !hasUserSelected && !activePipelineId) {
+    if (pipelines.length > 0) {
       const defaultPipeline = pipelines.find(p => p.isDefault) || pipelines[0];
       setActivePipelineIdState(defaultPipeline.id);
-      localStorage.setItem('active-pipeline-id', defaultPipeline.id);
-      setHasUserSelected(true);
     }
-    // If active pipeline was deleted, reset
-    if (activePipelineId && pipelines.length > 0 && !pipelines.find(p => p.id === activePipelineId)) {
-      const defaultPipeline = pipelines.find(p => p.isDefault) || pipelines[0];
-      setActivePipelineIdState(defaultPipeline.id);
-      localStorage.setItem('active-pipeline-id', defaultPipeline.id);
-    }
-  }, [pipelines, activePipelineId, hasUserSelected]);
+  }, [pipelines]);
 
   const setActivePipelineId = useCallback((id: string | null) => {
     setActivePipelineIdState(id);
-    setHasUserSelected(true);
-    if (id) {
-      localStorage.setItem('active-pipeline-id', id);
-      localStorage.removeItem('pipeline-all-deals');
-    } else {
-      localStorage.removeItem('active-pipeline-id');
-      localStorage.setItem('pipeline-all-deals', 'true');
-    }
   }, []);
 
   const activePipeline = pipelines.find(p => p.id === activePipelineId) || null;
