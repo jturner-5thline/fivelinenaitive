@@ -164,6 +164,7 @@ function generateWeeklyData(daily: DailyData): WeeklyData {
   // Group dates into weeks (Mon-Sun)
   let weekStart = 0;
   let weekNum = 1;
+  let carryBeginCash: number | null = null;
 
   while (weekStart < dates.length) {
     const startDate = new Date(dates[weekStart]);
@@ -189,20 +190,25 @@ function generateWeeklyData(daily: DailyData): WeeklyData {
       return Math.round(sum * 100) / 100;
     };
 
-    const beginCash = daily.rows.row_15?.values[weekStart] || 0;
-    const endCash = daily.rows.row_72?.values[Math.min(weekEnd, dates.length - 1)] || 0;
     const totalReceipts = sumRange('row_38');
     const totalDisb = sumRange('row_59');
     const totalTransfers = sumRange('row_68');
     const netChange = sumRange('row_70');
 
+    const beginCash = carryBeginCash !== null
+      ? carryBeginCash
+      : Math.round(daily.rows.row_15?.values[weekStart] || 0);
+    const roundedNetChange = Math.round(netChange);
+    const endCash = beginCash + roundedNetChange;
+    carryBeginCash = endCash;
+
     weekly[weekKey] = {
       week_num: weekNum,
       week_ending: endDate,
-      "BEGINNING CASH": Math.round(beginCash),
-      "ENDING CASH": Math.round(endCash),
+      "BEGINNING CASH": beginCash,
+      "ENDING CASH": endCash,
       "Add'l Liquidity (Delayed Draw)": 250000,
-      "TOTAL CASH ON HAND": Math.round(endCash + 250000),
+      "TOTAL CASH ON HAND": endCash + 250000,
       "Revenue Deposits": sumRange('row_27') + sumRange('row_28'),
       "Customer Payments": sumRange('row_29'),
       "Consulting Fees": sumRange('row_30'),
