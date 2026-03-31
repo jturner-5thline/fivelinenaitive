@@ -86,14 +86,17 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
   if (notifications.length === 0) {
     return (
       <Card className="h-full flex flex-col">
-        <CardHeader className="pb-3">
+        <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Bell className="h-4 w-4" />
+            <Bell className="h-3.5 w-3.5 text-muted-foreground" />
             Info Requests
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground text-center">No info requests yet</p>
+        <CardContent className="flex-1 flex flex-col items-center justify-center px-4 pb-4">
+          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center mb-2">
+            <Bell className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <p className="text-xs text-muted-foreground">No info requests yet</p>
         </CardContent>
       </Card>
     );
