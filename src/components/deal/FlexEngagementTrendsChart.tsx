@@ -141,81 +141,75 @@ export function FlexEngagementTrendsChart({ dealId }: FlexEngagementTrendsChartP
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Engagement Trends
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 rounded-md border border-border bg-muted/50 p-0.5">
-              {(['area', 'bar', 'line'] as const).map(type => {
-                const Icon = type === 'area' ? Activity : type === 'bar' ? BarChart3 : TrendingUp;
-                return (
-                  <button
-                    key={type}
-                    onClick={() => setChartType(type)}
-                    className={cn(
-                      "flex items-center justify-center h-7 w-7 rounded-sm transition-colors",
-                      chartType === type ? "bg-background shadow-sm" : "hover:bg-background/50"
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                  </button>
-                );
-              })}
-            </div>
-            <Select value={days.toString()} onValueChange={(v) => setDays(parseInt(v))}>
-              <SelectTrigger className="w-[100px] h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">7 days</SelectItem>
-                <SelectItem value="14">14 days</SelectItem>
-                <SelectItem value="30">30 days</SelectItem>
-                <SelectItem value="60">60 days</SelectItem>
-                <SelectItem value="90">90 days</SelectItem>
-              </SelectContent>
-            </Select>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 space-y-0">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+          Engagement Trends
+        </CardTitle>
+        <div className="flex items-center gap-1.5">
+          <div className="flex h-7 rounded-md border border-border bg-muted/50 p-0.5">
+            {(['area', 'bar', 'line'] as const).map(type => {
+              const Icon = type === 'area' ? Activity : type === 'bar' ? BarChart3 : TrendingUp;
+              return (
+                <button
+                  key={type}
+                  onClick={() => setChartType(type)}
+                  className={cn(
+                    "flex items-center justify-center h-6 w-6 rounded-sm transition-colors",
+                    chartType === type ? "bg-background shadow-sm" : "hover:bg-background/50"
+                  )}
+                >
+                  <Icon className="h-3 w-3" />
+                </button>
+              );
+            })}
           </div>
+          <Select value={days.toString()} onValueChange={(v) => setDays(parseInt(v))}>
+            <SelectTrigger className="w-[80px] h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">7 days</SelectItem>
+              <SelectItem value="14">14 days</SelectItem>
+              <SelectItem value="30">30 days</SelectItem>
+              <SelectItem value="60">60 days</SelectItem>
+              <SelectItem value="90">90 days</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        {/* Metric filter tabs */}
-        <div className="flex flex-wrap gap-1.5 mt-3">
+      </CardHeader>
+      <div className="px-4 pb-2">
+        <div className="flex flex-wrap gap-1">
           {METRIC_TABS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               onClick={() => setActiveMetric(key)}
               className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors border",
+                "flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors border",
                 activeMetric === key
                   ? "bg-primary/10 text-primary border-primary/30"
                   : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground"
               )}
             >
-              <Icon className="h-3 w-3" />
+              <Icon className="h-2.5 w-2.5" />
               {label}
             </button>
           ))}
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <CardContent className="flex-1 px-4 pb-4 pt-0">
         {isLoading ? (
-          <div className="h-[280px] flex items-center justify-center">
+          <div className="h-[200px] flex items-center justify-center">
             <Skeleton className="h-full w-full" />
           </div>
         ) : !hasActivity ? (
-          <div className="h-[280px] flex flex-col items-center justify-center">
-            <TrendingUp className="h-8 w-8 text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground text-center">
-              No FLEx engagement recorded in the last {days} days.
-            </p>
-            <p className="text-xs text-muted-foreground text-center mt-1">
-              Engagement will appear here as lenders interact with this deal on FLEx.
-            </p>
+          <div className="h-[200px] flex flex-col items-center justify-center">
+            <TrendingUp className="h-6 w-6 text-muted-foreground/40 mb-2" />
+            <p className="text-xs text-muted-foreground">No engagement in the last {days} days</p>
           </div>
         ) : (
-          <div className="h-[280px]">
+          <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               {renderChart()}
             </ResponsiveContainer>

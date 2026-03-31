@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -124,43 +125,50 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full h-full">
       <Card className="h-full w-full flex flex-col">
         <CollapsibleTrigger asChild>
-          <CardHeader className="flex flex-row items-center justify-between pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardTitle className="text-base flex items-center gap-2">
+          <CardHeader className="flex flex-row items-center justify-between py-3 px-4 space-y-0 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
               Tasks
               {pendingTasks.length > 0 && !isOpen && (
-                <span className="text-xs font-normal text-muted-foreground">({pendingTasks.length} open)</span>
+                <Badge variant="secondary" className="text-[10px] h-5 font-normal">{pendingTasks.length} open</Badge>
               )}
             </CardTitle>
-            <div className="flex items-center gap-1.5">
-              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setIsCreateOpen(true); }} className="gap-1.5">
-                <Plus className="h-3.5 w-3.5" />
-                Add Task
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setIsCreateOpen(true); }} className="h-7 gap-1 text-xs px-2">
+                <Plus className="h-3 w-3" />
+                Add
               </Button>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               </Button>
             </div>
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 px-4 pb-4 pt-0">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <ToggleGroup type="single" value={viewFilter} onValueChange={(v) => v && setViewFilter(v as 'mine' | 'all')} className="justify-start">
-                <ToggleGroupItem value="mine" className="text-xs h-7 px-2.5">My Tasks</ToggleGroupItem>
-                <ToggleGroupItem value="all" className="text-xs h-7 px-2.5">All Tasks</ToggleGroupItem>
+                <ToggleGroupItem value="mine" className="text-[10px] h-6 px-2">My Tasks</ToggleGroupItem>
+                <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
               </ToggleGroup>
               <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => v && setStatusFilter(v as 'incomplete' | 'completed' | 'all')} className="justify-end">
-                <ToggleGroupItem value="incomplete" className="text-xs h-7 px-2.5">Incomplete</ToggleGroupItem>
-                <ToggleGroupItem value="completed" className="text-xs h-7 px-2.5">Completed</ToggleGroupItem>
-                <ToggleGroupItem value="all" className="text-xs h-7 px-2.5">All</ToggleGroupItem>
+                <ToggleGroupItem value="incomplete" className="text-[10px] h-6 px-2">Open</ToggleGroupItem>
+                <ToggleGroupItem value="completed" className="text-[10px] h-6 px-2">Done</ToggleGroupItem>
+                <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
               </ToggleGroup>
             </div>
         {isLoading && tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Loading tasks…</p>
+          <div className="flex items-center justify-center py-6">
+            <p className="text-xs text-muted-foreground">Loading tasks…</p>
+          </div>
         ) : tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No tasks yet. Create one to get started.</p>
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center mb-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground">No tasks yet</p>
+          </div>
         ) : displayedTasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">No tasks match this filter.</p>
+          <p className="text-xs text-muted-foreground text-center py-6">No tasks match this filter.</p>
         ) : (
           <ScrollArea className="max-h-[380px]">
           <div className="space-y-2">
