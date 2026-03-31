@@ -145,7 +145,7 @@ export function aggregateDailyToWeekly(daily: DailyData): WeeklyData {
       "BEGINNING CASH": beginCash,
       "ENDING CASH": endCash,
       "Add'l Liquidity (Delayed Draw)": mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey].values[weekStart] || 0) : 0,
-      "TOTAL CASH ON HAND": endCash + 250000,
+      "TOTAL CASH ON HAND": endCash + (mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey].values[weekStart] || 0) : 0),
       "Revenue Deposits": Math.round(revDeposits),
       "Customer Payments": Math.round(custPay),
       "Consulting Fees": Math.round(consulting),
