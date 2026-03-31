@@ -294,6 +294,13 @@ export default function Settings() {
                     <LinkCard to="/field-layout-editor" title="Field Layout Editor" description="Configure how contact and company fields are displayed on detail pages" />
                   )}
                 </TabsContent>
+
+                {/* AI Tab */}
+                <TabsContent value="ai" className="space-y-4 mt-4">
+                  {isVisible('ai-configuration') && (
+                    <AIConfigurationSettings isAdmin={isAdmin} />
+                  )}
+                </TabsContent>
               </Tabs>
             )}
           </div>
