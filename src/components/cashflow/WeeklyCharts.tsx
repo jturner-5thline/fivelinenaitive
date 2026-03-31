@@ -106,7 +106,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
     });
 
     // Chart 2: Cash In vs Cash Out
-    chart2Instance.current = new Chart(chart2Ref.current, {
+    chart2Instance.current = new Chart(canvas2, {
       type: 'line',
       data: {
         labels,
