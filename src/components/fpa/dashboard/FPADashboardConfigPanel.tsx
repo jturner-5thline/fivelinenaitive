@@ -70,7 +70,7 @@ function ToggleSection({
 export function FPADashboardConfigPanel({ open, onOpenChange, config, onSave, isSaving }: FPADashboardConfigPanelProps) {
   const [local, setLocal] = useState<FPADashboardConfig>(config);
   const {
-    permissions, savePermissions, isSaving: permsSaving, isPermissionsAdmin, currentEmail,
+    permissions, savePermissions, isSaving: permsSaving, isPermissionsAdmin, currentEmail, companyUsers,
   } = useFPATabPermissions();
   const [localPerms, setLocalPerms] = useState<TabPermissions>(permissions);
   const [activeTab, setActiveTab] = useState('visibility');
