@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
-import { format } from 'date-fns';
-import { Search, X, ChevronDown, ChevronRight, Calendar, DollarSign } from 'lucide-react';
+import { Search, X, ArrowUpDown, ArrowUp, ArrowDown, Filter } from 'lucide-react';
 import { fmtShort } from './formatters';
 
 interface Deal {
   id: string;
   company: string;
   stage: string | null;
+  status: string | null;
   value: number | null;
   retainer_fee: number | null;
   milestone_fee: number | null;
@@ -16,23 +16,50 @@ interface Deal {
   total_fee: number | null;
 }
 
-interface FeeSelection {
-  enabled: boolean;
-  amount: number;
+interface RowState {
+  retainerEnabled: boolean;
+  retainerAmt: number;
+  milestoneEnabled: boolean;
+  milestoneAmt: number;
+  closingEnabled: boolean;
+  closingAmt: number;
   date: string;
 }
 
-interface DealSelection {
-  deal: Deal;
-  retainer: FeeSelection;
-  milestone: FeeSelection;
-  closing: FeeSelection;
-}
+type SortKey = 'company' | 'stage' | 'status' | 'value';
+type SortDir = 'asc' | 'desc';
 
 interface AddCashInModalProps {
   open: boolean;
   onClose: () => void;
   onItemsAdded: () => void;
+}
+
+const EXCLUDED_STAGES = [
+  'on-hold', 'On Hold', 'On Hold / Pause', 'On Hold or In Review',
+  'closed-lost', 'Closed lost', 'Closed Out / Not a Fit',
+  'closed-won', 'Closed won', 'Closed / Won',
+  'Do Not Contact / Dead Deal', 'Not a Fit; Do Not Contact',
+  'Company Opted Out', 'Client Lost', 'Dropped Client',
+  'Past Client', 'No Lender Interest', 'Unqualified',
+  'Clients Churned', 'Terminated', 'Deal/Diligence Paused/On Hold',
+];
+
+const STATUS_COLORS: Record<string, string> = {
+  'on-track': '#22c55e',
+  'at-risk': '#eab308',
+  'off-track': '#ef4444',
+  'active': '#22c55e',
+};
+
+function statusLabel(s: string | null) {
+  if (!s) return '—';
+  return s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function stageLabel(s: string | null) {
+  if (!s) return '—';
+  return s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalProps) {
@@ -41,27 +68,20 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selections, setSelections] = useState<Record<string, DealSelection>>({});
-  const [expandedDeals, setExpandedDeals] = useState<Set<string>>(new Set());
+  const [rows, setRows] = useState<Record<string, RowState>>({});
+  const [sortKey, setSortKey] = useState<SortKey>('company');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [stageFilter, setStageFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [showStageFilter, setShowStageFilter] = useState(false);
+  const [showStatusFilter, setShowStatusFilter] = useState(false);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Inactive/closed stages to exclude
-  const EXCLUDED_STAGES = [
-    'on-hold', 'On Hold', 'On Hold / Pause', 'On Hold or In Review',
-    'closed-lost', 'Closed lost', 'Closed Out / Not a Fit',
-    'closed-won', 'Closed won', 'Closed / Won',
-    'Do Not Contact / Dead Deal', 'Not a Fit; Do Not Contact',
-    'Company Opted Out', 'Client Lost', 'Dropped Client',
-    'Past Client', 'No Lender Interest', 'Unqualified',
-    'Clients Churned', 'Terminated', 'Deal/Diligence Paused/On Hold',
-  ];
-
+  // Fetch deals
   useEffect(() => {
     if (!open || !company?.id) return;
     setLoading(true);
-
-    // First get the default pipeline for this company
     supabase
       .from('deal_pipelines')
       .select('id')
@@ -72,314 +92,353 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
       .then(({ data: pipeline }) => {
         let query = supabase
           .from('deals')
-          .select('id, company, stage, value, retainer_fee, milestone_fee, success_fee_percent, total_fee')
+          .select('id, company, stage, status, value, retainer_fee, milestone_fee, success_fee_percent, total_fee')
           .eq('company_id', company.id)
           .not('status', 'in', '("on-hold","archived")')
           .not('stage', 'in', `(${EXCLUDED_STAGES.map(s => `"${s}"`).join(',')})`)
           .order('company', { ascending: true });
-
-        if (pipeline?.id) {
-          query = query.eq('pipeline_id', pipeline.id);
-        }
-
+        if (pipeline?.id) query = query.eq('pipeline_id', pipeline.id);
         query.then(({ data, error }) => {
-          if (!error && data) setDeals(data as Deal[]);
+          const d = (!error && data ? data : []) as Deal[];
+          setDeals(d);
+          // Initialize row state for all deals
+          const init: Record<string, RowState> = {};
+          d.forEach(deal => {
+            init[deal.id] = {
+              retainerEnabled: false,
+              retainerAmt: deal.retainer_fee || 0,
+              milestoneEnabled: false,
+              milestoneAmt: deal.milestone_fee || 0,
+              closingEnabled: false,
+              closingAmt: deal.total_fee || 0,
+              date: todayStr,
+            };
+          });
+          setRows(init);
           setLoading(false);
         });
       });
-  }, [open, company?.id]);
+  }, [open, company?.id, todayStr]);
 
+  // Distinct stages/statuses for filter options
+  const distinctStages = useMemo(() => [...new Set(deals.map(d => d.stage).filter(Boolean))] as string[], [deals]);
+  const distinctStatuses = useMemo(() => [...new Set(deals.map(d => d.status).filter(Boolean))] as string[], [deals]);
+
+  // Filter + search + sort
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return deals;
-    const q = searchQuery.toLowerCase();
-    return deals.filter(d =>
-      d.company?.toLowerCase().includes(q) ||
-      d.stage?.toLowerCase().includes(q)
-    );
-  }, [deals, searchQuery]);
-
-  const toggleDealExpand = useCallback((dealId: string) => {
-    setExpandedDeals(prev => {
-      const next = new Set(prev);
-      if (next.has(dealId)) {
-        next.delete(dealId);
-        // Also remove selection
-        setSelections(s => {
-          const copy = { ...s };
-          delete copy[dealId];
-          return copy;
-        });
-      } else {
-        next.add(dealId);
-        // Initialize selection with deal defaults
-        const deal = deals.find(d => d.id === dealId);
-        if (deal) {
-          setSelections(s => ({
-            ...s,
-            [dealId]: {
-              deal,
-              retainer: { enabled: false, amount: deal.retainer_fee || 0, date: todayStr },
-              milestone: { enabled: false, amount: deal.milestone_fee || 0, date: todayStr },
-              closing: { enabled: false, amount: deal.total_fee || 0, date: todayStr },
-            },
-          }));
-        }
+    let result = [...deals];
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(d => d.company?.toLowerCase().includes(q) || d.stage?.toLowerCase().includes(q));
+    }
+    if (stageFilter.length > 0) result = result.filter(d => d.stage && stageFilter.includes(d.stage));
+    if (statusFilter.length > 0) result = result.filter(d => d.status && statusFilter.includes(d.status));
+    result.sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case 'company': cmp = (a.company || '').localeCompare(b.company || ''); break;
+        case 'stage': cmp = (a.stage || '').localeCompare(b.stage || ''); break;
+        case 'status': cmp = (a.status || '').localeCompare(b.status || ''); break;
+        case 'value': cmp = (a.value || 0) - (b.value || 0); break;
       }
-      return next;
+      return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [deals, todayStr]);
+    return result;
+  }, [deals, searchQuery, stageFilter, statusFilter, sortKey, sortDir]);
 
-  const updateFee = useCallback((dealId: string, feeType: 'retainer' | 'milestone' | 'closing', field: keyof FeeSelection, value: boolean | number | string) => {
-    setSelections(prev => ({
-      ...prev,
-      [dealId]: {
-        ...prev[dealId],
-        [feeType]: { ...prev[dealId][feeType], [field]: value },
-      },
-    }));
+  const toggleSort = useCallback((key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  }, [sortKey]);
+
+  const updateRow = useCallback((id: string, patch: Partial<RowState>) => {
+    setRows(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
   }, []);
 
-  const selectedCount = useMemo(() => {
-    return Object.values(selections).reduce((count, sel) => {
-      return count + (sel.retainer.enabled ? 1 : 0) + (sel.milestone.enabled ? 1 : 0) + (sel.closing.enabled ? 1 : 0);
-    }, 0);
-  }, [selections]);
+  // Bulk toggle a fee column for all visible deals
+  const bulkToggleFee = useCallback((feeKey: 'retainerEnabled' | 'milestoneEnabled' | 'closingEnabled') => {
+    const visibleIds = filtered.map(d => d.id);
+    const allEnabled = visibleIds.every(id => rows[id]?.[feeKey]);
+    setRows(prev => {
+      const next = { ...prev };
+      visibleIds.forEach(id => { if (next[id]) next[id] = { ...next[id], [feeKey]: !allEnabled }; });
+      return next;
+    });
+  }, [filtered, rows]);
+
+  // Summary stats
+  const summary = useMemo(() => {
+    let feeCount = 0;
+    let total = 0;
+    const dealIds = new Set<string>();
+    Object.entries(rows).forEach(([id, r]) => {
+      if (r.retainerEnabled && r.retainerAmt > 0) { feeCount++; total += r.retainerAmt; dealIds.add(id); }
+      if (r.milestoneEnabled && r.milestoneAmt > 0) { feeCount++; total += r.milestoneAmt; dealIds.add(id); }
+      if (r.closingEnabled && r.closingAmt > 0) { feeCount++; total += r.closingAmt; dealIds.add(id); }
+    });
+    return { dealCount: dealIds.size, feeCount, total };
+  }, [rows]);
 
   const handleSave = useCallback(async () => {
     if (!company?.id) return;
     setSaving(true);
-
-    const items: Array<{
-      company_id: string;
-      deal_id: string;
-      deal_name: string;
-      fee_type: string;
-      amount: number;
-      target_date: string;
-    }> = [];
-
-    for (const sel of Object.values(selections)) {
-      if (sel.retainer.enabled && sel.retainer.amount > 0) {
-        items.push({
-          company_id: company.id,
-          deal_id: sel.deal.id,
-          deal_name: sel.deal.company,
-          fee_type: 'retainer',
-          amount: sel.retainer.amount,
-          target_date: sel.retainer.date,
-        });
-      }
-      if (sel.milestone.enabled && sel.milestone.amount > 0) {
-        items.push({
-          company_id: company.id,
-          deal_id: sel.deal.id,
-          deal_name: sel.deal.company,
-          fee_type: 'milestone',
-          amount: sel.milestone.amount,
-          target_date: sel.milestone.date,
-        });
-      }
-      if (sel.closing.enabled && sel.closing.amount > 0) {
-        items.push({
-          company_id: company.id,
-          deal_id: sel.deal.id,
-          deal_name: sel.deal.company,
-          fee_type: 'closing',
-          amount: sel.closing.amount,
-          target_date: sel.closing.date,
-        });
-      }
-    }
-
-    if (items.length === 0) {
-      setSaving(false);
-      return;
-    }
-
+    const items: Array<{ company_id: string; deal_id: string; deal_name: string; fee_type: string; amount: number; target_date: string }> = [];
+    Object.entries(rows).forEach(([id, r]) => {
+      const deal = deals.find(d => d.id === id);
+      if (!deal) return;
+      if (r.retainerEnabled && r.retainerAmt > 0) items.push({ company_id: company.id, deal_id: id, deal_name: deal.company, fee_type: 'retainer', amount: r.retainerAmt, target_date: r.date });
+      if (r.milestoneEnabled && r.milestoneAmt > 0) items.push({ company_id: company.id, deal_id: id, deal_name: deal.company, fee_type: 'milestone', amount: r.milestoneAmt, target_date: r.date });
+      if (r.closingEnabled && r.closingAmt > 0) items.push({ company_id: company.id, deal_id: id, deal_name: deal.company, fee_type: 'closing', amount: r.closingAmt, target_date: r.date });
+    });
+    if (items.length === 0) { setSaving(false); return; }
     const { error } = await supabase.from('cashflow_cash_in_items').insert(items);
     setSaving(false);
-
-    if (!error) {
-      onItemsAdded();
-      onClose();
-      setSelections({});
-      setExpandedDeals(new Set());
-      setSearchQuery('');
-    }
-  }, [company?.id, selections, onItemsAdded, onClose]);
+    if (!error) { onItemsAdded(); onClose(); setRows({}); setSearchQuery(''); setStageFilter([]); setStatusFilter([]); }
+  }, [company?.id, rows, deals, onItemsAdded, onClose]);
 
   if (!open) return null;
 
-  const feeLabel = (type: string) => {
-    switch (type) {
-      case 'retainer': return 'Retainer Fee';
-      case 'milestone': return 'Milestone Fee';
-      case 'closing': return 'Closing / Success Fee';
-      default: return type;
-    }
+  const hasFilters = stageFilter.length > 0 || statusFilter.length > 0;
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown size={11} style={{ opacity: 0.3 }} />;
+    return sortDir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />;
+  };
+
+  const allRetainer = filtered.length > 0 && filtered.every(d => rows[d.id]?.retainerEnabled);
+  const allMilestone = filtered.length > 0 && filtered.every(d => rows[d.id]?.milestoneEnabled);
+  const allClosing = filtered.length > 0 && filtered.every(d => rows[d.id]?.closingEnabled);
+
+  const s = {
+    overlay: { position: 'fixed' as const, inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    dialog: { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 12, width: '92vw', maxWidth: 1200, height: '82vh', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid hsl(var(--border))' },
+    title: { fontSize: 16, fontWeight: 700, color: 'hsl(var(--foreground))' },
+    toolbar: { display: 'flex', gap: 8, padding: '12px 20px', alignItems: 'center', flexWrap: 'wrap' as const, borderBottom: '1px solid hsl(var(--border))' },
+    input: { background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))', borderRadius: 6, padding: '6px 10px 6px 30px', fontSize: 12, color: 'hsl(var(--foreground))', outline: 'none', width: 220 },
+    filterBtn: { background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))', borderRadius: 6, padding: '5px 10px', fontSize: 11, color: 'hsl(var(--muted-foreground))', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 },
+    filterBtnActive: { borderColor: 'hsl(var(--primary))', color: 'hsl(var(--primary))' },
+    dropdown: { position: 'absolute' as const, top: '100%', left: 0, marginTop: 4, background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, padding: 8, zIndex: 10, minWidth: 180, maxHeight: 200, overflowY: 'auto' as const, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' },
+    table: { flex: 1, overflowY: 'auto' as const, overflowX: 'auto' as const, minHeight: 0 },
+    th: { padding: '8px 10px', fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, color: 'hsl(var(--muted-foreground))', borderBottom: '2px solid hsl(var(--border))', whiteSpace: 'nowrap' as const, cursor: 'pointer', userSelect: 'none' as const, position: 'sticky' as const, top: 0, background: 'hsl(var(--card))', zIndex: 2 },
+    thCheck: { padding: '8px 6px', borderBottom: '2px solid hsl(var(--border))', position: 'sticky' as const, top: 0, background: 'hsl(var(--card))', zIndex: 2, textAlign: 'center' as const },
+    td: { padding: '6px 10px', fontSize: 12, borderBottom: '1px solid hsl(var(--border))', whiteSpace: 'nowrap' as const, color: 'hsl(var(--foreground))' },
+    tdCenter: { padding: '6px 6px', borderBottom: '1px solid hsl(var(--border))', textAlign: 'center' as const },
+    feeInput: { background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))', borderRadius: 4, padding: '4px 6px', fontSize: 11, color: 'hsl(var(--foreground))', width: 80, outline: 'none', textAlign: 'right' as const },
+    dateInput: { background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))', borderRadius: 4, padding: '4px 6px', fontSize: 11, color: 'hsl(var(--foreground))', width: 120, outline: 'none' },
+    footer: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid hsl(var(--border))' },
+    footerStats: { fontSize: 12, color: 'hsl(var(--muted-foreground))' },
+    btnGhost: { background: 'none', border: '1px solid hsl(var(--border))', borderRadius: 6, padding: '7px 16px', fontSize: 12, color: 'hsl(var(--muted-foreground))', cursor: 'pointer' },
+    btnPrimary: { background: 'hsl(var(--primary))', border: 'none', borderRadius: 6, padding: '7px 16px', fontSize: 12, fontWeight: 600, color: 'hsl(var(--primary-foreground))', cursor: 'pointer' },
+    dot: (color: string) => ({ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: color, marginRight: 5, flexShrink: 0 }),
   };
 
   return (
-    <div className="cf-overlay" onClick={onClose}>
-      <div
-        className="cf-dialog"
-        onClick={e => e.stopPropagation()}
-        style={{ maxWidth: 640, width: '90vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div className="cf-dialog-title" style={{ margin: 0 }}>Add Cash-In from Deals</div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
-            <X size={18} />
-          </button>
+    <div style={s.overlay} onClick={onClose}>
+      <div style={s.dialog} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={s.header}>
+          <span style={s.title}>Add Cash-In from Deals</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'hsl(var(--muted-foreground))', cursor: 'pointer' }}><X size={18} /></button>
         </div>
 
-        {/* Search */}
-        <div style={{ position: 'relative', marginBottom: 12 }}>
-          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-          <input
-            className="cf-input"
-            placeholder="Search deals..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{ paddingLeft: 30, width: '100%' }}
-            autoFocus
-          />
+        {/* Toolbar: search + filters */}
+        <div style={s.toolbar}>
+          <div style={{ position: 'relative' }}>
+            <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'hsl(var(--muted-foreground))' }} />
+            <input style={s.input} placeholder="Search deals..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} autoFocus />
+          </div>
+
+          {/* Stage filter */}
+          <div style={{ position: 'relative' }}>
+            <button
+              style={{ ...s.filterBtn, ...(stageFilter.length > 0 ? s.filterBtnActive : {}) }}
+              onClick={() => { setShowStageFilter(v => !v); setShowStatusFilter(false); }}
+            >
+              <Filter size={11} /> Stage {stageFilter.length > 0 && `(${stageFilter.length})`}
+            </button>
+            {showStageFilter && (
+              <div style={s.dropdown}>
+                {distinctStages.map(st => (
+                  <label key={st} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', fontSize: 11, cursor: 'pointer', color: 'hsl(var(--foreground))' }}>
+                    <input type="checkbox" checked={stageFilter.includes(st)} onChange={() => setStageFilter(prev => prev.includes(st) ? prev.filter(x => x !== st) : [...prev, st])} />
+                    {stageLabel(st)}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Status filter */}
+          <div style={{ position: 'relative' }}>
+            <button
+              style={{ ...s.filterBtn, ...(statusFilter.length > 0 ? s.filterBtnActive : {}) }}
+              onClick={() => { setShowStatusFilter(v => !v); setShowStageFilter(false); }}
+            >
+              <Filter size={11} /> Status {statusFilter.length > 0 && `(${statusFilter.length})`}
+            </button>
+            {showStatusFilter && (
+              <div style={s.dropdown}>
+                {distinctStatuses.map(st => (
+                  <label key={st} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', fontSize: 11, cursor: 'pointer', color: 'hsl(var(--foreground))' }}>
+                    <input type="checkbox" checked={statusFilter.includes(st)} onChange={() => setStatusFilter(prev => prev.includes(st) ? prev.filter(x => x !== st) : [...prev, st])} />
+                    <span style={s.dot(STATUS_COLORS[st] || '#888')} />
+                    {statusLabel(st)}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {hasFilters && (
+            <button style={{ ...s.filterBtn, fontSize: 10 }} onClick={() => { setStageFilter([]); setStatusFilter([]); }}>
+              Clear Filters
+            </button>
+          )}
+
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>
+            {filtered.length} deal{filtered.length !== 1 ? 's' : ''}
+          </span>
         </div>
 
-        {/* Deal list */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {/* Table */}
+        <div style={s.table} onClick={() => { setShowStageFilter(false); setShowStatusFilter(false); }}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)', fontSize: 13 }}>
-              Loading deals...
-            </div>
+            <div style={{ textAlign: 'center', padding: 48, color: 'hsl(var(--muted-foreground))', fontSize: 13 }}>Loading deals...</div>
           ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)', fontSize: 13 }}>
-              {searchQuery ? 'No deals match your search' : 'No active deals found'}
+            <div style={{ textAlign: 'center', padding: 48, color: 'hsl(var(--muted-foreground))', fontSize: 13 }}>
+              {searchQuery || hasFilters ? 'No deals match filters' : 'No active deals found'}
             </div>
           ) : (
-            filtered.map(deal => {
-              const isExpanded = expandedDeals.has(deal.id);
-              const sel = selections[deal.id];
-
-              return (
-                <div
-                  key={deal.id}
-                  style={{
-                    border: '1px solid var(--color-divider)',
-                    borderRadius: 8,
-                    marginBottom: 8,
-                    background: isExpanded ? 'var(--color-surface-offset)' : 'transparent',
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  {/* Deal header row */}
-                  <div
-                    onClick={() => toggleDealExpand(deal.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '10px 12px',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                    }}
-                  >
-                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)' }}>
-                        {deal.company || 'Unnamed Deal'}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
-                        {deal.stage || 'No stage'} · {deal.value ? fmtShort(deal.value) : 'No value'}
-                      </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+              <thead>
+                <tr>
+                  <th style={{ ...s.th, cursor: 'default', width: 30 }}></th>
+                  <th style={s.th} onClick={() => toggleSort('company')}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Deal Name <SortIcon col="company" /></span>
+                  </th>
+                  <th style={s.th} onClick={() => toggleSort('stage')}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Stage <SortIcon col="stage" /></span>
+                  </th>
+                  <th style={s.th} onClick={() => toggleSort('status')}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Status <SortIcon col="status" /></span>
+                  </th>
+                  <th style={s.th} onClick={() => toggleSort('value')}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Deal Size <SortIcon col="value" /></span>
+                  </th>
+                  <th style={s.thCheck}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <input type="checkbox" checked={allRetainer} onChange={() => bulkToggleFee('retainerEnabled')} style={{ accentColor: 'hsl(var(--primary))' }} />
+                      <span style={{ fontSize: 9, fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase' }}>Retainer</span>
                     </div>
-                  </div>
-
-                  {/* Fee selection panel */}
-                  {isExpanded && sel && (
-                    <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {(['retainer', 'milestone', 'closing'] as const).map(feeType => {
-                        const fee = sel[feeType];
-                        return (
-                          <div
-                            key={feeType}
-                            style={{
-                              background: 'var(--color-surface)',
-                              border: '1px solid var(--color-divider)',
-                              borderRadius: 6,
-                              padding: '8px 10px',
-                            }}
-                          >
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: fee.enabled ? 8 : 0 }}>
-                              <input
-                                type="checkbox"
-                                checked={fee.enabled}
-                                onChange={e => updateFee(deal.id, feeType, 'enabled', e.target.checked)}
-                                style={{ accentColor: 'var(--color-accent)' }}
-                              />
-                              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text)' }}>
-                                {feeLabel(feeType)}
-                              </span>
-                              {!fee.enabled && fee.amount > 0 && (
-                                <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
-                                  {fmtShort(fee.amount)}
-                                </span>
-                              )}
-                            </label>
-
-                            {fee.enabled && (
-                              <div style={{ display: 'flex', gap: 8 }}>
-                                <div style={{ flex: 1 }}>
-                                  <label style={{ fontSize: 10, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                                    <DollarSign size={10} /> Amount
-                                  </label>
-                                  <input
-                                    type="number"
-                                    className="cf-input"
-                                    value={fee.amount || ''}
-                                    onChange={e => updateFee(deal.id, feeType, 'amount', parseFloat(e.target.value) || 0)}
-                                    placeholder="0"
-                                    style={{ width: '100%' }}
-                                  />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                  <label style={{ fontSize: 10, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                                    <Calendar size={10} /> Target Date
-                                  </label>
-                                  <input
-                                    type="date"
-                                    className="cf-input"
-                                    value={fee.date}
-                                    onChange={e => updateFee(deal.id, feeType, 'date', e.target.value)}
-                                    style={{ width: '100%' }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                  </th>
+                  <th style={s.thCheck}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <input type="checkbox" checked={allMilestone} onChange={() => bulkToggleFee('milestoneEnabled')} style={{ accentColor: 'hsl(var(--primary))' }} />
+                      <span style={{ fontSize: 9, fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase' }}>Milestone</span>
                     </div>
-                  )}
-                </div>
-              );
-            })
+                  </th>
+                  <th style={s.thCheck}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <input type="checkbox" checked={allClosing} onChange={() => bulkToggleFee('closingEnabled')} style={{ accentColor: 'hsl(var(--primary))' }} />
+                      <span style={{ fontSize: 9, fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase' }}>Closing</span>
+                    </div>
+                  </th>
+                  <th style={{ ...s.th, cursor: 'default' }}>Target Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(deal => {
+                  const r = rows[deal.id];
+                  if (!r) return null;
+                  const anyEnabled = r.retainerEnabled || r.milestoneEnabled || r.closingEnabled;
+                  const rowBg = anyEnabled ? 'hsl(var(--primary) / 0.04)' : 'transparent';
+
+                  return (
+                    <tr key={deal.id} style={{ background: rowBg, transition: 'background 0.15s' }}>
+                      <td style={s.td}>
+                        <span style={s.dot(STATUS_COLORS[deal.status || ''] || '#888')} />
+                      </td>
+                      <td style={{ ...s.td, fontWeight: 500, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {deal.company || 'Unnamed'}
+                      </td>
+                      <td style={{ ...s.td, fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>
+                        {stageLabel(deal.stage)}
+                      </td>
+                      <td style={{ ...s.td, fontSize: 11 }}>
+                        {statusLabel(deal.status)}
+                      </td>
+                      <td style={{ ...s.td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {deal.value ? fmtShort(deal.value) : '—'}
+                      </td>
+
+                      {/* Retainer */}
+                      <td style={s.tdCenter}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
+                          <input type="checkbox" checked={r.retainerEnabled} onChange={e => updateRow(deal.id, { retainerEnabled: e.target.checked })} style={{ accentColor: 'hsl(var(--primary))' }} />
+                          {r.retainerEnabled && (
+                            <input type="number" style={s.feeInput} value={r.retainerAmt || ''} onChange={e => updateRow(deal.id, { retainerAmt: parseFloat(e.target.value) || 0 })} />
+                          )}
+                          {!r.retainerEnabled && r.retainerAmt > 0 && (
+                            <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))' }}>{fmtShort(r.retainerAmt)}</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Milestone */}
+                      <td style={s.tdCenter}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
+                          <input type="checkbox" checked={r.milestoneEnabled} onChange={e => updateRow(deal.id, { milestoneEnabled: e.target.checked })} style={{ accentColor: 'hsl(var(--primary))' }} />
+                          {r.milestoneEnabled && (
+                            <input type="number" style={s.feeInput} value={r.milestoneAmt || ''} onChange={e => updateRow(deal.id, { milestoneAmt: parseFloat(e.target.value) || 0 })} />
+                          )}
+                          {!r.milestoneEnabled && r.milestoneAmt > 0 && (
+                            <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))' }}>{fmtShort(r.milestoneAmt)}</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Closing */}
+                      <td style={s.tdCenter}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
+                          <input type="checkbox" checked={r.closingEnabled} onChange={e => updateRow(deal.id, { closingEnabled: e.target.checked })} style={{ accentColor: 'hsl(var(--primary))' }} />
+                          {r.closingEnabled && (
+                            <input type="number" style={s.feeInput} value={r.closingAmt || ''} onChange={e => updateRow(deal.id, { closingAmt: parseFloat(e.target.value) || 0 })} />
+                          )}
+                          {!r.closingEnabled && r.closingAmt > 0 && (
+                            <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))' }}>{fmtShort(r.closingAmt)}</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Date */}
+                      <td style={s.td}>
+                        {anyEnabled ? (
+                          <input type="date" style={s.dateInput} value={r.date} onChange={e => updateRow(deal.id, { date: e.target.value })} />
+                        ) : (
+                          <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
 
         {/* Footer */}
-        <div className="cf-dialog-actions" style={{ marginTop: 12, borderTop: '1px solid var(--color-divider)', paddingTop: 12 }}>
-          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-            {selectedCount} fee{selectedCount !== 1 ? 's' : ''} selected
+        <div style={s.footer}>
+          <span style={s.footerStats}>
+            {summary.dealCount} deal{summary.dealCount !== 1 ? 's' : ''} · {summary.feeCount} fee{summary.feeCount !== 1 ? 's' : ''} selected · <strong>{fmtShort(summary.total)}</strong> total
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="cf-btn cf-btn-ghost" onClick={onClose}>Cancel</button>
+            <button style={s.btnGhost} onClick={onClose}>Cancel</button>
             <button
-              className="cf-btn cf-btn-primary"
+              style={{ ...s.btnPrimary, opacity: summary.feeCount === 0 || saving ? 0.5 : 1 }}
               onClick={handleSave}
-              disabled={selectedCount === 0 || saving}
+              disabled={summary.feeCount === 0 || saving}
             >
-              {saving ? 'Saving...' : `Add ${selectedCount} Item${selectedCount !== 1 ? 's' : ''}`}
+              {saving ? 'Saving...' : `Add ${summary.feeCount} Item${summary.feeCount !== 1 ? 's' : ''}`}
             </button>
           </div>
         </div>
