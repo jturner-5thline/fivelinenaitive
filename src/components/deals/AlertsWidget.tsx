@@ -8,6 +8,7 @@ import { Deal } from '@/types/deal';
 import { Link } from 'react-router-dom';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { cn } from '@/lib/utils';
 
 interface AlertsWidgetProps {
