@@ -1986,6 +1986,7 @@ export default function DealDetail() {
   // Calculate stale lenders for notification banner
   const staleLendersInfo = useMemo(() => {
     if (!deal?.lenders) return null;
+    if (!isPostSubmissionDealStage(deal.stage)) return null;
     const yellowThreshold = preferences.lenderUpdateYellowDays;
     const now = new Date();
     let staleLenderCount = 0;
