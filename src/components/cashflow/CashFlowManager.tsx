@@ -145,7 +145,6 @@ export function CashFlowManager() {
 
   // Sandbox data (viewer mode)
   const [sandboxDaily, setSandboxDaily] = useState<DailyData | null>(null);
-  const [sandboxWeekly, setSandboxWeekly] = useState<WeeklyData | null>(null);
   const [sandboxSidebar, setSandboxSidebar] = useState<SidebarData | null>(null);
 
   // UI state
