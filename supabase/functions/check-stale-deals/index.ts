@@ -60,6 +60,21 @@ interface AttentionDeal {
   stale_lender_count?: number;
 }
 
+function formatDealType(dealType: string | null): string {
+  if (!dealType) return '';
+  try {
+    const parsed = JSON.parse(dealType);
+    if (Array.isArray(parsed)) {
+      return parsed.map((t: string) =>
+        t.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      ).join(', ');
+    }
+  } catch {
+    // Not JSON, treat as plain string
+  }
+  return dealType.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
 function formatValue(value: number | null): string {
   if (!value) return '—';
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
