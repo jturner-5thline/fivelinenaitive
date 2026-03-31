@@ -121,6 +121,20 @@ export const DailySourceTab = memo(function DailySourceTab({
 
   return (
     <div className="cf-main">
+      {/* Import controls */}
+      {isAdmin && onImportExcel && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
+          <button
+            className="cf-btn cf-btn-primary"
+            onClick={onImportExcel}
+            disabled={isImportLoading}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+          >
+            <Upload size={14} />
+            {isImportLoading ? 'Importing…' : 'Import Excel'}
+          </button>
+        </div>
+      )}
       <div ref={gridWrapRef} className="cf-table-card">
       <div className="cf-grid-wrap">
         <table className="cf-grid">
