@@ -16,7 +16,9 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
   const chart2Instance = useRef<Chart | null>(null);
 
   useEffect(() => {
-    if (!chart1Ref.current || !chart2Ref.current) return;
+    const canvas1 = chart1Ref.current;
+    const canvas2 = chart2Ref.current;
+    if (!canvas1 || !canvas2) return;
 
     // Destroy existing
     chart1Instance.current?.destroy();

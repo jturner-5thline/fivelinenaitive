@@ -338,12 +338,14 @@ tr:hover .cf-row-remove { opacity: 1; }
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
   padding: var(--space-3);
+  contain: layout style;
 }
 .cf-chart-card {
   background: var(--color-surface-2);
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-lg);
   padding: var(--space-3);
+  contain: layout;
 }
 .cf-chart-title {
   font-size: var(--text-sm);
