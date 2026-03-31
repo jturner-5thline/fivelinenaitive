@@ -19,6 +19,7 @@ export function ClaapSyncSettings() {
     running: boolean;
     processed: number;
     matched: number;
+    rematched: number;
     skipped: number;
     alreadyExists: number;
     errors: number;
@@ -115,16 +116,16 @@ export function ClaapSyncSettings() {
   });
 
   // Backfill historical calls
-  const runBackfill = async () => {
+  const runBackfill = async (rematchExistingOnly = false) => {
     if (!config?.company_id) {
       toast.error('No company configuration found');
       return;
     }
 
-    setBackfillProgress({ running: true, processed: 0, matched: 0, skipped: 0, alreadyExists: 0, errors: 0, batchesDone: 0, errorDetails: [], processedTitles: [] });
+    setBackfillProgress({ running: true, processed: 0, matched: 0, rematched: 0, skipped: 0, alreadyExists: 0, errors: 0, batchesDone: 0, errorDetails: [], processedTitles: [] });
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     let cursor: string | null = null;
-    let totalProcessed = 0, totalMatched = 0, totalSkipped = 0, totalExists = 0, totalErrors = 0;
+    let totalProcessed = 0, totalMatched = 0, totalRematched = 0, totalSkipped = 0, totalExists = 0, totalErrors = 0;
     let batchesDone = 0;
     let allErrorDetails: Array<{ claap_id: string; title: string | null; error: string }> = [];
     let allTitles: string[] = [];
@@ -142,6 +143,7 @@ export function ClaapSyncSettings() {
               batch_size: 20,
               cursor,
               time_budget_ms: 50000,
+              rematch_existing_only: rematchExistingOnly,
             }),
           }
         );
@@ -151,6 +153,7 @@ export function ClaapSyncSettings() {
 
         totalProcessed += result.processed || 0;
         totalMatched += result.matched || 0;
+        totalRematched += result.rematched || 0;
         totalSkipped += result.skipped || 0;
         totalExists += result.already_exists || 0;
         totalErrors += result.errors || 0;
@@ -160,16 +163,18 @@ export function ClaapSyncSettings() {
 
         setBackfillProgress({
           running: true, processed: totalProcessed, matched: totalMatched,
-          skipped: totalSkipped, alreadyExists: totalExists, errors: totalErrors, batchesDone,
+          rematched: totalRematched, skipped: totalSkipped, alreadyExists: totalExists, errors: totalErrors, batchesDone,
           errorDetails: allErrorDetails, processedTitles: allTitles,
         });
 
-        if (!result.has_more || !result.next_cursor) break;
+        if (rematchExistingOnly || !result.has_more || !result.next_cursor) break;
         cursor = result.next_cursor;
       }
 
-      toast.success('Historical backfill complete', {
-        description: `Processed: ${totalProcessed} | Matched: ${totalMatched} | Skipped: ${totalSkipped} | Already synced: ${totalExists}`,
+      toast.success(rematchExistingOnly ? 'Call re-match complete' : 'Historical backfill complete', {
+        description: rematchExistingOnly
+          ? `Processed: ${totalProcessed} | Re-matched: ${totalRematched} | Skipped: ${totalSkipped}`
+          : `Processed: ${totalProcessed} | Matched: ${totalMatched} | Re-matched: ${totalRematched} | Skipped: ${totalSkipped} | Already synced: ${totalExists}`,
         duration: 10000,
       });
 
@@ -216,6 +221,7 @@ export function ClaapSyncSettings() {
               <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
                 <span>Processed: {backfillProgress.processed}</span>
                 <span>Matched: {backfillProgress.matched}</span>
+                <span>Re-matched: {backfillProgress.rematched}</span>
                 <span>Skipped: {backfillProgress.skipped}</span>
                 <span>Already synced: {backfillProgress.alreadyExists}</span>
                 {backfillProgress.errors > 0 && (
@@ -246,20 +252,32 @@ export function ClaapSyncSettings() {
               )}
             </div>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={runBackfill}
-            disabled={backfillProgress?.running}
-            className="w-full"
-          >
-            {backfillProgress?.running ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            {backfillProgress?.running ? 'Syncing...' : 'Sync Historical Calls (Last 45 Days)'}
-          </Button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => runBackfill(false)}
+              disabled={backfillProgress?.running}
+              className="w-full"
+            >
+              {backfillProgress?.running ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              {backfillProgress?.running ? 'Syncing...' : 'Sync Historical Calls'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => runBackfill(true)}
+              disabled={backfillProgress?.running}
+              className="w-full"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Re-match All Calls
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -291,6 +309,7 @@ export function ClaapSyncSettings() {
               <li>• <strong>Contact</strong> — Participant email matches a CRM contact</li>
               <li>• <strong>Company</strong> — Participant domain or meeting title matches a CRM company</li>
               <li>• <strong>Lender</strong> — Meeting title, participant domain, or contact name matches a lender</li>
+              <li>• <strong>Deal</strong> — Meeting title matches an active deal company name</li>
             </ul>
           </div>
         </CardContent>

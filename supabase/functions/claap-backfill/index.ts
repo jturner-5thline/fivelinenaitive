@@ -40,10 +40,180 @@ interface MatchResult {
   callType: string | null;
 }
 
+interface ClassifiedParticipant {
+  name: string;
+  email: string;
+  domain: string;
+  is_internal: boolean;
+}
+
+interface StoredClaapMeeting {
+  id: string;
+  claap_id: string;
+  title: string | null;
+  recording_url: string | null;
+  transcript: string | null;
+  organizer_email: string | null;
+  duration_seconds: number | null;
+  started_at: string | null;
+  company_id: string | null;
+  deal_id?: string | null;
+}
+
+async function fetchStoredMeetingParticipants(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  meetingId: string,
+): Promise<ClassifiedParticipant[]> {
+  const { data } = await supabaseAdmin
+    .from("claap_meeting_participants")
+    .select("name, email, domain, is_internal")
+    .eq("meeting_id", meetingId);
+
+  return (data || []).map((participant: any) => ({
+    name: participant.name || "",
+    email: participant.email || "",
+    domain: participant.domain || "",
+    is_internal: !!participant.is_internal,
+  }));
+}
+
+async function resolveDealIdFromMatchResult(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  matchResult: MatchResult,
+): Promise<string | null> {
+  if (matchResult.dealIds.length === 1) {
+    return matchResult.dealIds[0];
+  }
+
+  if (matchResult.dealIds.length === 0 && matchResult.crmCompanyId) {
+    const { data: crmCo } = await supabaseAdmin
+      .from("crm_companies")
+      .select("name")
+      .eq("id", matchResult.crmCompanyId)
+      .single();
+
+    if (crmCo?.name) {
+      const { data: deals } = await supabaseAdmin
+        .from("deals")
+        .select("id")
+        .eq("status", "active")
+        .ilike("company", `%${crmCo.name}%`)
+        .limit(2);
+
+      if (deals && deals.length === 1) {
+        return deals[0].id;
+      }
+    }
+  }
+
+  return null;
+}
+
+async function linkMeetingToDeal(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  meeting: StoredClaapMeeting,
+  resolvedDealId: string,
+  matchResult: MatchResult,
+  source: "backfill" | "rematch",
+) {
+  await supabaseAdmin
+    .from("claap_meetings")
+    .update({
+      deal_id: resolvedDealId,
+      status: "routed",
+      call_type: matchResult.callType,
+      match_source: matchResult.matchSource,
+      matched_lender_id: matchResult.lenderId,
+      matched_contact_id: matchResult.contactId,
+      matched_crm_company_id: matchResult.crmCompanyId,
+    })
+    .eq("id", meeting.id);
+
+  await supabaseAdmin.from("deal_claap_recordings").upsert({
+    deal_id: resolvedDealId,
+    recording_id: meeting.claap_id,
+    recording_title: meeting.title,
+    recording_url: meeting.recording_url,
+    duration_seconds: meeting.duration_seconds,
+    recorder_email: meeting.organizer_email,
+    notes: source === "rematch"
+      ? `Auto-linked by re-match (${matchResult.callType || "matched"})`
+      : `Auto-linked by backfill (${matchResult.callType || "matched"})`,
+  }, { onConflict: "deal_id,recording_id" });
+
+  const { data: existingActivity } = await supabaseAdmin
+    .from("activity_logs")
+    .select("id")
+    .eq("deal_id", resolvedDealId)
+    .eq("activity_type", "claap_recording_linked")
+    .contains("metadata", { claap_id: meeting.claap_id })
+    .maybeSingle();
+
+  if (!existingActivity) {
+    await supabaseAdmin.from("activity_logs").insert({
+      deal_id: resolvedDealId,
+      activity_type: "claap_recording_linked",
+      description: source === "rematch"
+        ? `Claap recording linked (re-matched): ${meeting.title || "Untitled"} (${matchResult.callType || "matched"})`
+        : `Claap recording linked (backfill): ${meeting.title || "Untitled"} (${matchResult.callType || "matched"})`,
+      metadata: {
+        claap_id: meeting.claap_id,
+        recording_url: meeting.recording_url,
+        source,
+        call_type: matchResult.callType,
+      },
+    });
+  }
+
+  if (meeting.transcript || meeting.title) {
+    await supabaseAdmin.from("claap_transcripts").upsert({
+      deal_id: resolvedDealId,
+      claap_meeting_id: meeting.id,
+      transcript_text: meeting.transcript || null,
+      duration_seconds: meeting.duration_seconds,
+      recorded_at: meeting.started_at,
+      call_type: matchResult.callType,
+      match_source: matchResult.matchSource,
+    }, { onConflict: "claap_meeting_id" });
+  }
+}
+
+async function rematchStoredMeeting(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  meeting: StoredClaapMeeting,
+  configCompanyId: string | null,
+  source: "backfill" | "rematch",
+  participantsOverride?: ClassifiedParticipant[],
+) {
+  const participants = participantsOverride || await fetchStoredMeetingParticipants(supabaseAdmin, meeting.id);
+  const matchResult = await runSmartMatching(
+    supabaseAdmin,
+    meeting.title,
+    participants,
+    configCompanyId || meeting.company_id || null,
+  );
+
+  console.log(
+    `Re-match result for "${meeting.title || "(no title)"}": matched=${matchResult.matched}, type=${matchResult.matchType}, source=${matchResult.matchSource}`,
+  );
+
+  if (!matchResult.matched) {
+    return { rematched: false, matchResult, resolvedDealId: null };
+  }
+
+  const resolvedDealId = await resolveDealIdFromMatchResult(supabaseAdmin, matchResult);
+  if (!resolvedDealId) {
+    return { rematched: false, matchResult, resolvedDealId: null };
+  }
+
+  await linkMeetingToDeal(supabaseAdmin, meeting, resolvedDealId, matchResult, source);
+  return { rematched: true, matchResult, resolvedDealId };
+}
+
 async function runSmartMatching(
   supabaseAdmin: ReturnType<typeof createClient>,
   title: string | null,
-  participants: Array<{ name: string; email: string; domain: string; is_internal: boolean }>,
+  participants: ClassifiedParticipant[],
   configCompanyId: string | null,
 ): Promise<MatchResult> {
   const result: MatchResult = {
@@ -216,6 +386,7 @@ Deno.serve(async (req) => {
     const batchSize = body.batch_size || 20;
     const cursor = body.cursor || null; // pagination cursor from Claap API
     const timeBudgetMs = body.time_budget_ms || 50000; // 50s default
+    const rematchExistingOnly = body.rematch_existing_only === true;
     const startTime = Date.now();
 
     const claapApiKey = Deno.env.get("CLAAP_API_KEY");
@@ -254,6 +425,77 @@ Deno.serve(async (req) => {
       }
     }
 
+    let processed = 0, matched = 0, skipped = 0, alreadyExists = 0, errors = 0, rematched = 0;
+    const errorDetails: Array<{ claap_id: string; title: string | null; error: string }> = [];
+    const processedTitles: string[] = [];
+
+    if (rematchExistingOnly) {
+      let existingQuery = supabaseAdmin
+        .from("claap_meetings")
+        .select("id, claap_id, title, recording_url, transcript, organizer_email, duration_seconds, started_at, company_id, deal_id")
+        .is("deal_id", null)
+        .order("created_at", { ascending: false })
+        .limit(Math.max(batchSize, 200));
+
+      if (companyId) {
+        existingQuery = existingQuery.eq("company_id", companyId);
+      }
+
+      const { data: existingMeetings, error: existingError } = await existingQuery;
+      if (existingError) {
+        throw existingError;
+      }
+
+      for (const meeting of (existingMeetings || []) as StoredClaapMeeting[]) {
+        if (Date.now() - startTime > timeBudgetMs) break;
+
+        processedTitles.push(meeting.title || "(no title)");
+        console.log(`Re-matching stored meeting: "${meeting.title || "(no title)"}"`);
+
+        try {
+          const result = await rematchStoredMeeting(
+            supabaseAdmin,
+            meeting,
+            companyId,
+            "rematch",
+          );
+
+          if (result.rematched) {
+            matched++;
+            rematched++;
+          } else {
+            skipped++;
+          }
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`Error re-matching stored meeting ${meeting.claap_id}: ${errMsg}`);
+          errorDetails.push({ claap_id: meeting.claap_id, title: meeting.title, error: errMsg });
+          errors++;
+        }
+
+        processed++;
+      }
+
+      return new Response(JSON.stringify({
+        ok: true,
+        processed,
+        matched,
+        rematched,
+        skipped,
+        already_exists: alreadyExists,
+        errors,
+        error_details: errorDetails,
+        processed_titles: processedTitles,
+        total_in_batch: existingMeetings?.length || 0,
+        next_cursor: null,
+        has_more: false,
+        elapsed_ms: Date.now() - startTime,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Fetch recordings from Claap API
     const sinceDate = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
     let apiUrl = `https://api.claap.io/v1/recordings?limit=${batchSize}&created_after=${sinceDate}`;
@@ -275,10 +517,6 @@ Deno.serve(async (req) => {
     const recordings = claapData.result?.recordings || claapData.recordings || claapData.data || [];
     const nextCursor = claapData.result?.cursor || claapData.cursor || claapData.next_cursor || null;
 
-    let processed = 0, matched = 0, skipped = 0, alreadyExists = 0, errors = 0;
-    const errorDetails: Array<{ claap_id: string; title: string | null; error: string }> = [];
-    const processedTitles: string[] = [];
-
     console.log(`Backfill: fetched ${recordings.length} recordings from Claap API`);
 
     for (const recording of recordings) {
@@ -291,14 +529,33 @@ Deno.serve(async (req) => {
       const claapId = recording.id;
       if (!claapId) { errors++; continue; }
 
+      const title = recording.title || recording.name || recording.topic || null;
+      const organizerEmail = recording.recorder?.email || recording.organizer?.email || null;
+      const rawDuration = recording.duration_seconds || recording.durationSeconds || null;
+      const durationSeconds = rawDuration != null ? Math.floor(Number(rawDuration)) : null;
+      const recordingUrl = recording.url || recording.video_url || recording.videoUrl || null;
+      const startedAt = recording.meeting?.startingAt || recording.started_at || recording.created_at || recording.createdAt || null;
+      const participants = recording.meeting?.participants || recording.participants || [];
+
+      processedTitles.push(title || "(no title)");
+
+      const classifiedParticipants = participants.map((p: any) => {
+        const email = p.email || "";
+        const domain = email.split("@")[1]?.toLowerCase() || "";
+        return {
+          name: p.name || "",
+          email,
+          domain,
+          is_internal: internalDomains.some(d => domain === d.toLowerCase()),
+        } as ClassifiedParticipant;
+      });
+
       // Dedup check
       const { data: existing } = await supabaseAdmin
         .from("claap_meetings")
-        .select("id")
+        .select("id, claap_id, title, recording_url, transcript, organizer_email, duration_seconds, started_at, company_id, deal_id")
         .eq("claap_id", claapId)
         .maybeSingle();
-
-      if (existing) { alreadyExists++; processed++; continue; }
 
       // Also check skipped calls
       const { data: existingSkipped } = await supabaseAdmin
@@ -307,31 +564,51 @@ Deno.serve(async (req) => {
         .eq("claap_id", claapId)
         .maybeSingle();
 
-      if (existingSkipped) { alreadyExists++; processed++; continue; }
+      if (existing && !existing.deal_id) {
+        console.log(`Existing unlinked meeting found for ${claapId}; attempting re-match`);
+        try {
+          const rematchResult = await rematchStoredMeeting(
+            supabaseAdmin,
+            {
+              ...(existing as StoredClaapMeeting),
+              title: existing.title || title,
+              recording_url: existing.recording_url || recordingUrl,
+              organizer_email: existing.organizer_email || organizerEmail,
+              duration_seconds: existing.duration_seconds ?? durationSeconds,
+              started_at: existing.started_at || startedAt,
+            },
+            companyId,
+            "backfill",
+            classifiedParticipants,
+          );
+
+          if (rematchResult.rematched) {
+            if (existingSkipped?.id) {
+              await supabaseAdmin.from("claap_skipped_calls").delete().eq("id", existingSkipped.id);
+            }
+            matched++;
+            rematched++;
+            processed++;
+            continue;
+          }
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`Failed to re-match existing meeting ${claapId}: ${errMsg}`);
+          errorDetails.push({ claap_id: claapId, title, error: errMsg });
+          errors++;
+          processed++;
+          continue;
+        }
+      }
+
+      if (existing) { alreadyExists++; processed++; continue; }
+
+      if (existingSkipped) {
+        console.log(`Previously skipped call found for ${claapId}; retrying current matching logic`);
+      }
 
       try {
-        const title = recording.title || recording.name || recording.topic || null;
-        const organizerEmail = recording.recorder?.email || recording.organizer?.email || null;
-        const rawDuration = recording.duration_seconds || recording.durationSeconds || null;
-        const durationSeconds = rawDuration != null ? Math.floor(Number(rawDuration)) : null;
-        const recordingUrl = recording.url || recording.video_url || recording.videoUrl || null;
-        const startedAt = recording.meeting?.startingAt || recording.started_at || recording.created_at || recording.createdAt || null;
-        const participants = recording.meeting?.participants || recording.participants || [];
-
-        processedTitles.push(title || "(no title)");
         console.log(`Processing: "${title}" | duration=${rawDuration} | claap_id=${claapId} | participants=${participants.length}`);
-
-        // Classify participants
-        const classifiedParticipants = participants.map((p: any) => {
-          const email = p.email || "";
-          const domain = email.split("@")[1]?.toLowerCase() || "";
-          return {
-            name: p.name || "",
-            email,
-            domain,
-            is_internal: internalDomains.some(d => domain === d.toLowerCase()),
-          };
-        });
 
         const hasExternal = classifiedParticipants.some((p: any) => !p.is_internal);
         const hasInternal = classifiedParticipants.some((p: any) => p.is_internal);
@@ -460,45 +737,27 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Resolve deal
-        let resolvedDealId: string | null = null;
-        if (matchResult.dealIds.length === 1) {
-          resolvedDealId = matchResult.dealIds[0];
-        } else if (matchResult.dealIds.length === 0 && matchResult.crmCompanyId) {
-          // Try to find deal by company name
-          const { data: crmCo } = await supabaseAdmin
-            .from("crm_companies").select("name").eq("id", matchResult.crmCompanyId).single();
-          if (crmCo) {
-            const { data: deals } = await supabaseAdmin
-              .from("deals").select("id").eq("status", "active").ilike("company", `%${crmCo.name}%`).limit(2);
-            if (deals && deals.length === 1) resolvedDealId = deals[0].id;
-          }
-        }
+        const resolvedDealId = await resolveDealIdFromMatchResult(supabaseAdmin, matchResult);
 
         if (resolvedDealId) {
-          await supabaseAdmin.from("claap_meetings").update({ deal_id: resolvedDealId, status: "routed" }).eq("id", meetingId);
+          await linkMeetingToDeal(
+            supabaseAdmin,
+            {
+              id: meetingId,
+              claap_id: claapId,
+              title,
+              recording_url: recordingUrl,
+              transcript,
+              organizer_email: organizerEmail,
+              duration_seconds: durationSeconds,
+              started_at: startedAt,
+              company_id: companyId,
+            },
+            resolvedDealId,
+            matchResult,
+            "backfill",
+          );
 
-          // Link to deal recordings
-          await supabaseAdmin.from("deal_claap_recordings").upsert({
-            deal_id: resolvedDealId,
-            recording_id: claapId,
-            recording_title: title,
-            recording_url: recordingUrl,
-            duration_seconds: durationSeconds,
-            recorder_name: recording.recorder?.name || null,
-            recorder_email: organizerEmail,
-            notes: `Auto-linked by backfill (${matchResult.callType || "matched"})`,
-          }, { onConflict: "deal_id,recording_id" });
-
-          // Activity log
-          await supabaseAdmin.from("activity_logs").insert({
-            deal_id: resolvedDealId,
-            activity_type: "claap_recording_linked",
-            description: `Claap recording linked (backfill): ${title || "Untitled"} (${matchResult.callType || "matched"})`,
-            metadata: { claap_id: claapId, recording_url: recordingUrl, source: "backfill", call_type: matchResult.callType },
-          });
-
-          // Store transcript for AI copilot
           if (transcript || title) {
             await supabaseAdmin.from("claap_transcripts").upsert({
               deal_id: resolvedDealId,
@@ -510,6 +769,10 @@ Deno.serve(async (req) => {
               call_type: matchResult.callType,
               match_source: matchResult.matchSource,
             }, { onConflict: "claap_meeting_id" });
+          }
+
+          if (existingSkipped?.id) {
+            await supabaseAdmin.from("claap_skipped_calls").delete().eq("id", existingSkipped.id);
           }
         }
 
@@ -528,6 +791,7 @@ Deno.serve(async (req) => {
       ok: true,
       processed,
       matched,
+        rematched,
       skipped,
       already_exists: alreadyExists,
       errors,
