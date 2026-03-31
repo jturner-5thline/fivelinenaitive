@@ -199,8 +199,7 @@
 
 /* Grid table */
 .cf-grid-wrap {
-  flex: 1;
-  overflow: auto;
+  overflow-x: auto;
   overscroll-behavior: contain;
 }
 
