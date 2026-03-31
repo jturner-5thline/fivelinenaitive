@@ -319,10 +319,8 @@ tr:hover .cf-row-remove { opacity: 1; }
 /* Weekly layout */
 .cf-weekly-layout {
   display: flex;
-  flex: 1;
-  overflow: hidden;
 }
-.cf-weekly-main { flex: 1; overflow: auto; display: flex; flex-direction: column; }
+.cf-weekly-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cf-weekly-sidebar {
   width: 300px;
   background: var(--color-surface);
