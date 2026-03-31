@@ -16,9 +16,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Plus, Trash2, CalendarIcon, CheckCircle2, Circle, Clock, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, CalendarIcon, CheckCircle2, Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { useDealTasks } from '@/hooks/useDealTasks';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,38 +43,24 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const [assignedTo, setAssignedTo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Build a lookup for team member display names
   const memberMap = useMemo(() => {
     const map = new Map<string, TeamMember>();
     teamMembers.forEach(m => map.set(m.id, m));
     return map;
   }, [teamMembers]);
 
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setDueDate('');
-    setAssignedTo('');
-  };
+  const resetForm = () => { setTitle(''); setDescription(''); setDueDate(''); setAssignedTo(''); };
 
   const handleCreate = async () => {
     if (!title.trim() || !assignedTo) return;
     setIsSubmitting(true);
-    const result = await createTask({
-      title: title.trim(),
-      description: description.trim(),
-      due_date: dueDate || undefined,
-      assigned_to: assignedTo,
-    });
+    const result = await createTask({ title: title.trim(), description: description.trim(), due_date: dueDate || undefined, assigned_to: assignedTo });
     setIsSubmitting(false);
     if (result) {
       const member = memberMap.get(assignedTo);
       toast.success(`Task assigned to ${member?.display_name || 'team member'}`);
-      resetForm();
-      setIsCreateOpen(false);
-    } else {
-      toast.error('Failed to create task');
-    }
+      resetForm(); setIsCreateOpen(false);
+    } else { toast.error('Failed to create task'); }
   };
 
   const handleToggleStatus = async (taskId: string, currentStatus: string) => {
@@ -86,17 +71,11 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
 
   const handleDelete = async (taskId: string) => {
     const ok = await deleteTask(taskId);
-    if (ok) {
-      toast.success('Task deleted');
-    } else {
-      toast.error('Failed to delete task');
-    }
+    if (ok) { toast.success('Task deleted'); } else { toast.error('Failed to delete task'); }
   };
 
   const filteredTasks = useMemo(() => {
-    if (viewFilter === 'mine' && user?.id) {
-      return tasks.filter(t => t.assigned_to === user.id);
-    }
+    if (viewFilter === 'mine' && user?.id) return tasks.filter(t => t.assigned_to === user.id);
     return tasks;
   }, [tasks, viewFilter, user?.id]);
 
@@ -113,39 +92,34 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
 
   const getInitials = (member: TeamMember | undefined) => {
     if (!member) return '?';
-    return (member.display_name || '')
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || '?';
+    return (member.display_name || '').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full h-full">
+    <>
       <Card className="h-full w-full flex flex-col">
-        <CollapsibleTrigger asChild>
-          <CardHeader className="flex flex-row items-center justify-between py-3 px-4 space-y-0 cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              Tasks
-              {pendingTasks.length > 0 && !isOpen && (
-                <Badge variant="secondary" className="text-[10px] h-5 font-normal">{pendingTasks.length} open</Badge>
-              )}
-            </CardTitle>
-            <div className="flex items-center gap-1">
-              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setIsCreateOpen(true); }} className="h-7 gap-1 text-xs px-2">
-                <Plus className="h-3 w-3" />
-                Add
-              </Button>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="space-y-3 px-4 pb-4 pt-0">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
+        {/* ── Header ── fixed height, vertically centered */}
+        <CardHeader className="flex flex-row items-center justify-between min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setIsOpen(o => !o)}>
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            Tasks
+            {pendingTasks.length > 0 && !isOpen && (
+              <Badge variant="secondary" className="text-[10px] h-5 font-normal">{pendingTasks.length} open</Badge>
+            )}
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setIsCreateOpen(true); }} className="h-7 gap-1 text-xs px-2">
+              <Plus className="h-3 w-3" /> Add
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
+        </CardHeader>
+
+        {/* ── Body ── flex-1 so it fills remaining card height */}
+        {isOpen && (
+          <CardContent className="flex-1 flex flex-col px-4 pb-4 pt-0 space-y-3 min-h-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
               <ToggleGroup type="single" value={viewFilter} onValueChange={(v) => v && setViewFilter(v as 'mine' | 'all')} className="justify-start">
                 <ToggleGroupItem value="mine" className="text-[10px] h-6 px-2">My Tasks</ToggleGroupItem>
                 <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
@@ -156,115 +130,97 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                 <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
               </ToggleGroup>
             </div>
-        {isLoading && tasks.length === 0 ? (
-          <div className="flex items-center justify-center py-6">
-            <p className="text-xs text-muted-foreground">Loading tasks…</p>
-          </div>
-        ) : tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8">
-            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center mb-2">
-              <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-            <p className="text-xs text-muted-foreground">No tasks yet</p>
-          </div>
-        ) : displayedTasks.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">No tasks match this filter.</p>
-        ) : (
-          <ScrollArea className="max-h-[380px]">
-          <div className="space-y-2">
-            {displayedTasks.map(task => {
-              const assignee = memberMap.get(task.assigned_to);
-              const isCompleted = task.status === 'completed';
-              return (
-                <div key={task.id} className={cn(
-                  "flex items-start gap-3 group rounded-lg border p-3 transition-colors",
-                  isCompleted ? "border-border/50 opacity-60 hover:opacity-100" : "border-border hover:bg-muted/30"
-                )}>
-                  <Checkbox
-                    checked={isCompleted}
-                    onCheckedChange={() => handleToggleStatus(task.id, task.status)}
-                    className="mt-0.5"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("text-sm", isCompleted ? "text-muted-foreground line-through" : "font-medium text-foreground")}>{task.title}</p>
-                    {!isCompleted && task.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>
-                    )}
-                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                      {assignee && (
-                        <div className="flex items-center gap-1.5">
-                          <Avatar className="h-4 w-4">
-                            <AvatarImage src={assignee.avatar_url || undefined} />
-                            <AvatarFallback className="text-[8px]">{getInitials(assignee)}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs text-muted-foreground">{assignee.display_name}</span>
-                        </div>
-                      )}
-                      {task.due_date && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <CalendarIcon className="h-3 w-3" />
-                          {format(new Date(task.due_date), 'MMM d, yyyy')}
-                        </div>
-                      )}
-                      {!isCompleted && task.status === 'in_progress' && (
-                        <span className="flex items-center gap-1 text-xs text-primary">
-                          <Clock className="h-3 w-3" />
-                          In Progress
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {task.assigned_by === user?.id && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDelete(task.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
+            {isLoading && tasks.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-xs text-muted-foreground">Loading tasks…</p>
+              </div>
+            ) : tasks.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center">
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center mb-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
-              );
-            })}
-          </div>
-          </ScrollArea>
-        )}
+                <p className="text-xs text-muted-foreground">No tasks yet</p>
+              </div>
+            ) : displayedTasks.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-xs text-muted-foreground">No tasks match this filter.</p>
+              </div>
+            ) : (
+              <ScrollArea className="flex-1 min-h-0">
+                <div className="space-y-2 pr-2">
+                  {displayedTasks.map(task => {
+                    const assignee = memberMap.get(task.assigned_to);
+                    const isCompleted = task.status === 'completed';
+                    return (
+                      <div key={task.id} className={cn(
+                        "flex items-start gap-3 group rounded-lg border p-2.5 transition-colors",
+                        isCompleted ? "border-border/50 opacity-60 hover:opacity-100" : "border-border hover:bg-muted/30"
+                      )}>
+                        <Checkbox checked={isCompleted} onCheckedChange={() => handleToggleStatus(task.id, task.status)} className="mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("text-sm", isCompleted ? "text-muted-foreground line-through" : "font-medium text-foreground")}>{task.title}</p>
+                          {!isCompleted && task.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-1 flex-wrap">
+                            {assignee && (
+                              <div className="flex items-center gap-1.5">
+                                <Avatar className="h-4 w-4">
+                                  <AvatarImage src={assignee.avatar_url || undefined} />
+                                  <AvatarFallback className="text-[8px]">{getInitials(assignee)}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-xs text-muted-foreground">{assignee.display_name}</span>
+                              </div>
+                            )}
+                            {task.due_date && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <CalendarIcon className="h-3 w-3" />
+                                {format(new Date(task.due_date), 'MMM d, yyyy')}
+                              </div>
+                            )}
+                            {!isCompleted && task.status === 'in_progress' && (
+                              <span className="flex items-center gap-1 text-xs text-primary">
+                                <Clock className="h-3 w-3" /> In Progress
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {task.assigned_by === user?.id && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => handleDelete(task.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
           </CardContent>
-        </CollapsibleContent>
+        )}
+
+        {/* Collapsed spacer — keeps card at full grid height even when collapsed */}
+        {!isOpen && <div className="flex-1" />}
+      </Card>
 
       {/* Create Task Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create Task</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Create Task</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label htmlFor="new-task-title" className="text-xs">Task title</Label>
-              <Input
-                id="new-task-title"
-                placeholder="e.g. Review the latest financials"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="mt-1"
-                autoFocus
-              />
+              <Input id="new-task-title" placeholder="e.g. Review the latest financials" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1" autoFocus />
             </div>
             <div>
               <Label htmlFor="new-task-assignee" className="text-xs">Assign to</Label>
               <Select value={assignedTo} onValueChange={setAssignedTo}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select team member" />
-                </SelectTrigger>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select team member" /></SelectTrigger>
                 <SelectContent>
                   {teamMembers.map(member => (
                     <SelectItem key={member.id} value={member.id}>
                       <div className="flex items-center gap-2">
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage src={member.avatar_url || undefined} />
-                          <AvatarFallback className="text-[8px]">{getInitials(member)}</AvatarFallback>
-                        </Avatar>
+                        <Avatar className="h-5 w-5"><AvatarImage src={member.avatar_url || undefined} /><AvatarFallback className="text-[8px]">{getInitials(member)}</AvatarFallback></Avatar>
                         {member.display_name}
                       </div>
                     </SelectItem>
@@ -274,36 +230,19 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
             </div>
             <div>
               <Label htmlFor="new-task-desc" className="text-xs">Description (optional)</Label>
-              <Textarea
-                id="new-task-desc"
-                placeholder="Add any extra details…"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="mt-1 min-h-[60px]"
-              />
+              <Textarea id="new-task-desc" placeholder="Add any extra details…" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 min-h-[60px]" />
             </div>
             <div>
               <Label htmlFor="new-task-due" className="text-xs">Due date (optional)</Label>
-              <Input
-                id="new-task-due"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="mt-1"
-              />
+              <Input id="new-task-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => { resetForm(); setIsCreateOpen(false); }}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={!title.trim() || !assignedTo || isSubmitting}>
-              {isSubmitting ? 'Creating…' : 'Create Task'}
-            </Button>
+            <Button variant="ghost" onClick={() => { resetForm(); setIsCreateOpen(false); }}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={!title.trim() || !assignedTo || isSubmitting}>{isSubmitting ? 'Creating…' : 'Create Task'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </Card>
-    </Collapsible>
+    </>
   );
 }

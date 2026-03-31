@@ -16,31 +16,27 @@ export function DealManagementTab({ dealId }: DealManagementTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* Row 1: Tasks | Info Requests | Engagement Summary — 3 equal columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="min-h-[360px] flex">
+      {/* Row 1 — Tasks · Info Requests · Engagement — equal-height stretch */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+        <div className="lg:min-h-[380px]">
           <DealTasksPanel dealId={dealId} />
         </div>
-        <div className="min-h-[360px] flex">
+        <div className="lg:min-h-[380px]">
           <FlexInfoNotificationsPanel dealId={dealId} />
         </div>
-        <div className="min-h-[360px] flex md:col-span-2 lg:col-span-1">
+        <div className="md:col-span-2 lg:col-span-1 lg:min-h-[380px]">
           <EngagementSummaryCard dealId={dealId} />
         </div>
       </div>
 
-      {/* Row 2: Engagement Trends | Deal Activity — 2 equal columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="min-h-[340px]">
-          <EngagementTrendsCard dealId={dealId} />
-        </div>
-        <div className="min-h-[340px]">
-          <DealActivityChart dealId={dealId} />
-        </div>
+      {/* Row 2 — Charts — mirrored pair, equal height */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <EngagementTrendsCard dealId={dealId} />
+        <DealActivityChart dealId={dealId} />
       </div>
 
-      {/* Row 3: Flag Log — full width when populated, half when empty */}
-      <div className={hasFlags ? 'w-full' : 'max-w-[50%] max-lg:max-w-full'}>
+      {/* Row 3 — Flag Log */}
+      <div className={hasFlags ? 'w-full' : 'lg:max-w-[50%]'}>
         <DealFlagLog dealId={dealId} />
       </div>
     </div>

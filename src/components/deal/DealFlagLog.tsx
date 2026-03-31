@@ -19,14 +19,20 @@ export function DealFlagLog({ dealId }: DealFlagLogProps) {
 
   if (flagNotes.length === 0) {
     return (
-      <Card className="h-auto">
-        <CardContent className="flex items-center gap-3 py-4 px-4">
-          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+      <Card className="flex flex-col">
+        {/* Same fixed-height header as every other management card */}
+        <CardHeader className="flex flex-row items-center justify-between min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Flag className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">No flags</p>
-            <p className="text-[11px] text-muted-foreground/70">Flags added to this deal will appear here.</p>
+            Flag Log
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          <div className="flex items-center gap-3 py-2">
+            <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <Flag className="h-3 w-3 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground">No flags on this deal yet.</p>
           </div>
         </CardContent>
       </Card>
@@ -34,15 +40,13 @@ export function DealFlagLog({ dealId }: DealFlagLogProps) {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 space-y-0">
+    <Card className="flex flex-col">
+      <CardHeader className="flex flex-row items-center justify-between min-h-[44px] h-[44px] py-0 px-4 space-y-0 shrink-0">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Flag className="h-3.5 w-3.5 text-muted-foreground" />
           Flag Log
           {activeFlags.length > 0 && (
-            <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
-              {activeFlags.length} active
-            </Badge>
+            <Badge variant="destructive" className="text-[10px] h-5 px-1.5">{activeFlags.length} active</Badge>
           )}
         </CardTitle>
       </CardHeader>
@@ -54,30 +58,20 @@ export function DealFlagLog({ dealId }: DealFlagLogProps) {
               <div
                 key={flag.id}
                 className={`flex items-start gap-3 p-2 rounded-lg border text-sm ${
-                  flag.resolved
-                    ? 'bg-muted/30 border-border/50'
-                    : 'bg-muted/50 border-border'
+                  flag.resolved ? 'bg-muted/30 border-border/50' : 'bg-muted/50 border-border'
                 }`}
               >
                 <div className={`mt-0.5 shrink-0 ${flag.resolved ? 'text-muted-foreground' : 'text-destructive'}`}>
-                  {flag.resolved ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Flag className="h-4 w-4 fill-current" />
-                  )}
+                  {flag.resolved ? <Check className="h-4 w-4" /> : <Flag className="h-4 w-4 fill-current" />}
                 </div>
                 <div className="flex-1 min-w-0 space-y-1">
-                  <p className={`break-words ${flag.resolved ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                    {flag.note}
-                  </p>
+                  <p className={`break-words ${flag.resolved ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{flag.note}</p>
                   <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
                     {author && (
                       <div className="flex items-center gap-1">
                         <Avatar className="h-4 w-4">
                           <AvatarImage src={author.avatarUrl || undefined} />
-                          <AvatarFallback className="text-[7px]">
-                            {author.displayName?.[0]?.toUpperCase() || <User className="h-2.5 w-2.5" />}
-                          </AvatarFallback>
+                          <AvatarFallback className="text-[7px]">{author.displayName?.[0]?.toUpperCase() || <User className="h-2.5 w-2.5" />}</AvatarFallback>
                         </Avatar>
                         <span>{author.displayName}</span>
                       </div>
