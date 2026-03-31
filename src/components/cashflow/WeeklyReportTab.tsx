@@ -65,9 +65,9 @@ const WEEKLY_ROW_ORDER = [
 ];
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
-  weeklyData, sidebarData, theme, isAdmin,
+  weeklyData, sidebarData, sidebarDbItems, theme, isAdmin,
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
-  onExport, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem,
+  onExport, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
   const sortedWeeks = Object.entries(weeklyData).sort(([a], [b]) => a.localeCompare(b));
