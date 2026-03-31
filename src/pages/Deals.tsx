@@ -267,7 +267,7 @@ export default function Dashboard() {
   }, [pipelineFilteredDeals, filters.hasNotificationsOnly, notificationCounts, preferences.staleDealsDays]);
 
   // Duplicate detection
-  const { clusters: duplicateClusters } = useDealDuplicates(deals, showDuplicates);
+  const { clusters: duplicateClusters, suppressCluster } = useDealDuplicates(deals, showDuplicates);
 
   const handleOpenMerge = (cluster: DuplicateCluster) => {
     setMergeCluster(cluster);
