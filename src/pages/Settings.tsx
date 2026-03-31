@@ -80,6 +80,7 @@ const TABS = [
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'distribution-stats'] },
   { id: 'metrics', label: 'Metrics', sectionIds: ['kpi-card-settings'] },
   { id: 'crm', label: 'CRM', sectionIds: ['field-layout'] },
+  { id: 'ai', label: 'AI', sectionIds: ['ai-configuration'] },
 ];
 
 function LinkCard({ to, title, description, badge }: { to: string; title: string; description: string; badge?: number }) {
