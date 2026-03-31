@@ -251,11 +251,15 @@ export async function parseCashFlowExcel(file: File): Promise<{
   let forecastStartIndex: number | null = null;
   for (let r = Math.max(1, dateRowNum - 3); r <= dateRowNum + 1; r++) {
     const row = worksheet.getRow(r);
-    for (let c = firstDateCol; c < firstDateCol + dates.length; c++) {
+    for (let c = firstDateCol; c <= lastDateCol; c++) {
       const text = getCellText(row.getCell(c)).toUpperCase();
       if (text.includes('FORECAST')) {
-        forecastStartIndex = c - firstDateCol;
-        break;
+        // Find which dateColMap index this column corresponds to
+        const idx = dateColMap.indexOf(c);
+        if (idx >= 0) { forecastStartIndex = idx; break; }
+        // If exact col not in map, find first date col >= c
+        const nearIdx = dateColMap.findIndex(col => col >= c);
+        if (nearIdx >= 0) { forecastStartIndex = nearIdx; break; }
       }
     }
     if (forecastStartIndex !== null) break;
