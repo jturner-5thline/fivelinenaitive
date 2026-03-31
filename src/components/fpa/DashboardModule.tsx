@@ -1,29 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useState, lazy, Suspense, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CashFlowManager } from '@/components/cashflow/CashFlowManager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, FileText, Settings2, Shield, Lock } from 'lucide-react';
-import { KPICards } from './dashboard/KPICards';
-import { InteractivePLTable } from './dashboard/InteractivePLTable';
-import { RevenueOPEXCharts } from './dashboard/RevenueOPEXCharts';
-import { BalanceCashFlow } from './dashboard/BalanceCashFlow';
-import { ScenarioModeling } from './dashboard/ScenarioModeling';
-import { StressTesting } from './dashboard/StressTesting';
-import { SensitivityTable } from './dashboard/SensitivityTable';
-import { VarianceReviewPanel } from './collaboration/VarianceReviewPanel';
-import { BudgetApprovalWorkflow } from './collaboration/BudgetApprovalWorkflow';
-import { VarianceLegend } from './VarianceLegend';
-import { BoardReportExport } from './BoardReportExport';
-import { BDRoiModule } from './bd-roi/BDRoiModule';
-import { SalesModelModule } from './sales-model/SalesModelModule';
 import { ChartConfigPanel, DEFAULT_CHART_CONFIG, type ChartConfig } from './dashboard/ChartConfigPanel';
 import { FPADashboardConfigPanel } from './dashboard/FPADashboardConfigPanel';
 import { useFPADashboardConfig } from '@/hooks/useFPADashboardConfig';
 import { useFPATabPermissions } from '@/hooks/useFPATabPermissions';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// Lazy-loaded tab content for code splitting
+const KPICards = lazy(() => import('./dashboard/KPICards').then(m => ({ default: m.KPICards })));
+const InteractivePLTable = lazy(() => import('./dashboard/InteractivePLTable').then(m => ({ default: m.InteractivePLTable })));
+const RevenueOPEXCharts = lazy(() => import('./dashboard/RevenueOPEXCharts').then(m => ({ default: m.RevenueOPEXCharts })));
+const BalanceCashFlow = lazy(() => import('./dashboard/BalanceCashFlow').then(m => ({ default: m.BalanceCashFlow })));
+const ScenarioModeling = lazy(() => import('./dashboard/ScenarioModeling').then(m => ({ default: m.ScenarioModeling })));
+const StressTesting = lazy(() => import('./dashboard/StressTesting').then(m => ({ default: m.StressTesting })));
+const SensitivityTable = lazy(() => import('./dashboard/SensitivityTable').then(m => ({ default: m.SensitivityTable })));
+const VarianceReviewPanel = lazy(() => import('./collaboration/VarianceReviewPanel').then(m => ({ default: m.VarianceReviewPanel })));
+const BudgetApprovalWorkflow = lazy(() => import('./collaboration/BudgetApprovalWorkflow').then(m => ({ default: m.BudgetApprovalWorkflow })));
+const VarianceLegend = lazy(() => import('./VarianceLegend').then(m => ({ default: m.VarianceLegend })));
+const BoardReportExport = lazy(() => import('./BoardReportExport').then(m => ({ default: m.BoardReportExport })));
+const BDRoiModule = lazy(() => import('./bd-roi/BDRoiModule').then(m => ({ default: m.BDRoiModule })));
+const SalesModelModule = lazy(() => import('./sales-model/SalesModelModule').then(m => ({ default: m.SalesModelModule })));
+const CashFlowManager = lazy(() => import('@/components/cashflow/CashFlowManager').then(m => ({ default: m.CashFlowManager })));
+
+function TabSkeleton() {
+  return (
+    <div className="space-y-4 p-4">
+      <div className="grid grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
+      </div>
+      <Skeleton className="h-[300px] w-full" />
+      <Skeleton className="h-[200px] w-full" />
+    </div>
+  );
+}
 
 // Smart default: pick date range based on current month
 function getSmartDateRange(): string {
@@ -61,36 +78,40 @@ export function DashboardModule() {
   const [teamConfigOpen, setTeamConfigOpen] = useState(false);
 
   const { config: fpaConfig, isAdmin, isSaving, saveConfig } = useFPADashboardConfig();
-  const { allowedTabs, canViewTab } = useFPATabPermissions();
+  const { canViewTab } = useFPATabPermissions();
   const t = fpaConfig.tabs;
   const c = fpaConfig.charts;
   const e = fpaConfig.elements;
   const s = fpaConfig.scenarios;
 
-  // Build visible tabs: must be enabled in config AND user has permission
-  const isTabVisible = (tabKey: string, configEnabled?: boolean) => {
+  const isTabVisible = useCallback((tabKey: string, configEnabled?: boolean) => {
     const enabled = configEnabled !== undefined ? configEnabled : true;
     return enabled && canViewTab(tabKey);
-  };
+  }, [canViewTab]);
 
-  // If current tab is not visible, fall back to first visible tab
-  const visibleTabKeys: string[] = [];
-  if (isTabVisible('overview', t.overview)) visibleTabKeys.push('overview');
-  if (isTabVisible('pnl', t.pnl)) visibleTabKeys.push('pnl');
-  if (isTabVisible('balance', t.balance)) visibleTabKeys.push('balance');
-  if (isTabVisible('cashflow', t.cashflow)) visibleTabKeys.push('cashflow');
-  if (isTabVisible('scenarios', t.scenarios)) visibleTabKeys.push('scenarios');
-  if (isTabVisible('collaborate', t.collaborate)) visibleTabKeys.push('collaborate');
-  if (isTabVisible('export', t.export)) visibleTabKeys.push('export');
-  if (isTabVisible('salesBdRoi')) visibleTabKeys.push('salesBdRoi');
-  if (isTabVisible('salesModel')) visibleTabKeys.push('salesModel');
+  const visibleTabKeys = useMemo(() => {
+    const keys: string[] = [];
+    if (isTabVisible('overview', t.overview)) keys.push('overview');
+    if (isTabVisible('pnl', t.pnl)) keys.push('pnl');
+    if (isTabVisible('balance', t.balance)) keys.push('balance');
+    if (isTabVisible('cashflow', t.cashflow)) keys.push('cashflow');
+    if (isTabVisible('scenarios', t.scenarios)) keys.push('scenarios');
+    if (isTabVisible('collaborate', t.collaborate)) keys.push('collaborate');
+    if (isTabVisible('export', t.export)) keys.push('export');
+    if (isTabVisible('salesBdRoi')) keys.push('salesBdRoi');
+    if (isTabVisible('salesModel')) keys.push('salesModel');
+    return keys;
+  }, [isTabVisible, t]);
 
   const activeTab = visibleTabKeys.includes(dashboardTab)
     ? dashboardTab
     : (visibleTabKeys[0] || 'overview');
 
-  // Show access denied if user is on a tab they can't view (e.g. deep link)
   const showAccessDenied = !canViewTab(activeTab);
+
+  const handleKPIClick = useCallback((kpi: { id: string }) => {
+    setSelectedKPI(prev => kpi.id === prev ? null : kpi.id);
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -184,16 +205,16 @@ export function DashboardModule() {
       {showAccessDenied ? (
         <AccessDenied />
       ) : (
-        <>
+        <Suspense fallback={<TabSkeleton />}>
           {/* Variance Legend */}
-          {e.varianceLegend && <VarianceLegend compact />}
+          {e.varianceLegend && activeTab !== 'cashflow' && <VarianceLegend compact />}
 
           {/* KPI Cards */}
-          {e.kpiCards && (
-            <KPICards onKPIClick={(kpi) => setSelectedKPI(kpi.id === selectedKPI ? null : kpi.id)} selectedKPI={selectedKPI} />
+          {e.kpiCards && activeTab !== 'cashflow' && (
+            <KPICards onKPIClick={handleKPIClick} selectedKPI={selectedKPI} />
           )}
 
-          {/* Tab Content */}
+          {/* Tab Content — only active tab renders */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
@@ -251,7 +272,7 @@ export function DashboardModule() {
               <SalesModelModule />
             </div>
           )}
-        </>
+        </Suspense>
       )}
     </div>
   );

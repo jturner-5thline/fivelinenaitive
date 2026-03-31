@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo } from 'react';
+import { useEffect, useRef, memo, useMemo } from 'react';
 import { Chart, registerables } from 'chart.js';
 import type { WeeklyData, ThemeMode } from './types';
 
@@ -15,31 +15,56 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
   const chart1Instance = useRef<Chart | null>(null);
   const chart2Instance = useRef<Chart | null>(null);
 
+  // Memoize chart data to avoid recalculation
+  const chartData = useMemo(() => {
+    const entries = Object.entries(weeklyData).sort(([a], [b]) => a.localeCompare(b));
+    return {
+      labels: entries.map(([, v]) => {
+        const d = new Date(v.week_ending);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }),
+      endingCash: entries.map(([, v]) => (v["ENDING CASH"] as number) / 1000),
+      totalLiquidity: entries.map(([, v]) => (v["TOTAL CASH ON HAND"] as number) / 1000),
+      cashIn: entries.map(([, v]) => ((v["TOTAL RECEIPTS"] as number) || 0) / 1000),
+      cashOut: entries.map(([, v]) => ((v["TOTAL DISBURSEMENTS"] as number) || 0) / 1000),
+    };
+  }, [weeklyData]);
+
   useEffect(() => {
     const canvas1 = chart1Ref.current;
     const canvas2 = chart2Ref.current;
     if (!canvas1 || !canvas2) return;
 
-    // Destroy existing
     chart1Instance.current?.destroy();
     chart2Instance.current?.destroy();
 
-    const entries = Object.entries(weeklyData).sort(([a], [b]) => a.localeCompare(b));
-    const labels = entries.map(([, v]) => {
-      const d = new Date(v.week_ending);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    });
-
-    const endingCash = entries.map(([, v]) => (v["ENDING CASH"] as number) / 1000);
-    const totalLiquidity = entries.map(([, v]) => (v["TOTAL CASH ON HAND"] as number) / 1000);
-    const cashIn = entries.map(([, v]) => ((v["TOTAL RECEIPTS"] as number) || 0) / 1000);
-    const cashOut = entries.map(([, v]) => ((v["TOTAL DISBURSEMENTS"] as number) || 0) / 1000);
+    const { labels, endingCash, totalLiquidity, cashIn, cashOut } = chartData;
 
     const isDark = theme === 'dark';
     const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
     const textColor = isDark ? '#8892a8' : '#5a6070';
 
-    // Chart 1: Cash Balance & Liquidity
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      resizeDelay: 300,
+      animation: false as const,
+      plugins: {
+        legend: { position: 'bottom' as const, labels: { font: { size: 10 }, color: textColor, boxWidth: 12 } },
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { font: { size: 9 }, color: textColor, maxTicksLimit: 20 } },
+        y: {
+          grid: { color: gridColor },
+          ticks: {
+            font: { size: 9 },
+            color: textColor,
+            callback: (v: any) => `$${Number(v) >= 1000 ? (Number(v)/1000).toFixed(0) + 'M' : v + 'K'}`,
+          },
+        },
+      },
+    };
+
     chart1Instance.current = new Chart(canvas1, {
       type: 'line',
       data: {
@@ -52,7 +77,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
             backgroundColor: isDark ? 'rgba(74,144,217,0.1)' : 'rgba(37,99,235,0.1)',
             fill: true,
             tension: 0.3,
-            pointRadius: 3,
+            pointRadius: labels.length > 50 ? 0 : 3,
           },
           {
             label: 'Ending Cash',
@@ -61,7 +86,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
             backgroundColor: isDark ? 'rgba(34,197,94,0.1)' : 'rgba(22,163,74,0.1)',
             fill: true,
             tension: 0.3,
-            pointRadius: 3,
+            pointRadius: labels.length > 50 ? 0 : 3,
           },
           {
             label: 'Min Liquidity $250K',
@@ -82,30 +107,16 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
         ],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        resizeDelay: 200,
+        ...commonOptions,
         plugins: {
-          legend: { position: 'bottom', labels: { font: { size: 10 }, color: textColor, boxWidth: 12 } },
+          ...commonOptions.plugins,
           tooltip: {
             callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(0)}K` },
-          },
-        },
-        scales: {
-          x: { grid: { color: gridColor }, ticks: { font: { size: 9 }, color: textColor } },
-          y: {
-            grid: { color: gridColor },
-            ticks: {
-              font: { size: 9 },
-              color: textColor,
-              callback: (v) => `$${Number(v) >= 1000 ? (Number(v)/1000).toFixed(0) + 'M' : v + 'K'}`,
-            },
           },
         },
       },
     });
 
-    // Chart 2: Cash In vs Cash Out
     chart2Instance.current = new Chart(canvas2, {
       type: 'line',
       data: {
@@ -118,7 +129,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
             backgroundColor: isDark ? 'rgba(34,197,94,0.15)' : 'rgba(22,163,74,0.15)',
             fill: true,
             tension: 0.3,
-            pointRadius: 3,
+            pointRadius: labels.length > 50 ? 0 : 3,
           },
           {
             label: 'Cash Out',
@@ -127,28 +138,25 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
             backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(220,38,38,0.15)',
             fill: true,
             tension: 0.3,
-            pointRadius: 3,
+            pointRadius: labels.length > 50 ? 0 : 3,
           },
         ],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        resizeDelay: 200,
+        ...commonOptions,
         plugins: {
-          legend: { position: 'bottom', labels: { font: { size: 10 }, color: textColor, boxWidth: 12 } },
+          ...commonOptions.plugins,
           tooltip: {
             callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(1)}K` },
           },
         },
         scales: {
-          x: { grid: { color: gridColor }, ticks: { font: { size: 9 }, color: textColor } },
+          ...commonOptions.scales,
           y: {
-            grid: { color: gridColor },
+            ...commonOptions.scales.y,
             ticks: {
-              font: { size: 9 },
-              color: textColor,
-              callback: (v) => `$${v}K`,
+              ...commonOptions.scales.y.ticks,
+              callback: (v: any) => `$${v}K`,
             },
           },
         },
@@ -159,7 +167,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
       chart1Instance.current?.destroy();
       chart2Instance.current?.destroy();
     };
-  }, [weeklyData, theme]);
+  }, [chartData, theme]);
 
   return (
     <div className="cf-charts-row">

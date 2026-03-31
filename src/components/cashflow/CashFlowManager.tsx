@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import type {
   DailyData, WeeklyData, SidebarData, RecurringTag,
   PlanSnapshot, UndoSnapshot, ActivityLogEntry, ExportArchiveEntry,
@@ -14,6 +14,7 @@ import { ExportModal } from './ExportModal';
 import { ActivityLogDialog } from './ActivityLogDialog';
 import { useCashFlowImport } from './useCashFlowImport';
 import { useCompany } from '@/hooks/useCompany';
+import { Skeleton } from '@/components/ui/skeleton';
 import './cashflow.css';
 
 function deepClone<T>(obj: T): T {
@@ -21,17 +22,16 @@ function deepClone<T>(obj: T): T {
 }
 
 const QUARTER_RANGES: Record<string, [number, number]> = {
-  Q1: [0, 2], // Jan-Mar
-  Q2: [3, 5], // Apr-Jun
-  Q3: [6, 8], // Jul-Sep
-  Q4: [9, 11], // Oct-Dec
+  Q1: [0, 2],
+  Q2: [3, 5],
+  Q3: [6, 8],
+  Q4: [9, 11],
 };
 
 function getAvailableYears(dates: string[]): number[] {
   const years = new Set<number>();
   for (const d of dates) {
     const y = parseInt(d.slice(0, 4));
-    // Exclude 2024 — it's only the starting balance date (Dec 31)
     if (y >= 2025) years.add(y);
   }
   return Array.from(years).sort();
@@ -102,17 +102,32 @@ function filterWeeklyByPeriod(data: WeeklyData, years: string[], quarters: strin
   return filtered;
 }
 
+function CashFlowSkeleton() {
+  return (
+    <div className="cf-root" style={{ padding: 16 }}>
+      <div className="space-y-4">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton className="h-[200px] w-full" />
+          <Skeleton className="h-[200px] w-full" />
+        </div>
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    </div>
+  );
+}
+
 export function CashFlowManager() {
   const { company } = useCompany();
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Master data — use imported data if available, otherwise fall back to seed
+  // Master data
   const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(SEED_DAILY_DATA));
   const [weeklyData, setWeeklyData] = useState<WeeklyData>(() => deepClone(SEED_WEEKLY_DATA));
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => deepClone(SEED_SIDEBAR_DATA));
 
-  // When imported data loads, replace dailyData
   useEffect(() => {
     if (isImported && importedDailyData) {
       setDailyData(deepClone(importedDailyData));
@@ -130,9 +145,20 @@ export function CashFlowManager() {
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [recurringTags, setRecurringTags] = useState<RecurringTag[]>([]);
 
-  // Date filter state (multi-select: empty array = show all)
+  // Date filter with debounce
   const [filterYears, setFilterYears] = useState<string[]>([]);
   const [filterQuarters, setFilterQuarters] = useState<string[]>([]);
+  const [debouncedYears, setDebouncedYears] = useState<string[]>([]);
+  const [debouncedQuarters, setDebouncedQuarters] = useState<string[]>([]);
+
+  // Debounce filters by 200ms
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedYears(filterYears);
+      setDebouncedQuarters(filterQuarters);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [filterYears, filterQuarters]);
 
   // Undo
   const [undoStack, setUndoStack] = useState<UndoSnapshot[]>([]);
@@ -149,18 +175,16 @@ export function CashFlowManager() {
   const [exportOpen, setExportOpen] = useState(false);
   const [archiveEntries, setArchiveEntries] = useState<ExportArchiveEntry[]>([]);
 
-  // Data accessors
-  const getDaily = useCallback(() => role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData, [role, sandboxDaily, dailyData]);
-  const getWeekly = useCallback(() => role === 'viewer' && sandboxWeekly ? sandboxWeekly : weeklyData, [role, sandboxWeekly, weeklyData]);
-  const getSidebar = useCallback(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
+  // Data accessors — stable references
+  const rawDaily = useMemo(() => role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData, [role, sandboxDaily, dailyData]);
+  const rawWeekly = useMemo(() => role === 'viewer' && sandboxWeekly ? sandboxWeekly : weeklyData, [role, sandboxWeekly, weeklyData]);
+  const rawSidebar = useMemo(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
 
-  // Available years derived from daily data
-  const rawDaily = role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData;
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
 
-  // Filtered data
-  const filteredDaily = useMemo(() => filterDailyByPeriod(getDaily(), filterYears, filterQuarters), [getDaily, filterYears, filterQuarters]);
-  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(getWeekly(), filterYears, filterQuarters), [getWeekly, filterYears, filterQuarters]);
+  // Filtered data using debounced values
+  const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
+  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(rawWeekly, debouncedYears, debouncedQuarters), [rawWeekly, debouncedYears, debouncedQuarters]);
 
   const setActiveData = useCallback((setter: 'daily' | 'weekly' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
@@ -174,7 +198,6 @@ export function CashFlowManager() {
     }
   }, [role, dailyData, weeklyData, sidebarData]);
 
-  // Logging
   const logAction = useCallback((action: string) => {
     setActivityLog(prev => [...prev, {
       timestamp: new Date().toISOString(),
@@ -183,7 +206,6 @@ export function CashFlowManager() {
     }]);
   }, [role]);
 
-  // Undo
   const pushUndo = useCallback((description: string) => {
     setUndoStack(prev => [...prev.slice(-49), {
       description,
@@ -205,7 +227,6 @@ export function CashFlowManager() {
     logAction(`Undo: ${snapshot.description}`);
   }, [undoStack, logAction]);
 
-  // Role change
   const handleRoleChange = useCallback((newRole: RoleMode) => {
     if (newRole === 'viewer' && role === 'admin') {
       setSandboxDaily(deepClone(dailyData));
@@ -221,19 +242,18 @@ export function CashFlowManager() {
     setSandboxSidebar(deepClone(sidebarData));
   }, [dailyData, weeklyData, sidebarData]);
 
-  // Theme
   const toggleTheme = useCallback(() => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   }, []);
 
   // KPIs from visible weekly data
-  const activeWeekly = getWeekly();
-  const weekEntries = Object.values(activeWeekly);
-  const cashIn = weekEntries.reduce((s, e) => s + ((e["TOTAL RECEIPTS"] as number) || 0), 0);
-  const cashOut = weekEntries.reduce((s, e) => s + ((e["TOTAL DISBURSEMENTS"] as number) || 0), 0);
-  const netChange = cashIn - cashOut;
+  const { cashIn, cashOut, netChange } = useMemo(() => {
+    const weekEntries = Object.values(rawWeekly);
+    const ci = weekEntries.reduce((s, e) => s + ((e["TOTAL RECEIPTS"] as number) || 0), 0);
+    const co = weekEntries.reduce((s, e) => s + ((e["TOTAL DISBURSEMENTS"] as number) || 0), 0);
+    return { cashIn: ci, cashOut: co, netChange: ci - co };
+  }, [rawWeekly]);
 
-  // Cell edit handler
   const handleCellEdit = useCallback((rowKey: string, colIdx: number, value: number) => {
     pushUndo(`Edit daily cell: ${rowKey}, col ${colIdx}`);
     setActiveData('daily', (prev: DailyData) => {
@@ -246,7 +266,6 @@ export function CashFlowManager() {
     logAction(`Edit daily cell: ${rowKey}, col ${colIdx} → $${value.toFixed(0)}`);
   }, [pushUndo, setActiveData, logAction]);
 
-  // Row management
   const handleRowRemove = useCallback((rowKey: string) => {
     pushUndo(`Remove row: ${rowKey}`);
     setActiveData('daily', (prev: DailyData) => {
@@ -286,7 +305,6 @@ export function CashFlowManager() {
     setRecurringTags(prev => [...prev.filter(t => t.rowKey !== rowKey), { rowKey, frequency: frequency as any, date }]);
   }, []);
 
-  // Sidebar handlers
   const handleSidebarEditItem = useCallback((index: number, field: string, value: string | number) => {
     pushUndo(`Edit Cash-In item: ${field}`);
     setActiveData('sidebar', (prev: SidebarData) => {
@@ -317,7 +335,6 @@ export function CashFlowManager() {
     logAction(`Add Cash-In item`);
   }, [pushUndo, setActiveData, logAction]);
 
-  // Notes handlers
   const handleNoteEdit = useCallback((index: number, value: string) => {
     pushUndo(`Edit note ${index}`);
     setActiveData('sidebar', (prev: SidebarData) => {
@@ -348,19 +365,17 @@ export function CashFlowManager() {
     logAction(`Add note`);
   }, [pushUndo, setActiveData, logAction]);
 
-  // Plan management
   const handleSavePlan = useCallback((name: string) => {
     const snapshot: PlanSnapshot = {
       id: Date.now().toString(),
       name,
       timestamp: new Date().toISOString(),
-      weeklyData: deepClone(getWeekly()),
+      weeklyData: deepClone(rawWeekly),
     };
     setPlanSnapshots(prev => [...prev, snapshot]);
     logAction(`Save plan: ${name}`);
-  }, [getWeekly, logAction]);
+  }, [rawWeekly, logAction]);
 
-  // Export archive
   const handleArchive = useCallback((entry: { title: string; flags: ExportFlag[]; notes: string; weekCount: number; dateRange: string }) => {
     setArchiveEntries(prev => [...prev, {
       id: Date.now().toString(),
@@ -368,6 +383,23 @@ export function CashFlowManager() {
       ...entry,
     }]);
   }, []);
+
+  const handleImportExcel = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      importFile(file);
+      e.target.value = '';
+    }
+  }, [importFile]);
+
+  const handleOpenExport = useCallback(() => setExportOpen(true), []);
+  const handleCloseExport = useCallback(() => setExportOpen(false), []);
+  const handleOpenActivityLog = useCallback(() => setActivityLogOpen(true), []);
+  const handleCloseActivityLog = useCallback(() => setActivityLogOpen(false), []);
 
   // Keyboard: Escape closes dialogs
   useEffect(() => {
@@ -380,6 +412,13 @@ export function CashFlowManager() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  // Show skeleton while import data is loading
+  if (isImportLoading && !isImported) {
+    return <CashFlowSkeleton />;
+  }
+
+  const rowStructure = isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE;
 
   return (
     <div className="cf-root" data-theme={theme}>
@@ -396,10 +435,9 @@ export function CashFlowManager() {
         onThemeToggle={toggleTheme}
         onTabChange={setActiveTab}
         onUndo={performUndo}
-        onOpenActivityLog={() => setActivityLogOpen(true)}
+        onOpenActivityLog={handleOpenActivityLog}
       />
 
-      {/* Viewer banner */}
       {role === 'viewer' && (
         <div className="cf-viewer-banner">
           <span>My View Mode — changes are local to you and won't affect the team's model</span>
@@ -470,20 +508,14 @@ export function CashFlowManager() {
         type="file"
         accept=".xlsx,.xls"
         style={{ display: 'none' }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            importFile(file);
-            e.target.value = '';
-          }
-        }}
+        onChange={handleFileChange}
       />
 
-      {/* Main content */}
+      {/* Main content — only active tab renders */}
       {activeTab === 'daily' ? (
         <DailySourceTab
           data={filteredDaily}
-          rowStructure={isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE}
+          rowStructure={rowStructure}
           recurringTags={recurringTags}
           isAdmin={role === 'admin'}
           onCellEdit={handleCellEdit}
@@ -491,20 +523,20 @@ export function CashFlowManager() {
           onRowAdd={handleRowAdd}
           onRowRename={handleRowRename}
           onRecurringTag={handleRecurringTag}
-          onImportExcel={() => fileInputRef.current?.click()}
+          onImportExcel={handleImportExcel}
           isImportLoading={isImportLoading}
         />
       ) : (
         <WeeklyReportTab
           weeklyData={filteredWeekly}
-          sidebarData={getSidebar()}
+          sidebarData={rawSidebar}
           theme={theme}
           isAdmin={role === 'admin'}
           planSnapshots={planSnapshots}
           activePlanId={activePlanId}
           onActivePlanChange={setActivePlanId}
           onSavePlan={handleSavePlan}
-          onExport={() => setExportOpen(true)}
+          onExport={handleOpenExport}
           onSidebarEditItem={handleSidebarEditItem}
           onSidebarRemoveItem={handleSidebarRemoveItem}
           onSidebarAddItem={handleSidebarAddItem}
@@ -520,18 +552,22 @@ export function CashFlowManager() {
         <a href="#" onClick={e => e.preventDefault()}>Created with Perplexity Computer</a>
       </div>
 
-      {/* Modals */}
-      <ExportModal
-        open={exportOpen}
-        weeklyData={getWeekly()}
-        onClose={() => setExportOpen(false)}
-        onArchive={handleArchive}
-      />
-      <ActivityLogDialog
-        open={activityLogOpen}
-        entries={activityLog}
-        onClose={() => setActivityLogOpen(false)}
-      />
+      {/* Modals — only mounted when open */}
+      {exportOpen && (
+        <ExportModal
+          open={exportOpen}
+          weeklyData={rawWeekly}
+          onClose={handleCloseExport}
+          onArchive={handleArchive}
+        />
+      )}
+      {activityLogOpen && (
+        <ActivityLogDialog
+          open={activityLogOpen}
+          entries={activityLog}
+          onClose={handleCloseActivityLog}
+        />
+      )}
     </div>
   );
 }

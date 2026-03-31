@@ -23,6 +23,11 @@ interface EditingCell {
   colIdx: number;
 }
 
+// Column virtualization config
+const COL_WIDTH = 90;
+const LABEL_COL_WIDTH = 200;
+const OVERSCAN = 5;
+
 export const DailySourceTab = memo(function DailySourceTab({
   data, rowStructure, recurringTags, isAdmin,
   onCellEdit, onRowRemove, onRowAdd, onRowRename, onImportExcel, isImportLoading,
@@ -35,7 +40,44 @@ export const DailySourceTab = memo(function DailySourceTab({
   const [newRowEntity, setNewRowEntity] = useState('5LC');
   const inputRef = useRef<HTMLInputElement>(null);
   const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  // Virtualization state
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(1000);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    setScrollLeft(e.currentTarget.scrollLeft);
+  }, []);
+
+  // Measure container width on mount/resize
+  const containerRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      const observer = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          setContainerWidth(entry.contentRect.width);
+        }
+      });
+      observer.observe(node);
+      setContainerWidth(node.clientWidth);
+      // Store ref for gridWrapRef
+      if (scrollContainerRef.current !== node) {
+        (scrollContainerRef as any).current = node;
+      }
+    }
+  }, []);
+
+  // Combined ref
+  const combinedRef = useCallback((node: HTMLDivElement | null) => {
+    // Set gridWrapRef
+    if (typeof gridWrapRef === 'function') {
+      (gridWrapRef as any)(node);
+    } else if (gridWrapRef) {
+      (gridWrapRef as any).current = node;
+    }
+    containerRef(node);
+  }, [gridWrapRef, containerRef]);
 
   const toggleSection = useCallback((section: string) => {
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -78,49 +120,70 @@ export const DailySourceTab = memo(function DailySourceTab({
     setNewRowName('');
   }, [addRowSection, newRowName, newRowEntity, onRowAdd]);
 
-  // Group rows by section for rendering
-  const sections: { key: string; label: string; cssClass: string; rows: string[]; addable: boolean }[] = [
-    { key: 'balance_begin', label: 'BEGINNING / ENDING BANK BALANCES', cssClass: 'balance', rows: [], addable: false },
-    { key: 'balance_end', label: '', cssClass: 'balance', rows: [], addable: false },
-    { key: 'receipts', label: '( + ) CASH RECEIPTS', cssClass: 'receipts', rows: [], addable: true },
-    { key: 'disbursements', label: '( – ) CASH DISBURSEMENTS', cssClass: 'disbursements', rows: [], addable: true },
-    { key: 'transfers', label: '( + )/( – ) INTERNAL TRANSFERS', cssClass: 'transfers', rows: [], addable: true },
-    { key: 'summary', label: 'SUMMARY', cssClass: 'summary', rows: [], addable: false },
-  ];
+  // Group rows by section
+  const sections = useMemo(() => {
+    const s: { key: string; label: string; cssClass: string; rows: string[]; addable: boolean }[] = [
+      { key: 'balance_begin', label: 'BEGINNING / ENDING BANK BALANCES', cssClass: 'balance', rows: [], addable: false },
+      { key: 'balance_end', label: '', cssClass: 'balance', rows: [], addable: false },
+      { key: 'receipts', label: '( + ) CASH RECEIPTS', cssClass: 'receipts', rows: [], addable: true },
+      { key: 'disbursements', label: '( – ) CASH DISBURSEMENTS', cssClass: 'disbursements', rows: [], addable: true },
+      { key: 'transfers', label: '( + )/( – ) INTERNAL TRANSFERS', cssClass: 'transfers', rows: [], addable: true },
+      { key: 'summary', label: 'SUMMARY', cssClass: 'summary', rows: [], addable: false },
+    ];
 
-  rowStructure.rows.forEach(meta => {
-    const section = sections.find(s => s.key === meta.section);
-    if (section) section.rows.push(`row_${meta.row_num}`);
-  });
+    rowStructure.rows.forEach(meta => {
+      const section = s.find(sec => sec.key === meta.section);
+      if (section) section.rows.push(`row_${meta.row_num}`);
+    });
 
-  // Also include any dynamically added rows
-  const knownKeys = new Set(rowStructure.rows.map(r => `row_${r.row_num}`));
-  Object.keys(data.rows).forEach(key => {
-    if (!knownKeys.has(key)) {
-      const num = parseInt(key.replace('row_', ''));
-      if (num >= 27 && num < 38) sections[2].rows.push(key);
-      else if (num >= 40 && num < 59) sections[3].rows.push(key);
-      else if (num >= 61 && num < 68) sections[4].rows.push(key);
-    }
-  });
+    const knownKeys = new Set(rowStructure.rows.map(r => `row_${r.row_num}`));
+    Object.keys(data.rows).forEach(key => {
+      if (!knownKeys.has(key)) {
+        const num = parseInt(key.replace('row_', ''));
+        if (num >= 27 && num < 38) s[2].rows.push(key);
+        else if (num >= 40 && num < 59) s[3].rows.push(key);
+        else if (num >= 61 && num < 68) s[4].rows.push(key);
+      }
+    });
 
-  const visibleDates = data.dates;
-  const dateIndices = useMemo(() => visibleDates.map((_, i) => i), [visibleDates]);
+    return s;
+  }, [rowStructure, data.rows]);
 
-  const getRecurring = (rowKey: string) => recurringTags.find(t => t.rowKey === rowKey);
+  const totalDateCount = data.dates.length;
 
-  const formatDate = (dateStr: string) => {
+  // Compute visible column range for virtualization
+  const { startCol, endCol, totalWidth } = useMemo(() => {
+    const availableWidth = containerWidth - LABEL_COL_WIDTH;
+    const tw = totalDateCount * COL_WIDTH;
+    const start = Math.max(0, Math.floor((scrollLeft) / COL_WIDTH) - OVERSCAN);
+    const visibleCount = Math.ceil(availableWidth / COL_WIDTH) + 2 * OVERSCAN;
+    const end = Math.min(totalDateCount, start + visibleCount);
+    return { startCol: start, endCol: end, totalWidth: tw };
+  }, [scrollLeft, containerWidth, totalDateCount]);
+
+  const visibleIndices = useMemo(() => {
+    const indices: number[] = [];
+    for (let i = startCol; i < endCol; i++) indices.push(i);
+    return indices;
+  }, [startCol, endCol]);
+
+  const getRecurring = useCallback((rowKey: string) => recurringTags.find(t => t.rowKey === rowKey), [recurringTags]);
+
+  const formatDate = useCallback((dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  }, []);
 
-  const getDayOfWeek = (dateStr: string) => {
+  const getDayOfWeek = useCallback((dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
-  };
+  }, []);
+
+  // Pre-compute left offset for spacer columns
+  const leftSpacer = startCol * COL_WIDTH;
+  const rightSpacer = Math.max(0, (totalDateCount - endCol) * COL_WIDTH);
 
   return (
     <div className="cf-main">
-      {/* Import controls */}
       {isAdmin && onImportExcel && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
           <button
@@ -134,36 +197,47 @@ export const DailySourceTab = memo(function DailySourceTab({
           </button>
         </div>
       )}
-      <div ref={gridWrapRef} className="cf-table-card">
-      <div className="cf-grid-wrap">
-        <table className="cf-grid">
+      <div ref={combinedRef} className="cf-table-card" onScroll={handleScroll} style={{ overflowX: 'auto', overflowY: 'visible' }}>
+        <table className="cf-grid" style={{ width: LABEL_COL_WIDTH + totalWidth, tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: LABEL_COL_WIDTH }} />
+            {leftSpacer > 0 && <col style={{ width: leftSpacer }} />}
+            {visibleIndices.map(i => (
+              <col key={i} style={{ width: COL_WIDTH }} />
+            ))}
+            {rightSpacer > 0 && <col style={{ width: rightSpacer }} />}
+          </colgroup>
           <thead>
             <tr>
-              <th className="cf-label-col">Account</th>
-              {visibleDates.map((d, i) => (
+              <th className="cf-label-col" style={{ position: 'sticky', left: 0, zIndex: 2 }}>Account</th>
+              {leftSpacer > 0 && <th />}
+              {visibleIndices.map(i => (
                 <th key={i}>
-                  <div>{getDayOfWeek(d)}</div>
-                  <div>{formatDate(d)}</div>
+                  <div>{getDayOfWeek(data.dates[i])}</div>
+                  <div>{formatDate(data.dates[i])}</div>
                 </th>
               ))}
+              {rightSpacer > 0 && <th />}
             </tr>
           </thead>
           <tbody>
             {sections.map(section => {
-              if (!section.label && section.key === 'balance_end') return null; // merged with balance_begin
+              if (!section.label && section.key === 'balance_end') return null;
               const sectionRows = section.key === 'balance_begin'
                 ? [...sections[0].rows, ...sections[1].rows]
                 : section.rows;
 
               return (
-                <SectionBlock
+                <VirtualizedSectionBlock
                   key={section.key}
                   sectionLabel={section.label}
                   cssClass={section.cssClass}
                   rowKeys={sectionRows}
                   data={data}
                   rowStructure={rowStructure}
-                  dateIndices={dateIndices}
+                  visibleIndices={visibleIndices}
+                  leftSpacer={leftSpacer}
+                  rightSpacer={rightSpacer}
                   editingCell={editingCell}
                   editingLabel={editingLabel}
                   editValue={editValue}
@@ -180,7 +254,7 @@ export const DailySourceTab = memo(function DailySourceTab({
                   onRowRemove={onRowRemove}
                   addable={section.addable}
                   onAddRow={() => setAddRowSection(section.key)}
-                  dateCount={visibleDates.length}
+                  totalColCount={totalDateCount + 1 + (leftSpacer > 0 ? 1 : 0) + (rightSpacer > 0 ? 1 : 0)}
                   collapsed={collapsedSections[section.cssClass]}
                   onToggleCollapse={() => toggleSection(section.cssClass)}
                 />
@@ -189,9 +263,7 @@ export const DailySourceTab = memo(function DailySourceTab({
           </tbody>
         </table>
       </div>
-      </div>
 
-      {/* Add Row Dialog */}
       {addRowSection && (
         <div className="cf-overlay" onClick={() => setAddRowSection(null)}>
           <div className="cf-dialog" onClick={e => e.stopPropagation()}>
@@ -217,13 +289,15 @@ export const DailySourceTab = memo(function DailySourceTab({
   );
 });
 
-interface SectionBlockProps {
+interface VirtualizedSectionBlockProps {
   sectionLabel: string;
   cssClass: string;
   rowKeys: string[];
   data: DailyData;
   rowStructure: DailyRowStructure;
-  dateIndices: number[];
+  visibleIndices: number[];
+  leftSpacer: number;
+  rightSpacer: number;
   editingCell: EditingCell | null;
   editingLabel: string | null;
   editValue: string;
@@ -240,35 +314,34 @@ interface SectionBlockProps {
   onRowRemove: (key: string) => void;
   addable: boolean;
   onAddRow: () => void;
-  dateCount: number;
+  totalColCount: number;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-function SectionBlock({
-  sectionLabel, cssClass, rowKeys, data, rowStructure, dateIndices,
+const VirtualizedSectionBlock = memo(function VirtualizedSectionBlock({
+  sectionLabel, cssClass, rowKeys, data, rowStructure, visibleIndices,
+  leftSpacer, rightSpacer,
   editingCell, editingLabel, editValue, inputRef, isAdmin, getRecurring,
   onCellClick, onEditValueChange, onCommitCell, onCancelCell,
   onLabelDblClick, onCommitLabel, onCancelLabel, onRowRemove,
-  addable, onAddRow, dateCount, collapsed, onToggleCollapse,
-}: SectionBlockProps) {
+  addable, onAddRow, totalColCount, collapsed, onToggleCollapse,
+}: VirtualizedSectionBlockProps) {
   if (!sectionLabel) return null;
   const isCollapsible = cssClass === 'receipts' || cssClass === 'disbursements';
 
   return (
     <>
-      {/* Section header */}
       <tr
         className={`cf-section-header ${cssClass}`}
         style={isCollapsible ? { cursor: 'pointer' } : undefined}
         onClick={isCollapsible ? onToggleCollapse : undefined}
       >
-        <td className="cf-label-col" colSpan={dateCount + 1} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <td className="cf-label-col" colSpan={totalColCount} style={{ display: 'flex', alignItems: 'center', gap: 4, position: 'sticky', left: 0 }}>
           {isCollapsible && (collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
           {sectionLabel}
         </td>
       </tr>
-      {/* Data rows */}
       {rowKeys.map(rowKey => {
         const row = data.rows[rowKey];
         if (!row) return null;
@@ -278,12 +351,11 @@ function SectionBlock({
         const indent = meta?.indent ?? false;
         const recurring = getRecurring(rowKey);
 
-        // Hide detail rows when collapsed (keep totals visible)
         if (!isTotal && collapsed) return null;
 
         return (
           <tr key={rowKey} className={`${isTotal ? 'cf-total-row' : ''} ${indent ? 'cf-indent' : ''}`}>
-            <td className="cf-label-col">
+            <td className="cf-label-col" style={{ position: 'sticky', left: 0, zIndex: 1 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 {editingLabel === rowKey ? (
                   <input
@@ -313,7 +385,8 @@ function SectionBlock({
                 )}
               </span>
             </td>
-            {dateIndices.map(colIdx => {
+            {leftSpacer > 0 && <td />}
+            {visibleIndices.map(colIdx => {
               const val = row.values[colIdx] || 0;
               const isEditing = editingCell?.rowKey === rowKey && editingCell?.colIdx === colIdx;
               const editable = isAdmin && !isTotal && !isProtected;
@@ -344,17 +417,17 @@ function SectionBlock({
                 </td>
               );
             })}
+            {rightSpacer > 0 && <td />}
           </tr>
         );
       })}
-      {/* Add Row button */}
       {addable && isAdmin && (
         <tr>
-          <td className="cf-label-col" colSpan={dateCount + 1}>
+          <td className="cf-label-col" colSpan={totalColCount}>
             <button className="cf-btn cf-btn-ghost" onClick={onAddRow} style={{ fontSize: '11px' }}>+ Add Row</button>
           </td>
         </tr>
       )}
     </>
   );
-}
+});
