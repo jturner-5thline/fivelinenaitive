@@ -60,6 +60,21 @@ interface AttentionDeal {
   stale_lender_count?: number;
 }
 
+function formatDealType(dealType: string | null): string {
+  if (!dealType) return '';
+  try {
+    const parsed = JSON.parse(dealType);
+    if (Array.isArray(parsed)) {
+      return parsed.map((t: string) =>
+        t.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      ).join(', ');
+    }
+  } catch {
+    // Not JSON, treat as plain string
+  }
+  return dealType.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
 function formatValue(value: number | null): string {
   if (!value) return '—';
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -106,7 +121,8 @@ function buildEmailHtml(
 
     const detailRows: string[] = [];
     if (deal.value) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Value:</strong> ${formatValue(deal.value)}</td>`);
-    if (deal.deal_type) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Type:</strong> ${deal.deal_type}</td>`);
+    const formattedDealType = formatDealType(deal.deal_type);
+    if (formattedDealType) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Type:</strong> ${formattedDealType}</td>`);
     if (deal.manager) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Manager:</strong> ${deal.manager}</td>`);
     if (deal.analyst) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Analyst:</strong> ${deal.analyst}</td>`);
     if (deal.closing_date) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Closing:</strong> ${formatDate(deal.closing_date)}</td>`);
@@ -135,6 +151,7 @@ function buildEmailHtml(
           <tr>
             <td>
               <strong style="font-size: 16px; color: #111827;">${deal.company}</strong>
+              <span style="display: inline-block; background: ${deal.status === 'at-risk' ? '#fef3c7' : deal.status === 'off-track' ? '#fee2e2' : '#dcfce7'}; color: ${deal.status === 'at-risk' ? '#92400e' : deal.status === 'off-track' ? '#991b1b' : '#166534'}; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-left: 8px; vertical-align: middle;">${deal.status === 'on-track' ? 'On Track' : deal.status === 'at-risk' ? 'At Risk' : deal.status === 'off-track' ? 'Off Track' : deal.status === 'on-hold' ? 'On Hold' : deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}</span>
             </td>
             <td style="text-align: right;">
               <span style="background: ${borderColor}15; color: ${borderColor}; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px;">
@@ -288,15 +305,20 @@ const handler = async (req: Request): Promise<Response> => {
       const dealIds = activeDeals.map(d => d.id);
       const { data: lenders } = await supabaseAdmin
         .from('deal_lenders')
-        .select('id, deal_id, updated_at, stage')
+        .select('id, deal_id, updated_at, stage, tracking_status')
         .in('deal_id', dealIds);
 
       // Build a map: deal_id → count of stale lenders (active lenders not updated in X days)
       const staleLenderCounts: Record<string, number> = {};
-      const excludedLenderStages = ['passed', 'not-a-fit', 'unresponsive', 'excluded'];
+      const excludedLenderStages = ['passed', 'not-a-fit', 'not a fit', 'unresponsive', 'excluded', 'on hold', 'on-hold', 'direct'];
+      const inactiveTrackingStatuses = ['passed', 'on-hold', 'on-deck', 'excluded', 'direct', 'not_a_fit', 'not-a-fit'];
       if (lenders) {
         for (const lender of lenders) {
-          if (excludedLenderStages.includes(lender.stage)) continue;
+          const lenderStage = (lender.stage || '').toLowerCase();
+          const trackingStatus = (lender.tracking_status || '').toLowerCase();
+          if (excludedLenderStages.includes(lenderStage)) continue;
+          if (inactiveTrackingStatuses.includes(trackingStatus)) continue;
+          if (trackingStatus && trackingStatus !== 'active') continue;
           const lenderUpdated = new Date(lender.updated_at);
           const daysSince = Math.floor((now.getTime() - lenderUpdated.getTime()) / (1000 * 60 * 60 * 24));
           if (daysSince >= (config.lender_stale_days || config.threshold_days)) {
