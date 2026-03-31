@@ -69,15 +69,17 @@ export function AlertsWidget({ deals }: AlertsWidgetProps) {
       let maxLenderDays = 0;
       let staleLenderCount = 0;
       
-      deal.lenders?.forEach(lender => {
-        if (lender.trackingStatus === 'active' && lender.updatedAt) {
-          const lenderDaysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
-          if (lenderDaysSinceUpdate >= staleLenderDays) {
-            staleLenderCount++;
-            maxLenderDays = Math.max(maxLenderDays, lenderDaysSinceUpdate);
+      if (isPostSubmissionDealStage(deal.stage)) {
+        deal.lenders?.forEach(lender => {
+          if (lender.trackingStatus === 'active' && lender.updatedAt) {
+            const lenderDaysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
+            if (lenderDaysSinceUpdate >= staleLenderDays) {
+              staleLenderCount++;
+              maxLenderDays = Math.max(maxLenderDays, lenderDaysSinceUpdate);
+            }
           }
-        }
-      });
+        });
+      }
 
       if (staleLenderCount > 0) {
         alertItems.push({
