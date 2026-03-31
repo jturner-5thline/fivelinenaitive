@@ -139,7 +139,23 @@ export function CashFlowManager() {
 
   useEffect(() => {
     if (isImported && importedDailyData) {
-      setDailyData(deepClone(importedDailyData));
+      const data = deepClone(importedDailyData);
+      const dateCount = data.dates.length;
+      // Inject M&T Bank Balance rows if not present in imported data
+      const hasMtBegin = Object.values(data.rows).some(r => /M&T\s*Bank\s*Balance/i.test(r.label) && Object.entries(data.rows).some(([k]) => {
+        const struct = importedRowStructure?.rows.find(s => `row_${s.row_num}` === k);
+        return struct?.section === 'balance_begin';
+      }));
+      if (!hasMtBegin) {
+        data.rows['row_mt_begin'] = { label: 'M&T Bank Balance', entity: 'ALL', values: new Array(dateCount).fill(46000) };
+      }
+      const hasMtEnd = Object.values(data.rows).some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
+      if (!hasMtEnd || !hasMtBegin) {
+        if (!data.rows['row_mt_end']) {
+          data.rows['row_mt_end'] = { label: 'M&T Bank Balance', entity: 'ALL', values: new Array(dateCount).fill(46000) };
+        }
+      }
+      setDailyData(data);
     }
   }, [isImported, importedDailyData]);
 
