@@ -314,7 +314,11 @@ const handler = async (req: Request): Promise<Response> => {
       const inactiveTrackingStatuses = ['passed', 'on-hold', 'on-deck', 'excluded', 'direct', 'not_a_fit', 'not-a-fit'];
       if (lenders) {
         for (const lender of lenders) {
-          if (excludedLenderStages.includes(lender.stage)) continue;
+          const lenderStage = (lender.stage || '').toLowerCase();
+          const trackingStatus = (lender.tracking_status || '').toLowerCase();
+          if (excludedLenderStages.includes(lenderStage)) continue;
+          if (inactiveTrackingStatuses.includes(trackingStatus)) continue;
+          if (trackingStatus && trackingStatus !== 'active') continue;
           const lenderUpdated = new Date(lender.updated_at);
           const daysSince = Math.floor((now.getTime() - lenderUpdated.getTime()) / (1000 * 60 * 60 * 24));
           if (daysSince >= (config.lender_stale_days || config.threshold_days)) {
