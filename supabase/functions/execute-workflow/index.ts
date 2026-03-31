@@ -14,7 +14,7 @@ interface ActionCondition {
 
 interface WorkflowAction {
   id: string;
-  type: "send_notification" | "send_email" | "webhook" | "update_field" | "trigger_workflow";
+  type: "send_notification" | "send_email" | "webhook" | "update_field" | "trigger_workflow" | "ai_process";
   config: Record<string, any>;
   condition?: ActionCondition;
   delay?: { amount: number; unit: 'minutes' | 'hours' | 'days' };
