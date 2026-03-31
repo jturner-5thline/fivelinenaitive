@@ -46,18 +46,46 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  // Inactive/closed stages to exclude
+  const EXCLUDED_STAGES = [
+    'on-hold', 'On Hold', 'On Hold / Pause', 'On Hold or In Review',
+    'closed-lost', 'Closed lost', 'Closed Out / Not a Fit',
+    'closed-won', 'Closed won', 'Closed / Won',
+    'Do Not Contact / Dead Deal', 'Not a Fit; Do Not Contact',
+    'Company Opted Out', 'Client Lost', 'Dropped Client',
+    'Past Client', 'No Lender Interest', 'Unqualified',
+    'Clients Churned', 'Terminated', 'Deal/Diligence Paused/On Hold',
+  ];
+
   useEffect(() => {
     if (!open || !company?.id) return;
     setLoading(true);
+
+    // First get the default pipeline for this company
     supabase
-      .from('deals')
-      .select('id, company, stage, value, retainer_fee, milestone_fee, success_fee_percent, total_fee')
+      .from('deal_pipelines')
+      .select('id')
       .eq('company_id', company.id)
-      .not('status', 'in', '("on-hold","archived")')
-      .order('company', { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data) setDeals(data as Deal[]);
-        setLoading(false);
+      .eq('is_default', true)
+      .limit(1)
+      .single()
+      .then(({ data: pipeline }) => {
+        let query = supabase
+          .from('deals')
+          .select('id, company, stage, value, retainer_fee, milestone_fee, success_fee_percent, total_fee')
+          .eq('company_id', company.id)
+          .not('status', 'in', '("on-hold","archived")')
+          .not('stage', 'in', `(${EXCLUDED_STAGES.map(s => `"${s}"`).join(',')})`)
+          .order('company', { ascending: true });
+
+        if (pipeline?.id) {
+          query = query.eq('pipeline_id', pipeline.id);
+        }
+
+        query.then(({ data, error }) => {
+          if (!error && data) setDeals(data as Deal[]);
+          setLoading(false);
+        });
       });
   }, [open, company?.id]);
 
