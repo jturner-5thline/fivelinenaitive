@@ -203,9 +203,25 @@ export const usePageAccessFlags = () => {
 
   const isLoading = flagsLoading || overridesLoading;
   
+  const FINANCE_ALLOWED_EMAILS = [
+    'jturner@5thline.co',
+    'jmoffitt@5thline.co',
+    'jrivera@5thline.co',
+    'cminaldi@5thline.co',
+    'mclark@5thline.co',
+    'swilliams@5thline.co',
+    'mkaleniecki@5thline.co',
+  ];
+
   const hasPageAccess = (pageName: string): boolean => {
     // Demo account cannot access certain pages
     if (isDemoAccount && (pageName === 'finance' || pageName === 'workflows' || pageName === 'sales_bd')) return false;
+
+    // Finance page: restrict to explicit allowlist regardless of feature flag
+    if (pageName === 'finance') {
+      const email = user?.email?.toLowerCase() ?? '';
+      return FINANCE_ALLOWED_EMAILS.includes(email);
+    }
 
     // While flags or company overrides are still loading, block access
     // to prevent flash of unauthorized content.
