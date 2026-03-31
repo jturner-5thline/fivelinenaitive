@@ -32,14 +32,6 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
 
   const setActivePipelineId = useCallback((id: string | null) => {
     setActivePipelineIdState(id);
-    setHasUserSelected(true);
-    if (id) {
-      localStorage.setItem('active-pipeline-id', id);
-      localStorage.removeItem('pipeline-all-deals');
-    } else {
-      localStorage.removeItem('active-pipeline-id');
-      localStorage.setItem('pipeline-all-deals', 'true');
-    }
   }, []);
 
   const activePipeline = pipelines.find(p => p.id === activePipelineId) || null;
