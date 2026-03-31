@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type {
   DailyData, WeeklyData, SidebarData, RecurringTag,
   PlanSnapshot, UndoSnapshot, ActivityLogEntry, ExportArchiveEntry,
@@ -18,6 +18,72 @@ import './cashflow.css';
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
+}
+
+const QUARTER_RANGES: Record<string, [number, number]> = {
+  Q1: [0, 2], // Jan-Mar
+  Q2: [3, 5], // Apr-Jun
+  Q3: [6, 8], // Jul-Sep
+  Q4: [9, 11], // Oct-Dec
+};
+
+function getAvailableYears(dates: string[]): number[] {
+  const years = new Set<number>();
+  for (const d of dates) {
+    years.add(parseInt(d.slice(0, 4)));
+  }
+  return Array.from(years).sort();
+}
+
+function filterDailyByPeriod(data: DailyData, year: string, quarter: string): DailyData {
+  if (year === 'all') return data;
+  const yearNum = parseInt(year);
+  const indices: number[] = [];
+
+  for (let i = 0; i < data.dates.length; i++) {
+    const d = data.dates[i];
+    const y = parseInt(d.slice(0, 4));
+    if (y !== yearNum) continue;
+    if (quarter !== 'all') {
+      const m = parseInt(d.slice(5, 7)) - 1;
+      const [qStart, qEnd] = QUARTER_RANGES[quarter];
+      if (m < qStart || m > qEnd) continue;
+    }
+    indices.push(i);
+  }
+
+  if (indices.length === data.dates.length) return data;
+
+  const filteredDates = indices.map(i => data.dates[i]);
+  const filteredRows: Record<string, { label: string; entity: string; values: number[] }> = {};
+  for (const [key, row] of Object.entries(data.rows)) {
+    filteredRows[key] = {
+      label: row.label,
+      entity: row.entity,
+      values: indices.map(i => row.values[i] ?? 0),
+    };
+  }
+
+  return { dates: filteredDates, rows: filteredRows };
+}
+
+function filterWeeklyByPeriod(data: WeeklyData, year: string, quarter: string): WeeklyData {
+  if (year === 'all') return data;
+  const yearNum = parseInt(year);
+  const filtered: WeeklyData = {};
+
+  for (const [key, entry] of Object.entries(data)) {
+    const y = parseInt(key.slice(0, 4));
+    if (y !== yearNum) continue;
+    if (quarter !== 'all') {
+      const m = parseInt(key.slice(5, 7)) - 1;
+      const [qStart, qEnd] = QUARTER_RANGES[quarter];
+      if (m < qStart || m > qEnd) continue;
+    }
+    filtered[key] = entry;
+  }
+
+  return filtered;
 }
 
 export function CashFlowManager() {
@@ -48,6 +114,10 @@ export function CashFlowManager() {
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [recurringTags, setRecurringTags] = useState<RecurringTag[]>([]);
 
+  // Date filter state
+  const [filterYear, setFilterYear] = useState<string>('all');
+  const [filterQuarter, setFilterQuarter] = useState<string>('all');
+
   // Undo
   const [undoStack, setUndoStack] = useState<UndoSnapshot[]>([]);
 
@@ -67,6 +137,13 @@ export function CashFlowManager() {
   const getDaily = useCallback(() => role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData, [role, sandboxDaily, dailyData]);
   const getWeekly = useCallback(() => role === 'viewer' && sandboxWeekly ? sandboxWeekly : weeklyData, [role, sandboxWeekly, weeklyData]);
   const getSidebar = useCallback(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
+
+  // Available years derived from daily data
+  const availableYears = useMemo(() => getAvailableYears(getDaily().dates), [getDaily]);
+
+  // Filtered data
+  const filteredDaily = useMemo(() => filterDailyByPeriod(getDaily(), filterYear, filterQuarter), [getDaily, filterYear, filterQuarter]);
+  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(getWeekly(), filterYear, filterQuarter), [getWeekly, filterYear, filterQuarter]);
 
   const setActiveData = useCallback((setter: 'daily' | 'weekly' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
@@ -313,6 +390,53 @@ export function CashFlowManager() {
         </div>
       )}
 
+      {/* Date period filter */}
+      <div className="cf-filter-bar">
+        <div className="cf-filter-group">
+          <label className="cf-filter-label">Year</label>
+          <select
+            className="cf-select"
+            value={filterYear}
+            onChange={e => { setFilterYear(e.target.value); setFilterQuarter('all'); }}
+          >
+            <option value="all">All Years</option>
+            {availableYears.map(y => (
+              <option key={y} value={String(y)}>{y}</option>
+            ))}
+          </select>
+        </div>
+        {filterYear !== 'all' && (
+          <div className="cf-filter-group">
+            <label className="cf-filter-label">Quarter</label>
+            <select
+              className="cf-select"
+              value={filterQuarter}
+              onChange={e => setFilterQuarter(e.target.value)}
+            >
+              <option value="all">All Quarters</option>
+              <option value="Q1">Q1 (Jan–Mar)</option>
+              <option value="Q2">Q2 (Apr–Jun)</option>
+              <option value="Q3">Q3 (Jul–Sep)</option>
+              <option value="Q4">Q4 (Oct–Dec)</option>
+            </select>
+          </div>
+        )}
+        {(filterYear !== 'all' || filterQuarter !== 'all') && (
+          <button
+            className="cf-btn cf-btn-ghost"
+            style={{ fontSize: 11, marginLeft: 4 }}
+            onClick={() => { setFilterYear('all'); setFilterQuarter('all'); }}
+          >
+            Clear Filter
+          </button>
+        )}
+        <span className="cf-filter-summary">
+          {activeTab === 'daily'
+            ? `${filteredDaily.dates.length} days`
+            : `${Object.keys(filteredWeekly).length} weeks`}
+        </span>
+      </div>
+
       {/* Hidden file input for Excel import */}
       <input
         ref={fileInputRef}
@@ -323,7 +447,7 @@ export function CashFlowManager() {
           const file = e.target.files?.[0];
           if (file) {
             importFile(file);
-            e.target.value = ''; // reset so same file can be re-imported
+            e.target.value = '';
           }
         }}
       />
@@ -331,7 +455,7 @@ export function CashFlowManager() {
       {/* Main content */}
       {activeTab === 'daily' ? (
         <DailySourceTab
-          data={getDaily()}
+          data={filteredDaily}
           rowStructure={isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE}
           recurringTags={recurringTags}
           isAdmin={role === 'admin'}
@@ -345,7 +469,7 @@ export function CashFlowManager() {
         />
       ) : (
         <WeeklyReportTab
-          weeklyData={getWeekly()}
+          weeklyData={filteredWeekly}
           sidebarData={getSidebar()}
           theme={theme}
           isAdmin={role === 'admin'}
