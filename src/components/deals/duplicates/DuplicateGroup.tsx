@@ -17,6 +17,13 @@ interface DuplicateGroupProps {
 export function DuplicateGroup({ cluster, onMerge }: DuplicateGroupProps) {
   const [isOpen, setIsOpen] = useState(true);
   const navigate = useNavigate();
+  const { pipelines } = usePipelines();
+
+  const pipelineMap = useMemo(() => {
+    const map = new Map<string, string>();
+    pipelines.forEach(p => map.set(p.id, p.name));
+    return map;
+  }, [pipelines]);
 
   const similarityPercent = Math.round(cluster.similarity * 100);
 
