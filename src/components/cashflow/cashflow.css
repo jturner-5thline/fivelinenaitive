@@ -195,7 +195,7 @@
 }
 
 /* Main content */
-.cf-main { overflow: hidden; display: flex; flex-direction: column; }
+.cf-main { display: flex; flex-direction: column; }
 
 /* Grid table */
 .cf-grid-wrap {
