@@ -1,0 +1,1 @@
+DELETE FROM public.deals WHERE lower(company) LIKE '%@%' AND lower(company) LIKE '%inbound request%';
