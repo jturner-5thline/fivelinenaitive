@@ -4430,26 +4430,6 @@ export default function DealDetail() {
                 </TabsContent>
                 )}
 
-                <TabsContent value="communication" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`communication-${tabDirection}`}>
-                  <Tabs defaultValue="emails" className="w-full">
-                    <TabsList className="mb-4">
-                      <TabsTrigger value="emails" className="gap-2">
-                        <Mail className="h-4 w-4" />
-                        Emails
-                      </TabsTrigger>
-                      <TabsTrigger value="meetings" className="gap-2">
-                        <Video className="h-4 w-4" />
-                        Meetings
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="emails">
-                      <DealEmailsTab dealId={id!} />
-                    </TabsContent>
-                    <TabsContent value="meetings">
-                      <ClaapMeetingsTab dealId={id!} />
-                    </TabsContent>
-                  </Tabs>
-                </TabsContent>
 
               </Tabs>
             </div>
