@@ -760,6 +760,88 @@ export type Database = {
           },
         ]
       }
+      ai_configuration: {
+        Row: {
+          company_id: string
+          created_at: string
+          default_model: string
+          default_temperature: number
+          features_enabled: Json
+          id: string
+          max_tokens: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          default_model?: string
+          default_temperature?: number
+          features_enabled?: Json
+          id?: string
+          max_tokens?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          default_model?: string
+          default_temperature?: number
+          features_enabled?: Json
+          id?: string
+          max_tokens?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_configuration_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_logs: {
+        Row: {
+          company_id: string
+          created_at: string
+          feature: string
+          id: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          feature: string
+          id?: string
+          input_tokens?: number
+          model: string
+          output_tokens?: number
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          feature?: string
+          id?: string
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       asana_field_mappings: {
         Row: {
           asana_field: string
