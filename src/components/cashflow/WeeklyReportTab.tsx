@@ -6,9 +6,17 @@ import { WeeklyCharts } from './WeeklyCharts';
 import { WeeklySidebar } from './WeeklySidebar';
 import { useGridWheelPassthrough } from './useGridWheelPassthrough';
 
+interface SidebarItem {
+  id?: string;
+  name: string;
+  amount: number;
+  date: string;
+}
+
 interface WeeklyReportTabProps {
   weeklyData: WeeklyData;
   sidebarData: SidebarData;
+  sidebarDbItems: SidebarItem[];
   theme: ThemeMode;
   isAdmin: boolean;
   planSnapshots: PlanSnapshot[];
@@ -19,6 +27,7 @@ interface WeeklyReportTabProps {
   onSidebarEditItem: (index: number, field: string, value: string | number) => void;
   onSidebarRemoveItem: (index: number) => void;
   onSidebarAddItem: () => void;
+  onSidebarRemoveDbItem: (id: string) => void;
   onNoteEdit: (index: number, value: string) => void;
   onNoteRemove: (index: number) => void;
   onNoteAdd: () => void;
