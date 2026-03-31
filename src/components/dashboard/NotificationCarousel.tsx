@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { Bell, AlertCircle, Calendar, FileText, Users, ChevronLeft, ChevronRight, Clock, Expand, Activity, Zap, Bot, X } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
