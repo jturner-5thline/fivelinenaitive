@@ -143,16 +143,16 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 px-4 pb-4 pt-0">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <ToggleGroup type="single" value={viewFilter} onValueChange={(v) => v && setViewFilter(v as 'mine' | 'all')} className="justify-start">
-                <ToggleGroupItem value="mine" className="text-xs h-7 px-2.5">My Tasks</ToggleGroupItem>
-                <ToggleGroupItem value="all" className="text-xs h-7 px-2.5">All Tasks</ToggleGroupItem>
+                <ToggleGroupItem value="mine" className="text-[10px] h-6 px-2">My Tasks</ToggleGroupItem>
+                <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
               </ToggleGroup>
               <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => v && setStatusFilter(v as 'incomplete' | 'completed' | 'all')} className="justify-end">
-                <ToggleGroupItem value="incomplete" className="text-xs h-7 px-2.5">Incomplete</ToggleGroupItem>
-                <ToggleGroupItem value="completed" className="text-xs h-7 px-2.5">Completed</ToggleGroupItem>
-                <ToggleGroupItem value="all" className="text-xs h-7 px-2.5">All</ToggleGroupItem>
+                <ToggleGroupItem value="incomplete" className="text-[10px] h-6 px-2">Open</ToggleGroupItem>
+                <ToggleGroupItem value="completed" className="text-[10px] h-6 px-2">Done</ToggleGroupItem>
+                <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
               </ToggleGroup>
             </div>
         {isLoading && tasks.length === 0 ? (
