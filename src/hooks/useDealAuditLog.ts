@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface DealAuditEntry {
   id: string;
   deal_id: string;
-  user_id: string;
+  user_id: string | null;
   action_type: string;
   entity_type: string;
   entity_id: string | null;
@@ -31,36 +31,72 @@ export function useDealAuditLog(dealId: string | undefined) {
     setLoading(true);
     try {
       const from = pageNum * PAGE_SIZE;
-      const { data, error } = await (supabase as any)
-        .from('deal_audit_log')
-        .select('*')
-        .eq('deal_id', dealId)
-        .order('created_at', { ascending: false })
-        .range(from, from + PAGE_SIZE - 1);
+      const [{ data, error }, { data: callData, error: callError }] = await Promise.all([
+        (supabase as any)
+          .from('deal_audit_log')
+          .select('*')
+          .eq('deal_id', dealId)
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1),
+        supabase
+          .from('activity_logs')
+          .select('id, deal_id, user_id, user_display_name, activity_type, description, metadata, created_at')
+          .eq('deal_id', dealId)
+          .eq('activity_type', 'claap_recording_linked')
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1),
+      ]);
 
       if (error) throw error;
-      const rows = (data || []) as DealAuditEntry[];
+      if (callError) throw callError;
+
+      const auditRows = (data || []) as DealAuditEntry[];
+      const callRows: DealAuditEntry[] = (callData || []).map((entry) => ({
+        id: `claap-${entry.id}`,
+        deal_id: entry.deal_id,
+        user_id: entry.user_id,
+        action_type: 'claap_recording_linked',
+        entity_type: 'call',
+        entity_id: (entry.metadata as Record<string, any> | null)?.claap_id || entry.id,
+        entity_name: entry.description,
+        metadata: (entry.metadata as Record<string, any>) || {},
+        created_at: entry.created_at,
+        user_display_name: entry.user_display_name || 'System',
+        user_avatar_url: null,
+      }));
+
+      const rows = [...auditRows, ...callRows].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
       // Fetch user profiles for display names
-      const userIds = [...new Set(rows.map(r => r.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, avatar_url')
-        .in('user_id', userIds);
+      const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))] as string[];
+      const { data: profiles } = userIds.length
+        ? await supabase
+            .from('profiles')
+            .select('user_id, display_name, avatar_url')
+            .in('user_id', userIds)
+        : { data: [] as Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> };
 
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
       const enriched = rows.map(r => ({
         ...r,
-        user_display_name: profileMap.get(r.user_id)?.display_name || 'Unknown',
-        user_avatar_url: profileMap.get(r.user_id)?.avatar_url || null,
+        user_display_name: r.user_display_name || (r.user_id ? profileMap.get(r.user_id)?.display_name : null) || 'System',
+        user_avatar_url: r.user_id ? profileMap.get(r.user_id)?.avatar_url || null : null,
       }));
 
+      const uniqueEntries = Array.from(new Map(enriched.map(entry => [entry.id, entry])).values()).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
       if (append) {
-        setEntries(prev => [...prev, ...enriched]);
+        setEntries(prev => Array.from(new Map([...prev, ...uniqueEntries].map(entry => [entry.id, entry])).values()).sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ));
       } else {
-        setEntries(enriched);
+        setEntries(uniqueEntries);
       }
-      setHasMore(rows.length === PAGE_SIZE);
+      setHasMore(auditRows.length === PAGE_SIZE || callRows.length === PAGE_SIZE);
     } catch (err) {
       console.error('Error fetching audit log:', err);
     } finally {
@@ -124,6 +160,39 @@ export function useDealAuditLog(dealId: string | undefined) {
           ...newEntry,
           user_display_name: profile?.display_name || 'Unknown',
           user_avatar_url: profile?.avatar_url || null,
+        }, ...prev]);
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'activity_logs',
+        filter: `deal_id=eq.${dealId}`,
+      }, (payload) => {
+        const newEntry = payload.new as {
+          id: string;
+          deal_id: string;
+          user_id: string | null;
+          user_display_name: string | null;
+          activity_type: string;
+          description: string;
+          metadata: Record<string, any> | null;
+          created_at: string;
+        };
+
+        if (newEntry.activity_type !== 'claap_recording_linked') return;
+
+        setEntries(prev => [{
+          id: `claap-${newEntry.id}`,
+          deal_id: newEntry.deal_id,
+          user_id: newEntry.user_id,
+          action_type: 'claap_recording_linked',
+          entity_type: 'call',
+          entity_id: newEntry.metadata?.claap_id || newEntry.id,
+          entity_name: newEntry.description,
+          metadata: newEntry.metadata || {},
+          created_at: newEntry.created_at,
+          user_display_name: newEntry.user_display_name || 'System',
+          user_avatar_url: null,
         }, ...prev]);
       })
       .subscribe();

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   Upload, Trash2, FolderInput, Pencil, Share2, FolderPlus, CheckSquare,
-  Square, FileText, Clock, RotateCcw, Filter, User, Search, Undo2,
+  Square, FileText, Clock, RotateCcw, Filter, User, Search, Undo2, Video,
   ArrowRightFromLine, ArrowLeftFromLine, Loader2
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -41,6 +41,7 @@ const ACTION_CONFIG: Record<string, { icon: typeof Upload; color: string; label:
   deal_info_updated: { icon: Pencil, color: 'text-amber-400', label: 'Deal Updated' },
   move_reverted: { icon: Undo2, color: 'text-cyan-400', label: 'Move Reverted' },
   rename_reverted: { icon: Undo2, color: 'text-cyan-400', label: 'Rename Reverted' },
+  claap_recording_linked: { icon: Video, color: 'text-primary', label: 'Call Linked' },
 };
 
 const FILTER_OPTIONS = [
@@ -49,6 +50,7 @@ const FILTER_OPTIONS = [
   { value: 'folder', label: 'Folders' },
   { value: 'checklist', label: 'Checklist' },
   { value: 'deal', label: 'Deal' },
+  { value: 'call', label: 'Calls' },
 ];
 
 function describeAction(entry: DealAuditEntry): string {
@@ -71,6 +73,7 @@ function describeAction(entry: DealAuditEntry): string {
     case 'deal_info_updated': return `updated deal info: ${meta.field || ''}`;
     case 'move_reverted': return `reverted move of "${name}" back to ${meta.old_folder || '?'}`;
     case 'rename_reverted': return `reverted rename of "${name}" back to "${meta.old_name || '?'}"`;
+    case 'claap_recording_linked': return entry.metadata?.recording_url ? `linked Claap call "${name}"` : name;
     default: return entry.action_type.replace(/_/g, ' ');
   }
 }
