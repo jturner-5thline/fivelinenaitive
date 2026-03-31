@@ -4085,7 +4085,7 @@ export default function DealDetail() {
                                               {lender.trackingStatus !== 'passed' && (() => {
                                                 const timeInfo = getLenderTimeInfo(lender.updatedAt);
                                                 return timeInfo.text ? (
-                                                  <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>
+                                                  <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
                                                     {timeInfo.text}
                                                   </span>
                                                 ) : null;
