@@ -2,30 +2,63 @@ import { memo } from 'react';
 import type { SidebarData } from './types';
 import { fmtShort } from './formatters';
 
+interface SidebarItem {
+  id?: string;
+  name: string;
+  amount: number;
+  date: string;
+}
+
 interface WeeklySidebarProps {
   data: SidebarData;
+  dbItems: SidebarItem[];
   isAdmin: boolean;
   onEditItem: (index: number, field: string, value: string | number) => void;
   onRemoveItem: (index: number) => void;
   onAddItem: () => void;
+  onRemoveDbItem: (id: string) => void;
   onNoteEdit: (index: number, value: string) => void;
   onNoteRemove: (index: number) => void;
   onNoteAdd: () => void;
 }
 
 export const WeeklySidebar = memo(function WeeklySidebar({
-  data, isAdmin, onEditItem, onRemoveItem, onAddItem,
+  data, dbItems, isAdmin, onEditItem, onRemoveItem, onAddItem, onRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklySidebarProps) {
-  const total = data.cash_in_next_8_weeks.reduce((s, i) => s + i.amount, 0);
+  const manualTotal = data.cash_in_next_8_weeks.reduce((s, i) => s + i.amount, 0);
+  const dbTotal = dbItems.reduce((s, i) => s + i.amount, 0);
+  const total = manualTotal + dbTotal;
 
   return (
     <div className="cf-weekly-sidebar">
       <div className="cf-sidebar-card">
         <div className="cf-sidebar-title">Cash-In: Next 8 Weeks</div>
         <div className="cf-sidebar-total">{fmtShort(total)}</div>
+
+        {/* DB-backed deal items */}
+        {dbItems.map((item) => (
+          <div key={item.id} className="cf-pipeline-item">
+            <span className="cf-pipeline-name" style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>
+              {item.name}
+            </span>
+            <span className="cf-pipeline-amount">{fmtShort(item.amount)}</span>
+            <span className="cf-pipeline-date">
+              {new Date(item.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </span>
+            {isAdmin && item.id && (
+              <button
+                className="cf-row-remove"
+                style={{ opacity: 1, fontSize: '12px' }}
+                onClick={() => onRemoveDbItem(item.id!)}
+              >×</button>
+            )}
+          </div>
+        ))}
+
+        {/* Manual items */}
         {data.cash_in_next_8_weeks.map((item, i) => (
-          <div key={i} className="cf-pipeline-item">
+          <div key={`manual-${i}`} className="cf-pipeline-item">
             {isAdmin ? (
               <input
                 className="cf-pipeline-name"
@@ -57,6 +90,7 @@ export const WeeklySidebar = memo(function WeeklySidebar({
             )}
           </div>
         ))}
+
         {isAdmin && (
           <button className="cf-btn cf-btn-ghost" onClick={onAddItem} style={{ fontSize: '11px', marginTop: 8 }}>
             + Add Item

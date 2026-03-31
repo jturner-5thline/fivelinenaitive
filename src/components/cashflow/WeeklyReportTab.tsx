@@ -6,9 +6,17 @@ import { WeeklyCharts } from './WeeklyCharts';
 import { WeeklySidebar } from './WeeklySidebar';
 import { useGridWheelPassthrough } from './useGridWheelPassthrough';
 
+interface SidebarItem {
+  id?: string;
+  name: string;
+  amount: number;
+  date: string;
+}
+
 interface WeeklyReportTabProps {
   weeklyData: WeeklyData;
   sidebarData: SidebarData;
+  sidebarDbItems: SidebarItem[];
   theme: ThemeMode;
   isAdmin: boolean;
   planSnapshots: PlanSnapshot[];
@@ -19,6 +27,7 @@ interface WeeklyReportTabProps {
   onSidebarEditItem: (index: number, field: string, value: string | number) => void;
   onSidebarRemoveItem: (index: number) => void;
   onSidebarAddItem: () => void;
+  onSidebarRemoveDbItem: (id: string) => void;
   onNoteEdit: (index: number, value: string) => void;
   onNoteRemove: (index: number) => void;
   onNoteAdd: () => void;
@@ -56,9 +65,9 @@ const WEEKLY_ROW_ORDER = [
 ];
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
-  weeklyData, sidebarData, theme, isAdmin,
+  weeklyData, sidebarData, sidebarDbItems, theme, isAdmin,
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
-  onExport, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem,
+  onExport, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
   const sortedWeeks = Object.entries(weeklyData).sort(([a], [b]) => a.localeCompare(b));
@@ -229,10 +238,12 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
 
       <WeeklySidebar
         data={sidebarData}
+        dbItems={sidebarDbItems}
         isAdmin={isAdmin}
         onEditItem={onSidebarEditItem}
         onRemoveItem={onSidebarRemoveItem}
         onAddItem={onSidebarAddItem}
+        onRemoveDbItem={onSidebarRemoveDbItem}
         onNoteEdit={onNoteEdit}
         onNoteRemove={onNoteRemove}
         onNoteAdd={onNoteAdd}

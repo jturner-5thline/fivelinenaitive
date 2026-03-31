@@ -12,7 +12,9 @@ import { DailySourceTab } from './DailySourceTab';
 import { WeeklyReportTab } from './WeeklyReportTab';
 import { ExportModal } from './ExportModal';
 import { ActivityLogDialog } from './ActivityLogDialog';
+import { AddCashInModal } from './AddCashInModal';
 import { useCashFlowImport } from './useCashFlowImport';
+import { useCashInItems } from './useCashInItems';
 import { useCompany } from '@/hooks/useCompany';
 import { Skeleton } from '@/components/ui/skeleton';
 import './cashflow.css';
@@ -121,7 +123,11 @@ function CashFlowSkeleton() {
 export function CashFlowManager() {
   const { company } = useCompany();
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
+  const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
+  const [addCashInOpen, setAddCashInOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sidebarDbItems = useMemo(() => toSidebarItems(), [toSidebarItems]);
 
   // Master data
   const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(SEED_DAILY_DATA));
@@ -326,14 +332,18 @@ export function CashFlowManager() {
   }, [pushUndo, setActiveData, logAction]);
 
   const handleSidebarAddItem = useCallback(() => {
-    pushUndo(`Add Cash-In item`);
-    setActiveData('sidebar', (prev: SidebarData) => {
-      const next = deepClone(prev);
-      next.cash_in_next_8_weeks.push({ name: 'New Item', amount: 0, date: new Date().toISOString().split('T')[0] });
-      return next;
-    });
-    logAction(`Add Cash-In item`);
-  }, [pushUndo, setActiveData, logAction]);
+    setAddCashInOpen(true);
+  }, []);
+
+  const handleCashInItemsAdded = useCallback(() => {
+    refreshCashInItems();
+    logAction('Added cash-in items from deals');
+  }, [refreshCashInItems, logAction]);
+
+  const handleRemoveCashInDbItem = useCallback(async (id: string) => {
+    await removeCashInDbItem(id);
+    logAction('Removed cash-in deal item');
+  }, [removeCashInDbItem, logAction]);
 
   const handleNoteEdit = useCallback((index: number, value: string) => {
     pushUndo(`Edit note ${index}`);
@@ -530,6 +540,7 @@ export function CashFlowManager() {
         <WeeklyReportTab
           weeklyData={filteredWeekly}
           sidebarData={rawSidebar}
+          sidebarDbItems={sidebarDbItems}
           theme={theme}
           isAdmin={role === 'admin'}
           planSnapshots={planSnapshots}
@@ -540,6 +551,7 @@ export function CashFlowManager() {
           onSidebarEditItem={handleSidebarEditItem}
           onSidebarRemoveItem={handleSidebarRemoveItem}
           onSidebarAddItem={handleSidebarAddItem}
+          onSidebarRemoveDbItem={handleRemoveCashInDbItem}
           onNoteEdit={handleNoteEdit}
           onNoteRemove={handleNoteRemove}
           onNoteAdd={handleNoteAdd}
@@ -566,6 +578,13 @@ export function CashFlowManager() {
           open={activityLogOpen}
           entries={activityLog}
           onClose={handleCloseActivityLog}
+        />
+      )}
+      {addCashInOpen && (
+        <AddCashInModal
+          open={addCashInOpen}
+          onClose={() => setAddCashInOpen(false)}
+          onItemsAdded={handleCashInItemsAdded}
         />
       )}
     </div>
