@@ -110,8 +110,8 @@ export const DailySourceTab = memo(function DailySourceTab({
   const getRecurring = (rowKey: string) => recurringTags.find(t => t.rowKey === rowKey);
 
   const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const getDayOfWeek = (dateStr: string) => {
