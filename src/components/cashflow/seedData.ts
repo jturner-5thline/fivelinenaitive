@@ -95,14 +95,14 @@ function generateDailyData(): DailyData {
     totalReceipts[i] + totalDisbursements[i] + totalTransfers[i]
   );
 
-  // Beginning balance total
-  const beginBalance = dates.map((_, i) =>
-    chase8630Begin[i] + chase2681Begin[i] + chase0661Begin[i] + chase3965Begin[i]
-  );
-
-  const endBalance = dates.map((_, i) =>
-    beginBalance[i] + netCashChange[i]
-  );
+  // Beginning balance total — cascaded: day 0 uses seed, subsequent days carry forward
+  const seedBeginBalance = chase8630Begin[0] + chase2681Begin[0] + chase0661Begin[0] + chase3965Begin[0];
+  const beginBalance: number[] = new Array(dates.length);
+  const endBalance: number[] = new Array(dates.length);
+  for (let i = 0; i < dates.length; i++) {
+    beginBalance[i] = i === 0 ? seedBeginBalance : endBalance[i - 1];
+    endBalance[i] = beginBalance[i] + netCashChange[i];
+  }
 
   // Ending bank balances (distributed proportionally)
   const chase8630End = dates.map((_, i) => chase8630Begin[i] + netCashChange[i] * 0.1);
