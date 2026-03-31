@@ -373,39 +373,36 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
 
                       {/* Retainer */}
                       <td style={s.tdCenter}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-                          <input type="checkbox" checked={r.retainerEnabled} onChange={e => updateRow(deal.id, { retainerEnabled: e.target.checked })} style={{ accentColor: 'hsl(var(--primary))' }} />
-                          {r.retainerEnabled && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 28 }}>
+                          <input type="checkbox" checked={r.retainerEnabled} onChange={e => updateRow(deal.id, { retainerEnabled: e.target.checked })} style={{ accentColor: 'hsl(var(--primary))', margin: 0, flexShrink: 0 }} />
+                          {r.retainerEnabled ? (
                             <input type="number" style={s.feeInput} value={r.retainerAmt || ''} onChange={e => updateRow(deal.id, { retainerAmt: parseFloat(e.target.value) || 0 })} />
-                          )}
-                          {!r.retainerEnabled && r.retainerAmt > 0 && (
-                            <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))' }}>{fmtShort(r.retainerAmt)}</span>
+                          ) : (
+                            <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))', minWidth: 40, textAlign: 'right' as const }}>{r.retainerAmt > 0 ? fmtShort(r.retainerAmt) : '—'}</span>
                           )}
                         </div>
                       </td>
 
                       {/* Milestone */}
                       <td style={s.tdCenter}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-                          <input type="checkbox" checked={r.milestoneEnabled} onChange={e => updateRow(deal.id, { milestoneEnabled: e.target.checked })} style={{ accentColor: 'hsl(var(--primary))' }} />
-                          {r.milestoneEnabled && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 28 }}>
+                          <input type="checkbox" checked={r.milestoneEnabled} onChange={e => updateRow(deal.id, { milestoneEnabled: e.target.checked })} style={{ accentColor: 'hsl(var(--primary))', margin: 0, flexShrink: 0 }} />
+                          {r.milestoneEnabled ? (
                             <input type="number" style={s.feeInput} value={r.milestoneAmt || ''} onChange={e => updateRow(deal.id, { milestoneAmt: parseFloat(e.target.value) || 0 })} />
-                          )}
-                          {!r.milestoneEnabled && r.milestoneAmt > 0 && (
-                            <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))' }}>{fmtShort(r.milestoneAmt)}</span>
+                          ) : (
+                            <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))', minWidth: 40, textAlign: 'right' as const }}>{r.milestoneAmt > 0 ? fmtShort(r.milestoneAmt) : '—'}</span>
                           )}
                         </div>
                       </td>
 
                       {/* Closing */}
                       <td style={s.tdCenter}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-                          <input type="checkbox" checked={r.closingEnabled} onChange={e => updateRow(deal.id, { closingEnabled: e.target.checked })} style={{ accentColor: 'hsl(var(--primary))' }} />
-                          {r.closingEnabled && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 28 }}>
+                          <input type="checkbox" checked={r.closingEnabled} onChange={e => updateRow(deal.id, { closingEnabled: e.target.checked })} style={{ accentColor: 'hsl(var(--primary))', margin: 0, flexShrink: 0 }} />
+                          {r.closingEnabled ? (
                             <input type="number" style={s.feeInput} value={r.closingAmt || ''} onChange={e => updateRow(deal.id, { closingAmt: parseFloat(e.target.value) || 0 })} />
-                          )}
-                          {!r.closingEnabled && r.closingAmt > 0 && (
-                            <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))' }}>{fmtShort(r.closingAmt)}</span>
+                          ) : (
+                            <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))', minWidth: 40, textAlign: 'right' as const }}>{r.closingAmt > 0 ? fmtShort(r.closingAmt) : '—'}</span>
                           )}
                         </div>
                       </td>
