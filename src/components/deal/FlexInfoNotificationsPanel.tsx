@@ -141,38 +141,30 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
   const maxScrollHeight = 220;
 
   return (
-    <Card className="h-full w-full min-w-0">
-      <Collapsible open={isOpen} onOpenChange={handleOpenChange} className="w-full">
-        <CardHeader className={cn("pb-3", !isOpen && "py-2")}>
+    <Card className="h-full w-full min-w-0 flex flex-col">
+      <Collapsible open={isOpen} onOpenChange={handleOpenChange} className="w-full flex flex-col flex-1">
+        <CardHeader className="py-3 px-4 space-y-0">
           <CollapsibleTrigger asChild>
-            <button className="w-full flex items-center justify-between text-left hover:bg-muted/50 -mx-2 px-2 py-1 rounded-md transition-colors">
+            <button className="w-full flex items-center justify-between text-left hover:bg-muted/50 -mx-1 px-1 py-0.5 rounded transition-colors">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Bell className="h-4 w-4" />
+                <Bell className="h-3.5 w-3.5 text-muted-foreground" />
                 Info Requests
                 {pendingCount > 0 && (
-                  <Badge variant="destructive" className="ml-2">
-                    {pendingCount} new
-                  </Badge>
+                  <Badge variant="destructive" className="text-[10px] h-5 px-1.5">{pendingCount} new</Badge>
                 )}
                 {notifications.length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {notifications.length}
-                  </Badge>
+                  <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">{notifications.length}</Badge>
                 )}
               </CardTitle>
-              {isOpen ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              )}
+              {isOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
             </button>
           </CollapsibleTrigger>
         </CardHeader>
-        <CollapsibleContent>
-          <CardContent className="pt-0">
+        <CollapsibleContent className="flex-1">
+          <CardContent className="pt-0 px-4 pb-4">
             <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => v && setStatusFilter(v as 'all' | 'pending')} className="justify-start mb-3">
-              <ToggleGroupItem value="all" className="text-xs h-7 px-3">All</ToggleGroupItem>
-              <ToggleGroupItem value="pending" className="text-xs h-7 px-3">Pending</ToggleGroupItem>
+              <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
+              <ToggleGroupItem value="pending" className="text-[10px] h-6 px-2">Pending</ToggleGroupItem>
             </ToggleGroup>
             {filteredNotifications.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">No {statusFilter === 'pending' ? 'pending ' : ''}info requests</p>
