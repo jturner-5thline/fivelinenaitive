@@ -84,6 +84,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        resizeDelay: 200,
         plugins: {
           legend: { position: 'bottom', labels: { font: { size: 10 }, color: textColor, boxWidth: 12 } },
           tooltip: {
