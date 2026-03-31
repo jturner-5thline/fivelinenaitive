@@ -164,59 +164,41 @@ function isActualsForecastRow(row: ExcelJS.Row, firstDateCol: number, lastDateCo
   return labelCount >= 3;
 }
 
-function findDateHeaderRange(worksheet: ExcelJS.Worksheet, maxScanRows: number, maxCol: number) {
-  let best = { rowNum: -1, startCol: -1, endCol: -1, length: 0 };
+function findDateHeaderRow(worksheet: ExcelJS.Worksheet, maxScanRows: number, maxCol: number) {
+  let bestRow = -1;
+  let bestCount = 0;
 
   for (let r = 1; r <= maxScanRows; r++) {
     const row = worksheet.getRow(r);
-    let currentStart = -1;
-    let currentEnd = -1;
-    let currentLength = 0;
-    let previousDate: Date | null = null;
-
-    const finalize = () => {
-      if (currentLength > best.length) {
-        best = { rowNum: r, startCol: currentStart, endCol: currentEnd, length: currentLength };
-      }
-      currentStart = -1;
-      currentEnd = -1;
-      currentLength = 0;
-      previousDate = null;
-    };
-
+    let count = 0;
     for (let c = 1; c <= maxCol; c++) {
-      const parsedDate = parseDateLike(row.getCell(c).value);
-      if (!parsedDate) {
-        if (currentLength > 0) finalize();
-        continue;
-      }
-
-      if (!previousDate) {
-        currentStart = c;
-        currentEnd = c;
-        currentLength = 1;
-        previousDate = parsedDate;
-        continue;
-      }
-
-      const diff = dayDiff(previousDate, parsedDate);
-      if (diff === 1) {
-        currentEnd = c;
-        currentLength += 1;
-        previousDate = parsedDate;
-      } else {
-        finalize();
-        currentStart = c;
-        currentEnd = c;
-        currentLength = 1;
-        previousDate = parsedDate;
-      }
+      if (parseDateLike(row.getCell(c).value)) count++;
     }
-
-    if (currentLength > 0) finalize();
+    if (count > bestCount) {
+      bestCount = count;
+      bestRow = r;
+    }
   }
 
-  return best;
+  return bestRow;
+}
+
+/** Collect ALL date columns from the header row, skipping non-date columns (YTD Total etc.) */
+function collectDateColumns(worksheet: ExcelJS.Worksheet, dateRowNum: number, maxCol: number): { col: number; date: Date }[] {
+  const result: { col: number; date: Date }[] = [];
+  const row = worksheet.getRow(dateRowNum);
+
+  for (let c = 1; c <= maxCol; c++) {
+    const parsed = parseDateLike(row.getCell(c).value);
+    if (parsed) {
+      result.push({ col: c, date: parsed });
+    }
+    // Non-date columns (YTD Total, blanks, text) are simply skipped
+  }
+
+  // Sort by date to ensure chronological order
+  result.sort((a, b) => a.date.getTime() - b.date.getTime());
+  return result;
 }
 
 export async function parseCashFlowExcel(file: File): Promise<{
