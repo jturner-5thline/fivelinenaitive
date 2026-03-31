@@ -331,6 +331,7 @@ const getLenderTimeInfo = (updatedAt?: string) => {
     text = `${weeks} wk${weeks > 1 ? 's' : ''} ago`;
   }
   
+  // Note: highlight classes are applied; stage-gating happens at the call site via isLenderStale
   let highlightClass = '';
   if (businessDays >= 5) {
     highlightClass = 'bg-destructive/20 text-destructive px-1.5 py-0.5 rounded';
