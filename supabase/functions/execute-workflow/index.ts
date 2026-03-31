@@ -14,7 +14,7 @@ interface ActionCondition {
 
 interface WorkflowAction {
   id: string;
-  type: "send_notification" | "send_email" | "webhook" | "update_field" | "trigger_workflow";
+  type: "send_notification" | "send_email" | "webhook" | "update_field" | "trigger_workflow" | "ai_process";
   config: Record<string, any>;
   condition?: ActionCondition;
   delay?: { amount: number; unit: 'minutes' | 'hours' | 'days' };
@@ -232,6 +232,80 @@ function evaluateCondition(condition: ActionCondition, triggerData: Record<strin
   }
 }
 
+async function executeAIProcessAction(
+  supabase: any,
+  userId: string,
+  config: Record<string, any>,
+  triggerData: Record<string, any>
+): Promise<{ success: boolean; message: string; aiOutput?: string }> {
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) {
+    return { success: false, message: "Anthropic API key not configured" };
+  }
+
+  const prompt = config.prompt || "Process the following data and provide a structured summary.";
+  const inputData = config.input_data
+    ? JSON.stringify(config.input_data)
+    : JSON.stringify(triggerData);
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: config.max_tokens || 2048,
+        temperature: config.temperature || 0.3,
+        system: "You are an AI processor within an automated workflow. Process the provided data according to the instructions and return structured output. If JSON is expected, return valid JSON wrapped in a ```json code block.",
+        messages: [{
+          role: "user",
+          content: `${prompt}\n\nData:\n${inputData}`,
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI process error:", response.status, errorText);
+      return { success: false, message: "AI processing failed" };
+    }
+
+    const data = await response.json();
+    const aiOutput = data.content
+      ?.filter((block: any) => block.type === "text")
+      .map((block: any) => block.text)
+      .join("\n") || "";
+
+    // Log usage (best-effort)
+    const { data: membership } = await supabase
+      .from("company_members")
+      .select("company_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .single();
+
+    if (membership?.company_id) {
+      await supabase.from("ai_usage_logs").insert({
+        company_id: membership.company_id,
+        user_id: userId,
+        feature: "workflows",
+        model: data.model || "claude-sonnet-4-20250514",
+        input_tokens: data.usage?.input_tokens || 0,
+        output_tokens: data.usage?.output_tokens || 0,
+      }).then(() => {}).catch(() => {});
+    }
+
+    return { success: true, message: `AI processed successfully`, aiOutput };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return { success: false, message: `AI process failed: ${message}` };
+  }
+}
+
 async function executeTriggerWorkflowAction(
   supabase: any,
   config: Record<string, any>,
@@ -390,6 +464,15 @@ serve(async (req) => {
           break;
         case "trigger_workflow":
           result = await executeTriggerWorkflowAction(supabase, action.config, triggerData, authHeader);
+          break;
+        case "ai_process":
+          const aiResult = await executeAIProcessAction(supabase, user.id, action.config, triggerData);
+          result = aiResult;
+          // Pass AI output to subsequent actions via triggerData
+          if (aiResult.aiOutput) {
+            triggerData.ai_output = aiResult.aiOutput;
+            triggerData[`ai_output_${action.id}`] = aiResult.aiOutput;
+          }
           break;
         default:
           result = { success: false, message: `Unknown action type: ${action.type}` };

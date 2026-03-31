@@ -32,6 +32,7 @@ import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
 import { DistributionStatsSettings } from '@/components/settings/DistributionStatsSettings';
 import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
 import { KPICardSettings } from '@/components/settings/KPICardSettings';
+import { AIConfigurationSettings } from '@/components/settings/AIConfigurationSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
@@ -67,6 +68,7 @@ const SETTINGS_SECTIONS = [
   { id: 'distribution-stats', keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'] },
   { id: 'kpi-card-settings', keywords: ['kpi', 'summary', 'card', 'metrics', 'dashboard', 'format', 'trend', 'comparison'] },
   { id: 'field-layout', keywords: ['field', 'layout', 'editor', 'hubspot', 'contacts', 'companies', 'crm', 'fields', 'sections'] },
+  { id: 'ai-configuration', keywords: ['ai', 'claude', 'anthropic', 'artificial', 'intelligence', 'model', 'temperature', 'tokens', 'chatbot'] },
 ];
 
 // Tab definitions with which section IDs belong to each
@@ -78,6 +80,7 @@ const TABS = [
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'distribution-stats'] },
   { id: 'metrics', label: 'Metrics', sectionIds: ['kpi-card-settings'] },
   { id: 'crm', label: 'CRM', sectionIds: ['field-layout'] },
+  { id: 'ai', label: 'AI', sectionIds: ['ai-configuration'] },
 ];
 
 function LinkCard({ to, title, description, badge }: { to: string; title: string; description: string; badge?: number }) {
@@ -289,6 +292,13 @@ export default function Settings() {
                 <TabsContent value="crm" className="space-y-4 mt-4">
                   {isVisible('field-layout') && (
                     <LinkCard to="/field-layout-editor" title="Field Layout Editor" description="Configure how contact and company fields are displayed on detail pages" />
+                  )}
+                </TabsContent>
+
+                {/* AI Tab */}
+                <TabsContent value="ai" className="space-y-4 mt-4">
+                  {isVisible('ai-configuration') && (
+                    <AIConfigurationSettings isAdmin={isAdmin} />
                   )}
                 </TabsContent>
               </Tabs>

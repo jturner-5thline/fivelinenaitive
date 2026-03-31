@@ -4374,7 +4374,7 @@ export default function DealDetail() {
 
                 {hasDealManagementAccess && (
                 <TabsContent value="deal-management" className={cn("mt-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
-                  <DealManagementTab dealId={id!} />
+                  <DealManagementTab dealId={id!} dealName={deal.company} dealValue={deal.value} dealStage={deal.stage} dealType={deal.dealTypes?.[0]} dealStatus={deal.status} lenderCount={deal.lenders?.length} />
                 </TabsContent>
                 )}
 

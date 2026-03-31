@@ -4,13 +4,20 @@ import { EngagementSummaryCard } from './EngagementSummaryCard';
 import { EngagementTrendsCard } from './EngagementTrendsCard';
 import { DealActivityChart } from './DealActivityChart';
 import { DealFlagLog } from './DealFlagLog';
+import { ClaudeFinancialAnalysis } from './ClaudeFinancialAnalysis';
 import { useFlagNotes } from '@/hooks/useFlagNotes';
 
 interface DealManagementTabProps {
   dealId: string;
+  dealName?: string;
+  dealValue?: number;
+  dealStage?: string;
+  dealType?: string;
+  dealStatus?: string;
+  lenderCount?: number;
 }
 
-export function DealManagementTab({ dealId }: DealManagementTabProps) {
+export function DealManagementTab({ dealId, dealName, dealValue, dealStage, dealType, dealStatus, lenderCount }: DealManagementTabProps) {
   const { flagNotes } = useFlagNotes(dealId);
   const hasFlags = flagNotes.length > 0;
 
@@ -35,9 +42,22 @@ export function DealManagementTab({ dealId }: DealManagementTabProps) {
         <DealActivityChart dealId={dealId} />
       </div>
 
-      {/* Row 3 — Flag Log */}
-      <div className={hasFlags ? 'w-full' : 'lg:max-w-[50%]'}>
-        <DealFlagLog dealId={dealId} />
+      {/* Row 3 — AI Analysis · Flag Log */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <ClaudeFinancialAnalysis
+          dealId={dealId}
+          financials={{
+            dealName,
+            dealValue,
+            dealStage,
+            dealType,
+            dealStatus,
+            lenderCount,
+          }}
+        />
+        <div className={hasFlags ? 'w-full' : ''}>
+          <DealFlagLog dealId={dealId} />
+        </div>
       </div>
     </div>
   );
