@@ -35,20 +35,27 @@ function getAvailableYears(dates: string[]): number[] {
   return Array.from(years).sort();
 }
 
-function filterDailyByPeriod(data: DailyData, year: string, quarter: string): DailyData {
-  if (year === 'all') return data;
-  const yearNum = parseInt(year);
+function filterDailyByPeriod(data: DailyData, years: string[], quarters: string[]): DailyData {
+  if (years.length === 0 && quarters.length === 0) return data;
+  const yearNums = years.map(Number);
   const indices: number[] = [];
 
   for (let i = 0; i < data.dates.length; i++) {
     const d = data.dates[i];
     const y = parseInt(d.slice(0, 4));
-    if (y !== yearNum) continue;
-    if (quarter !== 'all') {
-      const m = parseInt(d.slice(5, 7)) - 1;
-      const [qStart, qEnd] = QUARTER_RANGES[quarter];
-      if (m < qStart || m > qEnd) continue;
+    const m = parseInt(d.slice(5, 7)) - 1;
+
+    const yearMatch = yearNums.length === 0 || yearNums.includes(y);
+    if (!yearMatch) continue;
+
+    if (quarters.length > 0) {
+      const inQuarter = quarters.some(q => {
+        const [qStart, qEnd] = QUARTER_RANGES[q];
+        return m >= qStart && m <= qEnd;
+      });
+      if (!inQuarter) continue;
     }
+
     indices.push(i);
   }
 
@@ -67,19 +74,26 @@ function filterDailyByPeriod(data: DailyData, year: string, quarter: string): Da
   return { dates: filteredDates, rows: filteredRows };
 }
 
-function filterWeeklyByPeriod(data: WeeklyData, year: string, quarter: string): WeeklyData {
-  if (year === 'all') return data;
-  const yearNum = parseInt(year);
+function filterWeeklyByPeriod(data: WeeklyData, years: string[], quarters: string[]): WeeklyData {
+  if (years.length === 0 && quarters.length === 0) return data;
+  const yearNums = years.map(Number);
   const filtered: WeeklyData = {};
 
   for (const [key, entry] of Object.entries(data)) {
     const y = parseInt(key.slice(0, 4));
-    if (y !== yearNum) continue;
-    if (quarter !== 'all') {
-      const m = parseInt(key.slice(5, 7)) - 1;
-      const [qStart, qEnd] = QUARTER_RANGES[quarter];
-      if (m < qStart || m > qEnd) continue;
+    const m = parseInt(key.slice(5, 7)) - 1;
+
+    const yearMatch = yearNums.length === 0 || yearNums.includes(y);
+    if (!yearMatch) continue;
+
+    if (quarters.length > 0) {
+      const inQuarter = quarters.some(q => {
+        const [qStart, qEnd] = QUARTER_RANGES[q];
+        return m >= qStart && m <= qEnd;
+      });
+      if (!inQuarter) continue;
     }
+
     filtered[key] = entry;
   }
 
@@ -114,9 +128,9 @@ export function CashFlowManager() {
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [recurringTags, setRecurringTags] = useState<RecurringTag[]>([]);
 
-  // Date filter state
-  const [filterYear, setFilterYear] = useState<string>('all');
-  const [filterQuarter, setFilterQuarter] = useState<string>('all');
+  // Date filter state (multi-select: empty array = show all)
+  const [filterYears, setFilterYears] = useState<string[]>([]);
+  const [filterQuarters, setFilterQuarters] = useState<string[]>([]);
 
   // Undo
   const [undoStack, setUndoStack] = useState<UndoSnapshot[]>([]);
@@ -138,13 +152,13 @@ export function CashFlowManager() {
   const getWeekly = useCallback(() => role === 'viewer' && sandboxWeekly ? sandboxWeekly : weeklyData, [role, sandboxWeekly, weeklyData]);
   const getSidebar = useCallback(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
 
-  // Available years derived from daily data (use raw dailyData directly for stable dependency)
+  // Available years derived from daily data
   const rawDaily = role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData;
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
 
   // Filtered data
-  const filteredDaily = useMemo(() => filterDailyByPeriod(getDaily(), filterYear, filterQuarter), [getDaily, filterYear, filterQuarter]);
-  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(getWeekly(), filterYear, filterQuarter), [getWeekly, filterYear, filterQuarter]);
+  const filteredDaily = useMemo(() => filterDailyByPeriod(getDaily(), filterYears, filterQuarters), [getDaily, filterYears, filterQuarters]);
+  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(getWeekly(), filterYears, filterQuarters), [getWeekly, filterYears, filterQuarters]);
 
   const setActiveData = useCallback((setter: 'daily' | 'weekly' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
@@ -395,40 +409,50 @@ export function CashFlowManager() {
       <div className="cf-filter-bar">
         <div className="cf-filter-group">
           <label className="cf-filter-label">Year</label>
-          <select
-            className="cf-select"
-            value={filterYear}
-            onChange={e => { setFilterYear(e.target.value); setFilterQuarter('all'); }}
-          >
-            <option value="all">All Years</option>
-            {availableYears.map(y => (
-              <option key={y} value={String(y)}>{y}</option>
-            ))}
-          </select>
-        </div>
-        {filterYear !== 'all' && (
-          <div className="cf-filter-group">
-            <label className="cf-filter-label">Quarter</label>
-            <select
-              className="cf-select"
-              value={filterQuarter}
-              onChange={e => setFilterQuarter(e.target.value)}
-            >
-              <option value="all">All Quarters</option>
-              <option value="Q1">Q1 (Jan–Mar)</option>
-              <option value="Q2">Q2 (Apr–Jun)</option>
-              <option value="Q3">Q3 (Jul–Sep)</option>
-              <option value="Q4">Q4 (Oct–Dec)</option>
-            </select>
+          <div className="cf-toggle-group">
+            {availableYears.map(y => {
+              const yStr = String(y);
+              const active = filterYears.includes(yStr);
+              return (
+                <button
+                  key={y}
+                  className={`cf-toggle-btn ${active ? 'active' : ''}`}
+                  onClick={() => setFilterYears(prev =>
+                    active ? prev.filter(v => v !== yStr) : [...prev, yStr]
+                  )}
+                >
+                  {y}
+                </button>
+              );
+            })}
           </div>
-        )}
-        {(filterYear !== 'all' || filterQuarter !== 'all') && (
+        </div>
+        <div className="cf-filter-group">
+          <label className="cf-filter-label">Quarter</label>
+          <div className="cf-toggle-group">
+            {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map(q => {
+              const active = filterQuarters.includes(q);
+              return (
+                <button
+                  key={q}
+                  className={`cf-toggle-btn ${active ? 'active' : ''}`}
+                  onClick={() => setFilterQuarters(prev =>
+                    active ? prev.filter(v => v !== q) : [...prev, q]
+                  )}
+                >
+                  {q}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {(filterYears.length > 0 || filterQuarters.length > 0) && (
           <button
             className="cf-btn cf-btn-ghost"
             style={{ fontSize: 11, marginLeft: 4 }}
-            onClick={() => { setFilterYear('all'); setFilterQuarter('all'); }}
+            onClick={() => { setFilterYears([]); setFilterQuarters([]); }}
           >
-            Clear Filter
+            Clear
           </button>
         )}
         <span className="cf-filter-summary">
