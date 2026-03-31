@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, RotateCcw, LayoutDashboard, BarChart3, Eye, Layers, Users } from 'lucide-react';
 import { type FPADashboardConfig, DEFAULT_FPA_CONFIG } from '@/hooks/useFPADashboardConfig';
-import { useFPATabPermissions, type TabPermissions } from '@/hooks/useFPATabPermissions';
+import { useFPATabPermissions, type TabPermissions, type PermissionUser } from '@/hooks/useFPATabPermissions';
 import { FPAPermissionsTab } from './FPAPermissionsTab';
 import { toast } from 'sonner';
 
