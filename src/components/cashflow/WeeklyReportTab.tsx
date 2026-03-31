@@ -238,10 +238,12 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
 
       <WeeklySidebar
         data={sidebarData}
+        dbItems={sidebarDbItems}
         isAdmin={isAdmin}
         onEditItem={onSidebarEditItem}
         onRemoveItem={onSidebarRemoveItem}
         onAddItem={onSidebarAddItem}
+        onRemoveDbItem={onSidebarRemoveDbItem}
         onNoteEdit={onNoteEdit}
         onNoteRemove={onNoteRemove}
         onNoteAdd={onNoteAdd}
