@@ -227,7 +227,6 @@ export function CashFlowManager() {
     const snapshot = undoStack[undoStack.length - 1];
     setUndoStack(prev => prev.slice(0, -1));
     setDailyData(snapshot.dailyData);
-    setWeeklyData(snapshot.weeklyData);
     setSidebarData(snapshot.sidebarData);
     setRecurringTags(snapshot.recurringTags);
     logAction(`Undo: ${snapshot.description}`);
@@ -236,17 +235,15 @@ export function CashFlowManager() {
   const handleRoleChange = useCallback((newRole: RoleMode) => {
     if (newRole === 'viewer' && role === 'admin') {
       setSandboxDaily(deepClone(dailyData));
-      setSandboxWeekly(deepClone(weeklyData));
       setSandboxSidebar(deepClone(sidebarData));
     }
     setRole(newRole);
-  }, [role, dailyData, weeklyData, sidebarData]);
+  }, [role, dailyData, sidebarData]);
 
   const resetSandbox = useCallback(() => {
     setSandboxDaily(deepClone(dailyData));
-    setSandboxWeekly(deepClone(weeklyData));
     setSandboxSidebar(deepClone(sidebarData));
-  }, [dailyData, weeklyData, sidebarData]);
+  }, [dailyData, sidebarData]);
 
   const toggleTheme = useCallback(() => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
