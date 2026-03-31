@@ -130,10 +130,12 @@ export function CashFlowManager() {
 
   const sidebarDbItems = useMemo(() => toSidebarItems(), [toSidebarItems]);
 
-  // Master data
+  // Master data — weekly is always derived from daily
   const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(SEED_DAILY_DATA));
-  const [weeklyData, setWeeklyData] = useState<WeeklyData>(() => deepClone(SEED_WEEKLY_DATA));
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => deepClone(SEED_SIDEBAR_DATA));
+
+  // Weekly data derived from daily
+  const weeklyData = useMemo(() => aggregateDailyToWeekly(dailyData), [dailyData]);
 
   useEffect(() => {
     if (isImported && importedDailyData) {
