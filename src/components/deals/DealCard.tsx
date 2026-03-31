@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify';
 import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { InlineStatusDropdown } from './InlineStatusDropdown';
 import { InlineStageDropdown } from './InlineStageDropdown';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
