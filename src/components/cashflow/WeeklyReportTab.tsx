@@ -82,10 +82,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   const effectiveCurrentIndex = currentWeekIndex >= 0 ? currentWeekIndex : totalWeeks - 1;
 
   const [weeksPast, setWeeksPast] = useState(() => Math.min(effectiveCurrentIndex, 4));
-  const [weeksFuture, setWeeksFuture] = useState(() => Math.min(totalWeeks - effectiveCurrentIndex, 12));
+  const [weeksFuture, setWeeksFuture] = useState(() => Math.min(totalWeeks - effectiveCurrentIndex - 1, 12));
 
   const startIdx = Math.max(0, effectiveCurrentIndex - weeksPast);
-  const endIdx = Math.min(totalWeeks, effectiveCurrentIndex + weeksFuture);
+  const endIdx = Math.min(totalWeeks, effectiveCurrentIndex + 1 + weeksFuture);
   const visibleWeeks = sortedWeeks.slice(startIdx, endIdx);
 
   const [savePlanOpen, setSavePlanOpen] = useState(false);
