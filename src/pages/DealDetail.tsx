@@ -945,12 +945,13 @@ export default function DealDetail() {
 
   // Helper to check if a lender is stale based on preferences
   const isLenderStale = useCallback((lender: DealLender) => {
+    if (!isPostSubmissionDealStage(deal?.stage)) return { isStale: false, isUrgent: false };
     if (!lender.updatedAt || lender.trackingStatus !== 'active') return { isStale: false, isUrgent: false };
     const daysSinceUpdate = differenceInDays(new Date(), new Date(lender.updatedAt));
     const isUrgent = daysSinceUpdate >= preferences.lenderUpdateRedDays;
     const isStale = daysSinceUpdate >= preferences.lenderUpdateYellowDays;
     return { isStale, isUrgent };
-  }, [preferences.lenderUpdateYellowDays, preferences.lenderUpdateRedDays]);
+  }, [preferences.lenderUpdateYellowDays, preferences.lenderUpdateRedDays, deal?.stage]);
 
   // View preferences - load from localStorage
   const savedViewPrefs = useMemo(() => {
