@@ -9,7 +9,7 @@ interface DuplicatesViewProps {
   onDealDeleted?: () => void;
 }
 
-export function DuplicatesView({ clusters, onMerge }: DuplicatesViewProps) {
+export function DuplicatesView({ clusters, onMerge, onDealDeleted }: DuplicatesViewProps) {
   if (clusters.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
