@@ -134,6 +134,9 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
         .filter((activity) => !INTERNAL.includes(activity.activity_type))
         .map((activity) => ({
           ...activity,
+          metadata: activity.metadata && typeof activity.metadata === 'object' && !Array.isArray(activity.metadata)
+            ? activity.metadata as Record<string, any>
+            : null,
           source: 'activity',
         }));
 
