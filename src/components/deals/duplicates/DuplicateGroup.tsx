@@ -7,6 +7,7 @@ import { ChevronDown, ChevronRight, Merge, ExternalLink } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { usePipelines } from '@/hooks/usePipelines';
 
 interface DuplicateGroupProps {
   cluster: DuplicateCluster;
