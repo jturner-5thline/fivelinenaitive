@@ -138,8 +138,9 @@ export function CashFlowManager() {
   const getWeekly = useCallback(() => role === 'viewer' && sandboxWeekly ? sandboxWeekly : weeklyData, [role, sandboxWeekly, weeklyData]);
   const getSidebar = useCallback(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
 
-  // Available years derived from daily data
-  const availableYears = useMemo(() => getAvailableYears(getDaily().dates), [getDaily]);
+  // Available years derived from daily data (use raw dailyData directly for stable dependency)
+  const rawDaily = role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData;
+  const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
 
   // Filtered data
   const filteredDaily = useMemo(() => filterDailyByPeriod(getDaily(), filterYear, filterQuarter), [getDaily, filterYear, filterQuarter]);
