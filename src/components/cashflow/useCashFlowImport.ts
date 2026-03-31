@@ -1,63 +1,36 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { DailyData, DailyRowStructure } from './types';
 import { parseCashFlowExcel } from './cashFlowExcelParser';
 import type { Json } from '@/integrations/supabase/types';
 
-interface ImportState {
-  dailyData: DailyData | null;
-  rowStructure: DailyRowStructure | null;
-  isImported: boolean;
-  isLoading: boolean;
+async function fetchCashFlowImport(companyId: string) {
+  const { data, error } = await supabase
+    .from('cash_flow_imports')
+    .select('daily_data, row_structure')
+    .eq('company_id', companyId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
 }
 
 export function useCashFlowImport(companyId: string | undefined) {
-  const [state, setState] = useState<ImportState>({
-    dailyData: null,
-    rowStructure: null,
-    isImported: false,
-    isLoading: true,
+  const queryClient = useQueryClient();
+
+  const { data: importData, isLoading } = useQuery({
+    queryKey: ['cash_flow_imports', companyId],
+    queryFn: () => fetchCashFlowImport(companyId!),
+    enabled: !!companyId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000,
   });
 
-  useEffect(() => {
-    if (!companyId) {
-      setState(prev => ({ ...prev, isLoading: false }));
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('cash_flow_imports')
-          .select('daily_data, row_structure')
-          .eq('company_id', companyId)
-          .maybeSingle();
-
-        if (cancelled) return;
-        if (error) throw error;
-
-        if (data) {
-          const dailyData = data.daily_data as unknown as DailyData;
-          const rowStructure = data.row_structure as unknown as DailyRowStructure;
-          setState({
-            dailyData,
-            rowStructure,
-            isImported: true,
-            isLoading: false,
-          });
-        } else {
-          setState(prev => ({ ...prev, isLoading: false }));
-        }
-      } catch (err) {
-        console.error('Failed to load cash flow import:', err);
-        if (!cancelled) setState(prev => ({ ...prev, isLoading: false }));
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [companyId]);
+  const dailyData = importData?.daily_data as unknown as DailyData | null;
+  const rowStructure = importData?.row_structure as unknown as DailyRowStructure | null;
+  const isImported = !!importData;
 
   const importFile = useCallback(async (file: File) => {
     if (!companyId) {
@@ -66,7 +39,6 @@ export function useCashFlowImport(companyId: string | undefined) {
     }
 
     const loadingToast = toast.loading('Importing cash flow data…');
-    setState(prev => ({ ...prev, isLoading: true }));
 
     try {
       const { dailyData, rowStructure, diagnostics } = await parseCashFlowExcel(file);
@@ -91,14 +63,9 @@ export function useCashFlowImport(companyId: string | undefined) {
         throw error;
       }
 
-      setState({
-        dailyData,
-        rowStructure,
-        isImported: true,
-        isLoading: false,
-      });
+      // Invalidate the cache so the query refetches
+      queryClient.invalidateQueries({ queryKey: ['cash_flow_imports', companyId] });
 
-      // Format readable date range for toast
       const fmtDate = (iso: string) => {
         const [y, m, d] = iso.split('-');
         const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -114,15 +81,14 @@ export function useCashFlowImport(companyId: string | undefined) {
         id: loadingToast,
         description: err instanceof Error ? err.message : 'Unknown error',
       });
-      setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [companyId]);
+  }, [companyId, queryClient]);
 
   return {
-    importedDailyData: state.dailyData,
-    importedRowStructure: state.rowStructure,
-    isImported: state.isImported,
-    isImportLoading: state.isLoading,
+    importedDailyData: dailyData,
+    importedRowStructure: rowStructure,
+    isImported,
+    isImportLoading: isLoading,
     importFile,
   };
 }
