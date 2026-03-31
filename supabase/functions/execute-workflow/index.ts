@@ -465,6 +465,15 @@ serve(async (req) => {
         case "trigger_workflow":
           result = await executeTriggerWorkflowAction(supabase, action.config, triggerData, authHeader);
           break;
+        case "ai_process":
+          const aiResult = await executeAIProcessAction(supabase, user.id, action.config, triggerData);
+          result = aiResult;
+          // Pass AI output to subsequent actions via triggerData
+          if (aiResult.aiOutput) {
+            triggerData.ai_output = aiResult.aiOutput;
+            triggerData[`ai_output_${action.id}`] = aiResult.aiOutput;
+          }
+          break;
         default:
           result = { success: false, message: `Unknown action type: ${action.type}` };
       }
