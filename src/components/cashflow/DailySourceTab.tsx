@@ -111,6 +111,7 @@ export const DailySourceTab = memo(function DailySourceTab({
 
   return (
     <div className="cf-main">
+      <div className="cf-table-card">
       <div className="cf-grid-wrap">
         <table className="cf-grid">
           <thead>
@@ -162,6 +163,7 @@ export const DailySourceTab = memo(function DailySourceTab({
             })}
           </tbody>
         </table>
+      </div>
       </div>
 
       {/* Add Row Dialog */}
