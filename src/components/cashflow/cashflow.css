@@ -72,10 +72,9 @@
   font-variant-numeric: tabular-nums lining-nums;
   background: var(--color-bg);
   color: var(--color-text);
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  height: 100%;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  contain: layout style;
 }
 
 /* Header */
