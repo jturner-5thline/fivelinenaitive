@@ -580,6 +580,13 @@ export function CashFlowManager() {
           onClose={handleCloseActivityLog}
         />
       )}
+      {addCashInOpen && (
+        <AddCashInModal
+          open={addCashInOpen}
+          onClose={() => setAddCashInOpen(false)}
+          onItemsAdded={handleCashInItemsAdded}
+        />
+      )}
     </div>
   );
 }
