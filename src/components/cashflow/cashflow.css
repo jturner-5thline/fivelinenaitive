@@ -201,6 +201,7 @@
 .cf-grid-wrap {
   overflow-x: auto;
   overscroll-behavior: contain;
+  overscroll-behavior-y: auto;
 }
 
 .cf-table-card {
@@ -334,8 +335,10 @@ tr:hover .cf-row-remove { opacity: 1; }
 /* Weekly layout */
 .cf-weekly-layout {
   display: flex;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
-.cf-weekly-main { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; padding: var(--space-3); gap: var(--space-3); }
+.cf-weekly-main { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; padding: var(--space-3); gap: var(--space-3); overflow-x: hidden; overflow-y: visible; }
 .cf-weekly-sidebar {
   flex: 0 0 300px;
   width: 300px; max-width: 300px;
