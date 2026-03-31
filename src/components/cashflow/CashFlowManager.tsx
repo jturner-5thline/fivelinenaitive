@@ -5,8 +5,9 @@ import type {
   ExportFlag, RoleMode, ActiveTab, ThemeMode,
 } from './types';
 import {
-  SEED_DAILY_DATA, SEED_WEEKLY_DATA, SEED_SIDEBAR_DATA, SEED_ROW_STRUCTURE,
+  SEED_DAILY_DATA, SEED_SIDEBAR_DATA, SEED_ROW_STRUCTURE,
 } from './seedData';
+import { aggregateDailyToWeekly } from './dailyToWeekly';
 import { CashFlowHeader } from './CashFlowHeader';
 import { DailySourceTab } from './DailySourceTab';
 import { WeeklyReportTab } from './WeeklyReportTab';
@@ -129,10 +130,12 @@ export function CashFlowManager() {
 
   const sidebarDbItems = useMemo(() => toSidebarItems(), [toSidebarItems]);
 
-  // Master data
+  // Master data — weekly is always derived from daily
   const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(SEED_DAILY_DATA));
-  const [weeklyData, setWeeklyData] = useState<WeeklyData>(() => deepClone(SEED_WEEKLY_DATA));
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => deepClone(SEED_SIDEBAR_DATA));
+
+  // Weekly data derived from daily
+  const weeklyData = useMemo(() => aggregateDailyToWeekly(dailyData), [dailyData]);
 
   useEffect(() => {
     if (isImported && importedDailyData) {
@@ -142,7 +145,6 @@ export function CashFlowManager() {
 
   // Sandbox data (viewer mode)
   const [sandboxDaily, setSandboxDaily] = useState<DailyData | null>(null);
-  const [sandboxWeekly, setSandboxWeekly] = useState<WeeklyData | null>(null);
   const [sandboxSidebar, setSandboxSidebar] = useState<SidebarData | null>(null);
 
   // UI state
@@ -183,7 +185,7 @@ export function CashFlowManager() {
 
   // Data accessors — stable references
   const rawDaily = useMemo(() => role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData, [role, sandboxDaily, dailyData]);
-  const rawWeekly = useMemo(() => role === 'viewer' && sandboxWeekly ? sandboxWeekly : weeklyData, [role, sandboxWeekly, weeklyData]);
+  const rawWeekly = useMemo(() => aggregateDailyToWeekly(rawDaily), [rawDaily]);
   const rawSidebar = useMemo(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
 
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
@@ -192,17 +194,15 @@ export function CashFlowManager() {
   const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
   const filteredWeekly = useMemo(() => filterWeeklyByPeriod(rawWeekly, debouncedYears, debouncedQuarters), [rawWeekly, debouncedYears, debouncedQuarters]);
 
-  const setActiveData = useCallback((setter: 'daily' | 'weekly' | 'sidebar', updater: (prev: any) => any) => {
+  const setActiveData = useCallback((setter: 'daily' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
       if (setter === 'daily') setSandboxDaily(prev => updater(prev || dailyData));
-      if (setter === 'weekly') setSandboxWeekly(prev => updater(prev || weeklyData));
       if (setter === 'sidebar') setSandboxSidebar(prev => updater(prev || sidebarData));
     } else {
       if (setter === 'daily') setDailyData(updater);
-      if (setter === 'weekly') setWeeklyData(updater);
       if (setter === 'sidebar') setSidebarData(updater);
     }
-  }, [role, dailyData, weeklyData, sidebarData]);
+  }, [role, dailyData, sidebarData]);
 
   const logAction = useCallback((action: string) => {
     setActivityLog(prev => [...prev, {
@@ -227,7 +227,6 @@ export function CashFlowManager() {
     const snapshot = undoStack[undoStack.length - 1];
     setUndoStack(prev => prev.slice(0, -1));
     setDailyData(snapshot.dailyData);
-    setWeeklyData(snapshot.weeklyData);
     setSidebarData(snapshot.sidebarData);
     setRecurringTags(snapshot.recurringTags);
     logAction(`Undo: ${snapshot.description}`);
@@ -236,17 +235,15 @@ export function CashFlowManager() {
   const handleRoleChange = useCallback((newRole: RoleMode) => {
     if (newRole === 'viewer' && role === 'admin') {
       setSandboxDaily(deepClone(dailyData));
-      setSandboxWeekly(deepClone(weeklyData));
       setSandboxSidebar(deepClone(sidebarData));
     }
     setRole(newRole);
-  }, [role, dailyData, weeklyData, sidebarData]);
+  }, [role, dailyData, sidebarData]);
 
   const resetSandbox = useCallback(() => {
     setSandboxDaily(deepClone(dailyData));
-    setSandboxWeekly(deepClone(weeklyData));
     setSandboxSidebar(deepClone(sidebarData));
-  }, [dailyData, weeklyData, sidebarData]);
+  }, [dailyData, sidebarData]);
 
   const toggleTheme = useCallback(() => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
