@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { differenceInBusinessDays } from 'date-fns';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 
 interface ProactiveAlertBarProps {
   deal: {
