@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, HelpCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
