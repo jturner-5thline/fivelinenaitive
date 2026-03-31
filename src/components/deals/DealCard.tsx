@@ -155,18 +155,24 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
   const notificationCount = useMemo(() => {
     if (isClosedOrArchived) return 0;
+
     let count = flexNotificationCount;
-    deal.lenders?.forEach(lender => {
-      if (lender.trackingStatus === 'active' && lender.updatedAt) {
-        const days = differenceInDays(new Date(), new Date(lender.updatedAt));
-        if (days >= preferences.staleDealsDays) count++;
-      }
-    });
+
+    if (isPostSubmissionDealStage(deal.stage)) {
+      deal.lenders?.forEach(lender => {
+        if (lender.trackingStatus === 'active' && lender.updatedAt) {
+          const days = differenceInDays(new Date(), new Date(lender.updatedAt));
+          if (days >= preferences.staleDealsDays) count++;
+        }
+      });
+    }
+
     deal.milestones?.forEach(m => {
       if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
     });
+
     return count;
-  }, [deal.lenders, deal.milestones, deal.status, deal.stage, preferences.staleDealsDays, flexNotificationCount, isClosedOrArchived]);
+  }, [deal.lenders, deal.milestones, deal.stage, preferences.staleDealsDays, flexNotificationCount, isClosedOrArchived]);
 
   const notesPlainText = useMemo(() => {
     if (!deal.notes || deal.notes === '<p></p>') return '';
