@@ -9,6 +9,7 @@ interface ProactiveAlertBarProps {
   deal: {
     id: string;
     status?: string;
+    stage?: string;
     lenders?: Array<{
       id: string;
       name: string;
@@ -51,25 +52,34 @@ export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete 
 
     const now = new Date();
 
-    // Stale lenders
-    const excludedStages = ['passed', 'on hold', 'on deck', 'not a fit', 'unresponsive'];
-    const activeLenders = (deal.lenders || []).filter(l => 
-      (l.trackingStatus === 'active' || !l.trackingStatus) &&
-      !excludedStages.includes((l.stage || '').toLowerCase())
-    );
-    const staleLenders = activeLenders.filter(l => {
-      if (!l.updatedAt) return true;
-      return differenceInBusinessDays(now, new Date(l.updatedAt)) >= 5;
-    });
-    if (staleLenders.length > 0) {
-      result.push({
-        id: 'stale-lenders',
-        type: 'warning',
-        icon: Users,
-        message: `${staleLenders.length} lender${staleLenders.length > 1 ? 's' : ''} need${staleLenders.length === 1 ? 's' : ''} an update`,
-        count: staleLenders.length,
-        tab: 'lenders',
+    // Stale lenders — only for deals at or past "Submitted to Lenders"
+    const postSubmissionStages = [
+      'submitted-to-lenders', 'lenders-in-review', 'terms-issued',
+      'in-due-diligence', 'funded-invoiced', 'closed-won', 'closed-lost',
+    ];
+    const dealStage = (deal.stage || '').toLowerCase();
+    const isPostSubmission = postSubmissionStages.includes(dealStage);
+
+    if (isPostSubmission) {
+      const excludedLenderStages = ['passed', 'on hold', 'on deck', 'not a fit', 'unresponsive'];
+      const activeLenders = (deal.lenders || []).filter(l => 
+        (l.trackingStatus === 'active' || !l.trackingStatus) &&
+        !excludedLenderStages.includes((l.stage || '').toLowerCase())
+      );
+      const staleLenders = activeLenders.filter(l => {
+        if (!l.updatedAt) return true;
+        return differenceInBusinessDays(now, new Date(l.updatedAt)) >= 5;
       });
+      if (staleLenders.length > 0) {
+        result.push({
+          id: 'stale-lenders',
+          type: 'warning',
+          icon: Users,
+          message: `${staleLenders.length} lender${staleLenders.length > 1 ? 's' : ''} need${staleLenders.length === 1 ? 's' : ''} an update`,
+          count: staleLenders.length,
+          tab: 'lenders',
+        });
+      }
     }
 
     // Overdue milestones
