@@ -540,6 +540,7 @@ export function CashFlowManager() {
         <WeeklyReportTab
           weeklyData={filteredWeekly}
           sidebarData={rawSidebar}
+          sidebarDbItems={sidebarDbItems}
           theme={theme}
           isAdmin={role === 'admin'}
           planSnapshots={planSnapshots}
@@ -550,6 +551,7 @@ export function CashFlowManager() {
           onSidebarEditItem={handleSidebarEditItem}
           onSidebarRemoveItem={handleSidebarRemoveItem}
           onSidebarAddItem={handleSidebarAddItem}
+          onSidebarRemoveDbItem={handleRemoveCashInDbItem}
           onNoteEdit={handleNoteEdit}
           onNoteRemove={handleNoteRemove}
           onNoteAdd={handleNoteAdd}
