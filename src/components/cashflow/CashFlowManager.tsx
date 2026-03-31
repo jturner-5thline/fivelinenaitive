@@ -445,7 +445,31 @@ export function CashFlowManager() {
     return <CashFlowSkeleton />;
   }
 
-  const rowStructure = isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE;
+  const rowStructure = useMemo(() => {
+    const base = isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE;
+    // Inject M&T Bank Balance into row structure if not present
+    const hasMtInStruct = base.rows.some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
+    if (hasMtInStruct) return base;
+
+    const rows = [...base.rows];
+    // Find last balance_begin row and insert after it
+    const lastBeginIdx = rows.reduce((acc, r, i) => r.section === 'balance_begin' && !r.is_total ? i : acc, -1);
+    if (lastBeginIdx >= 0) {
+      rows.splice(lastBeginIdx + 1, 0, {
+        row_num: 'mt_begin', label: 'M&T Bank Balance', entity: 'ALL',
+        section: 'balance_begin', is_total: false, is_protected: false, indent: true,
+      });
+    }
+    // Find last balance_end row and insert after it
+    const lastEndIdx = rows.reduce((acc, r, i) => r.section === 'balance_end' && !r.is_total ? i : acc, -1);
+    if (lastEndIdx >= 0) {
+      rows.splice(lastEndIdx + 1, 0, {
+        row_num: 'mt_end', label: 'M&T Bank Balance', entity: 'ALL',
+        section: 'balance_end', is_total: false, is_protected: false, indent: true,
+      });
+    }
+    return { rows };
+  }, [isImported, importedRowStructure]);
 
   return (
     <div className="cf-root" data-theme={theme}>
