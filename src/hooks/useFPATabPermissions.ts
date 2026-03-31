@@ -35,13 +35,6 @@ export const TAB_DISPLAY_NAMES: Record<DashboardTabKey, string> = {
 /** Emails that can see and manage the Permissions tab */
 export const PERMISSIONS_ADMINS = ['jturner@5thline.co', 'jmoffitt@5thline.co'];
 
-/** Hard-coded user list for the grid */
-export const MANAGED_USERS = [
-  'jturner@5thline.co',
-  'jmoffitt@5thline.co',
-  'cminaldi@5thline.co',
-];
-
 /** Per-user permission map: email → set of allowed tab keys */
 export type TabPermissions = Record<string, DashboardTabKey[]>;
 
@@ -52,16 +45,47 @@ const DEFAULT_PERMISSIONS: TabPermissions = {
   'cminaldi@5thline.co': ['salesBdRoi', 'salesModel'],
 };
 
+/** Info about a company member for the permissions grid */
+export interface PermissionUser {
+  email: string;
+  displayName: string;
+  firstName: string | null;
+  lastName: string | null;
+}
+
 export function useFPATabPermissions() {
   const { company } = useCompany();
   const { user } = useAuth();
   const [permissions, setPermissions] = useState<TabPermissions>(DEFAULT_PERMISSIONS);
+  const [companyUsers, setCompanyUsers] = useState<PermissionUser[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const pendingSaveRef = useRef(false);
 
   const currentEmail = user?.email?.toLowerCase() ?? '';
   const isPermissionsAdmin = PERMISSIONS_ADMINS.includes(currentEmail);
+
+  // Load company members with profiles (email + names)
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_team_members_for_mention', {
+          _user_id: user.id,
+        });
+        if (error) { console.error('Error fetching team members:', error); return; }
+        const users: PermissionUser[] = ((data as any[]) || []).map((m: any) => ({
+          email: (m.email || '').toLowerCase(),
+          displayName: m.display_name || [m.first_name, m.last_name].filter(Boolean).join(' ') || m.email || '',
+          firstName: m.first_name || null,
+          lastName: m.last_name || null,
+        })).filter((u: PermissionUser) => u.email);
+        setCompanyUsers(users);
+      } catch (err) {
+        console.error('Error fetching team members:', err);
+      }
+    })();
+  }, [user?.id]);
 
   // Load from company_settings.fpa_dashboard_config.tab_permissions
   useEffect(() => {
@@ -134,7 +158,6 @@ export function useFPATabPermissions() {
 
   /** Which tabs the current user can see */
   const allowedTabs: DashboardTabKey[] = (() => {
-    // If no specific permission entry for this user, show all tabs (default open)
     const userPerms = permissions[currentEmail];
     if (!userPerms) return [...ALL_DASHBOARD_TABS];
     return userPerms;
@@ -153,5 +176,6 @@ export function useFPATabPermissions() {
     currentEmail,
     allowedTabs,
     canViewTab,
+    companyUsers,
   };
 }
