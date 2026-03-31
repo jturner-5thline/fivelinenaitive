@@ -124,20 +124,20 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full h-full">
       <Card className="h-full w-full flex flex-col">
         <CollapsibleTrigger asChild>
-          <CardHeader className="flex flex-row items-center justify-between pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardTitle className="text-base flex items-center gap-2">
+          <CardHeader className="flex flex-row items-center justify-between py-3 px-4 space-y-0 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
               Tasks
               {pendingTasks.length > 0 && !isOpen && (
-                <span className="text-xs font-normal text-muted-foreground">({pendingTasks.length} open)</span>
+                <Badge variant="secondary" className="text-[10px] h-5 font-normal">{pendingTasks.length} open</Badge>
               )}
             </CardTitle>
-            <div className="flex items-center gap-1.5">
-              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setIsCreateOpen(true); }} className="gap-1.5">
-                <Plus className="h-3.5 w-3.5" />
-                Add Task
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setIsCreateOpen(true); }} className="h-7 gap-1 text-xs px-2">
+                <Plus className="h-3 w-3" />
+                Add
               </Button>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               </Button>
             </div>
           </CardHeader>
