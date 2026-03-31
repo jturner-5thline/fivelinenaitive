@@ -231,29 +231,22 @@ export async function parseCashFlowExcel(file: File): Promise<{
 
   const maxScanRows = Math.min(30, worksheet.rowCount || 30);
   const maxCol = getWorksheetMaxCol(worksheet);
-  const dateRange = findDateHeaderRange(worksheet, maxScanRows, maxCol);
+  const dateRowNum = findDateHeaderRow(worksheet, maxScanRows, maxCol);
 
-  if (dateRange.rowNum === -1 || dateRange.length < 10) {
+  if (dateRowNum === -1) {
     throw new Error('Could not find the daily date header row with sequential dates.');
   }
 
-  const dateRowNum = dateRange.rowNum;
-  const firstDateCol = dateRange.startCol;
-  const lastDateCol = dateRange.endCol;
-
-  const dates: string[] = [];
-  let previousDate: Date | null = null;
-  for (let c = firstDateCol; c <= lastDateCol; c++) {
-    const parsedDate = parseDateLike(worksheet.getRow(dateRowNum).getCell(c).value);
-    if (!parsedDate) break;
-    if (previousDate && dayDiff(previousDate, parsedDate) !== 1) break;
-    dates.push(toDateKey(parsedDate));
-    previousDate = parsedDate;
-  }
-
-  if (dates.length < 10) {
+  const dateColumns = collectDateColumns(worksheet, dateRowNum, maxCol);
+  if (dateColumns.length < 10) {
     throw new Error('Could not extract the daily date columns from the spreadsheet.');
   }
+
+  const firstDateCol = dateColumns[0].col;
+  const lastDateCol = dateColumns[dateColumns.length - 1].col;
+  const dates: string[] = dateColumns.map(dc => toDateKey(dc.date));
+  // Map from sequential index to actual spreadsheet column
+  const dateColMap: number[] = dateColumns.map(dc => dc.col);
 
   let forecastStartIndex: number | null = null;
   for (let r = Math.max(1, dateRowNum - 3); r <= dateRowNum + 1; r++) {
