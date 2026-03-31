@@ -29,7 +29,7 @@ const DEFAULT_CONFIG: StaleAlertConfig = {
   threshold_days: DEFAULT_STALE_DAYS,
   notify_managers: true,
   notify_admins: true,
-  excluded_stages: ['archived', 'on_hold', 'closed_lost', 'in_development'],
+  excluded_stages: ['archived', 'on_hold', 'on-hold', 'closed_lost', 'closed-lost', 'in_development'],
   allowed_pipeline_ids: null,
   always_notify_emails: [],
   include_flagged: true,
