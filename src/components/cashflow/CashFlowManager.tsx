@@ -194,17 +194,15 @@ export function CashFlowManager() {
   const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
   const filteredWeekly = useMemo(() => filterWeeklyByPeriod(rawWeekly, debouncedYears, debouncedQuarters), [rawWeekly, debouncedYears, debouncedQuarters]);
 
-  const setActiveData = useCallback((setter: 'daily' | 'weekly' | 'sidebar', updater: (prev: any) => any) => {
+  const setActiveData = useCallback((setter: 'daily' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
       if (setter === 'daily') setSandboxDaily(prev => updater(prev || dailyData));
-      if (setter === 'weekly') setSandboxWeekly(prev => updater(prev || weeklyData));
       if (setter === 'sidebar') setSandboxSidebar(prev => updater(prev || sidebarData));
     } else {
       if (setter === 'daily') setDailyData(updater);
-      if (setter === 'weekly') setWeeklyData(updater);
       if (setter === 'sidebar') setSidebarData(updater);
     }
-  }, [role, dailyData, weeklyData, sidebarData]);
+  }, [role, dailyData, sidebarData]);
 
   const logAction = useCallback((action: string) => {
     setActivityLog(prev => [...prev, {
