@@ -305,12 +305,13 @@ const handler = async (req: Request): Promise<Response> => {
       const dealIds = activeDeals.map(d => d.id);
       const { data: lenders } = await supabaseAdmin
         .from('deal_lenders')
-        .select('id, deal_id, updated_at, stage')
+        .select('id, deal_id, updated_at, stage, tracking_status')
         .in('deal_id', dealIds);
 
       // Build a map: deal_id → count of stale lenders (active lenders not updated in X days)
       const staleLenderCounts: Record<string, number> = {};
-      const excludedLenderStages = ['passed', 'not-a-fit', 'unresponsive', 'excluded'];
+      const excludedLenderStages = ['passed', 'not-a-fit', 'not a fit', 'unresponsive', 'excluded', 'on hold', 'on-hold', 'direct'];
+      const inactiveTrackingStatuses = ['passed', 'on-hold', 'on-deck', 'excluded', 'direct', 'not_a_fit', 'not-a-fit'];
       if (lenders) {
         for (const lender of lenders) {
           if (excludedLenderStages.includes(lender.stage)) continue;
