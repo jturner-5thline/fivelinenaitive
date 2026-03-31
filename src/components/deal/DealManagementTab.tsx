@@ -4,10 +4,17 @@ import { EngagementSummaryCard } from './EngagementSummaryCard';
 import { EngagementTrendsCard } from './EngagementTrendsCard';
 import { DealActivityChart } from './DealActivityChart';
 import { DealFlagLog } from './DealFlagLog';
+import { ClaudeFinancialAnalysis } from './ClaudeFinancialAnalysis';
 import { useFlagNotes } from '@/hooks/useFlagNotes';
 
 interface DealManagementTabProps {
   dealId: string;
+  dealName?: string;
+  dealValue?: number;
+  dealStage?: string;
+  dealType?: string;
+  dealStatus?: string;
+  lenderCount?: number;
 }
 
 export function DealManagementTab({ dealId }: DealManagementTabProps) {
