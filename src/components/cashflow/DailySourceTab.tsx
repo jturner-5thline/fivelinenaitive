@@ -166,6 +166,8 @@ export const DailySourceTab = memo(function DailySourceTab({
                   addable={section.addable}
                   onAddRow={() => setAddRowSection(section.key)}
                   dateCount={visibleDates.length}
+                  collapsed={collapsedSections[section.cssClass]}
+                  onToggleCollapse={() => toggleSection(section.cssClass)}
                 />
               );
             })}
