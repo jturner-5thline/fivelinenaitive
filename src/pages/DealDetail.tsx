@@ -66,6 +66,7 @@ import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpDa
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { DealTasksPanel } from '@/components/deal/DealTasksPanel';
 import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
+import { DealManagementTab } from '@/components/deal/DealManagementTab';
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
