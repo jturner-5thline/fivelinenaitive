@@ -53,7 +53,7 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
       .from('deals')
       .select('id, company, stage, value, retainer_fee, milestone_fee, success_fee_percent, total_fee')
       .eq('company_id', company.id)
-      .eq('status', 'active')
+      .not('status', 'in', '("on-hold","archived")')
       .order('company', { ascending: true })
       .then(({ data, error }) => {
         if (!error && data) setDeals(data as Deal[]);
