@@ -119,7 +119,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         <WeeklyCharts weeklyData={weeklyData} theme={theme} />
 
         {/* Table card */}
-        <div className="cf-table-card">
+        <div ref={gridWrapRef} className="cf-table-card">
         <div className="cf-range-bar" style={{ borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
           <div className="cf-range-controls">
             <span className="cf-range-label">Weeks Past</span>
@@ -159,7 +159,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         </div>
 
         {/* Weekly grid */}
-        <div ref={gridWrapRef} className="cf-grid-wrap" style={{ borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}>
+        <div className="cf-grid-wrap" style={{ borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}>
           <table className="cf-grid">
             <thead>
               <tr>
