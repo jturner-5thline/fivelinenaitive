@@ -968,50 +968,8 @@ export function useDealsDatabase() {
         );
       }
 
-      // Queue batched lender notification email
-      if (dealId && previousLender) {
-        const changeSummary: Record<string, { from: string | null; to: string | null }> = {};
-        if (updates.stage !== undefined && updates.stage !== previousLender.stage) {
-          changeSummary.stage = { from: previousLender.stage || null, to: updates.stage || null };
-        }
-        if (updates.trackingStatus !== undefined && updates.trackingStatus !== previousLender.trackingStatus) {
-          changeSummary.tracking_status = { from: previousLender.trackingStatus || null, to: updates.trackingStatus || null };
-        }
-        if (updates.substage !== undefined && updates.substage !== previousLender.substage) {
-          changeSummary.substage = { from: previousLender.substage || null, to: updates.substage || null };
-        }
-        if (updates.notes !== undefined && updates.notes !== previousLender.notes) {
-          changeSummary.notes = { from: null, to: updates.notes || null };
-        }
-        if ('score' in updates && updates.score !== previousLender.score) {
-          changeSummary.score = { from: String(previousLender.score ?? ''), to: String(updates.score ?? '') };
-        }
-        if ('passReason' in updates) {
-          changeSummary.pass_reason = { from: previousLender.passReason || null, to: updates.passReason || null };
-        }
-
-        if (Object.keys(changeSummary).length > 0) {
-          // Look up company_id and user display name
-          const [dealRes, profileRes] = await Promise.all([
-            supabase.from('deals').select('company_id').eq('id', dealId).single(),
-            userId ? supabase.from('profiles').select('display_name').eq('user_id', userId).single() : Promise.resolve({ data: null }),
-          ]);
-
-          if (dealRes.data?.company_id) {
-            supabase.from('pending_lender_notifications').insert({
-              deal_id: dealId,
-              company_id: dealRes.data.company_id,
-              lender_id: lenderId,
-              lender_name: previousLender.name,
-              change_summary: changeSummary,
-              changed_by: userId || null,
-              changed_by_name: profileRes.data?.display_name || null,
-            }).then(({ error: queueError }) => {
-              if (queueError) console.error('Error queuing lender notification:', queueError);
-            });
-          }
-        }
-      }
+      // Lender notification batching is now handled by the DB trigger
+      // (notify_email_on_lender_event queues into pending_lender_notifications)
     } catch (err) {
       // Rollback on error
       setDeals(previousDeals);
