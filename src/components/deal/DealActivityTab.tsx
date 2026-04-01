@@ -703,6 +703,36 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
         </CardContent>
       </Card>
       </div>
+
+      {/* Claap call management dialogs */}
+      <ClaapDealSelector
+        open={dealSelectorOpen}
+        onOpenChange={setDealSelectorOpen}
+        onSelect={(newDealId, newDealName) => {
+          if (reassignMeetingId) {
+            changeDeal.mutate({ meetingId: reassignMeetingId, newDealId, newDealName });
+            setReassignMeetingId(null);
+          }
+        }}
+        title="Move Call to Another Deal"
+      />
+
+      <AlertDialog open={!!unlinkMeetingId} onOpenChange={(open) => { if (!open) setUnlinkMeetingId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove call from this deal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will unlink the call from this deal. It will appear as unmatched in the Claap integration settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (unlinkMeetingId) { unlinkFromDeal.mutate({ meetingId: unlinkMeetingId }); setUnlinkMeetingId(null); } }}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
