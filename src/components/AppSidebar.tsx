@@ -228,7 +228,7 @@ export function AppSidebar() {
                     await signOut();
                     navigate("/login", { replace: true });
                   }}
-                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none transition-colors hover:bg-destructive/10 focus:bg-destructive/10"
                 >
                   <LogOut className="h-4 w-4" />
                   Log out
