@@ -176,7 +176,7 @@ export function ClaapSyncSettings() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               company_id: config.company_id,
-              days_back: 60,
+              days_back: 365,
               batch_size: 20,
               cursor,
               time_budget_ms: 50000,
@@ -270,7 +270,7 @@ export function ClaapSyncSettings() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Fetch all Claap recordings from the past 60 days and apply smart matching to route them to deals, companies, and contacts.
+              Fetch all Claap recordings from the past 365 days and apply smart matching to route them to deals, companies, and contacts. Only calls where every participant is an internal @5thline.co attendee are excluded.
             </p>
             {backfillProgress && (
               <div className="space-y-2 bg-muted/50 rounded-lg p-3">

@@ -413,7 +413,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const daysBack = body.days_back || 60;
+    const daysBack = body.days_back || 365;
     const batchSize = body.batch_size || 20;
     const cursor = body.cursor || null;
     const timeBudgetMs = body.time_budget_ms || 50000;
