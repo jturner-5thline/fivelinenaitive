@@ -1324,6 +1324,153 @@ export type Database = {
           },
         ]
       }
+      claap_match_feedback: {
+        Row: {
+          action: string
+          chosen_deal_id: string | null
+          company_id: string | null
+          created_at: string
+          id: string
+          meeting_id: string
+          performed_by: string | null
+          signals: Json | null
+          suggested_deal_id: string | null
+          suggestion_id: string | null
+        }
+        Insert: {
+          action: string
+          chosen_deal_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          meeting_id: string
+          performed_by?: string | null
+          signals?: Json | null
+          suggested_deal_id?: string | null
+          suggestion_id?: string | null
+        }
+        Update: {
+          action?: string
+          chosen_deal_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          performed_by?: string | null
+          signals?: Json | null
+          suggested_deal_id?: string | null
+          suggestion_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_match_feedback_chosen_deal_id_fkey"
+            columns: ["chosen_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_match_feedback_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_match_feedback_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "claap_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_match_feedback_suggested_deal_id_fkey"
+            columns: ["suggested_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_match_feedback_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "claap_match_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_match_suggestions: {
+        Row: {
+          company_name: string | null
+          confidence: number
+          contact_email: string | null
+          created_at: string
+          deal_id: string | null
+          feedback_action: string | null
+          feedback_at: string | null
+          feedback_by: string | null
+          id: string
+          lender_name: string | null
+          meeting_id: string
+          rank: number
+          reason: string | null
+          status: string
+          suggestion_source: string
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string | null
+          confidence?: number
+          contact_email?: string | null
+          created_at?: string
+          deal_id?: string | null
+          feedback_action?: string | null
+          feedback_at?: string | null
+          feedback_by?: string | null
+          id?: string
+          lender_name?: string | null
+          meeting_id: string
+          rank?: number
+          reason?: string | null
+          status?: string
+          suggestion_source?: string
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string | null
+          confidence?: number
+          contact_email?: string | null
+          created_at?: string
+          deal_id?: string | null
+          feedback_action?: string | null
+          feedback_at?: string | null
+          feedback_by?: string | null
+          id?: string
+          lender_name?: string | null
+          meeting_id?: string
+          rank?: number
+          reason?: string | null
+          status?: string
+          suggestion_source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_match_suggestions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_match_suggestions_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "claap_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       claap_meeting_participants: {
         Row: {
           contact_id: string | null
@@ -1414,6 +1561,8 @@ export type Database = {
           sentiment: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["claap_meeting_status"]
+          suggestion_count: number | null
+          suggestions_generated_at: string | null
           title: string | null
           topics: string[] | null
           transcript: string | null
@@ -1451,6 +1600,8 @@ export type Database = {
           sentiment?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["claap_meeting_status"]
+          suggestion_count?: number | null
+          suggestions_generated_at?: string | null
           title?: string | null
           topics?: string[] | null
           transcript?: string | null
@@ -1488,6 +1639,8 @@ export type Database = {
           sentiment?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["claap_meeting_status"]
+          suggestion_count?: number | null
+          suggestions_generated_at?: string | null
           title?: string | null
           topics?: string[] | null
           transcript?: string | null
