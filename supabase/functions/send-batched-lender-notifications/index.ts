@@ -213,11 +213,62 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${pending.length} pending notifications`);
 
-    // Group by deal_id
+    // Group by deal_id, then merge multiple notifications for the same lender
     const byDeal: Record<string, LenderNotification[]> = {};
     for (const n of pending) {
       if (!byDeal[n.deal_id]) byDeal[n.deal_id] = [];
       byDeal[n.deal_id].push(n as LenderNotification);
+    }
+
+    // For each deal, merge notifications for the same lender into one
+    for (const dealId of Object.keys(byDeal)) {
+      const notifications = byDeal[dealId];
+      const byLender: Record<string, LenderNotification[]> = {};
+      for (const n of notifications) {
+        const key = n.lender_id || n.lender_name;
+        if (!byLender[key]) byLender[key] = [];
+        byLender[key].push(n);
+      }
+
+      const merged: LenderNotification[] = [];
+      for (const lenderNotifs of Object.values(byLender)) {
+        if (lenderNotifs.length === 1) {
+          merged.push(lenderNotifs[0]);
+        } else {
+          // Merge all change_summary objects into one, keeping earliest "from" and latest "to"
+          const base = { ...lenderNotifs[0] };
+          const mergedChanges: Record<string, any> = { ...(base.change_summary || {}) };
+          for (let i = 1; i < lenderNotifs.length; i++) {
+            const cs = lenderNotifs[i].change_summary || {};
+            for (const [field, val] of Object.entries(cs)) {
+              if (mergedChanges[field]) {
+                // Keep the original "from" but take the latest "to"
+                mergedChanges[field] = { from: mergedChanges[field].from, to: (val as any).to };
+              } else {
+                mergedChanges[field] = val;
+              }
+            }
+            // Collect all IDs for cleanup
+          }
+          // Remove no-op changes where from === to after merging
+          for (const [field, val] of Object.entries(mergedChanges)) {
+            if ((val as any).from === (val as any).to) {
+              delete mergedChanges[field];
+            }
+          }
+          base.change_summary = mergedChanges;
+          // Keep all original IDs so they all get deleted
+          (base as any)._all_ids = lenderNotifs.map(n => n.id);
+          if (Object.keys(mergedChanges).length > 0) {
+            merged.push(base);
+          } else {
+            // All changes cancelled out; still need to clean up
+            (base as any)._cleanup_only = true;
+            merged.push(base);
+          }
+        }
+      }
+      byDeal[dealId] = merged;
     }
 
     const results: any[] = [];
@@ -362,46 +413,62 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
 
-        // Send one email per recipient
-        for (const [userId, recipient] of Object.entries(recipients)) {
-          // Don't send to the person who made the changes (if all changes are by the same person)
-          const allBySameUser = notifications.every(n => n.changed_by === userId);
-          if (allBySameUser) continue;
+        // Filter out cleanup-only entries (changes cancelled out)
+        const emailableNotifications = notifications.filter(n => !(n as any)._cleanup_only);
 
-          try {
-            const emailHtml = buildBatchedEmailHtml(
-              recipient.name,
-              deal.company,
-              dealId,
-              notifications,
-              stageLabels,
-              trackingLabels,
-              substageLabels,
-            );
+        // Send one email per recipient (only if there are real changes)
+        if (emailableNotifications.length > 0) {
+          for (const [userId, recipient] of Object.entries(recipients)) {
+            // Don't send to the person who made the changes (if all changes are by the same person)
+            const allBySameUser = emailableNotifications.every(n => n.changed_by === userId);
+            if (allBySameUser) continue;
 
-            await resend.emails.send({
-              from: "naitive <noreply@updates.naitive.co>",
-              to: [recipient.email],
-              subject: `${deal.company} — ${notifications.length} Lender${notifications.length !== 1 ? 's' : ''} Updated`,
-              html: emailHtml,
-            });
+            try {
+              const emailHtml = buildBatchedEmailHtml(
+                recipient.name,
+                deal.company,
+                dealId,
+                emailableNotifications,
+                stageLabels,
+                trackingLabels,
+                substageLabels,
+              );
 
-            results.push({ deal_id: dealId, email: recipient.email, lender_count: notifications.length, success: true });
-            console.log(`Batched lender email sent to ${recipient.email} for deal ${deal.company} (${notifications.length} lenders)`);
-          } catch (sendError: any) {
-            console.error(`Error sending to ${recipient.email}:`, sendError);
-            results.push({ deal_id: dealId, email: recipient.email, success: false, error: sendError.message });
+              await resend.emails.send({
+                from: "naitive <noreply@updates.naitive.co>",
+                to: [recipient.email],
+                subject: `${deal.company} — ${emailableNotifications.length} Lender${emailableNotifications.length !== 1 ? 's' : ''} Updated`,
+                html: emailHtml,
+              });
+
+              results.push({ deal_id: dealId, email: recipient.email, lender_count: emailableNotifications.length, success: true });
+              console.log(`Batched lender email sent to ${recipient.email} for deal ${deal.company} (${emailableNotifications.length} lenders)`);
+            } catch (sendError: any) {
+              console.error(`Error sending to ${recipient.email}:`, sendError);
+              results.push({ deal_id: dealId, email: recipient.email, success: false, error: sendError.message });
+            }
           }
         }
 
-        // Delete processed notifications
-        const ids = notifications.map(n => n.id);
-        await supabaseAdmin
-          .from('pending_lender_notifications')
-          .delete()
-          .in('id', ids);
+        // Delete all processed notifications (including merged ones)
+        const allIds: string[] = [];
+        for (const n of notifications) {
+          if ((n as any)._all_ids) {
+            allIds.push(...(n as any)._all_ids);
+          } else {
+            allIds.push(n.id);
+          }
+        }
+        // Also collect original pending IDs from the raw batch
+        const uniqueIds = [...new Set(allIds)];
+        if (uniqueIds.length > 0) {
+          await supabaseAdmin
+            .from('pending_lender_notifications')
+            .delete()
+            .in('id', uniqueIds);
+        }
 
-        console.log(`Cleaned up ${ids.length} processed notifications for deal ${dealId}`);
+        console.log(`Cleaned up ${uniqueIds.length} processed notifications for deal ${dealId}`);
       } catch (dealError: any) {
         console.error(`Error processing deal ${dealId}:`, dealError);
         results.push({ deal_id: dealId, success: false, error: dealError.message });
