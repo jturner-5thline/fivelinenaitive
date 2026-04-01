@@ -304,13 +304,16 @@ export function ClaapSyncSettings() {
             />
           </div>
           <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
-            <p className="text-xs font-medium">Matching checks (in order):</p>
+            <p className="text-xs font-medium">Matching priority (confidence-scored):</p>
             <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• <strong>Contact</strong> — Participant email matches a CRM contact</li>
-              <li>• <strong>Company</strong> — Participant domain or meeting title matches a CRM company</li>
+              <li>• <strong>Deal</strong> — Meeting title, deal aliases, or participant contacts match an active deal (highest priority)</li>
               <li>• <strong>Lender</strong> — Meeting title, participant domain, or contact name matches a lender</li>
-              <li>• <strong>Deal</strong> — Meeting title matches an active deal company name</li>
+              <li>• <strong>Company</strong> — Participant domain or meeting title matches a CRM company</li>
+              <li>• <strong>Contact</strong> — Participant email matches a CRM contact</li>
             </ul>
+            <p className="text-xs text-muted-foreground mt-1.5 italic">
+              Ambiguous multi-deal matches are flagged for review instead of auto-linked.
+            </p>
           </div>
         </CardContent>
       </Card>

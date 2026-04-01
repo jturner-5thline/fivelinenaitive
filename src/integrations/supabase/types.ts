@@ -4845,6 +4845,41 @@ export type Database = {
           },
         ]
       }
+      deal_aliases: {
+        Row: {
+          alias: string
+          alias_normalized: string
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          id: string
+        }
+        Insert: {
+          alias: string
+          alias_normalized: string
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          id?: string
+        }
+        Update: {
+          alias?: string
+          alias_normalized?: string
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_aliases_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_attachments: {
         Row: {
           category: string
