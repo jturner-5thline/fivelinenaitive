@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck, ScrollText, ArrowDownToLine, Video } from 'lucide-react';
+import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck, ScrollText, ArrowDownToLine, Video, Unlink, ArrowRightLeft, Link2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { useDealActivityStats, useDealActivityChart } from '@/hooks/useDealActivityStats';
@@ -14,6 +14,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFlexLenderEngagement } from '@/hooks/useFlexLenderEngagement';
 import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useClaapCallActions } from '@/hooks/useClaapCallActions';
+import { ClaapDealSelector } from '@/components/claap/ClaapDealSelector';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreVertical } from 'lucide-react';
 
 interface DealActivityTabProps {
   dealId: string;
@@ -112,7 +131,7 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
           .order('created_at', { ascending: false }),
         supabase
           .from('claap_meetings')
-          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary')
+          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary, match_status, match_method, match_confidence, match_reason, manually_locked')
           .eq('deal_id', dealId)
           .order('started_at', { ascending: false }),
       ]);
@@ -158,6 +177,12 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
             ai_summary: meeting.ai_summary,
             duration_seconds: meeting.duration_seconds,
             call_type: meeting.call_type,
+            claap_meeting_id: meeting.id,
+            match_status: (meeting as any).match_status,
+            match_method: (meeting as any).match_method,
+            match_confidence: (meeting as any).match_confidence,
+            match_reason: (meeting as any).match_reason,
+            manually_locked: (meeting as any).manually_locked,
           },
           user_display_name: null,
           source: 'claap',
@@ -178,6 +203,10 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activityFilter, setActivityFilter] = useState<'all' | 'calls' | 'activity'>('all');
   const [expandedTranscriptId, setExpandedTranscriptId] = useState<string | null>(null);
+  const [unlinkMeetingId, setUnlinkMeetingId] = useState<string | null>(null);
+  const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
+  const [reassignMeetingId, setReassignMeetingId] = useState<string | null>(null);
+  const { changeDeal, unlinkFromDeal } = useClaapCallActions();
 
   // Reverse-map display label (e.g. "Feb 1") back to ISO date
   const displayToIso = chartData?.reduce<Record<string, string>>((acc, d) => {
@@ -374,6 +403,23 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                                 {meta.call_type}
                               </Badge>
                             )}
+                            {isCall && meta?.match_status && (
+                              <Badge variant="outline" className={`text-[10px] ${
+                                meta.match_status === 'manually_linked' ? 'border-blue-500/30 text-blue-600' :
+                                meta.match_status === 'matched' ? 'border-green-500/30 text-green-600' :
+                                'border-muted'
+                              }`}>
+                                {meta.match_status === 'manually_linked' ? 'Manual' : 'Auto'}
+                              </Badge>
+                            )}
+                            {isCall && meta?.match_confidence && (
+                              <span className={`text-[10px] font-medium ${
+                                meta.match_confidence >= 75 ? 'text-green-600' :
+                                meta.match_confidence >= 50 ? 'text-amber-600' : 'text-red-600'
+                              }`}>
+                                {meta.match_confidence}%
+                              </span>
+                            )}
                           </div>
                           {isCall ? (
                             <div className="mt-1 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
@@ -405,15 +451,39 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                           ) : activity.description && !lenderName ? (
                             <p className="text-xs text-muted-foreground truncate">{activity.description}</p>
                           ) : null}
+                          {isCall && meta?.match_reason && (
+                            <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{meta.match_reason}</p>
+                          )}
                           {isCall && expandedTranscriptId === activity.id && transcriptText && (
                             <div className="mt-2 rounded-md border border-border/50 bg-background/80 p-2 text-xs text-muted-foreground whitespace-pre-wrap">
                               {transcriptText}
                             </div>
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {format(parseISO(activity.created_at), 'h:mm a')}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {format(parseISO(activity.created_at), 'h:mm a')}
+                          </span>
+                          {isCall && meta?.claap_meeting_id && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => { setReassignMeetingId(meta.claap_meeting_id); setDealSelectorOpen(true); }}>
+                                  <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
+                                  Move to Another Deal
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setUnlinkMeetingId(meta.claap_meeting_id)} className="text-destructive">
+                                  <Unlink className="h-3.5 w-3.5 mr-2" />
+                                  Remove from Deal
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -633,6 +703,36 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
         </CardContent>
       </Card>
       </div>
+
+      {/* Claap call management dialogs */}
+      <ClaapDealSelector
+        open={dealSelectorOpen}
+        onOpenChange={setDealSelectorOpen}
+        onSelect={(newDealId, newDealName) => {
+          if (reassignMeetingId) {
+            changeDeal.mutate({ meetingId: reassignMeetingId, newDealId, newDealName });
+            setReassignMeetingId(null);
+          }
+        }}
+        title="Move Call to Another Deal"
+      />
+
+      <AlertDialog open={!!unlinkMeetingId} onOpenChange={(open) => { if (!open) setUnlinkMeetingId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove call from this deal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will unlink the call from this deal. It will appear as unmatched in the Claap integration settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (unlinkMeetingId) { unlinkFromDeal.mutate({ meetingId: unlinkMeetingId }); setUnlinkMeetingId(null); } }}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

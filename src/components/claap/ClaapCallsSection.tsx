@@ -3,12 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText } from 'lucide-react';
+import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText, Link2, MoreVertical, Unlink, ArrowRightLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDuration, intervalToDuration } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ClaapDealSelector } from './ClaapDealSelector';
+import { useClaapCallActions } from '@/hooks/useClaapCallActions';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export type ClaapEntityType = 'contact' | 'company' | 'lender';
 
@@ -33,6 +36,7 @@ interface ClaapCall {
   transcript: string | null;
   ai_summary: string | null;
   organizer_email: string | null;
+  deal_id: string | null;
 }
 
 function formatCallDuration(seconds: number | null): string {
@@ -54,77 +58,117 @@ function callTypeBadgeVariant(callType: string | null): 'default' | 'secondary' 
 
 function CallCard({ call }: { call: ClaapCall }) {
   const [expanded, setExpanded] = useState(false);
+  const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
+  const { linkToDeal, changeDeal, unlinkFromDeal } = useClaapCallActions();
   const hasTranscript = !!(call.transcript || call.ai_summary);
 
   return (
-    <div className="p-3 rounded-md border border-border/50 hover:bg-muted/30 transition-colors">
-      <div className="flex items-start gap-2.5">
-        <div className="mt-0.5 p-1.5 rounded-md bg-primary/10 text-primary">
-          <Video className="h-3.5 w-3.5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {call.recording_url ? (
-              <a
-                href={call.recording_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-primary hover:underline truncate"
-              >
-                {call.title || 'Untitled Call'}
-              </a>
-            ) : (
-              <span className="text-sm font-medium truncate">{call.title || 'Untitled Call'}</span>
-            )}
-            {call.call_type && (
-              <Badge variant={callTypeBadgeVariant(call.call_type)} className="text-[10px] px-1.5 py-0 h-4 shrink-0">
-                {call.call_type}
-              </Badge>
-            )}
+    <>
+      <div className="p-3 rounded-md border border-border/50 hover:bg-muted/30 transition-colors">
+        <div className="flex items-start gap-2.5">
+          <div className="mt-0.5 p-1.5 rounded-md bg-primary/10 text-primary">
+            <Video className="h-3.5 w-3.5" />
           </div>
-          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {call.started_at ? format(new Date(call.started_at), 'MMM d, yyyy h:mm a') : format(new Date(call.created_at), 'MMM d, yyyy')}
-            </span>
-            <span>{formatCallDuration(call.duration_seconds)}</span>
-            {call.organizer_email && (
-              <span className="flex items-center gap-1 truncate">
-                <Users className="h-3 w-3" />
-                {call.organizer_email}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              {call.recording_url ? (
+                <a href={call.recording_url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline truncate">
+                  {call.title || 'Untitled Call'}
+                </a>
+              ) : (
+                <span className="text-sm font-medium truncate">{call.title || 'Untitled Call'}</span>
+              )}
+              {call.call_type && (
+                <Badge variant={callTypeBadgeVariant(call.call_type)} className="text-[10px] px-1.5 py-0 h-4 shrink-0">
+                  {call.call_type}
+                </Badge>
+              )}
+              {call.deal_id && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0 border-green-500/30 text-green-600">
+                  Linked
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {call.started_at ? format(new Date(call.started_at), 'MMM d, yyyy h:mm a') : format(new Date(call.created_at), 'MMM d, yyyy')}
               </span>
+              <span>{formatCallDuration(call.duration_seconds)}</span>
+              {call.organizer_email && (
+                <span className="flex items-center gap-1 truncate">
+                  <Users className="h-3 w-3" />
+                  {call.organizer_email}
+                </span>
+              )}
+            </div>
+
+            {hasTranscript && (
+              <Collapsible open={expanded} onOpenChange={setExpanded}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-5 px-1.5 mt-1 text-xs text-muted-foreground hover:text-foreground">
+                    <FileText className="h-3 w-3 mr-1" />
+                    {expanded ? 'Hide' : 'Show'} summary
+                    {expanded ? <ChevronDown className="h-3 w-3 ml-0.5" /> : <ChevronRight className="h-3 w-3 ml-0.5" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-2 p-2 rounded bg-muted/50 text-xs text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
+                    {call.ai_summary || (call.transcript?.substring(0, 500) + (call.transcript && call.transcript.length > 500 ? '...' : ''))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             )}
           </div>
-
-          {hasTranscript && (
-            <Collapsible open={expanded} onOpenChange={setExpanded}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-5 px-1.5 mt-1 text-xs text-muted-foreground hover:text-foreground">
-                  <FileText className="h-3 w-3 mr-1" />
-                  {expanded ? 'Hide' : 'Show'} summary
-                  {expanded ? <ChevronDown className="h-3 w-3 ml-0.5" /> : <ChevronRight className="h-3 w-3 ml-0.5" />}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="mt-2 p-2 rounded bg-muted/50 text-xs text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
-                  {call.ai_summary || (call.transcript?.substring(0, 500) + (call.transcript && call.transcript.length > 500 ? '...' : ''))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {!call.deal_id ? (
+                <DropdownMenuItem onClick={() => setDealSelectorOpen(true)}>
+                  <Link2 className="h-3.5 w-3.5 mr-2" />
+                  Link to Deal
+                </DropdownMenuItem>
+              ) : (
+                <>
+                  <DropdownMenuItem onClick={() => setDealSelectorOpen(true)}>
+                    <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
+                    Change Deal
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => unlinkFromDeal.mutate({ meetingId: call.id })} className="text-destructive">
+                    <Unlink className="h-3.5 w-3.5 mr-2" />
+                    Remove Deal Link
+                  </DropdownMenuItem>
+                </>
+              )}
+              {call.recording_url && (
+                <DropdownMenuItem asChild>
+                  <a href={call.recording_url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                    Open Recording
+                  </a>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        {call.recording_url && (
-          <a
-            href={call.recording_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-primary shrink-0"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        )}
       </div>
-    </div>
+      <ClaapDealSelector
+        open={dealSelectorOpen}
+        onOpenChange={setDealSelectorOpen}
+        onSelect={(dealId, dealName) => {
+          if (call.deal_id) {
+            changeDeal.mutate({ meetingId: call.id, newDealId: dealId, newDealName: dealName });
+          } else {
+            linkToDeal.mutate({ meetingId: call.id, dealId, dealName });
+          }
+        }}
+        title={call.deal_id ? 'Change Linked Deal' : 'Link Call to Deal'}
+      />
+    </>
   );
 }
 
@@ -149,7 +193,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         // Direct match
         const { data: directMatches } = await supabase
           .from('claap_meetings')
-          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email')
+          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
           .eq('matched_contact_id', entityId)
           .order('started_at', { ascending: false })
           .limit(50);
@@ -166,7 +210,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
             const meetingIds = participantMatches.map(p => p.meeting_id);
             const { data: emailCalls } = await supabase
               .from('claap_meetings')
-              .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email')
+              .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
               .in('id', meetingIds)
               .order('started_at', { ascending: false });
             addCalls(emailCalls);
@@ -176,7 +220,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         // Direct match
         const { data: directMatches } = await supabase
           .from('claap_meetings')
-          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email')
+          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
           .eq('matched_crm_company_id', entityId)
           .order('started_at', { ascending: false })
           .limit(50);
@@ -186,7 +230,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         if (contactIds?.length) {
           const { data: contactCalls } = await supabase
             .from('claap_meetings')
-            .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email')
+            .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
             .in('matched_contact_id', contactIds)
             .order('started_at', { ascending: false })
             .limit(50);
@@ -196,7 +240,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         // Direct match
         const { data: directMatches } = await supabase
           .from('claap_meetings')
-          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email')
+          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
           .eq('matched_lender_id', entityId)
           .order('started_at', { ascending: false })
           .limit(50);

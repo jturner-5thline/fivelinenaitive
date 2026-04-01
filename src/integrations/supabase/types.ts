@@ -1271,6 +1271,59 @@ export type Database = {
           },
         ]
       }
+      claap_match_audit: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          match_confidence: number | null
+          match_method: string | null
+          match_reason: string | null
+          meeting_id: string
+          new_deal_id: string | null
+          new_status: string | null
+          performed_by: string | null
+          previous_deal_id: string | null
+          previous_status: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          match_confidence?: number | null
+          match_method?: string | null
+          match_reason?: string | null
+          meeting_id: string
+          new_deal_id?: string | null
+          new_status?: string | null
+          performed_by?: string | null
+          previous_deal_id?: string | null
+          previous_status?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          match_confidence?: number | null
+          match_method?: string | null
+          match_reason?: string | null
+          meeting_id?: string
+          new_deal_id?: string | null
+          new_status?: string | null
+          performed_by?: string | null
+          previous_deal_id?: string | null
+          previous_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_match_audit_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "claap_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       claap_meeting_participants: {
         Row: {
           contact_id: string | null
@@ -1341,7 +1394,15 @@ export type Database = {
           exclusion_reason: string | null
           id: string
           key_decisions: string[] | null
+          manually_locked: boolean | null
+          match_candidates: Json | null
+          match_confidence: number | null
+          match_method: string | null
+          match_reason: string | null
           match_source: string | null
+          match_status: string | null
+          matched_at: string | null
+          matched_by: string | null
           matched_contact_id: string | null
           matched_crm_company_id: string | null
           matched_lender_id: string | null
@@ -1370,7 +1431,15 @@ export type Database = {
           exclusion_reason?: string | null
           id?: string
           key_decisions?: string[] | null
+          manually_locked?: boolean | null
+          match_candidates?: Json | null
+          match_confidence?: number | null
+          match_method?: string | null
+          match_reason?: string | null
           match_source?: string | null
+          match_status?: string | null
+          matched_at?: string | null
+          matched_by?: string | null
           matched_contact_id?: string | null
           matched_crm_company_id?: string | null
           matched_lender_id?: string | null
@@ -1399,7 +1468,15 @@ export type Database = {
           exclusion_reason?: string | null
           id?: string
           key_decisions?: string[] | null
+          manually_locked?: boolean | null
+          match_candidates?: Json | null
+          match_confidence?: number | null
+          match_method?: string | null
+          match_reason?: string | null
           match_source?: string | null
+          match_status?: string | null
+          matched_at?: string | null
+          matched_by?: string | null
           matched_contact_id?: string | null
           matched_crm_company_id?: string | null
           matched_lender_id?: string | null
