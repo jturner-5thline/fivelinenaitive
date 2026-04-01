@@ -247,6 +247,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
   const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
   const [reassignMeetingId, setReassignMeetingId] = useState<string | null>(null);
   const { changeDeal, unlinkFromDeal } = useClaapCallActions();
+  const { data: linkedCalls, isLoading: isLoadingLinkedCalls } = useLinkedClaapCalls(dealId);
 
   // Reverse-map display label (e.g. "Feb 1") back to ISO date
   const displayToIso = chartData?.reduce<Record<string, string>>((acc, d) => {
