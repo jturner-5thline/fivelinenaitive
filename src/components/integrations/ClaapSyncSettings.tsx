@@ -20,6 +20,7 @@ export function ClaapSyncSettings() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const { suggestions, isLoading: suggestionsLoading, generateSuggestions } = useClaapSuggestions();
   const [backfillProgress, setBackfillProgress] = useState<{
     running: boolean;
     processed: number;
