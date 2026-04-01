@@ -745,6 +745,118 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
       </Card>
       </div>
 
+      {/* Linked Claap Calls - always visible */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Video className="h-4 w-4" />
+              Linked Calls
+            </CardTitle>
+            <Badge variant="secondary" className="text-xs">
+              {linkedCalls?.length ?? 0} call{(linkedCalls?.length ?? 0) !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingLinkedCalls ? (
+            <div className="space-y-2">
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
+          ) : !linkedCalls?.length ? (
+            <div className="flex flex-col items-center justify-center py-6">
+              <Video className="h-8 w-8 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground text-center">No calls linked to this deal yet.</p>
+              <p className="text-xs text-muted-foreground text-center mt-1">Calls matched via the Claap integration will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+              {linkedCalls.map((activity) => {
+                const meta = activity.metadata as Record<string, any> | null;
+                const transcriptText = meta?.ai_summary || meta?.transcript;
+
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-3 p-2.5 rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="mt-0.5 text-muted-foreground"><Video className="h-3.5 w-3.5" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium">{activity.description || 'Untitled call recording'}</p>
+                        {meta?.call_type && (
+                          <Badge variant={getCallTypeBadgeVariant(meta.call_type)} className="text-[10px]">
+                            {meta.call_type}
+                          </Badge>
+                        )}
+                        {meta?.match_status && (
+                          <Badge variant="outline" className={cn("text-[10px]",
+                            meta.match_status === 'manually_linked' ? 'border-blue-500/30 text-blue-600' :
+                            meta.match_status === 'matched' ? 'border-green-500/30 text-green-600' :
+                            'border-muted'
+                          )}>
+                            {meta.match_status === 'manually_linked' ? 'Manual' : 'Auto'}
+                          </Badge>
+                        )}
+                        {meta?.match_confidence != null && (
+                          <span className={cn("text-[10px] font-medium",
+                            meta.match_confidence >= 75 ? 'text-green-600' :
+                            meta.match_confidence >= 50 ? 'text-amber-600' : 'text-red-600'
+                          )}>
+                            {meta.match_confidence}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                        <span>{format(parseISO(activity.created_at), 'MMM d, yyyy · h:mm a')}</span>
+                        <span>{formatCallDuration(meta?.duration_seconds)}</span>
+                        {meta?.recording_url && (
+                          <a href={meta.recording_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                            <ExternalLink className="h-3 w-3" /> Open recording
+                          </a>
+                        )}
+                        {transcriptText && (
+                          <button type="button" className="inline-flex items-center gap-1 text-primary hover:underline"
+                            onClick={() => setExpandedTranscriptId((c) => c === activity.id ? null : activity.id)}>
+                            <FileText className="h-3 w-3" /> Transcript
+                          </button>
+                        )}
+                      </div>
+                      {meta?.match_reason && (
+                        <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{meta.match_reason}</p>
+                      )}
+                      {expandedTranscriptId === activity.id && transcriptText && (
+                        <div className="mt-2 rounded-md border border-border/50 bg-background/80 p-2 text-xs text-muted-foreground whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                          {transcriptText}
+                        </div>
+                      )}
+                    </div>
+                    {meta?.claap_meeting_id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setReassignMeetingId(meta.claap_meeting_id); setDealSelectorOpen(true); }}>
+                            <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Move to Another Deal
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setUnlinkMeetingId(meta.claap_meeting_id)} className="text-destructive">
+                            <Unlink className="h-3.5 w-3.5 mr-2" /> Remove from Deal
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Claap call management dialogs */}
       <ClaapDealSelector
         open={dealSelectorOpen}
