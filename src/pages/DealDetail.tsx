@@ -87,6 +87,7 @@ import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
 import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
+import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
 
 import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
