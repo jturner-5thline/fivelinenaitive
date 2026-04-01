@@ -970,13 +970,14 @@ export function useDealsDatabase() {
 
       // Lender notification batching is now handled by the DB trigger
       // (notify_email_on_lender_event queues into pending_lender_notifications)
-    } catch (err) {
+    } catch (err: any) {
       // Rollback on error
       setDeals(previousDeals);
       console.error('Error updating lender:', err);
+      const errMsg = err?.message || 'Unknown error';
       toast({
         title: "Error",
-        description: "Failed to update lender",
+        description: `Failed to update lender: ${errMsg}`,
         variant: "destructive",
       });
     } finally {
