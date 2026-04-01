@@ -55,6 +55,7 @@ const footerItems = [
   { title: "Integrations", url: "/integrations", icon: Plug, featureKey: "integrations" },
   { title: "Settings", url: "/settings", icon: Settings, featureKey: null }, // Always visible
   { title: "Help", url: "/help", icon: HelpCircle, featureKey: null }, // Always visible
+  { title: "Profile", url: "/account", icon: UserCircle, featureKey: null }, // Always visible
 ];
 
 export function AppSidebar() {
