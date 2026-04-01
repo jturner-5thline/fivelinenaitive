@@ -364,7 +364,7 @@ export function ClaapSyncSettings() {
                 <li>• <strong>Contact</strong> — Email matches a CRM contact</li>
               </ul>
               <p className="text-xs text-muted-foreground mt-1">
-                Manually linked calls are protected from auto-rematch.
+                Unmatched calls can receive AI-powered suggestions based on titles, participants, and learned patterns. Manually linked calls are protected from auto-rematch.
               </p>
             </div>
           </CardContent>
