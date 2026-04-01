@@ -292,10 +292,12 @@ const handler = async (req: Request): Promise<Response> => {
       }
       if (!deals || deals.length === 0) continue;
 
-      // Exclude archived/on_hold/etc.
+      // Exclude archived/on_hold/etc. and test deals
       const activeDeals = deals.filter(deal => {
         if (config.excluded_stages.includes(deal.status)) return false;
         if (config.excluded_stages.includes(deal.stage)) return false;
+        // Skip test deals (names starting with "TEST" or "test")
+        if (/^test\b/i.test((deal.company || '').trim())) return false;
         return true;
       });
 
