@@ -87,6 +87,7 @@ import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
 import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
+import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
 
 import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
@@ -5076,6 +5077,17 @@ export default function DealDetail() {
           milestoneCount={dbMilestones?.length || 0}
         />
       )}
+
+      {/* Floating Deal AI Assistant with operations */}
+      <FloatingDealAssistant
+        dealId={deal.id}
+        dealName={deal.company}
+        dealValue={deal.value}
+        dealStage={deal.stage}
+        dealStatus={deal.status}
+        dealManager={deal.manager}
+        dealNotes={deal.notes}
+      />
     </>
   );
 }
