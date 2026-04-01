@@ -413,46 +413,62 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
 
-        // Send one email per recipient
-        for (const [userId, recipient] of Object.entries(recipients)) {
-          // Don't send to the person who made the changes (if all changes are by the same person)
-          const allBySameUser = notifications.every(n => n.changed_by === userId);
-          if (allBySameUser) continue;
+        // Filter out cleanup-only entries (changes cancelled out)
+        const emailableNotifications = notifications.filter(n => !(n as any)._cleanup_only);
 
-          try {
-            const emailHtml = buildBatchedEmailHtml(
-              recipient.name,
-              deal.company,
-              dealId,
-              notifications,
-              stageLabels,
-              trackingLabels,
-              substageLabels,
-            );
+        // Send one email per recipient (only if there are real changes)
+        if (emailableNotifications.length > 0) {
+          for (const [userId, recipient] of Object.entries(recipients)) {
+            // Don't send to the person who made the changes (if all changes are by the same person)
+            const allBySameUser = emailableNotifications.every(n => n.changed_by === userId);
+            if (allBySameUser) continue;
 
-            await resend.emails.send({
-              from: "naitive <noreply@updates.naitive.co>",
-              to: [recipient.email],
-              subject: `${deal.company} — ${notifications.length} Lender${notifications.length !== 1 ? 's' : ''} Updated`,
-              html: emailHtml,
-            });
+            try {
+              const emailHtml = buildBatchedEmailHtml(
+                recipient.name,
+                deal.company,
+                dealId,
+                emailableNotifications,
+                stageLabels,
+                trackingLabels,
+                substageLabels,
+              );
 
-            results.push({ deal_id: dealId, email: recipient.email, lender_count: notifications.length, success: true });
-            console.log(`Batched lender email sent to ${recipient.email} for deal ${deal.company} (${notifications.length} lenders)`);
-          } catch (sendError: any) {
-            console.error(`Error sending to ${recipient.email}:`, sendError);
-            results.push({ deal_id: dealId, email: recipient.email, success: false, error: sendError.message });
+              await resend.emails.send({
+                from: "naitive <noreply@updates.naitive.co>",
+                to: [recipient.email],
+                subject: `${deal.company} — ${emailableNotifications.length} Lender${emailableNotifications.length !== 1 ? 's' : ''} Updated`,
+                html: emailHtml,
+              });
+
+              results.push({ deal_id: dealId, email: recipient.email, lender_count: emailableNotifications.length, success: true });
+              console.log(`Batched lender email sent to ${recipient.email} for deal ${deal.company} (${emailableNotifications.length} lenders)`);
+            } catch (sendError: any) {
+              console.error(`Error sending to ${recipient.email}:`, sendError);
+              results.push({ deal_id: dealId, email: recipient.email, success: false, error: sendError.message });
+            }
           }
         }
 
-        // Delete processed notifications
-        const ids = notifications.map(n => n.id);
-        await supabaseAdmin
-          .from('pending_lender_notifications')
-          .delete()
-          .in('id', ids);
+        // Delete all processed notifications (including merged ones)
+        const allIds: string[] = [];
+        for (const n of notifications) {
+          if ((n as any)._all_ids) {
+            allIds.push(...(n as any)._all_ids);
+          } else {
+            allIds.push(n.id);
+          }
+        }
+        // Also collect original pending IDs from the raw batch
+        const uniqueIds = [...new Set(allIds)];
+        if (uniqueIds.length > 0) {
+          await supabaseAdmin
+            .from('pending_lender_notifications')
+            .delete()
+            .in('id', uniqueIds);
+        }
 
-        console.log(`Cleaned up ${ids.length} processed notifications for deal ${dealId}`);
+        console.log(`Cleaned up ${uniqueIds.length} processed notifications for deal ${dealId}`);
       } catch (dealError: any) {
         console.error(`Error processing deal ${dealId}:`, dealError);
         results.push({ deal_id: dealId, success: false, error: dealError.message });
