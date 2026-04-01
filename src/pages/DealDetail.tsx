@@ -5076,6 +5076,17 @@ export default function DealDetail() {
           milestoneCount={dbMilestones?.length || 0}
         />
       )}
+
+      {/* Floating Deal AI Assistant with operations */}
+      <FloatingDealAssistant
+        dealId={deal.id}
+        dealName={deal.company}
+        dealValue={deal.value}
+        dealStage={deal.stage}
+        dealStatus={deal.status}
+        dealManager={deal.manager}
+        dealNotes={deal.notes}
+      />
     </>
   );
 }
