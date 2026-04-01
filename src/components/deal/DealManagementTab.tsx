@@ -42,22 +42,9 @@ export function DealManagementTab({ dealId, dealName, dealValue, dealStage, deal
         <DealActivityChart dealId={dealId} />
       </div>
 
-      {/* Row 3 — AI Analysis · Flag Log */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <ClaudeFinancialAnalysis
-          dealId={dealId}
-          financials={{
-            dealName,
-            dealValue,
-            dealStage,
-            dealType,
-            dealStatus,
-            lenderCount,
-          }}
-        />
-        <div className={hasFlags ? 'w-full' : ''}>
-          <DealFlagLog dealId={dealId} />
-        </div>
+      {/* Row 3 — Flag Log */}
+      <div className="grid grid-cols-1 gap-4 items-stretch">
+        <DealFlagLog dealId={dealId} />
       </div>
     </div>
   );
