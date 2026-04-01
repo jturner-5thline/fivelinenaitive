@@ -20,7 +20,7 @@ export function useClaapSuggestions() {
       if (!data?.length) return {};
 
       // Fetch deal names
-      const dealIds = [...new Set(data.filter((s: any) => s.deal_id).map((s: any) => s.deal_id))];
+      const dealIds = [...new Set(data.filter((s: any) => s.deal_id).map((s: any) => s.deal_id))] as string[];
       let dealNames: Record<string, string> = {};
       if (dealIds.length > 0) {
         const { data: deals } = await supabase
