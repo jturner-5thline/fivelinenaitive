@@ -502,6 +502,9 @@ Deno.serve(async (req) => {
               call_type: matchResult.callType, match_source: matchResult.matchSource,
               matched_lender_id: matchResult.lenderId, matched_crm_company_id: matchResult.crmCompanyId,
               matched_contact_id: matchResult.contactId, deal_id: resolvedDealId,
+              match_method: "auto", match_confidence: matchResult.confidence,
+              match_reason: matchResult.matchSource, match_status: "matched",
+              matched_at: new Date().toISOString(),
             }, { onConflict: "claap_id" }).select("id").single();
 
             if (newMeeting) {
