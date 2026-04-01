@@ -803,6 +803,13 @@ const preferenceMap: Record<string, string> = {
   task_assigned: 'email_task_assigned',
 };
 
+// Event types that should be batched into the digest email instead of sent immediately
+const BATCHED_EVENT_TYPES = new Set([
+  'deal_created', 'deal_updated', 'stage_changed',
+  'lender_added', 'lender_updated',
+  'milestone_added', 'milestone_completed', 'milestone_missed',
+]);
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -816,6 +823,77 @@ const handler = async (req: Request): Promise<Response> => {
 
     const payload: NotificationPayload = await req.json();
     console.log("Processing notification:", payload.type, "changed_by:", payload.changed_by);
+
+    // --- BATCHING: Queue deal-related events into pending_deal_notifications ---
+    if (BATCHED_EVENT_TYPES.has(payload.type) && payload.deal_id) {
+      // Resolve company_id from the deal
+      const { data: dealData } = await supabaseAdmin
+        .from('deals')
+        .select('company_id, company')
+        .eq('id', payload.deal_id)
+        .single();
+
+      if (dealData?.company_id) {
+        // Resolve actor name
+        let actorName = payload.changed_by || null;
+        let actorId: string | null = null;
+
+        // Try to resolve the actor user ID from changed_by display name
+        if (payload.changed_by) {
+          const { data: actorProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('user_id')
+            .ilike('display_name', payload.changed_by)
+            .maybeSingle();
+          if (actorProfile) actorId = actorProfile.user_id;
+        }
+        if (!actorId) actorId = payload.user_id || null;
+
+        // Build change_summary from payload.changes array
+        const changeSummary: Record<string, any> = {};
+        if (payload.changes) {
+          for (const c of payload.changes) {
+            changeSummary[c.field] = { from: c.old || null, to: c.new || null };
+          }
+        }
+        // For stage_changed, add old/new values
+        if (payload.type === 'stage_changed' && payload.old_value && payload.new_value) {
+          changeSummary['stage'] = { from: payload.old_value, to: payload.new_value };
+        }
+
+        const entityName = payload.lender_name || payload.milestone_title || dealData.company || null;
+        const entityId = (payload.metadata as any)?.lender_id || (payload.metadata as any)?.milestone_id || null;
+
+        const { error: insertError } = await supabaseAdmin
+          .from('pending_deal_notifications')
+          .insert({
+            deal_id: payload.deal_id,
+            company_id: dealData.company_id,
+            event_type: payload.type,
+            entity_name: entityName,
+            entity_id: entityId,
+            change_summary: changeSummary,
+            changed_by: actorId,
+            changed_by_name: actorName,
+            metadata: {
+              deal_name: payload.deal_name || dealData.company,
+              ...(payload.metadata || {}),
+            },
+          });
+
+        if (insertError) {
+          console.error("Error queuing deal notification:", insertError);
+        } else {
+          console.log(`Queued ${payload.type} notification for deal ${payload.deal_id} into batch`);
+        }
+
+        return new Response(JSON.stringify({ success: true, queued: true, type: payload.type }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+    }
+    // --- END BATCHING ---
 
     // --- Resolve recipients ---
     // For lender events: send to ALL admins + deal manager + deal analyst

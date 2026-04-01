@@ -11830,6 +11830,63 @@ export type Database = {
           },
         ]
       }
+      pending_deal_notifications: {
+        Row: {
+          change_summary: Json | null
+          changed_by: string | null
+          changed_by_name: string | null
+          company_id: string
+          created_at: string
+          deal_id: string
+          entity_id: string | null
+          entity_name: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          change_summary?: Json | null
+          changed_by?: string | null
+          changed_by_name?: string | null
+          company_id: string
+          created_at?: string
+          deal_id: string
+          entity_id?: string | null
+          entity_name?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          change_summary?: Json | null
+          changed_by?: string | null
+          changed_by_name?: string | null
+          company_id?: string
+          created_at?: string
+          deal_id?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_deal_notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_deal_notifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_lender_notifications: {
         Row: {
           change_summary: Json
