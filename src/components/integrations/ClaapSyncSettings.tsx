@@ -27,9 +27,14 @@ export function ClaapSyncSettings() {
     matched: number;
     rematched: number;
     skipped: number;
+    skippedInternalOnly: number;
+    unmatched: number;
     alreadyExists: number;
     errors: number;
     batchesDone: number;
+    pagesProcessed: number;
+    totalCallsScanned: number;
+    pageSize: number;
     errorDetails: Array<{ claap_id: string; title: string | null; error: string }>;
     processedTitles: string[];
   } | null>(null);
