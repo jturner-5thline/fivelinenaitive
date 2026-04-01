@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Send, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Send, Loader2, ChevronLeft, ChevronRight, Check, X, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -10,63 +10,98 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useDealAssistant, type DealAction } from '@/hooks/useDealAssistant';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
-import { sendClaudeMessage } from '@/services/claude';
-import { toast } from '@/hooks/use-toast';
+import { XCircle } from 'lucide-react';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
+function ActionCard({
+  action,
+  onConfirm,
+  onCancel,
+  status,
+  isExecuting,
+}: {
+  action: DealAction;
+  onConfirm: () => void;
+  onCancel: () => void;
+  status?: 'pending' | 'confirmed' | 'cancelled';
+  isExecuting: boolean;
+}) {
+  const isResolved = status === 'confirmed' || status === 'cancelled';
+  return (
+    <div className={cn(
+      "rounded-lg border p-3 mt-2 text-sm",
+      status === 'confirmed' && "border-green-500/30 bg-green-500/5",
+      status === 'cancelled' && "border-muted bg-muted/30 opacity-60",
+      status === 'pending' && "border-primary/30 bg-primary/5",
+    )}>
+      <div className="flex items-start gap-2">
+        <div className={cn(
+          "mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0",
+          status === 'confirmed' ? "bg-green-500/20 text-green-500" :
+          status === 'cancelled' ? "bg-muted text-muted-foreground" :
+          "bg-primary/20 text-primary"
+        )}>
+          {status === 'confirmed' ? <Check className="h-3 w-3" /> :
+           status === 'cancelled' ? <XCircle className="h-3 w-3" /> :
+           <ArrowRight className="h-3 w-3" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-xs">{action.label}</p>
+          {action.currentValue && action.newValue && (
+            <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+              <span className="line-through">{action.currentValue}</span>
+              <ArrowRight className="h-3 w-3 shrink-0" />
+              <span className="font-medium text-foreground">{action.newValue}</span>
+            </div>
+          )}
+          {action.description && !action.currentValue && (
+            <p className="text-xs text-muted-foreground mt-0.5">{action.description}</p>
+          )}
+        </div>
+      </div>
+      {!isResolved && (
+        <div className="flex gap-2 mt-2.5 ml-7">
+          <Button size="sm" className="h-7 text-xs px-3 gap-1" onClick={onConfirm} disabled={isExecuting}>
+            {isExecuting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+            Confirm
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs px-3 gap-1" onClick={onCancel} disabled={isExecuting}>
+            <X className="h-3 w-3" />
+            Cancel
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function FloatingDealsAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [question, setQuestion] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { messages, sendMessage, clearMessages, isLoading, isExecuting, executeAction, cancelAction } = useDealAssistant();
   const { state: sidebarState, isHovering } = useSidebar();
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  const isEffectivelyExpanded = sidebarState === 'expanded' || isHovering;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const pipelineContext = {
+    company: 'Pipeline Overview',
+    value: 0,
+    stage: '',
+    status: '',
+  };
+
   const handleSendQuestion = useCallback(async () => {
     if (!question.trim() || isLoading) return;
-    
-    const userMessage = question.trim();
+    const q = question.trim();
     setQuestion('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setIsLoading(true);
-
-    try {
-      const result = await sendClaudeMessage({
-        messages: [...messages, { role: 'user' as const, content: userMessage }],
-        system: 'You are an AI assistant for deal pipeline management. Help users understand their deal pipeline, identify deals that need attention, and provide actionable insights. Format responses with clear headings and bullet points.',
-        context: 'deal-assistant' as any,
-        temperature: 0.7,
-        max_tokens: 1000,
-      });
-
-      if (!result.success) throw new Error(result.error || 'Failed to get response');
-
-      setMessages(prev => [...prev, { role: 'assistant', content: result.response }]);
-    } catch (err) {
-      console.error('Deals assistant error:', err);
-      toast({
-        title: 'Failed to get response',
-        description: err instanceof Error ? err.message : 'Please try again',
-        variant: 'destructive',
-      });
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [question, isLoading]);
+    sendMessage(q, pipelineContext);
+  }, [question, isLoading, sendMessage]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -75,14 +110,10 @@ export function FloatingDealsAssistant() {
     }
   }, [handleSendQuestion]);
 
-  const clearMessages = () => {
-    setMessages([]);
-  };
-
   const suggestedQuestions = [
     "Pipeline overview?",
     "Which deals need attention?",
-    "Recent activity summary",
+    "Move deal X to next stage",
   ];
 
   return createPortal(
@@ -145,15 +176,10 @@ export function FloatingDealsAssistant() {
                   <img src={naitiveAiIcon} alt="AI" className="h-4 w-4" />
                   Pipeline Assistant
                 </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Ask about your deals</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Ask about your deals or take actions</p>
               </div>
               {messages.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearMessages}
-                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-                >
+                <Button variant="ghost" size="sm" onClick={clearMessages} className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
                   Clear
                 </Button>
               )}
@@ -177,15 +203,7 @@ export function FloatingDealsAssistant() {
                 >
                   <div className="flex gap-2 min-w-max">
                     {suggestedQuestions.map((q, i) => (
-                      <Button
-                        key={i}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7 whitespace-nowrap shrink-0"
-                        onClick={() => {
-                          setQuestion(q);
-                        }}
-                      >
+                      <Button key={i} variant="outline" size="sm" className="text-xs h-7 whitespace-nowrap shrink-0" onClick={() => setQuestion(q)}>
                         {q}
                       </Button>
                     ))}
@@ -248,6 +266,17 @@ export function FloatingDealsAssistant() {
                             >
                               {message.content.replace(/([^\n])\n(#{1,3}\s)/g, '$1\n\n$2')}
                             </ReactMarkdown>
+                            {/* Action Confirmation Cards */}
+                            {message.actions && message.actions.map((action) => (
+                              <ActionCard
+                                key={action.id}
+                                action={action}
+                                status={message.actionStatus}
+                                isExecuting={isExecuting}
+                                onConfirm={() => executeAction(index, action.id)}
+                                onCancel={() => cancelAction(index)}
+                              />
+                            ))}
                           </div>
                         ) : (
                           message.content
@@ -274,15 +303,15 @@ export function FloatingDealsAssistant() {
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask about your pipeline..."
+                  placeholder="Ask or command: 'Move Niki's Store to...'..."
                   className="flex-1 h-9 text-sm border-primary/20 bg-background/80 focus-visible:ring-primary/30"
-                  disabled={isLoading}
+                  disabled={isLoading || isExecuting}
                 />
                 <Button
                   variant="gradient"
                   size="sm"
                   onClick={handleSendQuestion}
-                  disabled={!question.trim() || isLoading}
+                  disabled={!question.trim() || isLoading || isExecuting}
                   className="h-9 w-9 p-0 relative overflow-hidden"
                 >
                   {question.trim() && !isLoading && (
