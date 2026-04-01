@@ -10,7 +10,7 @@ export interface ClaudeRequestOptions {
   system?: string;
   temperature?: number;
   max_tokens?: number;
-  context?: "chat" | "financial-analysis" | "agent" | "workflow";
+  context?: "chat" | "financial-analysis" | "agent" | "workflow" | "deal-assistant";
 }
 
 export interface ClaudeResponse {
