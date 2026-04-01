@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, Filter, Clock, AlertTriangle, Download } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Loader2, RefreshCw, Filter, Clock, AlertTriangle, Download, CheckCircle2, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -59,6 +60,21 @@ export function ClaapSyncSettings() {
         .from('claap_skipped_calls')
         .select('*')
         .eq('force_synced', false)
+        .order('created_at', { ascending: false })
+        .limit(50) as any);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Fetch matched calls
+  const { data: matchedCalls, isLoading: matchedLoading } = useQuery({
+    queryKey: ['claap-matched-calls'],
+    queryFn: async () => {
+      const { data } = await (supabase
+        .from('claap_meetings')
+        .select('id, title, status, match_source, call_type, started_at, created_at, deal_id')
+        .not('match_source', 'is', null)
         .order('created_at', { ascending: false })
         .limit(50) as any);
       return data || [];
@@ -308,72 +324,128 @@ export function ClaapSyncSettings() {
         </Card>
       </div>
 
-      {/* Right column: Skipped Calls */}
+      {/* Right column: Matched & Skipped Calls */}
       <Card className="flex flex-col">
-        <CardHeader className="pb-3 shrink-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Recently Skipped Calls
-              {skippedCalls && skippedCalls.length > 0 && (
-                <Badge variant="secondary" className="text-xs">{skippedCalls.length}</Badge>
-              )}
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="flex-1 min-h-0">
-          {skippedLoading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
-          ) : !skippedCalls || skippedCalls.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No skipped calls. All synced calls matched successfully.
-            </p>
-          ) : (
-            <div className="max-h-[400px] overflow-y-auto pr-1">
-              <div className="space-y-2">
-                {skippedCalls.map((call: any) => (
-                  <div
-                    key={call.id}
-                    className="flex items-center justify-between border rounded-lg p-2.5 gap-2"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {call.title || 'Untitled Call'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {call.started_at
-                            ? format(new Date(call.started_at), 'MMM d, yyyy h:mm a')
-                            : format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {call.skip_reason}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => forceSync.mutate(call.id)}
-                      disabled={forceSync.isPending}
-                      className="shrink-0"
-                    >
-                      {forceSync.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                      )}
-                      Sync
-                    </Button>
+        <CardHeader className="pb-2 shrink-0">
+          <Tabs defaultValue="matched" className="w-full">
+            <TabsList className="w-full grid grid-cols-2 h-8">
+              <TabsTrigger value="matched" className="text-xs gap-1.5">
+                <CheckCircle2 className="h-3 w-3" />
+                Matched
+                {matchedCalls && matchedCalls.length > 0 && (
+                  <Badge variant="secondary" className="text-[10px] h-4 px-1">{matchedCalls.length}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="skipped" className="text-xs gap-1.5">
+                <AlertTriangle className="h-3 w-3" />
+                Skipped
+                {skippedCalls && skippedCalls.length > 0 && (
+                  <Badge variant="secondary" className="text-[10px] h-4 px-1">{skippedCalls.length}</Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="matched" className="mt-3">
+              {matchedLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : !matchedCalls || matchedCalls.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No matched calls yet.
+                </p>
+              ) : (
+                <div className="max-h-[400px] overflow-y-auto pr-1">
+                  <div className="space-y-2">
+                    {matchedCalls.map((call: any) => {
+                      const matchType = call.call_type || 'Unknown';
+                      const matchColor = matchType === 'Deal Call' ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/20'
+                        : matchType === 'Lender Call' ? 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/20'
+                        : matchType === 'Company Call' ? 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/20'
+                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20';
+                      return (
+                        <div key={call.id} className="border rounded-lg p-2.5 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium truncate flex-1">{call.title || 'Untitled Call'}</p>
+                            <Badge variant="outline" className={`text-[10px] shrink-0 ${matchColor}`}>
+                              {matchType.replace(' Call', '')}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Link2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <p className="text-xs text-muted-foreground truncate">{call.match_source}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="text-xs text-muted-foreground">
+                              {call.started_at
+                                ? format(new Date(call.started_at), 'MMM d, yyyy h:mm a')
+                                : format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="skipped" className="mt-3">
+              {skippedLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : !skippedCalls || skippedCalls.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No skipped calls. All synced calls matched successfully.
+                </p>
+              ) : (
+                <div className="max-h-[400px] overflow-y-auto pr-1">
+                  <div className="space-y-2">
+                    {skippedCalls.map((call: any) => (
+                      <div
+                        key={call.id}
+                        className="flex items-center justify-between border rounded-lg p-2.5 gap-2"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {call.title || 'Untitled Call'}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {call.started_at
+                                ? format(new Date(call.started_at), 'MMM d, yyyy h:mm a')
+                                : format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                            {call.skip_reason}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => forceSync.mutate(call.id)}
+                          disabled={forceSync.isPending}
+                          className="shrink-0"
+                        >
+                          {forceSync.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                          )}
+                          Sync
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardHeader>
       </Card>
     </div>
   );
