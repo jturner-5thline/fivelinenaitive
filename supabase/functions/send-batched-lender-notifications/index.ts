@@ -374,6 +374,9 @@ const handler = async (req: Request): Promise<Response> => {
               deal.company,
               dealId,
               notifications,
+              stageLabels,
+              trackingLabels,
+              substageLabels,
             );
 
             await resend.emails.send({
