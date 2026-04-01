@@ -331,8 +331,8 @@ export function ClaapSyncSettings() {
               No skipped calls. All synced calls matched successfully.
             </p>
           ) : (
-            <ScrollArea className="h-[400px]">
-              <div className="space-y-2 pr-2">
+            <div className="max-h-[400px] overflow-y-auto pr-1">
+              <div className="space-y-2">
                 {skippedCalls.map((call: any) => (
                   <div
                     key={call.id}
