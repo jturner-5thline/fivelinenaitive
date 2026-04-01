@@ -266,7 +266,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 5. Insert master lenders
+    // 4b. Disable deal summary emails for demo accounts
+    await admin.from("user_deal_summary_preferences").upsert({
+      user_id: userId,
+      company_id: companyId,
+      daily_enabled: false,
+      weekly_enabled: false,
+    }, { onConflict: "user_id,company_id" });
+
     const lendersToInsert = DEMO_LENDERS.map(l => ({
       ...l,
       user_id: userId,
