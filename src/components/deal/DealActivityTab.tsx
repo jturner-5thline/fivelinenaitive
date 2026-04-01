@@ -109,6 +109,46 @@ function getCallTypeBadgeVariant(callType: string | null | undefined): 'default'
   return 'outline';
 }
 
+function useLinkedClaapCalls(dealId: string | undefined) {
+  return useQuery<DealActivityDetailItem[]>({
+    queryKey: ['deal-linked-claap-calls', dealId],
+    queryFn: async () => {
+      if (!dealId) return [];
+
+      const { data: claapMeetings, error } = await supabase
+        .from('claap_meetings')
+        .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary, match_status, match_method, match_confidence, match_reason, manually_locked')
+        .eq('deal_id', dealId)
+        .order('started_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (claapMeetings || []).map((meeting) => ({
+        id: `claap-${meeting.id}`,
+        activity_type: 'claap_recording_linked',
+        description: meeting.title || 'Untitled call recording',
+        created_at: meeting.started_at || meeting.created_at,
+        metadata: {
+          recording_url: meeting.recording_url,
+          transcript: meeting.transcript,
+          ai_summary: meeting.ai_summary,
+          duration_seconds: meeting.duration_seconds,
+          call_type: meeting.call_type,
+          claap_meeting_id: meeting.id,
+          match_status: (meeting as any).match_status,
+          match_method: (meeting as any).match_method,
+          match_confidence: (meeting as any).match_confidence,
+          match_reason: (meeting as any).match_reason,
+          manually_locked: (meeting as any).manually_locked,
+        },
+        user_display_name: null,
+        source: 'claap' as const,
+      }));
+    },
+    enabled: !!dealId,
+  });
+}
+
 function useActivityDetailsForDate(dealId: string | undefined, date: string | null) {
   return useQuery<DealActivityDetailItem[]>({
     queryKey: ['deal-activity-details', dealId, date],
@@ -156,7 +196,7 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
           metadata: activity.metadata && typeof activity.metadata === 'object' && !Array.isArray(activity.metadata)
             ? activity.metadata as Record<string, any>
             : null,
-          source: 'activity',
+          source: 'activity' as const,
         }));
 
       const mappedClaapMeetings: DealActivityDetailItem[] = (claapMeetings || [])
@@ -185,7 +225,7 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
             manually_locked: (meeting as any).manually_locked,
           },
           user_display_name: null,
-          source: 'claap',
+          source: 'claap' as const,
         }));
 
       return [...filteredActivityLogs, ...mappedClaapMeetings].sort(
