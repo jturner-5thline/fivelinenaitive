@@ -413,9 +413,13 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const daysBack = body.days_back || 365;
-    const batchSize = body.batch_size || 20;
-    const cursor = body.cursor || null;
+    const parsedDaysBack = Number(body.days_back);
+    const daysBack = Number.isFinite(parsedDaysBack) && parsedDaysBack > 0 ? parsedDaysBack : 365;
+    const parsedBatchSize = Number(body.batch_size);
+    const batchSize = Number.isFinite(parsedBatchSize) && parsedBatchSize > 0
+      ? Math.min(Math.floor(parsedBatchSize), 100)
+      : 20;
+    const cursor = typeof body.cursor === "string" && body.cursor.trim().length > 0 ? body.cursor : null;
     const timeBudgetMs = body.time_budget_ms || 50000;
     const rematchExistingOnly = body.rematch_existing_only === true;
     const startTime = Date.now();
@@ -443,9 +447,27 @@ Deno.serve(async (req) => {
       }
     }
 
-    let processed = 0, matched = 0, skipped = 0, alreadyExists = 0, errors = 0, rematched = 0;
+    let processed = 0;
+    let matched = 0;
+    let skipped = 0;
+    let skippedInternalOnly = 0;
+    let unmatched = 0;
+    let alreadyExists = 0;
+    let errors = 0;
+    let rematched = 0;
+    let totalRecordsRetrieved = 0;
     const errorDetails: Array<{ claap_id: string; title: string | null; error: string }> = [];
     const processedTitles: string[] = [];
+
+    console.log("Claap historical sync started", {
+      companyId,
+      daysBack,
+      batchSize,
+      cursor,
+      rematchExistingOnly,
+      timeBudgetMs,
+      syncAllCalls,
+    });
 
     // ─── Rematch existing only ───
     if (rematchExistingOnly) {
@@ -457,7 +479,6 @@ Deno.serve(async (req) => {
       const { data: existingMeetings, error: existingError } = await existingQuery;
       if (existingError) throw existingError;
 
-      // Also re-evaluate previously skipped calls
       let skippedQuery = supabaseAdmin.from("claap_skipped_calls")
         .select("id, claap_id, title, recording_url, organizer_email, duration_seconds, started_at, company_id, participants, skip_reason")
         .eq("force_synced", false).order("created_at", { ascending: false }).limit(200);
@@ -465,7 +486,6 @@ Deno.serve(async (req) => {
 
       const { data: skippedCalls } = await skippedQuery;
 
-      // Process existing unlinked meetings
       for (const meeting of (existingMeetings || []) as StoredClaapMeeting[]) {
         if (Date.now() - startTime > timeBudgetMs) break;
         processedTitles.push(meeting.title || "(no title)");
@@ -481,11 +501,9 @@ Deno.serve(async (req) => {
         processed++;
       }
 
-      // Re-evaluate skipped calls with new deal-first matching
       for (const sc of (skippedCalls || [])) {
         if (Date.now() - startTime > timeBudgetMs) break;
 
-        // Only re-evaluate calls skipped due to "No matching" (not basic filter exclusions)
         if (sc.skip_reason && !sc.skip_reason.includes("No matching")) continue;
 
         const participants = (sc.participants as ClassifiedParticipant[]) || [];
@@ -494,7 +512,6 @@ Deno.serve(async (req) => {
         if (matchResult.matched && !matchResult.ambiguous) {
           const resolvedDealId = await resolveDealIdFromMatchResult(supabaseAdmin, matchResult);
           if (resolvedDealId) {
-            // Create meeting record from skipped call
             const { data: newMeeting } = await supabaseAdmin.from("claap_meetings").upsert({
               claap_id: sc.claap_id, title: sc.title, recording_url: sc.recording_url,
               organizer_email: sc.organizer_email, duration_seconds: sc.duration_seconds,
@@ -508,7 +525,6 @@ Deno.serve(async (req) => {
             }, { onConflict: "claap_id" }).select("id").single();
 
             if (newMeeting) {
-              // Insert participants
               if (participants.length > 0) {
                 await supabaseAdmin.from("claap_meeting_participants").insert(
                   participants.map(p => ({ meeting_id: newMeeting.id, name: p.name, email: p.email, domain: p.domain, is_internal: p.is_internal }))
@@ -522,7 +538,6 @@ Deno.serve(async (req) => {
                 notes: `Auto-linked by re-match from skipped (${matchResult.matchType}: ${matchResult.callType})`,
               }, { onConflict: "deal_id,recording_id" });
 
-              // Remove from skipped
               await supabaseAdmin.from("claap_skipped_calls").delete().eq("id", sc.id);
 
               matched++; rematched++;
@@ -532,20 +547,56 @@ Deno.serve(async (req) => {
         processed++;
       }
 
+      console.log("Claap rematch completed", {
+        companyId,
+        processed,
+        matched,
+        rematched,
+        skipped,
+        errors,
+        elapsedMs: Date.now() - startTime,
+      });
+
       return new Response(JSON.stringify({
-        ok: true, processed, matched, rematched, skipped, already_exists: alreadyExists,
-        errors, error_details: errorDetails, processed_titles: processedTitles,
+        ok: true,
+        processed,
+        matched,
+        rematched,
+        skipped,
+        skipped_internal_only: skippedInternalOnly,
+        unmatched,
+        already_exists: alreadyExists,
+        errors,
+        error_details: errorDetails,
+        processed_titles: processedTitles,
         total_in_batch: (existingMeetings?.length || 0) + (skippedCalls?.length || 0),
-        next_cursor: null, has_more: false, elapsed_ms: Date.now() - startTime,
+        records_returned: 0,
+        total_records_retrieved: totalRecordsRetrieved,
+        pages_processed: 0,
+        page_size: batchSize,
+        next_cursor: null,
+        has_more: false,
+        elapsed_ms: Date.now() - startTime,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ─── Full backfill from Claap API ───
     const sinceDate = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
-    let apiUrl = `https://api.claap.io/v1/recordings?limit=${batchSize}&created_after=${sinceDate}`;
-    if (cursor) apiUrl += `&cursor=${cursor}`;
+    const apiUrl = new URL("https://api.claap.io/v1/recordings");
+    apiUrl.searchParams.set("limit", String(batchSize));
+    apiUrl.searchParams.set("createdAfter", sinceDate);
+    apiUrl.searchParams.set("sort", "created_desc");
+    if (cursor) apiUrl.searchParams.set("cursor", cursor);
 
-    const claapResp = await fetch(apiUrl, {
+    console.log("Claap historical sync requesting page", {
+      companyId,
+      requestedDateWindowStart: sinceDate,
+      batchSize,
+      cursor,
+      url: apiUrl.toString(),
+    });
+
+    const claapResp = await fetch(apiUrl.toString(), {
       headers: { "X-Claap-Key": claapApiKey, "Content-Type": "application/json" },
     });
 
@@ -557,20 +608,56 @@ Deno.serve(async (req) => {
     }
 
     const claapData = await claapResp.json();
-    const recordings = claapData.result?.recordings || claapData.recordings || claapData.data || [];
-    const nextCursor = claapData.result?.cursor || claapData.cursor || claapData.next_cursor || null;
+    const resultNode = claapData?.result && typeof claapData.result === "object" ? claapData.result : {};
+    const pagination = resultNode?.pagination && typeof resultNode.pagination === "object"
+      ? resultNode.pagination
+      : (claapData?.pagination && typeof claapData.pagination === "object" ? claapData.pagination : {});
+    const recordings = Array.isArray(resultNode?.recordings)
+      ? resultNode.recordings
+      : Array.isArray(claapData?.recordings)
+        ? claapData.recordings
+        : Array.isArray(claapData?.data)
+          ? claapData.data
+          : [];
+
+    const nextCursorRaw = pagination?.nextCursor
+      ?? pagination?.next_cursor
+      ?? resultNode?.nextCursor
+      ?? resultNode?.next_cursor
+      ?? claapData?.nextCursor
+      ?? claapData?.next_cursor
+      ?? claapData?.cursor
+      ?? null;
+    const nextCursor = typeof nextCursorRaw === "string" && nextCursorRaw.trim().length > 0 ? nextCursorRaw : null;
+    const totalCount = Number.isFinite(Number(pagination?.totalCount ?? pagination?.total_count))
+      ? Number(pagination?.totalCount ?? pagination?.total_count)
+      : null;
+
+    totalRecordsRetrieved = recordings.length;
+
+    console.log("Claap historical sync received page", {
+      companyId,
+      requestedDateWindowStart: sinceDate,
+      batchSize,
+      cursor,
+      returnedCount: recordings.length,
+      totalCount,
+      nextCursor,
+      hasMore: !!nextCursor,
+    });
 
     for (const recording of recordings) {
-      if (Date.now() - startTime > timeBudgetMs) break;
-
       const claapId = recording.id;
-      if (!claapId) { errors++; continue; }
+      if (!claapId) {
+        errors++;
+        continue;
+      }
 
       const title = recording.title || recording.name || recording.topic || null;
       const organizerEmail = recording.recorder?.email || recording.organizer?.email || null;
       const rawDuration = recording.duration_seconds || recording.durationSeconds || null;
       const durationSeconds = rawDuration != null ? Math.floor(Number(rawDuration)) : null;
-      const recordingUrl = recording.url || recording.video_url || recording.videoUrl || null;
+      const recordingUrl = recording.url || recording.video_url || recording.videoUrl || recording.video?.url || null;
       const startedAt = recording.meeting?.startingAt || recording.started_at || recording.created_at || recording.createdAt || null;
       const participants = recording.meeting?.participants || recording.participants || [];
 
@@ -579,10 +666,19 @@ Deno.serve(async (req) => {
       const classifiedParticipants = participants.map((p: any) => {
         const email = p.email || "";
         const domain = email.split("@")[1]?.toLowerCase() || "";
-        return { name: p.name || "", email, domain, is_internal: internalDomains.some(d => domain === d.toLowerCase()) };
+        return {
+          name: p.name || "",
+          email,
+          domain,
+          is_internal: domain ? internalDomains.some(d => domain === d.toLowerCase()) : false,
+        };
       });
 
-      // Dedup check
+      const identifiableParticipants = classifiedParticipants.filter((p) => !!p.email);
+      const hasExternalParticipant = identifiableParticipants.some((p) => !p.is_internal);
+      const allIdentifiableParticipantsInternal = identifiableParticipants.length > 0
+        && identifiableParticipants.every((p) => p.is_internal);
+
       const { data: existing } = await supabaseAdmin.from("claap_meetings")
         .select("id, claap_id, title, recording_url, transcript, organizer_email, duration_seconds, started_at, company_id, deal_id")
         .eq("claap_id", claapId).maybeSingle();
@@ -601,35 +697,49 @@ Deno.serve(async (req) => {
 
           if (rematchResult.rematched) {
             if (existingSkipped?.id) await supabaseAdmin.from("claap_skipped_calls").delete().eq("id", existingSkipped.id);
-            matched++; rematched++; processed++; continue;
+            matched++;
+            rematched++;
+            processed++;
+            continue;
           }
         } catch (err) {
           errorDetails.push({ claap_id: claapId, title, error: err instanceof Error ? err.message : String(err) });
-          errors++; processed++; continue;
+          errors++;
+          processed++;
+          continue;
         }
       }
 
-      if (existing) { alreadyExists++; processed++; continue; }
+      if (existing) {
+        alreadyExists++;
+        processed++;
+        continue;
+      }
 
       try {
-        const hasExternal = classifiedParticipants.some((p: any) => !p.is_internal);
-        const hasInternal = classifiedParticipants.some((p: any) => p.is_internal);
-
         let excluded = false;
         let exclusionReason = "";
 
-        if (!hasExternal) { excluded = true; exclusionReason = "All participants are internal"; }
-        if (!excluded && !hasInternal) { excluded = true; exclusionReason = "No internal participant found"; }
+        if (allIdentifiableParticipantsInternal && !hasExternalParticipant) {
+          excluded = true;
+          exclusionReason = "All participants are internal";
+          skippedInternalOnly++;
+        }
 
         if (!excluded && title) {
           const tl = title.toLowerCase().trim();
           for (const pattern of excludedTitlePatterns) {
-            if (tl.includes(pattern.toLowerCase())) { excluded = true; exclusionReason = `Title matches excluded pattern: "${pattern}"`; break; }
+            if (tl.includes(pattern.toLowerCase())) {
+              excluded = true;
+              exclusionReason = `Title matches excluded pattern: "${pattern}"`;
+              break;
+            }
           }
         }
 
         if (!excluded && durationSeconds && durationSeconds < minDurationSeconds) {
-          excluded = true; exclusionReason = `Duration (${durationSeconds}s) under minimum (${minDurationSeconds}s)`;
+          excluded = true;
+          exclusionReason = `Duration (${durationSeconds}s) under minimum (${minDurationSeconds}s)`;
         }
 
         if (excluded) {
@@ -639,7 +749,9 @@ Deno.serve(async (req) => {
             participants: classifiedParticipants, started_at: startedAt,
             skip_reason: exclusionReason, match_attempts: { stage: "basic_filter", source: "backfill" },
           }, { onConflict: "claap_id" });
-          skipped++; processed++; continue;
+          skipped++;
+          processed++;
+          continue;
         }
 
         const matchResult = await runSmartMatching(supabaseAdmin, title, classifiedParticipants, companyId);
@@ -652,10 +764,12 @@ Deno.serve(async (req) => {
             skip_reason: "No matching deal, lender, company, or contact found",
             match_attempts: { stage: "smart_matching", source: "backfill" },
           }, { onConflict: "claap_id" });
-          skipped++; processed++; continue;
+          unmatched++;
+          skipped++;
+          processed++;
+          continue;
         }
 
-        // Fetch transcript
         let transcript: string | null = null;
         try {
           const txResp = await fetch(`https://api.claap.io/v1/recordings/${claapId}/transcript?format=text`, {
@@ -666,9 +780,15 @@ Deno.serve(async (req) => {
             if (ct.includes("application/json")) {
               const txData = await txResp.json();
               transcript = txData.result?.transcript || txData.transcript || null;
-            } else { transcript = await txResp.text(); }
-          } else { await txResp.text(); }
-        } catch (e) { console.error(`Failed to fetch transcript for ${claapId}:`, e); }
+            } else {
+              transcript = await txResp.text();
+            }
+          } else {
+            await txResp.text();
+          }
+        } catch (e) {
+          console.error(`Failed to fetch transcript for ${claapId}:`, e);
+        }
 
         const meetingRecord: Record<string, unknown> = {
           claap_id: claapId, title, recording_url: recordingUrl, transcript,
@@ -686,7 +806,9 @@ Deno.serve(async (req) => {
 
         if (meetingError) {
           errorDetails.push({ claap_id: claapId, title, error: meetingError.message });
-          errors++; processed++; continue;
+          errors++;
+          processed++;
+          continue;
         }
 
         if (classifiedParticipants.length > 0) {
@@ -719,18 +841,57 @@ Deno.serve(async (req) => {
           if (existingSkipped?.id) await supabaseAdmin.from("claap_skipped_calls").delete().eq("id", existingSkipped.id);
         }
 
-        matched++; processed++;
+        matched++;
+        processed++;
       } catch (err) {
         errorDetails.push({ claap_id: claapId, title: recording.title || null, error: err instanceof Error ? err.message : String(err) });
-        errors++; processed++;
+        errors++;
+        processed++;
       }
     }
 
+    console.log("Claap historical sync completed page", {
+      companyId,
+      requestedDateWindowStart: sinceDate,
+      batchSize,
+      cursor,
+      nextCursor,
+      returnedCount: recordings.length,
+      totalCount,
+      processed,
+      matched,
+      rematched,
+      unmatched,
+      skipped,
+      skippedInternalOnly,
+      alreadyExists,
+      errors,
+      elapsedMs: Date.now() - startTime,
+    });
+
     return new Response(JSON.stringify({
-      ok: true, processed, matched, rematched, skipped, already_exists: alreadyExists,
-      errors, error_details: errorDetails, processed_titles: processedTitles,
-      total_in_batch: recordings.length, next_cursor: nextCursor || null,
-      has_more: !!nextCursor, elapsed_ms: Date.now() - startTime,
+      ok: true,
+      processed,
+      matched,
+      rematched,
+      skipped,
+      skipped_internal_only: skippedInternalOnly,
+      unmatched,
+      already_exists: alreadyExists,
+      errors,
+      error_details: errorDetails,
+      processed_titles: processedTitles,
+      total_in_batch: recordings.length,
+      records_returned: recordings.length,
+      total_records_retrieved: totalRecordsRetrieved,
+      claap_total_count: totalCount,
+      pages_processed: 1,
+      page_size: batchSize,
+      requested_date_window_start: sinceDate,
+      requested_days_back: daysBack,
+      next_cursor: nextCursor,
+      has_more: !!nextCursor,
+      elapsed_ms: Date.now() - startTime,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: unknown) {
     console.error("Claap backfill error:", error);
