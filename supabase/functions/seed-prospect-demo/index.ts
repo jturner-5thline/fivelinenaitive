@@ -1,0 +1,440 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Prospect-specific configuration passed in the request body
+interface ProspectConfig {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  company_name: string;
+  company_domain?: string;
+}
+
+// Reuse same company settings as 5th Line demo
+const COMPANY_SETTINGS = {
+  deal_stages: [
+    { id: "on-hold", label: "Deal/Diligence Paused/On Hold", color: "bg-muted" },
+    { id: "ndaneeds-list-sent", label: "NDA/Needs List Sent", color: "bg-amber-500" },
+    { id: "pre-credit-needs", label: "Pre-Credit Needs", color: "bg-slate-500" },
+    { id: "initial-lender-review", label: "Initial Lender Review", color: "bg-fuchsia-500" },
+    { id: "initial-feedback", label: "Initial Feedback", color: "bg-slate-500" },
+    { id: "proposal-in-development", label: "Proposal In Development", color: "bg-cyan-500" },
+    { id: "proposal-issued", label: "Proposal Issued", color: "bg-blue-500" },
+    { id: "agreement-pending", label: "Agreement Pending", color: "bg-orange-500" },
+    { id: "final-credit-items", label: "Final Credit Items", color: "bg-slate-500" },
+    { id: "client-strategy-review", label: "Client Strategy Review", color: "bg-blue-500" },
+    { id: "write-up-pending", label: "Write-Up Pending", color: "bg-indigo-500" },
+    { id: "submitted-to-lenders", label: "Submitted to Lenders", color: "bg-violet-500" },
+    { id: "lenders-in-review", label: "Lenders in Review", color: "bg-purple-500" },
+    { id: "terms-issued", label: "Terms Issued", color: "bg-fuchsia-500" },
+    { id: "in-due-diligence", label: "In Due Diligence", color: "bg-amber-500" },
+    { id: "funded-invoiced", label: "Funded / Invoiced", color: "bg-cyan-500" },
+    { id: "closed-won", label: "Closed Won", color: "bg-success" },
+    { id: "closed-lost", label: "Closed Lost", color: "bg-destructive" },
+  ],
+  deal_info_layout: {
+    order: ["narrative","dealManager","dealOwner","type","engagement","analyst","exclusivity","companyUrl","businessModel","clientContact","referralSource","hoursAndFees"],
+    visibility: { narrative: true, dealManager: true, dealOwner: true, type: true, engagement: true, analyst: true, exclusivity: true, companyUrl: true, businessModel: true, clientContact: true, referralSource: true, hoursAndFees: true },
+  },
+  deal_panel_layout: {
+    order: ["deal-information","outstanding-items","activity-timeline","ai-research","ai-assistant","ai-activity-summary","ai-suggestions"],
+    visibility: { "deal-information": true, "outstanding-items": true, "activity-timeline": false, "ai-research": false, "ai-assistant": false, "ai-activity-summary": false, "ai-suggestions": false },
+  },
+  permission_settings: {
+    lenderEdit: { allowMembersToEditMilestones: true, allowMembersToEditNotes: true, allowMembersToEditStage: true, allowedRoles: ["owner","admin","member"] },
+  },
+  lender_matching_config: {
+    criteria: [
+      { enabled: true, id: "deal_size", label: "Deal Size", position: 1, weight: 50 },
+      { enabled: true, id: "deal_type", label: "Deal Type", position: 2, weight: 40 },
+      { enabled: true, id: "cash_burn", label: "Cash Burn OK", position: 3, weight: 30 },
+      { enabled: true, id: "industry", label: "Industry", position: 4, weight: 25 },
+      { enabled: true, id: "sponsorship", label: "Sponsorship", position: 5, weight: 20 },
+      { enabled: true, id: "geography", label: "Geography", position: 6, weight: 10 },
+      { enabled: true, id: "b2b_b2c", label: "B2B/B2C", position: 7, weight: 8 },
+    ],
+    penalties: { above_max_deal: -30, below_min_deal: -30, cash_burn_mismatch: -25, industry_avoided: -50, sponsorship_mismatch: -20 },
+  },
+};
+
+const DEMO_LENDERS = [
+  { name: "Apex Venture Lending", lender_type: "Venture Debt", tier: "Tier 1", geo: "National", loan_types: ["venture debt","growth capital"], industries: ["Technology","SaaS","Healthcare"], industries_to_avoid: ["Cannabis","Gambling"], min_deal: 5000000, max_deal: 50000000, min_revenue: 10000000, cash_burn: "OK", sponsorship: "Not Required", b2b_b2c: "B2B", refinancing: "Yes", contact_name: "Mark Sullivan", contact_title: "Managing Director", email: "msullivan@apexvl.com", contact_phone: "(415) 555-0101" },
+  { name: "Ironclad Asset Partners", lender_type: "ABL", tier: "Tier 1", geo: "National", loan_types: ["abl","revolving credit"], industries: ["Manufacturing","Distribution","Retail"], industries_to_avoid: ["Oil & Gas"], min_deal: 10000000, max_deal: 100000000, min_revenue: 25000000, cash_burn: "No", sponsorship: "Preferred", b2b_b2c: "Both", refinancing: "Yes", contact_name: "Jennifer Park", contact_title: "Senior Vice President", email: "jpark@ironcladap.com", contact_phone: "(212) 555-0202" },
+  { name: "Bridgeport Growth Capital", lender_type: "Growth Capital", tier: "Tier 1", geo: "Northeast / Mid-Atlantic", loan_types: ["growth capital","term loan"], industries: ["Technology","Healthcare","Business Services"], industries_to_avoid: ["Real Estate","Construction"], min_deal: 3000000, max_deal: 25000000, min_revenue: 5000000, cash_burn: "OK (limited)", sponsorship: "Not Required", b2b_b2c: "B2B", refinancing: "Case by case", contact_name: "David Chen", contact_title: "Partner", email: "dchen@bridgeportgc.com", contact_phone: "(617) 555-0303" },
+  { name: "Stride Revenue Finance", lender_type: "Revenue-Based", tier: "Tier 2", geo: "National", loan_types: ["revenue-based financing","growth capital"], industries: ["SaaS","Technology","E-commerce"], industries_to_avoid: ["Healthcare devices"], min_deal: 1000000, max_deal: 15000000, min_revenue: 2000000, cash_burn: "OK", sponsorship: "Not Required", b2b_b2c: "Both", refinancing: "Yes", contact_name: "Sarah Kim", contact_title: "Director", email: "skim@striderfin.com", contact_phone: "(650) 555-0404" },
+  { name: "Forge Industrial Credit", lender_type: "Term Loan", tier: "Tier 2", geo: "National", loan_types: ["term loan","mezzanine"], industries: ["Manufacturing","Distribution","Food & Beverage"], industries_to_avoid: ["Cannabis","Crypto"], min_deal: 5000000, max_deal: 30000000, min_revenue: 15000000, cash_burn: "No", sponsorship: "Required", b2b_b2c: "Both", refinancing: "Yes", contact_name: "Robert Martinez", contact_title: "Managing Director", email: "rmartinez@forgecredit.com", contact_phone: "(312) 555-0505" },
+  { name: "Cumulus Cloud Lending", lender_type: "Venture Debt", tier: "Tier 1", geo: "National", loan_types: ["venture debt","line of credit"], industries: ["SaaS","Cloud Infrastructure"], industries_to_avoid: ["Hardware","Biotech"], min_deal: 2000000, max_deal: 20000000, min_revenue: 3000000, cash_burn: "OK", sponsorship: "Not Required", b2b_b2c: "B2B", refinancing: "Yes", contact_name: "Amanda Torres", contact_title: "VP Originations", email: "atorres@cumuluslend.com", contact_phone: "(503) 555-0606" },
+  { name: "Keystone Commercial Finance", lender_type: "ABL", tier: "Tier 2", geo: "National", loan_types: ["abl","factoring","purchase order financing"], industries: ["Manufacturing","Distribution","Staffing"], industries_to_avoid: ["Technology"], min_deal: 1000000, max_deal: 25000000, min_revenue: 5000000, cash_burn: "No", sponsorship: "Not Required", b2b_b2c: "B2B", refinancing: "Yes", contact_name: "Chris Johnson", contact_title: "Regional Manager", email: "cjohnson@keystonecf.com", contact_phone: "(504) 555-0707" },
+  { name: "Pinnacle Innovation Fund", lender_type: "Growth Equity", tier: "Tier 1", geo: "West Coast", loan_types: ["growth capital","convertible note"], industries: ["Technology","Fintech","AI/ML"], industries_to_avoid: ["Oil & Gas","Mining"], min_deal: 10000000, max_deal: 75000000, min_revenue: 20000000, cash_burn: "OK (path to profitability)", sponsorship: "Preferred", b2b_b2c: "B2B", refinancing: "No", contact_name: "Lisa Wang", contact_title: "Partner", email: "lwang@pinnaclefund.com", contact_phone: "(415) 555-0808" },
+  { name: "Ridgeline Mezzanine Partners", lender_type: "Mezzanine", tier: "Tier 2", geo: "Southeast / National", loan_types: ["mezzanine","subordinated debt"], industries: ["Healthcare","Business Services","Consumer"], industries_to_avoid: ["Restaurants","Retail fashion"], min_deal: 5000000, max_deal: 35000000, min_revenue: 10000000, cash_burn: "No", sponsorship: "Required", b2b_b2c: "Both", refinancing: "Yes", contact_name: "Thomas Wright", contact_title: "Senior Managing Director", email: "twright@ridgelinemezz.com", contact_phone: "(704) 555-0909" },
+  { name: "Compass Growth Advisors", lender_type: "Growth Capital", tier: "Tier 2", geo: "Midwest / National", loan_types: ["growth capital","term loan","line of credit"], industries: ["Healthcare","Education","Government Services"], industries_to_avoid: ["Cannabis","Gambling"], min_deal: 3000000, max_deal: 20000000, min_revenue: 8000000, cash_burn: "No", sponsorship: "Not Required", b2b_b2c: "Both", refinancing: "Yes", contact_name: "Karen Foster", contact_title: "Director of Originations", email: "kfoster@compassga.com", contact_phone: "(314) 555-1010" },
+  { name: "Summit Senior Lending", lender_type: "Senior Debt", tier: "Tier 1", geo: "National", loan_types: ["senior secured","term loan","revolving credit"], industries: ["Technology","Healthcare","Business Services","Manufacturing"], industries_to_avoid: ["Real Estate"], min_deal: 15000000, max_deal: 100000000, min_revenue: 30000000, cash_burn: "No", sponsorship: "Required", b2b_b2c: "Both", refinancing: "Yes", contact_name: "James O'Brien", contact_title: "Managing Partner", email: "jobrien@summitsl.com", contact_phone: "(212) 555-1111" },
+  { name: "Cascade Revenue Partners", lender_type: "Revenue-Based", tier: "Tier 2", geo: "US & Canada", loan_types: ["revenue-based financing"], industries: ["SaaS","Technology"], industries_to_avoid: ["Hardware","Gaming"], min_deal: 500000, max_deal: 10000000, min_revenue: 1500000, cash_burn: "OK", sponsorship: "Not Required", b2b_b2c: "B2B", refinancing: "Yes", contact_name: "Michelle Lee", contact_title: "Business Development", email: "mlee@cascaderp.com", contact_phone: "(604) 555-1212" },
+  { name: "Titan Growth Finance", lender_type: "Venture Debt", tier: "Tier 1", geo: "National", loan_types: ["venture debt","growth capital","term loan"], industries: ["Technology","Life Sciences","SaaS"], industries_to_avoid: ["Consumer retail"], min_deal: 20000000, max_deal: 200000000, min_revenue: 25000000, cash_burn: "OK", sponsorship: "Preferred", b2b_b2c: "B2B", refinancing: "Yes", contact_name: "Patricia Gonzalez", contact_title: "Senior Director", email: "pgonzalez@titangf.com", contact_phone: "(650) 555-1313" },
+  { name: "Nimble Capital Group", lender_type: "Revenue-Based", tier: "Tier 3", geo: "National", loan_types: ["revenue-based financing","line of credit"], industries: ["SaaS","Technology","E-commerce"], industries_to_avoid: ["Hardware","Biotech"], min_deal: 100000, max_deal: 4000000, min_revenue: 500000, cash_burn: "OK (limited)", sponsorship: "Not Required", b2b_b2c: "Both", refinancing: "Yes", contact_name: "Brian Murphy", contact_title: "Account Executive", email: "bmurphy@nimblecg.com", contact_phone: "(206) 555-1414" },
+  { name: "Vanguard Tech Bank", lender_type: "Commercial Bank", tier: "Tier 1", geo: "National", loan_types: ["venture debt","revolving credit","term loan"], industries: ["Technology","Life Sciences","Fintech","Healthcare IT"], industries_to_avoid: ["Cannabis"], min_deal: 5000000, max_deal: 150000000, min_revenue: 10000000, cash_burn: "OK", sponsorship: "Preferred", b2b_b2c: "Both", refinancing: "Yes", contact_name: "Rachel Kim", contact_title: "Relationship Manager", email: "rkim@vanguardtb.com", contact_phone: "(408) 555-1515" },
+  { name: "Westmark Venture Partners", lender_type: "Venture Debt", tier: "Tier 2", geo: "West Coast / National", loan_types: ["venture debt","growth capital"], industries: ["Technology","SaaS","Clean Energy"], industries_to_avoid: ["Real Estate","Agriculture"], min_deal: 2000000, max_deal: 25000000, min_revenue: 3000000, cash_burn: "OK", sponsorship: "Not Required", b2b_b2c: "B2B", refinancing: "Case by case", contact_name: "Andrew Patel", contact_title: "Vice President", email: "apatel@westmarkvp.com", contact_phone: "(408) 555-1616" },
+  { name: "Zenith Technology Finance", lender_type: "Venture Debt", tier: "Tier 1", geo: "National", loan_types: ["venture debt","term loan"], industries: ["Technology","Life Sciences","Healthcare IT","Sustainability"], industries_to_avoid: ["Oil & Gas"], min_deal: 5000000, max_deal: 30000000, min_revenue: 5000000, cash_burn: "OK", sponsorship: "Preferred", b2b_b2c: "Both", refinancing: "Yes", contact_name: "Daniel Brooks", contact_title: "Managing Director", email: "dbrooks@zenithtf.com", contact_phone: "(860) 555-1717" },
+  { name: "Presto Merchant Capital", lender_type: "Revenue-Based", tier: "Tier 3", geo: "US & Canada", loan_types: ["revenue-based financing","merchant cash advance"], industries: ["E-commerce","DTC","SaaS"], industries_to_avoid: ["B2B Services","Manufacturing"], min_deal: 100000, max_deal: 10000000, min_revenue: 1000000, cash_burn: "OK", sponsorship: "Not Required", b2b_b2c: "B2C", refinancing: "Yes", contact_name: "Samantha Cole", contact_title: "Growth Manager", email: "scole@prestomc.com", contact_phone: "(416) 555-1818" },
+  { name: "Launchpad Growth Capital", lender_type: "Growth Capital", tier: "Tier 1", geo: "National", loan_types: ["growth capital","term loan","delayed draw"], industries: ["Technology","Healthcare","SaaS","Fintech"], industries_to_avoid: ["Cannabis","Gambling"], min_deal: 10000000, max_deal: 75000000, min_revenue: 15000000, cash_burn: "OK (path to profitability)", sponsorship: "Preferred", b2b_b2c: "B2B", refinancing: "Yes", contact_name: "Michael Torres", contact_title: "Partner", email: "mtorres@launchpadgc.com", contact_phone: "(650) 555-1919" },
+  { name: "Citadel Direct Lending", lender_type: "Senior/Unitranche", tier: "Tier 1", geo: "National", loan_types: ["unitranche","senior secured","revolving credit","term loan"], industries: ["Healthcare","Technology","Business Services","Industrial"], industries_to_avoid: [], min_deal: 30000000, max_deal: 500000000, min_revenue: 50000000, cash_burn: "No", sponsorship: "Required", b2b_b2c: "Both", refinancing: "Yes", contact_name: "William Chang", contact_title: "Managing Director", email: "wchang@citadeldl.com", contact_phone: "(310) 555-2020" },
+];
+
+const DEMO_MANAGERS = ["Alec Garza", "Sarah Chen", "Michael Roberts", "Jennifer Walsh"];
+const DEMO_ANALYSTS = ["Sarah Chen", "Michael Roberts", "Jennifer Walsh", null];
+const ENGAGEMENT_TYPES = ["guided", "advisory", "managed-process"];
+
+const DEMO_DEALS = [
+  { company: "Meridian Software Co", value: 12000000, status: "on-track", stage: "lenders-in-review", engagement_type: "managed-process", deal_type: '["growth-capital","refinancing"]', manager: "Alec Garza", analyst: "Sarah Chen", contact: "Tom Bradley", contact_info: "tom@meridiansw.com", business_model: "B2B SaaS", company_url: "meridiansoftware.com", narrative: "High-growth SaaS platform seeking refinancing of existing credit facility and additional growth capital. Strong net revenue retention at 125%.", exclusivity: "Exclusive", referred_by: "Referral Partner", total_fee: 180000, success_fee_percent: 1.5, pre_signing_hours: 40, post_signing_hours: 60 },
+  { company: "Atlas Logistics Group", value: 35000000, status: "on-track", stage: "terms-issued", engagement_type: "managed-process", deal_type: '["refinancing","growth-capital"]', manager: "Alec Garza", analyst: "Michael Roberts", contact: "Diana Prince", contact_info: "diana@atlaslogistics.com", business_model: "3PL / Asset-Light", company_url: "atlaslogistics.com", narrative: "National 3PL operator refinancing existing ABL facility. Strong EBITDA margins and growing customer base.", exclusivity: "Exclusive", referred_by: "Direct", total_fee: 350000, success_fee_percent: 1.0, pre_signing_hours: 50, post_signing_hours: 80 },
+  { company: "Beacon Health Analytics", value: 8500000, status: "at-risk", stage: "in-due-diligence", engagement_type: "advisory", deal_type: '["growth-capital"]', manager: "Alec Garza", analyst: "Jennifer Walsh", contact: "Dr. Sarah Mills", contact_info: "smills@beaconhealth.io", business_model: "Healthcare SaaS", company_url: "beaconhealth.io", narrative: "AI-powered clinical analytics platform. Series A backed, growing rapidly but burning cash. Need to address lender concerns around profitability timeline.", exclusivity: "Non-Exclusive", referred_by: "Goldman Sachs", total_fee: 127500, success_fee_percent: 1.5 },
+  { company: "Redwood Manufacturing", value: 22000000, status: "on-track", stage: "submitted-to-lenders", engagement_type: "guided", deal_type: '["refinancing"]', manager: "Alec Garza", analyst: "Sarah Chen", contact: "Robert Chen", contact_info: "rchen@redwoodmfg.com", business_model: "Contract Manufacturing", company_url: "redwoodmfg.com", narrative: "PE-backed contract manufacturer seeking to refinance senior secured debt at better terms. Strong EBITDA of $6M on $45M revenue.", exclusivity: "Exclusive", referred_by: "JP Morgan", total_fee: 220000, success_fee_percent: 1.0 },
+  { company: "Vertex Cloud Solutions", value: 6000000, status: "on-track", stage: "write-up-pending", engagement_type: "guided", deal_type: '["growth-capital"]', manager: "Alec Garza", analyst: null, contact: "Alex Kim", contact_info: "akim@vertexcloud.io", business_model: "Cloud Infrastructure", company_url: "vertexcloud.io", narrative: "Cloud infrastructure startup with $4M ARR growing 80% YoY. Seeking growth capital to expand sales team.", exclusivity: "Exclusive", referred_by: "Direct" },
+  { company: "Summit Hospitality Group", value: 45000000, status: "off-track", stage: "pre-credit-needs", engagement_type: "managed-process", deal_type: '["acquisition-financing"]', manager: "Alec Garza", analyst: "Michael Roberts", contact: "Maria Santos", contact_info: "msantos@summithospitality.com", business_model: "Hotel Management", company_url: "summithospitality.com", narrative: "Acquisition financing for 3-property portfolio. Needs list still being compiled, client slow to respond.", exclusivity: "Exclusive", referred_by: "Bank of America" },
+  { company: "NovaPay Technologies", value: 18000000, status: "on-track", stage: "initial-lender-review", engagement_type: "advisory", deal_type: '["growth-capital","refinancing"]', manager: "Alec Garza", analyst: "Sarah Chen", contact: "Kevin Zhao", contact_info: "kzhao@novapay.com", business_model: "Fintech / Payments", company_url: "novapay.com", narrative: "Payment processing platform with strong unit economics. Currently in initial conversations with select lenders.", exclusivity: "Exclusive", referred_by: "Morgan Stanley", total_fee: 270000, success_fee_percent: 1.5 },
+  { company: "GreenField AgriTech", value: 15000000, status: "on-hold", stage: "on-hold", engagement_type: "guided", deal_type: '["growth-capital"]', manager: "Alec Garza", analyst: "Jennifer Walsh", contact: "Emily Foster", contact_info: "efoster@greenfieldagri.com", business_model: "AgTech SaaS", company_url: "greenfieldagri.com", narrative: "Agricultural technology platform paused while client evaluates strategic alternatives including potential M&A.", exclusivity: "Non-Exclusive", referred_by: "Referral Partner" },
+  { company: "Pinnacle Data Systems", value: 28000000, status: "on-track", stage: "proposal-issued", engagement_type: "managed-process", deal_type: '["refinancing","growth-capital"]', manager: "Alec Garza", analyst: "Michael Roberts", contact: "Jason Park", contact_info: "jpark@pinnacledata.com", business_model: "Data Center Services", company_url: "pinnacledata.com", narrative: "Data center operator seeking to refinance and expand. Proposal issued, awaiting client signature on engagement letter.", exclusivity: "Exclusive", referred_by: "Direct", total_fee: 420000, success_fee_percent: 1.5, pre_signing_hours: 30 },
+  { company: "Coastal Brands Inc", value: 5500000, status: "at-risk", stage: "initial-feedback", engagement_type: "guided", deal_type: '["abl","growth-capital"]', manager: "Alec Garza", analyst: null, contact: "Lauren White", contact_info: "lwhite@coastalbrands.com", business_model: "DTC Consumer Brands", company_url: "coastalbrands.com", narrative: "Portfolio of DTC brands seeking ABL facility. Lender feedback mixed due to consumer exposure and seasonal revenue.", exclusivity: "Non-Exclusive", referred_by: "Direct" },
+  { company: "Nexus Engineering", value: 20000000, status: "on-track", stage: "agreement-pending", engagement_type: "advisory", deal_type: '["refinancing"]', manager: "Alec Garza", analyst: "Sarah Chen", contact: "David Mitchell", contact_info: "dmitchell@nexuseng.com", business_model: "Engineering Services", company_url: "nexuseng.com", narrative: "PE-backed engineering firm refinancing existing debt. Agreement nearly finalized, expected to close within 2 weeks.", exclusivity: "Exclusive", referred_by: "Goldman Sachs", total_fee: 200000, success_fee_percent: 1.0, pre_signing_hours: 25, post_signing_hours: 40 },
+  { company: "Blueshift AI", value: 10000000, status: "on-track", stage: "client-strategy-review", engagement_type: "guided", deal_type: '["growth-capital"]', manager: "Alec Garza", analyst: "Jennifer Walsh", contact: "Nina Patel", contact_info: "npatel@blueshiftai.com", business_model: "Enterprise AI", company_url: "blueshiftai.com", narrative: "Enterprise AI company with strong pipeline. Reviewing strategy with client before going to market.", exclusivity: "Exclusive", referred_by: "Referral Partner", total_fee: 150000 },
+  { company: "Pacific Distribution Co", value: 40000000, status: "on-track", stage: "funded-invoiced", engagement_type: "managed-process", deal_type: '["refinancing","growth-capital"]', manager: "Alec Garza", analyst: "Michael Roberts", contact: "Steve Nakamura", contact_info: "snakamura@pacificdist.com", business_model: "National Distribution", company_url: "pacificdist.com", narrative: "Successfully funded ABL facility with Ironclad Asset Partners. Invoice submitted, awaiting payment.", exclusivity: "Exclusive", referred_by: "Bank of America", total_fee: 400000, success_fee_percent: 1.0 },
+  { company: "TrueNorth EdTech", value: 7000000, status: "archived", stage: "closed-won", engagement_type: "advisory", deal_type: '["growth-capital"]', manager: "Alec Garza", analyst: null, contact: "Rachel Green", contact_info: "rgreen@truenorthed.com", business_model: "EdTech SaaS", company_url: "truenorthed.com", narrative: "Successfully closed growth capital round with Bridgeport Growth Capital. Deal completed Q4 2025.", exclusivity: "Exclusive", referred_by: "Direct", total_fee: 105000, success_fee_percent: 1.5 },
+  { company: "Iron Bridge Construction", value: 30000000, status: "archived", stage: "closed-lost", engagement_type: "managed-process", deal_type: '["acquisition-financing"]', manager: "Alec Garza", analyst: "Sarah Chen", contact: "Frank Russo", contact_info: "frusso@ironbridgeconstruction.com", business_model: "Commercial Construction", company_url: "ironbridgeconstruction.com", narrative: "Acquisition financing fell through due to buyer's inability to secure equity commitment. Deal terminated.", exclusivity: "Exclusive", referred_by: "JP Morgan" },
+];
+
+const DEAL_LENDER_ASSIGNMENTS: { dealIdx: number; lenderIdxs: number[]; stages: string[]; trackingStatuses: string[] }[] = [
+  { dealIdx: 0, lenderIdxs: [0, 1, 3, 7], stages: ["reviewing-drl", "management-call-completed", "reviewing-drl", "introduced"], trackingStatuses: ["active", "active", "on-deck", "on-deck"] },
+  { dealIdx: 1, lenderIdxs: [1, 10, 8], stages: ["term-sheets", "draft-terms", "passed"], trackingStatuses: ["active", "active", "passed"] },
+  { dealIdx: 2, lenderIdxs: [5, 11, 2], stages: ["management-call-completed", "reviewing-drl", "inquiry-sent"], trackingStatuses: ["active", "on-deck", "on-deck"] },
+  { dealIdx: 3, lenderIdxs: [4, 6, 9], stages: ["reviewing-drl", "reviewing-drl", "introduced"], trackingStatuses: ["active", "active", "on-deck"] },
+  { dealIdx: 4, lenderIdxs: [2, 3], stages: ["inquiry-sent", "inquiry-sent"], trackingStatuses: ["on-deck", "on-deck"] },
+  { dealIdx: 5, lenderIdxs: [10, 19], stages: ["inquiry-sent", "not-a-fit"], trackingStatuses: ["on-deck", "passed"] },
+  { dealIdx: 6, lenderIdxs: [14, 18, 12, 16], stages: ["reviewing-drl", "reviewing-drl", "introduced", "introduced"], trackingStatuses: ["active", "active", "on-deck", "on-deck"] },
+  { dealIdx: 8, lenderIdxs: [10, 4, 8, 18], stages: ["reviewing-drl", "inquiry-sent", "introduced", "introduced"], trackingStatuses: ["active", "on-deck", "on-deck", "on-deck"] },
+  { dealIdx: 9, lenderIdxs: [6, 13], stages: ["reviewing-drl", "not-a-fit"], trackingStatuses: ["active", "passed"] },
+  { dealIdx: 10, lenderIdxs: [4, 10, 19], stages: ["term-sheets", "draft-terms", "management-call-completed"], trackingStatuses: ["active", "active", "active"] },
+  { dealIdx: 11, lenderIdxs: [2, 15, 5], stages: ["inquiry-sent", "inquiry-sent", "introduced"], trackingStatuses: ["on-deck", "on-deck", "on-deck"] },
+  { dealIdx: 12, lenderIdxs: [1, 6, 9], stages: ["term-sheets", "passed", "passed"], trackingStatuses: ["active", "passed", "passed"] },
+  { dealIdx: 13, lenderIdxs: [2], stages: ["term-sheets"], trackingStatuses: ["active"] },
+  { dealIdx: 14, lenderIdxs: [10, 4, 8], stages: ["passed", "passed", "not-a-fit"], trackingStatuses: ["passed", "passed", "passed"] },
+];
+
+const MILESTONE_TEMPLATES = [
+  "NDA/Needs List Sent",
+  "Initial Client Call",
+  "Financial Model Review",
+  "Write-Up Draft Complete",
+  "Lender Outreach Begin",
+  "Management Presentations",
+  "Term Sheet Received",
+  "Due Diligence Kickoff",
+  "Credit Approval",
+  "Closing / Funding",
+];
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json() as ProspectConfig;
+    const { email, password, first_name, last_name, company_name, company_domain } = body;
+
+    if (!email || !password || !first_name || !last_name || !company_name) {
+      return new Response(JSON.stringify({ error: "Missing required fields: email, password, first_name, last_name, company_name" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(supabaseUrl, serviceKey);
+
+    // 1. Create or get the user
+    let userId: string;
+    const { data: existingUsers } = await admin.auth.admin.listUsers();
+    const existingUser = existingUsers?.users?.find(u => u.email === email);
+
+    if (existingUser) {
+      userId = existingUser.id;
+      console.log("User already exists:", userId);
+      await admin.auth.admin.updateUserById(userId, { password });
+    } else {
+      const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: `${first_name} ${last_name}`, first_name, last_name },
+      });
+      if (createErr) throw createErr;
+      userId = newUser.user.id;
+      console.log("Created user:", userId);
+    }
+
+    // Update profile
+    await admin.from("profiles").upsert({
+      user_id: userId,
+      email,
+      display_name: `${first_name} ${last_name}`,
+      first_name,
+      last_name,
+      onboarding_completed: true,
+      approved_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+
+    // 2. Create company
+    let companyId: string;
+    const { data: existingCompany } = await admin.from("companies").select("id").eq("name", company_name).limit(1).single();
+
+    if (existingCompany) {
+      companyId = existingCompany.id;
+      await admin.from("deals").delete().eq("company_id", companyId);
+      await admin.from("master_lenders").delete().eq("company_id", companyId);
+      await admin.from("lender_notes").delete().eq("company_id", companyId);
+    } else {
+      const domain = company_domain || email.split("@")[1];
+      const { data: newCompany, error: compErr } = await admin.from("companies").insert({
+        name: company_name,
+        industry: "Finance & Banking",
+        employee_size: "1-10",
+        website_url: domain,
+        primary_domain: domain,
+      }).select("id").single();
+      if (compErr) throw compErr;
+      companyId = newCompany.id;
+    }
+
+    // Add user to company
+    await admin.from("company_members").upsert({
+      user_id: userId,
+      company_id: companyId,
+      role: "owner",
+    }, { onConflict: "user_id,company_id" }).select();
+
+    const { data: memberCheck } = await admin.from("company_members").select("id").eq("user_id", userId).eq("company_id", companyId).limit(1);
+    if (!memberCheck || memberCheck.length === 0) {
+      await admin.from("company_members").insert({ user_id: userId, company_id: companyId, role: "owner" });
+    }
+
+    // 3. Set company settings
+    await admin.from("company_settings").upsert({
+      company_id: companyId,
+      ...COMPANY_SETTINGS,
+    }, { onConflict: "company_id" });
+
+    // 4. Set user data permissions (full access)
+    const { data: existingPerms } = await admin.from("user_data_permissions").select("id").eq("user_id", userId).limit(1);
+    if (!existingPerms || existingPerms.length === 0) {
+      await admin.from("user_data_permissions").insert({
+        user_id: userId,
+        company_id: companyId,
+        deals_scope: "all",
+        lenders_scope: "all",
+        analytics_scope: "all",
+        reports_scope: "all",
+        insights_scope: "all",
+        can_export: true,
+        can_bulk_edit: true,
+        can_delete: true,
+        can_view_financials: true,
+        can_view_sensitive: true,
+      });
+    }
+
+    // 5. Insert master lenders
+    const lendersToInsert = DEMO_LENDERS.map(l => ({
+      ...l,
+      user_id: userId,
+      company_id: companyId,
+      active: true,
+    }));
+
+    const { data: insertedLenders, error: lenderErr } = await admin.from("master_lenders").insert(lendersToInsert).select("id, name");
+    if (lenderErr) throw lenderErr;
+    console.log(`Inserted ${insertedLenders.length} master lenders`);
+
+    // Lender contacts
+    const lenderContacts = insertedLenders.map((l, i) => ({
+      lender_id: l.id,
+      name: DEMO_LENDERS[i].contact_name,
+      title: DEMO_LENDERS[i].contact_title,
+      email: DEMO_LENDERS[i].email,
+      phone: DEMO_LENDERS[i].contact_phone,
+      is_primary: true,
+      geography: DEMO_LENDERS[i].geo,
+    }));
+    await admin.from("lender_contacts").insert(lenderContacts);
+
+    // Lender notes
+    const lenderNotesSample = [
+      { idx: 0, note: "Strong relationship. They've been very responsive on recent deals. Prefer deals with >$10M ARR.", is_flag: false },
+      { idx: 1, note: "Competitive on ABL facilities. Can move quickly. Jennifer is our go-to contact.", is_flag: false },
+      { idx: 2, note: "Great for tech companies in the $3-15M range. Very founder-friendly terms.", is_flag: false },
+      { idx: 5, note: "Best option for SaaS-only deals. No equity component is a huge differentiator.", is_flag: false },
+      { idx: 7, note: "High bar for entry but excellent terms once approved. Board seat ask can be a deal-breaker for some clients.", is_flag: true },
+      { idx: 10, note: "Requires PE sponsor. Not suitable for founder-owned businesses.", is_flag: true },
+      { idx: 12, note: "Large hold capacity. Good for bigger deals but slow process. Plan for 60+ day close.", is_flag: false },
+      { idx: 14, note: "Full banking relationship required. Good rates but heavy covenant package.", is_flag: false },
+      { idx: 19, note: "Institutional quality lender. Very competitive on unitranche for PE-backed deals.", is_flag: false },
+    ];
+
+    const notesToInsert = lenderNotesSample.map(n => ({
+      lender_name: DEMO_LENDERS[n.idx].name,
+      master_lender_id: insertedLenders[n.idx].id,
+      author_user_id: userId,
+      body: n.note,
+      is_flag: n.is_flag,
+      company_id: companyId,
+    }));
+    await admin.from("lender_notes").insert(notesToInsert);
+
+    // 6. Insert deals
+    const dealsToInsert = DEMO_DEALS.map(d => ({
+      company: d.company,
+      value: d.value,
+      status: d.status,
+      stage: d.stage,
+      engagement_type: d.engagement_type,
+      deal_type: d.deal_type,
+      manager: d.manager,
+      analyst: d.analyst || null,
+      contact: d.contact,
+      contact_info: d.contact_info,
+      business_model: d.business_model,
+      company_url: d.company_url,
+      narrative: d.narrative,
+      exclusivity: d.exclusivity || null,
+      referred_by: d.referred_by || null,
+      total_fee: d.total_fee || null,
+      success_fee_percent: d.success_fee_percent || null,
+      pre_signing_hours: d.pre_signing_hours || null,
+      post_signing_hours: d.post_signing_hours || null,
+      user_id: userId,
+      company_id: companyId,
+    }));
+
+    const { data: insertedDeals, error: dealErr } = await admin.from("deals").insert(dealsToInsert).select("id, company, stage");
+    if (dealErr) throw dealErr;
+    console.log(`Inserted ${insertedDeals.length} deals`);
+
+    // 7. Deal lenders
+    const dealLendersToInsert: any[] = [];
+    for (const assignment of DEAL_LENDER_ASSIGNMENTS) {
+      const deal = insertedDeals[assignment.dealIdx];
+      if (!deal) continue;
+      for (let j = 0; j < assignment.lenderIdxs.length; j++) {
+        const lenderIdx = assignment.lenderIdxs[j];
+        dealLendersToInsert.push({
+          deal_id: deal.id,
+          name: DEMO_LENDERS[lenderIdx].name,
+          stage: assignment.stages[j],
+          tracking_status: assignment.trackingStatuses[j],
+          notes: `Outreach initiated for ${deal.company}`,
+        });
+      }
+    }
+    if (dealLendersToInsert.length > 0) {
+      const { error: dlErr } = await admin.from("deal_lenders").insert(dealLendersToInsert);
+      if (dlErr) console.error("Error inserting deal lenders:", dlErr);
+      else console.log(`Inserted ${dealLendersToInsert.length} deal lenders`);
+    }
+
+    // 8. Milestones
+    const milestonesToInsert: any[] = [];
+    for (let i = 0; i < insertedDeals.length; i++) {
+      const deal = insertedDeals[i];
+      const stageIndex = COMPANY_SETTINGS.deal_stages.findIndex(s => s.id === deal.stage);
+      const completedCount = Math.max(0, Math.min(stageIndex, MILESTONE_TEMPLATES.length));
+
+      for (let m = 0; m < MILESTONE_TEMPLATES.length; m++) {
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() - (MILESTONE_TEMPLATES.length - m) * 7 + 14);
+        milestonesToInsert.push({
+          deal_id: deal.id,
+          user_id: userId,
+          title: MILESTONE_TEMPLATES[m],
+          position: m,
+          completed: m < completedCount,
+          completed_at: m < completedCount ? new Date(Date.now() - (completedCount - m) * 7 * 86400000).toISOString() : null,
+          due_date: dueDate.toISOString(),
+          status: m < completedCount ? "completed" : m === completedCount ? "in-progress" : "pending",
+        });
+      }
+    }
+    if (milestonesToInsert.length > 0) {
+      const { error: msErr } = await admin.from("deal_milestones").insert(milestonesToInsert);
+      if (msErr) console.error("Error inserting milestones:", msErr);
+      else console.log(`Inserted ${milestonesToInsert.length} milestones`);
+    }
+
+    // 9. Activity logs
+    const activityTypes = ["stage_change", "lender_added", "note_added", "milestone_completed", "deal_updated", "document_uploaded"];
+    const activityDescriptions = [
+      "Stage changed to {stage}",
+      "Added {lender} to deal",
+      "Added note: Initial assessment complete",
+      "Milestone completed: {milestone}",
+      "Updated deal information",
+      "Uploaded financial model",
+    ];
+    const activitiesToInsert: any[] = [];
+    for (let i = 0; i < insertedDeals.length; i++) {
+      const deal = insertedDeals[i];
+      const numActivities = 3 + Math.floor(Math.random() * 5);
+      for (let a = 0; a < numActivities; a++) {
+        const typeIdx = Math.floor(Math.random() * activityTypes.length);
+        const hoursAgo = Math.floor(Math.random() * 720);
+        const createdAt = new Date(Date.now() - hoursAgo * 3600000);
+        let desc = activityDescriptions[typeIdx]
+          .replace("{stage}", deal.stage)
+          .replace("{lender}", DEMO_LENDERS[Math.floor(Math.random() * DEMO_LENDERS.length)].name)
+          .replace("{milestone}", MILESTONE_TEMPLATES[Math.floor(Math.random() * MILESTONE_TEMPLATES.length)]);
+        activitiesToInsert.push({
+          deal_id: deal.id,
+          user_id: userId,
+          activity_type: activityTypes[typeIdx],
+          description: desc,
+          user_display_name: DEMO_MANAGERS[Math.floor(Math.random() * DEMO_MANAGERS.length)],
+          created_at: createdAt.toISOString(),
+        });
+      }
+    }
+    if (activitiesToInsert.length > 0) {
+      const { error: actErr } = await admin.from("activity_logs").insert(activitiesToInsert);
+      if (actErr) console.error("Error inserting activities:", actErr);
+      else console.log(`Inserted ${activitiesToInsert.length} activity logs`);
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: `Demo account created for ${first_name} ${last_name}`,
+      credentials: { email, password },
+      company: company_name,
+      stats: {
+        lenders: insertedLenders.length,
+        deals: insertedDeals.length,
+        dealLenders: dealLendersToInsert.length,
+        milestones: milestonesToInsert.length,
+        activities: activitiesToInsert.length,
+      },
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  } catch (error: unknown) {
+    console.error("Error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
