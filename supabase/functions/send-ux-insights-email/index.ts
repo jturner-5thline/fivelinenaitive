@@ -13,15 +13,14 @@ serve(async (req) => {
   }
 
   try {
-    // Auth: accept CRON_SECRET or service-role JWT
+    // Auth: accept CRON_SECRET, anon key (cron), or valid user JWT
     const authHeader = req.headers.get("Authorization");
     const cronSecret = Deno.env.get("CRON_SECRET");
-    const isCron = authHeader === `Bearer ${cronSecret}`;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const isCron = authHeader === `Bearer ${cronSecret}` || authHeader === `Bearer ${anonKey}`;
 
     if (!isCron) {
-      // Also allow manual trigger with valid user auth
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
       const sb = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader || "" } },
       });
