@@ -3,12 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText } from 'lucide-react';
+import { Video, Phone, ExternalLink, ChevronDown, ChevronRight, Clock, Users, FileText, Link2, MoreVertical, Unlink, ArrowRightLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDuration, intervalToDuration } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ClaapDealSelector } from './ClaapDealSelector';
+import { useClaapCallActions } from '@/hooks/useClaapCallActions';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export type ClaapEntityType = 'contact' | 'company' | 'lender';
 
