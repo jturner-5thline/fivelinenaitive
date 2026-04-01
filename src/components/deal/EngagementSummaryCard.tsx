@@ -85,8 +85,8 @@ export function EngagementSummaryCard({ dealId }: EngagementSummaryCardProps) {
         </Badge>
       </CardHeader>
 
-      {/* ── Body ── flex-1 fills remaining height */}
-      <CardContent className="flex-1 px-4 pb-4 pt-0">
+      {/* ── Body ── flex-1 fills remaining height, scrolls internally */}
+      <CardContent className="flex-1 min-h-0 px-4 pb-4 pt-0 overflow-y-auto">
         <div className="space-y-0.5">
           <StatItem label="Views" value={stats?.flexViews ?? 0} isLoading={isLoading} lenders={viewLenders} popoverTitle="Lenders who viewed" />
           <StatItem label="Downloads" value={stats?.flexDownloads ?? 0} isLoading={isLoading} />
