@@ -450,8 +450,8 @@ Deno.serve(async (req) => {
     // ─── Rematch existing only ───
     if (rematchExistingOnly) {
       let existingQuery = supabaseAdmin.from("claap_meetings")
-        .select("id, claap_id, title, recording_url, transcript, organizer_email, duration_seconds, started_at, company_id, deal_id")
-        .is("deal_id", null).order("created_at", { ascending: false }).limit(Math.max(batchSize, 200));
+        .select("id, claap_id, title, recording_url, transcript, organizer_email, duration_seconds, started_at, company_id, deal_id, manually_locked")
+        .is("deal_id", null).eq("manually_locked", false).order("created_at", { ascending: false }).limit(Math.max(batchSize, 200));
       if (companyId) existingQuery = existingQuery.eq("company_id", companyId);
 
       const { data: existingMeetings, error: existingError } = await existingQuery;
