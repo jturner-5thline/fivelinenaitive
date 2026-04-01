@@ -239,8 +239,39 @@ async function executeAIProcessAction(
   triggerData: Record<string, any>
 ): Promise<{ success: boolean; message: string; aiOutput?: string }> {
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  const model = "claude-sonnet-4-20250514";
+
+  // Resolve company for gating + logging
+  const { data: membership } = await supabase
+    .from("company_members")
+    .select("company_id")
+    .eq("user_id", userId)
+    .limit(1)
+    .single();
+  const companyId = membership?.company_id;
+
+  // Feature gating — check if workflows AI is disabled
+  if (companyId) {
+    const { data: aiConfig } = await supabase
+      .from("ai_configuration")
+      .select("features_enabled")
+      .eq("company_id", companyId)
+      .single();
+
+    if (aiConfig?.features_enabled?.workflows === false) {
+      return { success: false, message: "Workflow AI feature is disabled for your organization" };
+    }
+  }
+
   if (!ANTHROPIC_API_KEY) {
-    return { success: false, message: "Anthropic API key not configured" };
+    if (companyId) {
+      await supabase.from("ai_usage_logs").insert({
+        company_id: companyId, user_id: userId, feature: "workflows",
+        model, input_tokens: 0, output_tokens: 0, status: "error",
+        error_message: "ANTHROPIC_API_KEY not configured",
+      }).catch(() => {});
+    }
+    return { success: false, message: "AI service is not configured" };
   }
 
   const prompt = config.prompt || "Process the following data and provide a structured summary.";
@@ -249,6 +280,9 @@ async function executeAIProcessAction(
     : JSON.stringify(triggerData);
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55_000);
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -257,7 +291,7 @@ async function executeAIProcessAction(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model,
         max_tokens: config.max_tokens || 2048,
         temperature: config.temperature || 0.3,
         system: "You are an AI processor within an automated workflow. Process the provided data according to the instructions and return structured output. If JSON is expected, return valid JSON wrapped in a ```json code block.",
@@ -266,11 +300,21 @@ async function executeAIProcessAction(
           content: `${prompt}\n\nData:\n${inputData}`,
         }],
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("AI process error:", response.status, errorText);
+      if (companyId) {
+        await supabase.from("ai_usage_logs").insert({
+          company_id: companyId, user_id: userId, feature: "workflows",
+          model, input_tokens: 0, output_tokens: 0, status: "error",
+          error_message: `Anthropic ${response.status}`,
+        }).catch(() => {});
+      }
       return { success: false, message: "AI processing failed" };
     }
 
@@ -280,29 +324,28 @@ async function executeAIProcessAction(
       .map((block: any) => block.text)
       .join("\n") || "";
 
-    // Log usage (best-effort)
-    const { data: membership } = await supabase
-      .from("company_members")
-      .select("company_id")
-      .eq("user_id", userId)
-      .limit(1)
-      .single();
-
-    if (membership?.company_id) {
+    // Log success
+    if (companyId) {
       await supabase.from("ai_usage_logs").insert({
-        company_id: membership.company_id,
-        user_id: userId,
-        feature: "workflows",
-        model: data.model || "claude-sonnet-4-20250514",
+        company_id: companyId, user_id: userId, feature: "workflows",
+        model: data.model || model,
         input_tokens: data.usage?.input_tokens || 0,
         output_tokens: data.usage?.output_tokens || 0,
-      }).then(() => {}).catch(() => {});
+        status: "success",
+      }).catch(() => {});
     }
 
     return { success: true, message: `AI processed successfully`, aiOutput };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return { success: false, message: `AI process failed: ${message}` };
+    const errMsg = error instanceof Error ? error.message : "Unknown error";
+    if (companyId) {
+      await supabase.from("ai_usage_logs").insert({
+        company_id: companyId, user_id: userId, feature: "workflows",
+        model, input_tokens: 0, output_tokens: 0, status: "error",
+        error_message: errMsg,
+      }).catch(() => {});
+    }
+    return { success: false, message: `AI process failed: ${errMsg}` };
   }
 }
 
