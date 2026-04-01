@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Loader2, RefreshCw, Filter, Clock, AlertTriangle, Download, CheckCircle2, Link2, Search, EyeOff } from 'lucide-react';
+import { Loader2, RefreshCw, Filter, Clock, AlertTriangle, Download, CheckCircle2, Link2, Search, EyeOff, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -13,6 +13,8 @@ import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { ClaapCallMatchCard, type ClaapCallData } from '@/components/claap/ClaapCallMatchCard';
+import { ClaapSuggestionCard } from '@/components/claap/ClaapSuggestionCard';
+import { useClaapSuggestions } from '@/hooks/useClaapSuggestions';
 
 export function ClaapSyncSettings() {
   const { user } = useAuth();
