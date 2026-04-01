@@ -403,6 +403,23 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                                 {meta.call_type}
                               </Badge>
                             )}
+                            {isCall && meta?.match_status && (
+                              <Badge variant="outline" className={`text-[10px] ${
+                                meta.match_status === 'manually_linked' ? 'border-blue-500/30 text-blue-600' :
+                                meta.match_status === 'matched' ? 'border-green-500/30 text-green-600' :
+                                'border-muted'
+                              }`}>
+                                {meta.match_status === 'manually_linked' ? 'Manual' : 'Auto'}
+                              </Badge>
+                            )}
+                            {isCall && meta?.match_confidence && (
+                              <span className={`text-[10px] font-medium ${
+                                meta.match_confidence >= 75 ? 'text-green-600' :
+                                meta.match_confidence >= 50 ? 'text-amber-600' : 'text-red-600'
+                              }`}>
+                                {meta.match_confidence}%
+                              </span>
+                            )}
                           </div>
                           {isCall ? (
                             <div className="mt-1 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
@@ -434,15 +451,39 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                           ) : activity.description && !lenderName ? (
                             <p className="text-xs text-muted-foreground truncate">{activity.description}</p>
                           ) : null}
+                          {isCall && meta?.match_reason && (
+                            <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{meta.match_reason}</p>
+                          )}
                           {isCall && expandedTranscriptId === activity.id && transcriptText && (
                             <div className="mt-2 rounded-md border border-border/50 bg-background/80 p-2 text-xs text-muted-foreground whitespace-pre-wrap">
                               {transcriptText}
                             </div>
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {format(parseISO(activity.created_at), 'h:mm a')}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {format(parseISO(activity.created_at), 'h:mm a')}
+                          </span>
+                          {isCall && meta?.claap_meeting_id && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => { setReassignMeetingId(meta.claap_meeting_id); setDealSelectorOpen(true); }}>
+                                  <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
+                                  Move to Another Deal
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setUnlinkMeetingId(meta.claap_meeting_id)} className="text-destructive">
+                                  <Unlink className="h-3.5 w-3.5 mr-2" />
+                                  Remove from Deal
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
