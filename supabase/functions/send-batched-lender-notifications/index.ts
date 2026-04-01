@@ -43,6 +43,9 @@ function buildBatchedEmailHtml(
   dealName: string,
   dealId: string,
   notifications: LenderNotification[],
+  stageLabels: Record<string, string>,
+  trackingLabels: Record<string, string>,
+  substageLabels: Record<string, string>,
 ): string {
   const changedByName = notifications[0]?.changed_by_name || 'A team member';
   const uniqueChangers = [...new Set(notifications.map(n => n.changed_by_name || 'Unknown'))];
