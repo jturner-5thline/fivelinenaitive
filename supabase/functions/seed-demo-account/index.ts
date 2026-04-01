@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
       console.log("Created demo user:", userId);
     }
 
-    // Update profile
+    // Update profile — disable ALL notifications for demo accounts
     await admin.from("profiles").upsert({
       user_id: userId,
       email: DEMO_EMAIL,
@@ -183,6 +183,24 @@ Deno.serve(async (req) => {
       last_name: "User",
       onboarding_completed: true,
       approved_at: new Date().toISOString(),
+      // Disable all notification preferences
+      email_notifications: false,
+      in_app_notifications: false,
+      deal_updates_email: false,
+      lender_updates_email: false,
+      weekly_summary_email: false,
+      email_task_assigned: false,
+      notify_stale_alerts: false,
+      notify_activity_lender_added: false,
+      notify_activity_lender_updated: false,
+      notify_activity_stage_changed: false,
+      notify_activity_status_changed: false,
+      notify_activity_milestone_added: false,
+      notify_activity_milestone_completed: false,
+      notify_activity_milestone_missed: false,
+      notify_activity_deal_created: false,
+      notify_flex_alerts: false,
+      notify_info_request_emails: false,
     }, { onConflict: "user_id" });
 
     // 2. Create demo company
@@ -244,7 +262,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 5. Insert 20 master lenders
+    // 4b. Disable deal summary emails for demo accounts
+    await admin.from("user_deal_summary_preferences").upsert({
+      user_id: userId,
+      daily_deal_summary_enabled: false,
+      weekly_deal_summary_enabled: false,
+    }, { onConflict: "user_id" });
+
     const lendersToInsert = DEMO_LENDERS.map(l => ({
       ...l,
       user_id: userId,
