@@ -597,7 +597,7 @@ export default function Integrations() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {connectedIntegrations.map((item) => (
-                <div key={item.key}>{item.render()}</div>
+                <div key={item.key} className={item.key === 'claap' ? 'md:col-span-2' : ''}>{item.render()}</div>
               ))}
             </div>
           )}
