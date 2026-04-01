@@ -805,31 +805,37 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          error_message: string | null
           feature: string
           id: string
           input_tokens: number
           model: string
           output_tokens: number
+          status: string
           user_id: string
         }
         Insert: {
           company_id: string
           created_at?: string
+          error_message?: string | null
           feature: string
           id?: string
           input_tokens?: number
           model: string
           output_tokens?: number
+          status?: string
           user_id: string
         }
         Update: {
           company_id?: string
           created_at?: string
+          error_message?: string | null
           feature?: string
           id?: string
           input_tokens?: number
           model?: string
           output_tokens?: number
+          status?: string
           user_id?: string
         }
         Relationships: [
