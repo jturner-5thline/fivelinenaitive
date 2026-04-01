@@ -198,6 +198,44 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+
+          <SidebarMenuItem>
+            <Popover>
+              <PopoverTrigger asChild>
+                <SidebarMenuButton
+                  tooltip="Profile"
+                  className="hover:bg-sidebar-accent/50 cursor-pointer"
+                >
+                  <UserCircle className="h-4 w-4" />
+                  {showExpanded && <span>Profile</span>}
+                </SidebarMenuButton>
+              </PopoverTrigger>
+              <PopoverContent 
+                side="right" 
+                align="end" 
+                sideOffset={8} 
+                className="w-44 p-1"
+              >
+                <button
+                  onClick={() => navigate("/account")}
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                >
+                  <UserCircle className="h-4 w-4" />
+                  Account
+                </button>
+                <button
+                  onClick={async () => {
+                    await signOut();
+                    navigate("/login", { replace: true });
+                  }}
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Log out
+                </button>
+              </PopoverContent>
+            </Popover>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
