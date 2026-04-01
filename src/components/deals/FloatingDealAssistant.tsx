@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Send, Loader2, ChevronLeft, ChevronRight, Search, ArrowRight, ExternalLink, Shield, BookOpen, Briefcase, X } from 'lucide-react';
+import { Send, Loader2, ChevronLeft, ChevronRight, Search, ArrowRight, ExternalLink, Shield, BookOpen, Briefcase, X, Check, XCircle } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSidebar } from '@/components/ui/sidebar';
-import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
+import { useDealAssistant, type Message, type DealAction } from '@/hooks/useDealAssistant';
 import { useAISearch } from '@/hooks/useAISearch';
 import { useFeatureAccess } from '@/hooks/useFeatureFlags';
 import ReactMarkdown from 'react-markdown';
@@ -24,16 +24,103 @@ import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 interface FloatingDealAssistantProps {
   dealId: string;
   dealName?: string;
+  dealValue?: number;
+  dealStage?: string;
+  dealStatus?: string;
+  dealManager?: string;
+  dealNotes?: string;
 }
 
-export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistantProps) {
+function ActionConfirmationCard({
+  action,
+  onConfirm,
+  onCancel,
+  status,
+  isExecuting,
+}: {
+  action: DealAction;
+  onConfirm: () => void;
+  onCancel: () => void;
+  status?: 'pending' | 'confirmed' | 'cancelled';
+  isExecuting: boolean;
+}) {
+  const isResolved = status === 'confirmed' || status === 'cancelled';
+
+  return (
+    <div className={cn(
+      "rounded-lg border p-3 mt-2 text-sm",
+      status === 'confirmed' && "border-green-500/30 bg-green-500/5",
+      status === 'cancelled' && "border-muted bg-muted/30 opacity-60",
+      status === 'pending' && "border-primary/30 bg-primary/5",
+    )}>
+      <div className="flex items-start gap-2">
+        <div className={cn(
+          "mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0",
+          status === 'confirmed' ? "bg-green-500/20 text-green-500" :
+          status === 'cancelled' ? "bg-muted text-muted-foreground" :
+          "bg-primary/20 text-primary"
+        )}>
+          {status === 'confirmed' ? <Check className="h-3 w-3" /> :
+           status === 'cancelled' ? <XCircle className="h-3 w-3" /> :
+           <ArrowRight className="h-3 w-3" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-xs">{action.label}</p>
+          {action.currentValue && action.newValue && (
+            <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+              <span className="line-through">{action.currentValue}</span>
+              <ArrowRight className="h-3 w-3 shrink-0" />
+              <span className="font-medium text-foreground">{action.newValue}</span>
+            </div>
+          )}
+          {action.description && !action.currentValue && (
+            <p className="text-xs text-muted-foreground mt-0.5">{action.description}</p>
+          )}
+        </div>
+      </div>
+      {!isResolved && (
+        <div className="flex gap-2 mt-2.5 ml-7">
+          <Button
+            size="sm"
+            className="h-7 text-xs px-3 gap-1"
+            onClick={onConfirm}
+            disabled={isExecuting}
+          >
+            {isExecuting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+            Confirm
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs px-3 gap-1"
+            onClick={onCancel}
+            disabled={isExecuting}
+          >
+            <X className="h-3 w-3" />
+            Cancel
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function FloatingDealAssistant({
+  dealId,
+  dealName,
+  dealValue = 0,
+  dealStage = '',
+  dealStatus = '',
+  dealManager = '',
+  dealNotes = '',
+}: FloatingDealAssistantProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('deal');
 
-  // Deal AI state
+  // Deal AI state with operations support
   const [question, setQuestion] = useState('');
-  const { messages, sendMessage, isLoading, clearMessages } = useDealSpaceAI(dealId);
+  const { messages, sendMessage, isLoading, isExecuting, executeAction, cancelAction, clearMessages } = useDealAssistant();
   const { state: sidebarState, isHovering } = useSidebar();
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -67,11 +154,21 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
     }
   }, [searchValue, search, clear]);
 
+  const dealContext = {
+    id: dealId,
+    company: dealName || 'Unknown Deal',
+    value: dealValue,
+    stage: dealStage,
+    status: dealStatus,
+    manager: dealManager,
+    notes: dealNotes,
+  };
+
   const handleSendQuestion = useCallback(async () => {
     if (!question.trim() || isLoading) return;
-    sendMessage(question);
+    sendMessage(question, dealContext);
     setQuestion('');
-  }, [question, sendMessage, isLoading]);
+  }, [question, sendMessage, isLoading, dealContext]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -105,10 +202,10 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
   };
 
   const dealSuggestions = [
-    "Are we missing anything?",
-    "What are the key terms?",
-    "Summarize main risks",
-    "Financial highlights?",
+    "Deal status overview",
+    "List all lenders",
+    "Outstanding items?",
+    "Move to next stage",
   ];
 
   const searchSuggestions = [
@@ -132,7 +229,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
           to { opacity: 0; transform: translateY(20px) scale(0.97); }
         }
       `}</style>
-      <div className="fixed bottom-6 right-16 z-[9999] group transition-all duration-300" title="naitive Assistant — General help & platform search">
+      <div className="fixed bottom-6 right-16 z-[9999] group transition-all duration-300" title="naitive Assistant — Deal operations & search">
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <div className="relative">
@@ -284,6 +381,17 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                                 >
                                   {message.content.replace(/([^\n])\n(#{1,3}\s)/g, '$1\n\n$2')}
                                 </ReactMarkdown>
+                                {/* Action Confirmation Cards */}
+                                {message.actions && message.actions.map((action) => (
+                                  <ActionConfirmationCard
+                                    key={action.id}
+                                    action={action}
+                                    status={message.actionStatus}
+                                    isExecuting={isExecuting}
+                                    onConfirm={() => executeAction(index, action.id)}
+                                    onCancel={() => cancelAction(index)}
+                                  />
+                                ))}
                               </div>
                             ) : message.content}
                           </div>
@@ -312,8 +420,9 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                 <div className="p-3 border-t border-primary/10">
                   <div className="flex gap-2">
                     <Input value={question} onChange={(e) => setQuestion(e.target.value)} onKeyDown={handleKeyDown}
-                      placeholder="Ask about this deal..." className="flex-1 h-9 text-sm border-primary/20 bg-background/80 focus-visible:ring-primary/30" disabled={isLoading} />
-                    <Button variant="gradient" size="sm" onClick={handleSendQuestion} disabled={!question.trim() || isLoading} className="h-9 w-9 p-0 relative overflow-hidden">
+                      placeholder="Ask or command: 'Move to Submitted to Lenders'..."
+                      className="flex-1 h-9 text-sm border-primary/20 bg-background/80 focus-visible:ring-primary/30" disabled={isLoading || isExecuting} />
+                    <Button variant="gradient" size="sm" onClick={handleSendQuestion} disabled={!question.trim() || isLoading || isExecuting} className="h-9 w-9 p-0 relative overflow-hidden">
                       {question.trim() && !isLoading && (
                         <span className="absolute inset-0 rounded overflow-hidden pointer-events-none">
                           <span className="absolute -inset-full animate-[shimmer_5s_ease-in-out_infinite]" style={{ background: 'linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%)' }} />
@@ -355,7 +464,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{result.answer}</p>
                             {result.sources && result.sources.length > 0 && (
                               <div className="flex flex-wrap gap-1">
-                                {result.sources.map((source, i) => {
+                                {result.sources.map((source: string, i: number) => {
                                   const Icon = getSourceIcon(source);
                                   return <Badge key={i} variant="outline" className="text-xs gap-1"><Icon className="h-3 w-3" />{source}</Badge>;
                                 })}
@@ -373,7 +482,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                           <div className="border-t border-border pt-3">
                             <p className="text-xs text-muted-foreground mb-2">Related questions:</p>
                             <div className="flex flex-wrap gap-1">
-                              {result.suggestedActions.slice(0, 3).map((action, i) => (
+                              {result.suggestedActions.slice(0, 3).map((action: string, i: number) => (
                                 <Badge key={i} variant="secondary" className="text-xs cursor-pointer hover:bg-secondary/80" onClick={() => setSearchValue(action)}>
                                   {action}
                                 </Badge>
