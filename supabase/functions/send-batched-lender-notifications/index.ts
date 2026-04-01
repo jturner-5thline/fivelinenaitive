@@ -43,6 +43,9 @@ function buildBatchedEmailHtml(
   dealName: string,
   dealId: string,
   notifications: LenderNotification[],
+  stageLabels: Record<string, string>,
+  trackingLabels: Record<string, string>,
+  substageLabels: Record<string, string>,
 ): string {
   const changedByName = notifications[0]?.changed_by_name || 'A team member';
   const uniqueChangers = [...new Set(notifications.map(n => n.changed_by_name || 'Unknown'))];
@@ -53,24 +56,30 @@ function buildBatchedEmailHtml(
     const changeDetails: string[] = [];
 
     if (changes.stage) {
+      const fromLabel = stageLabels[changes.stage.from] || changes.stage.from || '—';
+      const toLabel = stageLabels[changes.stage.to] || changes.stage.to || '—';
       changeDetails.push(`<tr>
         <td style="padding: 4px 12px; color: #6b7280; font-size: 12px;">Stage</td>
-        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${changes.stage.from || '—'}</td>
-        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${changes.stage.to || '—'}</td>
+        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${fromLabel}</td>
+        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${toLabel}</td>
       </tr>`);
     }
     if (changes.tracking_status) {
+      const fromLabel = trackingLabels[changes.tracking_status.from] || changes.tracking_status.from || '—';
+      const toLabel = trackingLabels[changes.tracking_status.to] || changes.tracking_status.to || '—';
       changeDetails.push(`<tr>
         <td style="padding: 4px 12px; color: #6b7280; font-size: 12px;">Status</td>
-        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${changes.tracking_status.from || '—'}</td>
-        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${changes.tracking_status.to || '—'}</td>
+        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${fromLabel}</td>
+        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${toLabel}</td>
       </tr>`);
     }
     if (changes.substage) {
+      const fromLabel = substageLabels[changes.substage.from] || changes.substage.from || '—';
+      const toLabel = substageLabels[changes.substage.to] || changes.substage.to || '—';
       changeDetails.push(`<tr>
         <td style="padding: 4px 12px; color: #6b7280; font-size: 12px;">Milestone</td>
-        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${changes.substage.from || '—'}</td>
-        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${changes.substage.to || '—'}</td>
+        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${fromLabel}</td>
+        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${toLabel}</td>
       </tr>`);
     }
     if (changes.notes) {
@@ -227,6 +236,47 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
+        // Resolve lender stage/substage/tracking labels from company config
+        const stageLabels: Record<string, string> = {};
+        const substageLabels: Record<string, string> = {};
+        const trackingLabels: Record<string, string> = {
+          'active': 'Active', 'on-hold': 'On Hold', 'on-deck': 'On Deck',
+          'passed': 'Passed', 'not-a-fit': 'Not a Fit', 'excluded': 'Excluded', 'direct': 'Direct',
+        };
+
+        const { data: lenderConfig } = await supabaseAdmin
+          .from('lender_stage_configs')
+          .select('stages, substages, tracking_statuses')
+          .eq('company_id', deal.company_id)
+          .maybeSingle();
+
+        if (lenderConfig) {
+          const stages = (lenderConfig.stages as any[]) || [];
+          for (const s of stages) {
+            if (s.id && s.label) stageLabels[s.id] = s.label;
+          }
+          const substages = (lenderConfig.substages as any[]) || [];
+          for (const s of substages) {
+            if (s.id && s.label) substageLabels[s.id] = s.label;
+          }
+          const trackings = (lenderConfig.tracking_statuses as any[]) || [];
+          for (const t of trackings) {
+            if (t.id && t.label) trackingLabels[t.id] = t.label;
+          }
+        }
+
+        // Hardcoded fallbacks for default lender stages
+        const defaultStages: Record<string, string> = {
+          'reviewing-drl': 'Reviewing DRL',
+          'management-call-set': 'Management Call Set',
+          'management-call-completed': 'Management Call Completed',
+          'draft-terms': 'Draft Terms',
+          'term-sheets': 'Term Sheets',
+        };
+        for (const [k, v] of Object.entries(defaultStages)) {
+          if (!stageLabels[k]) stageLabels[k] = v;
+        }
+
         // Get company stale_alert_config for always_notify_emails
         const { data: companySettings } = await supabaseAdmin
           .from('company_settings')
@@ -324,6 +374,9 @@ const handler = async (req: Request): Promise<Response> => {
               deal.company,
               dealId,
               notifications,
+              stageLabels,
+              trackingLabels,
+              substageLabels,
             );
 
             await resend.emails.send({
