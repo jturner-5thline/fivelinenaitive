@@ -164,16 +164,42 @@ export function ClaapSyncSettings() {
       return;
     }
 
-    setBackfillProgress({ running: true, processed: 0, matched: 0, rematched: 0, skipped: 0, alreadyExists: 0, errors: 0, batchesDone: 0, errorDetails: [], processedTitles: [] });
+    setBackfillProgress({
+      running: true,
+      processed: 0,
+      matched: 0,
+      rematched: 0,
+      skipped: 0,
+      skippedInternalOnly: 0,
+      unmatched: 0,
+      alreadyExists: 0,
+      errors: 0,
+      batchesDone: 0,
+      pagesProcessed: 0,
+      totalCallsScanned: 0,
+      pageSize: 20,
+      errorDetails: [],
+      processedTitles: [],
+    });
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     let cursor: string | null = null;
-    let totalProcessed = 0, totalMatched = 0, totalRematched = 0, totalSkipped = 0, totalExists = 0, totalErrors = 0;
+    let totalProcessed = 0;
+    let totalMatched = 0;
+    let totalRematched = 0;
+    let totalSkipped = 0;
+    let totalSkippedInternalOnly = 0;
+    let totalUnmatched = 0;
+    let totalExists = 0;
+    let totalErrors = 0;
+    let totalCallsScanned = 0;
+    let totalPagesProcessed = 0;
     let batchesDone = 0;
+    let pageSize = 20;
     let allErrorDetails: Array<{ claap_id: string; title: string | null; error: string }> = [];
     let allTitles: string[] = [];
 
     try {
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < 200; i++) {
         const response = await fetch(
           `https://${projectId}.supabase.co/functions/v1/claap-backfill`,
           {
@@ -182,7 +208,7 @@ export function ClaapSyncSettings() {
             body: JSON.stringify({
               company_id: config.company_id,
               days_back: 365,
-              batch_size: 20,
+              batch_size: pageSize,
               cursor,
               time_budget_ms: 50000,
               rematch_existing_only: rematchExistingOnly,
@@ -197,16 +223,33 @@ export function ClaapSyncSettings() {
         totalMatched += result.matched || 0;
         totalRematched += result.rematched || 0;
         totalSkipped += result.skipped || 0;
+        totalSkippedInternalOnly += result.skipped_internal_only || 0;
+        totalUnmatched += result.unmatched || 0;
         totalExists += result.already_exists || 0;
         totalErrors += result.errors || 0;
+        totalCallsScanned += result.records_returned || result.total_in_batch || 0;
+        totalPagesProcessed += result.pages_processed || 1;
         batchesDone++;
+        pageSize = result.page_size || pageSize;
         if (result.error_details) allErrorDetails = [...allErrorDetails, ...result.error_details];
         if (result.processed_titles) allTitles = [...allTitles, ...result.processed_titles];
 
         setBackfillProgress({
-          running: true, processed: totalProcessed, matched: totalMatched,
-          rematched: totalRematched, skipped: totalSkipped, alreadyExists: totalExists, errors: totalErrors, batchesDone,
-          errorDetails: allErrorDetails, processedTitles: allTitles,
+          running: true,
+          processed: totalProcessed,
+          matched: totalMatched,
+          rematched: totalRematched,
+          skipped: totalSkipped,
+          skippedInternalOnly: totalSkippedInternalOnly,
+          unmatched: totalUnmatched,
+          alreadyExists: totalExists,
+          errors: totalErrors,
+          batchesDone,
+          pagesProcessed: totalPagesProcessed,
+          totalCallsScanned,
+          pageSize,
+          errorDetails: allErrorDetails,
+          processedTitles: allTitles,
         });
 
         if (rematchExistingOnly || !result.has_more || !result.next_cursor) break;
@@ -215,8 +258,8 @@ export function ClaapSyncSettings() {
 
       toast.success(rematchExistingOnly ? 'Call re-match complete' : 'Historical backfill complete', {
         description: rematchExistingOnly
-          ? `Processed: ${totalProcessed} | Re-matched: ${totalRematched} | Skipped: ${totalSkipped}`
-          : `Processed: ${totalProcessed} | Matched: ${totalMatched} | Re-matched: ${totalRematched} | Skipped: ${totalSkipped} | Already synced: ${totalExists}`,
+          ? `Processed: ${totalProcessed} | Re-matched: ${totalRematched} | Pages: ${totalPagesProcessed}`
+          : `Scanned: ${totalCallsScanned} | Processed: ${totalProcessed} | Matched: ${totalMatched} | Unmatched: ${totalUnmatched} | Internal-only skipped: ${totalSkippedInternalOnly} | Already synced: ${totalExists}`,
         duration: 10000,
       });
 
