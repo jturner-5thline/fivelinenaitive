@@ -176,7 +176,7 @@ export function ClaapSyncSettings() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               company_id: config.company_id,
-              days_back: 60,
+              days_back: 365,
               batch_size: 20,
               cursor,
               time_budget_ms: 50000,
