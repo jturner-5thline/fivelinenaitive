@@ -19,11 +19,15 @@ export function FloatingCopilotDrawer() {
   const [open, setOpen] = useState(false);
   const { hasPageAccess, isLoading } = usePageAccessFlags();
   const copilotEnabled = hasPageAccess('copilot_widget');
+  const copilotPanelOpen = useCopilotStore((s) => s.isOpen);
 
   // Hide on landing, auth, login, and public pages
   const hiddenPaths = ['/', '/home', '/homepage', '/login', '/auth', '/onboarding', '/create-account', '/waitlist', '/join'];
   if (!user || hiddenPaths.includes(location.pathname)) return null;
   if (isLoading || !copilotEnabled) return null;
+
+  // Hide entirely when the AICopilotPanel is open to avoid duplicate AI surfaces
+  if (copilotPanelOpen) return null;
 
   const content = (
     <>
