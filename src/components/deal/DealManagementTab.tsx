@@ -4,7 +4,7 @@ import { EngagementSummaryCard } from './EngagementSummaryCard';
 import { EngagementTrendsCard } from './EngagementTrendsCard';
 import { DealActivityChart } from './DealActivityChart';
 import { DealFlagLog } from './DealFlagLog';
-import { ClaudeFinancialAnalysis } from './ClaudeFinancialAnalysis';
+
 import { useFlagNotes } from '@/hooks/useFlagNotes';
 
 interface DealManagementTabProps {
