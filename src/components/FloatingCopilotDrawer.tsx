@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { PinnedInsightsPanel } from '@/components/dashboard/chat/PinnedInsightsPanel';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
+import { useCopilotStore } from '@/stores/copilotStore';
 
 export function FloatingCopilotDrawer() {
   const { user } = useAuth();
