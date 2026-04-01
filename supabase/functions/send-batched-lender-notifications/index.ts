@@ -213,11 +213,62 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${pending.length} pending notifications`);
 
-    // Group by deal_id
+    // Group by deal_id, then merge multiple notifications for the same lender
     const byDeal: Record<string, LenderNotification[]> = {};
     for (const n of pending) {
       if (!byDeal[n.deal_id]) byDeal[n.deal_id] = [];
       byDeal[n.deal_id].push(n as LenderNotification);
+    }
+
+    // For each deal, merge notifications for the same lender into one
+    for (const dealId of Object.keys(byDeal)) {
+      const notifications = byDeal[dealId];
+      const byLender: Record<string, LenderNotification[]> = {};
+      for (const n of notifications) {
+        const key = n.lender_id || n.lender_name;
+        if (!byLender[key]) byLender[key] = [];
+        byLender[key].push(n);
+      }
+
+      const merged: LenderNotification[] = [];
+      for (const lenderNotifs of Object.values(byLender)) {
+        if (lenderNotifs.length === 1) {
+          merged.push(lenderNotifs[0]);
+        } else {
+          // Merge all change_summary objects into one, keeping earliest "from" and latest "to"
+          const base = { ...lenderNotifs[0] };
+          const mergedChanges: Record<string, any> = { ...(base.change_summary || {}) };
+          for (let i = 1; i < lenderNotifs.length; i++) {
+            const cs = lenderNotifs[i].change_summary || {};
+            for (const [field, val] of Object.entries(cs)) {
+              if (mergedChanges[field]) {
+                // Keep the original "from" but take the latest "to"
+                mergedChanges[field] = { from: mergedChanges[field].from, to: (val as any).to };
+              } else {
+                mergedChanges[field] = val;
+              }
+            }
+            // Collect all IDs for cleanup
+          }
+          // Remove no-op changes where from === to after merging
+          for (const [field, val] of Object.entries(mergedChanges)) {
+            if ((val as any).from === (val as any).to) {
+              delete mergedChanges[field];
+            }
+          }
+          base.change_summary = mergedChanges;
+          // Keep all original IDs so they all get deleted
+          (base as any)._all_ids = lenderNotifs.map(n => n.id);
+          if (Object.keys(mergedChanges).length > 0) {
+            merged.push(base);
+          } else {
+            // All changes cancelled out; still need to clean up
+            (base as any)._cleanup_only = true;
+            merged.push(base);
+          }
+        }
+      }
+      byDeal[dealId] = merged;
     }
 
     const results: any[] = [];
