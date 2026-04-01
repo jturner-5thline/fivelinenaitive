@@ -13,7 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // Auth: accept CRON_SECRET, anon key (cron), or valid user JWT
     const authHeader = req.headers.get("Authorization");
     const cronSecret = Deno.env.get("CRON_SECRET");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -44,7 +43,7 @@ serve(async (req) => {
     const resend = new Resend(RESEND_API_KEY);
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // ── 1. Gather platform data (same as generate-ux-insights) ──
+    // ── 1. Gather platform data ──
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const since = thirtyDaysAgo.toISOString();
@@ -53,6 +52,7 @@ serve(async (req) => {
       pageViewsRes, rageClicksRes, errorsRes, navigationRes,
       searchEventsRes, feedbackRes, performanceRes,
       dealsRes, activityLogsRes, dealLendersRes,
+      prevScoreRes,
     ] = await Promise.all([
       supabase.from("page_views").select("page_path, session_id, device_type, created_at").gte("created_at", since).limit(1000),
       supabase.from("ux_rage_clicks").select("page_path, element_selector, element_text, click_count, device_type").limit(100),
@@ -64,6 +64,8 @@ serve(async (req) => {
       supabase.from("deals").select("id, company, stage, status, created_at, updated_at, deal_type, value").limit(500),
       supabase.from("activity_logs").select("activity_type, description, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(500),
       supabase.from("deal_lenders").select("stage, tracking_status, created_at, updated_at").limit(500),
+      // Get previous week's health score from ai_usage_logs metadata
+      supabase.from("ai_usage_logs").select("created_at, output_tokens").eq("feature", "ux_insights_email").order("created_at", { ascending: false }).limit(2),
     ]);
 
     const pageViews = pageViewsRes.data || [];
@@ -199,54 +201,85 @@ Generate product improvement insights with related deals where applicable.`;
 
     const { healthScore = 70, summary = "", insights = [] } = parsed;
 
-    // ── 3. Build email HTML ──
+    // ── 2b. Compute change from last week ──
+    // Previous score stored as output_tokens (repurposed field) in ai_usage_logs
+    const prevLogs = prevScoreRes.data || [];
+    // The most recent entry is the current run (not yet logged), so the previous is index 0 if it exists
+    const previousScore = prevLogs.length > 0 ? prevLogs[0].output_tokens : null;
+    const scoreDelta = previousScore !== null ? healthScore - previousScore : null;
+
+    // Log this week's score for next week's comparison
+    await supabase.from("ai_usage_logs").insert({
+      company_id: "00000000-0000-0000-0000-000000000000", // system-level
+      user_id: "00000000-0000-0000-0000-000000000000",
+      feature: "ux_insights_email",
+      model: "gemini-3-flash-preview",
+      input_tokens: 0,
+      output_tokens: healthScore, // Store health score for week-over-week tracking
+      status: "success",
+    });
+
+    // ── 3. Build email HTML (dark theme) ──
     const now = new Date();
     const formattedDate = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
-    const healthColor = healthScore >= 80 ? "#16a34a" : healthScore >= 60 ? "#d97706" : "#dc2626";
+    const healthColor = healthScore >= 80 ? "#22c55e" : healthScore >= 60 ? "#f59e0b" : "#ef4444";
     const healthLabel = healthScore >= 80 ? "Healthy" : healthScore >= 60 ? "Needs Attention" : "Critical";
+    const healthGlow = healthScore >= 80 ? "rgba(34,197,94,0.3)" : healthScore >= 60 ? "rgba(245,158,11,0.3)" : "rgba(239,68,68,0.3)";
 
-    const insightRows = insights.map((insight: any, i: number) => {
-      const impactColor = insight.impact === "high" ? "#dc2626" : insight.impact === "medium" ? "#d97706" : "#6b7280";
-      const impactBg = insight.impact === "high" ? "#fef2f2" : insight.impact === "medium" ? "#fffbeb" : "#f9fafb";
-      const categoryColor = insight.category === "UX" ? "#7c3aed" : insight.category === "Performance" ? "#2563eb" : insight.category === "Workflow" ? "#059669" : "#8b5cf6";
+    // Delta display
+    let deltaHtml = "";
+    if (scoreDelta !== null) {
+      const deltaColor = scoreDelta > 0 ? "#22c55e" : scoreDelta < 0 ? "#ef4444" : "#94a3b8";
+      const deltaArrow = scoreDelta > 0 ? "▲" : scoreDelta < 0 ? "▼" : "●";
+      const deltaText = scoreDelta > 0 ? `+${scoreDelta}` : `${scoreDelta}`;
+      deltaHtml = `<p style="margin:4px 0 0;font-size:12px;color:${deltaColor};font-weight:600;">${deltaArrow} ${deltaText} from last week</p>`;
+    } else {
+      deltaHtml = `<p style="margin:4px 0 0;font-size:11px;color:#64748b;">First report — no prior data</p>`;
+    }
+
+    const insightRows = insights.map((insight: any) => {
+      const impactColor = insight.impact === "high" ? "#ef4444" : insight.impact === "medium" ? "#f59e0b" : "#64748b";
+      const impactBg = insight.impact === "high" ? "rgba(239,68,68,0.15)" : insight.impact === "medium" ? "rgba(245,158,11,0.15)" : "rgba(100,116,139,0.15)";
+      const categoryColors: Record<string, string> = { UX: "#a78bfa", Performance: "#60a5fa", Workflow: "#34d399", Feature: "#c084fc" };
+      const categoryColor = categoryColors[insight.category] || "#a78bfa";
 
       const dealChips = (insight.relatedDeals || []).map((d: string) =>
-        `<span style="display:inline-block;background:#f0f9ff;color:#0369a1;padding:2px 8px;border-radius:4px;font-size:11px;margin-right:4px;margin-top:4px;">${d}</span>`
+        `<span style="display:inline-block;background:rgba(59,130,246,0.15);color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:11px;margin-right:4px;margin-top:4px;">${d}</span>`
       ).join("");
 
       return `
         <tr>
-          <td style="padding:0 0 16px 0;">
-            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;border-left:4px solid ${impactColor};">
+          <td style="padding:0 0 12px 0;">
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border:1px solid #334155;border-radius:8px;border-left:3px solid ${impactColor};">
               <tr>
                 <td style="padding:16px 20px;">
                   <table cellpadding="0" cellspacing="0" border="0" width="100%">
                     <tr>
                       <td>
                         <span style="display:inline-block;background:${impactBg};color:${impactColor};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase;">${insight.impact} impact</span>
-                        <span style="display:inline-block;background:#f3f4f6;color:${categoryColor};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;margin-left:6px;">${insight.category}</span>
+                        <span style="display:inline-block;background:rgba(100,116,139,0.2);color:${categoryColor};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;margin-left:6px;">${insight.category}</span>
                       </td>
                     </tr>
                     <tr>
-                      <td style="padding-top:8px;">
-                        <p style="margin:0;font-size:15px;font-weight:600;color:#111827;">${insight.title}</p>
+                      <td style="padding-top:10px;">
+                        <p style="margin:0;font-size:15px;font-weight:600;color:#f1f5f9;">${insight.title}</p>
                       </td>
                     </tr>
                     <tr>
                       <td style="padding-top:6px;">
-                        <p style="margin:0;font-size:13px;color:#4b5563;line-height:1.5;">${insight.description}</p>
+                        <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">${insight.description}</p>
                       </td>
                     </tr>
                     <tr>
-                      <td style="padding-top:10px;border-top:1px solid #f3f4f6;margin-top:8px;">
-                        <p style="margin:8px 0 0;font-size:13px;color:#111827;"><strong>Recommendation:</strong> ${insight.recommendation}</p>
+                      <td style="padding-top:10px;border-top:1px solid #334155;margin-top:8px;">
+                        <p style="margin:8px 0 0;font-size:13px;color:#cbd5e1;"><span style="color:#60a5fa;font-weight:600;">→</span> ${insight.recommendation}</p>
                       </td>
                     </tr>
                     ${dealChips ? `
                     <tr>
                       <td style="padding-top:8px;">
-                        <p style="margin:0 0 4px;font-size:11px;color:#6b7280;font-weight:500;">RELATED DEALS</p>
+                        <p style="margin:0 0 4px;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">RELATED DEALS</p>
                         ${dealChips}
                       </td>
                     </tr>` : ""}
@@ -258,58 +291,34 @@ Generate product improvement insights with related deals where applicable.`;
         </tr>`;
     }).join("");
 
-    // Deal pipeline summary
-    const stageLabels: Record<string, string> = {
-      "proposal-in-development": "Proposal In Development",
-      "proposal-issued": "Proposal Issued",
-      "nda-ca-stage": "NDA/CA",
-      "nda_materials_stage": "NDA / Needs List Sent",
-      "submitted-to-lenders": "Submitted to Lenders",
-      "lenders-in-review": "Lenders In Review",
-      "lender-diligence": "Lender Diligence",
-      "terms-issued": "Terms Issued",
-      "agreement-pending": "Agreement Pending",
-      "closing": "Closing",
-      "funded": "Funded",
-      "on-hold": "On Hold",
-      "closed-lost": "Closed Lost",
-      "archived": "Archived",
-    };
-
-    const dealSummaryRows = Object.entries(dealStages)
-      .filter(([stage]) => !["on-hold", "closed-lost", "archived"].includes(stage))
-      .map(([stage, count]) => {
-        const label = stageLabels[stage] || stage.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-        return `<tr><td style="padding:4px 0;font-size:13px;color:#4b5563;">${label}</td><td style="padding:4px 0;font-size:13px;color:#111827;font-weight:600;text-align:right;">${count}</td></tr>`;
-      }).join("");
-
     const appUrl = "https://fivelinenaitive.lovable.app";
 
     const emailHtml = `
 <!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f3f4f6;">
+<body style="margin:0;padding:0;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#0f172a;">
     <tr><td align="center" style="padding:32px 16px;">
       <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;">
 
         <!-- Header -->
         <tr>
-          <td style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);padding:32px 32px 24px;border-radius:12px 12px 0 0;">
+          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);padding:36px 32px 28px;border-radius:12px 12px 0 0;border:1px solid #1e293b;border-bottom:none;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
                 <td>
-                  <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.7);font-weight:500;text-transform:uppercase;letter-spacing:1px;">WEEKLY UX INSIGHTS</p>
-                  <p style="margin:4px 0 0;font-size:22px;font-weight:700;color:#ffffff;">naitive Platform Health</p>
-                  <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.8);">${formattedDate}</p>
+                  <p style="margin:0;font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;">WEEKLY UX INSIGHTS</p>
+                  <p style="margin:6px 0 0;font-size:24px;font-weight:700;color:#f8fafc;">naitive Platform Health</p>
+                  <p style="margin:6px 0 0;font-size:13px;color:#64748b;">${formattedDate}</p>
                 </td>
                 <td style="text-align:right;vertical-align:top;">
                   <table cellpadding="0" cellspacing="0" border="0" style="display:inline-block;">
                     <tr>
-                      <td style="background:rgba(255,255,255,0.15);border-radius:12px;padding:12px 20px;text-align:center;">
-                        <p style="margin:0;font-size:32px;font-weight:800;color:${healthColor};">${healthScore}</p>
-                        <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.9);font-weight:500;">${healthLabel}</p>
+                      <td style="background:rgba(15,23,42,0.8);border:2px solid ${healthColor};border-radius:16px;padding:16px 24px;text-align:center;box-shadow:0 0 20px ${healthGlow};">
+                        <p style="margin:0;font-size:36px;font-weight:800;color:${healthColor};line-height:1;">${healthScore}</p>
+                        <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${healthLabel}</p>
+                        ${deltaHtml}
                       </td>
                     </tr>
                   </table>
@@ -321,32 +330,48 @@ Generate product improvement insights with related deals where applicable.`;
 
         <!-- Executive Summary -->
         <tr>
-          <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #e5e7eb;">
-            <p style="margin:0;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">EXECUTIVE SUMMARY</p>
-            <p style="margin:8px 0 0;font-size:14px;color:#374151;line-height:1.6;">${summary}</p>
+          <td style="background:#1e293b;padding:24px 32px;border-left:1px solid #334155;border-right:1px solid #334155;">
+            <p style="margin:0;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:1px;">EXECUTIVE SUMMARY</p>
+            <p style="margin:10px 0 0;font-size:14px;color:#cbd5e1;line-height:1.7;">${summary}</p>
           </td>
         </tr>
 
         <!-- Quick Stats -->
         <tr>
-          <td style="background:#ffffff;padding:16px 32px 20px;">
+          <td style="background:#0f172a;padding:20px 32px;border-left:1px solid #334155;border-right:1px solid #334155;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
-                <td width="25%" style="text-align:center;padding:8px;">
-                  <p style="margin:0;font-size:22px;font-weight:700;color:#2563eb;">${dataSummary.deals.total}</p>
-                  <p style="margin:2px 0 0;font-size:11px;color:#6b7280;">Total Deals</p>
+                <td width="25%" style="text-align:center;padding:12px 4px;">
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border-radius:8px;border:1px solid #334155;">
+                    <tr><td style="padding:14px 8px;">
+                      <p style="margin:0;font-size:24px;font-weight:700;color:#60a5fa;">${dataSummary.deals.total}</p>
+                      <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Total Deals</p>
+                    </td></tr>
+                  </table>
                 </td>
-                <td width="25%" style="text-align:center;padding:8px;">
-                  <p style="margin:0;font-size:22px;font-weight:700;color:#059669;">${dataSummary.deals.activeCount}</p>
-                  <p style="margin:2px 0 0;font-size:11px;color:#6b7280;">Active Deals</p>
+                <td width="25%" style="text-align:center;padding:12px 4px;">
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border-radius:8px;border:1px solid #334155;">
+                    <tr><td style="padding:14px 8px;">
+                      <p style="margin:0;font-size:24px;font-weight:700;color:#34d399;">${dataSummary.deals.activeCount}</p>
+                      <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Active</p>
+                    </td></tr>
+                  </table>
                 </td>
-                <td width="25%" style="text-align:center;padding:8px;">
-                  <p style="margin:0;font-size:22px;font-weight:700;color:#7c3aed;">${dataSummary.lenders.total}</p>
-                  <p style="margin:2px 0 0;font-size:11px;color:#6b7280;">Lender Entries</p>
+                <td width="25%" style="text-align:center;padding:12px 4px;">
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border-radius:8px;border:1px solid #334155;">
+                    <tr><td style="padding:14px 8px;">
+                      <p style="margin:0;font-size:24px;font-weight:700;color:#a78bfa;">${dataSummary.lenders.total}</p>
+                      <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Lenders</p>
+                    </td></tr>
+                  </table>
                 </td>
-                <td width="25%" style="text-align:center;padding:8px;">
-                  <p style="margin:0;font-size:22px;font-weight:700;color:#d97706;">${dataSummary.activityLogs.total}</p>
-                  <p style="margin:2px 0 0;font-size:11px;color:#6b7280;">Activities (30d)</p>
+                <td width="25%" style="text-align:center;padding:12px 4px;">
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border-radius:8px;border:1px solid #334155;">
+                    <tr><td style="padding:14px 8px;">
+                      <p style="margin:0;font-size:24px;font-weight:700;color:#f59e0b;">${dataSummary.activityLogs.total}</p>
+                      <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Activities</p>
+                    </td></tr>
+                  </table>
                 </td>
               </tr>
             </table>
@@ -355,32 +380,31 @@ Generate product improvement insights with related deals where applicable.`;
 
         <!-- Insights Section -->
         <tr>
-          <td style="background:#f9fafb;padding:24px 32px 8px;">
-            <p style="margin:0;font-size:16px;font-weight:700;color:#111827;">🔍 Insights & Recommendations</p>
-            <p style="margin:4px 0 16px;font-size:13px;color:#6b7280;">${insights.length} insight${insights.length !== 1 ? "s" : ""} generated from platform activity</p>
+          <td style="background:#0f172a;padding:24px 32px 8px;border-left:1px solid #334155;border-right:1px solid #334155;">
+            <p style="margin:0;font-size:16px;font-weight:700;color:#f1f5f9;">🔍 Insights & Recommendations</p>
+            <p style="margin:4px 0 16px;font-size:13px;color:#64748b;">${insights.length} insight${insights.length !== 1 ? "s" : ""} generated from platform activity</p>
           </td>
         </tr>
         <tr>
-          <td style="background:#f9fafb;padding:0 32px 24px;">
+          <td style="background:#0f172a;padding:0 32px 24px;border-left:1px solid #334155;border-right:1px solid #334155;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               ${insightRows}
             </table>
           </td>
         </tr>
 
-
         <!-- CTA -->
         <tr>
-          <td style="background:#ffffff;padding:20px 32px 28px;text-align:center;border-top:1px solid #f3f4f6;">
-            <a href="${appUrl}/admin" style="display:inline-block;background:#2563eb;color:#ffffff;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;">View Full UX Recommendations →</a>
+          <td style="background:#1e293b;padding:24px 32px;text-align:center;border-left:1px solid #334155;border-right:1px solid #334155;">
+            <a href="${appUrl}/admin" style="display:inline-block;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#ffffff;padding:14px 32px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:0.3px;">View Full UX Recommendations →</a>
           </td>
         </tr>
 
         <!-- Footer -->
         <tr>
-          <td style="padding:20px 32px;text-align:center;border-radius:0 0 12px 12px;">
-            <p style="margin:0;font-size:11px;color:#9ca3af;">This is an automated weekly report from naitive. Delivered every Friday at 3:00 PM ET.</p>
-            <p style="margin:4px 0 0;font-size:11px;color:#9ca3af;">naitive • <a href="${appUrl}" style="color:#6b7280;">fivelinenaitive.lovable.app</a></p>
+          <td style="padding:24px 32px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #1e293b;border-top:none;">
+            <p style="margin:0;font-size:11px;color:#475569;">This is an automated weekly report from naitive. Delivered every Friday at 3:00 PM ET.</p>
+            <p style="margin:4px 0 0;font-size:11px;color:#475569;">naitive • <a href="${appUrl}" style="color:#64748b;text-decoration:none;">fivelinenaitive.lovable.app</a></p>
           </td>
         </tr>
 
@@ -392,16 +416,18 @@ Generate product improvement insights with related deals where applicable.`;
 
     // ── 4. Send via Resend ──
     const RECIPIENT = "jturner@5thline.co";
+    const subjectDelta = scoreDelta !== null
+      ? (scoreDelta > 0 ? ` (▲ +${scoreDelta})` : scoreDelta < 0 ? ` (▼ ${scoreDelta})` : ` (● no change)`)
+      : "";
     const { data: emailResult, error: emailError } = await resend.emails.send({
       from: "naitive <noreply@updates.naitive.co>",
       to: [RECIPIENT],
-      subject: `naitive UX Insights — Health Score: ${healthScore}/100 — ${formattedDate}`,
+      subject: `naitive UX Insights — Health Score: ${healthScore}/100${subjectDelta} — ${formattedDate}`,
       html: emailHtml,
     });
 
     if (emailError) {
       console.error("Resend error:", emailError);
-      // Best-effort: don't fail the function
     } else {
       console.log("UX insights email sent:", emailResult);
     }
@@ -410,6 +436,8 @@ Generate product improvement insights with related deals where applicable.`;
       success: true,
       recipient: RECIPIENT,
       healthScore,
+      previousScore,
+      scoreDelta,
       insightCount: insights.length,
       emailId: emailResult?.id || null,
     }), {
