@@ -193,7 +193,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         // Direct match
         const { data: directMatches } = await supabase
           .from('claap_meetings')
-          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email')
+          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
           .eq('matched_contact_id', entityId)
           .order('started_at', { ascending: false })
           .limit(50);
@@ -210,7 +210,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
             const meetingIds = participantMatches.map(p => p.meeting_id);
             const { data: emailCalls } = await supabase
               .from('claap_meetings')
-              .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email')
+              .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
               .in('id', meetingIds)
               .order('started_at', { ascending: false });
             addCalls(emailCalls);
@@ -220,7 +220,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         // Direct match
         const { data: directMatches } = await supabase
           .from('claap_meetings')
-          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email')
+          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
           .eq('matched_crm_company_id', entityId)
           .order('started_at', { ascending: false })
           .limit(50);
@@ -230,7 +230,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         if (contactIds?.length) {
           const { data: contactCalls } = await supabase
             .from('claap_meetings')
-            .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email')
+            .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
             .in('matched_contact_id', contactIds)
             .order('started_at', { ascending: false })
             .limit(50);
@@ -240,7 +240,7 @@ export function ClaapCallsSection({ entityType, entityId, entityName, entityEmai
         // Direct match
         const { data: directMatches } = await supabase
           .from('claap_meetings')
-          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email')
+          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, match_source, transcript, ai_summary, organizer_email, deal_id')
           .eq('matched_lender_id', entityId)
           .order('started_at', { ascending: false })
           .limit(50);
