@@ -44,14 +44,17 @@ export function FloatingDealsAssistant() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('deal-assistant', {
-        body: { messages: [{ role: 'user', content: userMessage }], dealContext: { company: 'Pipeline', value: 0, stage: 'all', status: 'active' } },
+      const result = await sendClaudeMessage({
+        messages: [...messages, { role: 'user' as const, content: userMessage }],
+        system: 'You are an AI assistant for deal pipeline management. Help users understand their deal pipeline, identify deals that need attention, and provide actionable insights. Format responses with clear headings and bullet points.',
+        context: 'deal-assistant' as any,
+        temperature: 0.7,
+        max_tokens: 1000,
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (!result.success) throw new Error(result.error || 'Failed to get response');
 
-      setMessages(prev => [...prev, { role: 'assistant', content: data.content || data.answer }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: result.response }]);
     } catch (err) {
       console.error('Deals assistant error:', err);
       toast({
