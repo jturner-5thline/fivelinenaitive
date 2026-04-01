@@ -67,7 +67,7 @@ export function ClaapSyncSettings() {
       if (!data) return [];
 
       // Fetch deal names for linked calls
-      const dealIds = [...new Set(data.filter((c: any) => c.deal_id).map((c: any) => c.deal_id))];
+      const dealIds = [...new Set(data.filter((c: any) => c.deal_id).map((c: any) => c.deal_id))] as string[];
       let dealNames: Record<string, string> = {};
       if (dealIds.length > 0) {
         const { data: deals } = await supabase
