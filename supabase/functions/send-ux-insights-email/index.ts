@@ -368,16 +368,6 @@ Generate product improvement insights with related deals where applicable.`;
           </td>
         </tr>
 
-        <!-- Deal Pipeline Summary -->
-        ${dealSummaryRows ? `
-        <tr>
-          <td style="background:#ffffff;padding:24px 32px;border-top:1px solid #e5e7eb;">
-            <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#111827;">📊 Deal Pipeline Snapshot</p>
-            <table cellpadding="0" cellspacing="0" border="0" width="100%">
-              ${dealSummaryRows}
-            </table>
-          </td>
-        </tr>` : ""}
 
         <!-- CTA -->
         <tr>
