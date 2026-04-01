@@ -56,24 +56,30 @@ function buildBatchedEmailHtml(
     const changeDetails: string[] = [];
 
     if (changes.stage) {
+      const fromLabel = stageLabels[changes.stage.from] || changes.stage.from || '—';
+      const toLabel = stageLabels[changes.stage.to] || changes.stage.to || '—';
       changeDetails.push(`<tr>
         <td style="padding: 4px 12px; color: #6b7280; font-size: 12px;">Stage</td>
-        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${changes.stage.from || '—'}</td>
-        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${changes.stage.to || '—'}</td>
+        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${fromLabel}</td>
+        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${toLabel}</td>
       </tr>`);
     }
     if (changes.tracking_status) {
+      const fromLabel = trackingLabels[changes.tracking_status.from] || changes.tracking_status.from || '—';
+      const toLabel = trackingLabels[changes.tracking_status.to] || changes.tracking_status.to || '—';
       changeDetails.push(`<tr>
         <td style="padding: 4px 12px; color: #6b7280; font-size: 12px;">Status</td>
-        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${changes.tracking_status.from || '—'}</td>
-        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${changes.tracking_status.to || '—'}</td>
+        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${fromLabel}</td>
+        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${toLabel}</td>
       </tr>`);
     }
     if (changes.substage) {
+      const fromLabel = substageLabels[changes.substage.from] || changes.substage.from || '—';
+      const toLabel = substageLabels[changes.substage.to] || changes.substage.to || '—';
       changeDetails.push(`<tr>
         <td style="padding: 4px 12px; color: #6b7280; font-size: 12px;">Milestone</td>
-        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${changes.substage.from || '—'}</td>
-        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${changes.substage.to || '—'}</td>
+        <td style="padding: 4px 12px; color: #ef4444; font-size: 12px; text-decoration: line-through;">${fromLabel}</td>
+        <td style="padding: 4px 12px; color: #22c55e; font-size: 12px; font-weight: 600;">${toLabel}</td>
       </tr>`);
     }
     if (changes.notes) {
