@@ -1,0 +1,356 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    const { meeting_ids, company_id } = await req.json();
+
+    if (!company_id) {
+      return new Response(JSON.stringify({ error: "company_id required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get unmatched meetings to suggest for
+    let meetingQuery = supabase
+      .from("claap_meetings")
+      .select("id, title, organizer_email, started_at, duration_seconds, transcript, match_candidates, match_status, manually_locked, company_id")
+      .eq("company_id", company_id)
+      .eq("manually_locked", false);
+
+    if (meeting_ids?.length) {
+      meetingQuery = meetingQuery.in("id", meeting_ids);
+    } else {
+      meetingQuery = meetingQuery
+        .in("match_status", ["unmatched", "needs_review"])
+        .is("deal_id", null)
+        .order("created_at", { ascending: false })
+        .limit(30);
+    }
+
+    const { data: meetings, error: meetErr } = await meetingQuery;
+    if (meetErr) throw meetErr;
+    if (!meetings?.length) {
+      return new Response(JSON.stringify({ ok: true, processed: 0, suggestions: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get active deals for this company
+    const { data: deals } = await supabase
+      .from("deals")
+      .select("id, company, status, stage, user_id, updated_at")
+      .eq("company_id", company_id)
+      .neq("status", "archived")
+      .order("updated_at", { ascending: false })
+      .limit(200);
+
+    if (!deals?.length) {
+      return new Response(JSON.stringify({ ok: true, processed: meetings.length, suggestions: 0, reason: "no_active_deals" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get deal aliases
+    const { data: aliases } = await supabase
+      .from("deal_aliases")
+      .select("deal_id, alias")
+      .in("deal_id", deals.map((d: any) => d.id));
+
+    const aliasMap: Record<string, string[]> = {};
+    (aliases || []).forEach((a: any) => {
+      if (!aliasMap[a.deal_id]) aliasMap[a.deal_id] = [];
+      aliasMap[a.deal_id].push(a.alias.toLowerCase());
+    });
+
+    // Get participants for meetings
+    const { data: participants } = await supabase
+      .from("claap_meeting_participants")
+      .select("meeting_id, email, name, domain, is_internal")
+      .in("meeting_id", meetings.map((m: any) => m.id));
+
+    const participantMap: Record<string, any[]> = {};
+    (participants || []).forEach((p: any) => {
+      if (!participantMap[p.meeting_id]) participantMap[p.meeting_id] = [];
+      participantMap[p.meeting_id].push(p);
+    });
+
+    // Get deal lenders for matching
+    const { data: dealLenders } = await supabase
+      .from("deal_lenders")
+      .select("deal_id, name, contact_email")
+      .in("deal_id", deals.map((d: any) => d.id));
+
+    const lenderMap: Record<string, any[]> = {};
+    (dealLenders || []).forEach((l: any) => {
+      if (!lenderMap[l.deal_id]) lenderMap[l.deal_id] = [];
+      lenderMap[l.deal_id].push(l);
+    });
+
+    // Get prior feedback for learning
+    const { data: priorFeedback } = await supabase
+      .from("claap_match_feedback")
+      .select("action, suggested_deal_id, chosen_deal_id, signals")
+      .eq("company_id", company_id)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    // Build learned patterns from feedback
+    const learnedBoosts: Record<string, number> = {};
+    const learnedPenalties: Record<string, number> = {};
+    (priorFeedback || []).forEach((fb: any) => {
+      if (fb.action === "confirmed" && fb.chosen_deal_id) {
+        learnedBoosts[fb.chosen_deal_id] = (learnedBoosts[fb.chosen_deal_id] || 0) + 5;
+      }
+      if (fb.action === "dismissed" && fb.suggested_deal_id) {
+        learnedPenalties[fb.suggested_deal_id] = (learnedPenalties[fb.suggested_deal_id] || 0) + 3;
+      }
+      if (fb.action === "reassigned" && fb.chosen_deal_id) {
+        learnedBoosts[fb.chosen_deal_id] = (learnedBoosts[fb.chosen_deal_id] || 0) + 8;
+      }
+      if (fb.action === "reassigned" && fb.suggested_deal_id) {
+        learnedPenalties[fb.suggested_deal_id] = (learnedPenalties[fb.suggested_deal_id] || 0) + 5;
+      }
+    });
+
+    // Helper: Dice coefficient
+    function diceCoefficient(a: string, b: string): number {
+      if (!a || !b) return 0;
+      const aBigrams = new Set<string>();
+      for (let i = 0; i < a.length - 1; i++) aBigrams.add(a.substring(i, i + 2));
+      const bBigrams = new Set<string>();
+      for (let i = 0; i < b.length - 1; i++) bBigrams.add(b.substring(i, i + 2));
+      let intersection = 0;
+      for (const bg of aBigrams) if (bBigrams.has(bg)) intersection++;
+      return aBigrams.size + bBigrams.size === 0 ? 0 : (2 * intersection) / (aBigrams.size + bBigrams.size);
+    }
+
+    // Deterministic scoring for each meeting-deal pair
+    function scoreDeal(meeting: any, deal: any, meetingParticipants: any[]): { score: number; reasons: string[] } {
+      let score = 0;
+      const reasons: string[] = [];
+      const titleLower = (meeting.title || "").toLowerCase();
+      const dealNameLower = (deal.company || "").toLowerCase();
+
+      // Title matching
+      if (titleLower.includes(dealNameLower) && dealNameLower.length > 2) {
+        score += 40;
+        reasons.push(`Title contains deal name "${deal.company}"`);
+      } else {
+        const dice = diceCoefficient(titleLower, dealNameLower);
+        if (dice >= 0.6) {
+          score += Math.round(dice * 30);
+          reasons.push(`Title similar to deal name (${Math.round(dice * 100)}% match)`);
+        }
+      }
+
+      // Alias matching
+      const dealAliases = aliasMap[deal.id] || [];
+      for (const alias of dealAliases) {
+        if (titleLower.includes(alias) && alias.length > 2) {
+          score += 35;
+          reasons.push(`Title matches deal alias "${alias}"`);
+          break;
+        }
+      }
+
+      // Participant-lender matching
+      const lenders = lenderMap[deal.id] || [];
+      for (const participant of meetingParticipants) {
+        if (participant.is_internal) continue;
+        for (const lender of lenders) {
+          if (participant.email && lender.contact_email && participant.email.toLowerCase() === lender.contact_email.toLowerCase()) {
+            score += 30;
+            reasons.push(`Participant ${participant.email} is lender contact on this deal`);
+          }
+          if (participant.domain && lender.name) {
+            const lenderDomain = lender.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+            const participantDomain = participant.domain.toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (lenderDomain.length > 3 && participantDomain.includes(lenderDomain)) {
+              score += 15;
+              reasons.push(`Participant domain matches lender "${lender.name}"`);
+            }
+          }
+        }
+      }
+
+      // Activity recency bonus
+      if (deal.status === "active") {
+        score += 5;
+        reasons.push("Deal is active");
+      }
+      const daysSinceUpdate = (Date.now() - new Date(deal.updated_at).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceUpdate < 7) {
+        score += 5;
+        reasons.push("Deal recently updated");
+      }
+
+      // Learned boosts/penalties
+      if (learnedBoosts[deal.id]) {
+        const boost = Math.min(learnedBoosts[deal.id], 20);
+        score += boost;
+        reasons.push(`Boosted by prior user confirmations (+${boost})`);
+      }
+      if (learnedPenalties[deal.id]) {
+        const penalty = Math.min(learnedPenalties[deal.id], 15);
+        score -= penalty;
+        reasons.push(`Reduced by prior dismissals (-${penalty})`);
+      }
+
+      // Exclude test deals unless explicitly boosted
+      if (dealNameLower.includes("test") && !learnedBoosts[deal.id]) {
+        score -= 20;
+      }
+
+      return { score: Math.max(0, Math.min(100, score)), reasons };
+    }
+
+    // Process each meeting
+    let totalSuggestions = 0;
+
+    for (const meeting of meetings) {
+      const meetingParticipants = participantMap[meeting.id] || [];
+
+      // Score all deals
+      const scoredDeals = deals.map((deal: any) => {
+        const { score, reasons } = scoreDeal(meeting, deal, meetingParticipants);
+        return { deal_id: deal.id, deal_name: deal.company, score, reasons };
+      }).filter((d: any) => d.score >= 10)
+        .sort((a: any, b: any) => b.score - a.score)
+        .slice(0, 5);
+
+      // Use AI for additional ranking if we have LOVABLE_API_KEY and meaningful text
+      let aiEnhancedDeals = scoredDeals;
+      if (lovableApiKey && scoredDeals.length > 0 && (meeting.title || meeting.transcript)) {
+        try {
+          const contextText = [
+            meeting.title ? `Meeting title: "${meeting.title}"` : "",
+            meetingParticipants.length > 0
+              ? `Participants: ${meetingParticipants.map((p: any) => `${p.name || ""} (${p.email || p.domain || "unknown"})`).join(", ")}`
+              : "",
+            meeting.transcript ? `Transcript excerpt: ${(meeting.transcript as string).substring(0, 800)}` : "",
+          ].filter(Boolean).join("\n");
+
+          const candidateList = scoredDeals.map((d: any, i: number) =>
+            `${i + 1}. "${d.deal_name}" (current score: ${d.score}, reasons: ${d.reasons.join("; ")})`
+          ).join("\n");
+
+          const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${lovableApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-lite",
+              messages: [
+                {
+                  role: "system",
+                  content: `You are a deal-matching assistant for a financial advisory CRM. Given a meeting/call context and candidate deals, rank the deals by likelihood this call is about that deal. Return a JSON array of objects with deal_index (1-based), confidence_adjustment (-20 to +20), and reason (short sentence). Only adjust if you have clear signal. Be conservative.`,
+                },
+                {
+                  role: "user",
+                  content: `Meeting context:\n${contextText}\n\nCandidate deals:\n${candidateList}\n\nRank these deals by likelihood. Return JSON array only.`,
+                },
+              ],
+              temperature: 0.1,
+            }),
+          });
+
+          if (aiResponse.ok) {
+            const aiData = await aiResponse.json();
+            const content = aiData.choices?.[0]?.message?.content || "";
+            // Extract JSON from response
+            const jsonMatch = content.match(/\[[\s\S]*?\]/);
+            if (jsonMatch) {
+              const adjustments = JSON.parse(jsonMatch[0]);
+              for (const adj of adjustments) {
+                const idx = (adj.deal_index || 0) - 1;
+                if (idx >= 0 && idx < aiEnhancedDeals.length) {
+                  aiEnhancedDeals[idx].score = Math.max(0, Math.min(100, aiEnhancedDeals[idx].score + (adj.confidence_adjustment || 0)));
+                  if (adj.reason) {
+                    aiEnhancedDeals[idx].reasons.push(`AI: ${adj.reason}`);
+                  }
+                }
+              }
+              aiEnhancedDeals.sort((a: any, b: any) => b.score - a.score);
+            }
+          }
+        } catch (aiErr) {
+          console.error("AI enhancement failed, using deterministic only:", aiErr);
+        }
+      }
+
+      // Take top 3 suggestions
+      const topSuggestions = aiEnhancedDeals.slice(0, 3).filter((d: any) => d.score >= 15);
+
+      if (topSuggestions.length > 0) {
+        // Delete existing pending suggestions for this meeting
+        await supabase
+          .from("claap_match_suggestions")
+          .delete()
+          .eq("meeting_id", meeting.id)
+          .eq("status", "pending");
+
+        // Insert new suggestions
+        const { error: insertErr } = await supabase
+          .from("claap_match_suggestions")
+          .insert(
+            topSuggestions.map((s: any, i: number) => ({
+              meeting_id: meeting.id,
+              deal_id: s.deal_id,
+              confidence: s.score,
+              reason: s.reasons.join("; "),
+              suggestion_source: lovableApiKey ? "ai_enhanced" : "deterministic",
+              rank: i + 1,
+              status: "pending",
+            }))
+          );
+
+        if (!insertErr) {
+          totalSuggestions += topSuggestions.length;
+
+          // Update meeting
+          await supabase
+            .from("claap_meetings")
+            .update({
+              suggestions_generated_at: new Date().toISOString(),
+              suggestion_count: topSuggestions.length,
+              match_candidates: topSuggestions.map((s: any) => ({
+                deal_id: s.deal_id,
+                deal_name: s.deal_name,
+                confidence: s.score,
+                reason: s.reasons.join("; "),
+              })),
+            } as any)
+            .eq("id", meeting.id);
+        }
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ ok: true, processed: meetings.length, suggestions: totalSuggestions }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    console.error("claap-suggest-matches error:", err);
+    return new Response(
+      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
