@@ -67,6 +67,21 @@ export function ClaapSyncSettings() {
     enabled: !!user,
   });
 
+  // Fetch matched calls
+  const { data: matchedCalls, isLoading: matchedLoading } = useQuery({
+    queryKey: ['claap-matched-calls'],
+    queryFn: async () => {
+      const { data } = await (supabase
+        .from('claap_meetings')
+        .select('id, title, status, match_source, call_type, started_at, created_at, deal_id')
+        .not('match_source', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(50) as any);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   // Toggle sync mode
   const toggleSyncAll = useMutation({
     mutationFn: async (syncAll: boolean) => {
