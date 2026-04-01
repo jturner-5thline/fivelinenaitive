@@ -324,16 +324,23 @@ export function ClaapSyncSettings() {
               <div className="space-y-2 bg-muted/50 rounded-lg p-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-medium">
-                    {backfillProgress.running ? `Processing batch ${backfillProgress.batchesDone}...` : 'Complete'}
+                    {backfillProgress.running
+                      ? `Processing page ${backfillProgress.pagesProcessed || backfillProgress.batchesDone}...`
+                      : 'Complete'}
                   </span>
                   {backfillProgress.running && <Loader2 className="h-3 w-3 animate-spin" />}
                 </div>
                 <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                  <span>Pages: {backfillProgress.pagesProcessed}</span>
+                  <span>Scanned: {backfillProgress.totalCallsScanned}</span>
                   <span>Processed: {backfillProgress.processed}</span>
                   <span>Matched: {backfillProgress.matched}</span>
                   <span>Re-matched: {backfillProgress.rematched}</span>
+                  <span>Unmatched: {backfillProgress.unmatched}</span>
                   <span>Skipped: {backfillProgress.skipped}</span>
+                  <span>Internal-only: {backfillProgress.skippedInternalOnly}</span>
                   <span>Already synced: {backfillProgress.alreadyExists}</span>
+                  <span>Page size: {backfillProgress.pageSize}</span>
                   {backfillProgress.errors > 0 && (
                     <span className="text-destructive col-span-2">Errors: {backfillProgress.errors}</span>
                   )}
