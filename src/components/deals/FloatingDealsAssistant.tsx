@@ -13,7 +13,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
-import { supabase } from '@/integrations/supabase/client';
+import { sendClaudeMessage } from '@/services/claude';
 import { toast } from '@/hooks/use-toast';
 
 interface Message {
