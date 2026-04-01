@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
       console.log("Created user:", userId);
     }
 
-    // Update profile
+    // Update profile — disable ALL notifications for demo accounts
     await admin.from("profiles").upsert({
       user_id: userId,
       email,
@@ -187,6 +187,24 @@ Deno.serve(async (req) => {
       last_name,
       onboarding_completed: true,
       approved_at: new Date().toISOString(),
+      // Disable all notification preferences
+      email_notifications: false,
+      in_app_notifications: false,
+      deal_updates_email: false,
+      lender_updates_email: false,
+      weekly_summary_email: false,
+      email_task_assigned: false,
+      notify_stale_alerts: false,
+      notify_activity_lender_added: false,
+      notify_activity_lender_updated: false,
+      notify_activity_stage_changed: false,
+      notify_activity_status_changed: false,
+      notify_activity_milestone_added: false,
+      notify_activity_milestone_completed: false,
+      notify_activity_milestone_missed: false,
+      notify_activity_deal_created: false,
+      notify_flex_alerts: false,
+      notify_info_request_emails: false,
     }, { onConflict: "user_id" });
 
     // 2. Create company
