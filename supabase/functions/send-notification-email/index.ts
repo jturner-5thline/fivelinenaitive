@@ -1009,6 +1009,132 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // --- Resolve human-readable labels for stage IDs ---
+    // Build label maps from company config + deal pipeline stages + hardcoded defaults
+    const labelMap: Record<string, string> = {
+      // Default deal stages
+      'final-credit-items': 'Final Credit Items',
+      'client-strategy-review': 'Client Strategy Review',
+      'write-up-pending': 'Write-Up Pending',
+      'submitted-to-lenders': 'Submitted to Lenders',
+      'lenders-in-review': 'Lenders in Review',
+      'terms-issued': 'Terms Issued',
+      'in-due-diligence': 'In Due Diligence',
+      'funded-invoiced': 'Funded / Invoiced',
+      'closed-won': 'Closed Won',
+      'closed-lost': 'Closed Lost',
+      'on-hold': 'On Hold',
+      // Default lender stages
+      'reviewing-drl': 'Reviewing DRL',
+      'management-call-set': 'Management Call Set',
+      'management-call-completed': 'Management Call Completed',
+      'draft-terms': 'Draft Terms',
+      'term-sheets': 'Term Sheets',
+      // Default lender tracking statuses
+      'active': 'Active',
+      'on-deck': 'On Deck',
+      'passed': 'Passed',
+      'not-a-fit': 'Not a Fit',
+      'excluded': 'Excluded',
+      'direct': 'Direct',
+      // Deal statuses
+      'on-track': 'On Track',
+      'at-risk': 'At Risk',
+      'off-track': 'Off Track',
+      'archived': 'Archived',
+    };
+
+    // Try to load company-specific stage configs
+    try {
+      let companyId: string | null = null;
+      if (payload.deal_id) {
+        const { data: d } = await supabaseAdmin.from('deals').select('company_id, pipeline_id').eq('id', payload.deal_id).single();
+        companyId = d?.company_id || null;
+
+        // Load pipeline stages for this deal's pipeline
+        if (d?.pipeline_id) {
+          const { data: pipeline } = await supabaseAdmin.from('deal_pipelines').select('stages').eq('id', d.pipeline_id).single();
+          if (pipeline?.stages && Array.isArray(pipeline.stages)) {
+            for (const s of pipeline.stages as any[]) {
+              if (s.id && s.label) labelMap[s.id] = s.label;
+            }
+          }
+        }
+
+        // Load all company pipeline stages as fallback
+        if (companyId) {
+          const { data: pipelines } = await supabaseAdmin.from('deal_pipelines').select('stages').eq('company_id', companyId);
+          if (pipelines) {
+            for (const p of pipelines) {
+              if (p.stages && Array.isArray(p.stages)) {
+                for (const s of p.stages as any[]) {
+                  if (s.id && s.label && !labelMap[s.id]) labelMap[s.id] = s.label;
+                }
+              }
+            }
+          }
+
+          // Load company deal stages from company_settings
+          const { data: cs } = await supabaseAdmin.from('company_settings').select('deal_stages').eq('company_id', companyId).maybeSingle();
+          if (cs?.deal_stages && Array.isArray(cs.deal_stages)) {
+            for (const s of cs.deal_stages as any[]) {
+              if (s.id && s.label && !labelMap[s.id]) labelMap[s.id] = s.label;
+            }
+          }
+
+          // Load lender stage configs
+          const { data: lc } = await supabaseAdmin.from('lender_stage_configs').select('stages, substages, tracking_statuses').eq('company_id', companyId).maybeSingle();
+          if (lc) {
+            for (const s of ((lc.stages as any[]) || [])) {
+              if (s.id && s.label) labelMap[s.id] = s.label;
+            }
+            for (const s of ((lc.substages as any[]) || [])) {
+              if (s.id && s.label) labelMap[s.id] = s.label;
+            }
+            for (const s of ((lc.tracking_statuses as any[]) || [])) {
+              if (s.id && s.label) labelMap[s.id] = s.label;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.log("Could not load stage label configs:", e);
+    }
+
+    // Helper to resolve a value to its label
+    const resolveLabel = (val: string | undefined | null): string | undefined | null => {
+      if (!val) return val;
+      if (labelMap[val]) return labelMap[val];
+      // Fallback: convert kebab-case to Title Case
+      if (val.match(/^[a-z0-9-]+$/) && val.includes('-')) {
+        return val.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      }
+      return val;
+    };
+
+    // Resolve labels in changes array
+    if (payload.changes) {
+      for (const c of payload.changes) {
+        const fieldLower = c.field.toLowerCase();
+        if (fieldLower.includes('stage') || fieldLower.includes('status') || fieldLower === 'tracking' || fieldLower === 'milestone') {
+          c.old = resolveLabel(c.old) ?? c.old;
+          c.new = resolveLabel(c.new) ?? c.new;
+        }
+      }
+    }
+
+    // Resolve labels in old_value/new_value (used for stage_changed)
+    if (payload.old_value) payload.old_value = resolveLabel(payload.old_value) ?? payload.old_value;
+    if (payload.new_value) payload.new_value = resolveLabel(payload.new_value) ?? payload.new_value;
+
+    // Resolve deal snapshot stage
+    if ((payload as any)._deal_details?.stage) {
+      (payload as any)._deal_details.stage = resolveLabel((payload as any)._deal_details.stage) ?? (payload as any)._deal_details.stage;
+    }
+    if ((payload as any)._deal_details?.status) {
+      (payload as any)._deal_details.status = resolveLabel((payload as any)._deal_details.status) ?? (payload as any)._deal_details.status;
+    }
+
     const message = template.getMessage(payload);
     const changesHtml = buildChangesHtml(payload.changes);
     const changesText = buildChangesText(payload.changes);
