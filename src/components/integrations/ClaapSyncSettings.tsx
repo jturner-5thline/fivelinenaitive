@@ -412,7 +412,7 @@ export function ClaapSyncSettings() {
               </TabsTrigger>
             </TabsList>
 
-            {(['matched', 'needs_review', 'unmatched', 'ignored'] as const).map(tab => (
+            {(['matched', 'needs_review'] as const).map(tab => (
               <TabsContent key={tab} value={tab} className="mt-3">
                 {callsLoading ? (
                   <div className="flex justify-center py-4">
@@ -422,10 +422,7 @@ export function ClaapSyncSettings() {
                   <div className="max-h-[450px] overflow-y-auto pr-1 space-y-2">
                     {filterCalls(tab).length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-4">
-                        {tab === 'matched' && 'No matched calls yet.'}
-                        {tab === 'needs_review' && 'No calls need review.'}
-                        {tab === 'unmatched' && 'No unmatched calls.'}
-                        {tab === 'ignored' && 'No ignored calls.'}
+                        {tab === 'matched' ? 'No matched calls yet.' : 'No calls need review.'}
                       </p>
                     ) : (
                       filterCalls(tab).map((call: ClaapCallData) => (
@@ -436,6 +433,85 @@ export function ClaapSyncSettings() {
                 )}
               </TabsContent>
             ))}
+
+            {/* Unmatched tab with AI suggestions */}
+            <TabsContent value="unmatched" className="mt-3">
+              {callsLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  {unmatchedCount > 0 && (
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] text-muted-foreground">
+                        {unmatchedCount} unmatched call{unmatchedCount !== 1 ? 's' : ''}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[10px]"
+                        onClick={() => generateSuggestions.mutate(undefined)}
+                        disabled={generateSuggestions.isPending}
+                      >
+                        {generateSuggestions.isPending ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3 w-3 mr-1" />
+                        )}
+                        {generateSuggestions.isPending ? 'Analyzing...' : 'Generate AI Suggestions'}
+                      </Button>
+                    </div>
+                  )}
+                  <div className="max-h-[450px] overflow-y-auto pr-1 space-y-2">
+                    {filterCalls('unmatched').length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">No unmatched calls.</p>
+                    ) : (
+                      filterCalls('unmatched').map((call: ClaapCallData) => {
+                        const callSuggestions = suggestions[call.id] || [];
+                        if (callSuggestions.length > 0) {
+                          return (
+                            <ClaapSuggestionCard
+                              key={call.id}
+                              call={{
+                                id: call.id,
+                                title: call.title,
+                                started_at: call.started_at,
+                                created_at: call.created_at,
+                                duration_seconds: call.duration_seconds,
+                                recording_url: call.recording_url,
+                                match_status: call.match_status,
+                                suggestions: callSuggestions,
+                              }}
+                            />
+                          );
+                        }
+                        return <ClaapCallMatchCard key={call.id} call={call} />;
+                      })
+                    )}
+                  </div>
+                </>
+              )}
+            </TabsContent>
+
+            {/* Ignored tab */}
+            <TabsContent value="ignored" className="mt-3">
+              {callsLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="max-h-[450px] overflow-y-auto pr-1 space-y-2">
+                  {filterCalls('ignored').length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No ignored calls.</p>
+                  ) : (
+                    filterCalls('ignored').map((call: ClaapCallData) => (
+                      <ClaapCallMatchCard key={call.id} call={call} />
+                    ))
+                  )}
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
 
           {/* Skipped calls section */}
