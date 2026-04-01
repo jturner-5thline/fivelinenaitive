@@ -64,7 +64,7 @@ export function AppSidebar() {
   const { resolvedTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { isAdmin } = useAdminRole();
   const { hasPageAccess, isPageBeta, isLoading: isAccessLoading } = usePageAccessFlags();
   const { features: companyFeatures } = useCompanyFeatures();
