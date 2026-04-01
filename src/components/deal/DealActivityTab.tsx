@@ -131,7 +131,7 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
           .order('created_at', { ascending: false }),
         supabase
           .from('claap_meetings')
-          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary')
+          .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary, match_status, match_method, match_confidence, match_reason, manually_locked')
           .eq('deal_id', dealId)
           .order('started_at', { ascending: false }),
       ]);
