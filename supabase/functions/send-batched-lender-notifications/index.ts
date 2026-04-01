@@ -236,6 +236,47 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
+        // Resolve lender stage/substage/tracking labels from company config
+        const stageLabels: Record<string, string> = {};
+        const substageLabels: Record<string, string> = {};
+        const trackingLabels: Record<string, string> = {
+          'active': 'Active', 'on-hold': 'On Hold', 'on-deck': 'On Deck',
+          'passed': 'Passed', 'not-a-fit': 'Not a Fit', 'excluded': 'Excluded', 'direct': 'Direct',
+        };
+
+        const { data: lenderConfig } = await supabaseAdmin
+          .from('lender_stage_configs')
+          .select('stages, substages, tracking_statuses')
+          .eq('company_id', deal.company_id)
+          .maybeSingle();
+
+        if (lenderConfig) {
+          const stages = (lenderConfig.stages as any[]) || [];
+          for (const s of stages) {
+            if (s.id && s.label) stageLabels[s.id] = s.label;
+          }
+          const substages = (lenderConfig.substages as any[]) || [];
+          for (const s of substages) {
+            if (s.id && s.label) substageLabels[s.id] = s.label;
+          }
+          const trackings = (lenderConfig.tracking_statuses as any[]) || [];
+          for (const t of trackings) {
+            if (t.id && t.label) trackingLabels[t.id] = t.label;
+          }
+        }
+
+        // Hardcoded fallbacks for default lender stages
+        const defaultStages: Record<string, string> = {
+          'reviewing-drl': 'Reviewing DRL',
+          'management-call-set': 'Management Call Set',
+          'management-call-completed': 'Management Call Completed',
+          'draft-terms': 'Draft Terms',
+          'term-sheets': 'Term Sheets',
+        };
+        for (const [k, v] of Object.entries(defaultStages)) {
+          if (!stageLabels[k]) stageLabels[k] = v;
+        }
+
         // Get company stale_alert_config for always_notify_emails
         const { data: companySettings } = await supabaseAdmin
           .from('company_settings')
