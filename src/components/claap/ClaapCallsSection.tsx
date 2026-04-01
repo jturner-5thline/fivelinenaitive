@@ -36,6 +36,7 @@ interface ClaapCall {
   transcript: string | null;
   ai_summary: string | null;
   organizer_email: string | null;
+  deal_id: string | null;
 }
 
 function formatCallDuration(seconds: number | null): string {
