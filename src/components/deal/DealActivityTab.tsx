@@ -109,6 +109,46 @@ function getCallTypeBadgeVariant(callType: string | null | undefined): 'default'
   return 'outline';
 }
 
+function useLinkedClaapCalls(dealId: string | undefined) {
+  return useQuery<DealActivityDetailItem[]>({
+    queryKey: ['deal-linked-claap-calls', dealId],
+    queryFn: async () => {
+      if (!dealId) return [];
+
+      const { data: claapMeetings, error } = await supabase
+        .from('claap_meetings')
+        .select('id, title, started_at, created_at, duration_seconds, recording_url, call_type, transcript, ai_summary, match_status, match_method, match_confidence, match_reason, manually_locked')
+        .eq('deal_id', dealId)
+        .order('started_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (claapMeetings || []).map((meeting) => ({
+        id: `claap-${meeting.id}`,
+        activity_type: 'claap_recording_linked',
+        description: meeting.title || 'Untitled call recording',
+        created_at: meeting.started_at || meeting.created_at,
+        metadata: {
+          recording_url: meeting.recording_url,
+          transcript: meeting.transcript,
+          ai_summary: meeting.ai_summary,
+          duration_seconds: meeting.duration_seconds,
+          call_type: meeting.call_type,
+          claap_meeting_id: meeting.id,
+          match_status: (meeting as any).match_status,
+          match_method: (meeting as any).match_method,
+          match_confidence: (meeting as any).match_confidence,
+          match_reason: (meeting as any).match_reason,
+          manually_locked: (meeting as any).manually_locked,
+        },
+        user_display_name: null,
+        source: 'claap' as const,
+      }));
+    },
+    enabled: !!dealId,
+  });
+}
+
 function useActivityDetailsForDate(dealId: string | undefined, date: string | null) {
   return useQuery<DealActivityDetailItem[]>({
     queryKey: ['deal-activity-details', dealId, date],
@@ -156,7 +196,7 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
           metadata: activity.metadata && typeof activity.metadata === 'object' && !Array.isArray(activity.metadata)
             ? activity.metadata as Record<string, any>
             : null,
-          source: 'activity',
+          source: 'activity' as const,
         }));
 
       const mappedClaapMeetings: DealActivityDetailItem[] = (claapMeetings || [])
@@ -185,7 +225,7 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
             manually_locked: (meeting as any).manually_locked,
           },
           user_display_name: null,
-          source: 'claap',
+          source: 'claap' as const,
         }));
 
       return [...filteredActivityLogs, ...mappedClaapMeetings].sort(
@@ -207,6 +247,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
   const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
   const [reassignMeetingId, setReassignMeetingId] = useState<string | null>(null);
   const { changeDeal, unlinkFromDeal } = useClaapCallActions();
+  const { data: linkedCalls, isLoading: isLoadingLinkedCalls } = useLinkedClaapCalls(dealId);
 
   // Reverse-map display label (e.g. "Feb 1") back to ISO date
   const displayToIso = chartData?.reduce<Record<string, string>>((acc, d) => {
@@ -703,6 +744,118 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
         </CardContent>
       </Card>
       </div>
+
+      {/* Linked Claap Calls - always visible */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Video className="h-4 w-4" />
+              Linked Calls
+            </CardTitle>
+            <Badge variant="secondary" className="text-xs">
+              {linkedCalls?.length ?? 0} call{(linkedCalls?.length ?? 0) !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingLinkedCalls ? (
+            <div className="space-y-2">
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
+          ) : !linkedCalls?.length ? (
+            <div className="flex flex-col items-center justify-center py-6">
+              <Video className="h-8 w-8 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground text-center">No calls linked to this deal yet.</p>
+              <p className="text-xs text-muted-foreground text-center mt-1">Calls matched via the Claap integration will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+              {linkedCalls.map((activity) => {
+                const meta = activity.metadata as Record<string, any> | null;
+                const transcriptText = meta?.ai_summary || meta?.transcript;
+
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-3 p-2.5 rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="mt-0.5 text-muted-foreground"><Video className="h-3.5 w-3.5" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium">{activity.description || 'Untitled call recording'}</p>
+                        {meta?.call_type && (
+                          <Badge variant={getCallTypeBadgeVariant(meta.call_type)} className="text-[10px]">
+                            {meta.call_type}
+                          </Badge>
+                        )}
+                        {meta?.match_status && (
+                          <Badge variant="outline" className={cn("text-[10px]",
+                            meta.match_status === 'manually_linked' ? 'border-blue-500/30 text-blue-600' :
+                            meta.match_status === 'matched' ? 'border-green-500/30 text-green-600' :
+                            'border-muted'
+                          )}>
+                            {meta.match_status === 'manually_linked' ? 'Manual' : 'Auto'}
+                          </Badge>
+                        )}
+                        {meta?.match_confidence != null && (
+                          <span className={cn("text-[10px] font-medium",
+                            meta.match_confidence >= 75 ? 'text-green-600' :
+                            meta.match_confidence >= 50 ? 'text-amber-600' : 'text-red-600'
+                          )}>
+                            {meta.match_confidence}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                        <span>{format(parseISO(activity.created_at), 'MMM d, yyyy · h:mm a')}</span>
+                        <span>{formatCallDuration(meta?.duration_seconds)}</span>
+                        {meta?.recording_url && (
+                          <a href={meta.recording_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                            <ExternalLink className="h-3 w-3" /> Open recording
+                          </a>
+                        )}
+                        {transcriptText && (
+                          <button type="button" className="inline-flex items-center gap-1 text-primary hover:underline"
+                            onClick={() => setExpandedTranscriptId((c) => c === activity.id ? null : activity.id)}>
+                            <FileText className="h-3 w-3" /> Transcript
+                          </button>
+                        )}
+                      </div>
+                      {meta?.match_reason && (
+                        <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{meta.match_reason}</p>
+                      )}
+                      {expandedTranscriptId === activity.id && transcriptText && (
+                        <div className="mt-2 rounded-md border border-border/50 bg-background/80 p-2 text-xs text-muted-foreground whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                          {transcriptText}
+                        </div>
+                      )}
+                    </div>
+                    {meta?.claap_meeting_id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setReassignMeetingId(meta.claap_meeting_id); setDealSelectorOpen(true); }}>
+                            <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Move to Another Deal
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setUnlinkMeetingId(meta.claap_meeting_id)} className="text-destructive">
+                            <Unlink className="h-3.5 w-3.5 mr-2" /> Remove from Deal
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Claap call management dialogs */}
       <ClaapDealSelector
