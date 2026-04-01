@@ -316,12 +316,35 @@ async function linkMeetingToDeal(
   matchResult: MatchResult,
   source: "backfill" | "rematch",
 ) {
+  const matchCandidates = matchResult.ambiguous
+    ? matchResult.dealIds.map((id, i) => ({ deal_id: id, rank: i + 1 }))
+    : null;
+
   await supabaseAdmin.from("claap_meetings").update({
     deal_id: resolvedDealId, status: "routed",
     call_type: matchResult.callType, match_source: matchResult.matchSource,
     matched_lender_id: matchResult.lenderId, matched_contact_id: matchResult.contactId,
     matched_crm_company_id: matchResult.crmCompanyId,
+    match_method: "auto",
+    match_confidence: matchResult.confidence,
+    match_reason: matchResult.matchSource,
+    match_candidates: matchCandidates,
+    match_status: matchResult.ambiguous ? "needs_review" : "matched",
+    matched_at: new Date().toISOString(),
   }).eq("id", meeting.id);
+
+  // Audit trail
+  await supabaseAdmin.from("claap_match_audit").insert({
+    meeting_id: meeting.id,
+    action: source === "rematch" ? "auto_rematch" : "auto_match",
+    previous_deal_id: meeting.deal_id || null,
+    new_deal_id: resolvedDealId,
+    previous_status: meeting.deal_id ? "matched" : "unmatched",
+    new_status: matchResult.ambiguous ? "needs_review" : "matched",
+    match_method: "auto",
+    match_confidence: matchResult.confidence,
+    match_reason: matchResult.matchSource,
+  });
 
   await supabaseAdmin.from("deal_claap_recordings").upsert({
     deal_id: resolvedDealId, recording_id: meeting.claap_id,
