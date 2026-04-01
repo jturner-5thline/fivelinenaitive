@@ -138,29 +138,6 @@ export function ClaapIntegration() {
           </div>
         )}
         
-        <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-          <h4 className="font-medium text-sm">About Claap Integration</h4>
-          <p className="text-sm text-muted-foreground">
-            When enabled, Claap recordings will appear in the Data Room tab of each deal. 
-            You can link recordings to specific deals, view meeting transcripts, and see 
-            participant information including names and email addresses.
-          </p>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Video className="h-4 w-4" />
-              <span>View and search all workspace recordings</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Video className="h-4 w-4" />
-              <span>Link recordings to deals for easy reference</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Video className="h-4 w-4" />
-              <span>Access meeting transcripts and participant lists</span>
-            </div>
-          </div>
-        </div>
-        
         {!isEnabled && canManage && (
           <div className="border-2 border-dashed rounded-lg p-6 text-center">
             <Video className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
@@ -185,32 +162,52 @@ export function ClaapIntegration() {
         )}
 
         {isEnabled && (
-          <>
-            <ClaapSyncSettings />
-            <div className="flex items-center justify-between">
-              {canManage && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSendTestWebhook}
-                  disabled={testingWebhook}
-                >
-                  {testingWebhook ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <FlaskConical className="h-4 w-4 mr-2" />
-                  )}
-                  Send Test Webhook
-                </Button>
-              )}
-              <Button variant="outline" size="sm" asChild>
-                <a href="https://app.claap.io" target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open Claap
-                </a>
-              </Button>
+          <div className="space-y-4">
+            {/* Top row: About + Actions side by side on desktop */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                <h4 className="font-medium text-sm">About Claap Integration</h4>
+                <p className="text-sm text-muted-foreground">
+                  Claap recordings appear in the Data Room tab of each deal. Link recordings to deals, view transcripts, and see participant information.
+                </p>
+                <div className="space-y-1.5 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2"><Video className="h-3.5 w-3.5" /><span>View and search all recordings</span></div>
+                  <div className="flex items-center gap-2"><Video className="h-3.5 w-3.5" /><span>Link recordings to deals</span></div>
+                  <div className="flex items-center gap-2"><Video className="h-3.5 w-3.5" /><span>Access transcripts and participants</span></div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 justify-between">
+                <div className="bg-muted/50 rounded-lg p-4 flex-1">
+                  <h4 className="font-medium text-sm mb-2">Quick Actions</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {canManage && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSendTestWebhook}
+                        disabled={testingWebhook}
+                      >
+                        {testingWebhook ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <FlaskConical className="h-4 w-4 mr-2" />
+                        )}
+                        Send Test Webhook
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="https://app.claap.io" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open Claap
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </>
+            {/* Sync settings in 2-column layout */}
+            <ClaapSyncSettings />
+          </div>
         )}
       </CardContent>
     </Card>

@@ -139,7 +139,7 @@ export function ClaapSyncSettings() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               company_id: config.company_id,
-              days_back: 45,
+              days_back: 60,
               batch_size: 20,
               cursor,
               time_budget_ms: 50000,
@@ -197,130 +197,120 @@ export function ClaapSyncSettings() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Historical Backfill */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Historical Sync
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Fetch all Claap recordings from the past 60 days and apply smart matching to route them to deals, companies, and contacts.
-          </p>
-          {backfillProgress && (
-            <div className="space-y-2 bg-muted/50 rounded-lg p-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium">
-                  {backfillProgress.running ? `Processing batch ${backfillProgress.batchesDone}...` : 'Complete'}
-                </span>
-                {backfillProgress.running && <Loader2 className="h-3 w-3 animate-spin" />}
-              </div>
-              <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                <span>Processed: {backfillProgress.processed}</span>
-                <span>Matched: {backfillProgress.matched}</span>
-                <span>Re-matched: {backfillProgress.rematched}</span>
-                <span>Skipped: {backfillProgress.skipped}</span>
-                <span>Already synced: {backfillProgress.alreadyExists}</span>
-                {backfillProgress.errors > 0 && (
-                  <span className="text-destructive col-span-2">Errors: {backfillProgress.errors}</span>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Left column: Historical Sync + Call Sync Settings */}
+      <div className="space-y-4">
+        {/* Historical Backfill */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Historical Sync
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Fetch all Claap recordings from the past 60 days and apply smart matching to route them to deals, companies, and contacts.
+            </p>
+            {backfillProgress && (
+              <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium">
+                    {backfillProgress.running ? `Processing batch ${backfillProgress.batchesDone}...` : 'Complete'}
+                  </span>
+                  {backfillProgress.running && <Loader2 className="h-3 w-3 animate-spin" />}
+                </div>
+                <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                  <span>Processed: {backfillProgress.processed}</span>
+                  <span>Matched: {backfillProgress.matched}</span>
+                  <span>Re-matched: {backfillProgress.rematched}</span>
+                  <span>Skipped: {backfillProgress.skipped}</span>
+                  <span>Already synced: {backfillProgress.alreadyExists}</span>
+                  {backfillProgress.errors > 0 && (
+                    <span className="text-destructive col-span-2">Errors: {backfillProgress.errors}</span>
+                  )}
+                </div>
+                {backfillProgress.errorDetails?.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <span className="text-xs font-medium text-destructive">Error details:</span>
+                    <ScrollArea className="max-h-24">
+                      {backfillProgress.errorDetails.map((e, i) => (
+                        <div key={i} className="text-xs text-destructive/80 truncate">
+                          • {e.title || e.claap_id}: {e.error}
+                        </div>
+                      ))}
+                    </ScrollArea>
+                  </div>
                 )}
               </div>
-              {backfillProgress.errorDetails?.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  <span className="text-xs font-medium text-destructive">Error details:</span>
-                  <ScrollArea className="max-h-32">
-                    {backfillProgress.errorDetails.map((e, i) => (
-                      <div key={i} className="text-xs text-destructive/80 truncate">
-                        • {e.title || e.claap_id}: {e.error}
-                      </div>
-                    ))}
-                  </ScrollArea>
-                </div>
-              )}
-              {backfillProgress.processedTitles?.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  <span className="text-xs font-medium text-muted-foreground">Processed titles:</span>
-                  <ScrollArea className="max-h-24">
-                    {backfillProgress.processedTitles.map((t, i) => (
-                      <div key={i} className="text-xs text-muted-foreground truncate">• {t}</div>
-                    ))}
-                  </ScrollArea>
-                </div>
-              )}
+            )}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => runBackfill(false)}
+                disabled={backfillProgress?.running}
+                className="w-full"
+              >
+                {backfillProgress?.running ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                {backfillProgress?.running ? 'Syncing...' : 'Sync Historical Calls'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => runBackfill(true)}
+                disabled={backfillProgress?.running}
+                className="w-full"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Re-match All Calls
+              </Button>
             </div>
-          )}
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => runBackfill(false)}
-              disabled={backfillProgress?.running}
-              className="w-full"
-            >
-              {backfillProgress?.running ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4 mr-2" />
-              )}
-              {backfillProgress?.running ? 'Syncing...' : 'Sync Historical Calls'}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => runBackfill(true)}
-              disabled={backfillProgress?.running}
-              className="w-full"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Re-match All Calls
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Sync Mode Toggle */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Call Sync Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <p className="text-sm font-medium">Only sync matched calls</p>
-              <p className="text-xs text-muted-foreground">
-                When enabled, only calls matching a lender, company, or contact will be synced. Unmatched calls are skipped.
-              </p>
+        {/* Sync Mode Toggle */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              Call Sync Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Only sync matched calls</p>
+                <p className="text-xs text-muted-foreground">
+                  Unmatched calls are skipped when enabled.
+                </p>
+              </div>
+              <Switch
+                checked={!config?.sync_all_calls}
+                onCheckedChange={(checked) => toggleSyncAll.mutate(!checked)}
+                disabled={toggleSyncAll.isPending}
+              />
             </div>
-            <Switch
-              checked={!config?.sync_all_calls}
-              onCheckedChange={(checked) => toggleSyncAll.mutate(!checked)}
-              disabled={toggleSyncAll.isPending}
-            />
-          </div>
-          <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
-            <p className="text-xs font-medium">Matching priority (confidence-scored):</p>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• <strong>Deal</strong> — Meeting title, deal aliases, or participant contacts match an active deal (highest priority)</li>
-              <li>• <strong>Lender</strong> — Meeting title, participant domain, or contact name matches a lender</li>
-              <li>• <strong>Company</strong> — Participant domain or meeting title matches a CRM company</li>
-              <li>• <strong>Contact</strong> — Participant email matches a CRM contact</li>
-            </ul>
-            <p className="text-xs text-muted-foreground mt-1.5 italic">
-              Ambiguous multi-deal matches are flagged for review instead of auto-linked.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
+              <p className="text-xs font-medium">Matching priority:</p>
+              <ul className="text-xs text-muted-foreground space-y-0.5">
+                <li>• <strong>Deal</strong> — Title, aliases, or contacts match a deal</li>
+                <li>• <strong>Lender</strong> — Domain or name matches a lender</li>
+                <li>• <strong>Company</strong> — Domain or title matches a CRM company</li>
+                <li>• <strong>Contact</strong> — Email matches a CRM contact</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Skipped Calls Log */}
-      <Card>
-        <CardHeader className="pb-3">
+      {/* Right column: Skipped Calls */}
+      <Card className="flex flex-col">
+        <CardHeader className="pb-3 shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
@@ -331,22 +321,22 @@ export function ClaapSyncSettings() {
             </CardTitle>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 min-h-0">
           {skippedLoading ? (
             <div className="flex justify-center py-4">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : !skippedCalls || skippedCalls.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No skipped calls. All synced calls matched a lender, company, or contact.
+              No skipped calls. All synced calls matched successfully.
             </p>
           ) : (
-            <ScrollArea className="max-h-[300px]">
-              <div className="space-y-2">
+            <ScrollArea className="h-[400px]">
+              <div className="space-y-2 pr-2">
                 {skippedCalls.map((call: any) => (
                   <div
                     key={call.id}
-                    className="flex items-center justify-between border rounded-lg p-3 gap-3"
+                    className="flex items-center justify-between border rounded-lg p-2.5 gap-2"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
@@ -361,7 +351,7 @@ export function ClaapSyncSettings() {
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        Reason: {call.skip_reason}
+                        {call.skip_reason}
                       </p>
                     </div>
                     <Button
@@ -369,6 +359,7 @@ export function ClaapSyncSettings() {
                       size="sm"
                       onClick={() => forceSync.mutate(call.id)}
                       disabled={forceSync.isPending}
+                      className="shrink-0"
                     >
                       {forceSync.isPending ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
