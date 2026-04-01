@@ -371,7 +371,7 @@ export function ClaapSyncSettings() {
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>
