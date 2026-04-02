@@ -1691,17 +1691,17 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* AI Suggestions Banner */}
       {hasSuggestRun && suggestions.length > 0 && (
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-primary/[0.04] border border-primary/[0.08] shadow-sm">
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-md" style={{ background: 'rgba(127,178,255,0.05)', border: '1px solid rgba(127,178,255,0.12)' }}>
           <div className="flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="text-[11px] text-primary font-medium">
+            <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--map-blue)' }} />
+            <span className="text-[11px] font-medium" style={{ color: 'var(--map-blue)' }}>
               {pendingCount > 0 ? `${pendingCount} AI suggestion${pendingCount > 1 ? 's' : ''} pending` : `${acceptedCount} applied`}
             </span>
           </div>
           {pendingCount > 0 && (
-            <Button size="sm" variant="ghost" className="h-6 text-[10px] text-primary" onClick={handleAcceptAll}>
-              <Check className="h-3 w-3 mr-1" /> Accept All
-            </Button>
+            <button className="map-toolbar-btn h-5 text-[10px] px-2" style={{ color: 'var(--map-blue)', borderColor: 'rgba(127,178,255,0.2)' }} onClick={handleAcceptAll}>
+              <Check className="h-3 w-3" /> Accept All
+            </button>
           )}
         </div>
       )}
