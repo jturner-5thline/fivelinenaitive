@@ -178,8 +178,10 @@ function buildEmailHtml(
           <tr>
             <td style="vertical-align: top;">
               <strong style="font-size: 21px; color: #111827;">${deal.company}</strong>
-              <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-left: 8px; vertical-align: middle;">${daysSinceUpdate}d inactive</span>
-              ${lendersBadge ? `<span style="vertical-align: middle; margin-left: 4px;">${lendersBadge}</span>` : ''}
+              ${lendersBadge ? `<span style="display: inline-block; vertical-align: middle; margin-left: 8px;">${lendersBadge}</span>` : ''}
+              <div style="margin-top: 4px;">
+                <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;">Last Update ${daysSinceUpdate} Days Ago</span>
+              </div>
               ${statusNoteSnippet}
             </td>
             <td style="text-align: right; vertical-align: top;">
