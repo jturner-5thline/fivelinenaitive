@@ -210,7 +210,6 @@ function buildEmailHtml(
         <div style="margin-top: 4px;">
           <a href="https://fivelinenaitive.lovable.app/deals/${deal.id}" style="color: #7c3aed; font-size: 12px; font-weight: 500; text-decoration: none;">View Deal →</a>
         </div>
-      </div>
       </div>`;
   }).join('');
 
