@@ -497,7 +497,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
 
           {/* Pending auto-map review banner */}
           {pendingCount > 0 && (
-            <div className="mb-3 p-2.5 rounded-lg bg-amber-500/[0.08] border border-amber-500/20 space-y-2">
+            <div className="mb-3 p-2.5 rounded-lg bg-warning/[0.05] border border-warning/[0.1] space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Wand2 className="h-3.5 w-3.5 text-amber-500" />
