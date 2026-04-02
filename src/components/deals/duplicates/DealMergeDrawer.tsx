@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { DuplicateCluster } from '@/hooks/useDealDuplicates';
-import { Deal, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
+import { Deal, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EngagementType } from '@/types/deal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Check, Crown, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
