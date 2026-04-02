@@ -531,7 +531,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                 {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
               </div>
               <div className="flex flex-wrap gap-1">
-                {[...IS_FIELDS, ...BS_FIELDS]
+                {allFields
                   .filter(f => !fieldMappings[f])
                   .slice(0, 12)
                   .map(f => (
@@ -540,8 +540,8 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                       {f}
                     </button>
                   ))}
-                {[...IS_FIELDS, ...BS_FIELDS].filter(f => !fieldMappings[f]).length > 12 && (
-                  <span className="text-[9px] text-muted-foreground px-1 py-0.5">+{[...IS_FIELDS, ...BS_FIELDS].filter(f => !fieldMappings[f]).length - 12} more</span>
+                {allFields.filter(f => !fieldMappings[f]).length > 12 && (
+                  <span className="text-[9px] text-muted-foreground px-1 py-0.5">+{allFields.filter(f => !fieldMappings[f]).length - 12} more</span>
                 )}
               </div>
             </div>
