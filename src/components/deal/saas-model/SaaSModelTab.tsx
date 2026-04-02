@@ -81,6 +81,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   const { model, scenarios, lenders, isLoading, saveStatus, updateModel, recalculate, updateScenarios, updateLender } = useSaaSModel(dealId);
   const annotationHook = useModelAnnotations(dealId);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [versioningOpen, setVersioningOpen] = useState(false);
 
   // Tab visibility
   const [visibleTabs, setVisibleTabs] = useState<Set<string>>(loadVisibleTabs);
