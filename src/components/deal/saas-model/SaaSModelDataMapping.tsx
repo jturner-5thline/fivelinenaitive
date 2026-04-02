@@ -2467,8 +2467,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           if (excludedColumns.has(colIdx)) return null;
                           const isColFlipped = flippedColumns.has(colIdx);
                           return (
-                            <th key={colIdx} className={cn(
-                              "py-1.5 px-2 text-right text-muted-foreground min-w-[90px] border-r border-border/10 font-normal",
+                           <th key={colIdx} className={cn(
+                             "py-1.5 px-2 text-right text-muted-foreground/50 min-w-[90px] font-normal",
                               isColFlipped && "bg-amber-500/10",
                             )}>
                               <div className="flex items-center gap-1 justify-end">
