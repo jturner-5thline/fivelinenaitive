@@ -2207,18 +2207,20 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             ? "border-l-[3px] border-l-[#F59E0B]"
                             : "";
 
-                      // Sticky cell bg — MUST be opaque so scrolling content doesn't show through
+                      // Sticky cell bg — must be fully opaque so scrolling content never shows through
                       const stickyBg = isFlashing
-                        ? "bg-[rgba(34,197,94,0.3)]"
+                        ? "bg-[hsl(142_45%_24%)]"
                         : isHeaderRow
-                          ? "bg-[#1e293b]"
+                          ? "bg-[hsl(217_37%_18%)]"
                           : isSelected
-                            ? "bg-[rgba(37,99,235,0.15)]"
+                            ? "bg-[hsl(217_45%_19%)]"
                             : isMappedRow
-                              ? "bg-[rgba(34,197,94,0.08)]"
+                              ? "bg-[hsl(155_32%_18%)]"
                               : isPendingAutoMap
-                                ? "bg-[rgba(217,119,6,0.1)]"
-                                : "bg-[#18212f]";
+                                ? "bg-[hsl(32_42%_18%)]"
+                                : hasSuggestion
+                                  ? "bg-[hsl(217_34%_16%)]"
+                                  : "bg-[hsl(217_33%_14%)]";
 
                        return (
                         <ContextMenu key={rowIdx}>
@@ -2257,8 +2259,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             }
                           }}>
                           <td className={cn(
-                            "sticky left-0 z-30 py-1 px-1 text-center text-[#64748b] text-[10px] border-b border-[#2a3a58]",
-                            signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-[rgba(217,119,6,0.1)]" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-[rgba(220,38,38,0.1)]" : stickyBg,
+                            "sticky left-0 z-30 isolate overflow-hidden bg-clip-padding py-1 px-1 text-center text-[#64748b] text-[10px] border-b border-[#2a3a58]",
+                            signFlipMode && signFlipSelectedRows.has(rowIdx)
+                              ? "bg-[hsl(32_42%_18%)]"
+                              : eraserMode && eraserSelectedRows.has(rowIdx)
+                                ? "bg-[hsl(0_38%_18%)]"
+                                : stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
                               {isHeaderRow ? <Columns className="h-3 w-3 text-[#64748b]" /> : rowIdx + 1}
@@ -2268,7 +2274,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             </div>
                           </td>
                          <td className={cn(
-                           "sticky left-8 z-20 py-1 px-3 w-[220px] min-w-[220px] max-w-[220px] font-medium text-[#e5e7eb] border-b border-[#2a3a58]",
+                           "sticky left-8 z-20 isolate overflow-hidden bg-clip-padding py-1 px-3 w-[220px] min-w-[220px] max-w-[220px] font-medium text-[#e5e7eb] border-b border-[#2a3a58]",
                            stickyBg,
                          )} style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.3)' }}>
                             <div className="flex items-center gap-1.5 w-full overflow-hidden">
