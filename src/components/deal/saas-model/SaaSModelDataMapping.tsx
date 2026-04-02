@@ -2382,7 +2382,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   {Object.entries(fieldMappings).map(([field, mappings], idx) => {
                     const isIS = (IS_FIELDS as readonly string[]).includes(field);
                     return (
-                      <tr key={field} className={cn("border-b border-border/10", idx % 2 === 0 ? "bg-transparent" : "bg-muted/5")}>
+                      <tr key={field} className={cn("border-b border-border/[0.04]", idx % 2 === 0 ? "bg-transparent" : "bg-muted/[0.03]")}>
                         <td className="py-1.5 px-3 font-medium">{field}</td>
                         <td className="py-1.5 px-3">{mappings.map(m => m.label).join(', ')}</td>
                         <td className="py-1.5 px-3 text-muted-foreground">{mappings[0]?.sheet}</td>
