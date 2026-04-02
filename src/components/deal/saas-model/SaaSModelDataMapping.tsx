@@ -1954,6 +1954,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           {/* Primary CTA */}
           <button className="map-toolbar-btn map-toolbar-btn--primary" onClick={handleRecalculateWithLog} disabled={mappedCount === 0} title="Saves all mappings AND pushes mapped data into the financial model">
             <RefreshCw className="h-3 w-3" /> Push to Model
+          </button>
         </div>
       </div>
 
