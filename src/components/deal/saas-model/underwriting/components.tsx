@@ -87,9 +87,9 @@ export function DataTable({ headers, rows, className }: {
             <tr key={ri} className="border-b border-border/50 hover:bg-muted/30">
               {row.map((cell, ci) => (
                 <td key={ci} className={cn(
-                  "py-1.5 px-2 font-mono tabular-nums text-foreground",
-                  ci === 0 ? "text-left font-sans font-medium" : "text-right",
-                  typeof cell === 'string' && cell.startsWith('(') && "text-destructive",
+                  "py-1.5 px-2 font-mono tabular-nums",
+                  ci === 0 ? "text-left font-sans font-medium text-foreground" : "text-right",
+                  ci > 0 && typeof cell === 'string' ? currencyColor(cell) : ci > 0 ? "text-foreground" : "",
                 )}>{cell}</td>
               ))}
             </tr>
