@@ -208,15 +208,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
 
 
       {/* Header with save status */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold font-[Inter]">
-            SaaS Financial Model
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            {model.settings.companyName} — {model.settings.businessModel}
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
           {/* Tab visibility settings */}
           <Popover>
