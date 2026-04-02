@@ -1740,7 +1740,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant={selectedRows.size > 0 ? "outline" : "ghost"} size="sm" className="h-7 w-7 p-0 border-border/40" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
+                <Button variant={selectedRows.size > 0 ? "outline" : "ghost"} size="sm" className="h-7 w-7 p-0 border-border/[0.08]" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
                   <span className="font-bold text-xs">±</span>
                 </Button>
               </TooltipTrigger>
