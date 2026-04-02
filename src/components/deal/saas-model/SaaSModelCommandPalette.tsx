@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandSeparator } from '@/components/ui/command';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, BarChart3, ShieldCheck, Download, Printer, Search } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, ShieldCheck, Download, Printer, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Tab {
