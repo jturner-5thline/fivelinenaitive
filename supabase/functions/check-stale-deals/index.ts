@@ -55,6 +55,7 @@ interface AttentionDeal {
   pipeline_id: string | null;
   is_flagged: boolean;
   flag_notes: string | null;
+  latest_status_note: string | null;
   // computed
   attention_reasons: string[];
   stale_lender_count?: number;
