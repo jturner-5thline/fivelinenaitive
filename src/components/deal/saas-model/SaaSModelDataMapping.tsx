@@ -85,6 +85,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const storedFilePathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
 
+  // ── Field visibility settings ──
+  const allFieldNames = useMemo(() => new Set([...IS_FIELDS, ...BS_FIELDS] as string[]), []);
+  const [enabledFields, setEnabledFields] = useState<Set<string>>(() => new Set(allFieldNames));
+  const [fieldSettingsOpen, setFieldSettingsOpen] = useState(false);
+  const enabledFieldsLoadedRef = useRef(false);
+
   // ── Multi-file management ──
   const { files: dbFiles, upsertFile, saveFileMappings, pushFileData, deleteFile: deleteDbFile, loadFiles: reloadDbFiles } = useFinancialFiles(dealId);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
