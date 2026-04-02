@@ -335,6 +335,22 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
+      // Fetch latest status note per deal
+      const { data: statusNotes } = await supabaseAdmin
+        .from('deal_status_notes')
+        .select('deal_id, note, created_at')
+        .in('deal_id', dealIds)
+        .order('created_at', { ascending: false });
+
+      const latestStatusNoteMap: Record<string, string> = {};
+      if (statusNotes) {
+        for (const sn of statusNotes) {
+          if (!latestStatusNoteMap[sn.deal_id]) {
+            latestStatusNoteMap[sn.deal_id] = sn.note;
+          }
+        }
+      }
+
       // Determine which deals need attention and why
       const attentionDeals: AttentionDeal[] = [];
       for (const deal of activeDeals) {
@@ -363,6 +379,7 @@ const handler = async (req: Request): Promise<Response> => {
           ...deal,
           attention_reasons: reasons,
           stale_lender_count: staleLenderCounts[deal.id] || 0,
+          latest_status_note: latestStatusNoteMap[deal.id] || null,
         });
       }
 
