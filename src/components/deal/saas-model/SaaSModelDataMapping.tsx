@@ -1994,9 +1994,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
              <div className="flex items-center justify-between border-b border-border/[0.04] bg-muted/15">
                 <div className="flex overflow-x-auto">
                   {selectedFile.sheets.map((s, i) => (
-                    <button key={i} className={cn(
-                      "px-3 py-1.5 text-[11px] whitespace-nowrap border-b-2 transition-colors font-medium",
-                      i === activeSheet ? "border-primary text-foreground bg-card/60" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-card/30"
+                   <button key={i} className={cn(
+                     "px-3 py-1.5 text-[11px] whitespace-nowrap border-b-2 transition-colors font-medium",
+                     i === activeSheet ? "border-primary text-foreground bg-secondary/40" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/20"
                     )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); setSignFlipSelectedRows(new Set()); setSignFlipSelectedCols(new Set()); }}>
                       {s.name}
                     </button>
