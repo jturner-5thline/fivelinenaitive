@@ -1627,7 +1627,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       )}
 
       {/* ── File info strip (compact) ── */}
-      <div className="flex items-center gap-2.5 rounded-lg border border-border/30 bg-card/80 px-3 py-1.5">
+      <div className="flex items-center gap-2.5 rounded-xl border border-border/[0.06] bg-secondary/30 px-3 py-1.5 shadow-sm">
         <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <button
           className="text-[11px] font-medium text-foreground hover:text-primary transition-colors truncate cursor-pointer"
