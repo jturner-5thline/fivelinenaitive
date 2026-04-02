@@ -183,7 +183,6 @@ function buildEmailHtml(
 
     return `
       <div style="${tileStyle}">
-      <div style="background: #ffffff; border-radius: 6px; padding: 10px 12px;">
         <table style="width: 100%;">
           <tr>
             <td style="vertical-align: middle;">
