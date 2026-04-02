@@ -352,9 +352,6 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         <TabsContent value="debt-servicing" className="mt-4">
           <SaaSModelDebtServicing lenders={lenders} updateLender={updateLender} />
         </TabsContent>
-        <TabsContent value="charts" className="mt-4">
-          <SaaSModelCharts model={model} />
-        </TabsContent>
         <TabsContent value="credit-analysis" className="mt-4">
           <SaaSModelCreditAnalysis model={model} />
         </TabsContent>

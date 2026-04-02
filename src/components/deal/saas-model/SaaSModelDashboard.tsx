@@ -685,6 +685,11 @@ export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
         <AIInsightsPanel model={m} />
         <AnalysisChatPanel model={m} />
       </div>
+
+      {/* ═══════════════════════════════════════════════════
+          ROW 6 — CHARTS (migrated from Charts tab)
+          ═══════════════════════════════════════════════════ */}
+      <SaaSModelCharts model={m} />
     </div>
   );
 }
