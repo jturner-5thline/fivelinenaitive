@@ -1560,7 +1560,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const columnCount = sheet?.data[0]?.length || 0;
 
   return (
-    <div className="space-y-4">
+    <div className="mapping-workbench space-y-3 rounded-lg p-3" style={{ background: 'var(--map-bg)' }}>
       {renderSettingsSection()}
 
       {/* ── Header: Title + Progress Badges ── */}
