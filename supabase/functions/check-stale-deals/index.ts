@@ -134,13 +134,21 @@ function buildEmailHtml(
   const flaggedCount = deals.filter(d => d.attention_reasons.includes('Flagged')).length;
   const lenderCount = deals.filter(d => d.attention_reasons.includes('Lenders Need Updating')).length;
 
-  const dealCards = deals.slice(0, 15).map(deal => {
+  // Sort: flagged deals first, then by days since update descending
+  const sortedDeals = [...deals].sort((a, b) => {
+    const aFlagged = a.attention_reasons.includes('Flagged') ? 1 : 0;
+    const bFlagged = b.attention_reasons.includes('Flagged') ? 1 : 0;
+    if (aFlagged !== bFlagged) return bFlagged - aFlagged;
+    return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+  });
+
+  const dealCards = sortedDeals.slice(0, 15).map(deal => {
     const updatedAt = new Date(deal.updated_at);
     const daysSinceUpdate = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
     
     const isFlagged = deal.attention_reasons.includes('Flagged');
     const isStale = deal.attention_reasons.includes('Stale');
-    const borderColor = isFlagged ? '#dc2626' : isStale ? (daysSinceUpdate >= thresholdDays * 2 ? '#dc2626' : daysSinceUpdate >= thresholdDays * 1.5 ? '#ea580c' : '#f59e0b') : '#3b82f6';
+    const borderColor = isFlagged ? '#dc2626' : '#d1d5db';
 
     const reasonBadges = deal.attention_reasons.filter(r => r !== 'Lenders Need Updating').map(r => getReasonBadge(r)).join('');
     const hasLendersNeedUpdating = deal.attention_reasons.includes('Lenders Need Updating');
@@ -159,8 +167,11 @@ function buildEmailHtml(
       detailGrid += `<tr>${detailRows[i]}${detailRows[i + 1] || '<td></td>'}</tr>`;
     }
 
-    const flagNotesHtml = isFlagged && deal.flag_notes
-      ? `<p style="margin: 8px 0 0; font-size: 12px; color: #991b1b; line-height: 1.4; background: #fef2f2; padding: 8px; border-radius: 4px;"><strong>Flag Note:</strong> ${deal.flag_notes.substring(0, 150)}${deal.flag_notes.length > 150 ? '…' : ''}</p>`
+    const flagNotesHtml = isFlagged
+      ? `<div style="margin: 10px 0 4px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 10px 12px;">
+          <div style="font-size: 13px; font-weight: 700; color: #dc2626; margin-bottom: 4px;">🚩 Flagged</div>
+          ${deal.flag_notes ? `<p style="margin: 0; font-size: 12px; color: #991b1b; line-height: 1.5;">${deal.flag_notes.substring(0, 200)}${deal.flag_notes.length > 200 ? '…' : ''}</p>` : ''}
+        </div>`
       : '';
 
     const lenderHtml = deal.stale_lender_count && deal.stale_lender_count > 0
