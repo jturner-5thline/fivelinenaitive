@@ -1921,7 +1921,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <Maximize2 className="h-3.5 w-3.5" /> Expand
           </Button>
 
-          <div className="h-5 w-px bg-border/30" />
+           <div className="h-5 w-px bg-border/[0.06]" />
 
           {/* Destructive: New Mapping */}
           <AlertDialog>
