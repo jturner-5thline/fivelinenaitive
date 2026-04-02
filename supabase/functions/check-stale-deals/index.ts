@@ -167,8 +167,11 @@ function buildEmailHtml(
       detailGrid += `<tr>${detailRows[i]}${detailRows[i + 1] || '<td></td>'}</tr>`;
     }
 
-    const flagNotesHtml = isFlagged && deal.flag_notes
-      ? `<p style="margin: 8px 0 0; font-size: 12px; color: #991b1b; line-height: 1.4; background: #fef2f2; padding: 8px; border-radius: 4px;"><strong>Flag Note:</strong> ${deal.flag_notes.substring(0, 150)}${deal.flag_notes.length > 150 ? '…' : ''}</p>`
+    const flagNotesHtml = isFlagged
+      ? `<div style="margin: 10px 0 4px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 10px 12px;">
+          <div style="font-size: 13px; font-weight: 700; color: #dc2626; margin-bottom: 4px;">🚩 Flagged</div>
+          ${deal.flag_notes ? `<p style="margin: 0; font-size: 12px; color: #991b1b; line-height: 1.5;">${deal.flag_notes.substring(0, 200)}${deal.flag_notes.length > 200 ? '…' : ''}</p>` : ''}
+        </div>`
       : '';
 
     const lenderHtml = deal.stale_lender_count && deal.stale_lender_count > 0
