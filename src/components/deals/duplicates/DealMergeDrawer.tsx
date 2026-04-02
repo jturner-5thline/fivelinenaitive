@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { DuplicateCluster } from '@/hooks/useDealDuplicates';
-import { Deal, STATUS_CONFIG, STAGE_CONFIG } from '@/types/deal';
+import { Deal, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelines } from '@/hooks/usePipelines';
+import { useCompany } from '@/hooks/useCompany';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -92,47 +93,52 @@ function getSmartDefaults(deals: Deal[]): Record<MergeField, string> {
   return defaults;
 }
 
-export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawerProps) {
-  const { refreshDeals } = useDealsContext();
-  const { pipelines } = usePipelines();
-  const [isMerging, setIsMerging] = useState(false);
+/** Shared display-value resolver for merge table fields */
+function resolveDisplayValue(
+  field: MergeField,
+  val: unknown,
+  pipelineMap: Map<string, string>,
+  pipelineStageMap: Map<string, string>,
+  memberNameMap: Map<string, string>,
+): string {
+  if (val === null || val === undefined || val === '') return '—';
 
-  const deals = cluster?.deals || [];
+  const str = String(val);
 
-  const [primaryDealId, setPrimaryDealId] = useState<string>('');
-  const [selections, setSelections] = useState<Record<MergeField, string>>({} as any);
-  const [mergedName, setMergedName] = useState('');
-
-  const pipelineMap = useMemo(() => {
-    const map = new Map<string, string>();
-    pipelines.forEach(p => map.set(p.id, p.name));
-    return map;
-  }, [pipelines]);
-
-  // Reset state when cluster changes
-  useEffect(() => {
-    if (deals.length > 0 && open) {
-      setPrimaryDealId(deals[0].id);
-      setSelections(getSmartDefaults(deals));
-      setMergedName(cluster?.primaryName || deals[0].company || deals[0].name);
-    }
-  }, [cluster?.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const getFieldValue = (deal: Deal, field: MergeField): string => {
-    if (field === 'pipelineId') {
-      return deal.pipelineId ? pipelineMap.get(deal.pipelineId) || deal.pipelineId : '—';
-    }
-    const val = deal[field as keyof Deal];
-    if (val === null || val === undefined || val === '') return '—';
-    if (field === 'value') return `$${Number(val).toLocaleString()}`;
-    if (field === 'stage') return STAGE_CONFIG[val as string]?.label || String(val);
-    if (field === 'status') return STATUS_CONFIG[val as string]?.label || String(val);
-    if (field === 'notes' || field === 'narrative') {
-      const s = String(val);
-      return s.length > 80 ? s.slice(0, 80) + '…' : s;
-    }
-    return String(val);
-  };
+  switch (field) {
+    case 'pipelineId':
+      return pipelineMap.get(str) || str || '—';
+    case 'value':
+      return `$${Number(val).toLocaleString()}`;
+    case 'stage':
+      return STAGE_CONFIG[str]?.label || pipelineStageMap.get(str) || str;
+    case 'status':
+      return STATUS_CONFIG[str]?.label || str;
+    case 'engagementType':
+      return ENGAGEMENT_TYPE_CONFIG[str as keyof typeof ENGAGEMENT_TYPE_CONFIG]?.label || str;
+    case 'manager':
+    case 'dealOwner':
+    case 'analyst':
+      // If the value looks like a numeric ID (e.g. HubSpot owner ID), try resolving from members
+      if (/^\d+$/.test(str)) {
+        return memberNameMap.get(str) || str;
+      }
+      // If it's a UUID, try resolving
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-/.test(str)) {
+        return memberNameMap.get(str) || str;
+      }
+      // Already a display name
+      return str;
+    case 'notes':
+    case 'narrative':
+      return str.length > 80 ? str.slice(0, 80) + '…' : str;
+    default:
+      if (Array.isArray(val)) {
+        return val.length > 0 ? val.join(', ') : '—';
+      }
+      return str;
+  }
+}
 
   // Compute merged preview
   const mergedPreview = useMemo(() => {
