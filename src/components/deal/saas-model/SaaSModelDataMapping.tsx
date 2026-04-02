@@ -27,6 +27,7 @@ import { useMappingSuggestions } from '@/hooks/useMappingSuggestions';
 import { supabase } from '@/integrations/supabase/client';
 import { DataMappingFieldSidebar, type FieldSidebarHandle } from './DataMappingFieldSidebar';
 import { useMappingHistory, type MappingAction } from './useMappingHistory';
+import { MappingFieldSettings } from './MappingFieldSettings';
 import {
   type Phase, type AnalyzedFile, type AutoMapResult, type ValidationWarning,
   KEYWORD_ALIASES, getMatchConfidence, applyMappingsToModel,
