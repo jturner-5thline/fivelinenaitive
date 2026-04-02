@@ -442,6 +442,7 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
               )}
               {isAutoFilling ? 'Extracting...' : 'Auto-fill'}
             </Button>
+            <span className="text-[9px] text-muted-foreground/60 ml-0.5">Powered by Claude</span>
           </div>
           <Input
             id="companyUrl"

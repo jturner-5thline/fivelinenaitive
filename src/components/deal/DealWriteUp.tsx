@@ -1574,9 +1574,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               AI-Generated Lender Memo
+              <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Powered by Claude</span>
             </DialogTitle>
             <DialogDescription>
-              Structured memo generated from all deal data. You can regenerate individual sections.
+              Structured memo generated from all deal data using Claude AI. You can regenerate individual sections.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-1 max-h-[60vh] pr-4">
