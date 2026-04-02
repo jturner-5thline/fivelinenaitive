@@ -346,7 +346,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
           <HoverCardTrigger asChild>
             {rowContent}
           </HoverCardTrigger>
-          <HoverCardContent side="left" align="center" className="w-64 p-3 bg-card border-border/40 shadow-xl">
+          <HoverCardContent side="left" align="center" className="w-64 p-3 bg-popover border-border/[0.08] shadow-xl">
             <div className="space-y-2">
               <div>
                 <p className="text-[10px] text-muted-foreground/70 mb-0.5">Source</p>
