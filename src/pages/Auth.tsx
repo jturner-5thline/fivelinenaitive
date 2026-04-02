@@ -239,6 +239,7 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
+      console.log("[GoogleSSO] Starting sign-in, redirect_uri:", window.location.origin);
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
         extraParams: {
@@ -246,20 +247,39 @@ const Auth = () => {
         },
       });
 
+      console.log("[GoogleSSO] Result received:", JSON.stringify({
+        redirected: result.redirected,
+        hasError: !!result.error,
+        errorMessage: result.error?.message,
+        errorDetails: result.error,
+        hasTokens: !!(result as any).tokens,
+      }));
+
       if (result.redirected) {
         return;
       }
 
       if (result.error) {
         setGoogleLoading(false);
-        throw result.error;
+        const err = result.error as any;
+        const errorMsg = err instanceof Error 
+          ? err.message 
+          : typeof err === 'string' 
+            ? err 
+            : JSON.stringify(err);
+        console.error("[GoogleSSO] OAuth error:", errorMsg, err);
+        toast.error(`Google sign-in failed: ${errorMsg}`);
+        return;
       }
 
       // Session set successfully, redirect to deals
+      console.log("[GoogleSSO] Session set successfully, redirecting to /deals");
       window.location.href = "/deals";
     } catch (error: any) {
+      console.error("[GoogleSSO] Caught exception:", error);
       setGoogleLoading(false);
-      toast.error(error.message || "Failed to sign in with Google");
+      const errorDetail = error?.message || error?.toString() || "Unknown error";
+      toast.error(`Google sign-in error: ${errorDetail}`);
     }
   };
 
