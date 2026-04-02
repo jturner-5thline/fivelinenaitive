@@ -14,6 +14,16 @@ export function fmtMM(val: number): string {
   return val < 0 ? `(${formatted})` : formatted;
 }
 
+// Helper: returns true when a displayed string represents a negative currency value
+export function isNegativeValue(display: string): boolean {
+  return display.startsWith('(') && display.endsWith(')');
+}
+
+// Utility className for currency values — red if negative
+export function currencyColor(display: string, base = 'text-foreground'): string {
+  return isNegativeValue(display) ? 'text-destructive' : base;
+}
+
 // ── SectionHeader ──────────────────────────────────────
 export function SectionHeader({ title, flags, className }: { title: string; flags?: number; className?: string }) {
   return (
