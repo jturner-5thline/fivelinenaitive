@@ -243,6 +243,11 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
       // Build merged field values
       const mergedData: Record<string, any> = { name: mergedName, company: mergedName };
       for (const field of MERGE_FIELDS) {
+        // Use custom engagement type override if set
+        if (field.key === 'engagementType' && customEngagementType) {
+          mergedData.engagementType = customEngagementType;
+          continue;
+        }
         const sourceDealId = selections[field.key];
         const sourceDeal = deals.find(d => d.id === sourceDealId) || primary;
         const val = sourceDeal[field.key as keyof Deal];
