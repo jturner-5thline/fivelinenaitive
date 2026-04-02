@@ -154,66 +154,58 @@ function buildEmailHtml(
     const hasLendersNeedUpdating = deal.attention_reasons.includes('Lenders Need Updating');
     const lendersBadge = hasLendersNeedUpdating ? getReasonBadge('Lenders Need Updating') : '';
 
-    const detailRows: string[] = [];
-    if (deal.value) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Value:</strong> ${formatValue(deal.value)}</td>`);
     const dealTypeTags = getDealTypeTags(deal.deal_type);
-    if (deal.manager) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Manager:</strong> ${deal.manager}</td>`);
-    if (deal.analyst) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Analyst:</strong> ${deal.analyst}</td>`);
-    if (deal.closing_date) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Closing:</strong> ${formatDate(deal.closing_date)}</td>`);
-    
-
-    let detailGrid = '';
-    for (let i = 0; i < detailRows.length; i += 2) {
-      detailGrid += `<tr>${detailRows[i]}${detailRows[i + 1] || '<td></td>'}</tr>`;
-    }
 
     const flagNotesHtml = isFlagged
-      ? `<div style="margin: 10px 0 4px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 10px 12px;">
-          <div style="font-size: 13px; font-weight: 700; color: #dc2626; margin-bottom: 4px;">🚩 Flagged</div>
-          ${deal.flag_notes ? `<p style="margin: 0; font-size: 12px; color: #991b1b; line-height: 1.5;">${deal.flag_notes.substring(0, 200)}${deal.flag_notes.length > 200 ? '…' : ''}</p>` : ''}
+      ? `<div style="margin: 6px 0 0; background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 6px 8px;">
+          <span style="font-size: 12px; font-weight: 700; color: #dc2626;">🚩 Flagged</span>
+          ${deal.flag_notes ? `<span style="font-size: 11px; color: #991b1b; margin-left: 6px;">${deal.flag_notes.substring(0, 120)}${deal.flag_notes.length > 120 ? '…' : ''}</span>` : ''}
         </div>`
       : '';
 
     const lenderHtml = deal.stale_lender_count && deal.stale_lender_count > 0
-      ? `<p style="margin: 4px 0 0; font-size: 12px; color: #1e40af;"><strong>${deal.stale_lender_count}</strong> lender${deal.stale_lender_count > 1 ? 's' : ''} haven't been updated in ${thresholdDays}+ days</p>`
+      ? `<p style="margin: 2px 0 0; font-size: 11px; color: #1e40af;"><strong>${deal.stale_lender_count}</strong> lender${deal.stale_lender_count > 1 ? 's' : ''} haven't been updated in ${thresholdDays}+ days</p>`
       : '';
 
     const statusNoteText = deal.latest_status_note || '';
     const statusNoteSnippet = statusNoteText
-      ? `<p style="margin: 4px 0 0; font-size: 12px; color: #6b7280; line-height: 1.4;">${statusNoteText.substring(0, 150)}${statusNoteText.length > 150 ? '…' : ''}</p>`
+      ? `<p style="margin: 2px 0 0; font-size: 11px; color: #6b7280; line-height: 1.3;">${statusNoteText.substring(0, 100)}${statusNoteText.length > 100 ? '…' : ''}</p>`
       : '';
 
+    const metaItems: string[] = [];
+    if (deal.value) metaItems.push(`<span style="color: #374151; font-size: 11px;"><strong style="color: #6b7280;">Value:</strong> ${formatValue(deal.value)}</span>`);
+    if (deal.manager) metaItems.push(`<span style="color: #374151; font-size: 11px;"><strong style="color: #6b7280;">Mgr:</strong> ${deal.manager}</span>`);
+    if (deal.closing_date) metaItems.push(`<span style="color: #374151; font-size: 11px;"><strong style="color: #6b7280;">Close:</strong> ${formatDate(deal.closing_date)}</span>`);
+    const metaLine = metaItems.length > 0 ? `<div style="margin-top: 4px;">${metaItems.join('<span style="color: #d1d5db; margin: 0 6px;">|</span>')}</div>` : '';
+
     return `
-      <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; border-left: 4px solid ${borderColor};">
+      <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; border-left: 4px solid ${borderColor};">
         <table style="width: 100%;">
           <tr>
             <td style="vertical-align: middle;">
-              <strong style="font-size: 21px; color: #111827; vertical-align: middle;">${deal.company}</strong>
-              ${lendersBadge ? `<span style="display: inline-block; vertical-align: middle; margin-left: 8px;">${lendersBadge}</span>` : ''}
+              <strong style="font-size: 18px; color: #111827; vertical-align: middle;">${deal.company}</strong>
+              ${lendersBadge ? `<span style="display: inline-block; vertical-align: middle; margin-left: 6px;">${lendersBadge}</span>` : ''}
             </td>
-            <td style="text-align: right; vertical-align: middle;">
-              <span style="display: inline-block; background: ${deal.status === 'at-risk' ? '#fef3c7' : deal.status === 'off-track' ? '#fee2e2' : '#dcfce7'}; color: ${deal.status === 'at-risk' ? '#92400e' : deal.status === 'off-track' ? '#991b1b' : '#166534'}; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 4px;">${deal.status === 'on-track' ? 'On Track' : deal.status === 'at-risk' ? 'At Risk' : deal.status === 'off-track' ? 'Off Track' : deal.status === 'on-hold' ? 'On Hold' : deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}</span>
+            <td style="text-align: right; vertical-align: middle; white-space: nowrap;">
+              <span style="display: inline-block; background: ${deal.status === 'at-risk' ? '#fef3c7' : deal.status === 'off-track' ? '#fee2e2' : '#dcfce7'}; color: ${deal.status === 'at-risk' ? '#92400e' : deal.status === 'off-track' ? '#991b1b' : '#166534'}; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;">${deal.status === 'on-track' ? 'On Track' : deal.status === 'at-risk' ? 'At Risk' : deal.status === 'off-track' ? 'Off Track' : deal.status === 'on-hold' ? 'On Hold' : deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}</span>
             </td>
           </tr>
           <tr>
-            <td style="vertical-align: middle; padding-top: 4px;">
-              <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;">Last Update ${daysSinceUpdate} Days Ago</span>
+            <td style="vertical-align: middle; padding-top: 2px;">
+              <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px;">Last Update ${daysSinceUpdate} Days Ago</span>
+              ${dealTypeTags ? `<span style="margin-left: 4px;">${dealTypeTags}</span>` : ''}
             </td>
-            <td style="text-align: right; vertical-align: middle; padding-top: 4px;">
-              <span style="display: inline-block; background: #ede9fe; color: #6d28d9; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px;">${formatStageLabel(deal.stage)}</span>
+            <td style="text-align: right; vertical-align: middle; padding-top: 2px;">
+              <span style="display: inline-block; background: #ede9fe; color: #6d28d9; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 4px;">${formatStageLabel(deal.stage)}</span>
             </td>
           </tr>
         </table>
         ${statusNoteSnippet}
-        <div style="margin-top: 6px; margin-bottom: 8px;">
-          ${reasonBadges}
-          ${dealTypeTags}
-        </div>
-        ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
+        ${metaLine}
         ${flagNotesHtml}
         ${lenderHtml}
-        <div style="margin-top: 10px;">
-          <a href="https://fivelinenaitive.lovable.app/deals/${deal.id}" style="color: #7c3aed; font-size: 13px; font-weight: 500; text-decoration: none;">View Deal →</a>
+        <div style="margin-top: 4px;">
+          <a href="https://fivelinenaitive.lovable.app/deals/${deal.id}" style="color: #7c3aed; font-size: 12px; font-weight: 500; text-decoration: none;">View Deal →</a>
         </div>
       </div>`;
   }).join('');
