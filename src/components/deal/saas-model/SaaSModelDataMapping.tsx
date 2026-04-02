@@ -1492,8 +1492,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </AlertDialogContent>
             </AlertDialog>
             <div className="flex gap-2 text-xs">
-              {counts.mappable > 0 && <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">{counts.mappable} Mappable</Badge>}
-              {counts.partial > 0 && <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20">{counts.partial} Partial</Badge>}
+             {counts.mappable > 0 && <Badge className="bg-success/8 text-success border-success/15">{counts.mappable} Mappable</Badge>}
+             {counts.partial > 0 && <Badge className="bg-warning/8 text-warning border-warning/15">{counts.partial} Partial</Badge>}
               {counts.unrecognized > 0 && <Badge variant="secondary">{counts.unrecognized} Not Recognized</Badge>}
               {counts.error > 0 && <Badge variant="destructive">{counts.error} Error</Badge>}
             </div>
