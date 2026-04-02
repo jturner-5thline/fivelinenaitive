@@ -1474,7 +1474,23 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <Button variant="ghost" size="sm" className="h-7" onClick={() => setPhase('upload')}>
               <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Change file
             </Button>
-            <div className="flex gap-2 text-xs">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 gap-1.5">
+                  <PlusCircle className="h-3.5 w-3.5" /> New Mapping
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Start New Mapping?</AlertDialogTitle>
+                  <AlertDialogDescription>This will remove all uploaded files and mappings for this deal. You'll start fresh with a new file upload.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleNewMapping}>Start Over</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
               {counts.mappable > 0 && <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">{counts.mappable} Mappable</Badge>}
               {counts.partial > 0 && <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20">{counts.partial} Partial</Badge>}
               {counts.unrecognized > 0 && <Badge variant="secondary">{counts.unrecognized} Not Recognized</Badge>}
