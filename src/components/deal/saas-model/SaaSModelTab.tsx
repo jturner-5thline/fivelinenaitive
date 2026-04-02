@@ -12,7 +12,6 @@ import { SaaSModelBalanceSheet } from './SaaSModelBalanceSheet';
 import { SaaSModelDataMapping, type DataMappingHandle } from './SaaSModelDataMapping';
 import { SaaSModelSensitivity } from './SaaSModelSensitivity';
 import { SaaSModelDebtServicing } from './SaaSModelDebtServicing';
-import { SaaSModelCharts } from './SaaSModelCharts';
 import { SaaSModelCreditAnalysis } from './SaaSModelCreditAnalysis';
 
 import { SaaSModelCommandPalette } from './SaaSModelCommandPalette';
