@@ -2275,9 +2275,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               if (!isNaN(numVal)) displayVal = -numVal;
                             }
                             return (
-                              <td key={actualCol} className={cn(
-                                "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
-                                isNum ? "text-right" : "text-left",
+                             <td key={actualCol} className={cn(
+                               "py-1 px-2 whitespace-nowrap tabular-nums font-sans",
+                               isNum ? "text-right" : "text-left",
                                 isColFlipped && !signFlipMode && "bg-amber-500/5",
                                 signFlipMode && signFlipSelectedCols.has(actualCol) && "bg-amber-500/15",
                               )}>
