@@ -72,7 +72,7 @@ export function useFlagNotes(dealId: string | null) {
     if (!user) return;
     try {
       const { error } = await supabase
-        .from('deal_flag_notes' as any)
+        .from('deal_flag_notes')
         .update({
           resolved: true,
           resolved_at: new Date().toISOString(),
