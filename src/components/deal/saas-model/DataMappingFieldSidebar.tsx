@@ -523,7 +523,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
           {/* Quick-assign for selected rows */}
           {selectedRows.size > 0 && (
             <div className="mb-3 p-2.5 rounded-lg bg-primary/[0.04] border border-primary/[0.08] space-y-2">
-              <div className="text-xs text-cyan-400 flex items-center gap-2">
+              <div className="text-xs text-primary flex items-center gap-2">
                 <Check className="h-3.5 w-3.5" />
                 {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
               </div>
