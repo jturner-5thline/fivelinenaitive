@@ -76,6 +76,25 @@ function formatDealType(dealType: string | null): string {
   return dealType.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
+function getDealTypeTags(dealType: string | null): string {
+  if (!dealType) return '';
+  let types: string[] = [];
+  try {
+    const parsed = JSON.parse(dealType);
+    if (Array.isArray(parsed)) {
+      types = parsed;
+    } else {
+      types = [dealType];
+    }
+  } catch {
+    types = [dealType];
+  }
+  return types.map(t => {
+    const label = t.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    return `<span style="display: inline-block; background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${label}</span>`;
+  }).join('');
+}
+
 function formatStageLabel(stage: string): string {
   if (!stage) return '';
   return stage.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -127,8 +146,7 @@ function buildEmailHtml(
 
     const detailRows: string[] = [];
     if (deal.value) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Value:</strong> ${formatValue(deal.value)}</td>`);
-    const formattedDealType = formatDealType(deal.deal_type);
-    if (formattedDealType) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Type:</strong> ${formattedDealType}</td>`);
+    const dealTypeTags = getDealTypeTags(deal.deal_type);
     if (deal.manager) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Manager:</strong> ${deal.manager}</td>`);
     if (deal.analyst) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Analyst:</strong> ${deal.analyst}</td>`);
     if (deal.closing_date) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Closing:</strong> ${formatDate(deal.closing_date)}</td>`);
@@ -169,6 +187,7 @@ function buildEmailHtml(
         <div style="margin-top: 6px; margin-bottom: 8px;">
           ${reasonBadges}
           <span style="display: inline-block; background: ${borderColor}15; color: ${borderColor}; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${daysSinceUpdate}d inactive</span>
+          ${dealTypeTags}
         </div>
         ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
         ${flagNotesHtml}
