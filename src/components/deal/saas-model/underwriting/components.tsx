@@ -14,6 +14,16 @@ export function fmtMM(val: number): string {
   return val < 0 ? `(${formatted})` : formatted;
 }
 
+// Helper: returns true when a displayed string represents a negative currency value
+export function isNegativeValue(display: string): boolean {
+  return display.startsWith('(') && display.endsWith(')');
+}
+
+// Utility className for currency values — red if negative
+export function currencyColor(display: string, base = 'text-foreground'): string {
+  return isNegativeValue(display) ? 'text-destructive' : base;
+}
+
 // ── SectionHeader ──────────────────────────────────────
 export function SectionHeader({ title, flags, className }: { title: string; flags?: number; className?: string }) {
   return (
@@ -33,7 +43,7 @@ export function MetricCard({ label, value, sub, className }: { label: string; va
   return (
     <div className={cn("bg-card border border-border px-3 py-2.5 rounded-lg", className)}>
       <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">{label}</p>
-      <p className="text-lg font-bold text-foreground font-mono tabular-nums leading-tight">{value}</p>
+      <p className={cn("text-lg font-bold font-mono tabular-nums leading-tight", currencyColor(value))}>{value}</p>
       {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
@@ -127,7 +137,7 @@ export function KpiGrid({ tiles }: { tiles: KpiTile[] }) {
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">{t.label}</p>
           <div className="flex items-center gap-1.5">
             {t.icon && <span className="text-xs">{t.icon}</span>}
-            <p className="text-base font-bold text-foreground font-mono tabular-nums leading-tight">{t.value}</p>
+            <p className={cn("text-base font-bold font-mono tabular-nums leading-tight", currencyColor(t.value))}>{t.value}</p>
           </div>
           {t.delta && (
             <p className={cn(
@@ -148,7 +158,7 @@ export function SaasMetricsGrid({ tiles }: { tiles: SaasMetricTile[] }) {
       {tiles.map((t) => (
         <div key={t.label} className="bg-card border border-border px-3 py-2.5 rounded-lg">
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">{t.label}</p>
-          <p className="text-base font-bold text-foreground font-mono tabular-nums leading-tight">{t.value}</p>
+          <p className={cn("text-base font-bold font-mono tabular-nums leading-tight", currencyColor(t.value))}>{t.value}</p>
           {t.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{t.sub}</p>}
         </div>
       ))}
@@ -266,7 +276,7 @@ export function PnlBlock({ title, table, summaryMetrics, flags }: {
           {summaryMetrics.map((m) => (
             <div key={m.label} className="flex justify-between items-baseline">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{m.label}</span>
-              <span className="text-sm font-bold text-foreground font-mono tabular-nums">{m.value}</span>
+              <span className={cn("text-sm font-bold font-mono tabular-nums", currencyColor(m.value))}>{m.value}</span>
             </div>
           ))}
         </div>
@@ -289,19 +299,19 @@ export function FacilityBox({ facility }: { facility: {
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Borrowing Capacity Today</p>
-          <p className="text-lg font-bold font-mono tabular-nums text-foreground">{fmtMM(facility.borrowing_capacity_today)}</p>
+          <p className={cn("text-lg font-bold font-mono tabular-nums", currencyColor(fmtMM(facility.borrowing_capacity_today)))}>{fmtMM(facility.borrowing_capacity_today)}</p>
         </div>
         <div>
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Borrowing Capacity (6M)</p>
-          <p className="text-lg font-bold font-mono tabular-nums text-foreground">{fmtMM(facility.borrowing_capacity_6m)}</p>
+          <p className={cn("text-lg font-bold font-mono tabular-nums", currencyColor(fmtMM(facility.borrowing_capacity_6m)))}>{fmtMM(facility.borrowing_capacity_6m)}</p>
         </div>
         <div>
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Deferred Revenue (Today)</p>
-          <p className="text-sm font-bold font-mono tabular-nums text-foreground">{fmtMM(facility.deferred_revenue_today)}</p>
+          <p className={cn("text-sm font-bold font-mono tabular-nums", currencyColor(fmtMM(facility.deferred_revenue_today)))}>{fmtMM(facility.deferred_revenue_today)}</p>
         </div>
         <div>
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Deferred Revenue (6M Proj.)</p>
-          <p className="text-sm font-bold font-mono tabular-nums text-foreground">{fmtMM(facility.deferred_revenue_6m)}</p>
+          <p className={cn("text-sm font-bold font-mono tabular-nums", currencyColor(fmtMM(facility.deferred_revenue_6m)))}>{fmtMM(facility.deferred_revenue_6m)}</p>
         </div>
       </div>
       <div className="border-t border-border pt-3">
