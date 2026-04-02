@@ -297,7 +297,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
           })()}
           {fieldSuggestion && !isMapped && !hasPendingAuto && (
             <Badge variant="outline" className="text-[8px] h-4 px-1 bg-primary/5 text-primary border-primary/20 shrink-0">
-              AI · Row {fieldSuggestion.rowIdx + 1}
+              Claude · Row {fieldSuggestion.rowIdx + 1}
             </Badge>
           )}
           {mapped && (
