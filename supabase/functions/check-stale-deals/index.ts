@@ -172,7 +172,7 @@ function buildEmailHtml(
         ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
         ${flagNotesHtml}
         ${lenderHtml}
-        ${narrativeSnippet}
+        ${statusNoteSnippet}
         <div style="margin-top: 10px;">
           <a href="https://fivelinenaitive.lovable.app/deals/${deal.id}" style="color: #7c3aed; font-size: 13px; font-weight: 500; text-decoration: none;">View Deal →</a>
         </div>
