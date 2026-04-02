@@ -2213,10 +2213,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               )}
                             </div>
                           </td>
-                          <td className={cn(
-                            "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r border-border/15 font-medium",
-                            stickyBg,
-                          )} style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.15)' }}>
+                         <td className={cn(
+                           "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] font-medium",
+                           stickyBg,
+                         )} style={{ boxShadow: '2px 0 8px -2px hsl(0 0% 0% / 0.1)' }}>
                             <div className="flex items-center gap-1.5 overflow-hidden">
                               {isMappedRow && !isHeaderRow && (
                                 <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
