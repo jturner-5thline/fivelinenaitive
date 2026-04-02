@@ -16,16 +16,22 @@ export function fmtMM(val: number): string {
 
 // Helper: returns true when a displayed string represents a negative value
 export function isNegativeValue(display: string): boolean {
-  // Parenthetical negatives like ($1.2MM)
   if (display.startsWith('(') && display.endsWith(')')) return true;
-  // Explicit minus like -5.2% or -$1.2MM
   if (/^-/.test(display.trim())) return true;
   return false;
 }
 
-// Utility className for values — red if negative
+// Helper: returns true when a displayed string is a positive percentage
+export function isPositivePercent(display: string): boolean {
+  const s = display.trim();
+  return /^\+?\d/.test(s) && s.includes('%') && !isNegativeValue(s);
+}
+
+// Utility className for values — red if negative, green if positive %, default otherwise
 export function currencyColor(display: string, base = 'text-foreground'): string {
-  return isNegativeValue(display) ? 'text-destructive' : base;
+  if (isNegativeValue(display)) return 'text-destructive';
+  if (isPositivePercent(display)) return 'text-success';
+  return base;
 }
 
 // ── SectionHeader ──────────────────────────────────────
