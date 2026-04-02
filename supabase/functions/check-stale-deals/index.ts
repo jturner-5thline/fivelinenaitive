@@ -175,7 +175,8 @@ function buildEmailHtml(
         <table style="width: 100%;">
           <tr>
             <td style="vertical-align: top;">
-              <strong style="font-size: 16px; color: #111827;">${deal.company}</strong>
+              <strong style="font-size: 21px; color: #111827;">${deal.company}</strong>
+              ${statusNoteSnippet}
             </td>
             <td style="text-align: right; vertical-align: top;">
               <span style="display: inline-block; background: ${deal.status === 'at-risk' ? '#fef3c7' : deal.status === 'off-track' ? '#fee2e2' : '#dcfce7'}; color: ${deal.status === 'at-risk' ? '#92400e' : deal.status === 'off-track' ? '#991b1b' : '#166534'}; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 4px;">${deal.status === 'on-track' ? 'On Track' : deal.status === 'at-risk' ? 'At Risk' : deal.status === 'off-track' ? 'Off Track' : deal.status === 'on-hold' ? 'On Hold' : deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}</span>
@@ -186,13 +187,12 @@ function buildEmailHtml(
         </table>
         <div style="margin-top: 6px; margin-bottom: 8px;">
           ${reasonBadges}
-          <span style="display: inline-block; background: ${borderColor}15; color: ${borderColor}; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${daysSinceUpdate}d inactive</span>
+          <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${daysSinceUpdate}d inactive</span>
           ${dealTypeTags}
         </div>
         ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
         ${flagNotesHtml}
         ${lenderHtml}
-        ${statusNoteSnippet}
         <div style="margin-top: 10px;">
           <a href="https://fivelinenaitive.lovable.app/deals/${deal.id}" style="color: #7c3aed; font-size: 13px; font-weight: 500; text-decoration: none;">View Deal →</a>
         </div>
