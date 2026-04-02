@@ -81,6 +81,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const lastClickedRowRef = useRef<number | null>(null);
   const sidebarRef = useRef<FieldSidebarHandle>(null);
   const spreadsheetRef = useRef<HTMLDivElement>(null);
+
+  // ── Bidirectional linking state ──
+  const [hoveredRowIdx, setHoveredRowIdx] = useState<number | null>(null);
+  const [hoveredFieldId, setHoveredFieldId] = useState<string | null>(null);
+
+  // (bidirectional lookup maps, scroll helpers, and hover handlers defined after useMappingSuggestions below)
   const { canUndo, canRedo, pushAction, popUndo, popRedo, peekUndo, peekRedo } = useMappingHistory();
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storedFilePathRef = useRef<string | null>(null);
@@ -744,6 +750,66 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     suggestions, isLoading: isSuggestLoading, hasRun: hasSuggestRun, pendingCount, acceptedCount,
     fetchSuggestions, acceptSuggestion, rejectSuggestion, acceptAll, logPatterns, getSuggestionForRow,
   } = useMappingSuggestions();
+
+  // ── Bidirectional linking: lookup maps ──
+  const rowToFieldMap = useMemo(() => {
+    const map = new Map<number, { field: string; origin: 'mapped' | 'pending' | 'suggested' }>();
+    for (const [field, mappings] of Object.entries(fieldMappings)) {
+      for (const m of mappings) map.set(m.rowIdx, { field, origin: 'mapped' });
+    }
+    for (const [field, p] of Object.entries(pendingAutoMaps)) {
+      if (!map.has(p.rowIdx)) map.set(p.rowIdx, { field, origin: 'pending' });
+    }
+    for (const s of suggestions) {
+      if (s.status === 'pending' && !map.has(s.rowIdx)) map.set(s.rowIdx, { field: s.suggestedField, origin: 'suggested' });
+    }
+    return map;
+  }, [fieldMappings, pendingAutoMaps, suggestions]);
+
+  const fieldToRowsMap = useMemo(() => {
+    const map = new Map<string, { rowIdx: number; origin: 'mapped' | 'pending' | 'suggested' }[]>();
+    for (const [field, mappings] of Object.entries(fieldMappings)) {
+      map.set(field, mappings.map(m => ({ rowIdx: m.rowIdx, origin: 'mapped' as const })));
+    }
+    for (const [field, p] of Object.entries(pendingAutoMaps)) {
+      const existing = map.get(field) || [];
+      if (!existing.some(e => e.rowIdx === p.rowIdx)) map.set(field, [...existing, { rowIdx: p.rowIdx, origin: 'pending' as const }]);
+    }
+    for (const s of suggestions) {
+      if (s.status === 'pending') {
+        const existing = map.get(s.suggestedField) || [];
+        if (!existing.some(e => e.rowIdx === s.rowIdx)) map.set(s.suggestedField, [...existing, { rowIdx: s.rowIdx, origin: 'suggested' as const }]);
+      }
+    }
+    return map;
+  }, [fieldMappings, pendingAutoMaps, suggestions]);
+
+  const linkedFieldFromRow = hoveredRowIdx !== null ? rowToFieldMap.get(hoveredRowIdx)?.field ?? null : null;
+  const linkedRowsFromField = hoveredFieldId ? (fieldToRowsMap.get(hoveredFieldId) || []).map(r => r.rowIdx) : [];
+
+  const scrollRowIntoView = useCallback((rowIdx: number) => {
+    const row = spreadsheetRef.current?.querySelector(`[data-row-idx="${rowIdx}"]`);
+    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
+
+  const scrollFieldIntoView = useCallback((fieldId: string) => {
+    const el = document.querySelector(`[data-field-id="${fieldId}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
+
+  const handleFieldHover = useCallback((fieldId: string | null) => { setHoveredFieldId(fieldId); }, []);
+
+  const handleFieldSelect = useCallback((fieldId: string) => {
+    const rows = fieldToRowsMap.get(fieldId);
+    if (rows && rows.length > 0) scrollRowIntoView(rows[0].rowIdx);
+  }, [fieldToRowsMap, scrollRowIntoView]);
+
+  const handleRowHover = useCallback((rowIdx: number | null) => { setHoveredRowIdx(rowIdx); }, []);
+
+  const handleRowSelect = useCallback((rowIdx: number) => {
+    const linked = rowToFieldMap.get(rowIdx);
+    if (linked) scrollFieldIntoView(linked.field);
+  }, [rowToFieldMap, scrollFieldIntoView]);
 
   const getCompanyId = useCallback(async (): Promise<string | null> => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -2116,6 +2182,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       const isHeaderRow = detectedHeaders.headerRow === rowIdx;
                       const isSelected = selectedRows.has(rowIdx);
                       const isFlashing = flashedRows.has(rowIdx);
+                      const isLinkedFromField = linkedRowsFromField.includes(rowIdx);
 
                       const rowBgClass = isFlashing
                         ? "animate-mapping-flash"
@@ -2157,13 +2224,17 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                         <ContextMenu key={rowIdx}>
                           <ContextMenuTrigger asChild>
                         <tr
+                           data-row-idx={rowIdx}
                            className={cn(
                              "cursor-pointer transition-colors border-b border-[#2a3a58]",
                              rowBgClass, leftBorderClass,
+                             isLinkedFromField && !isSelected && !isFlashing && "map-row--linked-hover",
                              eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-[rgba(220,38,38,0.1)] ring-1 ring-inset ring-[rgba(220,38,38,0.3)]",
                              signFlipMode && signFlipSelectedRows.has(rowIdx) && "!bg-[rgba(217,119,6,0.1)] ring-1 ring-inset ring-[rgba(217,119,6,0.3)]",
                            )}
                           draggable={!isHeaderRow && !eraserMode && !signFlipMode}
+                          onMouseEnter={() => handleRowHover(rowIdx)}
+                          onMouseLeave={() => handleRowHover(null)}
                           onDragStart={e => {
                             if (isHeaderRow || eraserMode || signFlipMode) { e.preventDefault(); return; }
                             setDraggingRowIdx(rowIdx);
@@ -2180,7 +2251,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           onClick={e => {
                             if (signFlipMode) { handleSignFlipRowClick(rowIdx, e); return; }
                             if (eraserMode) { handleEraserRowClick(rowIdx, e); return; }
-                            if (!isHeaderRow) handleRowClick(rowIdx, e);
+                            if (!isHeaderRow) {
+                              handleRowClick(rowIdx, e);
+                              handleRowSelect(rowIdx);
+                            }
                           }}>
                           <td className={cn(
                             "sticky left-0 z-10 py-1 px-1 text-center text-[#64748b] text-[10px] border-b border-[#2a3a58]",
@@ -2309,6 +2383,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             pendingAutoMaps={pendingAutoMaps}
             draggingRowIdx={draggingRowIdx}
             enabledFields={enabledFields}
+            linkedFieldFromRow={linkedFieldFromRow}
+            linkedRowsFromField={linkedRowsFromField}
+            hoveredRowIdx={hoveredRowIdx}
+            onFieldHover={handleFieldHover}
+            onFieldSelect={handleFieldSelect}
             onAssignField={handleAssignField}
             onRemoveMapping={handleRemoveMapping}
             onAcceptSuggestion={handleAcceptSuggestion}
@@ -2561,6 +2640,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   pendingAutoMaps={pendingAutoMaps}
                   draggingRowIdx={draggingRowIdx}
                   enabledFields={enabledFields}
+                  linkedFieldFromRow={linkedFieldFromRow}
+                  linkedRowsFromField={linkedRowsFromField}
+                  hoveredRowIdx={hoveredRowIdx}
+                  onFieldHover={handleFieldHover}
+                  onFieldSelect={handleFieldSelect}
                   onAssignField={handleAssignField}
                   onRemoveMapping={handleRemoveMapping}
                   onAcceptSuggestion={handleAcceptSuggestion}
