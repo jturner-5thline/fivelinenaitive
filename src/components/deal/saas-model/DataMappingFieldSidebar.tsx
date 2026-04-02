@@ -435,7 +435,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
 
             {/* Selected row banner */}
             {selectedRowInfo && (
-              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-card border border-cyan-500/30 border-l-[3px] border-l-cyan-400">
+              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-secondary/40 border border-primary/[0.08] border-l-[3px] border-l-primary/40">
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] text-muted-foreground/70 leading-none mb-0.5">
                     {selectedRowInfo.count > 1 ? 'Mapping (multi-row):' : 'Mapping:'}
