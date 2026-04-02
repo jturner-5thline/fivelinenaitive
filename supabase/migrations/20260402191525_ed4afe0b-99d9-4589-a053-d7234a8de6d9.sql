@@ -1,0 +1,2 @@
+UPDATE deals SET deal_owner = 'James Turner' WHERE deal_owner = '42024321';
+UPDATE deals SET contact = 'Justin Archibee' WHERE id = '7b027f21-cbd1-4739-bf90-9b3200fd382d' AND (contact IS NULL OR contact = '');
