@@ -636,9 +636,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   const renderSettingsSection = () => (
     <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <Card className="border-border/30">
+        <Card className="border-border/[0.06] shadow-md">
         <CollapsibleTrigger asChild>
-          <button className="w-full flex items-center justify-between p-4 hover:bg-muted/10 transition-colors rounded-t-lg">
+          <button className="w-full flex items-center justify-between p-4 hover:bg-muted/5 transition-colors rounded-t-lg">
             <div className="flex items-center gap-2">
               <Settings className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">Model Settings</span>
@@ -648,7 +648,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="px-4 pb-4 pt-0 space-y-4 border-t border-border/20">
+          <CardContent className="px-4 pb-4 pt-0 space-y-4 border-t border-border/[0.06]">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-3">
               <div>
                 <Label className="text-xs">Company Name</Label>
@@ -1410,7 +1410,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     return (
       <div className="space-y-4">
         {renderSettingsSection()}
-        <Card className="border-border/30 border-dashed group/dropzone hover:border-primary/40 transition-colors">
+        <Card className="border-border/[0.06] border-dashed group/dropzone hover:border-primary/30 transition-colors shadow-md">
           <CardContent className="p-16 flex flex-col items-center justify-center text-center"
             onDragOver={e => { e.preventDefault(); e.currentTarget.closest('.group\\/dropzone')?.classList.add('border-primary/60'); }}
             onDragLeave={e => { e.currentTarget.closest('.group\\/dropzone')?.classList.remove('border-primary/60'); }}
@@ -1492,8 +1492,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </AlertDialogContent>
             </AlertDialog>
             <div className="flex gap-2 text-xs">
-              {counts.mappable > 0 && <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">{counts.mappable} Mappable</Badge>}
-              {counts.partial > 0 && <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20">{counts.partial} Partial</Badge>}
+             {counts.mappable > 0 && <Badge className="bg-success/8 text-success border-success/15">{counts.mappable} Mappable</Badge>}
+             {counts.partial > 0 && <Badge className="bg-warning/8 text-warning border-warning/15">{counts.partial} Partial</Badge>}
               {counts.unrecognized > 0 && <Badge variant="secondary">{counts.unrecognized} Not Recognized</Badge>}
               {counts.error > 0 && <Badge variant="destructive">{counts.error} Error</Badge>}
             </div>
@@ -1501,12 +1501,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {analyzedFiles.map((af, idx) => (
-            <Card key={idx} className={cn(
-              "border-border/30 cursor-pointer hover:border-primary/50 transition-colors",
-              af.analysis.status === 'mappable' && "border-emerald-500/30",
-              af.analysis.status === 'partial' && "border-amber-500/30",
-              af.analysis.status === 'error' && "border-destructive/30",
-            )}>
+           <Card key={idx} className={cn(
+             "border-border/[0.06] cursor-pointer hover:border-primary/20 transition-all shadow-sm hover:shadow-md",
+             af.analysis.status === 'mappable' && "border-success/15",
+             af.analysis.status === 'partial' && "border-warning/15",
+             af.analysis.status === 'error' && "border-destructive/15",
+           )}>
               <CardContent className="p-4" onClick={async () => { setSelectedFile(af); setPhase('mapping'); await persistFileToStorage(af.file); }}>
                 <div className="flex items-center gap-2 mb-2">
                   {af.analysis.status === 'mappable' ? <Check className="h-4 w-4 text-emerald-500" /> :
@@ -1518,9 +1518,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                 <div className="text-[10px] text-muted-foreground mb-2">
                   {af.sheets.length} sheet{af.sheets.length === 1 ? '' : 's'} · {af.analysis.type} · {af.analysis.totalMatches} of {totalFields} fields
                 </div>
-                <div className="w-full bg-muted/30 rounded-full h-1.5 mb-2">
-                  <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(af.analysis.totalMatches / totalFields) * 100}%` }} />
-                </div>
+               <div className="w-full bg-muted/20 rounded-full h-1.5 mb-2">
+                 <div className="bg-primary/70 h-1.5 rounded-full transition-all" style={{ width: `${(af.analysis.totalMatches / totalFields) * 100}%` }} />
+               </div>
                 <div className="flex flex-wrap gap-1">
                   {af.analysis.matchedFields.slice(0, 6).map(f => (
                     <Badge key={f} variant="secondary" className="text-[9px] h-4">{f}</Badge>
@@ -1565,28 +1565,28 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/50 bg-card">
-            <FileSpreadsheet className="h-3 w-3 text-muted-foreground" />
-            {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
-          </Badge>
+         <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/[0.06] bg-secondary/40 text-muted-foreground">
+           <FileSpreadsheet className="h-3 w-3 text-muted-foreground/60" />
+           {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
+         </Badge>
           <Badge
             variant="outline"
-            className={cn(
-              "text-[10px] h-5 px-2.5 gap-1.5 font-semibold tabular-nums",
-              percent === 100
-                ? "bg-success/10 text-success border-success/30"
-                : percent > 0
-                  ? "bg-primary/10 text-primary border-primary/30"
-                  : "bg-muted text-muted-foreground border-border/50"
-            )}
+           className={cn(
+             "text-[10px] h-5 px-2.5 gap-1.5 font-semibold tabular-nums",
+             percent === 100
+               ? "bg-success/10 text-success border-success/20"
+               : percent > 0
+                 ? "bg-primary/8 text-primary border-primary/15"
+                 : "bg-muted/30 text-muted-foreground border-border/[0.06]"
+           )}
           >
             {percent === 100 ? <CheckCircle2 className="h-3 w-3" /> : null}
             {percent}% mapped
           </Badge>
           {hasUnsavedMappings && (
-            <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 bg-warning/10 text-warning border-warning/30 font-medium">
-              {mappedCount - lastSavedCount} unsaved
-            </Badge>
+           <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 bg-warning/8 text-warning border-warning/15 font-medium">
+             {mappedCount - lastSavedCount} unsaved
+           </Badge>
           )}
         </div>
       </div>
@@ -1601,12 +1601,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             return (
               <button
                 key={idx}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all shrink-0",
-                  isActive
-                    ? "bg-primary/8 border-primary/25 text-primary shadow-sm"
-                    : "bg-card border-border/40 text-muted-foreground hover:bg-accent/5 hover:text-foreground hover:border-border/60"
-                )}
+               className={cn(
+                 "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all shrink-0",
+                 isActive
+                   ? "bg-primary/8 border border-primary/15 text-primary shadow-sm"
+                   : "bg-secondary/30 border border-border/[0.06] text-muted-foreground hover:bg-accent/5 hover:text-foreground"
+               )}
                 onClick={() => { if (!isActive) handleSwitchFile(af); }}
               >
                 <FileSpreadsheet className="h-3 w-3" />
@@ -1616,8 +1616,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             );
           })}
           <button
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] text-muted-foreground hover:text-foreground border border-dashed border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all shrink-0"
-            onClick={() => fileInputRef.current?.click()}
+           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] text-muted-foreground hover:text-foreground border border-dashed border-border/[0.08] hover:border-primary/20 hover:bg-primary/5 transition-all shrink-0"
+           onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="h-3 w-3" /> Add file
           </button>
@@ -1627,7 +1627,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       )}
 
       {/* ── File info strip (compact) ── */}
-      <div className="flex items-center gap-2.5 rounded-lg border border-border/30 bg-card/80 px-3 py-1.5">
+      <div className="flex items-center gap-2.5 rounded-xl border border-border/[0.06] bg-secondary/30 px-3 py-1.5 shadow-sm">
         <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <button
           className="text-[11px] font-medium text-foreground hover:text-primary transition-colors truncate cursor-pointer"
@@ -1675,7 +1675,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* AI Suggestions Banner */}
       {hasSuggestRun && suggestions.length > 0 && (
-        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
+        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-primary/[0.04] border border-primary/[0.08] shadow-sm">
           <div className="flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             <span className="text-[11px] text-primary font-medium">
@@ -1692,8 +1692,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* Validation */}
       {validationWarnings.length > 0 && showValidation && (
-        <div className="rounded-lg border border-border/30 bg-card/60 overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/20">
+       <div className="rounded-xl border border-border/[0.06] bg-secondary/30 overflow-hidden shadow-sm">
+         <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/[0.04]">
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-3.5 w-3.5 text-warning" />
               <span className="text-[11px] font-medium">
@@ -1704,7 +1704,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <X className="h-3 w-3" />
             </Button>
           </div>
-          <div className="divide-y divide-border/10 max-h-[120px] overflow-auto">
+          <div className="divide-y divide-border/[0.04] max-h-[120px] overflow-auto">
             {validationWarnings.map((w, i) => (
               <div key={i} className="flex items-start gap-2 px-3 py-1.5">
                 {w.severity === 'error' ? <X className="h-3 w-3 text-destructive mt-0.5 shrink-0" /> :
@@ -1721,26 +1721,26 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       )}
 
       {/* ── Toolbar: Clear action hierarchy ── */}
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-card/60 px-2.5 py-1.5">
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border/[0.06] bg-secondary/30 px-2.5 py-1.5 shadow-sm">
         {/* Left: Intelligence + Edit tools */}
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card hover:bg-accent/10" onClick={handleAISuggest} disabled={isSuggestLoading}>
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={handleAISuggest} disabled={isSuggestLoading}>
             {isSuggestLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
             {isSuggestLoading ? 'Analyzing…' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card hover:bg-accent/10" onClick={handleAutoMap}>
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={handleAutoMap}>
             <Zap className="h-3.5 w-3.5" /> Auto-Map
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card hover:bg-accent/10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
             <ShieldAlert className="h-3.5 w-3.5" /> Validate
           </Button>
 
-          <div className="h-5 w-px bg-border/30 mx-0.5" />
+           <div className="h-5 w-px bg-border/[0.06] mx-0.5" />
 
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant={selectedRows.size > 0 ? "outline" : "ghost"} size="sm" className="h-7 w-7 p-0 border-border/40" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
+                <Button variant={selectedRows.size > 0 ? "outline" : "ghost"} size="sm" className="h-7 w-7 p-0 border-border/[0.08]" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
                   <span className="font-bold text-xs">±</span>
                 </Button>
               </TooltipTrigger>
@@ -1768,7 +1768,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </Tooltip>
           </TooltipProvider>
 
-          <div className="h-5 w-px bg-border/30 mx-0.5" />
+          <div className="h-5 w-px bg-border/[0.06] mx-0.5" />
 
           {/* Column visibility */}
           <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
@@ -1776,7 +1776,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant={excludedColumns.size > 0 ? "outline" : "ghost"} size="sm" className={cn("h-7 w-7 p-0", excludedColumns.size > 0 && "text-warning border-warning/30")}>
+                    <Button variant={excludedColumns.size > 0 ? "outline" : "ghost"} size="sm" className={cn("h-7 w-7 p-0", excludedColumns.size > 0 && "text-warning border-warning/15")}>
                       <Filter className="h-3.5 w-3.5" />
                     </Button>
                   </TooltipTrigger>
@@ -1921,7 +1921,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <Maximize2 className="h-3.5 w-3.5" /> Expand
           </Button>
 
-          <div className="h-5 w-px bg-border/30" />
+           <div className="h-5 w-px bg-border/[0.06]" />
 
           {/* Destructive: New Mapping */}
           <AlertDialog>
@@ -1942,13 +1942,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </AlertDialogContent>
           </AlertDialog>
 
-          <div className="h-5 w-px bg-border/30" />
+          <div className="h-5 w-px bg-border/[0.06]" />
 
           {/* Secondary: Save Draft */}
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
                   {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                   Save Draft
                 </Button>
@@ -1978,7 +1978,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       {/* Split panel: spreadsheet + field sidebar */}
       <ResizablePanelGroup
         direction="horizontal"
-        className="rounded-xl border border-border/30 overflow-hidden"
+        className="rounded-xl border border-border/[0.06] overflow-hidden shadow-md"
         onLayout={(sizes) => {
           try { localStorage.setItem('data-mapping-panel-ratio', JSON.stringify(sizes)); } catch {}
         }}
@@ -1989,14 +1989,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           minSize={30}
         >
           <div ref={spreadsheetRef} tabIndex={0} className="outline-none">
-          <div className="rounded-xl border border-border/30 bg-card/60 overflow-hidden">
-              {/* Sheet tabs + mode toggles */}
-              <div className="flex items-center justify-between border-b border-border/20 bg-muted/30">
+         <div className="rounded-xl bg-secondary/20 overflow-hidden">
+             {/* Sheet tabs + mode toggles */}
+             <div className="flex items-center justify-between border-b border-border/[0.04] bg-muted/15">
                 <div className="flex overflow-x-auto">
                   {selectedFile.sheets.map((s, i) => (
-                    <button key={i} className={cn(
-                      "px-3 py-1.5 text-[11px] whitespace-nowrap border-b-2 transition-colors font-medium",
-                      i === activeSheet ? "border-primary text-foreground bg-card/60" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-card/30"
+                   <button key={i} className={cn(
+                     "px-3 py-1.5 text-[11px] whitespace-nowrap border-b-2 transition-colors font-medium",
+                     i === activeSheet ? "border-primary text-foreground bg-secondary/40" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/20"
                     )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); setSignFlipSelectedRows(new Set()); setSignFlipSelectedCols(new Set()); }}>
                       {s.name}
                     </button>
@@ -2046,11 +2046,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                 </div>
               </div>
               <div className="h-[500px] overflow-auto relative" style={{ fontSize: `${zoomLevel}%` }}>
-                <table className="w-max text-[11px] border-collapse" style={{ fontSize: 'inherit' }}>
-                  <thead className="sticky top-0 z-20 bg-card">
-                    <tr className="border-b border-border/30">
-                      <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground/70 text-[10px] border-r border-border/15 bg-card">#</th>
-                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] border-r border-border/20 font-semibold text-[11px] bg-card" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.2)' }}>Account Name</th>
+               <table className="w-max text-[11px] border-collapse" style={{ fontSize: 'inherit' }}>
+                 <thead className="sticky top-0 z-20 bg-secondary/60 backdrop-blur-sm">
+                   <tr>
+                     <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground/50 text-[10px] bg-secondary/80">#</th>
+                     <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] font-semibold text-[11px] bg-secondary/80" style={{ boxShadow: '2px 0 8px -2px hsl(0 0% 0% / 0.15)' }}>Account Name</th>
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         const isExcluded = excludedColumns.has(colIdx);
@@ -2060,8 +2060,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           <ContextMenu key={colIdx}>
                             <ContextMenuTrigger asChild>
                               <th
-                                className={cn(
-                                  "py-1.5 px-2 text-right text-muted-foreground/70 min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none bg-card text-[10px]",
+                                 className={cn(
+                                   "py-1.5 px-2 text-right text-muted-foreground/50 min-w-[80px] font-normal group/col relative cursor-pointer select-none bg-secondary/60 text-[10px]",
                                   isColSelected && !eraserMode && !signFlipMode && "bg-primary/8 ring-1 ring-inset ring-primary/20",
                                   eraserMode && eraserSelectedCols.has(colIdx) && "bg-destructive/15 ring-1 ring-inset ring-destructive/30",
                                   signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-warning/15 ring-1 ring-inset ring-warning/30",
@@ -2178,7 +2178,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           <ContextMenuTrigger asChild>
                         <tr
                           className={cn(
-                            "cursor-pointer transition-colors border-b border-border/8",
+                            "cursor-pointer transition-colors border-b border-border/[0.04]",
                             rowBgClass, leftBorderClass,
                             eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-destructive/10 ring-1 ring-inset ring-destructive/25",
                             signFlipMode && signFlipSelectedRows.has(rowIdx) && "!bg-warning/10 ring-1 ring-inset ring-warning/25",
@@ -2203,7 +2203,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             if (!isHeaderRow) handleRowClick(rowIdx, e);
                           }}>
                           <td className={cn(
-                            "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground/60 text-[10px] border-r border-border/10",
+                            "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground/40 text-[10px]",
                             signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-warning/20" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/20" : stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
@@ -2213,10 +2213,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               )}
                             </div>
                           </td>
-                          <td className={cn(
-                            "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r border-border/15 font-medium",
-                            stickyBg,
-                          )} style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.15)' }}>
+                         <td className={cn(
+                           "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] font-medium",
+                           stickyBg,
+                         )} style={{ boxShadow: '2px 0 8px -2px hsl(0 0% 0% / 0.1)' }}>
                             <div className="flex items-center gap-1.5 overflow-hidden">
                               {isMappedRow && !isHeaderRow && (
                                 <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
@@ -2275,9 +2275,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               if (!isNaN(numVal)) displayVal = -numVal;
                             }
                             return (
-                              <td key={actualCol} className={cn(
-                                "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
-                                isNum ? "text-right" : "text-left",
+                             <td key={actualCol} className={cn(
+                               "py-1 px-2 whitespace-nowrap tabular-nums font-sans",
+                               isNum ? "text-right" : "text-left",
                                 isColFlipped && !signFlipMode && "bg-amber-500/5",
                                 signFlipMode && signFlipSelectedCols.has(actualCol) && "bg-amber-500/15",
                               )}>
@@ -2356,7 +2356,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* Mapped data preview */}
       {mappedCount > 0 && (
-        <Card className="border-border/30">
+        <Card className="border-border/[0.06] shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold">Mapped Data Preview</h3>
@@ -2370,7 +2370,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-border/30">
+                  <tr className="border-b border-border/[0.06]">
                     <th className="text-left py-1.5 px-3 text-muted-foreground">Field</th>
                     <th className="text-left py-1.5 px-3 text-muted-foreground">Source Row(s)</th>
                     <th className="text-left py-1.5 px-3 text-muted-foreground">Sheet</th>
@@ -2382,7 +2382,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   {Object.entries(fieldMappings).map(([field, mappings], idx) => {
                     const isIS = (IS_FIELDS as readonly string[]).includes(field);
                     return (
-                      <tr key={field} className={cn("border-b border-border/10", idx % 2 === 0 ? "bg-transparent" : "bg-muted/5")}>
+                      <tr key={field} className={cn("border-b border-border/[0.04]", idx % 2 === 0 ? "bg-transparent" : "bg-muted/[0.03]")}>
                         <td className="py-1.5 px-3 font-medium">{field}</td>
                         <td className="py-1.5 px-3">{mappings.map(m => m.label).join(', ')}</td>
                         <td className="py-1.5 px-3 text-muted-foreground">{mappings[0]?.sheet}</td>
@@ -2420,8 +2420,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           if (expandedFileUrl) { URL.revokeObjectURL(expandedFileUrl); setExpandedFileUrl(null); }
         }
       }}>
-        <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 bg-card/60 backdrop-blur-xl border-border/40">
-          <DialogHeader className="flex-shrink-0 px-4 py-3 border-b">
+        <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 bg-secondary/60 backdrop-blur-xl border-border/[0.06]">
+          <DialogHeader className="flex-shrink-0 px-4 py-3 border-b border-border/[0.06]">
             <div className="flex items-center justify-between">
               <DialogTitle className="truncate max-w-[500px] text-base">
                 {selectedFile?.file.name}
@@ -2452,23 +2452,23 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </DialogHeader>
           <div className="flex-1 min-h-0 flex">
             {/* Table area */}
-            <div className={cn("flex-1 min-w-0 overflow-auto p-2 transition-all", showExpandedSidebar && "border-r border-border/30")}>
+            <div className={cn("flex-1 min-w-0 overflow-auto p-2 transition-all", showExpandedSidebar && "border-r border-border/[0.06]")}>
               {selectedFile && (() => {
                 const expSheet = selectedFile.sheets[activeSheet];
                 if (!expSheet) return null;
                 return (
-                  <table className="w-max text-[11px] border-collapse">
-                    <thead className="sticky top-0 z-20 bg-muted">
-                      <tr>
-                        <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted">#</th>
-                        <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[200px] min-w-[200px] border-r-2 border-r-border/50 font-semibold bg-muted" style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>Account Name</th>
+                   <table className="w-max text-[11px] border-collapse">
+                   <thead className="sticky top-0 z-20 bg-secondary/60">
+                     <tr>
+                       <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground/50 bg-secondary/80">#</th>
+                       <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[200px] min-w-[200px] font-semibold bg-secondary/80" style={{ boxShadow: '3px 0 8px -2px hsl(0 0% 0% / 0.15)' }}>Account Name</th>
                         {Array.from({ length: Math.min((expSheet.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                           const colIdx = i + 1;
                           if (excludedColumns.has(colIdx)) return null;
                           const isColFlipped = flippedColumns.has(colIdx);
                           return (
-                            <th key={colIdx} className={cn(
-                              "py-1.5 px-2 text-right text-muted-foreground min-w-[90px] border-r border-border/10 font-normal",
+                           <th key={colIdx} className={cn(
+                             "py-1.5 px-2 text-right text-muted-foreground/50 min-w-[90px] font-normal",
                               isColFlipped && "bg-amber-500/10",
                             )}>
                               <div className="flex items-center gap-1 justify-end">
@@ -2489,8 +2489,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                         return (
                           <tr
                             key={rowIdx}
-                            className={cn(
-                              "border-b border-border/5 cursor-pointer transition-colors",
+                           className={cn(
+                             "border-b border-border/[0.03] cursor-pointer transition-colors",
                               isSelected
                                 ? "bg-primary/10 hover:bg-primary/15"
                                 : rowIdx % 2 === 0 ? "bg-transparent hover:bg-muted/10" : "bg-muted/5 hover:bg-muted/15"
@@ -2518,7 +2518,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             }}
                           >
                             <td className={cn(
-                              "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
+                              "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground/40 text-[10px]",
                               isSelected ? "bg-primary/10" : "bg-card"
                             )}>
                               <div className="flex items-center justify-center gap-0.5">
@@ -2526,10 +2526,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                 {isFlipped && <span className="text-[8px] font-bold text-amber-500">±</span>}
                               </div>
                             </td>
-                            <td className={cn(
-                              "sticky left-8 z-10 py-1 px-2 w-[200px] min-w-[200px] border-r-2 border-r-border/50 font-medium",
-                              isSelected ? "bg-primary/10" : "bg-card"
-                            )} style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>
+                           <td className={cn(
+                             "sticky left-8 z-10 py-1 px-2 w-[200px] min-w-[200px] font-medium",
+                             isSelected ? "bg-primary/10" : "bg-card"
+                           )} style={{ boxShadow: '3px 0 8px -2px hsl(0 0% 0% / 0.1)' }}>
                               <span className="truncate">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
                             </td>
                             {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
@@ -2545,10 +2545,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                 if (!isNaN(numVal)) displayVal = -numVal;
                               }
                               return (
-                                <td key={actualCol} className={cn(
-                                  "py-1 px-2 whitespace-nowrap border-r border-border/5 tabular-nums font-sans",
-                                  isNum ? "text-right" : "text-left",
-                                  isColFlipped && "bg-amber-500/5",
+                               <td key={actualCol} className={cn(
+                                 "py-1 px-2 whitespace-nowrap tabular-nums font-sans",
+                                 isNum ? "text-right" : "text-left",
+                                 isColFlipped && "bg-amber-500/5",
                                 )}>
                                   {formatCellValue(displayVal)}
                                 </td>

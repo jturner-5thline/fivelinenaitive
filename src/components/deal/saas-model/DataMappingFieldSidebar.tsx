@@ -346,7 +346,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
           <HoverCardTrigger asChild>
             {rowContent}
           </HoverCardTrigger>
-          <HoverCardContent side="left" align="center" className="w-64 p-3 bg-card border-border/40 shadow-xl">
+          <HoverCardContent side="left" align="center" className="w-64 p-3 bg-popover border-border/[0.08] shadow-xl">
             <div className="space-y-2">
               <div>
                 <p className="text-[10px] text-muted-foreground/70 mb-0.5">Source</p>
@@ -357,7 +357,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                   <Sparkline data={trendData} type="area" width={220} height={36} color="hsl(var(--primary))" />
                 </div>
               )}
-              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/20">
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/[0.06]">
                 <div>
                   <p className="text-[9px] text-muted-foreground/60">Min</p>
                   <p className="text-[10px] font-medium tabular-nums">{formatUSD(min)}</p>
@@ -393,7 +393,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
         const pct = total > 0 ? (mapped / total) * 100 : 0;
         return (
           <div key={section.label}>
-            <div className="px-2 py-2 bg-muted/30 rounded-sm mb-1 flex items-center justify-between gap-2">
+            <div className="px-2 py-2 bg-secondary/30 rounded-md mb-1 flex items-center justify-between gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{section.label}</span>
               <div className="flex items-center gap-2">
                 <div className="h-1 w-16 rounded-full overflow-hidden bg-muted/20">
@@ -413,7 +413,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   );
 
   return (
-    <Card className="border-border/30">
+    <Card className="border-border/[0.06] shadow-md">
       <CardContent className="p-3">
         <div
           ref={panelRef}
@@ -435,7 +435,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
 
             {/* Selected row banner */}
             {selectedRowInfo && (
-              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-card border border-cyan-500/30 border-l-[3px] border-l-cyan-400">
+              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-secondary/40 border border-primary/[0.08] border-l-[3px] border-l-primary/40">
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] text-muted-foreground/70 leading-none mb-0.5">
                     {selectedRowInfo.count > 1 ? 'Mapping (multi-row):' : 'Mapping:'}
@@ -497,7 +497,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
 
           {/* Pending auto-map review banner */}
           {pendingCount > 0 && (
-            <div className="mb-3 p-2.5 rounded-lg bg-amber-500/[0.08] border border-amber-500/20 space-y-2">
+            <div className="mb-3 p-2.5 rounded-lg bg-warning/[0.05] border border-warning/[0.1] space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Wand2 className="h-3.5 w-3.5 text-amber-500" />
@@ -522,8 +522,8 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
 
           {/* Quick-assign for selected rows */}
           {selectedRows.size > 0 && (
-            <div className="mb-3 p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 space-y-2">
-              <div className="text-xs text-cyan-400 flex items-center gap-2">
+            <div className="mb-3 p-2.5 rounded-lg bg-primary/[0.04] border border-primary/[0.08] space-y-2">
+              <div className="text-xs text-primary flex items-center gap-2">
                 <Check className="h-3.5 w-3.5" />
                 {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
               </div>
@@ -532,8 +532,8 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                   .filter(f => !fieldMappings[f])
                   .slice(0, 12)
                   .map(f => (
-                    <button key={f} onClick={() => onAssignField(f)}
-                      className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-medium bg-background/80 hover:bg-cyan-500/20 border border-border/30 hover:border-cyan-500/40 transition-colors text-foreground">
+                   <button key={f} onClick={() => onAssignField(f)}
+                     className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-medium bg-secondary/50 hover:bg-primary/10 border border-border/[0.06] hover:border-primary/20 transition-colors text-foreground/80">
                       {f}
                     </button>
                   ))}
@@ -546,7 +546,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
 
           {/* Save progress bar */}
           {mappedCount > 0 && (
-            <div className="mb-3 p-2.5 rounded-lg border border-border/30 bg-muted/10 flex items-center justify-between">
+            <div className="mb-3 p-2.5 rounded-lg border border-border/[0.06] bg-secondary/20 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                 <span><span className="font-medium text-foreground">{mappedCount}</span> {mappedCount === 1 ? 'field' : 'fields'} mapped</span>
