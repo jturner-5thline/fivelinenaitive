@@ -146,8 +146,9 @@ function buildEmailHtml(
       ? `<p style="margin: 4px 0 0; font-size: 12px; color: #1e40af;"><strong>${deal.stale_lender_count}</strong> lender${deal.stale_lender_count > 1 ? 's' : ''} haven't been updated in ${thresholdDays}+ days</p>`
       : '';
 
-    const narrativeSnippet = deal.narrative
-      ? `<p style="margin: 8px 0 0; font-size: 12px; color: #6b7280; line-height: 1.4; border-top: 1px solid #f3f4f6; padding-top: 8px;">${deal.narrative.substring(0, 120)}${deal.narrative.length > 120 ? '…' : ''}</p>`
+    const statusNoteText = deal.latest_status_note || '';
+    const statusNoteSnippet = statusNoteText
+      ? `<p style="margin: 8px 0 0; font-size: 12px; color: #6b7280; line-height: 1.4; border-top: 1px solid #f3f4f6; padding-top: 8px;"><strong style="color: #374151;">Status Note:</strong> ${statusNoteText.substring(0, 150)}${statusNoteText.length > 150 ? '…' : ''}</p>`
       : '';
 
     return `
