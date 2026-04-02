@@ -1086,7 +1086,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                       Auto-Fill from Deal Space
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Extract data from uploaded Deal Space documents</TooltipContent>
+                  <TooltipContent>
+                    <p>Extract data from uploaded Deal Space documents</p>
+                    <p className="text-[10px] opacity-70 mt-0.5">Powered by Claude</p>
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               )}
