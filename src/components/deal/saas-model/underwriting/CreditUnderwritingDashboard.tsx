@@ -21,11 +21,7 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
 
         {/* ═══ HEADER ═══════════════════════════════════ */}
         <header className="border-b border-border pb-4">
-          <h1 className="text-xl font-bold text-foreground tracking-tight">{d.company_profile.name}</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Credit Underwriting Dashboard · {d.company_profile.industry} · {d.company_profile.hq}
-          </p>
-          <div className="flex gap-8 mt-3">
+          <div className="flex gap-8">
             <div>
               <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Actuals Through</span>
               <p className="text-xs font-semibold text-foreground">{d.header_meta.actuals_through}</p>
