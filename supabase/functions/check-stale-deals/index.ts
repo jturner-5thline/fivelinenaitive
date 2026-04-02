@@ -167,7 +167,7 @@ function buildEmailHtml(
 
     const statusNoteText = deal.latest_status_note || '';
     const statusNoteSnippet = statusNoteText
-      ? `<p style="margin: 8px 0 0; font-size: 12px; color: #6b7280; line-height: 1.4; border-top: 1px solid #f3f4f6; padding-top: 8px;"><strong style="color: #374151;">Status Note:</strong> ${statusNoteText.substring(0, 150)}${statusNoteText.length > 150 ? '…' : ''}</p>`
+      ? `<p style="margin: 4px 0 0; font-size: 12px; color: #6b7280; line-height: 1.4;">${statusNoteText.substring(0, 150)}${statusNoteText.length > 150 ? '…' : ''}</p>`
       : '';
 
     return `
