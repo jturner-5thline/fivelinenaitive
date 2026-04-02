@@ -76,6 +76,25 @@ function formatDealType(dealType: string | null): string {
   return dealType.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
+function getDealTypeTags(dealType: string | null): string {
+  if (!dealType) return '';
+  let types: string[] = [];
+  try {
+    const parsed = JSON.parse(dealType);
+    if (Array.isArray(parsed)) {
+      types = parsed;
+    } else {
+      types = [dealType];
+    }
+  } catch {
+    types = [dealType];
+  }
+  return types.map(t => {
+    const label = t.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    return `<span style="display: inline-block; background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${label}</span>`;
+  }).join('');
+}
+
 function formatStageLabel(stage: string): string {
   if (!stage) return '';
   return stage.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
