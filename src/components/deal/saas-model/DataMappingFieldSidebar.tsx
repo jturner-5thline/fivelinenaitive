@@ -477,7 +477,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                   className="h-5 text-[10px] px-2 rounded-sm flex-1"
                   onClick={() => setFilterMode(mode)}
                 >
-                  {mode === 'all' ? 'All' : mode === 'mapped' ? `Mapped (${mappedCount})` : `Unmapped (${unmappedCount})`}
+                  {mode === 'all' ? 'All' : mode === 'mapped' ? `Mapped (${enabledMappedCount})` : `Unmapped (${unmappedCount})`}
                 </Button>
               ))}
             </div>
