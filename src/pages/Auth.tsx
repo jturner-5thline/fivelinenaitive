@@ -261,12 +261,13 @@ const Auth = () => {
 
       if (result.error) {
         setGoogleLoading(false);
-        const errorMsg = result.error instanceof Error 
-          ? result.error.message 
-          : typeof result.error === 'string' 
-            ? result.error 
-            : JSON.stringify(result.error);
-        console.error("[GoogleSSO] OAuth error:", errorMsg, result.error);
+        const err = result.error as any;
+        const errorMsg = err instanceof Error 
+          ? err.message 
+          : typeof err === 'string' 
+            ? err 
+            : JSON.stringify(err);
+        console.error("[GoogleSSO] OAuth error:", errorMsg, err);
         toast.error(`Google sign-in failed: ${errorMsg}`);
         return;
       }
