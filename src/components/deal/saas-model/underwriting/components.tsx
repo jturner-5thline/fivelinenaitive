@@ -43,7 +43,7 @@ export function MetricCard({ label, value, sub, className }: { label: string; va
   return (
     <div className={cn("bg-card border border-border px-3 py-2.5 rounded-lg", className)}>
       <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">{label}</p>
-      <p className="text-lg font-bold text-foreground font-mono tabular-nums leading-tight">{value}</p>
+      <p className={cn("text-lg font-bold font-mono tabular-nums leading-tight", currencyColor(value))}>{value}</p>
       {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
