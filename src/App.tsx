@@ -129,6 +129,7 @@ const App = () => (
                       <Sonner />
                       
                       <BrowserRouter>
+                        <ScrollToTop />
                         <CookieConsent />
                         <FloatingCopilotDrawer />
                         <Suspense fallback={<PageLoader />}>
