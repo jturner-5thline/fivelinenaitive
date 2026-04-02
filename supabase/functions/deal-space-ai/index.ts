@@ -1360,29 +1360,11 @@ OUTPUT SCHEMA (return ONLY this JSON object, no other text):
   }
 }`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Extract structured data from the following document(s):\n\n${combinedDocContent}` },
-        ],
-        temperature: 0.1,
-      }),
-    });
+    const claudeResult = await callClaude(systemPrompt, [
+      { role: "user", content: `Extract structured data from the following document(s):\n\n${combinedDocContent}` },
+    ], { temperature: 0.1 });
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      const errText = await aiResponse.text();
-      console.error("AI extraction error:", aiResponse.status, errText);
-      throw new Error("AI extraction failed");
-    }
-
-    const aiData = await aiResponse.json();
-    let rawContent = aiData.choices?.[0]?.message?.content || "{}";
+    let rawContent = claudeResult.content || "{}";
     rawContent = rawContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     let extraction;
