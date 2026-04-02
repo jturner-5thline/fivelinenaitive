@@ -61,12 +61,13 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   const [dragOverField, setDragOverField] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const totalFields = IS_FIELDS.length + BS_FIELDS.length;
-  const pendingCount = Object.keys(pendingAutoMaps).length;
-  const unmappedCount = totalFields - mappedCount;
+  const allFields = [...IS_FIELDS, ...BS_FIELDS].filter(f => !enabledFields || enabledFields.has(f)) as string[];
+  const totalFields = allFields.length;
+  const pendingCount = Object.keys(pendingAutoMaps).filter(f => !enabledFields || enabledFields.has(f)).length;
+  const enabledMappedCount = Object.keys(fieldMappings).filter(f => !enabledFields || enabledFields.has(f)).length;
+  const unmappedCount = totalFields - enabledMappedCount;
 
   // Build a flat list of visible fields for keyboard navigation
-  const allFields = [...IS_FIELDS, ...BS_FIELDS] as string[];
   const visibleFields = allFields.filter(field => {
     const matchesSearch = !searchQuery || field.toLowerCase().includes(searchQuery.toLowerCase());
     const isMapped = !!fieldMappings[field];
