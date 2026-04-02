@@ -299,7 +299,7 @@ export function FacilityBox({ facility }: { facility: {
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Borrowing Capacity Today</p>
-          <p className="text-lg font-bold font-mono tabular-nums text-foreground">{fmtMM(facility.borrowing_capacity_today)}</p>
+          <p className={cn("text-lg font-bold font-mono tabular-nums", currencyColor(fmtMM(facility.borrowing_capacity_today)))}>{fmtMM(facility.borrowing_capacity_today)}</p>
         </div>
         <div>
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Borrowing Capacity (6M)</p>
