@@ -636,7 +636,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   const renderSettingsSection = () => (
     <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <Card className="border-border/30">
+        <Card className="border-border/[0.06] shadow-md">
         <CollapsibleTrigger asChild>
           <button className="w-full flex items-center justify-between p-4 hover:bg-muted/10 transition-colors rounded-t-lg">
             <div className="flex items-center gap-2">
