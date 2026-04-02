@@ -811,6 +811,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     if (linked) scrollFieldIntoView(linked.field);
   }, [rowToFieldMap, scrollFieldIntoView]);
 
+  const getCompanyId = useCallback(async (): Promise<string | null> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const { data } = await supabase.from('company_members').select('company_id').eq('user_id', user.id).limit(1).single();
