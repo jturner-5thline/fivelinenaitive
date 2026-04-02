@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useMemo, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import './mapping-theme.css';
 import type { SaaSModelData, SaaSModelSettings as SaaSModelSettingsType } from './types';
 import { IS_FIELDS, BS_FIELDS, FieldMapping, MappingFieldName, FileAnalysisResult } from './types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -1559,60 +1560,48 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const columnCount = sheet?.data[0]?.length || 0;
 
   return (
-    <div className="space-y-4">
+    <div className="mapping-workbench space-y-3 rounded-lg p-3" style={{ background: 'var(--map-bg)' }}>
       {renderSettingsSection()}
 
       {/* ── Header: Title + Progress Badges ── */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {analyzedFiles.length > 1 && (
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground" onClick={() => setPhase('triage')}>
-              <ArrowLeft className="h-3.5 w-3.5" />
-            </Button>
+            <button className="map-toolbar-btn h-6 px-2" onClick={() => setPhase('triage')}>
+              <ArrowLeft className="h-3 w-3" />
+            </button>
           )}
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Data Mapping</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--map-text)' }}>Data Mapping</h3>
+            <p className="text-[10px]" style={{ color: 'var(--map-text-faint)' }}>
               Map rows from your upload to standard model fields
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={() => setFieldSettingsOpen(true)}>
-                <Settings className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom"><p className="text-xs">Field Settings</p></TooltipContent>
-          </Tooltip>
-         <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/[0.06] bg-secondary/40 text-muted-foreground">
-           <FileSpreadsheet className="h-3 w-3 text-muted-foreground/60" />
-           {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
-         </Badge>
-          <Badge
-            variant="outline"
-           className={cn(
-             "text-[10px] h-5 px-2.5 gap-1.5 font-semibold tabular-nums",
-             percent === 100
-               ? "bg-success/10 text-success border-success/20"
-               : percent > 0
-                 ? "bg-primary/8 text-primary border-primary/15"
-                 : "bg-muted/30 text-muted-foreground border-border/[0.06]"
-           )}
-          >
-            {percent === 100 ? <CheckCircle2 className="h-3 w-3" /> : null}
+        <div className="flex items-center gap-1.5">
+          <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => setFieldSettingsOpen(true)} title="Field Settings">
+            <Settings className="h-3 w-3" />
+          </button>
+          <span className="map-toolbar-chip">
+            <FileSpreadsheet className="h-3 w-3" />
+            {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
+          </span>
+          <span className={cn(
+            "map-toolbar-chip",
+            percent === 100 ? "map-toolbar-chip--success" : percent > 0 ? "" : ""
+          )} style={percent === 100 ? { background: 'rgba(69,212,131,0.1)', borderColor: 'rgba(69,212,131,0.2)', color: 'var(--map-green)' } : percent > 0 ? { background: 'rgba(127,178,255,0.08)', borderColor: 'rgba(127,178,255,0.2)', color: 'var(--map-blue)' } : {}}>
+            {percent === 100 && <CheckCircle2 className="h-3 w-3" />}
             {percent}% mapped
-          </Badge>
+          </span>
           {enabledFields.size < allFieldNames.size && (
-           <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/[0.06] bg-secondary/40 text-muted-foreground">
-             {enabledFields.size}/{allFieldNames.size} fields
-           </Badge>
+            <span className="map-toolbar-chip">
+              {enabledFields.size}/{allFieldNames.size} fields
+            </span>
           )}
           {hasUnsavedMappings && (
-           <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 bg-warning/8 text-warning border-warning/15 font-medium">
-             {mappedCount - lastSavedCount} unsaved
-           </Badge>
+            <span className="map-toolbar-chip map-toolbar-chip--warning">
+              {mappedCount - lastSavedCount} unsaved
+            </span>
           )}
         </div>
       </div>
@@ -1660,11 +1649,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
       )}
 
-      {/* ── File info strip (compact) ── */}
-      <div className="flex items-center gap-2.5 rounded-xl border border-border/[0.06] bg-secondary/30 px-3 py-1.5 shadow-sm">
-        <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <div className="map-file-strip">
+        <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--map-text-faint)' }} />
         <button
-          className="text-[11px] font-medium text-foreground hover:text-primary transition-colors truncate cursor-pointer"
+          className="text-[11px] font-medium hover:underline transition-colors truncate cursor-pointer"
+          style={{ color: 'var(--map-text)' }}
           onClick={() => {
             if (selectedFile) {
               const url = URL.createObjectURL(selectedFile.file);
@@ -1678,48 +1667,41 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </button>
         {detectedHeaders.headers.length > 0 && (
           <>
-            <span className="text-[10px] text-muted-foreground/40">·</span>
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap truncate max-w-[200px]">
+            <span style={{ color: 'var(--map-text-faint)', opacity: 0.4 }}>·</span>
+            <span className="text-[10px] whitespace-nowrap truncate max-w-[200px]" style={{ color: 'var(--map-text-faint)' }}>
               {detectedHeaders.headers[0]} → {detectedHeaders.headers[detectedHeaders.headers.length - 1]}
             </span>
           </>
         )}
         {detectedHeaders.headerRow !== null && (
           <>
-            <span className="text-[10px] text-muted-foreground/40">·</span>
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+            <span style={{ color: 'var(--map-text-faint)', opacity: 0.4 }}>·</span>
+            <span className="text-[10px] whitespace-nowrap" style={{ color: 'var(--map-text-faint)' }}>
               Header Row {detectedHeaders.headerRow + 1}
             </span>
           </>
         )}
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-foreground" onClick={() => setPhase('upload')}>
+          <button className="map-toolbar-btn h-5 text-[10px] px-2" onClick={() => setPhase('upload')}>
             Change file
-          </Button>
+          </button>
         </div>
       </div>
 
-      {/* Date warnings */}
-      {dateWarnings.length > 0 && (
-        <div className="flex items-center gap-1.5 px-1 text-[10px] text-warning">
-          <AlertTriangle className="h-3 w-3 shrink-0" />
-          {dateWarnings.length} date gap{dateWarnings.length > 1 ? 's' : ''}: {dateWarnings.map(w => w.message).join('; ')}
-        </div>
-      )}
 
       {/* AI Suggestions Banner */}
       {hasSuggestRun && suggestions.length > 0 && (
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-primary/[0.04] border border-primary/[0.08] shadow-sm">
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-md" style={{ background: 'rgba(127,178,255,0.05)', border: '1px solid rgba(127,178,255,0.12)' }}>
           <div className="flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="text-[11px] text-primary font-medium">
+            <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--map-blue)' }} />
+            <span className="text-[11px] font-medium" style={{ color: 'var(--map-blue)' }}>
               {pendingCount > 0 ? `${pendingCount} AI suggestion${pendingCount > 1 ? 's' : ''} pending` : `${acceptedCount} applied`}
             </span>
           </div>
           {pendingCount > 0 && (
-            <Button size="sm" variant="ghost" className="h-6 text-[10px] text-primary" onClick={handleAcceptAll}>
-              <Check className="h-3 w-3 mr-1" /> Accept All
-            </Button>
+            <button className="map-toolbar-btn h-5 text-[10px] px-2" style={{ color: 'var(--map-blue)', borderColor: 'rgba(127,178,255,0.2)' }} onClick={handleAcceptAll}>
+              <Check className="h-3 w-3" /> Accept All
+            </button>
           )}
         </div>
       )}
@@ -1754,55 +1736,40 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
       )}
 
-      {/* ── Toolbar: Clear action hierarchy ── */}
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-border/[0.06] bg-secondary/30 px-2.5 py-1.5 shadow-sm">
+      <div className="map-toolbar">
         {/* Left: Intelligence + Edit tools */}
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={handleAISuggest} disabled={isSuggestLoading}>
-            {isSuggestLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          <button className="map-toolbar-btn" onClick={handleAISuggest} disabled={isSuggestLoading}>
+            {isSuggestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             {isSuggestLoading ? 'Analyzing…' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={handleAutoMap}>
-            <Zap className="h-3.5 w-3.5" /> Auto-Map
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
-            <ShieldAlert className="h-3.5 w-3.5" /> Validate
-          </Button>
+          </button>
+          <button className="map-toolbar-btn" onClick={handleAutoMap}>
+            <Zap className="h-3 w-3" /> Auto-Map
+          </button>
+          <button className="map-toolbar-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
+            <ShieldAlert className="h-3 w-3" /> Validate
+          </button>
 
-           <div className="h-5 w-px bg-border/[0.06] mx-0.5" />
+           <div className="map-toolbar-divider" />
 
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant={selectedRows.size > 0 ? "outline" : "ghost"} size="sm" className="h-7 w-7 p-0 border-border/[0.08]" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
-                  <span className="font-bold text-xs">±</span>
-                </Button>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
+                  <span className="font-bold text-[10px]">±</span>
+                </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Flip +/− sign on selected rows</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleUndo} disabled={!canUndo}>
-                  <Undo2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Undo (Ctrl+Z)</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleRedo} disabled={!canRedo}>
-                  <Redo2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+            <Undo2 className="h-3 w-3" />
+          </button>
+          <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
+            <Redo2 className="h-3 w-3" />
+          </button>
 
-          <div className="h-5 w-px bg-border/[0.06] mx-0.5" />
+          <div className="map-toolbar-divider" />
 
           {/* Column visibility */}
           <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
@@ -1810,9 +1777,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant={excludedColumns.size > 0 ? "outline" : "ghost"} size="sm" className={cn("h-7 w-7 p-0", excludedColumns.size > 0 && "text-warning border-warning/15")}>
-                      <Filter className="h-3.5 w-3.5" />
-                    </Button>
+                    <button className={cn("map-toolbar-btn h-6 w-6 p-0 justify-center", excludedColumns.size > 0 && "!border-[rgba(216,177,90,0.3)] !color-[var(--map-amber)]")} style={excludedColumns.size > 0 ? { color: 'var(--map-amber)', borderColor: 'rgba(216,177,90,0.3)' } : {}}>
+                      <Filter className="h-3 w-3" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">Column visibility {excludedColumns.size > 0 ? `(${excludedColumns.size} hidden)` : ''}</TooltipContent>
                 </Tooltip>
@@ -1848,20 +1815,20 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
           {/* Zoom */}
           <div className="flex items-center gap-0">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomOut} disabled={zoomLevel <= 50}>
-              <ZoomOut className="h-3.5 w-3.5" />
-            </Button>
-            <span className="text-[10px] text-muted-foreground tabular-nums w-7 text-center">{zoomLevel}%</span>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomIn} disabled={zoomLevel >= 200}>
-              <ZoomIn className="h-3.5 w-3.5" />
-            </Button>
+            <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomOut} disabled={zoomLevel <= 50}>
+              <ZoomOut className="h-3 w-3" />
+            </button>
+            <span className="text-[10px] tabular-nums w-7 text-center" style={{ color: 'var(--map-text-faint)' }}>{zoomLevel}%</span>
+            <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomIn} disabled={zoomLevel >= 200}>
+              <ZoomIn className="h-3 w-3" />
+            </button>
           </div>
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                <Keyboard className="h-3.5 w-3.5" />
-              </Button>
+              <button className="map-toolbar-btn h-6 w-6 p-0 justify-center">
+                <Keyboard className="h-3 w-3" />
+              </button>
             </PopoverTrigger>
             <PopoverContent side="bottom" align="end" className="w-64 p-3">
               <h4 className="text-xs font-semibold mb-2">Keyboard Shortcuts</h4>
@@ -1893,12 +1860,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         <div className="flex items-center gap-1.5">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card">
-                <Calendar className="h-3.5 w-3.5" />
+              <button className="map-toolbar-btn">
+                <Calendar className="h-3 w-3" />
                 {modelStartDate
                   ? `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][modelStartDate.month - 1]} ${modelStartDate.year}`
                   : 'Start Month'}
-              </Button>
+              </button>
             </PopoverTrigger>
             <PopoverContent className="w-56 p-3" align="end">
               <div className="space-y-2">
@@ -1945,24 +1912,24 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </PopoverContent>
           </Popover>
 
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card" onClick={() => {
+          <button className="map-toolbar-btn" onClick={() => {
             if (selectedFile) {
               const url = URL.createObjectURL(selectedFile.file);
               setExpandedFileUrl(url);
               setExpandedPreview(true);
             }
           }}>
-            <Maximize2 className="h-3.5 w-3.5" /> Expand
-          </Button>
+            <Maximize2 className="h-3 w-3" /> Expand
+          </button>
 
-           <div className="h-5 w-px bg-border/[0.06]" />
+           <div className="map-toolbar-divider" />
 
           {/* Destructive: New Mapping */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5 text-destructive/70 hover:text-destructive hover:bg-destructive/10">
-                <Trash2 className="h-3.5 w-3.5" /> Reset
-              </Button>
+              <button className="map-toolbar-btn map-toolbar-btn--destructive">
+                <Trash2 className="h-3 w-3" /> Reset
+              </button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -1976,36 +1943,18 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </AlertDialogContent>
           </AlertDialog>
 
-          <div className="h-5 w-px bg-border/[0.06]" />
+          <div className="map-toolbar-divider" />
 
           {/* Secondary: Save Draft */}
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
-                  {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  Save Draft
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[240px] text-center">
-                Saves your current mapping assignments without updating the financial model.
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <button className="map-toolbar-btn" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} title="Saves mapping assignments without updating the model">
+            {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+            Save Draft
+          </button>
 
           {/* Primary CTA */}
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="sm" className="h-7 text-[11px] gap-1.5 shadow-sm" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
-                  <RefreshCw className="h-3.5 w-3.5" /> Push to Model
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[260px] text-center">
-                Saves all mappings AND pushes mapped data into the financial model.
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <button className="map-toolbar-btn map-toolbar-btn--primary" onClick={handleRecalculateWithLog} disabled={mappedCount === 0} title="Saves all mappings AND pushes mapped data into the financial model">
+            <RefreshCw className="h-3 w-3" /> Push to Model
+          </button>
         </div>
       </div>
 
