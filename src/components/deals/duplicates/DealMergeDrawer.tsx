@@ -140,6 +140,63 @@ function resolveDisplayValue(
   }
 }
 
+export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawerProps) {
+  const { refreshDeals } = useDealsContext();
+  const { pipelines } = usePipelines();
+  const { members } = useCompany();
+  const [isMerging, setIsMerging] = useState(false);
+
+  const deals = cluster?.deals || [];
+
+  const [primaryDealId, setPrimaryDealId] = useState<string>('');
+  const [selections, setSelections] = useState<Record<MergeField, string>>({} as any);
+  const [mergedName, setMergedName] = useState('');
+
+  const pipelineMap = useMemo(() => {
+    const map = new Map<string, string>();
+    pipelines.forEach(p => map.set(p.id, p.name));
+    return map;
+  }, [pipelines]);
+
+  // Build a stage ID → label map from all pipeline stages
+  const pipelineStageMap = useMemo(() => {
+    const map = new Map<string, string>();
+    pipelines.forEach(p => {
+      const stages = (p as any).stages;
+      if (Array.isArray(stages)) {
+        stages.forEach((s: any) => {
+          if (s.id && s.label) map.set(s.id, s.label);
+        });
+      }
+    });
+    return map;
+  }, [pipelines]);
+
+  // Build a member lookup map (user_id → display_name, also index by display_name for pass-through)
+  const memberNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    members.forEach(m => {
+      const name = m.display_name || m.email || 'Team Member';
+      if (m.user_id) map.set(m.user_id, name);
+    });
+    return map;
+  }, [members]);
+
+  // Unified field value getter using the shared resolver
+  const getFieldValue = (deal: Deal, field: MergeField): string => {
+    const val = field === 'pipelineId' ? deal.pipelineId : deal[field as keyof Deal];
+    return resolveDisplayValue(field, val, pipelineMap, pipelineStageMap, memberNameMap);
+  };
+
+  // Reset state when cluster changes
+  useEffect(() => {
+    if (deals.length > 0 && open) {
+      setPrimaryDealId(deals[0].id);
+      setSelections(getSmartDefaults(deals));
+      setMergedName(cluster?.primaryName || deals[0].company || deals[0].name);
+    }
+  }, [cluster?.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Compute merged preview
   const mergedPreview = useMemo(() => {
     if (deals.length === 0) return {};
@@ -152,7 +209,7 @@ function resolveDisplayValue(
     const totalLenders = deals.reduce((sum, d) => sum + (d.lenders?.length || 0), 0);
     preview.lenders = `${totalLenders} lenders (combined)`;
     return preview;
-  }, [deals, selections, mergedName, pipelineMap]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [deals, selections, mergedName, pipelineMap, pipelineStageMap, memberNameMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedFeeCount = MERGE_FIELDS.filter(f => {
     const deal = deals.find(d => d.id === selections[f.key]);
