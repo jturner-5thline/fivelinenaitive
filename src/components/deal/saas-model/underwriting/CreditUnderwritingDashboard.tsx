@@ -16,27 +16,27 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
   const d = dealData || MOCK_DEAL_DATA;
 
   return (
-    <div className="bg-white min-h-screen print:bg-white">
-      <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
+    <div className="min-h-screen">
+      <div className="max-w-[1400px] mx-auto px-4 py-4 space-y-5">
 
         {/* ═══ HEADER ═══════════════════════════════════ */}
-        <header className="border-b-2 border-slate-900 pb-4">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{d.company_profile.name}</h1>
-          <p className="text-xs text-slate-600 mt-0.5">
+        <header className="border-b border-border pb-4">
+          <h1 className="text-xl font-bold text-foreground tracking-tight">{d.company_profile.name}</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Credit Underwriting Dashboard · {d.company_profile.industry} · {d.company_profile.hq}
           </p>
           <div className="flex gap-8 mt-3">
             <div>
-              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Actuals Through</span>
-              <p className="text-xs font-semibold text-slate-800">{d.header_meta.actuals_through}</p>
+              <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Actuals Through</span>
+              <p className="text-xs font-semibold text-foreground">{d.header_meta.actuals_through}</p>
             </div>
             <div>
-              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Prepared By</span>
-              <p className="text-xs font-semibold text-slate-800">{d.header_meta.prepared_by}</p>
+              <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Prepared By</span>
+              <p className="text-xs font-semibold text-foreground">{d.header_meta.prepared_by}</p>
             </div>
             <div>
-              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Date</span>
-              <p className="text-xs font-semibold text-slate-800">{d.header_meta.date}</p>
+              <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Date</span>
+              <p className="text-xs font-semibold text-foreground">{d.header_meta.date}</p>
             </div>
           </div>
         </header>
@@ -117,22 +117,22 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
         {/* ═══ ANNUAL P&L SUMMARY ══════════════════════ */}
         <section>
           <SectionHeader title="Annual P&L Summary" />
-          <div className="bg-white border border-slate-200 rounded-sm overflow-hidden">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
             <table className="w-full text-xs border-collapse">
               <thead>
-                <tr className="border-b-2 border-slate-300 bg-slate-50">
-                  <th className="py-2 px-3 text-left font-bold text-[10px] uppercase tracking-wider text-slate-600">Metric</th>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="py-2 px-3 text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Metric</th>
                   {Object.keys(d.annual_pnl_summary[0]?.values || {}).map(yr => (
-                    <th key={yr} className="py-2 px-3 text-right font-bold text-[10px] uppercase tracking-wider text-slate-600">{yr}</th>
+                    <th key={yr} className="py-2 px-3 text-right font-bold text-[10px] uppercase tracking-wider text-muted-foreground">{yr}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {d.annual_pnl_summary.map((row) => (
-                  <tr key={row.label} className="border-b border-slate-100 hover:bg-slate-50/50">
-                    <td className="py-2 px-3 font-semibold text-slate-800">{row.label}</td>
+                  <tr key={row.label} className="border-b border-border/50 hover:bg-muted/30">
+                    <td className="py-2 px-3 font-semibold text-foreground">{row.label}</td>
                     {Object.values(row.values).map((val, i) => (
-                      <td key={i} className="py-2 px-3 text-right font-mono tabular-nums text-slate-800">{val}</td>
+                      <td key={i} className="py-2 px-3 text-right font-mono tabular-nums text-foreground">{val}</td>
                     ))}
                   </tr>
                 ))}
@@ -144,7 +144,7 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
         {/* ═══ CHARTS ═══════════════════════════════════ */}
         <section>
           <SectionHeader title="Charts" />
-          <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-3">Current Month: {d.charts.current_month}</p>
+          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-3">Current Month: {d.charts.current_month}</p>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <RevenueBreakdownChart
               title="Revenue Breakdown (18mo Historical + 6mo Projected)"
@@ -166,7 +166,7 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
               <SectionHeader title="Summary" />
-              <div className="bg-white border border-slate-200 rounded-sm p-4">
+              <div className="bg-card border border-border rounded-lg p-4">
                 <SummaryTile label="Business Model" value={d.summary.business_model} />
                 <SummaryTile label="Customer Base" value={d.summary.customer_base} />
                 <SummaryTile label="Founded" value={d.summary.founded} />
@@ -187,13 +187,13 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
               <SectionHeader title="Materials & Checklist" />
-              <div className="bg-white border border-slate-200 rounded-sm p-4">
+              <div className="bg-card border border-border rounded-lg p-4">
                 <ChecklistMatrix rows={d.materials_checklist} />
               </div>
             </div>
             <div>
               <SectionHeader title="Financial Quality" />
-              <div className="bg-white border border-slate-200 rounded-sm p-4">
+              <div className="bg-card border border-border rounded-lg p-4">
                 <FinancialQuality quality={d.financial_quality} />
               </div>
             </div>
@@ -221,8 +221,8 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
         {/* ═══ BALANCE SHEET ═══════════════════════════ */}
         <section>
           <SectionHeader title="Balance Sheet" flags={d.balance_sheet.flags} />
-          <div className="bg-white border border-slate-200 rounded-sm p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">Current Balances</h3>
+          <div className="bg-card border border-border rounded-lg p-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground mb-3">Current Balances</h3>
             <BalanceSheetTable periods={d.balance_sheet.periods} rows={d.balance_sheet.rows} />
           </div>
         </section>
@@ -240,8 +240,8 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
         </section>
 
         {/* ═══ FOOTER ══════════════════════════════════ */}
-        <footer className="border-t border-slate-200 pt-3 text-center">
-          <p className="text-[10px] text-slate-400">
+        <footer className="border-t border-border pt-3 text-center">
+          <p className="text-[10px] text-muted-foreground">
             Prepared by {d.header_meta.prepared_by} · {d.header_meta.date} · Confidential
           </p>
         </footer>
