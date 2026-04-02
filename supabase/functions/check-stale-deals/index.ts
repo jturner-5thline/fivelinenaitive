@@ -148,7 +148,7 @@ function buildEmailHtml(
     
     const isFlagged = deal.attention_reasons.includes('Flagged');
     const isStale = deal.attention_reasons.includes('Stale');
-    const borderColor = isFlagged ? '#dc2626' : isStale ? (daysSinceUpdate >= thresholdDays * 2 ? '#dc2626' : daysSinceUpdate >= thresholdDays * 1.5 ? '#ea580c' : '#f59e0b') : '#3b82f6';
+    const borderColor = isFlagged ? '#dc2626' : '#d1d5db';
 
     const reasonBadges = deal.attention_reasons.filter(r => r !== 'Lenders Need Updating').map(r => getReasonBadge(r)).join('');
     const hasLendersNeedUpdating = deal.attention_reasons.includes('Lenders Need Updating');
