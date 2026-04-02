@@ -461,7 +461,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       autoSaveMappings(fieldMappings, selectedFile);
     }, 1500);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [fieldMappings, selectedFile, autoSaveMappings, excludedColumns, flippedRows, flippedColumns]);
+  }, [fieldMappings, selectedFile, autoSaveMappings, excludedColumns, flippedRows, flippedColumns, enabledFields]);
 
   // Browser beforeunload guard
   useEffect(() => {
