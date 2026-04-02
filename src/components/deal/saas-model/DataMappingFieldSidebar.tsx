@@ -205,6 +205,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   })();
 
   const filterField = (field: string): boolean => {
+    if (enabledFields && !enabledFields.has(field)) return false;
     const matchesSearch = !searchQuery || field.toLowerCase().includes(searchQuery.toLowerCase());
     const isMapped = !!fieldMappings[field];
     if (filterMode === 'mapped') return matchesSearch && isMapped;
