@@ -239,12 +239,24 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/deals`,
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
         extraParams: {
           prompt: "select_account",
         },
       });
+
+      if (result.redirected) {
+        return;
+      }
+
+      if (result.error) {
+        setGoogleLoading(false);
+        throw result.error;
+      }
+
+      // Session set successfully, redirect to deals
+      window.location.href = "/deals";
       if (error) {
         setGoogleLoading(false);
         throw error;
