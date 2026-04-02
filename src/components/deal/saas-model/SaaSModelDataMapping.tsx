@@ -2138,54 +2138,50 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       const rowBgClass = isFlashing
                         ? "animate-mapping-flash"
                         : isHeaderRow
-                          ? "bg-muted/30 font-semibold"
+                          ? "bg-muted/20 font-semibold"
                           : isSelected
-                            ? "bg-cyan-500/15 hover:bg-cyan-500/20"
+                            ? "bg-primary/8 hover:bg-primary/12"
                             : isMappedRow
-                              ? "bg-emerald-500/[0.08] hover:bg-emerald-500/[0.12]"
+                              ? "bg-success/[0.05] hover:bg-success/[0.08]"
                               : isPendingAutoMap
-                                ? "bg-amber-500/[0.08] hover:bg-amber-500/[0.12]"
+                                ? "bg-warning/[0.05] hover:bg-warning/[0.08]"
                                 : hasSuggestion
-                                  ? rowSuggestion.category === 'bs'
-                                    ? "bg-violet-500/5 hover:bg-violet-500/10"
-                                    : "bg-blue-500/5 hover:bg-blue-500/10"
+                                  ? "bg-primary/[0.03] hover:bg-primary/[0.06]"
                                   : rowIdx % 2 === 0
-                                    ? "bg-transparent hover:bg-muted/20"
-                                    : "bg-muted/5 hover:bg-muted/20";
+                                    ? "bg-transparent hover:bg-muted/15"
+                                    : "bg-muted/[0.04] hover:bg-muted/15";
 
                       // Left border style for selection/mapped/pending state
                       const leftBorderClass = isSelected
-                        ? "border-l-2 border-l-cyan-400"
+                        ? "border-l-2 border-l-primary"
                         : isMappedRow
-                          ? "border-l-[4px] border-l-emerald-500"
+                          ? "border-l-[3px] border-l-success"
                           : isPendingAutoMap
-                            ? "border-l-[3px] border-l-amber-500"
+                            ? "border-l-[3px] border-l-warning"
                             : "";
 
                       // Sticky cell bg — MUST be opaque so scrolling content doesn't show through
                       const stickyBg = isFlashing
-                        ? "bg-emerald-900"
+                        ? "bg-success/30"
                         : isHeaderRow
-                          ? "bg-muted"
+                          ? "bg-muted/40"
                           : isSelected
-                            ? "bg-cyan-950"
+                            ? "bg-primary/10"
                             : isMappedRow
-                              ? "bg-emerald-950"
+                              ? "bg-success/8"
                               : isPendingAutoMap
-                                ? "bg-amber-950"
-                                : hasSuggestion
-                                  ? rowSuggestion.category === 'bs' ? "bg-violet-950" : "bg-blue-950"
-                                  : rowIdx % 2 === 0 ? "bg-card" : "bg-card";
+                                ? "bg-warning/8"
+                                : "bg-card";
 
                        return (
                         <ContextMenu key={rowIdx}>
                           <ContextMenuTrigger asChild>
                         <tr
                           className={cn(
-                            "cursor-pointer transition-colors border-b border-border/5",
+                            "cursor-pointer transition-colors border-b border-border/8",
                             rowBgClass, leftBorderClass,
-                            eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-destructive/15 ring-1 ring-inset ring-destructive/30",
-                            signFlipMode && signFlipSelectedRows.has(rowIdx) && "!bg-amber-500/15 ring-1 ring-inset ring-amber-500/30",
+                            eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-destructive/10 ring-1 ring-inset ring-destructive/25",
+                            signFlipMode && signFlipSelectedRows.has(rowIdx) && "!bg-warning/10 ring-1 ring-inset ring-warning/25",
                           )}
                           draggable={!isHeaderRow && !eraserMode && !signFlipMode}
                           onDragStart={e => {
