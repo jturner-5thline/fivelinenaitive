@@ -1755,35 +1755,21 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant={selectedRows.size > 0 ? "outline" : "ghost"} size="sm" className="h-7 w-7 p-0 border-border/[0.08]" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
-                  <span className="font-bold text-xs">±</span>
-                </Button>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
+                  <span className="font-bold text-[10px]">±</span>
+                </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Flip +/− sign on selected rows</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleUndo} disabled={!canUndo}>
-                  <Undo2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Undo (Ctrl+Z)</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleRedo} disabled={!canRedo}>
-                  <Redo2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+            <Undo2 className="h-3 w-3" />
+          </button>
+          <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
+            <Redo2 className="h-3 w-3" />
+          </button>
 
-          <div className="h-5 w-px bg-border/[0.06] mx-0.5" />
+          <div className="map-toolbar-divider" />
 
           {/* Column visibility */}
           <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
