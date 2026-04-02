@@ -109,7 +109,7 @@ export function DuplicateGroup({ cluster, onMerge, onDealDeleted, onNotDuplicate
             <div className="border-t border-border px-4 py-3">
               <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(cluster.deals.length, 3)}, 1fr)` }}>
                 {cluster.deals.map(deal => (
-                  <DealComparisonCard key={deal.id} deal={deal} pipelineMap={pipelineMap} onNavigate={() => navigate(`/deals/${deal.id}`)} onDealDeleted={onDealDeleted} />
+                  <DealComparisonCard key={deal.id} deal={deal} pipelineMap={pipelineMap} onNavigate={() => navigate(`/deal/${deal.id}`)} onDealDeleted={onDealDeleted} />
                 ))}
               </div>
             </div>
