@@ -357,20 +357,6 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         <TabsContent value="monte-carlo" className="mt-4">
           <MonteCarloSimulation model={model} />
         </TabsContent>
-        <TabsContent value="versioning" className="mt-4">
-          <ModelVersioning
-            dealId={dealId}
-            model={model}
-            scenarios={scenarios}
-            lenders={lenders}
-            onRestore={(restoredModel, restoredScenarios, restoredLenders) => {
-              updateModel(() => restoredModel);
-              updateScenarios(restoredScenarios);
-              restoredLenders.forEach((l, i) => updateLender(i, l));
-              toast.success('Model restored from snapshot');
-            }}
-          />
-        </TabsContent>
         <TabsContent value="export" className="mt-4">
           <CreditMemoExport model={model} scenarios={scenarios} lenders={lenders} />
         </TabsContent>
