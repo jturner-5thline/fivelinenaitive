@@ -362,6 +362,34 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         </TabsContent>
       </Tabs>
 
+      {/* Versioning Dialog */}
+      <Dialog open={versioningOpen} onOpenChange={setVersioningOpen}>
+        <DialogContent className="sm:max-w-[720px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Version History
+            </DialogTitle>
+            <DialogDescription>
+              View, compare, and restore previous model snapshots.
+            </DialogDescription>
+          </DialogHeader>
+          <ModelVersioning
+            dealId={dealId}
+            model={model}
+            scenarios={scenarios}
+            lenders={lenders}
+            onRestore={(restoredModel, restoredScenarios, restoredLenders) => {
+              updateModel(() => restoredModel);
+              updateScenarios(restoredScenarios);
+              restoredLenders.forEach((l, i) => updateLender(i, l));
+              toast.success('Model restored from snapshot');
+              setVersioningOpen(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Unsaved Changes Dialog */}
       <Dialog open={showUnsavedDialog} onOpenChange={(open) => { if (!open) handleCancelLeave(); }}>
         <DialogContent className="sm:max-w-[420px]">
