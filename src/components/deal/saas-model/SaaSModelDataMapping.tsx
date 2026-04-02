@@ -2056,8 +2056,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                     {flippedColumns.has(colIdx) && (
                                       <span className="text-[8px] font-bold text-amber-500" title="Sign flipped (±)">±</span>
                                     )}
-                                    <span className="text-[8px] text-muted-foreground/40">
-                                      {String.fromCharCode(65 + (colIdx % 26))}{colIdx >= 26 ? String.fromCharCode(65 + Math.floor(colIdx / 26) - 1) : ''}
+                                     <span className="text-[8px] text-[#9CA3AF]">
+                                       {String.fromCharCode(65 + (colIdx % 26))}{colIdx >= 26 ? String.fromCharCode(65 + Math.floor(colIdx / 26) - 1) : ''}
                                     </span>
                                     <button
                                       className="opacity-0 group-hover/col:opacity-100 transition-opacity h-3.5 w-3.5 rounded hover:bg-destructive/20 flex items-center justify-center"
