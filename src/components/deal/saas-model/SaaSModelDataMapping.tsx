@@ -1616,8 +1616,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             );
           })}
           <button
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] text-muted-foreground hover:text-foreground border border-dashed border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all shrink-0"
-            onClick={() => fileInputRef.current?.click()}
+           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] text-muted-foreground hover:text-foreground border border-dashed border-border/[0.08] hover:border-primary/20 hover:bg-primary/5 transition-all shrink-0"
+           onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="h-3 w-3" /> Add file
           </button>
