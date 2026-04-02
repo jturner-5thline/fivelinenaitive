@@ -2041,13 +2041,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                         return (
                           <ContextMenu key={colIdx}>
                             <ContextMenuTrigger asChild>
-                              <th
+                               <th
                                  className={cn(
-                                   "py-1.5 px-2 text-right text-muted-foreground/50 min-w-[80px] font-normal group/col relative cursor-pointer select-none bg-secondary/60 text-[10px]",
-                                  isColSelected && !eraserMode && !signFlipMode && "bg-primary/8 ring-1 ring-inset ring-primary/20",
-                                  eraserMode && eraserSelectedCols.has(colIdx) && "bg-destructive/15 ring-1 ring-inset ring-destructive/30",
-                                  signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-warning/15 ring-1 ring-inset ring-warning/30",
-                                  flippedColumns.has(colIdx) && !signFlipMode && !eraserMode && "bg-warning/8",
+                                   "py-1.5 px-3 text-right text-[#6B7280] min-w-[80px] font-semibold group/col relative cursor-pointer select-none bg-[#F9FAFB] text-[11px] uppercase tracking-wide border-b border-[#E5E7EB]",
+                                  isColSelected && !eraserMode && !signFlipMode && "bg-[#EFF6FF] ring-1 ring-inset ring-[#BFDBFE]",
+                                  eraserMode && eraserSelectedCols.has(colIdx) && "bg-[#FEF2F2] ring-1 ring-inset ring-[#FCA5A5]",
+                                  signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-[#FFFBEB] ring-1 ring-inset ring-[#FDE68A]",
+                                  flippedColumns.has(colIdx) && !signFlipMode && !eraserMode && "bg-[#FFFBEB]",
                                 )}
                                 onClick={(e) => signFlipMode ? handleSignFlipColClick(colIdx, e) : eraserMode ? handleEraserColClick(colIdx, e) : handleColumnHeaderClick(colIdx, e)}
                               >
