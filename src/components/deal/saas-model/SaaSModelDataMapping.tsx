@@ -1692,8 +1692,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* Validation */}
       {validationWarnings.length > 0 && showValidation && (
-        <div className="rounded-lg border border-border/30 bg-card/60 overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/20">
+       <div className="rounded-xl border border-border/[0.06] bg-secondary/30 overflow-hidden shadow-sm">
+         <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/[0.04]">
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-3.5 w-3.5 text-warning" />
               <span className="text-[11px] font-medium">
