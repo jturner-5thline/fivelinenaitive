@@ -2183,13 +2183,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             if (!isHeaderRow) handleRowClick(rowIdx, e);
                           }}>
                           <td className={cn(
-                            "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground/40 text-[10px]",
-                            signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-warning/20" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/20" : stickyBg,
+                            "sticky left-0 z-10 py-1 px-1 text-center text-[#9CA3AF] text-[10px] border-b border-[#E5E7EB]",
+                            signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-[#FFFBEB]" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-[#FEF2F2]" : stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
-                              {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/50" /> : rowIdx + 1}
+                              {isHeaderRow ? <Columns className="h-3 w-3 text-[#9CA3AF]" /> : rowIdx + 1}
                               {isFlipped && !isHeaderRow && (
-                                <span className="text-[8px] font-bold text-warning" title="Sign flipped (±)">±</span>
+                                <span className="text-[8px] font-bold text-amber-500" title="Sign flipped (±)">±</span>
                               )}
                             </div>
                           </td>
