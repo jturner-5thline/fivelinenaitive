@@ -224,7 +224,94 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
               </TabsTrigger>
             );
           })}
-        </TabsList>
+          </TabsList>
+
+          <div className="flex items-center gap-2">
+            {/* Tab visibility settings */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                  title="Configure visible tabs"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 p-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium mb-2">Visible Tabs</p>
+                  {ALL_TABS.map(tab => {
+                    const Icon = tab.icon;
+                    const isVisible = visibleTabs.has(tab.key);
+                    return (
+                      <label
+                        key={tab.key}
+                        className={cn(
+                          "flex items-center gap-2 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors",
+                          "hover:bg-muted/50",
+                          tab.locked && "opacity-60 cursor-default"
+                        )}
+                      >
+                        <Checkbox
+                          checked={isVisible}
+                          onCheckedChange={() => !tab.locked && toggleTab(tab.key)}
+                          disabled={tab.locked}
+                          className="h-3.5 w-3.5"
+                        />
+                        <Icon className="h-3 w-3 text-muted-foreground" />
+                        <span>{tab.label}</span>
+                        {tab.locked && (
+                          <span className="ml-auto text-[9px] text-muted-foreground">Required</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+                {hiddenCount > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-2 pt-2 border-t border-border">
+                    {hiddenCount} tab{hiddenCount !== 1 ? 's' : ''} hidden
+                  </p>
+                )}
+              </PopoverContent>
+            </Popover>
+
+            {/* Versioning button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs text-muted-foreground px-2"
+              onClick={() => setVersioningOpen(true)}
+              title="Version History"
+            >
+              <History className="h-3 w-3" />
+              <span>Versions</span>
+            </Button>
+
+            {/* Save status */}
+            {saveStatus !== 'idle' && (
+              <Badge variant="outline" className={cn(
+                "text-xs gap-1 transition-all duration-300",
+                saveStatus === 'saving' && "border-primary/30 text-primary",
+                saveStatus === 'saved' && "border-emerald-500/30 text-emerald-500"
+              )}>
+                {saveStatus === 'saving' ? (
+                  <><Loader2 className="h-3 w-3 animate-spin" /> Saving...</>
+                ) : (
+                  <><Check className="h-3 w-3" /> Saved</>
+                )}
+              </Badge>
+            )}
+            {/* Annotation count badge */}
+            {annotationHook.unresolvedCount > 0 && (
+              <Badge variant="secondary" className="text-[10px] gap-1 h-5">
+                <MessageSquare className="h-3 w-3" />
+                {annotationHook.unresolvedCount} open
+              </Badge>
+            )}
+          </div>
+        </div>
 
         <TabsContent value="dashboard" className="mt-4">
           <SaaSModelDashboard model={model} annotations={annotationHook} />
