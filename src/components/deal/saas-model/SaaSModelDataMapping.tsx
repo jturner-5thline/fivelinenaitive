@@ -445,6 +445,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         excluded_columns: Array.from(excludedColumns),
         flipped_rows: Array.from(flippedRows),
         flipped_columns: Array.from(flippedColumns),
+        enabled_fields: Array.from(enabledFields),
       }, { onConflict: 'deal_id' });
       setLastSavedCount(count);
     } catch (err) {
