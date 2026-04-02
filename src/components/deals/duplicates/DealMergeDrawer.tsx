@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { DuplicateCluster } from '@/hooks/useDealDuplicates';
-import { Deal, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
+import { Deal, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EngagementType } from '@/types/deal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Check, Crown, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -151,6 +158,8 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
   const [primaryDealId, setPrimaryDealId] = useState<string>('');
   const [selections, setSelections] = useState<Record<MergeField, string>>({} as any);
   const [mergedName, setMergedName] = useState('');
+  // Custom engagement type override — when set, overrides the source-deal selection
+  const [customEngagementType, setCustomEngagementType] = useState<EngagementType | null>(null);
 
   const pipelineMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -194,6 +203,7 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
       setPrimaryDealId(deals[0].id);
       setSelections(getSmartDefaults(deals));
       setMergedName(cluster?.primaryName || deals[0].company || deals[0].name);
+      setCustomEngagementType(null);
     }
   }, [cluster?.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -202,6 +212,10 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
     if (deals.length === 0) return {};
     const preview: Record<string, string> = { name: mergedName };
     for (const field of MERGE_FIELDS) {
+      if (field.key === 'engagementType' && customEngagementType) {
+        preview[field.key] = ENGAGEMENT_TYPE_CONFIG[customEngagementType]?.label || customEngagementType;
+        continue;
+      }
       const sourceDeal = deals.find(d => d.id === selections[field.key]) || deals[0];
       preview[field.key] = getFieldValue(sourceDeal, field.key);
     }
@@ -229,6 +243,11 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
       // Build merged field values
       const mergedData: Record<string, any> = { name: mergedName, company: mergedName };
       for (const field of MERGE_FIELDS) {
+        // Use custom engagement type override if set
+        if (field.key === 'engagementType' && customEngagementType) {
+          mergedData.engagementType = customEngagementType;
+          continue;
+        }
         const sourceDealId = selections[field.key];
         const sourceDeal = deals.find(d => d.id === sourceDealId) || primary;
         const val = sourceDeal[field.key as keyof Deal];
@@ -379,12 +398,17 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
                     <tr key={field.key} className="border-b border-border last:border-0">
                       <td className="px-3 py-2 text-xs font-medium text-muted-foreground sticky left-0 bg-background">{field.label}</td>
                       {deals.map(deal => {
-                        const isSelected = selections[field.key] === deal.id;
+                        const isSelected = field.key === 'engagementType'
+                          ? !customEngagementType && selections[field.key] === deal.id
+                          : selections[field.key] === deal.id;
                         const value = getFieldValue(deal, field.key);
                         return (
                           <td key={deal.id} className="px-1 py-1">
                             <button
-                              onClick={() => setSelections(prev => ({ ...prev, [field.key]: deal.id }))}
+                              onClick={() => {
+                                if (field.key === 'engagementType') setCustomEngagementType(null);
+                                setSelections(prev => ({ ...prev, [field.key]: deal.id }));
+                              }}
                               className={cn(
                                 'w-full text-left px-2 py-1.5 rounded-md text-xs transition-all',
                                 isSelected
@@ -401,7 +425,29 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
                         );
                       })}
                       <td className="px-3 py-2 text-xs text-foreground bg-primary/5 border-l border-border font-medium">
-                        <span className="truncate block max-w-[150px]">{mergedPreview[field.key] || '—'}</span>
+                        {field.key === 'engagementType' ? (
+                          <Select
+                            value={customEngagementType || ''}
+                            onValueChange={(val) => {
+                              if (val) {
+                                setCustomEngagementType(val as EngagementType);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-[160px] border-primary/30">
+                              <SelectValue placeholder={mergedPreview[field.key] || '—'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                                <SelectItem key={key} value={key} className="text-xs">
+                                  {config.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="truncate block max-w-[150px]">{mergedPreview[field.key] || '—'}</span>
+                        )}
                       </td>
                     </tr>
                   ))}
