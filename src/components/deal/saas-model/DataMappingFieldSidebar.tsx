@@ -233,12 +233,14 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
     const isFocused = focusedField === field;
     const isDragOver = dragOverField === field;
     const isDropTarget = draggingRowIdx !== null && !isMapped && !hasPendingAuto;
+    const isLinkedFromRow = linkedFieldFromRow === field;
 
     const rowContent = (
-      <div key={field} className={cn(
+      <div key={field} data-field-id={field} className={cn(
         "flex items-center justify-between py-1.5 px-2 rounded group transition-all duration-500",
         isFocused && "ring-1 ring-cyan-400/50 bg-cyan-500/10",
         isDragOver && "ring-2 ring-dashed ring-teal-400 bg-teal-500/10 shadow-[0_0_12px_-2px_hsl(170,60%,50%,0.3)]",
+        isLinkedFromRow && !isFocused && !isFlashing && "map-sidebar-field--linked-hover",
         isFlashing
           ? "bg-emerald-500/20 ring-1 ring-emerald-500/30"
           : isMapped ? "bg-emerald-500/5 hover:bg-emerald-500/10"
@@ -247,9 +249,12 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
           : fieldSuggestion ? "bg-primary/5 hover:bg-primary/10 ring-1 ring-primary/15"
           : "hover:bg-muted/20"
       )}
+      onMouseEnter={() => onFieldHover?.(field)}
+      onMouseLeave={() => onFieldHover?.(null)}
       onClick={() => {
         const idx = visibleFields.indexOf(field);
         if (idx >= 0) setFocusedFieldIdx(idx);
+        onFieldSelect?.(field);
         // If rows are selected and field is unmapped, assign immediately on click
         if (selectedRows.size > 0 && !isMapped && !hasPendingAuto) {
           onAssignField(field);
