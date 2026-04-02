@@ -1410,7 +1410,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     return (
       <div className="space-y-4">
         {renderSettingsSection()}
-        <Card className="border-border/30 border-dashed group/dropzone hover:border-primary/40 transition-colors">
+        <Card className="border-border/[0.06] border-dashed group/dropzone hover:border-primary/30 transition-colors shadow-md">
           <CardContent className="p-16 flex flex-col items-center justify-center text-center"
             onDragOver={e => { e.preventDefault(); e.currentTarget.closest('.group\\/dropzone')?.classList.add('border-primary/60'); }}
             onDragLeave={e => { e.currentTarget.closest('.group\\/dropzone')?.classList.remove('border-primary/60'); }}
