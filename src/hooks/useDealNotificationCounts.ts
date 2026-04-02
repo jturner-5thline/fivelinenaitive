@@ -4,6 +4,15 @@ import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 let instanceCounter = 0;
 
+// Batch an array into chunks to avoid URL length limits
+function chunk<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}
+
 export function useDealNotificationCounts(dealIds: string[]) {
   const { canSeeFlexSync } = useCanSeeFlexSync();
   const [flexCounts, setFlexCounts] = useState<Record<string, number>>({});
@@ -17,14 +26,20 @@ export function useDealNotificationCounts(dealIds: string[]) {
     }
 
     try {
-      // Only include deals that are still active and have reached post-submission stages
-      const { data: activeDeals } = await supabase
-        .from('deals')
-        .select('id, stage')
-        .in('id', dealIds)
-        .not('status', 'in', '("archived","in_development")');
+      // Batch deal ID lookups in chunks of 50 to avoid URL length limits
+      const dealChunks = chunk(dealIds, 50);
+      const allActiveDeals: { id: string; stage: string }[] = [];
 
-      const activeDealIds = (activeDeals || [])
+      for (const ids of dealChunks) {
+        const { data: activeDeals } = await supabase
+          .from('deals')
+          .select('id, stage')
+          .in('id', ids)
+          .not('status', 'in', '("archived","in_development")');
+        if (activeDeals) allActiveDeals.push(...activeDeals);
+      }
+
+      const activeDealIds = allActiveDeals
         .filter((deal) => isPostSubmissionDealStage(deal.stage))
         .map((deal) => deal.id);
       if (activeDealIds.length === 0) {
@@ -32,19 +47,26 @@ export function useDealNotificationCounts(dealIds: string[]) {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('flex_info_notifications')
-        .select('deal_id, status')
-        .in('deal_id', activeDealIds)
-        .in('status', ['pending', 'read']);
+      // Batch notification lookups too
+      const notifChunks = chunk(activeDealIds, 50);
+      const allNotifs: { deal_id: string }[] = [];
 
-      if (error) {
-        console.error('Error fetching deal notification counts:', error);
-        return;
+      for (const ids of notifChunks) {
+        const { data, error } = await supabase
+          .from('flex_info_notifications')
+          .select('deal_id, status')
+          .in('deal_id', ids)
+          .in('status', ['pending', 'read']);
+
+        if (error) {
+          console.error('Error fetching deal notification counts:', error);
+          continue;
+        }
+        if (data) allNotifs.push(...(data as { deal_id: string }[]));
       }
 
       const counts: Record<string, number> = {};
-      (data || []).forEach((row: { deal_id: string }) => {
+      allNotifs.forEach((row) => {
         counts[row.deal_id] = (counts[row.deal_id] || 0) + 1;
       });
       setFlexCounts(counts);
@@ -81,11 +103,11 @@ export function useDealNotificationCounts(dealIds: string[]) {
     };
   }, [fetchCounts, dealIdsKey]);
 
-  // Fallback polling every 10s to catch missed realtime events
+  // Fallback polling every 60s (reduced from 10s to avoid excessive requests)
   useEffect(() => {
     if (dealIds.length === 0) return;
 
-    const interval = setInterval(fetchCounts, 10000);
+    const interval = setInterval(fetchCounts, 60000);
     return () => clearInterval(interval);
   }, [fetchCounts, dealIdsKey]);
 
