@@ -2370,7 +2370,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-border/30">
+                  <tr className="border-b border-border/[0.06]">
                     <th className="text-left py-1.5 px-3 text-muted-foreground">Field</th>
                     <th className="text-left py-1.5 px-3 text-muted-foreground">Source Row(s)</th>
                     <th className="text-left py-1.5 px-3 text-muted-foreground">Sheet</th>
