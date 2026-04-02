@@ -2061,11 +2061,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             <ContextMenuTrigger asChild>
                               <th
                                 className={cn(
-                                  "py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none",
-                                  isColSelected && !eraserMode && !signFlipMode && "bg-primary/10 ring-1 ring-inset ring-primary/30",
-                                  eraserMode && eraserSelectedCols.has(colIdx) && "bg-destructive/20 ring-1 ring-inset ring-destructive/40",
-                                  signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-amber-500/20 ring-1 ring-inset ring-amber-500/40",
-                                  flippedColumns.has(colIdx) && !signFlipMode && !eraserMode && "bg-amber-500/10",
+                                  "py-1.5 px-2 text-right text-muted-foreground/70 min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none bg-card text-[10px]",
+                                  isColSelected && !eraserMode && !signFlipMode && "bg-primary/8 ring-1 ring-inset ring-primary/20",
+                                  eraserMode && eraserSelectedCols.has(colIdx) && "bg-destructive/15 ring-1 ring-inset ring-destructive/30",
+                                  signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-warning/15 ring-1 ring-inset ring-warning/30",
+                                  flippedColumns.has(colIdx) && !signFlipMode && !eraserMode && "bg-warning/8",
                                 )}
                                 onClick={(e) => signFlipMode ? handleSignFlipColClick(colIdx, e) : eraserMode ? handleEraserColClick(colIdx, e) : handleColumnHeaderClick(colIdx, e)}
                               >
