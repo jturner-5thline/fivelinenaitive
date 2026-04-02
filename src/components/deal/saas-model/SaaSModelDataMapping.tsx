@@ -1047,6 +1047,35 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     }
   }, [activeFileId, fieldMappings, excludedColumns, flippedRows, flippedColumns, modelStartDate, saveFileMappings, dbFiles]);
 
+  const handleNewMapping = useCallback(async () => {
+    // Delete all existing db files for this deal
+    for (const dbFile of dbFiles) {
+      await deleteDbFile(dbFile.id);
+      // Also remove from storage if path exists
+      if (dbFile.storage_path) {
+        await supabase.storage.from('deal-files').remove([dbFile.storage_path]);
+      }
+    }
+    // Reset all local state
+    setAnalyzedFiles([]);
+    setSelectedFile(null);
+    setActiveSheet(0);
+    setSelectedRows(new Set());
+    setFieldMappings({});
+    setAutoMapResults([]);
+    setValidationWarnings([]);
+    setExcludedColumns(new Set());
+    setFlippedRows(new Set());
+    setFlippedColumns(new Set());
+    setModelStartDate(null);
+    setStartDateConfirmed(false);
+    setActiveFileId(null);
+    setLastSavedCount(0);
+    storedFilePathRef.current = null;
+    setPhase('upload');
+    toast.success('Ready for new file upload');
+  }, [dbFiles, deleteDbFile]);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files.length) handleFilesSelected(e.dataTransfer.files);
@@ -1445,6 +1474,23 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <Button variant="ghost" size="sm" className="h-7" onClick={() => setPhase('upload')}>
               <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Change file
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 gap-1.5">
+                  <PlusCircle className="h-3.5 w-3.5" /> New Mapping
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Start New Mapping?</AlertDialogTitle>
+                  <AlertDialogDescription>This will remove all uploaded files and mappings for this deal. You'll start fresh with a new file upload.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleNewMapping}>Start Over</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <div className="flex gap-2 text-xs">
               {counts.mappable > 0 && <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">{counts.mappable} Mappable</Badge>}
               {counts.partial > 0 && <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20">{counts.partial} Partial</Badge>}
@@ -1572,7 +1618,26 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             )}
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>Change file</Button>
+        <div className="flex items-center gap-1.5">
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>Change file</Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                <PlusCircle className="h-3.5 w-3.5" /> New Mapping
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Start New Mapping?</AlertDialogTitle>
+                <AlertDialogDescription>This will remove all uploaded files and mappings for this deal. You'll start fresh with a new file upload.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleNewMapping}>Start Over</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
 
       {/* Detected column headers preview */}
@@ -1890,7 +1955,23 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           }}>
             <Maximize2 className="h-3.5 w-3.5" /> Expand
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>Change file</Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                <PlusCircle className="h-3.5 w-3.5" /> New Mapping
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Start New Mapping?</AlertDialogTitle>
+                <AlertDialogDescription>This will remove all uploaded files and mappings for this deal. You'll start fresh with a new file upload.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleNewMapping}>Start Over</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
