@@ -2307,8 +2307,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   </tbody>
                 </table>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
           </div>
         </ResizablePanel>
 
