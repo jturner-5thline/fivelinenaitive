@@ -276,7 +276,7 @@ export function PnlBlock({ title, table, summaryMetrics, flags }: {
           {summaryMetrics.map((m) => (
             <div key={m.label} className="flex justify-between items-baseline">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{m.label}</span>
-              <span className="text-sm font-bold text-foreground font-mono tabular-nums">{m.value}</span>
+              <span className={cn("text-sm font-bold font-mono tabular-nums", currencyColor(m.value))}>{m.value}</span>
             </div>
           ))}
         </div>
