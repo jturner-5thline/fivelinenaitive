@@ -178,12 +178,11 @@ function buildEmailHtml(
     const metaLine = metaItems.length > 0 ? `<div style="margin-top: 4px;">${metaItems.join('<span style="color: #d1d5db; margin: 0 6px;">|</span>')}</div>` : '';
 
     const tileStyle = isFlagged
-      ? 'background: linear-gradient(135deg, #dc2626, #ef4444); border-radius: 8px; padding: 3px; margin-bottom: 8px;'
-      : 'background: linear-gradient(135deg, #6d28d9, #3b82f6); border-radius: 8px; padding: 2px; margin-bottom: 8px;';
+      ? 'border: 3px solid #dc2626; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: #ffffff;'
+      : 'border: 2px solid #7c3aed; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: #ffffff;';
 
     return `
       <div style="${tileStyle}">
-      <div style="background: #ffffff; border-radius: 6px; padding: 10px 12px;">
         <table style="width: 100%;">
           <tr>
             <td style="vertical-align: middle;">
@@ -211,7 +210,6 @@ function buildEmailHtml(
         <div style="margin-top: 4px;">
           <a href="https://fivelinenaitive.lovable.app/deals/${deal.id}" style="color: #7c3aed; font-size: 12px; font-weight: 500; text-decoration: none;">View Deal →</a>
         </div>
-      </div>
       </div>`;
   }).join('');
 
