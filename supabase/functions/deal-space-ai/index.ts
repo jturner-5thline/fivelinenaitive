@@ -1037,18 +1037,7 @@ async function handleExtractWriteUp(dealId: string, supabase: any, supabaseServi
       `SOURCE_${i}: type=${chunk.source_type}, name="${chunk.source_name}"${chunk.location ? `, location="${chunk.location}"` : ''}`
     ).join("\n");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert at extracting structured deal information from a deal space. You MUST ground every extraction in the specific source material provided. Each source is labeled with a SOURCE_ID.
+    const extractSystemPrompt = `You are an expert at extracting structured deal information from a deal space. You MUST ground every extraction in the specific source material provided. Each source is labeled with a SOURCE_ID.
 
 Extract information and return it as a JSON array of extracted fields.
 
@@ -1094,18 +1083,13 @@ RULES:
 SOURCE INDEX:
 ${sourceIndex}
 
-Return ONLY a valid JSON array.`
-          },
-          { role: "user", content: `Extract deal write-up information from these deal space sources:\n\n${combinedContent.substring(0, 80000)}` }
-        ],
-      }),
-    });
+Return ONLY a valid JSON array.`;
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("AI extraction error:", aiResponse.status, errorText);
-      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const claudeResult = await callClaude(extractSystemPrompt, [
+      { role: "user", content: `Extract deal write-up information from these deal space sources:\n\n${combinedContent.substring(0, 80000)}` },
+    ]);
+
+    if (!claudeResult.content) {
       throw new Error("Failed to extract write-up");
     }
 
