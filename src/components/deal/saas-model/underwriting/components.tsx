@@ -137,7 +137,7 @@ export function KpiGrid({ tiles }: { tiles: KpiTile[] }) {
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">{t.label}</p>
           <div className="flex items-center gap-1.5">
             {t.icon && <span className="text-xs">{t.icon}</span>}
-            <p className="text-base font-bold text-foreground font-mono tabular-nums leading-tight">{t.value}</p>
+            <p className={cn("text-base font-bold font-mono tabular-nums leading-tight", currencyColor(t.value))}>{t.value}</p>
           </div>
           {t.delta && (
             <p className={cn(
