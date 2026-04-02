@@ -1721,7 +1721,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       )}
 
       {/* ── Toolbar: Clear action hierarchy ── */}
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-card/60 px-2.5 py-1.5">
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border/[0.06] bg-secondary/30 px-2.5 py-1.5 shadow-sm">
         {/* Left: Intelligence + Edit tools */}
         <div className="flex items-center gap-1">
           <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card hover:bg-accent/10" onClick={handleAISuggest} disabled={isSuggestLoading}>
