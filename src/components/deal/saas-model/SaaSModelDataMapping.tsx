@@ -1739,18 +1739,18 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       <div className="map-toolbar">
         {/* Left: Intelligence + Edit tools */}
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={handleAISuggest} disabled={isSuggestLoading}>
-            {isSuggestLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          <button className="map-toolbar-btn" onClick={handleAISuggest} disabled={isSuggestLoading}>
+            {isSuggestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             {isSuggestLoading ? 'Analyzing…' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={handleAutoMap}>
-            <Zap className="h-3.5 w-3.5" /> Auto-Map
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
-            <ShieldAlert className="h-3.5 w-3.5" /> Validate
-          </Button>
+          </button>
+          <button className="map-toolbar-btn" onClick={handleAutoMap}>
+            <Zap className="h-3 w-3" /> Auto-Map
+          </button>
+          <button className="map-toolbar-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
+            <ShieldAlert className="h-3 w-3" /> Validate
+          </button>
 
-           <div className="h-5 w-px bg-border/[0.06] mx-0.5" />
+           <div className="map-toolbar-divider" />
 
           <TooltipProvider delayDuration={200}>
             <Tooltip>
