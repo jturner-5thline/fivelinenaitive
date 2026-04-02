@@ -1571,14 +1571,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
          </Badge>
           <Badge
             variant="outline"
-            className={cn(
-              "text-[10px] h-5 px-2.5 gap-1.5 font-semibold tabular-nums",
-              percent === 100
-                ? "bg-success/10 text-success border-success/30"
-                : percent > 0
-                  ? "bg-primary/10 text-primary border-primary/30"
-                  : "bg-muted text-muted-foreground border-border/50"
-            )}
+           className={cn(
+             "text-[10px] h-5 px-2.5 gap-1.5 font-semibold tabular-nums",
+             percent === 100
+               ? "bg-success/10 text-success border-success/20"
+               : percent > 0
+                 ? "bg-primary/8 text-primary border-primary/15"
+                 : "bg-muted/30 text-muted-foreground border-border/[0.06]"
+           )}
           >
             {percent === 100 ? <CheckCircle2 className="h-3 w-3" /> : null}
             {percent}% mapped
