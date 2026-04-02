@@ -99,7 +99,7 @@ function getReasonBadge(reason: string): string {
     'Lenders Need Updating': { bg: '#dbeafe', text: '#1e40af' },
   };
   const c = colors[reason] || { bg: '#f3f4f6', text: '#374151' };
-  return `<span style="display: inline-block; background: ${c.bg}; color: ${c.text}; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 12px; margin-right: 4px;">${reason}</span>`;
+  return `<span style="display: inline-block; background: ${c.bg}; color: ${c.text}; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${reason}</span>`;
 }
 
 function buildEmailHtml(
@@ -156,18 +156,16 @@ function buildEmailHtml(
           <tr>
             <td>
               <strong style="font-size: 16px; color: #111827;">${deal.company}</strong>
-              <span style="display: inline-block; background: ${deal.status === 'at-risk' ? '#fef3c7' : deal.status === 'off-track' ? '#fee2e2' : '#dcfce7'}; color: ${deal.status === 'at-risk' ? '#92400e' : deal.status === 'off-track' ? '#991b1b' : '#166534'}; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-left: 8px; vertical-align: middle;">${deal.status === 'on-track' ? 'On Track' : deal.status === 'at-risk' ? 'At Risk' : deal.status === 'off-track' ? 'Off Track' : deal.status === 'on-hold' ? 'On Hold' : deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}</span>
             </td>
             <td style="text-align: right;">
-              <span style="background: ${borderColor}15; color: ${borderColor}; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px;">
-                ${daysSinceUpdate}d inactive
-              </span>
+              <span style="display: inline-block; background: ${deal.status === 'at-risk' ? '#fef3c7' : deal.status === 'off-track' ? '#fee2e2' : '#dcfce7'}; color: ${deal.status === 'at-risk' ? '#92400e' : deal.status === 'off-track' ? '#991b1b' : '#166534'}; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; vertical-align: middle;">${deal.status === 'on-track' ? 'On Track' : deal.status === 'at-risk' ? 'At Risk' : deal.status === 'off-track' ? 'Off Track' : deal.status === 'on-hold' ? 'On Hold' : deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}</span>
             </td>
           </tr>
         </table>
         <div style="margin-top: 6px; margin-bottom: 8px;">
           ${reasonBadges}
-          <span style="display: inline-block; background: #ede9fe; color: #6d28d9; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 4px; margin-left: 4px;">${formatStageLabel(deal.stage)}</span>
+          <span style="display: inline-block; background: ${borderColor}15; color: ${borderColor}; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${daysSinceUpdate}d inactive</span>
+          <span style="display: inline-block; background: #ede9fe; color: #6d28d9; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 4px;">${formatStageLabel(deal.stage)}</span>
         </div>
         ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
         ${flagNotesHtml}
