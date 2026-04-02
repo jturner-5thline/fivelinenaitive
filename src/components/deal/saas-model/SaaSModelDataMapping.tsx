@@ -1565,10 +1565,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/50 bg-card">
-            <FileSpreadsheet className="h-3 w-3 text-muted-foreground" />
-            {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
-          </Badge>
+         <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/[0.06] bg-secondary/40 text-muted-foreground">
+           <FileSpreadsheet className="h-3 w-3 text-muted-foreground/60" />
+           {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
+         </Badge>
           <Badge
             variant="outline"
             className={cn(
