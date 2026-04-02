@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_saas_mappings ADD COLUMN IF NOT EXISTS enabled_fields jsonb DEFAULT NULL;

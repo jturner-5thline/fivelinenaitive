@@ -6306,6 +6306,7 @@ export type Database = {
           analysis_result: Json | null
           deal_id: string
           detected_date_cols: number[] | null
+          enabled_fields: Json | null
           excluded_columns: Json | null
           field_mappings: Json | null
           file_name: string
@@ -6320,6 +6321,7 @@ export type Database = {
           analysis_result?: Json | null
           deal_id: string
           detected_date_cols?: number[] | null
+          enabled_fields?: Json | null
           excluded_columns?: Json | null
           field_mappings?: Json | null
           file_name: string
@@ -6334,6 +6336,7 @@ export type Database = {
           analysis_result?: Json | null
           deal_id?: string
           detected_date_cols?: number[] | null
+          enabled_fields?: Json | null
           excluded_columns?: Json | null
           field_mappings?: Json | null
           file_name?: string
