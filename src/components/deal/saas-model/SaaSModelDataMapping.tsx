@@ -541,6 +541,53 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     };
   }, [dealId]);
 
+  // Restore all multi-file records from deal_financial_files on mount
+  useEffect(() => {
+    if (dbFiles.length === 0 || analyzedFiles.length > 0) return;
+    let cancelled = false;
+    async function restoreMultiFiles() {
+      const filesWithStorage = dbFiles.filter(f => f.storage_path);
+      if (filesWithStorage.length === 0) return;
+      const restored: AnalyzedFile[] = [];
+      for (const dbFile of filesWithStorage) {
+        try {
+          const { data: fileData } = await supabase.storage.from('deal-files').download(dbFile.storage_path!);
+          if (!fileData || cancelled) continue;
+          const file = new File([fileData], dbFile.file_name, {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          });
+          const result = await parseExcelFromFile(file);
+          const analysis = dbFile.analysis_result || { status: 'mappable' as const, type: 'Unknown', totalMatches: 0, isMatches: 0, bsMatches: 0, matchedFields: [] };
+          const af: AnalyzedFile = { file, sheets: result.sheets, analysis };
+          (af as any)._dbFileId = dbFile.id;
+          restored.push(af);
+        } catch (err) {
+          console.warn(`Could not restore file ${dbFile.file_name} from storage:`, err);
+        }
+      }
+      if (cancelled || restored.length === 0) return;
+      setAnalyzedFiles(restored);
+      // If single file, auto-select it and go to mapping phase
+      if (restored.length === 1) {
+        setSelectedFile(restored[0]);
+        setActiveFileId((restored[0] as any)._dbFileId);
+        const dbFile = filesWithStorage[0];
+        if (dbFile.field_mappings && Object.keys(dbFile.field_mappings).length > 0) {
+          setFieldMappings(dbFile.field_mappings as Record<string, FieldMapping[]>);
+          setExcludedColumns(new Set(dbFile.excluded_columns || []));
+          setFlippedRows(new Set(dbFile.flipped_rows || []));
+          setFlippedColumns(new Set(dbFile.flipped_columns || []));
+          setLastSavedCount(Object.keys(dbFile.field_mappings).length);
+        }
+        setPhase('mapping');
+      } else {
+        setPhase('triage');
+      }
+    }
+    restoreMultiFiles();
+    return () => { cancelled = true; };
+  }, [dbFiles]);
+
   // Header detection
   const detectedHeaders = useMemo(() => {
     if (!selectedFile) return { headerRow: null, headers: [] as string[] };
