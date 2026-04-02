@@ -257,10 +257,6 @@ const Auth = () => {
 
       // Session set successfully, redirect to deals
       window.location.href = "/deals";
-      if (error) {
-        setGoogleLoading(false);
-        throw error;
-      }
     } catch (error: any) {
       setGoogleLoading(false);
       toast.error(error.message || "Failed to sign in with Google");
