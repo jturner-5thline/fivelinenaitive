@@ -1,33 +1,33 @@
 /* ══════════════════════════════════════════════════════════
-   Data Mapping — Light Financial Mapping Theme
-   Clean, neutral, institutional spreadsheet aesthetic
+   Data Mapping — Dark Financial Mapping Theme
+   Aligned with platform dark card surfaces
    ══════════════════════════════════════════════════════════ */
 
 .mapping-workbench {
-  --map-bg: #F5F5F7;
-  --map-surface: #FFFFFF;
-  --map-surface-2: #F9FAFB;
-  --map-sidebar: #FFFFFF;
-  --map-grid: #E5E7EB;
-  --map-grid-soft: #F3F4F6;
-  --map-text: #111827;
-  --map-text-secondary: #4B5563;
-  --map-text-muted: #6B7280;
-  --map-text-faint: #9CA3AF;
-  --map-green: #166534;
-  --map-green-bg: #ECFDF3;
-  --map-red: #DC2626;
-  --map-blue: #2563EB;
-  --map-blue-bg: #EFF6FF;
-  --map-indigo: #4F46E5;
-  --map-indigo-bg: #EEF2FF;
-  --map-amber: #D97706;
-  --map-amber-bg: #FFFBEB;
-  --map-header-bg: #F9FAFB;
-  --map-row-hover: #F9FAFB;
-  --map-selected: #EFF6FF;
-  --map-border: #E5E7EB;
-  --map-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --map-bg: #111827;
+  --map-surface: #18212f;
+  --map-surface-2: #1b2635;
+  --map-sidebar: #18212f;
+  --map-grid: #2a3a58;
+  --map-grid-soft: #1e293b;
+  --map-text: #e5e7eb;
+  --map-text-secondary: #94a3b8;
+  --map-text-muted: #94a3b8;
+  --map-text-faint: #64748b;
+  --map-green: #4ade80;
+  --map-green-bg: rgba(34, 197, 94, 0.12);
+  --map-red: #f87171;
+  --map-blue: #60a5fa;
+  --map-blue-bg: rgba(37, 99, 235, 0.15);
+  --map-indigo: #a5b4fc;
+  --map-indigo-bg: rgba(79, 70, 229, 0.15);
+  --map-amber: #fbbf24;
+  --map-amber-bg: rgba(217, 119, 6, 0.12);
+  --map-header-bg: #1b2635;
+  --map-row-hover: #1e293b;
+  --map-selected: rgba(37, 99, 235, 0.15);
+  --map-border: #2a3a58;
+  --map-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .mapping-workbench {
@@ -60,7 +60,7 @@
   border-radius: 4px;
   border: 1px solid var(--map-border);
   background: var(--map-surface);
-  color: #374151;
+  color: #cbd5e1;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -87,19 +87,19 @@
 }
 
 .map-toolbar-btn--primary:hover:not(:disabled) {
-  background: #1D4ED8;
-  border-color: #1D4ED8;
+  background: #3b82f6;
+  border-color: #3b82f6;
   color: #FFFFFF;
 }
 
 .map-toolbar-btn--destructive {
   color: var(--map-red);
-  border-color: #FCA5A5;
+  border-color: rgba(220, 38, 38, 0.3);
 }
 
 .map-toolbar-btn--destructive:hover:not(:disabled) {
-  background: #FEF2F2;
-  border-color: #F87171;
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.4);
 }
 
 .map-toolbar-divider {
@@ -128,13 +128,13 @@
 
 .map-toolbar-chip--success {
   background: var(--map-green-bg);
-  border-color: #BBF7D0;
+  border-color: rgba(34, 197, 94, 0.25);
   color: var(--map-green);
 }
 
 .map-toolbar-chip--warning {
   background: var(--map-amber-bg);
-  border-color: #FDE68A;
+  border-color: rgba(217, 119, 6, 0.25);
   color: var(--map-amber);
 }
 
@@ -213,26 +213,26 @@
 }
 
 .map-row--mapped {
-  background: rgba(236, 253, 243, 0.5);
+  background: rgba(34, 197, 94, 0.06);
 }
 .map-row--mapped:hover {
-  background: rgba(236, 253, 243, 0.8);
+  background: rgba(34, 197, 94, 0.12);
 }
 
 .map-row--pending {
-  background: rgba(255, 251, 235, 0.5);
+  background: rgba(217, 119, 6, 0.08);
 }
 
 .map-row--total td {
   font-weight: 700;
-  border-top: 2px solid #D1D5DB;
+  border-top: 2px solid #475569;
 }
 
 .map-row--flash {
   animation: map-flash 0.6s ease-out;
 }
 @keyframes map-flash {
-  0% { background: #BBF7D0; }
+  0% { background: rgba(34, 197, 94, 0.3); }
   100% { background: transparent; }
 }
 
@@ -242,14 +242,14 @@
 }
 
 .map-row--eraser-selected {
-  background: #FEF2F2 !important;
-  outline: 1px solid #FCA5A5;
+  background: rgba(220, 38, 38, 0.1) !important;
+  outline: 1px solid rgba(220, 38, 38, 0.3);
   outline-offset: -1px;
 }
 
 .map-row--signflip-selected {
-  background: #FFFBEB !important;
-  outline: 1px solid #FDE68A;
+  background: rgba(217, 119, 6, 0.1) !important;
+  outline: 1px solid rgba(217, 119, 6, 0.3);
   outline-offset: -1px;
 }
 
@@ -303,25 +303,25 @@
 .map-badge--green {
   background: var(--map-green-bg);
   color: var(--map-green);
-  border: 1px solid #BBF7D0;
+  border: 1px solid rgba(34, 197, 94, 0.25);
 }
 
 .map-badge--amber {
   background: var(--map-amber-bg);
   color: var(--map-amber);
-  border: 1px solid #FDE68A;
+  border: 1px solid rgba(217, 119, 6, 0.25);
 }
 
 .map-badge--blue {
   background: var(--map-blue-bg);
   color: var(--map-blue);
-  border: 1px solid #BFDBFE;
+  border: 1px solid rgba(37, 99, 235, 0.25);
 }
 
 .map-badge--red {
-  background: #FEF2F2;
+  background: rgba(220, 38, 38, 0.1);
   color: var(--map-red);
-  border: 1px solid #FCA5A5;
+  border: 1px solid rgba(220, 38, 38, 0.25);
 }
 
 .map-badge--muted {
@@ -366,29 +366,29 @@
 }
 
 .map-sidebar-field--mapped {
-  background: rgba(236, 253, 243, 0.5);
+  background: rgba(34, 197, 94, 0.06);
 }
 .map-sidebar-field--mapped:hover {
-  background: rgba(236, 253, 243, 0.8);
+  background: rgba(34, 197, 94, 0.12);
 }
 
 .map-sidebar-field--pending {
-  background: rgba(255, 251, 235, 0.5);
-  border: 1px solid #FDE68A;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.25);
 }
 
 .map-sidebar-field--focused {
-  outline: 1px solid #93C5FD;
+  outline: 1px solid rgba(96, 165, 250, 0.5);
   background: var(--map-blue-bg);
 }
 
 .map-sidebar-field--drop-target {
-  outline: 2px dashed #34D399;
-  background: rgba(236, 253, 243, 0.6);
+  outline: 2px dashed rgba(52, 211, 153, 0.6);
+  background: rgba(34, 197, 94, 0.1);
 }
 
 .map-sidebar-search {
-  background: var(--map-surface);
+  background: var(--map-surface-2);
   border: 1px solid var(--map-border);
   border-radius: 999px;
   color: var(--map-text);
@@ -405,7 +405,7 @@
 .map-sidebar-search:focus {
   outline: none;
   border-color: var(--map-blue);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.15);
 }
 
 .map-sidebar-filter-btn {
@@ -450,8 +450,8 @@
 .map-progress-fill--green { background: #22C55E; }
 
 /* ── Mode indicators ── */
-.map-mode-eraser { background: #FEE2E2 !important; }
-.map-mode-signflip { background: #FEF3C7 !important; }
+.map-mode-eraser { background: rgba(220, 38, 38, 0.1) !important; }
+.map-mode-signflip { background: rgba(217, 119, 6, 0.1) !important; }
 
 /* ── Section header row styling ── */
 .map-section-row {
