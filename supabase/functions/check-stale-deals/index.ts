@@ -176,21 +176,24 @@ function buildEmailHtml(
       <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; border-left: 4px solid ${borderColor};">
         <table style="width: 100%;">
           <tr>
-            <td style="vertical-align: top;">
-              <strong style="font-size: 21px; color: #111827;">${deal.company}</strong>
+            <td style="vertical-align: middle;">
+              <strong style="font-size: 21px; color: #111827; vertical-align: middle;">${deal.company}</strong>
               ${lendersBadge ? `<span style="display: inline-block; vertical-align: middle; margin-left: 8px;">${lendersBadge}</span>` : ''}
-              <div style="margin-top: 4px;">
-                <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;">Last Update ${daysSinceUpdate} Days Ago</span>
-              </div>
-              ${statusNoteSnippet}
             </td>
-            <td style="text-align: right; vertical-align: top;">
+            <td style="text-align: right; vertical-align: middle;">
               <span style="display: inline-block; background: ${deal.status === 'at-risk' ? '#fef3c7' : deal.status === 'off-track' ? '#fee2e2' : '#dcfce7'}; color: ${deal.status === 'at-risk' ? '#92400e' : deal.status === 'off-track' ? '#991b1b' : '#166534'}; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 4px;">${deal.status === 'on-track' ? 'On Track' : deal.status === 'at-risk' ? 'At Risk' : deal.status === 'off-track' ? 'Off Track' : deal.status === 'on-hold' ? 'On Hold' : deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}</span>
-              <br/>
-              <span style="display: inline-block; background: #ede9fe; color: #6d28d9; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; margin-top: 4px;">${formatStageLabel(deal.stage)}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="vertical-align: middle; padding-top: 4px;">
+              <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;">Last Update ${daysSinceUpdate} Days Ago</span>
+            </td>
+            <td style="text-align: right; vertical-align: middle; padding-top: 4px;">
+              <span style="display: inline-block; background: #ede9fe; color: #6d28d9; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px;">${formatStageLabel(deal.stage)}</span>
             </td>
           </tr>
         </table>
+        ${statusNoteSnippet}
         <div style="margin-top: 6px; margin-bottom: 8px;">
           ${reasonBadges}
           ${dealTypeTags}
