@@ -34,6 +34,7 @@ interface Props {
   flashedFields: Set<string>;
   pendingAutoMaps: Record<string, { rowIdx: number; label: string; sheetName: string }>;
   draggingRowIdx: number | null;
+  enabledFields?: Set<string>;
   onAssignField: (field: string) => void;
   onRemoveMapping: (field: string, idx: number) => void;
   onAcceptSuggestion: (rowIdx: number) => void;
@@ -50,7 +51,7 @@ interface Props {
 export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(function DataMappingFieldSidebar({
   fieldMappings, selectedRows, autoMapResults, suggestions, mappedCount,
   lastSavedCount, hasUnsavedMappings, isSaving, selectedFile, activeSheet,
-  flashedFields, pendingAutoMaps, draggingRowIdx, onAssignField, onRemoveMapping, onAcceptSuggestion,
+  flashedFields, pendingAutoMaps, draggingRowIdx, enabledFields, onAssignField, onRemoveMapping, onAcceptSuggestion,
   onSaveProgress, onClearAllMappings, onDeselectRows, onAcceptAutoMap, onRejectAutoMap,
   onAcceptAllAutoMaps, onAutoMap, onDropAssign,
 }, ref) {
@@ -60,12 +61,13 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   const [dragOverField, setDragOverField] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const totalFields = IS_FIELDS.length + BS_FIELDS.length;
-  const pendingCount = Object.keys(pendingAutoMaps).length;
-  const unmappedCount = totalFields - mappedCount;
+  const allFields = [...IS_FIELDS, ...BS_FIELDS].filter(f => !enabledFields || enabledFields.has(f)) as string[];
+  const totalFields = allFields.length;
+  const pendingCount = Object.keys(pendingAutoMaps).filter(f => !enabledFields || enabledFields.has(f)).length;
+  const enabledMappedCount = Object.keys(fieldMappings).filter(f => !enabledFields || enabledFields.has(f)).length;
+  const unmappedCount = totalFields - enabledMappedCount;
 
   // Build a flat list of visible fields for keyboard navigation
-  const allFields = [...IS_FIELDS, ...BS_FIELDS] as string[];
   const visibleFields = allFields.filter(field => {
     const matchesSearch = !searchQuery || field.toLowerCase().includes(searchQuery.toLowerCase());
     const isMapped = !!fieldMappings[field];
@@ -203,6 +205,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   })();
 
   const filterField = (field: string): boolean => {
+    if (enabledFields && !enabledFields.has(field)) return false;
     const matchesSearch = !searchQuery || field.toLowerCase().includes(searchQuery.toLowerCase());
     const isMapped = !!fieldMappings[field];
     if (filterMode === 'mapped') return matchesSearch && isMapped;
@@ -386,10 +389,11 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   const renderFieldSections = (sections: { label: string; fields: string[] }[]) => (
     <div className="space-y-1">
       {sections.map(section => {
-        const visibleSectionFields = section.fields.filter(filterField);
+        const sectionEnabled = section.fields.filter(f => !enabledFields || enabledFields.has(f));
+        const visibleSectionFields = sectionEnabled.filter(filterField);
         if (visibleSectionFields.length === 0) return null;
-        const mapped = section.fields.filter(f => !!fieldMappings[f]).length;
-        const total = section.fields.length;
+        const mapped = sectionEnabled.filter(f => !!fieldMappings[f]).length;
+        const total = sectionEnabled.length;
         const pct = total > 0 ? (mapped / total) * 100 : 0;
         return (
           <div key={section.label}>
@@ -405,7 +409,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                 <span className="text-[9px] tabular-nums text-muted-foreground">{mapped}/{total}</span>
               </div>
             </div>
-            {section.fields.map(field => renderFieldRow(field))}
+            {sectionEnabled.map(field => renderFieldRow(field))}
           </div>
         );
       })}
@@ -474,7 +478,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                   className="h-5 text-[10px] px-2 rounded-sm flex-1"
                   onClick={() => setFilterMode(mode)}
                 >
-                  {mode === 'all' ? 'All' : mode === 'mapped' ? `Mapped (${mappedCount})` : `Unmapped (${unmappedCount})`}
+                  {mode === 'all' ? 'All' : mode === 'mapped' ? `Mapped (${enabledMappedCount})` : `Unmapped (${unmappedCount})`}
                 </Button>
               ))}
             </div>
@@ -528,7 +532,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                 {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
               </div>
               <div className="flex flex-wrap gap-1">
-                {[...IS_FIELDS, ...BS_FIELDS]
+                {allFields
                   .filter(f => !fieldMappings[f])
                   .slice(0, 12)
                   .map(f => (
@@ -537,8 +541,8 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                       {f}
                     </button>
                   ))}
-                {[...IS_FIELDS, ...BS_FIELDS].filter(f => !fieldMappings[f]).length > 12 && (
-                  <span className="text-[9px] text-muted-foreground px-1 py-0.5">+{[...IS_FIELDS, ...BS_FIELDS].filter(f => !fieldMappings[f]).length - 12} more</span>
+                {allFields.filter(f => !fieldMappings[f]).length > 12 && (
+                  <span className="text-[9px] text-muted-foreground px-1 py-0.5">+{allFields.filter(f => !fieldMappings[f]).length - 12} more</span>
                 )}
               </div>
             </div>

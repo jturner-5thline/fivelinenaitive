@@ -27,6 +27,7 @@ import { useMappingSuggestions } from '@/hooks/useMappingSuggestions';
 import { supabase } from '@/integrations/supabase/client';
 import { DataMappingFieldSidebar, type FieldSidebarHandle } from './DataMappingFieldSidebar';
 import { useMappingHistory, type MappingAction } from './useMappingHistory';
+import { MappingFieldSettings } from './MappingFieldSettings';
 import {
   type Phase, type AnalyzedFile, type AutoMapResult, type ValidationWarning,
   KEYWORD_ALIASES, getMatchConfidence, applyMappingsToModel,
@@ -83,6 +84,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storedFilePathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
+
+  // ── Field visibility settings ──
+  const allFieldNames = useMemo(() => new Set([...IS_FIELDS, ...BS_FIELDS] as string[]), []);
+  const [enabledFields, setEnabledFields] = useState<Set<string>>(() => new Set(allFieldNames));
+  const [fieldSettingsOpen, setFieldSettingsOpen] = useState(false);
+  const enabledFieldsLoadedRef = useRef(false);
 
   // ── Multi-file management ──
   const { files: dbFiles, upsertFile, saveFileMappings, pushFileData, deleteFile: deleteDbFile, loadFiles: reloadDbFiles } = useFinancialFiles(dealId);
@@ -438,12 +445,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         excluded_columns: Array.from(excludedColumns),
         flipped_rows: Array.from(flippedRows),
         flipped_columns: Array.from(flippedColumns),
+        enabled_fields: Array.from(enabledFields),
       }, { onConflict: 'deal_id' });
       setLastSavedCount(count);
     } catch (err) {
       console.warn('Auto-save mappings failed:', err);
     }
-  }, [dealId, excludedColumns, flippedRows, flippedColumns]);
+  }, [dealId, excludedColumns, flippedRows, flippedColumns, enabledFields]);
 
   // Watch fieldMappings/excludedColumns/flippedRows/flippedColumns changes and auto-save with debounce
   useEffect(() => {
@@ -453,7 +461,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       autoSaveMappings(fieldMappings, selectedFile);
     }, 1500);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [fieldMappings, selectedFile, autoSaveMappings, excludedColumns, flippedRows, flippedColumns]);
+  }, [fieldMappings, selectedFile, autoSaveMappings, excludedColumns, flippedRows, flippedColumns, enabledFields]);
 
   // Browser beforeunload guard
   useEffect(() => {
@@ -524,6 +532,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         }
         if (Array.isArray((saved as any).flipped_columns) && !cancelled) {
           setFlippedColumns(new Set((saved as any).flipped_columns));
+        }
+        if (Array.isArray((saved as any).enabled_fields) && !cancelled) {
+          setEnabledFields(new Set((saved as any).enabled_fields as string[]));
+          enabledFieldsLoadedRef.current = true;
         }
       } catch (err) {
         console.warn('Could not restore saved mappings:', err);
@@ -1401,9 +1413,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     }
   }, [fieldMappings, selectedFile]);
 
-  const totalFields = IS_FIELDS.length + BS_FIELDS.length;
-  const unmappedCount = totalFields - mappedCount;
-  const percent = totalFields === 0 ? 0 : Math.round((mappedCount / totalFields) * 100);
+  const totalFields = enabledFields.size;
+  const enabledMappedCount = Object.keys(fieldMappings).filter(f => enabledFields.has(f)).length;
+  const unmappedCount = totalFields - enabledMappedCount;
+  const percent = totalFields === 0 ? 0 : Math.round((enabledMappedCount / totalFields) * 100);
 
   // ── Phase: Upload ──
   if (phase === 'upload') {
@@ -1565,6 +1578,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={() => setFieldSettingsOpen(true)}>
+                <Settings className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom"><p className="text-xs">Field Settings</p></TooltipContent>
+          </Tooltip>
          <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/[0.06] bg-secondary/40 text-muted-foreground">
            <FileSpreadsheet className="h-3 w-3 text-muted-foreground/60" />
            {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
@@ -1583,6 +1604,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             {percent === 100 ? <CheckCircle2 className="h-3 w-3" /> : null}
             {percent}% mapped
           </Badge>
+          {enabledFields.size < allFieldNames.size && (
+           <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/[0.06] bg-secondary/40 text-muted-foreground">
+             {enabledFields.size}/{allFieldNames.size} fields
+           </Badge>
+          )}
           {hasUnsavedMappings && (
            <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 bg-warning/8 text-warning border-warning/15 font-medium">
              {mappedCount - lastSavedCount} unsaved
@@ -1590,6 +1616,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           )}
         </div>
       </div>
+
+      {/* Field Settings Modal */}
+      <MappingFieldSettings
+        open={fieldSettingsOpen}
+        onOpenChange={setFieldSettingsOpen}
+        enabledFields={enabledFields}
+        onUpdateEnabledFields={setEnabledFields}
+      />
 
       {/* ── Multi-file selector tabs ── */}
       {analyzedFiles.length > 1 && (
@@ -2328,6 +2362,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             flashedFields={flashedFields}
             pendingAutoMaps={pendingAutoMaps}
             draggingRowIdx={draggingRowIdx}
+            enabledFields={enabledFields}
             onAssignField={handleAssignField}
             onRemoveMapping={handleRemoveMapping}
             onAcceptSuggestion={handleAcceptSuggestion}
@@ -2579,6 +2614,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   flashedFields={flashedFields}
                   pendingAutoMaps={pendingAutoMaps}
                   draggingRowIdx={draggingRowIdx}
+                  enabledFields={enabledFields}
                   onAssignField={handleAssignField}
                   onRemoveMapping={handleRemoveMapping}
                   onAcceptSuggestion={handleAcceptSuggestion}
