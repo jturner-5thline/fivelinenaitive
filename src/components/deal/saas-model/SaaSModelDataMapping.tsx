@@ -2518,7 +2518,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             }}
                           >
                             <td className={cn(
-                              "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
+                              "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground/40 text-[10px]",
                               isSelected ? "bg-primary/10" : "bg-card"
                             )}>
                               <div className="flex items-center justify-center gap-0.5">
