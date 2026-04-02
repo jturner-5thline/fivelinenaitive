@@ -203,6 +203,7 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
       setPrimaryDealId(deals[0].id);
       setSelections(getSmartDefaults(deals));
       setMergedName(cluster?.primaryName || deals[0].company || deals[0].name);
+      setCustomEngagementType(null);
     }
   }, [cluster?.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
