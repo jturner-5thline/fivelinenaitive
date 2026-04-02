@@ -55,6 +55,7 @@ interface AttentionDeal {
   pipeline_id: string | null;
   is_flagged: boolean;
   flag_notes: string | null;
+  latest_status_note: string | null;
   // computed
   attention_reasons: string[];
   stale_lender_count?: number;
@@ -131,7 +132,7 @@ function buildEmailHtml(
     if (deal.manager) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Manager:</strong> ${deal.manager}</td>`);
     if (deal.analyst) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Analyst:</strong> ${deal.analyst}</td>`);
     if (deal.closing_date) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Closing:</strong> ${formatDate(deal.closing_date)}</td>`);
-    if (deal.contact) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Contact:</strong> ${deal.contact}</td>`);
+    
 
     let detailGrid = '';
     for (let i = 0; i < detailRows.length; i += 2) {
@@ -146,8 +147,9 @@ function buildEmailHtml(
       ? `<p style="margin: 4px 0 0; font-size: 12px; color: #1e40af;"><strong>${deal.stale_lender_count}</strong> lender${deal.stale_lender_count > 1 ? 's' : ''} haven't been updated in ${thresholdDays}+ days</p>`
       : '';
 
-    const narrativeSnippet = deal.narrative
-      ? `<p style="margin: 8px 0 0; font-size: 12px; color: #6b7280; line-height: 1.4; border-top: 1px solid #f3f4f6; padding-top: 8px;">${deal.narrative.substring(0, 120)}${deal.narrative.length > 120 ? '…' : ''}</p>`
+    const statusNoteText = deal.latest_status_note || '';
+    const statusNoteSnippet = statusNoteText
+      ? `<p style="margin: 8px 0 0; font-size: 12px; color: #6b7280; line-height: 1.4; border-top: 1px solid #f3f4f6; padding-top: 8px;"><strong style="color: #374151;">Status Note:</strong> ${statusNoteText.substring(0, 150)}${statusNoteText.length > 150 ? '…' : ''}</p>`
       : '';
 
     return `
@@ -171,7 +173,7 @@ function buildEmailHtml(
         ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
         ${flagNotesHtml}
         ${lenderHtml}
-        ${narrativeSnippet}
+        ${statusNoteSnippet}
         <div style="margin-top: 10px;">
           <a href="https://fivelinenaitive.lovable.app/deals/${deal.id}" style="color: #7c3aed; font-size: 13px; font-weight: 500; text-decoration: none;">View Deal →</a>
         </div>
@@ -333,6 +335,22 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
+      // Fetch latest status note per deal
+      const { data: statusNotes } = await supabaseAdmin
+        .from('deal_status_notes')
+        .select('deal_id, note, created_at')
+        .in('deal_id', dealIds)
+        .order('created_at', { ascending: false });
+
+      const latestStatusNoteMap: Record<string, string> = {};
+      if (statusNotes) {
+        for (const sn of statusNotes) {
+          if (!latestStatusNoteMap[sn.deal_id]) {
+            latestStatusNoteMap[sn.deal_id] = sn.note;
+          }
+        }
+      }
+
       // Determine which deals need attention and why
       const attentionDeals: AttentionDeal[] = [];
       for (const deal of activeDeals) {
@@ -361,6 +379,7 @@ const handler = async (req: Request): Promise<Response> => {
           ...deal,
           attention_reasons: reasons,
           stale_lender_count: staleLenderCounts[deal.id] || 0,
+          latest_status_note: latestStatusNoteMap[deal.id] || null,
         });
       }
 
