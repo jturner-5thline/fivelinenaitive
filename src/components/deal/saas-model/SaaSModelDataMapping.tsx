@@ -1817,7 +1817,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomOut} disabled={zoomLevel <= 50}>
               <ZoomOut className="h-3 w-3" />
             </button>
-            <span className="text-[10px] tabular-nums w-7 text-center" style={{ color: 'var(--map-text-faint)' }}>{zoomLevel}%</span>
+            <span className="text-[10px] tabular-nums w-7 text-center text-[#9CA3AF]">{zoomLevel}%</span>
             <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomIn} disabled={zoomLevel >= 200}>
               <ZoomIn className="h-3 w-3" />
             </button>
