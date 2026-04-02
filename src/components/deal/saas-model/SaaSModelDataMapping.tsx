@@ -2182,6 +2182,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       const isHeaderRow = detectedHeaders.headerRow === rowIdx;
                       const isSelected = selectedRows.has(rowIdx);
                       const isFlashing = flashedRows.has(rowIdx);
+                      const isLinkedFromField = linkedRowsFromField.includes(rowIdx);
 
                       const rowBgClass = isFlashing
                         ? "animate-mapping-flash"
