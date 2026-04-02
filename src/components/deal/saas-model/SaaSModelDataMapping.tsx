@@ -86,45 +86,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [hoveredRowIdx, setHoveredRowIdx] = useState<number | null>(null);
   const [hoveredFieldId, setHoveredFieldId] = useState<string | null>(null);
 
-  // (bidirectional lookup maps defined after useMappingSuggestions below)
-
-  // Scroll a spreadsheet row into view
-  const scrollRowIntoView = useCallback((rowIdx: number) => {
-    const row = spreadsheetRef.current?.querySelector(`[data-row-idx="${rowIdx}"]`);
-    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, []);
-
-  // Scroll a field into view in the sidebar
-  const scrollFieldIntoView = useCallback((fieldId: string) => {
-    const el = document.querySelector(`[data-field-id="${fieldId}"]`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, []);
-
-  // Handle field hover from sidebar (highlight linked rows)
-  const handleFieldHover = useCallback((fieldId: string | null) => {
-    setHoveredFieldId(fieldId);
-  }, []);
-
-  // Handle field click from sidebar (scroll linked row into view)
-  const handleFieldSelect = useCallback((fieldId: string) => {
-    const rows = fieldToRowsMap.get(fieldId);
-    if (rows && rows.length > 0) {
-      scrollRowIntoView(rows[0].rowIdx);
-    }
-  }, [fieldToRowsMap, scrollRowIntoView]);
-
-  // Handle row hover (highlight linked field)
-  const handleRowHover = useCallback((rowIdx: number | null) => {
-    setHoveredRowIdx(rowIdx);
-  }, []);
-
-  // Handle row click → scroll linked field into view
-  const handleRowSelect = useCallback((rowIdx: number) => {
-    const linked = rowToFieldMap.get(rowIdx);
-    if (linked) {
-      scrollFieldIntoView(linked.field);
-    }
-  }, [rowToFieldMap, scrollFieldIntoView]);
+  // (bidirectional lookup maps, scroll helpers, and hover handlers defined after useMappingSuggestions below)
   const { canUndo, canRedo, pushAction, popUndo, popRedo, peekUndo, peekRedo } = useMappingHistory();
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storedFilePathRef = useRef<string | null>(null);
