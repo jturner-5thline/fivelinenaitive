@@ -2457,11 +2457,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                 const expSheet = selectedFile.sheets[activeSheet];
                 if (!expSheet) return null;
                 return (
-                  <table className="w-max text-[11px] border-collapse">
-                    <thead className="sticky top-0 z-20 bg-muted">
-                      <tr>
-                        <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted">#</th>
-                        <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[200px] min-w-[200px] border-r-2 border-r-border/50 font-semibold bg-muted" style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>Account Name</th>
+                   <table className="w-max text-[11px] border-collapse">
+                   <thead className="sticky top-0 z-20 bg-secondary/60">
+                     <tr>
+                       <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground/50 bg-secondary/80">#</th>
+                       <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[200px] min-w-[200px] font-semibold bg-secondary/80" style={{ boxShadow: '3px 0 8px -2px hsl(0 0% 0% / 0.15)' }}>Account Name</th>
                         {Array.from({ length: Math.min((expSheet.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                           const colIdx = i + 1;
                           if (excludedColumns.has(colIdx)) return null;
