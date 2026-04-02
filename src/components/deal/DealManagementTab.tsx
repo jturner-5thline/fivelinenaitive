@@ -23,16 +23,13 @@ export function DealManagementTab({ dealId, dealName, dealValue, dealStage, deal
 
   return (
     <div className="space-y-4">
-      {/* Row 1 — Tasks · Info Requests · Engagement — equal-height stretch */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Row 1 — Tasks · Info Requests — equal-height stretch */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="h-[420px]">
           <DealTasksPanel dealId={dealId} />
         </div>
         <div className="h-[420px]">
           <FlexInfoNotificationsPanel dealId={dealId} />
-        </div>
-        <div className="md:col-span-2 lg:col-span-1 h-[420px]">
-          <EngagementSummaryCard dealId={dealId} />
         </div>
       </div>
 
@@ -42,9 +39,10 @@ export function DealManagementTab({ dealId, dealName, dealValue, dealStage, deal
         <DealActivityChart dealId={dealId} />
       </div>
 
-      {/* Row 3 — Flag Log */}
-      <div className="grid grid-cols-1 gap-4 items-stretch">
+      {/* Row 3 — Flag Log + Engagement — aligned pair */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         <DealFlagLog dealId={dealId} />
+        <EngagementSummaryCard dealId={dealId} />
       </div>
     </div>
   );
