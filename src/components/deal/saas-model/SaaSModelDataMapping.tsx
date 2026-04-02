@@ -2271,12 +2271,17 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                            "sticky left-8 z-10 py-1 px-3 w-[220px] min-w-[220px] max-w-[220px] font-medium text-[#e5e7eb] border-b border-[#2a3a58]",
                            stickyBg,
                          )} style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.3)' }}>
-                            <div className="flex items-center gap-1.5 overflow-hidden">
+                            <div className="flex items-center gap-1.5 w-full overflow-hidden">
                               {isMappedRow && !isHeaderRow && (
                                 <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
                               )}
-                              <span className="truncate">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
+                              <span className="truncate block flex-1 min-w-0">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
                               {isHeaderRow && <Badge variant="outline" className="text-[7px] h-3.5 px-1 shrink-0">HEADER</Badge>}
+                            </div>
+                          </td>
+                          {/* Mapping status indicator column – not sticky, scrolls with data */}
+                          <td className="py-1 px-1 border-b border-[#2a3a58] whitespace-nowrap">
+                            <div className="flex items-center gap-0.5">
                               {isMappedRow && mappedToField && (
                                 <Badge variant="outline" className="text-[8px] h-4 px-1.5 shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
                                   → {mappedToField[0]}
@@ -2301,7 +2306,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                 </Badge>
                               )}
                               {hasSuggestion && !isMappedRow && rowSuggestion.status === 'pending' && (
-                                <div className="flex gap-0.5 ml-auto shrink-0">
+                                <div className="flex gap-0.5 shrink-0">
                                   <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-emerald-500 hover:text-emerald-600" onClick={e => { e.stopPropagation(); handleAcceptSuggestion(rowIdx); }}>
                                     <Check className="h-3 w-3" />
                                   </Button>
@@ -2311,7 +2316,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                                 </div>
                               )}
                               {hasSuggestion && rowSuggestion.status === 'accepted' && !isMappedRow && (
-                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 ml-auto" />
+                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                               )}
                             </div>
                           </td>
