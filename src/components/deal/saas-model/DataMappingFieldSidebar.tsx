@@ -35,6 +35,11 @@ interface Props {
   pendingAutoMaps: Record<string, { rowIdx: number; label: string; sheetName: string }>;
   draggingRowIdx: number | null;
   enabledFields?: Set<string>;
+  linkedFieldFromRow?: string | null;
+  linkedRowsFromField?: number[];
+  hoveredRowIdx?: number | null;
+  onFieldHover?: (fieldId: string | null) => void;
+  onFieldSelect?: (fieldId: string) => void;
   onAssignField: (field: string) => void;
   onRemoveMapping: (field: string, idx: number) => void;
   onAcceptSuggestion: (rowIdx: number) => void;
@@ -51,7 +56,10 @@ interface Props {
 export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(function DataMappingFieldSidebar({
   fieldMappings, selectedRows, autoMapResults, suggestions, mappedCount,
   lastSavedCount, hasUnsavedMappings, isSaving, selectedFile, activeSheet,
-  flashedFields, pendingAutoMaps, draggingRowIdx, enabledFields, onAssignField, onRemoveMapping, onAcceptSuggestion,
+  flashedFields, pendingAutoMaps, draggingRowIdx, enabledFields,
+  linkedFieldFromRow, linkedRowsFromField, hoveredRowIdx,
+  onFieldHover, onFieldSelect,
+  onAssignField, onRemoveMapping, onAcceptSuggestion,
   onSaveProgress, onClearAllMappings, onDeselectRows, onAcceptAutoMap, onRejectAutoMap,
   onAcceptAllAutoMaps, onAutoMap, onDropAssign,
 }, ref) {
