@@ -158,8 +158,8 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
   const [primaryDealId, setPrimaryDealId] = useState<string>('');
   const [selections, setSelections] = useState<Record<MergeField, string>>({} as any);
   const [mergedName, setMergedName] = useState('');
-
-  const pipelineMap = useMemo(() => {
+  // Custom engagement type override — when set, overrides the source-deal selection
+  const [customEngagementType, setCustomEngagementType] = useState<EngagementType | null>(null);
     const map = new Map<string, string>();
     pipelines.forEach(p => map.set(p.id, p.name));
     return map;
