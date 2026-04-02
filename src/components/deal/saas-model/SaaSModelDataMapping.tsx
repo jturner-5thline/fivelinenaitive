@@ -1731,7 +1731,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={handleAutoMap}>
             <Zap className="h-3.5 w-3.5" /> Auto-Map
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card hover:bg-accent/10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
             <ShieldAlert className="h-3.5 w-3.5" /> Validate
           </Button>
 
