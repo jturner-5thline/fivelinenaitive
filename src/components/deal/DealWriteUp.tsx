@@ -1117,7 +1117,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                       Generate AI Memo
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Generate a structured lender-ready memo from all deal data</TooltipContent>
+                  <TooltipContent>
+                    <p>Generate a structured lender-ready memo from all deal data</p>
+                    <p className="text-[10px] opacity-70 mt-0.5">Powered by Claude</p>
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               )}
