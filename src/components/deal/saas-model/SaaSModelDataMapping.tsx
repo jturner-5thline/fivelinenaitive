@@ -1650,10 +1650,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       )}
 
       <div className="map-file-strip">
-        <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--map-text-faint)' }} />
+        <FileSpreadsheet className="h-3.5 w-3.5 shrink-0 text-[#9CA3AF]" />
         <button
-          className="text-[11px] font-medium hover:underline transition-colors truncate cursor-pointer"
-          style={{ color: 'var(--map-text)' }}
+          className="text-xs font-medium hover:underline transition-colors truncate cursor-pointer text-[#111827]"
           onClick={() => {
             if (selectedFile) {
               const url = URL.createObjectURL(selectedFile.file);
@@ -1667,22 +1666,22 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </button>
         {detectedHeaders.headers.length > 0 && (
           <>
-            <span style={{ color: 'var(--map-text-faint)', opacity: 0.4 }}>·</span>
-            <span className="text-[10px] whitespace-nowrap truncate max-w-[200px]" style={{ color: 'var(--map-text-faint)' }}>
+            <span className="text-[#9CA3AF]">·</span>
+            <span className="text-[11px] whitespace-nowrap truncate max-w-[200px] text-[#6B7280]">
               {detectedHeaders.headers[0]} → {detectedHeaders.headers[detectedHeaders.headers.length - 1]}
             </span>
           </>
         )}
         {detectedHeaders.headerRow !== null && (
           <>
-            <span style={{ color: 'var(--map-text-faint)', opacity: 0.4 }}>·</span>
-            <span className="text-[10px] whitespace-nowrap" style={{ color: 'var(--map-text-faint)' }}>
+            <span className="text-[#9CA3AF]">·</span>
+            <span className="text-[11px] whitespace-nowrap text-[#6B7280]">
               Header Row {detectedHeaders.headerRow + 1}
             </span>
           </>
         )}
         <div className="ml-auto flex items-center gap-1">
-          <button className="map-toolbar-btn h-5 text-[10px] px-2" onClick={() => setPhase('upload')}>
+          <button className="map-toolbar-btn h-5 text-[10px] px-2 !text-[#2563EB] !border-transparent !bg-transparent hover:!underline" onClick={() => setPhase('upload')}>
             Change file
           </button>
         </div>
@@ -1691,15 +1690,15 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* AI Suggestions Banner */}
       {hasSuggestRun && suggestions.length > 0 && (
-        <div className="flex items-center justify-between px-3 py-1.5 rounded-md" style={{ background: 'rgba(127,178,255,0.05)', border: '1px solid rgba(127,178,255,0.12)' }}>
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-lg border" style={{ background: '#EFF6FF', borderColor: '#BFDBFE' }}>
           <div className="flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--map-blue)' }} />
-            <span className="text-[11px] font-medium" style={{ color: 'var(--map-blue)' }}>
+            <Sparkles className="h-3.5 w-3.5 text-[#2563EB]" />
+            <span className="text-xs font-medium text-[#2563EB]">
               {pendingCount > 0 ? `${pendingCount} AI suggestion${pendingCount > 1 ? 's' : ''} pending` : `${acceptedCount} applied`}
             </span>
           </div>
           {pendingCount > 0 && (
-            <button className="map-toolbar-btn h-5 text-[10px] px-2" style={{ color: 'var(--map-blue)', borderColor: 'rgba(127,178,255,0.2)' }} onClick={handleAcceptAll}>
+            <button className="map-toolbar-btn h-5 text-[10px] px-2 !text-[#2563EB] !border-[#BFDBFE]" onClick={handleAcceptAll}>
               <Check className="h-3 w-3" /> Accept All
             </button>
           )}
