@@ -1724,7 +1724,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       <div className="flex items-center justify-between gap-3 rounded-xl border border-border/[0.06] bg-secondary/30 px-2.5 py-1.5 shadow-sm">
         {/* Left: Intelligence + Edit tools */}
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card hover:bg-accent/10" onClick={handleAISuggest} disabled={isSuggestLoading}>
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50 hover:bg-accent/10" onClick={handleAISuggest} disabled={isSuggestLoading}>
             {isSuggestLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
             {isSuggestLoading ? 'Analyzing…' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
           </Button>
