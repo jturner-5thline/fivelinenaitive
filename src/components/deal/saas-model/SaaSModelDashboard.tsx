@@ -16,6 +16,7 @@ import { EnhancedKPICard } from './EnhancedKPICard';
 import { AIInsightsPanel } from './AIInsightsPanel';
 import { AnalysisChatPanel } from './AnalysisChatPanel';
 import { AnnotationBadge } from './AnnotationThread';
+import { SaaSModelCharts } from './SaaSModelCharts';
 import type { Annotation } from '@/hooks/useModelAnnotations';
 
 interface AnnotationHook {
