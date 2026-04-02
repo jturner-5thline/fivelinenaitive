@@ -1501,12 +1501,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {analyzedFiles.map((af, idx) => (
-            <Card key={idx} className={cn(
-              "border-border/30 cursor-pointer hover:border-primary/50 transition-colors",
-              af.analysis.status === 'mappable' && "border-emerald-500/30",
-              af.analysis.status === 'partial' && "border-amber-500/30",
-              af.analysis.status === 'error' && "border-destructive/30",
-            )}>
+           <Card key={idx} className={cn(
+             "border-border/[0.06] cursor-pointer hover:border-primary/20 transition-all shadow-sm hover:shadow-md",
+             af.analysis.status === 'mappable' && "border-success/15",
+             af.analysis.status === 'partial' && "border-warning/15",
+             af.analysis.status === 'error' && "border-destructive/15",
+           )}>
               <CardContent className="p-4" onClick={async () => { setSelectedFile(af); setPhase('mapping'); await persistFileToStorage(af.file); }}>
                 <div className="flex items-center gap-2 mb-2">
                   {af.analysis.status === 'mappable' ? <Check className="h-4 w-4 text-emerald-500" /> :
