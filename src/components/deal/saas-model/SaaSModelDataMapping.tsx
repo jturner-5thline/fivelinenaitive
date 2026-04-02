@@ -1690,7 +1690,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* AI Suggestions Banner */}
       {hasSuggestRun && suggestions.length > 0 && (
-        <div className="flex items-center justify-between px-3 py-1.5 rounded-lg border" style={{ background: '#EFF6FF', borderColor: '#BFDBFE' }}>
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-lg border" style={{ background: 'rgba(37,99,235,0.15)', borderColor: 'rgba(96,165,250,0.3)' }}>
           <div className="flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-[#60a5fa]" />
             <span className="text-xs font-medium text-[#60a5fa]">
@@ -1960,7 +1960,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       {/* Split panel: spreadsheet + field sidebar */}
       <ResizablePanelGroup
         direction="horizontal"
-        className="rounded-lg border border-[#2a3a58] overflow-hidden bg-[#18212f]" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+        className="rounded-lg border border-[#2a3a58] overflow-hidden bg-[#18212f]" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}
         onLayout={(sizes) => {
           try { localStorage.setItem('data-mapping-panel-ratio', JSON.stringify(sizes)); } catch {}
         }}
@@ -2032,7 +2032,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                  <thead className="sticky top-0 z-20 bg-[#1b2635]">
                    <tr>
                      <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-[#64748b] text-[10px] bg-[#1b2635] border-b border-[#2a3a58]">#</th>
-                     <th className="sticky left-8 z-30 py-1.5 px-3 text-left text-[#94a3b8] w-[220px] min-w-[220px] max-w-[220px] font-semibold text-[11px] uppercase tracking-wide bg-[#1b2635] border-b border-[#2a3a58]" style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.06)' }}>Account</th>
+                     <th className="sticky left-8 z-30 py-1.5 px-3 text-left text-[#94a3b8] w-[220px] min-w-[220px] max-w-[220px] font-semibold text-[11px] uppercase tracking-wide bg-[#1b2635] border-b border-[#2a3a58]" style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.3)' }}>Account</th>
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         const isExcluded = excludedColumns.has(colIdx);
@@ -2196,7 +2196,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                          <td className={cn(
                            "sticky left-8 z-10 py-1 px-3 w-[220px] min-w-[220px] max-w-[220px] font-medium text-[#e5e7eb] border-b border-[#2a3a58]",
                            stickyBg,
-                         )} style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.06)' }}>
+                         )} style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.3)' }}>
                             <div className="flex items-center gap-1.5 overflow-hidden">
                               {isMappedRow && !isHeaderRow && (
                                 <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
