@@ -75,6 +75,11 @@ function formatDealType(dealType: string | null): string {
   return dealType.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
+function formatStageLabel(stage: string): string {
+  if (!stage) return '';
+  return stage.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
 function formatValue(value: number | null): string {
   if (!value) return '—';
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -162,7 +167,7 @@ function buildEmailHtml(
         </table>
         <div style="margin-top: 6px; margin-bottom: 8px;">
           ${reasonBadges}
-          <span style="display: inline-block; background: #f3f4f6; color: #374151; font-size: 12px; padding: 2px 8px; border-radius: 4px; margin-left: 4px;">${deal.stage}</span>
+          <span style="display: inline-block; background: #ede9fe; color: #6d28d9; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 4px; margin-left: 4px;">${formatStageLabel(deal.stage)}</span>
         </div>
         ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
         ${flagNotesHtml}
