@@ -187,6 +187,7 @@ function buildEmailHtml(
         <div style="margin-top: 6px; margin-bottom: 8px;">
           ${reasonBadges}
           <span style="display: inline-block; background: ${borderColor}15; color: ${borderColor}; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${daysSinceUpdate}d inactive</span>
+          ${dealTypeTags}
         </div>
         ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
         ${flagNotesHtml}
