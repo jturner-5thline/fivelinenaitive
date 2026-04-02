@@ -131,7 +131,7 @@ function buildEmailHtml(
     if (deal.manager) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Manager:</strong> ${deal.manager}</td>`);
     if (deal.analyst) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Analyst:</strong> ${deal.analyst}</td>`);
     if (deal.closing_date) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Closing:</strong> ${formatDate(deal.closing_date)}</td>`);
-    if (deal.contact) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Contact:</strong> ${deal.contact}</td>`);
+    
 
     let detailGrid = '';
     for (let i = 0; i < detailRows.length; i += 2) {
