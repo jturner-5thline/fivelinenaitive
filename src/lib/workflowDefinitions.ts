@@ -389,16 +389,7 @@ registerWorkflow('agreement_pending_followup', {
   triggerFilter: { to_stage: 'agreement_pending' },
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
-    // Pre-condition: check agreement_sent
-    const { data: mainDeal } = await supabase
-      .from('deals')
-      .select('agreement_sent')
-      .eq('id', deal.id)
-      .maybeSingle();
-    if (!mainDeal?.agreement_sent) {
-      console.warn('[WF] agreement_pending_followup: agreement not sent yet, skipping');
-      return;
-    }
+    // No pre-condition needed — entering "agreement pending" stage is sufficient to trigger follow-up
 
     await createWorkflowTask({
       dealId: deal.id, title: 'Follow up on agreement',
