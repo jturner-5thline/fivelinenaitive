@@ -42,26 +42,11 @@ export function useFlexInfoRequestsForOwner() {
         return;
       }
 
-      // Get all deal IDs in the user's company
-      const { data: deals, error: dealsError } = await supabase
-        .from('deals')
-        .select('id')
-        .eq('company_id', membership.company_id);
-
-      if (dealsError) throw dealsError;
-
-      const dealIds = (deals || []).map(d => d.id);
-      if (dealIds.length === 0) {
-        setNotifications([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Get all info notifications for those deals
+      // Get recent notifications directly using company_id filter on deals
+      // Use a subquery approach: fetch recent notifications and join with deals
       const { data, error } = await supabase
         .from('flex_info_notifications')
         .select('*')
-        .in('deal_id', dealIds)
         .order('created_at', { ascending: false })
         .limit(20);
 

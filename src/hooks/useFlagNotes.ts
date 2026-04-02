@@ -27,7 +27,7 @@ export function useFlagNotes(dealId: string | null) {
 
     try {
       const { data, error } = await supabase
-        .from('deal_flag_notes' as any)
+        .from('deal_flag_notes')
         .select('*')
         .eq('deal_id', dealId)
         .order('created_at', { ascending: false });
@@ -53,7 +53,7 @@ export function useFlagNotes(dealId: string | null) {
 
     try {
       const { error } = await supabase
-        .from('deal_flag_notes' as any)
+        .from('deal_flag_notes')
         .insert({
           deal_id: dealId,
           note: note.trim(),
@@ -72,7 +72,7 @@ export function useFlagNotes(dealId: string | null) {
     if (!user) return;
     try {
       const { error } = await supabase
-        .from('deal_flag_notes' as any)
+        .from('deal_flag_notes')
         .update({
           resolved: true,
           resolved_at: new Date().toISOString(),
@@ -90,7 +90,7 @@ export function useFlagNotes(dealId: string | null) {
   const deleteFlagNote = useCallback(async (noteId: string) => {
     try {
       const { error } = await supabase
-        .from('deal_flag_notes' as any)
+        .from('deal_flag_notes')
         .delete()
         .eq('id', noteId);
 
