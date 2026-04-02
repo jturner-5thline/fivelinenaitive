@@ -116,7 +116,7 @@ function getReasonBadge(reason: string): string {
   const colors: Record<string, { bg: string; text: string }> = {
     'Stale': { bg: '#fef3c7', text: '#92400e' },
     'Flagged': { bg: '#fee2e2', text: '#991b1b' },
-    'Lenders Need Updating': { bg: '#dbeafe', text: '#1e40af' },
+    'Lenders Need Updating': { bg: '#fff7ed', text: '#c2410c' },
   };
   const c = colors[reason] || { bg: '#f3f4f6', text: '#374151' };
   return `<span style="display: inline-block; background: ${c.bg}; color: ${c.text}; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${reason}</span>`;
@@ -167,7 +167,7 @@ function buildEmailHtml(
 
     const statusNoteText = deal.latest_status_note || '';
     const statusNoteSnippet = statusNoteText
-      ? `<p style="margin: 8px 0 0; font-size: 12px; color: #6b7280; line-height: 1.4; border-top: 1px solid #f3f4f6; padding-top: 8px;"><strong style="color: #374151;">Status Note:</strong> ${statusNoteText.substring(0, 150)}${statusNoteText.length > 150 ? '…' : ''}</p>`
+      ? `<p style="margin: 4px 0 0; font-size: 12px; color: #6b7280; line-height: 1.4;">${statusNoteText.substring(0, 150)}${statusNoteText.length > 150 ? '…' : ''}</p>`
       : '';
 
     return `
@@ -175,7 +175,8 @@ function buildEmailHtml(
         <table style="width: 100%;">
           <tr>
             <td style="vertical-align: top;">
-              <strong style="font-size: 16px; color: #111827;">${deal.company}</strong>
+              <strong style="font-size: 21px; color: #111827;">${deal.company}</strong>
+              ${statusNoteSnippet}
             </td>
             <td style="text-align: right; vertical-align: top;">
               <span style="display: inline-block; background: ${deal.status === 'at-risk' ? '#fef3c7' : deal.status === 'off-track' ? '#fee2e2' : '#dcfce7'}; color: ${deal.status === 'at-risk' ? '#92400e' : deal.status === 'off-track' ? '#991b1b' : '#166534'}; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 4px;">${deal.status === 'on-track' ? 'On Track' : deal.status === 'at-risk' ? 'At Risk' : deal.status === 'off-track' ? 'Off Track' : deal.status === 'on-hold' ? 'On Hold' : deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}</span>
@@ -186,13 +187,12 @@ function buildEmailHtml(
         </table>
         <div style="margin-top: 6px; margin-bottom: 8px;">
           ${reasonBadges}
-          <span style="display: inline-block; background: ${borderColor}15; color: ${borderColor}; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${daysSinceUpdate}d inactive</span>
+          <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${daysSinceUpdate}d inactive</span>
           ${dealTypeTags}
         </div>
         ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
         ${flagNotesHtml}
         ${lenderHtml}
-        ${statusNoteSnippet}
         <div style="margin-top: 10px;">
           <a href="https://fivelinenaitive.lovable.app/deals/${deal.id}" style="color: #7c3aed; font-size: 13px; font-weight: 500; text-decoration: none;">View Deal →</a>
         </div>
