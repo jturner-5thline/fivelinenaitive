@@ -142,7 +142,9 @@ function buildEmailHtml(
     const isStale = deal.attention_reasons.includes('Stale');
     const borderColor = isFlagged ? '#dc2626' : isStale ? (daysSinceUpdate >= thresholdDays * 2 ? '#dc2626' : daysSinceUpdate >= thresholdDays * 1.5 ? '#ea580c' : '#f59e0b') : '#3b82f6';
 
-    const reasonBadges = deal.attention_reasons.map(r => getReasonBadge(r)).join('');
+    const reasonBadges = deal.attention_reasons.filter(r => r !== 'Lenders Need Updating').map(r => getReasonBadge(r)).join('');
+    const hasLendersNeedUpdating = deal.attention_reasons.includes('Lenders Need Updating');
+    const lendersBadge = hasLendersNeedUpdating ? getReasonBadge('Lenders Need Updating') : '';
 
     const detailRows: string[] = [];
     if (deal.value) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Value:</strong> ${formatValue(deal.value)}</td>`);
@@ -176,6 +178,8 @@ function buildEmailHtml(
           <tr>
             <td style="vertical-align: top;">
               <strong style="font-size: 21px; color: #111827;">${deal.company}</strong>
+              <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-left: 8px; vertical-align: middle;">${daysSinceUpdate}d inactive</span>
+              ${lendersBadge ? `<span style="vertical-align: middle; margin-left: 4px;">${lendersBadge}</span>` : ''}
               ${statusNoteSnippet}
             </td>
             <td style="text-align: right; vertical-align: top;">
@@ -187,7 +191,6 @@ function buildEmailHtml(
         </table>
         <div style="margin-top: 6px; margin-bottom: 8px;">
           ${reasonBadges}
-          <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${daysSinceUpdate}d inactive</span>
           ${dealTypeTags}
         </div>
         ${detailGrid ? `<table style="width: 100%; border-collapse: collapse;">${detailGrid}</table>` : ''}
