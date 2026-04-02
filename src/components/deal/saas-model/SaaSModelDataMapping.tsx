@@ -2027,12 +2027,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   </Button>
                 </div>
               </div>
-              <div className="h-[500px] overflow-auto relative" style={{ fontSize: `${zoomLevel}%` }}>
-               <table className="w-max text-[11px] border-collapse" style={{ fontSize: 'inherit' }}>
-                 <thead className="sticky top-0 z-20 bg-secondary/60 backdrop-blur-sm">
+               <div className="h-[500px] overflow-auto relative" style={{ fontSize: `${zoomLevel}%` }}>
+               <table className="w-max text-[13px] border-collapse" style={{ fontSize: 'inherit' }}>
+                 <thead className="sticky top-0 z-20 bg-[#F9FAFB]">
                    <tr>
-                     <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground/50 text-[10px] bg-secondary/80">#</th>
-                     <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] font-semibold text-[11px] bg-secondary/80" style={{ boxShadow: '2px 0 8px -2px hsl(0 0% 0% / 0.15)' }}>Account Name</th>
+                     <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-[#9CA3AF] text-[10px] bg-[#F9FAFB] border-b border-[#E5E7EB]">#</th>
+                     <th className="sticky left-8 z-30 py-1.5 px-3 text-left text-[#6B7280] w-[220px] min-w-[220px] max-w-[220px] font-semibold text-[11px] uppercase tracking-wide bg-[#F9FAFB] border-b border-[#E5E7EB]" style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.06)' }}>Account</th>
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         const isExcluded = excludedColumns.has(colIdx);
