@@ -1093,8 +1093,7 @@ Return ONLY a valid JSON array.`;
       throw new Error("Failed to extract write-up");
     }
 
-    const aiData = await aiResponse.json();
-    let extractedContent = aiData.choices?.[0]?.message?.content || "[]";
+    let extractedContent = claudeResult.content || "[]";
     extractedContent = extractedContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     let extractedFields = [];
