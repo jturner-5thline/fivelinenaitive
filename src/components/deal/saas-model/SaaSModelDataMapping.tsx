@@ -2421,7 +2421,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         }
       }}>
         <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 bg-secondary/60 backdrop-blur-xl border-border/[0.06]">
-          <DialogHeader className="flex-shrink-0 px-4 py-3 border-b">
+          <DialogHeader className="flex-shrink-0 px-4 py-3 border-b border-border/[0.06]">
             <div className="flex items-center justify-between">
               <DialogTitle className="truncate max-w-[500px] text-base">
                 {selectedFile?.file.name}
