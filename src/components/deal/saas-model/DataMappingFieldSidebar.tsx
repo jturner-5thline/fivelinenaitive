@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Circle, Sparkles, Check, X, Save, Loader2, Search, Trash2, Wand2 } from 'lucide-react';
+import { CheckCircle2, Circle, Sparkles, Check, X, Save, Loader2, Search, Trash2, Wand2, ChevronDown, ArrowLeft, CornerDownRight } from 'lucide-react';
 import { IS_FIELDS, BS_FIELDS, type FieldMapping } from './types';
 import { IS_SECTIONS, BS_SECTIONS, getConfidencePct, type AutoMapResult } from './dataMappingUtils';
 import { formatUSD } from '@/lib/formatters/currency';
@@ -67,6 +68,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   const [filterMode, setFilterMode] = useState<'all' | 'mapped' | 'unmapped'>('all');
   const [focusedFieldIdx, setFocusedFieldIdx] = useState<number>(-1);
   const [dragOverField, setDragOverField] = useState<string | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const allFields = [...IS_FIELDS, ...BS_FIELDS].filter(f => !enabledFields || enabledFields.has(f)) as string[];
@@ -75,7 +77,6 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   const enabledMappedCount = Object.keys(fieldMappings).filter(f => !enabledFields || enabledFields.has(f)).length;
   const unmappedCount = totalFields - enabledMappedCount;
 
-  // Build a flat list of visible fields for keyboard navigation
   const visibleFields = allFields.filter(field => {
     const matchesSearch = !searchQuery || field.toLowerCase().includes(searchQuery.toLowerCase());
     const isMapped = !!fieldMappings[field];
@@ -85,6 +86,71 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   });
 
   const focusedField = focusedFieldIdx >= 0 && focusedFieldIdx < visibleFields.length ? visibleFields[focusedFieldIdx] : null;
+
+  // ── Row-selected mode info ──
+  const isRowSelected = selectedRows.size > 0;
+
+  const selectedRowInfo = useMemo(() => {
+    if (selectedRows.size === 0 || !selectedFile) return null;
+    const sheet = selectedFile.sheets[activeSheet];
+    if (!sheet) return null;
+
+    if (selectedRows.size === 1) {
+      const firstRowIdx = Array.from(selectedRows)[0];
+      if (!sheet.data[firstRowIdx]) return null;
+      const row = sheet.data[firstRowIdx];
+      const accountName = row[0] !== null && row[0] !== undefined ? String(row[0]) : `Row ${firstRowIdx + 1}`;
+      let lastValue: number | null = null;
+      for (let c = row.length - 1; c >= 1; c--) {
+        const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '').replace(/[,$]/g, ''));
+        if (!isNaN(val)) { lastValue = val; break; }
+      }
+      // Get current mapping status
+      const currentMapping = Object.entries(fieldMappings).find(([, maps]) =>
+        maps.some(m => m.rowIdx === firstRowIdx && m.sheet === sheet.name)
+      );
+      // Get suggestion for this row
+      const rowSuggestion = suggestions.find(s => s.rowIdx === firstRowIdx && s.status === 'pending');
+      // Get pending auto-map for this row
+      const pendingField = Object.entries(pendingAutoMaps).find(([, v]) => v.rowIdx === firstRowIdx);
+      return { accountName, lastValue, rowIdx: firstRowIdx, count: 1, currentMapping, rowSuggestion, pendingField };
+    }
+
+    const rowIndices = Array.from(selectedRows).sort((a, b) => a - b);
+    const names: string[] = [];
+    rowIndices.forEach(idx => {
+      const row = sheet.data[idx];
+      if (!row) return;
+      names.push(row[0] !== null && row[0] !== undefined ? String(row[0]) : `Row ${idx + 1}`);
+    });
+    return { accountName: `${selectedRows.size} rows selected`, lastValue: null, rowIdx: rowIndices[0], count: selectedRows.size, names, currentMapping: undefined, rowSuggestion: undefined, pendingField: undefined };
+  }, [selectedRows, selectedFile, activeSheet, fieldMappings, suggestions, pendingAutoMaps]);
+
+  // ── Ranked likely fields for row-selected mode ──
+  const rankedFields = useMemo(() => {
+    if (!isRowSelected || !selectedRowInfo) return [];
+    const { rowSuggestion, pendingField, currentMapping } = selectedRowInfo;
+    const suggested = rowSuggestion?.suggestedField;
+    const pending = pendingField?.[0];
+    const current = currentMapping?.[0];
+
+    // Collect top candidates: suggestion, pending, then unmapped fields
+    const candidates: { field: string; reason: string; priority: number }[] = [];
+    if (suggested && (!enabledFields || enabledFields.has(suggested))) {
+      candidates.push({ field: suggested, reason: 'Claude suggestion', priority: 0 });
+    }
+    if (pending && pending !== suggested && (!enabledFields || enabledFields.has(pending))) {
+      candidates.push({ field: pending, reason: 'Auto-mapped', priority: 1 });
+    }
+    if (current && current !== suggested && current !== pending && (!enabledFields || enabledFields.has(current))) {
+      candidates.push({ field: current, reason: 'Currently mapped', priority: -1 });
+    }
+    // Add a few unmapped fields from the same section area
+    const unmapped = allFields.filter(f => !fieldMappings[f] && f !== suggested && f !== pending && f !== current);
+    unmapped.slice(0, 4).forEach(f => candidates.push({ field: f, reason: 'Unmapped', priority: 2 }));
+
+    return candidates.sort((a, b) => a.priority - b.priority).slice(0, 6);
+  }, [isRowSelected, selectedRowInfo, allFields, fieldMappings, enabledFields]);
 
   useImperativeHandle(ref, () => ({
     focusPanel: () => {
@@ -99,6 +165,11 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
       });
     },
   }), [focusedField, focusedFieldIdx, visibleFields]);
+
+  // Reset expanded section when row selection changes
+  useEffect(() => {
+    setExpandedSection(null);
+  }, [selectedRows]);
 
   const handlePanelKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -116,21 +187,16 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
       setFocusedFieldIdx(-1);
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && focusedField && fieldMappings[focusedField]) {
       e.preventDefault();
-      // Remove last mapping from focused field
       const mappings = fieldMappings[focusedField];
-      if (mappings.length > 0) {
-        onRemoveMapping(focusedField, mappings.length - 1);
-      }
+      if (mappings.length > 0) onRemoveMapping(focusedField, mappings.length - 1);
     }
   }, [visibleFields.length, focusedField, selectedRows, onAssignField, onDeselectRows, fieldMappings, onRemoveMapping]);
 
-  const getAutoMapConfidence = (fieldName: string): AutoMapResult | undefined => {
-    return autoMapResults.find(r => r.fieldName === fieldName);
-  };
+  const getAutoMapConfidence = (fieldName: string): AutoMapResult | undefined =>
+    autoMapResults.find(r => r.fieldName === fieldName);
 
-  const getFieldSuggestion = (field: string): MappingSuggestion | undefined => {
-    return suggestions.find(s => s.suggestedField === field && s.status === 'pending');
-  };
+  const getFieldSuggestion = (field: string): MappingSuggestion | undefined =>
+    suggestions.find(s => s.suggestedField === field && s.status === 'pending');
 
   const getSampleValue = (fieldName: string): number | null => {
     const mappings = fieldMappings[fieldName];
@@ -148,11 +214,9 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
     return total;
   };
 
-  // Get all numeric values from mapped rows for sparkline
   const getFieldTrendData = (fieldName: string): number[] => {
     const mappings = fieldMappings[fieldName];
     if (!mappings || !selectedFile) return [];
-    // Sum values across all mapped rows per column
     const colValues: Record<number, number> = {};
     mappings.forEach(m => {
       const sheet = selectedFile.sheets.find(s => s.name === m.sheet) || selectedFile.sheets[0];
@@ -160,57 +224,12 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
       if (!row) return;
       for (let c = 1; c < row.length; c++) {
         const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '').replace(/[,$]/g, ''));
-        if (!isNaN(val)) {
-          colValues[c] = (colValues[c] || 0) + val;
-        }
+        if (!isNaN(val)) colValues[c] = (colValues[c] || 0) + val;
       }
     });
     const cols = Object.keys(colValues).map(Number).sort((a, b) => a - b);
     return cols.map(c => colValues[c]);
   };
-
-  // Get info about selected rows for the banner
-  const selectedRowInfo = (() => {
-    if (selectedRows.size === 0 || !selectedFile) return null;
-    const sheet = selectedFile.sheets[activeSheet];
-    if (!sheet) return null;
-
-    if (selectedRows.size === 1) {
-      const firstRowIdx = Array.from(selectedRows)[0];
-      if (!sheet.data[firstRowIdx]) return null;
-      const row = sheet.data[firstRowIdx];
-      const accountName = row[0] !== null && row[0] !== undefined ? String(row[0]) : `Row ${firstRowIdx + 1}`;
-      let lastValue: number | null = null;
-      for (let c = row.length - 1; c >= 1; c--) {
-        const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '').replace(/[,$]/g, ''));
-        if (!isNaN(val)) { lastValue = val; break; }
-      }
-      return { accountName, lastValue, rowIdx: firstRowIdx, count: 1 };
-    }
-
-    // Multi-row: show count and sum
-    const rowIndices = Array.from(selectedRows).sort((a, b) => a - b);
-    let totalValue = 0;
-    let hasValue = false;
-    const names: string[] = [];
-    rowIndices.forEach(idx => {
-      const row = sheet.data[idx];
-      if (!row) return;
-      names.push(row[0] !== null && row[0] !== undefined ? String(row[0]) : `Row ${idx + 1}`);
-      for (let c = row.length - 1; c >= 1; c--) {
-        const val = typeof row[c] === 'number' ? row[c] as number : parseFloat(String(row[c] || '').replace(/[,$]/g, ''));
-        if (!isNaN(val)) { totalValue += val; hasValue = true; break; }
-      }
-    });
-
-    return {
-      accountName: `${selectedRows.size} rows selected`,
-      lastValue: hasValue ? totalValue : null,
-      rowIdx: rowIndices[0],
-      count: selectedRows.size,
-      names,
-    };
-  })();
 
   const filterField = (field: string): boolean => {
     if (enabledFields && !enabledFields.has(field)) return false;
@@ -221,7 +240,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
     return matchesSearch;
   };
 
-  const renderFieldRow = (field: string) => {
+  const renderFieldRow = (field: string, compact = false) => {
     if (!filterField(field)) return null;
     const mapped = fieldMappings[field];
     const isMapped = Boolean(mapped);
@@ -255,10 +274,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
         const idx = visibleFields.indexOf(field);
         if (idx >= 0) setFocusedFieldIdx(idx);
         onFieldSelect?.(field);
-        // If rows are selected and field is unmapped, assign immediately on click
-        if (selectedRows.size > 0 && !isMapped && !hasPendingAuto) {
-          onAssignField(field);
-        }
+        if (selectedRows.size > 0 && !isMapped && !hasPendingAuto) onAssignField(field);
       }}
       style={{ cursor: selectedRows.size > 0 && !isMapped && !hasPendingAuto ? 'pointer' : undefined }}
       onDragOver={e => {
@@ -286,14 +302,13 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
             : fieldSuggestion ? <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
             : <Circle className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />}
           <span className={cn("text-xs truncate", isMapped && "font-medium")}>{field}</span>
-          {/* Pending auto-map amber tag */}
-          {hasPendingAuto && !isMapped && (
+          {hasPendingAuto && !isMapped && !compact && (
             <Badge variant="outline" className="text-[8px] h-4 px-1.5 shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 gap-0.5">
               <Wand2 className="h-2 w-2" />
               {pendingAuto.label}
             </Badge>
           )}
-          {isMapped && (() => {
+          {isMapped && !compact && (() => {
             const autoMap = getAutoMapConfidence(field);
             if (autoMap) {
               const pct = getConfidencePct(autoMap.confidence);
@@ -308,12 +323,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
             }
             return null;
           })()}
-          {fieldSuggestion && !isMapped && !hasPendingAuto && (
-            <Badge variant="outline" className="text-[8px] h-4 px-1 bg-primary/5 text-primary border-primary/20 shrink-0">
-              Claude · Row {fieldSuggestion.rowIdx + 1}
-            </Badge>
-          )}
-          {mapped && (
+          {mapped && !compact && (
             <div className="flex gap-1 flex-shrink-0 flex-wrap">
               {mapped.map((m, i) => (
                 <Badge key={i} variant="secondary" className="text-[9px] h-4 gap-1 max-w-[100px] truncate">
@@ -325,43 +335,39 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
           )}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {sampleVal !== null && (
+          {sampleVal !== null && !compact && (
             <span className="text-[10px] tabular-nums text-muted-foreground">{formatUSD(sampleVal)}</span>
           )}
-          {/* Pending auto-map accept/reject buttons */}
           {hasPendingAuto && !isMapped && (
             <div className="flex items-center gap-0.5">
-              <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10" onClick={() => onAcceptAutoMap(field)}>
+              <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10" onClick={e => { e.stopPropagation(); onAcceptAutoMap(field); }}>
                 <Check className="h-3 w-3 mr-0.5" /> Accept
               </Button>
-              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive" onClick={() => onRejectAutoMap(field)}>
+              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive" onClick={e => { e.stopPropagation(); onRejectAutoMap(field); }}>
                 <X className="h-3 w-3" />
               </Button>
             </div>
           )}
           {fieldSuggestion && !isMapped && !hasPendingAuto && (
-            <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 text-primary" onClick={() => onAcceptSuggestion(fieldSuggestion.rowIdx)}>
+            <Button size="sm" variant="ghost" className="h-5 text-[10px] px-2 text-primary" onClick={e => { e.stopPropagation(); onAcceptSuggestion(fieldSuggestion.rowIdx); }}>
               <Check className="h-3 w-3 mr-0.5" /> Apply
             </Button>
           )}
-          {selectedRows.size > 0 && !hasPendingAuto && !isMapped && (
+          {selectedRows.size > 0 && !hasPendingAuto && !isMapped && !compact && (
             <span className="text-[10px] px-2 text-muted-foreground group-hover:text-primary transition-colors">Assign</span>
           )}
         </div>
       </div>
     );
 
-    // Wrap mapped fields in HoverCard for data preview
-    if (isMapped && mapped) {
+    if (isMapped && mapped && !compact) {
       const trendData = getFieldTrendData(field);
       const min = trendData.length > 0 ? Math.min(...trendData) : 0;
       const max = trendData.length > 0 ? Math.max(...trendData) : 0;
       const avg = trendData.length > 0 ? trendData.reduce((a, b) => a + b, 0) / trendData.length : 0;
       return (
         <HoverCard key={field} openDelay={300} closeDelay={100}>
-          <HoverCardTrigger asChild>
-            {rowContent}
-          </HoverCardTrigger>
+          <HoverCardTrigger asChild>{rowContent}</HoverCardTrigger>
           <HoverCardContent side="left" align="center" className="w-64 p-3 bg-popover border-border/[0.08] shadow-xl">
             <div className="space-y-2">
               <div>
@@ -399,7 +405,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
     return rowContent;
   };
 
-  const renderFieldSections = (sections: { label: string; fields: string[] }[]) => (
+  const renderFieldSections = (sections: { label: string; fields: string[] }[], collapseByDefault = false) => (
     <div className="space-y-1">
       {sections.map(section => {
         const sectionEnabled = section.fields.filter(f => !enabledFields || enabledFields.has(f));
@@ -408,6 +414,35 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
         const mapped = sectionEnabled.filter(f => !!fieldMappings[f]).length;
         const total = sectionEnabled.length;
         const pct = total > 0 ? (mapped / total) * 100 : 0;
+        const isExpanded = collapseByDefault ? expandedSection === section.label : expandedSection !== null ? expandedSection === section.label : true;
+
+        if (collapseByDefault) {
+          return (
+            <Collapsible key={section.label} open={isExpanded} onOpenChange={(open) => setExpandedSection(open ? section.label : null)}>
+              <CollapsibleTrigger className="w-full">
+                <div className="px-2 py-2 bg-secondary/30 rounded-md mb-1 flex items-center justify-between gap-2 hover:bg-secondary/40 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <ChevronDown className={cn("h-3 w-3 text-muted-foreground transition-transform", isExpanded && "rotate-0", !isExpanded && "-rotate-90")} />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{section.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1 w-12 rounded-full overflow-hidden bg-muted/20">
+                      <div className="h-full rounded-full transition-all duration-500" style={{
+                        width: `${pct}%`,
+                        backgroundColor: pct === 100 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.6)'
+                      }} />
+                    </div>
+                    <span className="text-[9px] tabular-nums text-muted-foreground">{mapped}/{total}</span>
+                  </div>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                {sectionEnabled.map(field => renderFieldRow(field))}
+              </CollapsibleContent>
+            </Collapsible>
+          );
+        }
+
         return (
           <div key={section.label}>
             <div className="px-2 py-2 bg-secondary/30 rounded-md mb-1 flex items-center justify-between gap-2">
@@ -429,6 +464,266 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
     </div>
   );
 
+  // ═══════════════════════════════════════════
+  // ROW-SELECTED MODE
+  // ═══════════════════════════════════════════
+  const renderRowSelectedMode = () => {
+    if (!selectedRowInfo) return null;
+    const { accountName, lastValue, rowSuggestion, pendingField, currentMapping } = selectedRowInfo;
+    const isSingle = selectedRowInfo.count === 1;
+
+    return (
+      <div className="space-y-3">
+        {/* Back / deselect header */}
+        <button
+          onClick={onDeselectRows}
+          className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+        >
+          <ArrowLeft className="h-3 w-3" />
+          Back to all fields
+        </button>
+
+        {/* Selected row summary card */}
+        <div className="rounded-lg bg-secondary/50 border border-primary/10 p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 mb-0.5">Source Row</p>
+              <p className="text-sm font-medium truncate">{accountName}</p>
+            </div>
+            {isSingle && lastValue !== null && (
+              <span className="text-xs tabular-nums text-muted-foreground shrink-0">{formatUSD(lastValue)}</span>
+            )}
+          </div>
+
+          {/* Current status */}
+          {isSingle && currentMapping && (
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+              <span className="text-muted-foreground">Mapped to</span>
+              <span className="font-medium text-emerald-400">{currentMapping[0]}</span>
+            </div>
+          )}
+          {isSingle && !currentMapping && !rowSuggestion && !pendingField && (
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <Circle className="h-3 w-3 text-muted-foreground/40" />
+              <span className="text-muted-foreground">Unmapped — select a field below</span>
+            </div>
+          )}
+
+          {/* Multi-row names */}
+          {!isSingle && (selectedRowInfo as any).names && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {((selectedRowInfo as any).names as string[]).slice(0, 5).map((n: string, i: number) => (
+                <Badge key={i} variant="outline" className="text-[8px] h-3.5 px-1">{n}</Badge>
+              ))}
+              {((selectedRowInfo as any).names as string[]).length > 5 && (
+                <span className="text-[8px] text-muted-foreground">+{((selectedRowInfo as any).names as string[]).length - 5}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Claude suggestion card */}
+        {isSingle && rowSuggestion && (
+          <div className="rounded-lg bg-primary/[0.06] border border-primary/15 p-3 space-y-2">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span className="text-[10px] font-semibold text-primary">Claude Suggestion</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CornerDownRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+              <span className="text-xs font-medium">{rowSuggestion.suggestedField}</span>
+              {rowSuggestion.confidence && (
+                <Badge variant="outline" className="text-[8px] h-4 px-1 bg-primary/5 text-primary border-primary/20">
+                  {Math.round(rowSuggestion.confidence * 100)}%
+                </Badge>
+              )}
+            </div>
+            {rowSuggestion.reasoning && (
+              <p className="text-[10px] text-muted-foreground/70 leading-relaxed">{rowSuggestion.reasoning}</p>
+            )}
+            <div className="flex items-center gap-2 pt-1">
+              <Button size="sm" className="h-6 text-[10px] px-3 gap-1 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => onAcceptSuggestion(rowSuggestion.rowIdx)}>
+                <Check className="h-3 w-3" /> Accept
+              </Button>
+              <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-destructive">
+                <X className="h-3 w-3 mr-0.5" /> Reject
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Pending auto-map card */}
+        {isSingle && pendingField && !rowSuggestion && (
+          <div className="rounded-lg bg-amber-500/[0.06] border border-amber-500/15 p-3 space-y-2">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Wand2 className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-[10px] font-semibold text-amber-500">Auto-Map Suggestion</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CornerDownRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+              <span className="text-xs font-medium">{pendingField[0]}</span>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Button size="sm" className="h-6 text-[10px] px-3 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => onAcceptAutoMap(pendingField[0])}>
+                <Check className="h-3 w-3" /> Accept
+              </Button>
+              <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-destructive" onClick={() => onRejectAutoMap(pendingField[0])}>
+                <X className="h-3 w-3 mr-0.5" /> Reject
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Ranked likely fields */}
+        {rankedFields.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+              {currentMapping ? 'Remap to' : 'Assign to'}
+            </p>
+            {rankedFields.map(({ field, reason }) => (
+              <div key={field}>
+                {renderFieldRow(field, true)}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Browse all fields — collapsed */}
+        <Collapsible>
+          <CollapsibleTrigger className="w-full">
+            <div className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/20 transition-colors">
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground">Browse all fields</span>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-1.5">
+              <div className="relative mb-2">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                <Input className="h-7 text-xs pl-7" placeholder="Search fields..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+              </div>
+              <ScrollArea className="h-[280px]">
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Income Statement</h4>
+                    {renderFieldSections(IS_SECTIONS, true)}
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Balance Sheet</h4>
+                    {renderFieldSections(BS_SECTIONS, true)}
+                  </div>
+                </div>
+              </ScrollArea>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════════
+  // DEFAULT MODE (no row selected)
+  // ═══════════════════════════════════════════
+  const renderDefaultMode = () => (
+    <>
+      {/* Search + Filter */}
+      <div className="mb-3 space-y-2">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+          <Input className="h-7 text-xs pl-7" placeholder="Search fields..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+        </div>
+        <div className="flex gap-1">
+          {(['all', 'mapped', 'unmapped'] as const).map(mode => (
+            <Button
+              key={mode}
+              variant={filterMode === mode ? 'default' : 'ghost'}
+              size="sm"
+              className="h-5 text-[10px] px-2 rounded-sm flex-1"
+              onClick={() => setFilterMode(mode)}
+            >
+              {mode === 'all' ? 'All' : mode === 'mapped' ? `Mapped (${enabledMappedCount})` : `Unmapped (${unmappedCount})`}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Auto-Map All button */}
+      {unmappedCount > 0 && pendingCount === 0 && (
+        <div className="mb-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-8 text-xs gap-2 border-amber-500/30 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/40"
+            onClick={onAutoMap}
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+            Auto-Map All ({unmappedCount} unmapped)
+          </Button>
+        </div>
+      )}
+
+      {/* Pending auto-map review banner */}
+      {pendingCount > 0 && (
+        <div className="mb-3 p-2.5 rounded-lg bg-warning/[0.05] border border-warning/[0.1] space-y-2">
+          <div className="flex items-center gap-2">
+            <Wand2 className="h-3.5 w-3.5 text-amber-500" />
+            <span className="text-xs text-amber-500 font-medium">
+              Auto-mapped {pendingCount} of {unmappedCount + pendingCount} unmapped
+            </span>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Review suggestions below.</p>
+          <div className="flex items-center gap-2">
+            <Button size="sm" className="h-6 text-[10px] px-3 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onAcceptAllAutoMaps}>
+              <Check className="h-3 w-3" /> Accept All ({pendingCount})
+            </Button>
+            <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-destructive" onClick={() => {
+              Object.keys(pendingAutoMaps).forEach(f => onRejectAutoMap(f));
+            }}>
+              Dismiss All
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Save progress bar */}
+      {mappedCount > 0 && (
+        <div className="mb-3 p-2.5 rounded-lg border border-border/[0.06] bg-secondary/20 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            <span><span className="font-medium text-foreground">{mappedCount}</span> {mappedCount === 1 ? 'field' : 'fields'} mapped</span>
+            {hasUnsavedMappings && (
+              <Badge variant="outline" className="text-[8px] h-4 px-1.5 bg-amber-500/10 text-amber-500 border-amber-500/20">Unsaved</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1.5 text-destructive hover:text-destructive" onClick={onClearAllMappings}>
+              <Trash2 className="h-3 w-3" />
+            </Button>
+            <Button size="sm" variant={hasUnsavedMappings ? "default" : "outline"} className="h-6 text-[10px] px-2.5 gap-1"
+              onClick={onSaveProgress} disabled={!hasUnsavedMappings || isSaving}>
+              {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <ScrollArea className="h-[500px]">
+        <div className="space-y-4">
+          <div>
+            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Income Statement</h4>
+            {renderFieldSections(IS_SECTIONS)}
+          </div>
+          <div>
+            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Balance Sheet</h4>
+            {renderFieldSections(BS_SECTIONS)}
+          </div>
+        </div>
+      </ScrollArea>
+    </>
+  );
+
   return (
     <Card className="border-border/[0.06] shadow-md">
       <CardContent className="p-3">
@@ -438,164 +733,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
           onKeyDown={handlePanelKeyDown}
           className="outline-none"
         >
-          {/* Search + Filter */}
-          <div className="mb-3 space-y-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
-              <Input
-                className="h-7 text-xs pl-7"
-                placeholder="Search fields..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            {/* Selected row banner */}
-            {selectedRowInfo && (
-              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-secondary/40 border border-primary/[0.08] border-l-[3px] border-l-primary/40">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-muted-foreground/70 leading-none mb-0.5">
-                    {selectedRowInfo.count > 1 ? 'Mapping (multi-row):' : 'Mapping:'}
-                  </p>
-                  <p className="text-xs font-medium truncate">
-                    {selectedRowInfo.accountName}
-                    {selectedRowInfo.lastValue !== null && (
-                      <span className="text-muted-foreground font-normal">
-                        {selectedRowInfo.count > 1 ? ` — Σ ${formatUSD(selectedRowInfo.lastValue)}` : ` — ${formatUSD(selectedRowInfo.lastValue)}`}
-                      </span>
-                    )}
-                  </p>
-                  {selectedRowInfo.count > 1 && (selectedRowInfo as any).names && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {((selectedRowInfo as any).names as string[]).slice(0, 5).map((n: string, i: number) => (
-                        <Badge key={i} variant="outline" className="text-[8px] h-3.5 px-1">{n}</Badge>
-                      ))}
-                      {((selectedRowInfo as any).names as string[]).length > 5 && (
-                        <span className="text-[8px] text-muted-foreground">+{((selectedRowInfo as any).names as string[]).length - 5}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground shrink-0" onClick={onDeselectRows}>
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
-
-            <div className="flex gap-1">
-              {(['all', 'mapped', 'unmapped'] as const).map(mode => (
-                <Button
-                  key={mode}
-                  variant={filterMode === mode ? 'default' : 'ghost'}
-                  size="sm"
-                  className="h-5 text-[10px] px-2 rounded-sm flex-1"
-                  onClick={() => setFilterMode(mode)}
-                >
-                  {mode === 'all' ? 'All' : mode === 'mapped' ? `Mapped (${enabledMappedCount})` : `Unmapped (${unmappedCount})`}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Auto-Map All button — shown when unmapped fields remain and no pending suggestions */}
-          {unmappedCount > 0 && pendingCount === 0 && (
-            <div className="mb-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full h-8 text-xs gap-2 border-amber-500/30 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/40"
-                onClick={onAutoMap}
-              >
-                <Wand2 className="h-3.5 w-3.5" />
-                Auto-Map All ({unmappedCount} unmapped)
-              </Button>
-            </div>
-          )}
-
-          {/* Pending auto-map review banner */}
-          {pendingCount > 0 && (
-            <div className="mb-3 p-2.5 rounded-lg bg-warning/[0.05] border border-warning/[0.1] space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Wand2 className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="text-xs text-amber-500 font-medium">
-                    Auto-mapped {pendingCount} of {unmappedCount + pendingCount} unmapped row{unmappedCount + pendingCount !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground">Review suggestions below. Accept or reject each one.</p>
-              <div className="flex items-center gap-2">
-                <Button size="sm" className="h-6 text-[10px] px-3 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onAcceptAllAutoMaps}>
-                  <Check className="h-3 w-3" /> Accept All ({pendingCount})
-                </Button>
-                <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-destructive" onClick={() => {
-                  Object.keys(pendingAutoMaps).forEach(f => onRejectAutoMap(f));
-                }}>
-                  Dismiss All
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Quick-assign for selected rows */}
-          {selectedRows.size > 0 && (
-            <div className="mb-3 p-2.5 rounded-lg bg-primary/[0.04] border border-primary/[0.08] space-y-2">
-              <div className="text-xs text-primary flex items-center gap-2">
-                <Check className="h-3.5 w-3.5" />
-                {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {allFields
-                  .filter(f => !fieldMappings[f])
-                  .slice(0, 12)
-                  .map(f => (
-                   <button key={f} onClick={() => onAssignField(f)}
-                     className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-medium bg-secondary/50 hover:bg-primary/10 border border-border/[0.06] hover:border-primary/20 transition-colors text-foreground/80">
-                      {f}
-                    </button>
-                  ))}
-                {allFields.filter(f => !fieldMappings[f]).length > 12 && (
-                  <span className="text-[9px] text-muted-foreground px-1 py-0.5">+{allFields.filter(f => !fieldMappings[f]).length - 12} more</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Save progress bar */}
-          {mappedCount > 0 && (
-            <div className="mb-3 p-2.5 rounded-lg border border-border/[0.06] bg-secondary/20 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                <span><span className="font-medium text-foreground">{mappedCount}</span> {mappedCount === 1 ? 'field' : 'fields'} mapped</span>
-                {hasUnsavedMappings && (
-                  <Badge variant="outline" className="text-[8px] h-4 px-1.5 bg-amber-500/10 text-amber-500 border-amber-500/20">Unsaved</Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1.5 text-destructive hover:text-destructive" onClick={onClearAllMappings}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-                <Button size="sm" variant={hasUnsavedMappings ? "default" : "outline"} className="h-6 text-[10px] px-2.5 gap-1"
-                  onClick={onSaveProgress} disabled={!hasUnsavedMappings || isSaving}>
-                  {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                  {isSaving ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <ScrollArea className="h-[500px]">
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Income Statement</h4>
-                {renderFieldSections(IS_SECTIONS)}
-              </div>
-              <div>
-                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Balance Sheet</h4>
-                {renderFieldSections(BS_SECTIONS)}
-              </div>
-            </div>
-          </ScrollArea>
+          {isRowSelected ? renderRowSelectedMode() : renderDefaultMode()}
         </div>
       </CardContent>
     </Card>
