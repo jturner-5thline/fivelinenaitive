@@ -357,7 +357,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                   <Sparkline data={trendData} type="area" width={220} height={36} color="hsl(var(--primary))" />
                 </div>
               )}
-              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/20">
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/[0.06]">
                 <div>
                   <p className="text-[9px] text-muted-foreground/60">Min</p>
                   <p className="text-[10px] font-medium tabular-nums">{formatUSD(min)}</p>
