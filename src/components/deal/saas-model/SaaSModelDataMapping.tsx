@@ -1777,9 +1777,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant={excludedColumns.size > 0 ? "outline" : "ghost"} size="sm" className={cn("h-7 w-7 p-0", excludedColumns.size > 0 && "text-warning border-warning/15")}>
-                      <Filter className="h-3.5 w-3.5" />
-                    </Button>
+                    <button className={cn("map-toolbar-btn h-6 w-6 p-0 justify-center", excludedColumns.size > 0 && "!border-[rgba(216,177,90,0.3)] !color-[var(--map-amber)]")} style={excludedColumns.size > 0 ? { color: 'var(--map-amber)', borderColor: 'rgba(216,177,90,0.3)' } : {}}>
+                      <Filter className="h-3 w-3" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">Column visibility {excludedColumns.size > 0 ? `(${excludedColumns.size} hidden)` : ''}</TooltipContent>
                 </Tooltip>
