@@ -2224,13 +2224,17 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                         <ContextMenu key={rowIdx}>
                           <ContextMenuTrigger asChild>
                         <tr
+                           data-row-idx={rowIdx}
                            className={cn(
                              "cursor-pointer transition-colors border-b border-[#2a3a58]",
                              rowBgClass, leftBorderClass,
+                             isLinkedFromField && !isSelected && !isFlashing && "map-row--linked-hover",
                              eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-[rgba(220,38,38,0.1)] ring-1 ring-inset ring-[rgba(220,38,38,0.3)]",
                              signFlipMode && signFlipSelectedRows.has(rowIdx) && "!bg-[rgba(217,119,6,0.1)] ring-1 ring-inset ring-[rgba(217,119,6,0.3)]",
                            )}
                           draggable={!isHeaderRow && !eraserMode && !signFlipMode}
+                          onMouseEnter={() => handleRowHover(rowIdx)}
+                          onMouseLeave={() => handleRowHover(null)}
                           onDragStart={e => {
                             if (isHeaderRow || eraserMode || signFlipMode) { e.preventDefault(); return; }
                             setDraggingRowIdx(rowIdx);
@@ -2247,7 +2251,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           onClick={e => {
                             if (signFlipMode) { handleSignFlipRowClick(rowIdx, e); return; }
                             if (eraserMode) { handleEraserRowClick(rowIdx, e); return; }
-                            if (!isHeaderRow) handleRowClick(rowIdx, e);
+                            if (!isHeaderRow) {
+                              handleRowClick(rowIdx, e);
+                              handleRowSelect(rowIdx);
+                            }
                           }}>
                           <td className={cn(
                             "sticky left-0 z-10 py-1 px-1 text-center text-[#64748b] text-[10px] border-b border-[#2a3a58]",
