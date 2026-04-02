@@ -142,7 +142,9 @@ function buildEmailHtml(
     const isStale = deal.attention_reasons.includes('Stale');
     const borderColor = isFlagged ? '#dc2626' : isStale ? (daysSinceUpdate >= thresholdDays * 2 ? '#dc2626' : daysSinceUpdate >= thresholdDays * 1.5 ? '#ea580c' : '#f59e0b') : '#3b82f6';
 
-    const reasonBadges = deal.attention_reasons.map(r => getReasonBadge(r)).join('');
+    const reasonBadges = deal.attention_reasons.filter(r => r !== 'Lenders Need Updating').map(r => getReasonBadge(r)).join('');
+    const hasLendersNeedUpdating = deal.attention_reasons.includes('Lenders Need Updating');
+    const lendersBadge = hasLendersNeedUpdating ? getReasonBadge('Lenders Need Updating') : '';
 
     const detailRows: string[] = [];
     if (deal.value) detailRows.push(`<td style="padding: 4px 0; color: #374151; font-size: 13px;"><strong style="color: #6b7280;">Value:</strong> ${formatValue(deal.value)}</td>`);
