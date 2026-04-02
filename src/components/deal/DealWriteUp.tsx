@@ -1086,7 +1086,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                       Auto-Fill from Deal Space
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Extract data from uploaded Deal Space documents</TooltipContent>
+                  <TooltipContent>
+                    <p>Extract data from uploaded Deal Space documents</p>
+                    <p className="text-[10px] opacity-70 mt-0.5">Powered by Claude</p>
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               )}
@@ -1114,7 +1117,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                       Generate AI Memo
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Generate a structured lender-ready memo from all deal data</TooltipContent>
+                  <TooltipContent>
+                    <p>Generate a structured lender-ready memo from all deal data</p>
+                    <p className="text-[10px] opacity-70 mt-0.5">Powered by Claude</p>
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               )}
@@ -1568,9 +1574,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               AI-Generated Lender Memo
+              <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Powered by Claude</span>
             </DialogTitle>
             <DialogDescription>
-              Structured memo generated from all deal data. You can regenerate individual sections.
+              Structured memo generated from all deal data using Claude AI. You can regenerate individual sections.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-1 max-h-[60vh] pr-4">

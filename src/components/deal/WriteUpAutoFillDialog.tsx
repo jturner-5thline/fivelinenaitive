@@ -167,6 +167,7 @@ export function WriteUpAutoFillDialog({
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               Auto-Fill from Deal Space
+              <span className="ml-1 text-[10px] font-normal text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Powered by Claude</span>
             </DialogTitle>
             <DialogDescription>
               No extractable data found in your deal space.
@@ -193,9 +194,10 @@ export function WriteUpAutoFillDialog({
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             Auto-Fill from Deal Space
+            <span className="ml-1 text-[10px] font-normal text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Powered by Claude</span>
           </DialogTitle>
           <DialogDescription>
-            AI extracted {extractedFields.length} field{extractedFields.length !== 1 ? 's' : ''} from {sourceDesc}. 
+            Claude extracted {extractedFields.length} field{extractedFields.length !== 1 ? 's' : ''} from {sourceDesc}. 
             Review each suggestion, then apply.
           </DialogDescription>
         </DialogHeader>
