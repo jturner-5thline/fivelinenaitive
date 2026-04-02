@@ -451,7 +451,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     } catch (err) {
       console.warn('Auto-save mappings failed:', err);
     }
-  }, [dealId, excludedColumns, flippedRows, flippedColumns]);
+  }, [dealId, excludedColumns, flippedRows, flippedColumns, enabledFields]);
 
   // Watch fieldMappings/excludedColumns/flippedRows/flippedColumns changes and auto-save with debounce
   useEffect(() => {
