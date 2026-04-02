@@ -53,7 +53,7 @@ export function useFlagNotes(dealId: string | null) {
 
     try {
       const { error } = await supabase
-        .from('deal_flag_notes' as any)
+        .from('deal_flag_notes')
         .insert({
           deal_id: dealId,
           note: note.trim(),
