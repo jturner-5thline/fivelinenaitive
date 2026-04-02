@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command, MessageSquare, History, Dice5, FileText } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command, MessageSquare, History, Dice5, FileText, Settings2 } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { useModelAnnotations } from '@/hooks/useModelAnnotations';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
@@ -24,19 +26,50 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 
-const TAB_LABELS: Record<string, string> = {
-  dashboard: 'Dashboard',
-  'income-statement': 'Income Statement',
-  'balance-sheet': 'Balance Sheet',
-  'data-mapping': 'Data Mapping',
-  sensitivity: 'Sensitivity',
-  'debt-servicing': 'Debt Servicing',
-  charts: 'Charts',
-  'credit-analysis': 'Credit Analysis',
-  'monte-carlo': 'Monte Carlo',
-  versioning: 'Versioning',
-  export: 'Export',
-};
+// ─── Tab definitions ────────────────────────────────────────────────
+interface TabDef {
+  key: string;
+  label: string;
+  icon: React.ElementType;
+  locked?: boolean; // locked tabs can't be hidden
+}
+
+const ALL_TABS: TabDef[] = [
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, locked: true },
+  { key: 'income-statement', label: 'Income Statement', icon: FileSpreadsheet },
+  { key: 'balance-sheet', label: 'Balance Sheet', icon: Wallet },
+  { key: 'data-mapping', label: 'Data Mapping', icon: Upload },
+  { key: 'sensitivity', label: 'Sensitivity', icon: TrendingDown },
+  { key: 'debt-servicing', label: 'Debt Servicing', icon: Landmark },
+  { key: 'charts', label: 'Charts', icon: BarChart3 },
+  { key: 'credit-analysis', label: 'Credit Analysis', icon: ShieldCheck },
+  { key: 'monte-carlo', label: 'Monte Carlo', icon: Dice5 },
+  { key: 'versioning', label: 'Versioning', icon: History },
+  { key: 'export', label: 'Export', icon: FileText },
+];
+
+const TAB_LABELS: Record<string, string> = Object.fromEntries(ALL_TABS.map(t => [t.key, t.label]));
+
+const STORAGE_KEY = 'naitive-analysis-visible-tabs';
+
+function loadVisibleTabs(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw) as string[];
+      // Always include locked tabs
+      const set = new Set(arr);
+      ALL_TABS.filter(t => t.locked).forEach(t => set.add(t.key));
+      return set;
+    }
+  } catch { /* ignore */ }
+  // Default: all visible
+  return new Set(ALL_TABS.map(t => t.key));
+}
+
+function saveVisibleTabs(tabs: Set<string>) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(tabs)));
+}
 
 interface SaaSModelTabProps {
   dealId: string;
@@ -52,30 +85,51 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   const annotationHook = useModelAnnotations(dealId);
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  // Tab visibility
+  const [visibleTabs, setVisibleTabs] = useState<Set<string>>(loadVisibleTabs);
+
+  const toggleTab = useCallback((key: string) => {
+    setVisibleTabs(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+        // If hiding the active tab, switch to dashboard
+        if (key === activeTab) setActiveTab('dashboard');
+      } else {
+        next.add(key);
+      }
+      saveVisibleTabs(next);
+      return next;
+    });
+  }, [activeTab]);
+
+  const visibleTabList = useMemo(
+    () => ALL_TABS.filter(t => visibleTabs.has(t.key)),
+    [visibleTabs]
+  );
+
   // Navigation guard state
   const dataMappingRef = useRef<DataMappingHandle>(null);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
 
-  // Keyboard shortcuts: number keys 1-8 to switch tabs
+  // Keyboard shortcuts: number keys 1-9,0 to switch visible tabs
   useEffect(() => {
-    const TAB_KEYS = ['dashboard', 'income-statement', 'balance-sheet', 'data-mapping', 'sensitivity', 'debt-servicing', 'charts', 'credit-analysis', 'monte-carlo', 'versioning', 'export'];
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       if (isInput || e.metaKey || e.ctrlKey) return;
-      const idx = parseInt(e.key) - 1;
-      if (idx >= 0 && idx < TAB_KEYS.length) {
-        handleTabChange(TAB_KEYS[idx]);
+      const idx = e.key === '0' ? 9 : parseInt(e.key) - 1;
+      if (idx >= 0 && idx < visibleTabList.length) {
+        handleTabChange(visibleTabList[idx].key);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [activeTab]);
+  }, [activeTab, visibleTabList]);
 
   const handleTabChange = useCallback((newTab: string) => {
-    // If leaving data-mapping with unsaved changes, intercept
     if (activeTab === 'data-mapping' && newTab !== 'data-mapping' && dataMappingRef.current?.hasUnsavedChanges()) {
       setPendingTab(newTab);
       setShowUnsavedDialog(true);
@@ -120,13 +174,11 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   if (isLoading) {
     return (
       <div className="space-y-4 animate-in fade-in duration-300">
-        {/* Breadcrumb skeleton */}
         <div className="flex items-center gap-1.5">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-3 w-3" />
           <Skeleton className="h-3 w-28" />
         </div>
-        {/* Header skeleton */}
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <Skeleton className="h-5 w-48" />
@@ -134,15 +186,12 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           </div>
           <Skeleton className="h-7 w-20" />
         </div>
-        {/* Tabs skeleton */}
         <Skeleton className="h-8 w-full max-w-3xl" />
-        {/* KPI cards skeleton */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[1,2,3,4].map(i => (
             <Skeleton key={i} className="h-24 rounded-lg" />
           ))}
         </div>
-        {/* Chart skeletons */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Skeleton className="h-72 rounded-lg" />
           <Skeleton className="h-72 rounded-lg" />
@@ -151,6 +200,214 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
     );
   }
 
+  const unsavedCount = dataMappingRef.current?.getUnsavedCount() ?? 0;
+  const hiddenCount = ALL_TABS.length - visibleTabList.length;
+
+  return (
+    <div className="space-y-4">
+      {/* Command Palette */}
+      <SaaSModelCommandPalette onNavigate={handleTabChange} onAction={handleExportAction} />
+
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="hover:text-foreground cursor-pointer transition-colors">
+          {dealData?.company || model.settings.companyName}
+        </span>
+        <ChevronRight className="h-3 w-3" />
+        <span className="hover:text-foreground cursor-pointer transition-colors">Financial Model</span>
+        <ChevronRight className="h-3 w-3" />
+        <span className="text-foreground font-medium">{TAB_LABELS[activeTab] || activeTab}</span>
+      </div>
+
+      {/* Header with save status */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold font-[Inter]">
+            SaaS Financial Model
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {model.settings.companyName} — {model.settings.businessModel}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Tab visibility settings */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                title="Configure visible tabs"
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-3">
+              <div className="space-y-1">
+                <p className="text-xs font-medium mb-2">Visible Tabs</p>
+                {ALL_TABS.map(tab => {
+                  const Icon = tab.icon;
+                  const isVisible = visibleTabs.has(tab.key);
+                  return (
+                    <label
+                      key={tab.key}
+                      className={cn(
+                        "flex items-center gap-2 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors",
+                        "hover:bg-muted/50",
+                        tab.locked && "opacity-60 cursor-default"
+                      )}
+                    >
+                      <Checkbox
+                        checked={isVisible}
+                        onCheckedChange={() => !tab.locked && toggleTab(tab.key)}
+                        disabled={tab.locked}
+                        className="h-3.5 w-3.5"
+                      />
+                      <Icon className="h-3 w-3 text-muted-foreground" />
+                      <span>{tab.label}</span>
+                      {tab.locked && (
+                        <span className="ml-auto text-[9px] text-muted-foreground">Required</span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+              {hiddenCount > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-2 pt-2 border-t border-border">
+                  {hiddenCount} tab{hiddenCount !== 1 ? 's' : ''} hidden
+                </p>
+              )}
+            </PopoverContent>
+          </Popover>
+
+          {/* ⌘K hint */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-xs text-muted-foreground px-2"
+            onClick={() => {
+              window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+            }}
+          >
+            <Command className="h-3 w-3" />
+            <span>K</span>
+          </Button>
+
+          {/* Save status */}
+          {saveStatus !== 'idle' && (
+            <Badge variant="outline" className={cn(
+              "text-xs gap-1 transition-all duration-300",
+              saveStatus === 'saving' && "border-primary/30 text-primary",
+              saveStatus === 'saved' && "border-emerald-500/30 text-emerald-500"
+            )}>
+              {saveStatus === 'saving' ? (
+                <><Loader2 className="h-3 w-3 animate-spin" /> Saving...</>
+              ) : (
+                <><Check className="h-3 w-3" /> Saved</>
+              )}
+            </Badge>
+          )}
+          {/* Annotation count badge */}
+          {annotationHook.unresolvedCount > 0 && (
+            <Badge variant="secondary" className="text-[10px] gap-1 h-5">
+              <MessageSquare className="h-3 w-3" />
+              {annotationHook.unresolvedCount} open
+            </Badge>
+          )}
+          
+        </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList className="h-8 bg-muted/30 rounded-sm">
+          {visibleTabList.map((tab, idx) => {
+            const Icon = tab.icon;
+            const shortcutKey = idx < 9 ? String(idx + 1) : idx === 9 ? '0' : undefined;
+            return (
+              <TabsTrigger
+                key={tab.key}
+                value={tab.key}
+                className="gap-1.5 text-xs rounded-sm h-7"
+                title={shortcutKey ? `Press ${shortcutKey}` : undefined}
+              >
+                <Icon className="h-3.5 w-3.5" /> {tab.label}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+
+        <TabsContent value="dashboard" className="mt-4">
+          <SaaSModelDashboard model={model} annotations={annotationHook} />
+        </TabsContent>
+        <TabsContent value="income-statement" className="mt-4">
+          <SaaSModelIncomeStatement model={model} dealId={dealId} />
+        </TabsContent>
+        <TabsContent value="balance-sheet" className="mt-4">
+          <SaaSModelBalanceSheet model={model} />
+        </TabsContent>
+        <TabsContent value="data-mapping" className="mt-4">
+          <SaaSModelDataMapping ref={dataMappingRef} dealId={dealId} model={model} updateModel={updateModel} recalculate={recalculate} />
+        </TabsContent>
+        <TabsContent value="sensitivity" className="mt-4">
+          <SaaSModelSensitivity model={model} scenarios={scenarios} updateScenarios={updateScenarios} />
+        </TabsContent>
+        <TabsContent value="debt-servicing" className="mt-4">
+          <SaaSModelDebtServicing lenders={lenders} updateLender={updateLender} />
+        </TabsContent>
+        <TabsContent value="charts" className="mt-4">
+          <SaaSModelCharts model={model} />
+        </TabsContent>
+        <TabsContent value="credit-analysis" className="mt-4">
+          <SaaSModelCreditAnalysis model={model} />
+        </TabsContent>
+        <TabsContent value="monte-carlo" className="mt-4">
+          <MonteCarloSimulation model={model} />
+        </TabsContent>
+        <TabsContent value="versioning" className="mt-4">
+          <ModelVersioning
+            dealId={dealId}
+            model={model}
+            scenarios={scenarios}
+            lenders={lenders}
+            onRestore={(restoredModel, restoredScenarios, restoredLenders) => {
+              updateModel(() => restoredModel);
+              updateScenarios(restoredScenarios);
+              restoredLenders.forEach((l, i) => updateLender(i, l));
+              toast.success('Model restored from snapshot');
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="export" className="mt-4">
+          <CreditMemoExport model={model} scenarios={scenarios} lenders={lenders} />
+        </TabsContent>
+      </Tabs>
+
+      {/* Unsaved Changes Dialog */}
+      <Dialog open={showUnsavedDialog} onOpenChange={(open) => { if (!open) handleCancelLeave(); }}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have {unsavedCount} unsaved mapping {unsavedCount === 1 ? 'change' : 'changes'}. What would you like to do?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={handleCancelLeave} disabled={isSavingBeforeLeave}>
+              Cancel
+            </Button>
+            <Button variant="outline" onClick={handleDiscardAndLeave} disabled={isSavingBeforeLeave}>
+              Discard & Leave
+            </Button>
+            <Button onClick={handleSaveAndLeave} disabled={isSavingBeforeLeave} className="gap-1.5">
+              {isSavingBeforeLeave ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Save & Leave
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
   const unsavedCount = dataMappingRef.current?.getUnsavedCount() ?? 0;
 
   return (
