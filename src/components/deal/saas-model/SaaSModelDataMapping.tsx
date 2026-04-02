@@ -1811,9 +1811,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           <button className="map-toolbar-btn" onClick={handleAutoMap}>
             <Zap className="h-3 w-3" /> Auto-Map
           </button>
-          <button className="map-toolbar-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
-            <ShieldAlert className="h-3 w-3" /> Validate
-          </button>
 
            <div className="map-toolbar-divider" />
 
@@ -1889,36 +1886,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </button>
           </div>
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="map-toolbar-btn h-6 w-6 p-0 justify-center">
-                <Keyboard className="h-3 w-3" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-64 p-3">
-              <h4 className="text-xs font-semibold mb-2">Keyboard Shortcuts</h4>
-              <div className="space-y-1.5 text-[11px]">
-                {[
-                  ['↑ / ↓', 'Navigate rows / fields'],
-                  ['Click', 'Select row'],
-                  ['Shift+Click', 'Range select rows'],
-                  ['Ctrl+Click', 'Toggle row selection'],
-                  ['Tab', 'Switch to field panel'],
-                  ['Enter', 'Map selected row → focused field'],
-                  ['Delete', 'Remove mapping from focused field'],
-                  ['Escape', 'Deselect all'],
-                  ['Ctrl+Z', 'Undo last mapping action'],
-                  ['Ctrl+Shift+Z', 'Redo'],
-                  ['Ctrl+Scroll', 'Zoom in/out'],
-                ].map(([key, desc]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">{key}</kbd>
-                    <span className="text-muted-foreground">{desc}</span>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
         </div>
 
         {/* Right: Start date, actions, primary CTA */}
