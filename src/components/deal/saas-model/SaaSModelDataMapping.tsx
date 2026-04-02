@@ -1948,7 +1948,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
                   {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                   Save Draft
                 </Button>
