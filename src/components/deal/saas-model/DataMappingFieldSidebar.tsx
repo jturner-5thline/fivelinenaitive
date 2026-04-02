@@ -409,7 +409,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                 <span className="text-[9px] tabular-nums text-muted-foreground">{mapped}/{total}</span>
               </div>
             </div>
-            {section.fields.map(field => renderFieldRow(field))}
+            {sectionEnabled.map(field => renderFieldRow(field))}
           </div>
         );
       })}
