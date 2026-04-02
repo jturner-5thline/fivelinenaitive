@@ -1649,11 +1649,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
       )}
 
-      {/* ── File info strip (compact) ── */}
-      <div className="flex items-center gap-2.5 rounded-xl border border-border/[0.06] bg-secondary/30 px-3 py-1.5 shadow-sm">
-        <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <div className="map-file-strip">
+        <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--map-text-faint)' }} />
         <button
-          className="text-[11px] font-medium text-foreground hover:text-primary transition-colors truncate cursor-pointer"
+          className="text-[11px] font-medium hover:underline transition-colors truncate cursor-pointer"
+          style={{ color: 'var(--map-text)' }}
           onClick={() => {
             if (selectedFile) {
               const url = URL.createObjectURL(selectedFile.file);
@@ -1667,33 +1667,26 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </button>
         {detectedHeaders.headers.length > 0 && (
           <>
-            <span className="text-[10px] text-muted-foreground/40">·</span>
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap truncate max-w-[200px]">
+            <span style={{ color: 'var(--map-text-faint)', opacity: 0.4 }}>·</span>
+            <span className="text-[10px] whitespace-nowrap truncate max-w-[200px]" style={{ color: 'var(--map-text-faint)' }}>
               {detectedHeaders.headers[0]} → {detectedHeaders.headers[detectedHeaders.headers.length - 1]}
             </span>
           </>
         )}
         {detectedHeaders.headerRow !== null && (
           <>
-            <span className="text-[10px] text-muted-foreground/40">·</span>
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+            <span style={{ color: 'var(--map-text-faint)', opacity: 0.4 }}>·</span>
+            <span className="text-[10px] whitespace-nowrap" style={{ color: 'var(--map-text-faint)' }}>
               Header Row {detectedHeaders.headerRow + 1}
             </span>
           </>
         )}
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-foreground" onClick={() => setPhase('upload')}>
+          <button className="map-toolbar-btn h-5 text-[10px] px-2" onClick={() => setPhase('upload')}>
             Change file
-          </Button>
+          </button>
         </div>
       </div>
-
-      {/* Date warnings */}
-      {dateWarnings.length > 0 && (
-        <div className="flex items-center gap-1.5 px-1 text-[10px] text-warning">
-          <AlertTriangle className="h-3 w-3 shrink-0" />
-          {dateWarnings.length} date gap{dateWarnings.length > 1 ? 's' : ''}: {dateWarnings.map(w => w.message).join('; ')}
-        </div>
       )}
 
       {/* AI Suggestions Banner */}
