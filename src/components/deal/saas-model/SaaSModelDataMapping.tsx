@@ -1912,24 +1912,24 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </PopoverContent>
           </Popover>
 
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card" onClick={() => {
+          <button className="map-toolbar-btn" onClick={() => {
             if (selectedFile) {
               const url = URL.createObjectURL(selectedFile.file);
               setExpandedFileUrl(url);
               setExpandedPreview(true);
             }
           }}>
-            <Maximize2 className="h-3.5 w-3.5" /> Expand
-          </Button>
+            <Maximize2 className="h-3 w-3" /> Expand
+          </button>
 
-           <div className="h-5 w-px bg-border/[0.06]" />
+           <div className="map-toolbar-divider" />
 
           {/* Destructive: New Mapping */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5 text-destructive/70 hover:text-destructive hover:bg-destructive/10">
-                <Trash2 className="h-3.5 w-3.5" /> Reset
-              </Button>
+              <button className="map-toolbar-btn map-toolbar-btn--destructive">
+                <Trash2 className="h-3 w-3" /> Reset
+              </button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -1943,29 +1943,18 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </AlertDialogContent>
           </AlertDialog>
 
-          <div className="h-5 w-px bg-border/[0.06]" />
+          <div className="map-toolbar-divider" />
 
           {/* Secondary: Save Draft */}
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/[0.08] bg-secondary/50" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
-                  {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  Save Draft
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[240px] text-center">
-                Saves your current mapping assignments without updating the financial model.
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <button className="map-toolbar-btn" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} title="Saves mapping assignments without updating the model">
+            {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+            Save Draft
+          </button>
 
           {/* Primary CTA */}
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="sm" className="h-7 text-[11px] gap-1.5 shadow-sm" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
-                  <RefreshCw className="h-3.5 w-3.5" /> Push to Model
+          <button className="map-toolbar-btn map-toolbar-btn--primary" onClick={handleRecalculateWithLog} disabled={mappedCount === 0} title="Saves all mappings AND pushes mapped data into the financial model">
+            <RefreshCw className="h-3 w-3" /> Push to Model
+          </button>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[260px] text-center">
