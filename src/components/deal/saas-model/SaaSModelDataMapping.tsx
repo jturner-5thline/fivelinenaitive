@@ -2120,40 +2120,38 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       const rowBgClass = isFlashing
                         ? "animate-mapping-flash"
                         : isHeaderRow
-                          ? "bg-muted/20 font-semibold"
+                          ? "bg-[#F3F4F6] font-semibold"
                           : isSelected
-                            ? "bg-primary/8 hover:bg-primary/12"
+                            ? "bg-[#EFF6FF] hover:bg-[#DBEAFE]"
                             : isMappedRow
-                              ? "bg-success/[0.05] hover:bg-success/[0.08]"
+                              ? "bg-[#ECFDF3]/50 hover:bg-[#ECFDF3]"
                               : isPendingAutoMap
-                                ? "bg-warning/[0.05] hover:bg-warning/[0.08]"
+                                ? "bg-[#FFFBEB]/50 hover:bg-[#FFFBEB]"
                                 : hasSuggestion
-                                  ? "bg-primary/[0.03] hover:bg-primary/[0.06]"
-                                  : rowIdx % 2 === 0
-                                    ? "bg-transparent hover:bg-muted/15"
-                                    : "bg-muted/[0.04] hover:bg-muted/15";
+                                  ? "bg-[#EFF6FF]/30 hover:bg-[#EFF6FF]/60"
+                                  : "bg-white hover:bg-[#F9FAFB]";
 
                       // Left border style for selection/mapped/pending state
                       const leftBorderClass = isSelected
-                        ? "border-l-2 border-l-primary"
+                        ? "border-l-2 border-l-[#2563EB]"
                         : isMappedRow
-                          ? "border-l-[3px] border-l-success"
+                          ? "border-l-[3px] border-l-[#22C55E]"
                           : isPendingAutoMap
-                            ? "border-l-[3px] border-l-warning"
+                            ? "border-l-[3px] border-l-[#F59E0B]"
                             : "";
 
                       // Sticky cell bg — MUST be opaque so scrolling content doesn't show through
                       const stickyBg = isFlashing
-                        ? "bg-success/30"
+                        ? "bg-[#BBF7D0]"
                         : isHeaderRow
-                          ? "bg-muted/40"
+                          ? "bg-[#F3F4F6]"
                           : isSelected
-                            ? "bg-primary/10"
+                            ? "bg-[#EFF6FF]"
                             : isMappedRow
-                              ? "bg-success/8"
+                              ? "bg-[#F0FDF4]"
                               : isPendingAutoMap
-                                ? "bg-warning/8"
-                                : "bg-card";
+                                ? "bg-[#FFFBEB]"
+                                : "bg-white";
 
                        return (
                         <ContextMenu key={rowIdx}>
