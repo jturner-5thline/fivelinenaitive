@@ -2452,7 +2452,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </DialogHeader>
           <div className="flex-1 min-h-0 flex">
             {/* Table area */}
-            <div className={cn("flex-1 min-w-0 overflow-auto p-2 transition-all", showExpandedSidebar && "border-r border-border/30")}>
+            <div className={cn("flex-1 min-w-0 overflow-auto p-2 transition-all", showExpandedSidebar && "border-r border-border/[0.06]")}>
               {selectedFile && (() => {
                 const expSheet = selectedFile.sheets[activeSheet];
                 if (!expSheet) return null;
