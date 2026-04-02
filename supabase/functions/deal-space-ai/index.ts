@@ -8,6 +8,58 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ─── Claude API helper ──────────────────────────────────────────────
+async function callClaude(
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  options: { model?: string; maxTokens?: number; temperature?: number } = {}
+): Promise<{ content: string; raw: any }> {
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
+
+  const model = options.model || "claude-sonnet-4-20250514";
+  const maxTokens = options.maxTokens || 4096;
+  const temperature = options.temperature ?? 0.7;
+
+  const anthropicMessages = messages.map(m => ({
+    role: m.role === "system" ? "user" : m.role,
+    content: m.content,
+  }));
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      temperature,
+      system: systemPrompt,
+      messages: anthropicMessages,
+    }),
+  });
+
+  if (!response.ok) {
+    const status = response.status;
+    const errorText = await response.text();
+    console.error("Claude API error:", status, errorText);
+    if (status === 429) throw Object.assign(new Error("Rate limit exceeded. Please try again in a moment."), { status: 429 });
+    if (status === 402) throw Object.assign(new Error("AI credits exhausted. Please add credits to continue."), { status: 402 });
+    throw new Error(`Claude API error: ${status}`);
+  }
+
+  const data = await response.json();
+  const content = data.content
+    ?.filter((block: any) => block.type === "text")
+    .map((block: any) => block.text)
+    .join("\n") || "";
+
+  return { content, raw: data };
+}
+
 interface ExtractedContent {
   text: string;
   pages?: { pageNumber: number; content: string }[];
