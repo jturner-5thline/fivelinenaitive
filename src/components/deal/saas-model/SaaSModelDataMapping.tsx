@@ -1860,12 +1860,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         <div className="flex items-center gap-1.5">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card">
-                <Calendar className="h-3.5 w-3.5" />
+              <button className="map-toolbar-btn">
+                <Calendar className="h-3 w-3" />
                 {modelStartDate
                   ? `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][modelStartDate.month - 1]} ${modelStartDate.year}`
                   : 'Start Month'}
-              </Button>
+              </button>
             </PopoverTrigger>
             <PopoverContent className="w-56 p-3" align="end">
               <div className="space-y-2">
