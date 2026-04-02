@@ -8,6 +8,58 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ─── Claude API helper ──────────────────────────────────────────────
+async function callClaude(
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  options: { model?: string; maxTokens?: number; temperature?: number } = {}
+): Promise<{ content: string; raw: any }> {
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
+
+  const model = options.model || "claude-sonnet-4-20250514";
+  const maxTokens = options.maxTokens || 4096;
+  const temperature = options.temperature ?? 0.7;
+
+  const anthropicMessages = messages.map(m => ({
+    role: m.role === "system" ? "user" : m.role,
+    content: m.content,
+  }));
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      temperature,
+      system: systemPrompt,
+      messages: anthropicMessages,
+    }),
+  });
+
+  if (!response.ok) {
+    const status = response.status;
+    const errorText = await response.text();
+    console.error("Claude API error:", status, errorText);
+    if (status === 429) throw Object.assign(new Error("Rate limit exceeded. Please try again in a moment."), { status: 429 });
+    if (status === 402) throw Object.assign(new Error("AI credits exhausted. Please add credits to continue."), { status: 402 });
+    throw new Error(`Claude API error: ${status}`);
+  }
+
+  const data = await response.json();
+  const content = data.content
+    ?.filter((block: any) => block.type === "text")
+    .map((block: any) => block.text)
+    .join("\n") || "";
+
+  return { content, raw: data };
+}
+
 interface ExtractedContent {
   text: string;
   pages?: { pageNumber: number; content: string }[];
@@ -606,28 +658,8 @@ ${FORMATTING_RULES}
 - For shorter queries, respond concisely but still use headings and bullets.
 `;
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      const errorText = await aiResponse.text();
-      console.error("AI API error:", aiResponse.status, errorText);
-      throw new Error("AI API request failed");
-    }
-
-    const aiData = await aiResponse.json();
-    const rawContent = aiData.choices?.[0]?.message?.content || "I couldn't generate a response.";
+    const claudeResult = await callClaude(systemPrompt, messages);
+    const rawContent = claudeResult.content || "I couldn't generate a response.";
     
     // Normalize any memo-style output
     const { content } = validateAndNormalizeMemo(rawContent);
@@ -657,8 +689,8 @@ async function handleGenerateMemo(dealId: string, supabase: any) {
   try {
     const ctx = await buildDealContext(supabase, dealId);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const systemPrompt = `You are a senior credit analyst writing a lender-ready investment memo. Using ONLY the data provided below, generate a comprehensive memo following the EXACT section structure.
 
@@ -670,26 +702,10 @@ ${MEMO_TEMPLATE_INSTRUCTIONS}
 
 IMPORTANT: Use ONLY the data provided. If a data point is missing, write "Not available" for that line item. NEVER fabricate numbers, names, or details.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: "Generate the full lender-ready memo for this deal using all available data." },
-        ],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error("AI API request failed");
-    }
-
-    const aiData = await aiResponse.json();
-    const rawContent = aiData.choices?.[0]?.message?.content || "";
+    const claudeResult = await callClaude(systemPrompt, [
+      { role: "user", content: "Generate the full lender-ready memo for this deal using all available data." },
+    ]);
+    const rawContent = claudeResult.content || "";
     const { content, sections } = validateAndNormalizeMemo(rawContent);
 
     return new Response(
@@ -714,9 +730,6 @@ async function handleRegenerateSection(dealId: string, sectionKey: string, supab
     const section = MEMO_SECTIONS.find(s => s.key === sectionKey);
     if (!section) throw new Error(`Unknown section: ${sectionKey}`);
     const ctx = await buildDealContext(supabase, dealId);
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     let sectionSpecificInstructions = '';
     if (sectionKey === 'key_risks') {
@@ -757,26 +770,10 @@ ${sectionSpecificInstructions}
 
 IMPORTANT: Output ONLY this one section. Do NOT include other sections. Use ONLY real data — never fabricate.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Regenerate the "${section.heading}" section for this deal.` },
-        ],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error("AI API request failed");
-    }
-
-    const aiData = await aiResponse.json();
-    const rawContent = aiData.choices?.[0]?.message?.content || "";
+    const claudeResult = await callClaude(systemPrompt, [
+      { role: "user", content: `Regenerate the "${section.heading}" section for this deal.` },
+    ]);
+    const rawContent = claudeResult.content || "";
 
     return new Response(
       JSON.stringify({ sectionKey, content: rawContent.trim() }),
@@ -829,18 +826,7 @@ async function handleSummarize(dealId: string, supabase: any, supabaseService: a
     }
 
     const combinedContent = allContents.join("\n\n---\n\n");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert deal analyst. Summarize the documents using the standardized memo structure:
+    const summarizeSystemPrompt = `You are an expert deal analyst. Summarize the documents using the standardized memo structure:
 
 ## Executive / Deal Overview
 2-3 paragraph overview.
@@ -856,21 +842,12 @@ Key financial figures and metrics.
 ## Key Action Items
 Required next steps or pending items.
 
-Be concise but thorough. Only include sections with relevant content.`
-          },
-          { role: "user", content: `Summarize these deal documents:\n\n${combinedContent}` }
-        ],
-      }),
-    });
+Be concise but thorough. Only include sections with relevant content.`;
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("AI summarization error:", aiResponse.status, errorText);
-      throw new Error("Failed to generate summary");
-    }
-
-    const aiData = await aiResponse.json();
-    const summary = aiData.choices?.[0]?.message?.content || "Could not generate summary.";
+    const claudeResult = await callClaude(summarizeSystemPrompt, [
+      { role: "user", content: `Summarize these deal documents:\n\n${combinedContent}` },
+    ]);
+    const summary = claudeResult.content || "Could not generate summary.";
 
     const keyPointsMatch = summary.match(/## Key (?:Action Items|Points)\n([\s\S]*?)(?=\n##|$)/);
     const keyPoints: string[] = [];
@@ -1060,18 +1037,7 @@ async function handleExtractWriteUp(dealId: string, supabase: any, supabaseServi
       `SOURCE_${i}: type=${chunk.source_type}, name="${chunk.source_name}"${chunk.location ? `, location="${chunk.location}"` : ''}`
     ).join("\n");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert at extracting structured deal information from a deal space. You MUST ground every extraction in the specific source material provided. Each source is labeled with a SOURCE_ID.
+    const extractSystemPrompt = `You are an expert at extracting structured deal information from a deal space. You MUST ground every extraction in the specific source material provided. Each source is labeled with a SOURCE_ID.
 
 Extract information and return it as a JSON array of extracted fields.
 
@@ -1117,23 +1083,17 @@ RULES:
 SOURCE INDEX:
 ${sourceIndex}
 
-Return ONLY a valid JSON array.`
-          },
-          { role: "user", content: `Extract deal write-up information from these deal space sources:\n\n${combinedContent.substring(0, 80000)}` }
-        ],
-      }),
-    });
+Return ONLY a valid JSON array.`;
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("AI extraction error:", aiResponse.status, errorText);
-      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const claudeResult = await callClaude(extractSystemPrompt, [
+      { role: "user", content: `Extract deal write-up information from these deal space sources:\n\n${combinedContent.substring(0, 80000)}` },
+    ]);
+
+    if (!claudeResult.content) {
       throw new Error("Failed to extract write-up");
     }
 
-    const aiData = await aiResponse.json();
-    let extractedContent = aiData.choices?.[0]?.message?.content || "[]";
+    let extractedContent = claudeResult.content || "[]";
     extractedContent = extractedContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     let extractedFields = [];
@@ -1255,8 +1215,7 @@ async function handleExtractDocument(dealId: string, supabase: any, supabaseServ
 
     const combinedDocContent = docContents.map(d => `### Document: ${d.name}\n${d.text}`).join("\n\n---\n\n");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    // No longer using LOVABLE_API_KEY — Claude is called via callClaude helper
 
     // Detect document type heuristically for variant-specific instructions
     const lowerNames = docContents.map(d => d.name.toLowerCase()).join(" ");
@@ -1401,29 +1360,11 @@ OUTPUT SCHEMA (return ONLY this JSON object, no other text):
   }
 }`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Extract structured data from the following document(s):\n\n${combinedDocContent}` },
-        ],
-        temperature: 0.1,
-      }),
-    });
+    const claudeResult = await callClaude(systemPrompt, [
+      { role: "user", content: `Extract structured data from the following document(s):\n\n${combinedDocContent}` },
+    ], { temperature: 0.1 });
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      const errText = await aiResponse.text();
-      console.error("AI extraction error:", aiResponse.status, errText);
-      throw new Error("AI extraction failed");
-    }
-
-    const aiData = await aiResponse.json();
-    let rawContent = aiData.choices?.[0]?.message?.content || "{}";
+    let rawContent = claudeResult.content || "{}";
     rawContent = rawContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     let extraction;

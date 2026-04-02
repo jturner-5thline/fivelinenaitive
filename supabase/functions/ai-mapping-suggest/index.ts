@@ -26,8 +26,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -107,55 +107,52 @@ Rules:
 
 Keyword-to-field rules (apply with high confidence 0.85+):
 - Rows containing "SaaS", "Subscription", "Recurring", "Licensing", or "Software" in the label should map to "Recurring Revenue"
-- These keywords strongly indicate recurring revenue streams even if the label is not an exact match`;
+- These keywords strongly indicate recurring revenue streams even if the label is not an exact match
+
+You MUST use the suggest_mappings tool to return your results.`;
 
     const userPrompt = `Analyze these rows and suggest mappings:\n\n${rowsText}`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
         tools: [
           {
-            type: "function",
-            function: {
-              name: "suggest_mappings",
-              description: "Return mapping suggestions for Excel rows to standard financial fields",
-              parameters: {
-                type: "object",
-                properties: {
-                  suggestions: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        rowIdx: { type: "number", description: "The row index from the input" },
-                        label: { type: "string", description: "The row label" },
-                        suggestedField: { type: "string", description: "The standard field name to map to" },
-                        confidence: { type: "number", description: "Confidence score 0-1" },
-                        reason: { type: "string", description: "Brief reason for the suggestion" },
-                        category: { type: "string", enum: ["is", "bs", "checklist"] },
-                      },
-                      required: ["rowIdx", "label", "suggestedField", "confidence", "reason", "category"],
-                      additionalProperties: false,
+            name: "suggest_mappings",
+            description: "Return mapping suggestions for Excel rows to standard financial fields",
+            input_schema: {
+              type: "object",
+              properties: {
+                suggestions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      rowIdx: { type: "number", description: "The row index from the input" },
+                      label: { type: "string", description: "The row label" },
+                      suggestedField: { type: "string", description: "The standard field name to map to" },
+                      confidence: { type: "number", description: "Confidence score 0-1" },
+                      reason: { type: "string", description: "Brief reason for the suggestion" },
+                      category: { type: "string", enum: ["is", "bs", "checklist"] },
                     },
+                    required: ["rowIdx", "label", "suggestedField", "confidence", "reason", "category"],
                   },
                 },
-                required: ["suggestions"],
-                additionalProperties: false,
               },
+              required: ["suggestions"],
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "suggest_mappings" } },
+        tool_choice: { type: "tool", name: "suggest_mappings" },
       }),
     });
 
@@ -168,27 +165,18 @@ Keyword-to-field rules (apply with high confidence 0.85+):
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      console.error("AI gateway error:", status, body);
-      throw new Error(`AI gateway error: ${status}`);
+      console.error("Claude API error:", status, body);
+      throw new Error(`Claude API error: ${status}`);
     }
 
     const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    let suggestions: MappingSuggestion[] = [];
 
-    if (toolCall?.function?.arguments) {
-      try {
-        const parsed = JSON.parse(toolCall.function.arguments);
-        suggestions = parsed.suggestions || [];
-      } catch {
-        console.error("Failed to parse tool call arguments");
-      }
+    // Extract tool use result from Claude's response
+    let suggestions: MappingSuggestion[] = [];
+    const toolUseBlock = aiData.content?.find((block: any) => block.type === "tool_use" && block.name === "suggest_mappings");
+
+    if (toolUseBlock?.input?.suggestions) {
+      suggestions = toolUseBlock.input.suggestions;
     }
 
     // Filter out low-confidence suggestions
