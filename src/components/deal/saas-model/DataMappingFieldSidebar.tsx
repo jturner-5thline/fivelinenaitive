@@ -389,10 +389,11 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   const renderFieldSections = (sections: { label: string; fields: string[] }[]) => (
     <div className="space-y-1">
       {sections.map(section => {
-        const visibleSectionFields = section.fields.filter(filterField);
+        const sectionEnabled = section.fields.filter(f => !enabledFields || enabledFields.has(f));
+        const visibleSectionFields = sectionEnabled.filter(filterField);
         if (visibleSectionFields.length === 0) return null;
-        const mapped = section.fields.filter(f => !!fieldMappings[f]).length;
-        const total = section.fields.length;
+        const mapped = sectionEnabled.filter(f => !!fieldMappings[f]).length;
+        const total = sectionEnabled.length;
         const pct = total > 0 ? (mapped / total) * 100 : 0;
         return (
           <div key={section.label}>
