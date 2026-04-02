@@ -27,7 +27,7 @@ export function useFlagNotes(dealId: string | null) {
 
     try {
       const { data, error } = await supabase
-        .from('deal_flag_notes' as any)
+        .from('deal_flag_notes')
         .select('*')
         .eq('deal_id', dealId)
         .order('created_at', { ascending: false });
