@@ -1560,7 +1560,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const columnCount = sheet?.data[0]?.length || 0;
 
   return (
-    <div className="mapping-workbench space-y-3 rounded-lg p-3" style={{ background: 'var(--map-bg)' }}>
+    <div className="mapping-workbench space-y-3 rounded-lg p-6 max-w-[1280px] mx-auto">
       {renderSettingsSection()}
 
       {/* ── Header: Title + Progress Badges ── */}
@@ -1572,8 +1572,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </button>
           )}
           <div>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--map-text)' }}>Data Mapping</h3>
-            <p className="text-[10px]" style={{ color: 'var(--map-text-faint)' }}>
+            <h3 className="text-base font-semibold text-[#111827]">Data Mapping</h3>
+            <p className="text-xs text-[#6B7280]">
               Map rows from your upload to standard model fields
             </p>
           </div>
@@ -1588,8 +1588,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </span>
           <span className={cn(
             "map-toolbar-chip",
-            percent === 100 ? "map-toolbar-chip--success" : percent > 0 ? "" : ""
-          )} style={percent === 100 ? { background: 'rgba(69,212,131,0.1)', borderColor: 'rgba(69,212,131,0.2)', color: 'var(--map-green)' } : percent > 0 ? { background: 'rgba(127,178,255,0.08)', borderColor: 'rgba(127,178,255,0.2)', color: 'var(--map-blue)' } : {}}>
+            percent === 100 ? "map-toolbar-chip--success" : ""
+          )}>
             {percent === 100 && <CheckCircle2 className="h-3 w-3" />}
             {percent}% mapped
           </span>
