@@ -1215,8 +1215,7 @@ async function handleExtractDocument(dealId: string, supabase: any, supabaseServ
 
     const combinedDocContent = docContents.map(d => `### Document: ${d.name}\n${d.text}`).join("\n\n---\n\n");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    // No longer using LOVABLE_API_KEY — Claude is called via callClaude helper
 
     // Detect document type heuristically for variant-specific instructions
     const lowerNames = docContents.map(d => d.name.toLowerCase()).join(" ");
