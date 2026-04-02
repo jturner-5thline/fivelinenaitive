@@ -178,7 +178,7 @@ function buildEmailHtml(
     const metaLine = metaItems.length > 0 ? `<div style="margin-top: 4px;">${metaItems.join('<span style="color: #d1d5db; margin: 0 6px;">|</span>')}</div>` : '';
 
     const tileStyle = isFlagged
-      ? 'background: linear-gradient(135deg, #6d28d9, #3b82f6); border-radius: 8px; padding: 2px; margin-bottom: 8px; box-shadow: 0 0 0 2px #dc2626;'
+      ? 'background: linear-gradient(135deg, #dc2626, #ef4444); border-radius: 8px; padding: 3px; margin-bottom: 8px;'
       : 'background: linear-gradient(135deg, #6d28d9, #3b82f6); border-radius: 8px; padding: 2px; margin-bottom: 8px;';
 
     return `
