@@ -311,7 +311,7 @@ export function FacilityBox({ facility }: { facility: {
         </div>
         <div>
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Deferred Revenue (6M Proj.)</p>
-          <p className="text-sm font-bold font-mono tabular-nums text-foreground">{fmtMM(facility.deferred_revenue_6m)}</p>
+          <p className={cn("text-sm font-bold font-mono tabular-nums", currencyColor(fmtMM(facility.deferred_revenue_6m)))}>{fmtMM(facility.deferred_revenue_6m)}</p>
         </div>
       </div>
       <div className="border-t border-border pt-3">
