@@ -691,7 +691,6 @@ async function handleGenerateMemo(dealId: string, supabase: any) {
 
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = `You are a senior credit analyst writing a lender-ready investment memo. Using ONLY the data provided below, generate a comprehensive memo following the EXACT section structure.
 
@@ -703,26 +702,10 @@ ${MEMO_TEMPLATE_INSTRUCTIONS}
 
 IMPORTANT: Use ONLY the data provided. If a data point is missing, write "Not available" for that line item. NEVER fabricate numbers, names, or details.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: "Generate the full lender-ready memo for this deal using all available data." },
-        ],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error("AI API request failed");
-    }
-
-    const aiData = await aiResponse.json();
-    const rawContent = aiData.choices?.[0]?.message?.content || "";
+    const claudeResult = await callClaude(systemPrompt, [
+      { role: "user", content: "Generate the full lender-ready memo for this deal using all available data." },
+    ]);
+    const rawContent = claudeResult.content || "";
     const { content, sections } = validateAndNormalizeMemo(rawContent);
 
     return new Response(
