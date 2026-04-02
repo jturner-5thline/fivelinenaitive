@@ -207,14 +207,16 @@ const STAGE_WORKFLOWS: Record<
     {
       key: "agreement_pending_followup",
       preCondition: async (deal: any, supabase: any) => {
-        // Check that agreement has been sent
-        const { data: mainDeal } = await supabase
-          .from("deals")
-          .select("agreement_sent")
-          .eq("id", deal.id)
+        // Check for existing open task to avoid duplicates
+        const { data: existing } = await supabase
+          .from("wf_tasks")
+          .select("id")
+          .eq("deal_id", deal.id)
+          .eq("workflow_key", "agreement_pending_followup")
+          .eq("status", "open")
           .maybeSingle();
-        if (!mainDeal?.agreement_sent) {
-          console.warn(`[wf-stage-trigger] agreement_pending_followup: agreement not sent yet, skipping`);
+        if (existing) {
+          console.log(`[wf-stage-trigger] agreement_pending_followup: open task already exists, skipping`);
           return false;
         }
         return true;
