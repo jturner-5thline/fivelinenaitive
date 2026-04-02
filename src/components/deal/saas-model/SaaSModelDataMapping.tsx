@@ -1518,9 +1518,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                 <div className="text-[10px] text-muted-foreground mb-2">
                   {af.sheets.length} sheet{af.sheets.length === 1 ? '' : 's'} · {af.analysis.type} · {af.analysis.totalMatches} of {totalFields} fields
                 </div>
-                <div className="w-full bg-muted/30 rounded-full h-1.5 mb-2">
-                  <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(af.analysis.totalMatches / totalFields) * 100}%` }} />
-                </div>
+               <div className="w-full bg-muted/20 rounded-full h-1.5 mb-2">
+                 <div className="bg-primary/70 h-1.5 rounded-full transition-all" style={{ width: `${(af.analysis.totalMatches / totalFields) * 100}%` }} />
+               </div>
                 <div className="flex flex-wrap gap-1">
                   {af.analysis.matchedFields.slice(0, 6).map(f => (
                     <Badge key={f} variant="secondary" className="text-[9px] h-4">{f}</Badge>
