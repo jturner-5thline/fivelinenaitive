@@ -17,7 +17,6 @@ const TABS: Tab[] = [
   { value: 'data-mapping', label: 'Data Mapping', icon: <Upload className="h-4 w-4" />, keywords: ['upload', 'import', 'map', 'excel', 'csv'] },
   { value: 'sensitivity', label: 'Sensitivity Analysis', icon: <TrendingDown className="h-4 w-4" />, keywords: ['scenario', 'stress', 'downside', 'what-if'] },
   { value: 'debt-servicing', label: 'Debt Servicing', icon: <Landmark className="h-4 w-4" />, keywords: ['loan', 'amortization', 'lender', 'interest', 'payment'] },
-  { value: 'charts', label: 'Charts & Visuals', icon: <BarChart3 className="h-4 w-4" />, keywords: ['graph', 'chart', 'visual', 'waterfall', 'trend'] },
   { value: 'credit-analysis', label: 'Credit Analysis', icon: <ShieldCheck className="h-4 w-4" />, keywords: ['credit', 'risk', 'score', 'rating', 'covenant'] },
 ];
 
