@@ -40,7 +40,6 @@ const ALL_TABS: TabDef[] = [
   { key: 'data-mapping', label: 'Data Mapping', icon: Upload },
   { key: 'sensitivity', label: 'Sensitivity', icon: TrendingDown },
   { key: 'debt-servicing', label: 'Debt Servicing', icon: Landmark },
-  { key: 'charts', label: 'Charts', icon: BarChart3 },
   { key: 'credit-analysis', label: 'Credit Analysis', icon: ShieldCheck },
   { key: 'monte-carlo', label: 'Monte Carlo', icon: Dice5 },
   { key: 'versioning', label: 'Versioning', icon: History },
