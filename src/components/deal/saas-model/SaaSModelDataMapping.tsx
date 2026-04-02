@@ -2203,20 +2203,20 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             if (!isHeaderRow) handleRowClick(rowIdx, e);
                           }}>
                           <td className={cn(
-                            "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
-                            signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-amber-500/30" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/30" : stickyBg,
+                            "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground/60 text-[10px] border-r border-border/10",
+                            signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-warning/20" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/20" : stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
-                              {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/60" /> : rowIdx + 1}
+                              {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/50" /> : rowIdx + 1}
                               {isFlipped && !isHeaderRow && (
-                                <span className="text-[8px] font-bold text-amber-500" title="Sign flipped (±)">±</span>
+                                <span className="text-[8px] font-bold text-warning" title="Sign flipped (±)">±</span>
                               )}
                             </div>
                           </td>
                           <td className={cn(
-                            "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r-2 border-r-border/50 font-medium",
+                            "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r border-border/15 font-medium",
                             stickyBg,
-                          )} style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>
+                          )} style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.15)' }}>
                             <div className="flex items-center gap-1.5 overflow-hidden">
                               {isMappedRow && !isHeaderRow && (
                                 <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
