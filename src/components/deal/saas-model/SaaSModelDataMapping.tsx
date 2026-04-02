@@ -2489,8 +2489,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                         return (
                           <tr
                             key={rowIdx}
-                            className={cn(
-                              "border-b border-border/5 cursor-pointer transition-colors",
+                           className={cn(
+                             "border-b border-border/[0.03] cursor-pointer transition-colors",
                               isSelected
                                 ? "bg-primary/10 hover:bg-primary/15"
                                 : rowIdx % 2 === 0 ? "bg-transparent hover:bg-muted/10" : "bg-muted/5 hover:bg-muted/15"
