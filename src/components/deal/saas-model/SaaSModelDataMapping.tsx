@@ -1978,7 +1978,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       {/* Split panel: spreadsheet + field sidebar */}
       <ResizablePanelGroup
         direction="horizontal"
-        className="rounded-xl border border-border/30 overflow-hidden"
+        className="rounded-xl border border-border/[0.06] overflow-hidden shadow-md"
         onLayout={(sizes) => {
           try { localStorage.setItem('data-mapping-panel-ratio', JSON.stringify(sizes)); } catch {}
         }}
