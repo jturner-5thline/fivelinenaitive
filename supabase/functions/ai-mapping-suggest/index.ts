@@ -22,6 +22,36 @@ interface MappingSuggestion {
   category: "is" | "bs" | "checklist";
 }
 
+/**
+ * Compute simple numeric stats for recurring-revenue detection.
+ * Returns null when there are fewer than 3 numeric values.
+ */
+function computeRowStats(values: (string | number | null)[]) {
+  const nums = values
+    .map((v) => (typeof v === "number" ? v : typeof v === "string" ? parseFloat(v.replace(/[,$]/g, "")) : NaN))
+    .filter((n) => !isNaN(n));
+
+  if (nums.length < 3) return null;
+
+  const nonZero = nums.filter((n) => n !== 0);
+  const presenceRatio = nonZero.length / nums.length;
+  const mean = nonZero.reduce((a, b) => a + b, 0) / (nonZero.length || 1);
+  if (mean === 0) return null;
+
+  // Coefficient of variation (CV) – lower = more stable
+  const variance = nonZero.reduce((s, v) => s + (v - mean) ** 2, 0) / (nonZero.length || 1);
+  const cv = Math.sqrt(variance) / Math.abs(mean);
+
+  // Max month-over-month swing as fraction of mean
+  let maxSwing = 0;
+  for (let i = 1; i < nonZero.length; i++) {
+    const swing = Math.abs(nonZero[i] - nonZero[i - 1]) / Math.abs(mean);
+    if (swing > maxSwing) maxSwing = swing;
+  }
+
+  return { presenceRatio, cv, maxSwing, monthCount: nums.length, nonZeroCount: nonZero.length };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -33,7 +63,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify user
     const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader || "" } },
     });
@@ -51,7 +80,7 @@ serve(async (req) => {
 
     if (!rows?.length || !company_id) throw new Error("Missing rows or company_id");
 
-    // Fetch historical patterns for this company
+    // Fetch historical patterns
     const { data: patterns } = await serviceClient
       .from("mapping_patterns")
       .select("source_label_normalized, mapped_field, action, occurrence_count")
@@ -64,7 +93,17 @@ serve(async (req) => {
       .map((p: any) => `"${p.source_label_normalized}" → "${p.mapped_field}" (used ${p.occurrence_count}x)`)
       .join("\n");
 
-    // Build the target fields list
+    // Pre-compute numeric trend stats per row for the prompt
+    const trendAnalyses: string[] = [];
+    for (const r of rows.slice(0, 100)) {
+      const stats = computeRowStats(r.sampleValues);
+      if (stats) {
+        trendAnalyses.push(
+          `Row ${r.rowIdx} "${r.label}": presence=${(stats.presenceRatio * 100).toFixed(0)}% months, CV=${stats.cv.toFixed(2)}, maxSwing=${stats.maxSwing.toFixed(2)}, nonZeroMonths=${stats.nonZeroCount}/${stats.monthCount}`
+        );
+      }
+    }
+
     const financialFields = [
       "Recurring Revenue", "Non-Recurring Revenue", "Other Revenue",
       "COGS on Recurring Revenue", "COGS on Non-Recurring Revenue", "COGS - Labor",
@@ -86,8 +125,12 @@ serve(async (req) => {
       : "";
 
     const rowsText = rows.slice(0, 100).map(r =>
-      `Row ${r.rowIdx}: "${r.label}" | sample values: ${r.sampleValues.slice(0, 5).join(", ")}`
+      `Row ${r.rowIdx}: "${r.label}" | sample values: ${r.sampleValues.slice(0, 12).join(", ")}`
     ).join("\n");
+
+    const trendContext = trendAnalyses.length
+      ? `\n\nPre-computed monthly trend statistics for revenue rows (use these to classify Recurring vs Non-Recurring Revenue):\n${trendAnalyses.join("\n")}`
+      : "";
 
     const systemPrompt = `You are a financial data mapping expert. Given rows from an Excel spreadsheet, suggest which standard financial field each row maps to.
 
@@ -96,6 +139,7 @@ ${financialFields.join(", ")}
 ${checklistContext}
 
 ${patternContext ? `\nHistorical accepted mappings for this organization (prioritize these patterns):\n${patternContext}` : ""}
+${trendContext}
 
 Rules:
 - Only suggest mappings you're confident about (>0.5 confidence)
@@ -108,6 +152,39 @@ Rules:
 Keyword-to-field rules (apply with high confidence 0.85+):
 - Rows containing "SaaS", "Subscription", "Recurring", "Licensing", or "Software" in the label should map to "Recurring Revenue"
 - These keywords strongly indicate recurring revenue streams even if the label is not an exact match
+
+## RECURRING REVENUE DETECTION (critical — use both label cues AND numeric patterns)
+
+For every revenue-category row, determine whether it is Recurring Revenue or Non-Recurring Revenue by combining:
+
+A) Label/naming signals:
+   - STRONGER recurring signals: subscription, MRR, ARR, recurring, SaaS, platform fees, retainer, managed services, licensing, maintenance, support contract
+   - STRONGER non-recurring signals: project, implementation, one-time, setup, pass-through, consulting, advisory, other income, professional services, installation
+
+B) Monthly numeric pattern (use the pre-computed trend stats):
+   - LIKELY RECURRING when:
+     • presence ratio >= 75% (appears in most months)
+     • coefficient of variation (CV) <= 0.35 (low volatility)
+     • max month-over-month swing <= 0.50 (no dramatic spikes)
+     • Values show a steady run-rate or gradual growth trend
+   - LIKELY NON-RECURRING when:
+     • presence ratio < 50% (intermittent/sporadic)
+     • CV > 0.60 (high volatility)
+     • max swing > 0.80 (large spikes/dips)
+     • Values appear concentrated in a few months
+
+C) Combined decision framework:
+   - Strong label signal + consistent pattern → Recurring Revenue, confidence 0.85-0.95
+   - Neutral label + very consistent pattern (CV<0.25, presence>85%) → Recurring Revenue, confidence 0.75-0.85, explain that pattern suggests recurring
+   - Neutral label + moderately consistent (CV 0.25-0.40) → Recurring Revenue, confidence 0.60-0.75, note user review recommended
+   - Neutral label + inconsistent pattern → Non-Recurring Revenue or Other Revenue, confidence 0.60-0.75
+   - Non-recurring label signal + any pattern → Non-Recurring Revenue, confidence 0.80+
+   - Ambiguous cases → suggest with lower confidence (0.50-0.65) and explicitly state the uncertainty
+
+D) Reasoning requirements:
+   - For Recurring Revenue suggestions driven by numeric consistency, the reason MUST mention the pattern, e.g.: "Revenue appears consistently each month with limited volatility (CV=0.18, present in 11/12 months), suggesting an ongoing recurring stream."
+   - For lower-confidence cases: "Revenue is present monthly but shows elevated volatility (CV=0.42), so user review is recommended."
+   - For Non-Recurring: "Revenue appears in only 4/12 months with large variance, consistent with project-based or one-time income."
 
 You MUST use the suggest_mappings tool to return your results.`;
 
@@ -141,7 +218,7 @@ You MUST use the suggest_mappings tool to return your results.`;
                       label: { type: "string", description: "The row label" },
                       suggestedField: { type: "string", description: "The standard field name to map to" },
                       confidence: { type: "number", description: "Confidence score 0-1" },
-                      reason: { type: "string", description: "Brief reason for the suggestion" },
+                      reason: { type: "string", description: "Brief reason for the suggestion, including numeric pattern analysis for revenue rows" },
                       category: { type: "string", enum: ["is", "bs", "checklist"] },
                     },
                     required: ["rowIdx", "label", "suggestedField", "confidence", "reason", "category"],
@@ -171,7 +248,6 @@ You MUST use the suggest_mappings tool to return your results.`;
 
     const aiData = await aiResponse.json();
 
-    // Extract tool use result from Claude's response
     let suggestions: MappingSuggestion[] = [];
     const toolUseBlock = aiData.content?.find((block: any) => block.type === "tool_use" && block.name === "suggest_mappings");
 
@@ -179,7 +255,6 @@ You MUST use the suggest_mappings tool to return your results.`;
       suggestions = toolUseBlock.input.suggestions;
     }
 
-    // Filter out low-confidence suggestions
     suggestions = suggestions.filter(s => s.confidence >= 0.5);
 
     return new Response(JSON.stringify({ suggestions }), {

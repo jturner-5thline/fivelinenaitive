@@ -759,7 +759,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     const companyId = await getCompanyId();
     if (!companyId) { toast.error('Company not found'); return; }
     const rows = sheet.data.slice(0, 200).map((row, idx) => ({
-      rowIdx: idx, label: String(row[0] || ''), sampleValues: row.slice(1, 6),
+      rowIdx: idx, label: String(row[0] || ''), sampleValues: row.slice(1),
     })).filter(r => r.label.trim().length > 0);
     await fetchSuggestions(rows, companyId, dealId);
   }, [selectedFile, activeSheet, getCompanyId, fetchSuggestions, dealId]);
