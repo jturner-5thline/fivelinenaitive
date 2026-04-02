@@ -212,6 +212,10 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
     if (deals.length === 0) return {};
     const preview: Record<string, string> = { name: mergedName };
     for (const field of MERGE_FIELDS) {
+      if (field.key === 'engagementType' && customEngagementType) {
+        preview[field.key] = ENGAGEMENT_TYPE_CONFIG[customEngagementType]?.label || customEngagementType;
+        continue;
+      }
       const sourceDeal = deals.find(d => d.id === selections[field.key]) || deals[0];
       preview[field.key] = getFieldValue(sourceDeal, field.key);
     }
