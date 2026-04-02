@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, ShieldCheck, ChevronRight, Command, MessageSquare, History, Dice5, FileText, Settings2 } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, ShieldCheck, ChevronRight, MessageSquare, History, Dice5, FileText, Settings2 } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { useModelAnnotations } from '@/hooks/useModelAnnotations';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
@@ -42,7 +42,6 @@ const ALL_TABS: TabDef[] = [
   { key: 'debt-servicing', label: 'Debt Servicing', icon: Landmark },
   { key: 'credit-analysis', label: 'Credit Analysis', icon: ShieldCheck },
   { key: 'monte-carlo', label: 'Monte Carlo', icon: Dice5 },
-  { key: 'versioning', label: 'Versioning', icon: History },
   { key: 'export', label: 'Export', icon: FileText },
 ];
 
@@ -82,6 +81,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   const { model, scenarios, lenders, isLoading, saveStatus, updateModel, recalculate, updateScenarios, updateLender } = useSaaSModel(dealId);
   const annotationHook = useModelAnnotations(dealId);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [versioningOpen, setVersioningOpen] = useState(false);
 
   // Tab visibility
   const [visibleTabs, setVisibleTabs] = useState<Set<string>>(loadVisibleTabs);
@@ -278,17 +278,16 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
             </PopoverContent>
           </Popover>
 
-          {/* ⌘K hint */}
+          {/* Versioning button */}
           <Button
             variant="outline"
             size="sm"
             className="h-7 gap-1.5 text-xs text-muted-foreground px-2"
-            onClick={() => {
-              window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
-            }}
+            onClick={() => setVersioningOpen(true)}
+            title="Version History"
           >
-            <Command className="h-3 w-3" />
-            <span>K</span>
+            <History className="h-3 w-3" />
+            <span>Versions</span>
           </Button>
 
           {/* Save status */}
@@ -358,7 +357,23 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         <TabsContent value="monte-carlo" className="mt-4">
           <MonteCarloSimulation model={model} />
         </TabsContent>
-        <TabsContent value="versioning" className="mt-4">
+        <TabsContent value="export" className="mt-4">
+          <CreditMemoExport model={model} scenarios={scenarios} lenders={lenders} />
+        </TabsContent>
+      </Tabs>
+
+      {/* Versioning Dialog */}
+      <Dialog open={versioningOpen} onOpenChange={setVersioningOpen}>
+        <DialogContent className="sm:max-w-[720px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Version History
+            </DialogTitle>
+            <DialogDescription>
+              View, compare, and restore previous model snapshots.
+            </DialogDescription>
+          </DialogHeader>
           <ModelVersioning
             dealId={dealId}
             model={model}
@@ -369,13 +384,11 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
               updateScenarios(restoredScenarios);
               restoredLenders.forEach((l, i) => updateLender(i, l));
               toast.success('Model restored from snapshot');
+              setVersioningOpen(false);
             }}
           />
-        </TabsContent>
-        <TabsContent value="export" className="mt-4">
-          <CreditMemoExport model={model} scenarios={scenarios} lenders={lenders} />
-        </TabsContent>
-      </Tabs>
+        </DialogContent>
+      </Dialog>
 
       {/* Unsaved Changes Dialog */}
       <Dialog open={showUnsavedDialog} onOpenChange={(open) => { if (!open) handleCancelLeave(); }}>
