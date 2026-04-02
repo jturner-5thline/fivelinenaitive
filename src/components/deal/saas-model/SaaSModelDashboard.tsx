@@ -16,6 +16,7 @@ import { EnhancedKPICard } from './EnhancedKPICard';
 import { AIInsightsPanel } from './AIInsightsPanel';
 import { AnalysisChatPanel } from './AnalysisChatPanel';
 import { AnnotationBadge } from './AnnotationThread';
+import { SaaSModelCharts } from './SaaSModelCharts';
 import type { Annotation } from '@/hooks/useModelAnnotations';
 
 interface AnnotationHook {
@@ -684,6 +685,11 @@ export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
         <AIInsightsPanel model={m} />
         <AnalysisChatPanel model={m} />
       </div>
+
+      {/* ═══════════════════════════════════════════════════
+          ROW 6 — CHARTS (migrated from Charts tab)
+          ═══════════════════════════════════════════════════ */}
+      <SaaSModelCharts model={m} />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, BarChart3, ShieldCheck, ChevronRight, Command, MessageSquare, History, Dice5, FileText, Settings2 } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, Wallet, Upload, TrendingDown, Landmark, Loader2, Check, ShieldCheck, ChevronRight, Command, MessageSquare, History, Dice5, FileText, Settings2 } from 'lucide-react';
 import { useSaaSModel } from '@/hooks/useSaaSModel';
 import { useModelAnnotations } from '@/hooks/useModelAnnotations';
 import { SaaSModelDashboard } from './SaaSModelDashboard';
@@ -12,7 +12,6 @@ import { SaaSModelBalanceSheet } from './SaaSModelBalanceSheet';
 import { SaaSModelDataMapping, type DataMappingHandle } from './SaaSModelDataMapping';
 import { SaaSModelSensitivity } from './SaaSModelSensitivity';
 import { SaaSModelDebtServicing } from './SaaSModelDebtServicing';
-import { SaaSModelCharts } from './SaaSModelCharts';
 import { SaaSModelCreditAnalysis } from './SaaSModelCreditAnalysis';
 
 import { SaaSModelCommandPalette } from './SaaSModelCommandPalette';
@@ -41,7 +40,6 @@ const ALL_TABS: TabDef[] = [
   { key: 'data-mapping', label: 'Data Mapping', icon: Upload },
   { key: 'sensitivity', label: 'Sensitivity', icon: TrendingDown },
   { key: 'debt-servicing', label: 'Debt Servicing', icon: Landmark },
-  { key: 'charts', label: 'Charts', icon: BarChart3 },
   { key: 'credit-analysis', label: 'Credit Analysis', icon: ShieldCheck },
   { key: 'monte-carlo', label: 'Monte Carlo', icon: Dice5 },
   { key: 'versioning', label: 'Versioning', icon: History },
@@ -353,9 +351,6 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
         </TabsContent>
         <TabsContent value="debt-servicing" className="mt-4">
           <SaaSModelDebtServicing lenders={lenders} updateLender={updateLender} />
-        </TabsContent>
-        <TabsContent value="charts" className="mt-4">
-          <SaaSModelCharts model={model} />
         </TabsContent>
         <TabsContent value="credit-analysis" className="mt-4">
           <SaaSModelCreditAnalysis model={model} />
