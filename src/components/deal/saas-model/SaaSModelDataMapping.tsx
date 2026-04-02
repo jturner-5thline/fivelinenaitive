@@ -1976,12 +1976,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <div className="flex items-center justify-between border-b border-[#E5E7EB] bg-[#F9FAFB]">
                 <div className="flex overflow-x-auto">
                   {selectedFile.sheets.map((s, i) => (
-                   <button key={i} className={cn(
-                     "px-3 py-1.5 text-[11px] whitespace-nowrap border-b-2 transition-colors font-medium",
-                     i === activeSheet ? "border-primary text-foreground bg-secondary/40" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/20"
-                    )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); setSignFlipSelectedRows(new Set()); setSignFlipSelectedCols(new Set()); }}>
-                      {s.name}
-                    </button>
+                    <button key={i} className={cn(
+                      "px-3 py-1.5 text-xs whitespace-nowrap border-b-2 transition-colors font-medium",
+                      i === activeSheet ? "border-[#2563EB] text-[#111827] bg-white" : "border-transparent text-[#6B7280] hover:text-[#111827] hover:bg-white/50"
+                     )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); setSignFlipSelectedRows(new Set()); setSignFlipSelectedCols(new Set()); }}>
+                       {s.name}
+                     </button>
                   ))}
                 </div>
                 <div className="flex items-center gap-1 px-2">
