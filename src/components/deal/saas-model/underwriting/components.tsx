@@ -158,7 +158,7 @@ export function SaasMetricsGrid({ tiles }: { tiles: SaasMetricTile[] }) {
       {tiles.map((t) => (
         <div key={t.label} className="bg-card border border-border px-3 py-2.5 rounded-lg">
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">{t.label}</p>
-          <p className="text-base font-bold text-foreground font-mono tabular-nums leading-tight">{t.value}</p>
+          <p className={cn("text-base font-bold font-mono tabular-nums leading-tight", currencyColor(t.value))}>{t.value}</p>
           {t.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{t.sub}</p>}
         </div>
       ))}
