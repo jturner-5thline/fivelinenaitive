@@ -1989,9 +1989,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           minSize={30}
         >
           <div ref={spreadsheetRef} tabIndex={0} className="outline-none">
-          <div className="rounded-xl border border-border/30 bg-card/60 overflow-hidden">
-              {/* Sheet tabs + mode toggles */}
-              <div className="flex items-center justify-between border-b border-border/20 bg-muted/30">
+         <div className="rounded-xl bg-secondary/20 overflow-hidden">
+             {/* Sheet tabs + mode toggles */}
+             <div className="flex items-center justify-between border-b border-border/[0.04] bg-muted/15">
                 <div className="flex overflow-x-auto">
                   {selectedFile.sheets.map((s, i) => (
                     <button key={i} className={cn(
