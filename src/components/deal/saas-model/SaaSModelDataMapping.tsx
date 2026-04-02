@@ -1942,7 +1942,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </AlertDialogContent>
           </AlertDialog>
 
-          <div className="h-5 w-px bg-border/30" />
+          <div className="h-5 w-px bg-border/[0.06]" />
 
           {/* Secondary: Save Draft */}
           <TooltipProvider delayDuration={300}>
