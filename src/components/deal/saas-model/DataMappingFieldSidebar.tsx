@@ -532,8 +532,8 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                   .filter(f => !fieldMappings[f])
                   .slice(0, 12)
                   .map(f => (
-                    <button key={f} onClick={() => onAssignField(f)}
-                      className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-medium bg-background/80 hover:bg-cyan-500/20 border border-border/30 hover:border-cyan-500/40 transition-colors text-foreground">
+                   <button key={f} onClick={() => onAssignField(f)}
+                     className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-medium bg-secondary/50 hover:bg-primary/10 border border-border/[0.06] hover:border-primary/20 transition-colors text-foreground/80">
                       {f}
                     </button>
                   ))}
