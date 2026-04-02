@@ -116,7 +116,7 @@ function getReasonBadge(reason: string): string {
   const colors: Record<string, { bg: string; text: string }> = {
     'Stale': { bg: '#fef3c7', text: '#92400e' },
     'Flagged': { bg: '#fee2e2', text: '#991b1b' },
-    'Lenders Need Updating': { bg: '#dbeafe', text: '#1e40af' },
+    'Lenders Need Updating': { bg: '#fff7ed', text: '#c2410c' },
   };
   const c = colors[reason] || { bg: '#f3f4f6', text: '#374151' };
   return `<span style="display: inline-block; background: ${c.bg}; color: ${c.text}; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${reason}</span>`;
