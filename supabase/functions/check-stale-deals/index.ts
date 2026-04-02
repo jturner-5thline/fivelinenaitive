@@ -99,7 +99,7 @@ function getReasonBadge(reason: string): string {
     'Lenders Need Updating': { bg: '#dbeafe', text: '#1e40af' },
   };
   const c = colors[reason] || { bg: '#f3f4f6', text: '#374151' };
-  return `<span style="display: inline-block; background: ${c.bg}; color: ${c.text}; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 12px; margin-right: 4px;">${reason}</span>`;
+  return `<span style="display: inline-block; background: ${c.bg}; color: ${c.text}; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">${reason}</span>`;
 }
 
 function buildEmailHtml(
