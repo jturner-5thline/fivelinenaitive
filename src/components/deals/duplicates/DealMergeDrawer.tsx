@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { DuplicateCluster } from '@/hooks/useDealDuplicates';
-import { Deal, STATUS_CONFIG, STAGE_CONFIG } from '@/types/deal';
+import { Deal, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelines } from '@/hooks/usePipelines';
+import { useCompany } from '@/hooks/useCompany';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -92,9 +93,57 @@ function getSmartDefaults(deals: Deal[]): Record<MergeField, string> {
   return defaults;
 }
 
+/** Shared display-value resolver for merge table fields */
+function resolveDisplayValue(
+  field: MergeField,
+  val: unknown,
+  pipelineMap: Map<string, string>,
+  pipelineStageMap: Map<string, string>,
+  memberNameMap: Map<string, string>,
+): string {
+  if (val === null || val === undefined || val === '') return '—';
+
+  const str = String(val);
+
+  switch (field) {
+    case 'pipelineId':
+      return pipelineMap.get(str) || str || '—';
+    case 'value':
+      return `$${Number(val).toLocaleString()}`;
+    case 'stage':
+      return STAGE_CONFIG[str]?.label || pipelineStageMap.get(str) || str;
+    case 'status':
+      return STATUS_CONFIG[str]?.label || str;
+    case 'engagementType':
+      return ENGAGEMENT_TYPE_CONFIG[str as keyof typeof ENGAGEMENT_TYPE_CONFIG]?.label || str;
+    case 'manager':
+    case 'dealOwner':
+    case 'analyst':
+      // If the value looks like a numeric ID (e.g. HubSpot owner ID), try resolving from members
+      if (/^\d+$/.test(str)) {
+        return memberNameMap.get(str) || str;
+      }
+      // If it's a UUID, try resolving
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-/.test(str)) {
+        return memberNameMap.get(str) || str;
+      }
+      // Already a display name
+      return str;
+    case 'notes':
+    case 'narrative':
+      return str.length > 80 ? str.slice(0, 80) + '…' : str;
+    default:
+      if (Array.isArray(val)) {
+        return val.length > 0 ? val.join(', ') : '—';
+      }
+      return str;
+  }
+}
+
 export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawerProps) {
   const { refreshDeals } = useDealsContext();
   const { pipelines } = usePipelines();
+  const { members } = useCompany();
   const [isMerging, setIsMerging] = useState(false);
 
   const deals = cluster?.deals || [];
@@ -109,6 +158,36 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
     return map;
   }, [pipelines]);
 
+  // Build a stage ID → label map from all pipeline stages
+  const pipelineStageMap = useMemo(() => {
+    const map = new Map<string, string>();
+    pipelines.forEach(p => {
+      const stages = (p as any).stages;
+      if (Array.isArray(stages)) {
+        stages.forEach((s: any) => {
+          if (s.id && s.label) map.set(s.id, s.label);
+        });
+      }
+    });
+    return map;
+  }, [pipelines]);
+
+  // Build a member lookup map (user_id → display_name, also index by display_name for pass-through)
+  const memberNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    members.forEach(m => {
+      const name = m.display_name || m.email || 'Team Member';
+      if (m.user_id) map.set(m.user_id, name);
+    });
+    return map;
+  }, [members]);
+
+  // Unified field value getter using the shared resolver
+  const getFieldValue = (deal: Deal, field: MergeField): string => {
+    const val = field === 'pipelineId' ? deal.pipelineId : deal[field as keyof Deal];
+    return resolveDisplayValue(field, val, pipelineMap, pipelineStageMap, memberNameMap);
+  };
+
   // Reset state when cluster changes
   useEffect(() => {
     if (deals.length > 0 && open) {
@@ -117,22 +196,6 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
       setMergedName(cluster?.primaryName || deals[0].company || deals[0].name);
     }
   }, [cluster?.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const getFieldValue = (deal: Deal, field: MergeField): string => {
-    if (field === 'pipelineId') {
-      return deal.pipelineId ? pipelineMap.get(deal.pipelineId) || deal.pipelineId : '—';
-    }
-    const val = deal[field as keyof Deal];
-    if (val === null || val === undefined || val === '') return '—';
-    if (field === 'value') return `$${Number(val).toLocaleString()}`;
-    if (field === 'stage') return STAGE_CONFIG[val as string]?.label || String(val);
-    if (field === 'status') return STATUS_CONFIG[val as string]?.label || String(val);
-    if (field === 'notes' || field === 'narrative') {
-      const s = String(val);
-      return s.length > 80 ? s.slice(0, 80) + '…' : s;
-    }
-    return String(val);
-  };
 
   // Compute merged preview
   const mergedPreview = useMemo(() => {
@@ -146,7 +209,7 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
     const totalLenders = deals.reduce((sum, d) => sum + (d.lenders?.length || 0), 0);
     preview.lenders = `${totalLenders} lenders (combined)`;
     return preview;
-  }, [deals, selections, mergedName, pipelineMap]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [deals, selections, mergedName, pipelineMap, pipelineStageMap, memberNameMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedFeeCount = MERGE_FIELDS.filter(f => {
     const deal = deals.find(d => d.id === selections[f.key]);
