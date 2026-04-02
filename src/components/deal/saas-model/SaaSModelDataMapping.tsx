@@ -1815,20 +1815,20 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
           {/* Zoom */}
           <div className="flex items-center gap-0">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomOut} disabled={zoomLevel <= 50}>
-              <ZoomOut className="h-3.5 w-3.5" />
-            </Button>
-            <span className="text-[10px] text-muted-foreground tabular-nums w-7 text-center">{zoomLevel}%</span>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomIn} disabled={zoomLevel >= 200}>
-              <ZoomIn className="h-3.5 w-3.5" />
-            </Button>
+            <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomOut} disabled={zoomLevel <= 50}>
+              <ZoomOut className="h-3 w-3" />
+            </button>
+            <span className="text-[10px] tabular-nums w-7 text-center" style={{ color: 'var(--map-text-faint)' }}>{zoomLevel}%</span>
+            <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomIn} disabled={zoomLevel >= 200}>
+              <ZoomIn className="h-3 w-3" />
+            </button>
           </div>
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                <Keyboard className="h-3.5 w-3.5" />
-              </Button>
+              <button className="map-toolbar-btn h-6 w-6 p-0 justify-center">
+                <Keyboard className="h-3 w-3" />
+              </button>
             </PopoverTrigger>
             <PopoverContent side="bottom" align="end" className="w-64 p-3">
               <h4 className="text-xs font-semibold mb-2">Keyboard Shortcuts</h4>
