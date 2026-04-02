@@ -42,7 +42,6 @@ const ALL_TABS: TabDef[] = [
   { key: 'debt-servicing', label: 'Debt Servicing', icon: Landmark },
   { key: 'credit-analysis', label: 'Credit Analysis', icon: ShieldCheck },
   { key: 'monte-carlo', label: 'Monte Carlo', icon: Dice5 },
-  { key: 'versioning', label: 'Versioning', icon: History },
   { key: 'export', label: 'Export', icon: FileText },
 ];
 
