@@ -398,12 +398,17 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
                     <tr key={field.key} className="border-b border-border last:border-0">
                       <td className="px-3 py-2 text-xs font-medium text-muted-foreground sticky left-0 bg-background">{field.label}</td>
                       {deals.map(deal => {
-                        const isSelected = selections[field.key] === deal.id;
+                        const isSelected = field.key === 'engagementType'
+                          ? !customEngagementType && selections[field.key] === deal.id
+                          : selections[field.key] === deal.id;
                         const value = getFieldValue(deal, field.key);
                         return (
                           <td key={deal.id} className="px-1 py-1">
                             <button
-                              onClick={() => setSelections(prev => ({ ...prev, [field.key]: deal.id }))}
+                              onClick={() => {
+                                if (field.key === 'engagementType') setCustomEngagementType(null);
+                                setSelections(prev => ({ ...prev, [field.key]: deal.id }));
+                              }}
                               className={cn(
                                 'w-full text-left px-2 py-1.5 rounded-md text-xs transition-all',
                                 isSelected
@@ -420,7 +425,29 @@ export function DealMergeDrawer({ cluster, open, onOpenChange }: DealMergeDrawer
                         );
                       })}
                       <td className="px-3 py-2 text-xs text-foreground bg-primary/5 border-l border-border font-medium">
-                        <span className="truncate block max-w-[150px]">{mergedPreview[field.key] || '—'}</span>
+                        {field.key === 'engagementType' ? (
+                          <Select
+                            value={customEngagementType || ''}
+                            onValueChange={(val) => {
+                              if (val) {
+                                setCustomEngagementType(val as EngagementType);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-[160px] border-primary/30">
+                              <SelectValue placeholder={mergedPreview[field.key] || '—'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                                <SelectItem key={key} value={key} className="text-xs">
+                                  {config.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="truncate block max-w-[150px]">{mergedPreview[field.key] || '—'}</span>
+                        )}
                       </td>
                     </tr>
                   ))}
