@@ -1578,6 +1578,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={() => setFieldSettingsOpen(true)}>
+                <Settings className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom"><p className="text-xs">Field Settings</p></TooltipContent>
+          </Tooltip>
          <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/[0.06] bg-secondary/40 text-muted-foreground">
            <FileSpreadsheet className="h-3 w-3 text-muted-foreground/60" />
            {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
@@ -1596,6 +1604,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             {percent === 100 ? <CheckCircle2 className="h-3 w-3" /> : null}
             {percent}% mapped
           </Badge>
+          {enabledFields.size < allFieldNames.size && (
+           <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/[0.06] bg-secondary/40 text-muted-foreground">
+             {enabledFields.size}/{allFieldNames.size} fields
+           </Badge>
+          )}
           {hasUnsavedMappings && (
            <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 bg-warning/8 text-warning border-warning/15 font-medium">
              {mappedCount - lastSavedCount} unsaved
@@ -1603,6 +1616,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           )}
         </div>
       </div>
+
+      {/* Field Settings Modal */}
+      <MappingFieldSettings
+        open={fieldSettingsOpen}
+        onOpenChange={setFieldSettingsOpen}
+        enabledFields={enabledFields}
+        onUpdateEnabledFields={setEnabledFields}
+      />
 
       {/* ── Multi-file selector tabs ── */}
       {analyzedFiles.length > 1 && (
