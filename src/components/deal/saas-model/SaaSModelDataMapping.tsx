@@ -648,7 +648,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="px-4 pb-4 pt-0 space-y-4 border-t border-border/20">
+          <CardContent className="px-4 pb-4 pt-0 space-y-4 border-t border-border/[0.06]">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-3">
               <div>
                 <Label className="text-xs">Company Name</Label>
