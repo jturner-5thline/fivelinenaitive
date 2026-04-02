@@ -90,7 +90,7 @@ export function useFlagNotes(dealId: string | null) {
   const deleteFlagNote = useCallback(async (noteId: string) => {
     try {
       const { error } = await supabase
-        .from('deal_flag_notes' as any)
+        .from('deal_flag_notes')
         .delete()
         .eq('id', noteId);
 
