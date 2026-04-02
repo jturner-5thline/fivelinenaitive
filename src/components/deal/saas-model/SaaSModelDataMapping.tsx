@@ -2203,7 +2203,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             if (!isHeaderRow) handleRowClick(rowIdx, e);
                           }}>
                           <td className={cn(
-                            "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground/60 text-[10px] border-r border-border/10",
+                            "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground/40 text-[10px]",
                             signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-warning/20" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/20" : stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
