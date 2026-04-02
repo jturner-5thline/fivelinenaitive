@@ -393,7 +393,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
         const pct = total > 0 ? (mapped / total) * 100 : 0;
         return (
           <div key={section.label}>
-            <div className="px-2 py-2 bg-muted/30 rounded-sm mb-1 flex items-center justify-between gap-2">
+            <div className="px-2 py-2 bg-secondary/30 rounded-md mb-1 flex items-center justify-between gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{section.label}</span>
               <div className="flex items-center gap-2">
                 <div className="h-1 w-16 rounded-full overflow-hidden bg-muted/20">
