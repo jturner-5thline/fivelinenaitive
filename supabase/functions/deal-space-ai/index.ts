@@ -689,7 +689,8 @@ async function handleGenerateMemo(dealId: string, supabase: any) {
   try {
     const ctx = await buildDealContext(supabase, dealId);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = `You are a senior credit analyst writing a lender-ready investment memo. Using ONLY the data provided below, generate a comprehensive memo following the EXACT section structure.
