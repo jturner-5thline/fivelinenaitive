@@ -1735,7 +1735,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             <ShieldAlert className="h-3.5 w-3.5" /> Validate
           </Button>
 
-          <div className="h-5 w-px bg-border/30 mx-0.5" />
+           <div className="h-5 w-px bg-border/[0.06] mx-0.5" />
 
           <TooltipProvider delayDuration={200}>
             <Tooltip>
