@@ -1584,9 +1584,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             {percent}% mapped
           </Badge>
           {hasUnsavedMappings && (
-            <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 bg-warning/10 text-warning border-warning/30 font-medium">
-              {mappedCount - lastSavedCount} unsaved
-            </Badge>
+           <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 bg-warning/8 text-warning border-warning/15 font-medium">
+             {mappedCount - lastSavedCount} unsaved
+           </Badge>
           )}
         </div>
       </div>
