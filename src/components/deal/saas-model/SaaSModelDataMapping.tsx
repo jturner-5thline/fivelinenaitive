@@ -2362,6 +2362,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             flashedFields={flashedFields}
             pendingAutoMaps={pendingAutoMaps}
             draggingRowIdx={draggingRowIdx}
+            enabledFields={enabledFields}
             onAssignField={handleAssignField}
             onRemoveMapping={handleRemoveMapping}
             onAcceptSuggestion={handleAcceptSuggestion}
