@@ -751,7 +751,66 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     fetchSuggestions, acceptSuggestion, rejectSuggestion, acceptAll, logPatterns, getSuggestionForRow,
   } = useMappingSuggestions();
 
-  const getCompanyId = useCallback(async (): Promise<string | null> => {
+  // ── Bidirectional linking: lookup maps ──
+  const rowToFieldMap = useMemo(() => {
+    const map = new Map<number, { field: string; origin: 'mapped' | 'pending' | 'suggested' }>();
+    for (const [field, mappings] of Object.entries(fieldMappings)) {
+      for (const m of mappings) map.set(m.rowIdx, { field, origin: 'mapped' });
+    }
+    for (const [field, p] of Object.entries(pendingAutoMaps)) {
+      if (!map.has(p.rowIdx)) map.set(p.rowIdx, { field, origin: 'pending' });
+    }
+    for (const s of suggestions) {
+      if (s.status === 'pending' && !map.has(s.rowIdx)) map.set(s.rowIdx, { field: s.suggestedField, origin: 'suggested' });
+    }
+    return map;
+  }, [fieldMappings, pendingAutoMaps, suggestions]);
+
+  const fieldToRowsMap = useMemo(() => {
+    const map = new Map<string, { rowIdx: number; origin: 'mapped' | 'pending' | 'suggested' }[]>();
+    for (const [field, mappings] of Object.entries(fieldMappings)) {
+      map.set(field, mappings.map(m => ({ rowIdx: m.rowIdx, origin: 'mapped' as const })));
+    }
+    for (const [field, p] of Object.entries(pendingAutoMaps)) {
+      const existing = map.get(field) || [];
+      if (!existing.some(e => e.rowIdx === p.rowIdx)) map.set(field, [...existing, { rowIdx: p.rowIdx, origin: 'pending' as const }]);
+    }
+    for (const s of suggestions) {
+      if (s.status === 'pending') {
+        const existing = map.get(s.suggestedField) || [];
+        if (!existing.some(e => e.rowIdx === s.rowIdx)) map.set(s.suggestedField, [...existing, { rowIdx: s.rowIdx, origin: 'suggested' as const }]);
+      }
+    }
+    return map;
+  }, [fieldMappings, pendingAutoMaps, suggestions]);
+
+  const linkedFieldFromRow = hoveredRowIdx !== null ? rowToFieldMap.get(hoveredRowIdx)?.field ?? null : null;
+  const linkedRowsFromField = hoveredFieldId ? (fieldToRowsMap.get(hoveredFieldId) || []).map(r => r.rowIdx) : [];
+
+  const scrollRowIntoView = useCallback((rowIdx: number) => {
+    const row = spreadsheetRef.current?.querySelector(`[data-row-idx="${rowIdx}"]`);
+    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
+
+  const scrollFieldIntoView = useCallback((fieldId: string) => {
+    const el = document.querySelector(`[data-field-id="${fieldId}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
+
+  const handleFieldHover = useCallback((fieldId: string | null) => { setHoveredFieldId(fieldId); }, []);
+
+  const handleFieldSelect = useCallback((fieldId: string) => {
+    const rows = fieldToRowsMap.get(fieldId);
+    if (rows && rows.length > 0) scrollRowIntoView(rows[0].rowIdx);
+  }, [fieldToRowsMap, scrollRowIntoView]);
+
+  const handleRowHover = useCallback((rowIdx: number | null) => { setHoveredRowIdx(rowIdx); }, []);
+
+  const handleRowSelect = useCallback((rowIdx: number) => {
+    const linked = rowToFieldMap.get(rowIdx);
+    if (linked) scrollFieldIntoView(linked.field);
+  }, [rowToFieldMap, scrollFieldIntoView]);
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const { data } = await supabase.from('company_members').select('company_id').eq('user_id', user.id).limit(1).single();
