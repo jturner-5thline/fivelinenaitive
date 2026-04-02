@@ -83,6 +83,11 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [versioningOpen, setVersioningOpen] = useState(false);
 
+  // Scroll to top on mount and tab change
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+  }, [activeTab]);
+
   // Tab visibility
   const [visibleTabs, setVisibleTabs] = useState<Set<string>>(loadVisibleTabs);
 
