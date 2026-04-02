@@ -546,7 +546,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
 
           {/* Save progress bar */}
           {mappedCount > 0 && (
-            <div className="mb-3 p-2.5 rounded-lg border border-border/30 bg-muted/10 flex items-center justify-between">
+            <div className="mb-3 p-2.5 rounded-lg border border-border/[0.06] bg-secondary/20 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                 <span><span className="font-medium text-foreground">{mappedCount}</span> {mappedCount === 1 ? 'field' : 'fields'} mapped</span>
