@@ -1989,14 +1989,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           minSize={30}
         >
           <div ref={spreadsheetRef} tabIndex={0} className="outline-none">
-          <Card className="border-border/30">
-            <CardContent className="p-0">
-              <div className="flex items-center justify-between border-b border-border/30">
+          <div className="rounded-xl border border-border/30 bg-card/60 overflow-hidden">
+              {/* Sheet tabs + mode toggles */}
+              <div className="flex items-center justify-between border-b border-border/20 bg-muted/30">
                 <div className="flex overflow-x-auto">
                   {selectedFile.sheets.map((s, i) => (
                     <button key={i} className={cn(
-                      "px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors",
-                      i === activeSheet ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                      "px-3 py-1.5 text-[11px] whitespace-nowrap border-b-2 transition-colors font-medium",
+                      i === activeSheet ? "border-primary text-foreground bg-card/60" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-card/30"
                     )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); setSignFlipSelectedRows(new Set()); setSignFlipSelectedCols(new Set()); }}>
                       {s.name}
                     </button>
@@ -2007,7 +2007,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-6 text-[10px] gap-1 px-2 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+                      className="h-6 text-[10px] gap-1 px-2 border-warning/40 text-warning hover:bg-warning/10"
                       onClick={handleApplySignFlip}
                     >
                       <ArrowUpDown className="h-3 w-3" />
@@ -2017,7 +2017,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   <Button
                     variant={signFlipMode ? "default" : "ghost"}
                     size="sm"
-                    className={cn("h-6 w-6 p-0", signFlipMode && "bg-amber-600 hover:bg-amber-600/90 text-white")}
+                    className={cn("h-6 w-6 p-0", signFlipMode && "bg-warning/80 hover:bg-warning/70 text-warning-foreground")}
                     onClick={handleToggleSignFlip}
                     title={signFlipMode ? "Exit sign-flip mode" : "Sign flip — select rows/columns to invert ±"}
                   >
