@@ -413,7 +413,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   );
 
   return (
-    <Card className="border-border/30">
+    <Card className="border-border/[0.06] shadow-md">
       <CardContent className="p-3">
         <div
           ref={panelRef}
