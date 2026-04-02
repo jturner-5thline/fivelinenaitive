@@ -2178,7 +2178,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           <ContextMenuTrigger asChild>
                         <tr
                           className={cn(
-                            "cursor-pointer transition-colors border-b border-border/8",
+                            "cursor-pointer transition-colors border-b border-border/[0.04]",
                             rowBgClass, leftBorderClass,
                             eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-destructive/10 ring-1 ring-inset ring-destructive/25",
                             signFlipMode && signFlipSelectedRows.has(rowIdx) && "!bg-warning/10 ring-1 ring-inset ring-warning/25",
