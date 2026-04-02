@@ -1567,53 +1567,41 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {analyzedFiles.length > 1 && (
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground" onClick={() => setPhase('triage')}>
-              <ArrowLeft className="h-3.5 w-3.5" />
-            </Button>
+            <button className="map-toolbar-btn h-6 px-2" onClick={() => setPhase('triage')}>
+              <ArrowLeft className="h-3 w-3" />
+            </button>
           )}
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Data Mapping</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--map-text)' }}>Data Mapping</h3>
+            <p className="text-[10px]" style={{ color: 'var(--map-text-faint)' }}>
               Map rows from your upload to standard model fields
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={() => setFieldSettingsOpen(true)}>
-                <Settings className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom"><p className="text-xs">Field Settings</p></TooltipContent>
-          </Tooltip>
-         <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/[0.06] bg-secondary/40 text-muted-foreground">
-           <FileSpreadsheet className="h-3 w-3 text-muted-foreground/60" />
-           {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
-         </Badge>
-          <Badge
-            variant="outline"
-           className={cn(
-             "text-[10px] h-5 px-2.5 gap-1.5 font-semibold tabular-nums",
-             percent === 100
-               ? "bg-success/10 text-success border-success/20"
-               : percent > 0
-                 ? "bg-primary/8 text-primary border-primary/15"
-                 : "bg-muted/30 text-muted-foreground border-border/[0.06]"
-           )}
-          >
-            {percent === 100 ? <CheckCircle2 className="h-3 w-3" /> : null}
+        <div className="flex items-center gap-1.5">
+          <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => setFieldSettingsOpen(true)} title="Field Settings">
+            <Settings className="h-3 w-3" />
+          </button>
+          <span className="map-toolbar-chip">
+            <FileSpreadsheet className="h-3 w-3" />
+            {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
+          </span>
+          <span className={cn(
+            "map-toolbar-chip",
+            percent === 100 ? "map-toolbar-chip--success" : percent > 0 ? "" : ""
+          )} style={percent === 100 ? { background: 'rgba(69,212,131,0.1)', borderColor: 'rgba(69,212,131,0.2)', color: 'var(--map-green)' } : percent > 0 ? { background: 'rgba(127,178,255,0.08)', borderColor: 'rgba(127,178,255,0.2)', color: 'var(--map-blue)' } : {}}>
+            {percent === 100 && <CheckCircle2 className="h-3 w-3" />}
             {percent}% mapped
-          </Badge>
+          </span>
           {enabledFields.size < allFieldNames.size && (
-           <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/[0.06] bg-secondary/40 text-muted-foreground">
-             {enabledFields.size}/{allFieldNames.size} fields
-           </Badge>
+            <span className="map-toolbar-chip">
+              {enabledFields.size}/{allFieldNames.size} fields
+            </span>
           )}
           {hasUnsavedMappings && (
-           <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 bg-warning/8 text-warning border-warning/15 font-medium">
-             {mappedCount - lastSavedCount} unsaved
-           </Badge>
+            <span className="map-toolbar-chip map-toolbar-chip--warning">
+              {mappedCount - lastSavedCount} unsaved
+            </span>
           )}
         </div>
       </div>
