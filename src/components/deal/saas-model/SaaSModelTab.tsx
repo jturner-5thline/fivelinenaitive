@@ -278,17 +278,16 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
             </PopoverContent>
           </Popover>
 
-          {/* ⌘K hint */}
+          {/* Versioning button */}
           <Button
             variant="outline"
             size="sm"
             className="h-7 gap-1.5 text-xs text-muted-foreground px-2"
-            onClick={() => {
-              window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
-            }}
+            onClick={() => setVersioningOpen(true)}
+            title="Version History"
           >
-            <Command className="h-3 w-3" />
-            <span>K</span>
+            <History className="h-3 w-3" />
+            <span>Versions</span>
           </Button>
 
           {/* Save status */}
