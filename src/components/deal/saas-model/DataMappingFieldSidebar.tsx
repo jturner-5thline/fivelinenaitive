@@ -34,6 +34,7 @@ interface Props {
   flashedFields: Set<string>;
   pendingAutoMaps: Record<string, { rowIdx: number; label: string; sheetName: string }>;
   draggingRowIdx: number | null;
+  enabledFields?: Set<string>;
   onAssignField: (field: string) => void;
   onRemoveMapping: (field: string, idx: number) => void;
   onAcceptSuggestion: (rowIdx: number) => void;
