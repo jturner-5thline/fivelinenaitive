@@ -1768,7 +1768,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </Tooltip>
           </TooltipProvider>
 
-          <div className="h-5 w-px bg-border/30 mx-0.5" />
+          <div className="h-5 w-px bg-border/[0.06] mx-0.5" />
 
           {/* Column visibility */}
           <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
