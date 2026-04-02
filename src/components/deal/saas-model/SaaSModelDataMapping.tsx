@@ -1704,7 +1704,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <X className="h-3 w-3" />
             </Button>
           </div>
-          <div className="divide-y divide-border/10 max-h-[120px] overflow-auto">
+          <div className="divide-y divide-border/[0.04] max-h-[120px] overflow-auto">
             {validationWarnings.map((w, i) => (
               <div key={i} className="flex items-start gap-2 px-3 py-1.5">
                 {w.severity === 'error' ? <X className="h-3 w-3 text-destructive mt-0.5 shrink-0" /> :
