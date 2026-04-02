@@ -1549,24 +1549,51 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     <div className="space-y-4">
       {renderSettingsSection()}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold">Map your financial fields</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Connect each row from your upload to a standard model field. Use search & filters in the sidebar.
-          </p>
+      {/* ── Header: Title + Progress Badges ── */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {analyzedFiles.length > 1 && (
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground" onClick={() => setPhase('triage')}>
+              <ArrowLeft className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Data Mapping</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Map rows from your upload to standard model fields
+            </p>
+          </div>
         </div>
-        {analyzedFiles.length > 1 && (
-          <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 cursor-pointer hover:bg-muted/50" onClick={() => setPhase('triage')}>
-            <FileSpreadsheet className="h-3 w-3" /> {analyzedFiles.length} files uploaded
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 font-medium tabular-nums border-border/50 bg-card">
+            <FileSpreadsheet className="h-3 w-3 text-muted-foreground" />
+            {sheetCount} sheet{sheetCount !== 1 ? 's' : ''} · {rowCount}×{columnCount}
           </Badge>
-        )}
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px] h-5 px-2.5 gap-1.5 font-semibold tabular-nums",
+              percent === 100
+                ? "bg-success/10 text-success border-success/30"
+                : percent > 0
+                  ? "bg-primary/10 text-primary border-primary/30"
+                  : "bg-muted text-muted-foreground border-border/50"
+            )}
+          >
+            {percent === 100 ? <CheckCircle2 className="h-3 w-3" /> : null}
+            {percent}% mapped
+          </Badge>
+          {hasUnsavedMappings && (
+            <Badge variant="outline" className="text-[10px] h-5 px-2 gap-1 bg-warning/10 text-warning border-warning/30 font-medium">
+              {mappedCount - lastSavedCount} unsaved
+            </Badge>
+          )}
+        </div>
       </div>
 
-      {/* Multi-file selector tabs */}
+      {/* ── Multi-file selector tabs ── */}
       {analyzedFiles.length > 1 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
           {analyzedFiles.map((af, idx) => {
             const isActive = selectedFile === af;
             const dbFile = dbFiles.find(f => f.file_name === af.file.name);
@@ -1575,23 +1602,21 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <button
                 key={idx}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium border transition-colors shrink-0",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all shrink-0",
                   isActive
-                    ? "bg-primary/10 border-primary/30 text-primary"
-                    : "bg-card border-border/30 text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    ? "bg-primary/8 border-primary/25 text-primary shadow-sm"
+                    : "bg-card border-border/40 text-muted-foreground hover:bg-accent/5 hover:text-foreground hover:border-border/60"
                 )}
-                onClick={() => {
-                  if (!isActive) handleSwitchFile(af);
-                }}
+                onClick={() => { if (!isActive) handleSwitchFile(af); }}
               >
                 <FileSpreadsheet className="h-3 w-3" />
                 <span className="truncate max-w-[120px]">{af.file.name}</span>
-                {isPushed && <Check className="h-3 w-3 text-emerald-500" />}
+                {isPushed && <Check className="h-3 w-3 text-success" />}
               </button>
             );
           })}
           <button
-            className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[10px] text-muted-foreground hover:text-foreground border border-dashed border-border/30 hover:border-primary/30 transition-colors shrink-0"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] text-muted-foreground hover:text-foreground border border-dashed border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all shrink-0"
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="h-3 w-3" /> Add file
@@ -1601,76 +1626,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
       )}
 
-      {/* File info + detected headers */}
-      <div className="flex items-center gap-3 rounded-lg border border-border/30 bg-muted/10 px-3 py-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded bg-emerald-500/10">
-          <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium truncate">{selectedFile.file.name}</p>
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-            <span>{sheetCount} sheet{sheetCount === 1 ? '' : 's'} · {rowCount} rows · {columnCount} cols</span>
-            {detectedHeaders.headerRow !== null && (
-              <Badge variant="outline" className="text-[8px] h-4 px-1.5 gap-1">
-                <Columns className="h-2.5 w-2.5" />
-                Headers detected (Row {detectedHeaders.headerRow + 1})
-              </Badge>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setPhase('upload')}>Change file</Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                <PlusCircle className="h-3.5 w-3.5" /> New Mapping
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Start New Mapping?</AlertDialogTitle>
-                <AlertDialogDescription>This will remove all uploaded files and mappings for this deal. You'll start fresh with a new file upload.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleNewMapping}>Start Over</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </div>
-
-      {/* Detected column headers preview */}
-      {detectedHeaders.headers.length > 0 && (
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 px-1 overflow-x-auto">
-            <span className="text-[9px] text-muted-foreground/60 shrink-0">Columns:</span>
-            {detectedHeaders.headers.filter(h => h).slice(0, 18).map((h, i) => {
-              const hasWarning = dateWarnings.some(w => w.colIndex === i);
-              return (
-                <Badge key={i} variant="outline" className={cn("text-[8px] h-4 px-1.5 shrink-0 whitespace-nowrap", hasWarning && "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400")}>
-                  {hasWarning && <AlertTriangle className="h-2 w-2 mr-0.5" />}
-                  {h}
-                </Badge>
-              );
-            })}
-            {detectedHeaders.headers.filter(h => h).length > 18 && (
-              <span className="text-[8px] text-muted-foreground/50">+{detectedHeaders.headers.filter(h => h).length - 18}</span>
-            )}
-          </div>
-          {dateWarnings.length > 0 && (
-            <div className="flex items-center gap-1.5 px-1">
-              <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
-              <span className="text-[9px] text-amber-500">
-                {dateWarnings.length} date gap{dateWarnings.length > 1 ? 's' : ''} detected: {dateWarnings.map(w => w.message).join('; ')}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-
-
-      <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-card/60 px-3 py-1.5">
+      {/* ── File info strip (compact) ── */}
+      <div className="flex items-center gap-2.5 rounded-lg border border-border/30 bg-card/80 px-3 py-1.5">
         <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <button
           className="text-[11px] font-medium text-foreground hover:text-primary transition-colors truncate cursor-pointer"
@@ -1685,28 +1642,43 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         >
           {selectedFile.file.name}
         </button>
-        <span className="text-[10px] text-muted-foreground/60">|</span>
-        <span className="text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{rowCount} rows × {columnCount} cols</span>
         {detectedHeaders.headers.length > 0 && (
           <>
-            <span className="text-[10px] text-muted-foreground/60">|</span>
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+            <span className="text-[10px] text-muted-foreground/40">·</span>
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap truncate max-w-[200px]">
               {detectedHeaders.headers[0]} → {detectedHeaders.headers[detectedHeaders.headers.length - 1]}
             </span>
           </>
         )}
-        <span className="text-[10px] text-muted-foreground/60">|</span>
-        <span className={cn("text-[10px] font-medium tabular-nums whitespace-nowrap", percent === 100 ? "text-emerald-500" : "text-muted-foreground")}>
-          {percent}% mapped
-        </span>
+        {detectedHeaders.headerRow !== null && (
+          <>
+            <span className="text-[10px] text-muted-foreground/40">·</span>
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+              Header Row {detectedHeaders.headerRow + 1}
+            </span>
+          </>
+        )}
+        <div className="ml-auto flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-foreground" onClick={() => setPhase('upload')}>
+            Change file
+          </Button>
+        </div>
       </div>
+
+      {/* Date warnings */}
+      {dateWarnings.length > 0 && (
+        <div className="flex items-center gap-1.5 px-1 text-[10px] text-warning">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          {dateWarnings.length} date gap{dateWarnings.length > 1 ? 's' : ''}: {dateWarnings.map(w => w.message).join('; ')}
+        </div>
+      )}
 
       {/* AI Suggestions Banner */}
       {hasSuggestRun && suggestions.length > 0 && (
-        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-xs text-primary font-medium">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <span className="text-[11px] text-primary font-medium">
               {pendingCount > 0 ? `${pendingCount} AI suggestion${pendingCount > 1 ? 's' : ''} pending` : `${acceptedCount} applied`}
             </span>
           </div>
@@ -1720,24 +1692,26 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* Validation */}
       {validationWarnings.length > 0 && showValidation && (
-        <div className="rounded-lg border border-border/30 bg-muted/5 overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-border/20">
+        <div className="rounded-lg border border-border/30 bg-card/60 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/20">
             <div className="flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4 text-amber-500" />
-              <span className="text-xs font-medium">Validation ({validationWarnings.filter(w => w.severity === 'error').length} errors, {validationWarnings.filter(w => w.severity === 'warning').length} warnings)</span>
+              <ShieldAlert className="h-3.5 w-3.5 text-warning" />
+              <span className="text-[11px] font-medium">
+                {validationWarnings.filter(w => w.severity === 'error').length} errors · {validationWarnings.filter(w => w.severity === 'warning').length} warnings
+              </span>
             </div>
             <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setShowValidation(false)}>
               <X className="h-3 w-3" />
             </Button>
           </div>
-          <div className="divide-y divide-border/10">
+          <div className="divide-y divide-border/10 max-h-[120px] overflow-auto">
             {validationWarnings.map((w, i) => (
-              <div key={i} className="flex items-start gap-2 px-3 py-2">
-                {w.severity === 'error' ? <X className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" /> :
-                  w.severity === 'warning' ? <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" /> :
-                  <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />}
+              <div key={i} className="flex items-start gap-2 px-3 py-1.5">
+                {w.severity === 'error' ? <X className="h-3 w-3 text-destructive mt-0.5 shrink-0" /> :
+                  w.severity === 'warning' ? <AlertTriangle className="h-3 w-3 text-warning mt-0.5 shrink-0" /> :
+                  <Info className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />}
                 <div className="min-w-0">
-                  <span className="text-xs font-medium">{w.field}</span>
+                  <span className="text-[11px] font-medium">{w.field}</span>
                   <p className="text-[10px] text-muted-foreground">{w.message}</p>
                 </div>
               </div>
@@ -1746,29 +1720,27 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         </div>
       )}
 
-      {/* Action buttons */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          {analyzedFiles.length > 1 && (
-            <Button variant="ghost" size="sm" className="h-7" onClick={() => setPhase('triage')}>
-              <ArrowLeft className="h-3.5 w-3.5 mr-1" /> All Files
-            </Button>
-          )}
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleAISuggest} disabled={isSuggestLoading}>
+      {/* ── Toolbar: Clear action hierarchy ── */}
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-card/60 px-2.5 py-1.5">
+        {/* Left: Intelligence + Edit tools */}
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card hover:bg-accent/10" onClick={handleAISuggest} disabled={isSuggestLoading}>
             {isSuggestLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-            {isSuggestLoading ? 'Analyzing...' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
+            {isSuggestLoading ? 'Analyzing…' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleAutoMap}>
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card hover:bg-accent/10" onClick={handleAutoMap}>
             <Zap className="h-3.5 w-3.5" /> Auto-Map
           </Button>
-           <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
-             <ShieldAlert className="h-3.5 w-3.5" /> Validate
-           </Button>
-          <div className="h-4 w-px bg-border/30" />
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card hover:bg-accent/10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); runValidation(); }} disabled={mappedCount === 0}>
+            <ShieldAlert className="h-3.5 w-3.5" /> Validate
+          </Button>
+
+          <div className="h-5 w-px bg-border/30 mx-0.5" />
+
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant={selectedRows.size > 0 ? "outline" : "ghost"} size="sm" className="h-7 text-xs gap-1 px-2" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
+                <Button variant={selectedRows.size > 0 ? "outline" : "ghost"} size="sm" className="h-7 w-7 p-0 border-border/40" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
                   <span className="font-bold text-xs">±</span>
                 </Button>
               </TooltipTrigger>
@@ -1795,14 +1767,16 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <div className="h-4 w-px bg-border/30" />
-          {/* Column Manager */}
+
+          <div className="h-5 w-px bg-border/30 mx-0.5" />
+
+          {/* Column visibility */}
           <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
             <PopoverTrigger asChild>
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant={excludedColumns.size > 0 ? "outline" : "ghost"} size="sm" className={cn("h-7 w-7 p-0", excludedColumns.size > 0 && "text-amber-500")}>
+                    <Button variant={excludedColumns.size > 0 ? "outline" : "ghost"} size="sm" className={cn("h-7 w-7 p-0", excludedColumns.size > 0 && "text-warning border-warning/30")}>
                       <Filter className="h-3.5 w-3.5" />
                     </Button>
                   </TooltipTrigger>
@@ -1837,30 +1811,18 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </div>
             </PopoverContent>
           </Popover>
-          {/* Zoom Controls */}
-          <div className="flex items-center gap-0.5 ml-1">
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomOut} disabled={zoomLevel <= 50}>
-                    <ZoomOut className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Zoom Out</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-center">{zoomLevel}%</span>
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomIn} disabled={zoomLevel >= 200}>
-                    <ZoomIn className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Zoom In (Ctrl+Scroll)</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+
+          {/* Zoom */}
+          <div className="flex items-center gap-0">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomOut} disabled={zoomLevel <= 50}>
+              <ZoomOut className="h-3.5 w-3.5" />
+            </Button>
+            <span className="text-[10px] text-muted-foreground tabular-nums w-7 text-center">{zoomLevel}%</span>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomIn} disabled={zoomLevel >= 200}>
+              <ZoomIn className="h-3.5 w-3.5" />
+            </Button>
           </div>
+
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
@@ -1892,10 +1854,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </PopoverContent>
           </Popover>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Right: Start date, actions, primary CTA */}
+        <div className="flex items-center gap-1.5">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+              <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card">
                 <Calendar className="h-3.5 w-3.5" />
                 {modelStartDate
                   ? `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][modelStartDate.month - 1]} ${modelStartDate.year}`
@@ -1908,7 +1872,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                 <p className="text-[10px] text-muted-foreground">Sets the starting month for the Income Statement and Balance Sheet.</p>
                 <div className="flex items-center gap-2">
                   <select
-                    className="text-xs h-7 px-2 rounded border border-border bg-background text-foreground flex-1"
+                    className="text-xs h-7 px-2 rounded-md border border-border/50 bg-card text-foreground flex-1"
                     value={modelStartDate?.month ?? 1}
                     onChange={(e) => {
                       setModelStartDate(prev => prev ? { ...prev, month: parseInt(e.target.value) } : { month: parseInt(e.target.value), year: 2024 });
@@ -1921,7 +1885,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   </select>
                   <input
                     type="number"
-                    className="text-xs h-7 w-16 px-2 rounded border border-border bg-background text-foreground"
+                    className="text-xs h-7 w-16 px-2 rounded-md border border-border/50 bg-card text-foreground"
                     value={modelStartDate?.year ?? 2024}
                     min={2000}
                     max={2040}
@@ -1935,18 +1899,19 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   />
                 </div>
                 {startDateConfirmed ? (
-                  <Badge variant="outline" className="text-[9px] h-5 px-2 gap-1 border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400">
+                  <Badge variant="outline" className="text-[9px] h-5 px-2 gap-1 border-success/40 bg-success/10 text-success">
                     <Check className="h-2.5 w-2.5" /> Confirmed
                   </Badge>
                 ) : modelStartDate ? (
-                  <Badge variant="outline" className="text-[9px] h-5 px-2 gap-1 border-blue-500/50 bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                    <Sparkles className="h-2.5 w-2.5" /> Auto-detected from headers
+                  <Badge variant="outline" className="text-[9px] h-5 px-2 gap-1 border-primary/40 bg-primary/10 text-primary">
+                    <Sparkles className="h-2.5 w-2.5" /> Auto-detected
                   </Badge>
                 ) : null}
               </div>
             </PopoverContent>
           </Popover>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => {
+
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card" onClick={() => {
             if (selectedFile) {
               const url = URL.createObjectURL(selectedFile.file);
               setExpandedFileUrl(url);
@@ -1955,10 +1920,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           }}>
             <Maximize2 className="h-3.5 w-3.5" /> Expand
           </Button>
+
+          <div className="h-5 w-px bg-border/30" />
+
+          {/* Destructive: New Mapping */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                <PlusCircle className="h-3.5 w-3.5" /> New Mapping
+              <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5 text-destructive/70 hover:text-destructive hover:bg-destructive/10">
+                <Trash2 className="h-3.5 w-3.5" /> Reset
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -1972,28 +1941,34 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          <div className="h-5 w-px bg-border/30" />
+
+          {/* Secondary: Save Draft */}
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-border/40 bg-card" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings}>
                   {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  {isSaving ? 'Saving...' : 'Save Draft'}
+                  Save Draft
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[240px] text-center">
-                Saves your current mapping assignments without updating the financial model. You can continue mapping later.
+                Saves your current mapping assignments without updating the financial model.
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
+          {/* Primary CTA */}
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button size="sm" className="h-7 text-xs" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
-                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Save &amp; Push to Model
+                <Button size="sm" className="h-7 text-[11px] gap-1.5 shadow-sm" onClick={handleRecalculateWithLog} disabled={mappedCount === 0}>
+                  <RefreshCw className="h-3.5 w-3.5" /> Push to Model
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[260px] text-center">
-                Saves all mappings AND pushes mapped data into the Income Statement, Balance Sheet, and downstream analysis tabs.
+                Saves all mappings AND pushes mapped data into the financial model.
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -2003,7 +1978,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       {/* Split panel: spreadsheet + field sidebar */}
       <ResizablePanelGroup
         direction="horizontal"
-        className="rounded-lg"
+        className="rounded-xl border border-border/30 overflow-hidden"
         onLayout={(sizes) => {
           try { localStorage.setItem('data-mapping-panel-ratio', JSON.stringify(sizes)); } catch {}
         }}
@@ -2014,14 +1989,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           minSize={30}
         >
           <div ref={spreadsheetRef} tabIndex={0} className="outline-none">
-          <Card className="border-border/30">
-            <CardContent className="p-0">
-              <div className="flex items-center justify-between border-b border-border/30">
+          <div className="rounded-xl border border-border/30 bg-card/60 overflow-hidden">
+              {/* Sheet tabs + mode toggles */}
+              <div className="flex items-center justify-between border-b border-border/20 bg-muted/30">
                 <div className="flex overflow-x-auto">
                   {selectedFile.sheets.map((s, i) => (
                     <button key={i} className={cn(
-                      "px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors",
-                      i === activeSheet ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                      "px-3 py-1.5 text-[11px] whitespace-nowrap border-b-2 transition-colors font-medium",
+                      i === activeSheet ? "border-primary text-foreground bg-card/60" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-card/30"
                     )} onClick={() => { setActiveSheet(i); setSelectedRows(new Set()); setEraserSelectedRows(new Set()); setEraserSelectedCols(new Set()); setSignFlipSelectedRows(new Set()); setSignFlipSelectedCols(new Set()); }}>
                       {s.name}
                     </button>
@@ -2032,7 +2007,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-6 text-[10px] gap-1 px-2 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+                      className="h-6 text-[10px] gap-1 px-2 border-warning/40 text-warning hover:bg-warning/10"
                       onClick={handleApplySignFlip}
                     >
                       <ArrowUpDown className="h-3 w-3" />
@@ -2042,7 +2017,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   <Button
                     variant={signFlipMode ? "default" : "ghost"}
                     size="sm"
-                    className={cn("h-6 w-6 p-0", signFlipMode && "bg-amber-600 hover:bg-amber-600/90 text-white")}
+                    className={cn("h-6 w-6 p-0", signFlipMode && "bg-warning/80 hover:bg-warning/70 text-warning-foreground")}
                     onClick={handleToggleSignFlip}
                     title={signFlipMode ? "Exit sign-flip mode" : "Sign flip — select rows/columns to invert ±"}
                   >
@@ -2072,10 +2047,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </div>
               <div className="h-[500px] overflow-auto relative" style={{ fontSize: `${zoomLevel}%` }}>
                 <table className="w-max text-[11px] border-collapse" style={{ fontSize: 'inherit' }}>
-                  <thead className="sticky top-0 z-20 bg-muted">
-                    <tr>
-                      <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground border-r border-border/20 bg-muted">#</th>
-                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] border-r-2 border-r-border/50 font-semibold bg-muted" style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>Account Name</th>
+                  <thead className="sticky top-0 z-20 bg-card">
+                    <tr className="border-b border-border/30">
+                      <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-muted-foreground/70 text-[10px] border-r border-border/15 bg-card">#</th>
+                      <th className="sticky left-8 z-30 py-1.5 px-2 text-left text-muted-foreground w-[180px] min-w-[180px] max-w-[180px] border-r border-border/20 font-semibold text-[11px] bg-card" style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.2)' }}>Account Name</th>
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         const isExcluded = excludedColumns.has(colIdx);
@@ -2086,11 +2061,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             <ContextMenuTrigger asChild>
                               <th
                                 className={cn(
-                                  "py-1.5 px-2 text-right text-muted-foreground min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none",
-                                  isColSelected && !eraserMode && !signFlipMode && "bg-primary/10 ring-1 ring-inset ring-primary/30",
-                                  eraserMode && eraserSelectedCols.has(colIdx) && "bg-destructive/20 ring-1 ring-inset ring-destructive/40",
-                                  signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-amber-500/20 ring-1 ring-inset ring-amber-500/40",
-                                  flippedColumns.has(colIdx) && !signFlipMode && !eraserMode && "bg-amber-500/10",
+                                  "py-1.5 px-2 text-right text-muted-foreground/70 min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none bg-card text-[10px]",
+                                  isColSelected && !eraserMode && !signFlipMode && "bg-primary/8 ring-1 ring-inset ring-primary/20",
+                                  eraserMode && eraserSelectedCols.has(colIdx) && "bg-destructive/15 ring-1 ring-inset ring-destructive/30",
+                                  signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-warning/15 ring-1 ring-inset ring-warning/30",
+                                  flippedColumns.has(colIdx) && !signFlipMode && !eraserMode && "bg-warning/8",
                                 )}
                                 onClick={(e) => signFlipMode ? handleSignFlipColClick(colIdx, e) : eraserMode ? handleEraserColClick(colIdx, e) : handleColumnHeaderClick(colIdx, e)}
                               >
@@ -2163,54 +2138,50 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       const rowBgClass = isFlashing
                         ? "animate-mapping-flash"
                         : isHeaderRow
-                          ? "bg-muted/30 font-semibold"
+                          ? "bg-muted/20 font-semibold"
                           : isSelected
-                            ? "bg-cyan-500/15 hover:bg-cyan-500/20"
+                            ? "bg-primary/8 hover:bg-primary/12"
                             : isMappedRow
-                              ? "bg-emerald-500/[0.08] hover:bg-emerald-500/[0.12]"
+                              ? "bg-success/[0.05] hover:bg-success/[0.08]"
                               : isPendingAutoMap
-                                ? "bg-amber-500/[0.08] hover:bg-amber-500/[0.12]"
+                                ? "bg-warning/[0.05] hover:bg-warning/[0.08]"
                                 : hasSuggestion
-                                  ? rowSuggestion.category === 'bs'
-                                    ? "bg-violet-500/5 hover:bg-violet-500/10"
-                                    : "bg-blue-500/5 hover:bg-blue-500/10"
+                                  ? "bg-primary/[0.03] hover:bg-primary/[0.06]"
                                   : rowIdx % 2 === 0
-                                    ? "bg-transparent hover:bg-muted/20"
-                                    : "bg-muted/5 hover:bg-muted/20";
+                                    ? "bg-transparent hover:bg-muted/15"
+                                    : "bg-muted/[0.04] hover:bg-muted/15";
 
                       // Left border style for selection/mapped/pending state
                       const leftBorderClass = isSelected
-                        ? "border-l-2 border-l-cyan-400"
+                        ? "border-l-2 border-l-primary"
                         : isMappedRow
-                          ? "border-l-[4px] border-l-emerald-500"
+                          ? "border-l-[3px] border-l-success"
                           : isPendingAutoMap
-                            ? "border-l-[3px] border-l-amber-500"
+                            ? "border-l-[3px] border-l-warning"
                             : "";
 
                       // Sticky cell bg — MUST be opaque so scrolling content doesn't show through
                       const stickyBg = isFlashing
-                        ? "bg-emerald-900"
+                        ? "bg-success/30"
                         : isHeaderRow
-                          ? "bg-muted"
+                          ? "bg-muted/40"
                           : isSelected
-                            ? "bg-cyan-950"
+                            ? "bg-primary/10"
                             : isMappedRow
-                              ? "bg-emerald-950"
+                              ? "bg-success/8"
                               : isPendingAutoMap
-                                ? "bg-amber-950"
-                                : hasSuggestion
-                                  ? rowSuggestion.category === 'bs' ? "bg-violet-950" : "bg-blue-950"
-                                  : rowIdx % 2 === 0 ? "bg-card" : "bg-card";
+                                ? "bg-warning/8"
+                                : "bg-card";
 
                        return (
                         <ContextMenu key={rowIdx}>
                           <ContextMenuTrigger asChild>
                         <tr
                           className={cn(
-                            "cursor-pointer transition-colors border-b border-border/5",
+                            "cursor-pointer transition-colors border-b border-border/8",
                             rowBgClass, leftBorderClass,
-                            eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-destructive/15 ring-1 ring-inset ring-destructive/30",
-                            signFlipMode && signFlipSelectedRows.has(rowIdx) && "!bg-amber-500/15 ring-1 ring-inset ring-amber-500/30",
+                            eraserMode && eraserSelectedRows.has(rowIdx) && "!bg-destructive/10 ring-1 ring-inset ring-destructive/25",
+                            signFlipMode && signFlipSelectedRows.has(rowIdx) && "!bg-warning/10 ring-1 ring-inset ring-warning/25",
                           )}
                           draggable={!isHeaderRow && !eraserMode && !signFlipMode}
                           onDragStart={e => {
@@ -2232,23 +2203,23 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             if (!isHeaderRow) handleRowClick(rowIdx, e);
                           }}>
                           <td className={cn(
-                            "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground text-[10px] border-r border-border/20",
-                            signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-amber-500/30" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/30" : stickyBg,
+                            "sticky left-0 z-10 py-1 px-1 text-center text-muted-foreground/60 text-[10px] border-r border-border/10",
+                            signFlipMode && signFlipSelectedRows.has(rowIdx) ? "bg-warning/20" : eraserMode && eraserSelectedRows.has(rowIdx) ? "bg-destructive/20" : stickyBg,
                           )}>
                             <div className="flex items-center justify-center gap-0.5">
-                              {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/60" /> : rowIdx + 1}
+                              {isHeaderRow ? <Columns className="h-3 w-3 text-muted-foreground/50" /> : rowIdx + 1}
                               {isFlipped && !isHeaderRow && (
-                                <span className="text-[8px] font-bold text-amber-500" title="Sign flipped (±)">±</span>
+                                <span className="text-[8px] font-bold text-warning" title="Sign flipped (±)">±</span>
                               )}
                             </div>
                           </td>
                           <td className={cn(
-                            "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r-2 border-r-border/50 font-medium",
+                            "sticky left-8 z-10 py-1 px-2 w-[180px] min-w-[180px] max-w-[180px] border-r border-border/15 font-medium",
                             stickyBg,
-                          )} style={{ boxShadow: '3px 0 6px -2px hsl(var(--border) / 0.4)' }}>
+                          )} style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.15)' }}>
                             <div className="flex items-center gap-1.5 overflow-hidden">
                               {isMappedRow && !isHeaderRow && (
-                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                                <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
                               )}
                               <span className="truncate">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
                               {isHeaderRow && <Badge variant="outline" className="text-[7px] h-3.5 px-1 shrink-0">HEADER</Badge>}
@@ -2332,8 +2303,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   </tbody>
                 </table>
               </div>
-            </CardContent>
-          </Card>
+            </div>
           </div>
         </ResizablePanel>
 
