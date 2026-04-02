@@ -2219,7 +2219,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           )} style={{ boxShadow: '2px 0 4px -1px hsl(var(--border) / 0.15)' }}>
                             <div className="flex items-center gap-1.5 overflow-hidden">
                               {isMappedRow && !isHeaderRow && (
-                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                                <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
                               )}
                               <span className="truncate">{row[0] !== null && row[0] !== undefined ? String(row[0]) : ''}</span>
                               {isHeaderRow && <Badge variant="outline" className="text-[7px] h-3.5 px-1 shrink-0">HEADER</Badge>}
