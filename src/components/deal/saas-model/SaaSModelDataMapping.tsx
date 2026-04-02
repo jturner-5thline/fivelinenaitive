@@ -86,57 +86,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [hoveredRowIdx, setHoveredRowIdx] = useState<number | null>(null);
   const [hoveredFieldId, setHoveredFieldId] = useState<string | null>(null);
 
-  // Reverse lookup: rowIdx → field name (from fieldMappings, pendingAutoMaps, suggestions)
-  const rowToFieldMap = useMemo(() => {
-    const map = new Map<number, { field: string; origin: 'mapped' | 'pending' | 'suggested' }>();
-    // Committed mappings
-    for (const [field, mappings] of Object.entries(fieldMappings)) {
-      for (const m of mappings) {
-        map.set(m.rowIdx, { field, origin: 'mapped' });
-      }
-    }
-    // Pending auto-maps
-    for (const [field, p] of Object.entries(pendingAutoMaps)) {
-      if (!map.has(p.rowIdx)) {
-        map.set(p.rowIdx, { field, origin: 'pending' });
-      }
-    }
-    // Claude suggestions
-    for (const s of suggestions) {
-      if (s.status === 'pending' && !map.has(s.rowIdx)) {
-        map.set(s.rowIdx, { field: s.suggestedField, origin: 'suggested' });
-      }
-    }
-    return map;
-  }, [fieldMappings, pendingAutoMaps, suggestions]);
-
-  // Reverse lookup: field → row indices
-  const fieldToRowsMap = useMemo(() => {
-    const map = new Map<string, { rowIdx: number; origin: 'mapped' | 'pending' | 'suggested' }[]>();
-    for (const [field, mappings] of Object.entries(fieldMappings)) {
-      map.set(field, mappings.map(m => ({ rowIdx: m.rowIdx, origin: 'mapped' as const })));
-    }
-    for (const [field, p] of Object.entries(pendingAutoMaps)) {
-      const existing = map.get(field) || [];
-      if (!existing.some(e => e.rowIdx === p.rowIdx)) {
-        map.set(field, [...existing, { rowIdx: p.rowIdx, origin: 'pending' as const }]);
-      }
-    }
-    for (const s of suggestions) {
-      if (s.status === 'pending') {
-        const existing = map.get(s.suggestedField) || [];
-        if (!existing.some(e => e.rowIdx === s.rowIdx)) {
-          map.set(s.suggestedField, [...existing, { rowIdx: s.rowIdx, origin: 'suggested' as const }]);
-        }
-      }
-    }
-    return map;
-  }, [fieldMappings, pendingAutoMaps, suggestions]);
-
-  // Get the linked field for a hovered row
-  const linkedFieldFromRow = hoveredRowIdx !== null ? rowToFieldMap.get(hoveredRowIdx)?.field ?? null : null;
-  // Get the linked rows for a hovered field
-  const linkedRowsFromField = hoveredFieldId ? (fieldToRowsMap.get(hoveredFieldId) || []).map(r => r.rowIdx) : [];
+  // (bidirectional lookup maps defined after useMappingSuggestions below)
 
   // Scroll a spreadsheet row into view
   const scrollRowIntoView = useCallback((rowIdx: number) => {
