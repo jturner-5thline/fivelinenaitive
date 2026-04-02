@@ -2060,8 +2060,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           <ContextMenu key={colIdx}>
                             <ContextMenuTrigger asChild>
                               <th
-                                className={cn(
-                                  "py-1.5 px-2 text-right text-muted-foreground/70 min-w-[80px] border-r border-border/10 font-normal group/col relative cursor-pointer select-none bg-card text-[10px]",
+                                 className={cn(
+                                   "py-1.5 px-2 text-right text-muted-foreground/50 min-w-[80px] font-normal group/col relative cursor-pointer select-none bg-secondary/60 text-[10px]",
                                   isColSelected && !eraserMode && !signFlipMode && "bg-primary/8 ring-1 ring-inset ring-primary/20",
                                   eraserMode && eraserSelectedCols.has(colIdx) && "bg-destructive/15 ring-1 ring-inset ring-destructive/30",
                                   signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-warning/15 ring-1 ring-inset ring-warning/30",
