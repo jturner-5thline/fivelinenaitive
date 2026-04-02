@@ -134,7 +134,15 @@ function buildEmailHtml(
   const flaggedCount = deals.filter(d => d.attention_reasons.includes('Flagged')).length;
   const lenderCount = deals.filter(d => d.attention_reasons.includes('Lenders Need Updating')).length;
 
-  const dealCards = deals.slice(0, 15).map(deal => {
+  // Sort: flagged deals first, then by days since update descending
+  const sortedDeals = [...deals].sort((a, b) => {
+    const aFlagged = a.attention_reasons.includes('Flagged') ? 1 : 0;
+    const bFlagged = b.attention_reasons.includes('Flagged') ? 1 : 0;
+    if (aFlagged !== bFlagged) return bFlagged - aFlagged;
+    return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+  });
+
+  const dealCards = sortedDeals.slice(0, 15).map(deal => {
     const updatedAt = new Date(deal.updated_at);
     const daysSinceUpdate = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
     
