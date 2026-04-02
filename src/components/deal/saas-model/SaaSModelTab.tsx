@@ -206,16 +206,6 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
       {/* Command Palette */}
       <SaaSModelCommandPalette onNavigate={handleTabChange} onAction={handleExportAction} />
 
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="hover:text-foreground cursor-pointer transition-colors">
-          {dealData?.company || model.settings.companyName}
-        </span>
-        <ChevronRight className="h-3 w-3" />
-        <span className="hover:text-foreground cursor-pointer transition-colors">Financial Model</span>
-        <ChevronRight className="h-3 w-3" />
-        <span className="text-foreground font-medium">{TAB_LABELS[activeTab] || activeTab}</span>
-      </div>
 
       {/* Header with save status */}
       <div className="flex items-center justify-between">
