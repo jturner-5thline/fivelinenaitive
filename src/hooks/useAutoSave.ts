@@ -59,8 +59,12 @@ export function useAutoSave<T>({
   // Trigger save manually (e.g., on blur or explicit save click)
   const saveNow = useCallback(() => {
     clearPendingTimeout();
+    // Reset error state so the save actually runs even if data hasn't changed since the failed attempt
+    if (status === 'error') {
+      lastSavedRef.current = '';
+    }
     save(data);
-  }, [clearPendingTimeout, save, data]);
+  }, [clearPendingTimeout, save, data, status]);
 
   // Flush any pending save when auto-save becomes disabled (e.g., tab switch)
   const prevEnabledRef = useRef(enabled);

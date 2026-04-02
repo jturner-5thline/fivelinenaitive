@@ -65,23 +65,28 @@ export function useDealMemo(dealId: string | undefined) {
 
         if (error) throw error;
       } else {
-        // Create new memo
-        const { error } = await supabase
+        // Create new memo — use upsert to avoid duplicate insert errors
+        const { data: inserted, error } = await supabase
           .from('deal_memos')
-          .insert({
+          .upsert({
             deal_id: dealId,
             ...updates,
             created_by: user.id,
             updated_by: user.id,
-          });
+          }, { onConflict: 'deal_id' })
+          .select()
+          .maybeSingle();
 
         if (error) throw error;
+
+        // Update local memo state so subsequent saves use UPDATE instead of INSERT
+        if (inserted) {
+          setMemo(inserted as DealMemo);
+        }
       }
 
       if (!options?.silent) {
         await fetchMemo();
-      }
-      if (!options?.silent) {
         toast({ title: 'Saved', description: 'Memo updated successfully' });
       }
       return true;
