@@ -51,7 +51,7 @@ interface Props {
 export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(function DataMappingFieldSidebar({
   fieldMappings, selectedRows, autoMapResults, suggestions, mappedCount,
   lastSavedCount, hasUnsavedMappings, isSaving, selectedFile, activeSheet,
-  flashedFields, pendingAutoMaps, draggingRowIdx, onAssignField, onRemoveMapping, onAcceptSuggestion,
+  flashedFields, pendingAutoMaps, draggingRowIdx, enabledFields, onAssignField, onRemoveMapping, onAcceptSuggestion,
   onSaveProgress, onClearAllMappings, onDeselectRows, onAcceptAutoMap, onRejectAutoMap,
   onAcceptAllAutoMaps, onAutoMap, onDropAssign,
 }, ref) {
