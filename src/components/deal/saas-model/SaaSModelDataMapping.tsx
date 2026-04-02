@@ -2356,7 +2356,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
       {/* Mapped data preview */}
       {mappedCount > 0 && (
-        <Card className="border-border/30">
+        <Card className="border-border/[0.06] shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold">Mapped Data Preview</h3>
