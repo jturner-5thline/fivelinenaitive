@@ -1047,6 +1047,35 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     }
   }, [activeFileId, fieldMappings, excludedColumns, flippedRows, flippedColumns, modelStartDate, saveFileMappings, dbFiles]);
 
+  const handleNewMapping = useCallback(async () => {
+    // Delete all existing db files for this deal
+    for (const dbFile of dbFiles) {
+      await deleteDbFile(dbFile.id);
+      // Also remove from storage if path exists
+      if (dbFile.storage_path) {
+        await supabase.storage.from('deal-files').remove([dbFile.storage_path]);
+      }
+    }
+    // Reset all local state
+    setAnalyzedFiles([]);
+    setSelectedFile(null);
+    setActiveSheet(0);
+    setSelectedRows(new Set());
+    setFieldMappings({});
+    setAutoMapResults([]);
+    setValidationWarnings([]);
+    setExcludedColumns(new Set());
+    setFlippedRows(new Set());
+    setFlippedColumns(new Set());
+    setModelStartDate(null);
+    setStartDateConfirmed(false);
+    setActiveFileId(null);
+    setLastSavedCount(0);
+    storedFilePathRef.current = null;
+    setPhase('upload');
+    toast.success('Ready for new file upload');
+  }, [dbFiles, deleteDbFile]);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files.length) handleFilesSelected(e.dataTransfer.files);
