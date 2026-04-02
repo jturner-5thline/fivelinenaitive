@@ -148,7 +148,6 @@ function buildEmailHtml(
     
     const isFlagged = deal.attention_reasons.includes('Flagged');
     const isStale = deal.attention_reasons.includes('Stale');
-    const borderColor = isFlagged ? '#dc2626' : '#d1d5db';
 
     const reasonBadges = deal.attention_reasons.filter(r => r !== 'Lenders Need Updating').map(r => getReasonBadge(r)).join('');
     const hasLendersNeedUpdating = deal.attention_reasons.includes('Lenders Need Updating');
@@ -178,8 +177,13 @@ function buildEmailHtml(
     if (deal.closing_date) metaItems.push(`<span style="color: #374151; font-size: 11px;"><strong style="color: #6b7280;">Close:</strong> ${formatDate(deal.closing_date)}</span>`);
     const metaLine = metaItems.length > 0 ? `<div style="margin-top: 4px;">${metaItems.join('<span style="color: #d1d5db; margin: 0 6px;">|</span>')}</div>` : '';
 
+    const tileStyle = isFlagged
+      ? 'background: linear-gradient(135deg, #6d28d9, #3b82f6); border-radius: 8px; padding: 2px; margin-bottom: 8px; box-shadow: 0 0 0 2px #dc2626;'
+      : 'background: linear-gradient(135deg, #6d28d9, #3b82f6); border-radius: 8px; padding: 2px; margin-bottom: 8px;';
+
     return `
-      <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; border-left: 4px solid ${borderColor};">
+      <div style="${tileStyle}">
+      <div style="background: #ffffff; border-radius: 6px; padding: 10px 12px;">
         <table style="width: 100%;">
           <tr>
             <td style="vertical-align: middle;">
@@ -207,6 +211,7 @@ function buildEmailHtml(
         <div style="margin-top: 4px;">
           <a href="https://fivelinenaitive.lovable.app/deals/${deal.id}" style="color: #7c3aed; font-size: 12px; font-weight: 500; text-decoration: none;">View Deal →</a>
         </div>
+      </div>
       </div>`;
   }).join('');
 
