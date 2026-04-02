@@ -1687,7 +1687,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </button>
         </div>
       </div>
-      )}
+
 
       {/* AI Suggestions Banner */}
       {hasSuggestRun && suggestions.length > 0 && (
