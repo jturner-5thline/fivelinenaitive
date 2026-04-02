@@ -75,6 +75,11 @@ function formatDealType(dealType: string | null): string {
   return dealType.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
+function formatStageLabel(stage: string): string {
+  if (!stage) return '';
+  return stage.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
 function formatValue(value: number | null): string {
   if (!value) return '—';
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
