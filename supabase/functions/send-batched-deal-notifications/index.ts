@@ -70,54 +70,137 @@ function statusDot(status: string | null, labels: Record<string, string>): strin
   return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;vertical-align:middle;"></span><span style="color:${color};font-size:12px;font-weight:600;">${label}</span>`;
 }
 
-// Summarize recent activity for a deal into a short line
-function activitySummary(notifications: PendingNotification[], labels: Record<string, string>): string {
-  if (!notifications || notifications.length === 0) return '';
-  const parts: string[] = [];
-  for (const n of notifications.slice(0, 3)) {
-    if (n.event_type === 'lender_updated') {
-      const cs = n.change_summary || {};
-      const fields: string[] = [];
-      if (cs.stage) fields.push(`→ ${resolveLabel(cs.stage.to, labels)}`);
-      if (cs.tracking_status) fields.push(`status → ${resolveLabel(cs.tracking_status.to, labels)}`);
-      parts.push(`${n.entity_name || 'Lender'}: ${fields.join(', ') || 'updated'}`);
-    } else if (n.event_type === 'lender_added') {
-      parts.push(`${n.entity_name || 'Lender'} added`);
-    } else if (n.event_type === 'deal_updated' || n.event_type === 'stage_changed') {
-      const cs = n.change_summary || {};
-      if (cs.stage) parts.push(`Stage → ${resolveLabel(cs.stage.to, labels)}`);
-      else if (cs.status) parts.push(`Status → ${resolveLabel(cs.status.to, labels)}`);
-      else parts.push('Deal updated');
-    } else if (n.event_type === 'milestone_completed') {
-      parts.push(`✅ ${n.entity_name || 'Milestone'} completed`);
-    } else if (n.event_type === 'milestone_missed') {
-      parts.push(`⚠️ ${n.entity_name || 'Milestone'} missed`);
-    }
-  }
-  if (notifications.length > 3) parts.push(`+${notifications.length - 3} more`);
-  return parts.join(' · ');
+function stageBadge(stage: string | null, labels: Record<string, string>): string {
+  return `<span style="background:#334155;color:#e2e8f0;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;display:inline-block;">${resolveLabel(stage, labels)}</span>`;
 }
 
-// Build a deal row for the table
-function buildDealRow(deal: DealRow, labels: Record<string, string>, activity: PendingNotification[], hasActivity: boolean): string {
-  const actLine = activitySummary(activity, labels);
-  const highlight = hasActivity ? 'background:#1e293b;' : '';
-  const activityBadge = hasActivity
-    ? `<span style="background:#8B5CF622;color:#c4b5fd;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:8px;">NEW</span>`
+function trackingBadge(status: string, labels: Record<string, string>): string {
+  const colors: Record<string, string> = {
+    'active': '#22c55e', 'on-hold': '#f59e0b', 'on-deck': '#3b82f6', 'passed': '#64748b',
+  };
+  const c = colors[status] || '#64748b';
+  return `<span style="background:${c}22;color:${c};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;display:inline-block;">${resolveLabel(status, labels)}</span>`;
+}
+
+function changeBadge(from: string, to: string, labels: Record<string, string>): string {
+  return `<span style="color:#94a3b8;font-size:11px;">${resolveLabel(from, labels)}</span> <span style="color:#64748b;font-size:11px;">→</span> <span style="color:#f1f5f9;font-size:11px;font-weight:600;">${resolveLabel(to, labels)}</span>`;
+}
+
+interface DealLenderInfo {
+  total: number;
+  active: number;
+  passed: number;
+  onDeck: number;
+}
+
+// Build detailed activity block for a deal
+function buildActivityBlock(notifications: PendingNotification[], labels: Record<string, string>): string {
+  if (!notifications || notifications.length === 0) return '';
+  
+  const items: string[] = [];
+  
+  for (const n of notifications) {
+    const cs = n.change_summary || {};
+    const byName = n.changed_by_name ? `<span style="color:#94a3b8;font-size:11px;"> by ${n.changed_by_name}</span>` : '';
+    
+    if (n.event_type === 'lender_added') {
+      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#22c55e;font-size:12px;font-weight:600;">＋</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;"><strong>${n.entity_name || 'Lender'}</strong> added${byName}</td></tr>`);
+    } else if (n.event_type === 'lender_removed') {
+      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#ef4444;font-size:12px;font-weight:600;">−</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;"><strong>${n.entity_name || 'Lender'}</strong> removed${byName}</td></tr>`);
+    } else if (n.event_type === 'lender_updated') {
+      const changes: string[] = [];
+      if (cs.stage) changes.push(`Stage: ${changeBadge(cs.stage.from, cs.stage.to, labels)}`);
+      if (cs.substage) changes.push(`Substage: ${changeBadge(cs.substage.from, cs.substage.to, labels)}`);
+      if (cs.tracking_status) changes.push(`Tracking: ${changeBadge(cs.tracking_status.from, cs.tracking_status.to, labels)}`);
+      if (cs.score) changes.push(`Score: <span style="color:#f59e0b;font-size:11px;">${cs.score.from || '—'} → ${cs.score.to || '—'}</span>`);
+      if (cs.notes) changes.push(`<span style="color:#94a3b8;font-size:11px;">Notes updated</span>`);
+      if (changes.length === 0) changes.push(`<span style="color:#94a3b8;font-size:11px;">Updated</span>`);
+      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#8B5CF6;font-size:11px;">●</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;"><strong>${n.entity_name || 'Lender'}</strong>: ${changes.join(' · ')}${byName}</td></tr>`);
+    } else if (n.event_type === 'deal_updated' || n.event_type === 'stage_changed') {
+      const changes: string[] = [];
+      if (cs.stage) changes.push(`Stage: ${changeBadge(cs.stage.from, cs.stage.to, labels)}`);
+      if (cs.status) changes.push(`Status: ${changeBadge(cs.status.from, cs.status.to, labels)}`);
+      if (cs.value) changes.push(`Value: ${formatCurrency(cs.value.from)} → ${formatCurrency(cs.value.to)}`);
+      if (cs.manager) changes.push(`Manager: ${cs.manager.from || '—'} → ${cs.manager.to || '—'}`);
+      if (cs.analyst) changes.push(`Analyst: ${cs.analyst.from || '—'} → ${cs.analyst.to || '—'}`);
+      if (cs.engagement_type) changes.push(`Engagement: ${changeBadge(cs.engagement_type.from, cs.engagement_type.to, labels)}`);
+      // Catch any other field changes
+      for (const [field, val] of Object.entries(cs)) {
+        if (['stage','status','value','manager','analyst','engagement_type'].includes(field)) continue;
+        const v = val as any;
+        if (v?.from !== undefined || v?.to !== undefined) {
+          const fieldLabel = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          changes.push(`${fieldLabel}: ${changeBadge(String(v.from || '—'), String(v.to || '—'), labels)}`);
+        }
+      }
+      if (changes.length > 0) {
+        items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#3b82f6;font-size:11px;">●</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;">${changes.join('<br/>')}${byName}</td></tr>`);
+      }
+    } else if (n.event_type === 'milestone_completed') {
+      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="font-size:12px;">✅</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;"><strong>${n.entity_name || 'Milestone'}</strong> completed${byName}</td></tr>`);
+    } else if (n.event_type === 'milestone_missed') {
+      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="font-size:12px;">⚠️</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;"><strong>${n.entity_name || 'Milestone'}</strong> missed deadline${byName}</td></tr>`);
+    } else if (n.event_type === 'milestone_added') {
+      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#22c55e;font-size:12px;">＋</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;">Milestone added: <strong>${n.entity_name || 'New'}</strong>${byName}</td></tr>`);
+    } else if (n.event_type === 'deal_created') {
+      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#22c55e;font-size:12px;">★</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;">Deal created${byName}</td></tr>`);
+    } else {
+      const label = n.event_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#64748b;font-size:11px;">●</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;">${label}${n.entity_name ? `: ${n.entity_name}` : ''}${byName}</td></tr>`);
+    }
+  }
+  
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;">${items.join('')}</table>`;
+}
+
+// Build a deal card for the email
+function buildDealCard(deal: DealRow, labels: Record<string, string>, activity: PendingNotification[], lenderInfo: DealLenderInfo | null): string {
+  const hasActivity = activity.length > 0;
+  const borderColor = hasActivity ? '#8B5CF6' : '#1e293b';
+  
+  // Deal header row
+  let lenderLine = '';
+  if (lenderInfo && lenderInfo.total > 0) {
+    const parts: string[] = [];
+    parts.push(`<span style="color:#e2e8f0;font-weight:600;">${lenderInfo.total}</span> <span style="color:#94a3b8;">total</span>`);
+    if (lenderInfo.active > 0) parts.push(`<span style="color:#22c55e;font-weight:600;">${lenderInfo.active}</span> <span style="color:#94a3b8;">active</span>`);
+    if (lenderInfo.onDeck > 0) parts.push(`<span style="color:#3b82f6;font-weight:600;">${lenderInfo.onDeck}</span> <span style="color:#94a3b8;">on deck</span>`);
+    if (lenderInfo.passed > 0) parts.push(`<span style="color:#64748b;font-weight:600;">${lenderInfo.passed}</span> <span style="color:#94a3b8;">passed</span>`);
+    lenderLine = `<div style="margin-top:6px;font-size:11px;">Lenders: ${parts.join(' · ')}</div>`;
+  }
+
+  const activityHtml = buildActivityBlock(activity, labels);
+  const activitySection = activityHtml
+    ? `<tr><td style="padding:0 16px 12px 16px;"><div style="background:#0f172a;border-radius:6px;padding:10px 12px;border:1px solid #1e293b;">${activityHtml}</div></td></tr>`
+    : '';
+  
+  const actBadge = hasActivity
+    ? `<span style="background:#8B5CF622;color:#c4b5fd;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:8px;">${activity.length} UPDATE${activity.length !== 1 ? 'S' : ''}</span>`
     : '';
 
-  return `<tr style="${highlight}">
-    <td style="padding:10px 12px;border-bottom:1px solid #1e293b;">
-      <a href="https://fivelinenaitive.lovable.app/deal/${deal.id}" style="color:#f1f5f9;text-decoration:none;font-weight:600;font-size:13px;">${deal.company}</a>${activityBadge}
-      ${actLine ? `<div style="color:#94a3b8;font-size:11px;margin-top:3px;">${actLine}</div>` : ''}
-    </td>
-    <td style="padding:10px 8px;border-bottom:1px solid #1e293b;white-space:nowrap;">
-      <span style="background:#334155;color:#e2e8f0;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;">${resolveLabel(deal.stage, labels)}</span>
-    </td>
-    <td style="padding:10px 8px;border-bottom:1px solid #1e293b;white-space:nowrap;">${statusDot(deal.status, labels)}</td>
-    <td style="padding:10px 8px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:12px;text-align:right;white-space:nowrap;">${formatCurrency(deal.value)}</td>
-    <td style="padding:10px 8px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:12px;white-space:nowrap;">${deal.manager || '—'}</td>
-  </tr>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#1a1a2e;border-radius:8px;border:1px solid ${borderColor};margin-bottom:12px;">
+    <tr>
+      <td style="padding:14px 16px 8px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td>
+              <a href="https://fivelinenaitive.lovable.app/deal/${deal.id}" style="color:#f1f5f9;text-decoration:none;font-weight:700;font-size:14px;">${deal.company}</a>${actBadge}
+            </td>
+            <td style="text-align:right;white-space:nowrap;">
+              <span style="color:#e2e8f0;font-weight:600;font-size:13px;">${formatCurrency(deal.value)}</span>
+            </td>
+          </tr>
+        </table>
+        <div style="margin-top:8px;">
+          ${stageBadge(deal.stage, labels)}
+          <span style="margin-left:6px;">${statusDot(deal.status, labels)}</span>
+          ${deal.manager ? `<span style="color:#64748b;font-size:11px;margin-left:10px;">👤 ${deal.manager}</span>` : ''}
+        </div>
+        ${lenderLine}
+      </td>
+    </tr>
+    ${activitySection}
+  </table>`;
 }
 
 function buildDigestEmailHtml(
@@ -126,6 +209,7 @@ function buildDigestEmailHtml(
   activityByDeal: Record<string, PendingNotification[]>,
   labels: Record<string, string>,
   isAdmin: boolean,
+  lenderInfoByDeal?: Record<string, DealLenderInfo>,
 ): string {
   const year = new Date().getFullYear();
   const now = new Date();
@@ -134,6 +218,17 @@ function buildDigestEmailHtml(
 
   const dealsWithActivity = deals.filter(d => activityByDeal[d.id]?.length > 0).length;
   const totalActivity = Object.values(activityByDeal).reduce((sum, a) => sum + a.length, 0);
+  
+  // Count lender stats
+  const totalLenders = Object.values(lenderInfoByDeal || {}).reduce((s, l) => s + l.total, 0);
+  const activeLenders = Object.values(lenderInfoByDeal || {}).reduce((s, l) => s + l.active, 0);
+
+  // Count event types for summary
+  const allEvents = Object.values(activityByDeal).flat();
+  const lendersAdded = allEvents.filter(e => e.event_type === 'lender_added').length;
+  const lendersUpdated = allEvents.filter(e => e.event_type === 'lender_updated').length;
+  const stageChanges = allEvents.filter(e => e.event_type === 'stage_changed' || (e.event_type === 'deal_updated' && e.change_summary?.stage)).length;
+  const milestonesCompleted = allEvents.filter(e => e.event_type === 'milestone_completed').length;
 
   const subtitle = totalActivity > 0
     ? `${dealsWithActivity} deal${dealsWithActivity !== 1 ? 's' : ''} with recent activity · ${totalActivity} update${totalActivity !== 1 ? 's' : ''}`
@@ -147,10 +242,56 @@ function buildDigestEmailHtml(
     return a.company.localeCompare(b.company);
   });
 
-  const dealRows = sorted.map(d => {
-    const activity = activityByDeal[d.id] || [];
-    return buildDealRow(d, labels, activity, activity.length > 0);
+  // Split deals into active and quiet
+  const activeDeals = sorted.filter(d => (activityByDeal[d.id]?.length || 0) > 0);
+  const quietDeals = sorted.filter(d => (activityByDeal[d.id]?.length || 0) === 0);
+
+  const activeDealCards = activeDeals.map(d =>
+    buildDealCard(d, labels, activityByDeal[d.id] || [], lenderInfoByDeal?.[d.id] || null)
+  ).join('');
+
+  // Quiet deals as compact table
+  const quietRows = quietDeals.map(d => {
+    const li = lenderInfoByDeal?.[d.id];
+    const lenderCol = li ? `${li.active}/${li.total}` : '—';
+    return `<tr>
+      <td style="padding:6px 10px;border-bottom:1px solid #1e293b;font-size:12px;">
+        <a href="https://fivelinenaitive.lovable.app/deal/${d.id}" style="color:#cbd5e1;text-decoration:none;font-weight:500;">${d.company}</a>
+      </td>
+      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${stageBadge(d.stage, labels)}</td>
+      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${statusDot(d.status, labels)}</td>
+      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:11px;text-align:center;" title="Active / Total lenders">${lenderCol}</td>
+      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:11px;text-align:right;white-space:nowrap;">${formatCurrency(d.value)}</td>
+    </tr>`;
   }).join('');
+
+  // Activity summary chips
+  const summaryChips: string[] = [];
+  if (lendersAdded > 0) summaryChips.push(`<span style="background:#22c55e22;color:#4ade80;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:6px;">＋${lendersAdded} Lender${lendersAdded !== 1 ? 's' : ''} Added</span>`);
+  if (lendersUpdated > 0) summaryChips.push(`<span style="background:#8B5CF622;color:#c4b5fd;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:6px;">${lendersUpdated} Lender Update${lendersUpdated !== 1 ? 's' : ''}</span>`);
+  if (stageChanges > 0) summaryChips.push(`<span style="background:#3b82f622;color:#93c5fd;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:6px;">${stageChanges} Stage Change${stageChanges !== 1 ? 's' : ''}</span>`);
+  if (milestonesCompleted > 0) summaryChips.push(`<span style="background:#22c55e22;color:#4ade80;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:6px;">✅ ${milestonesCompleted} Milestone${milestonesCompleted !== 1 ? 's' : ''}</span>`);
+  const chipsHtml = summaryChips.length > 0 ? `<div style="margin-top:10px;">${summaryChips.join('')}</div>` : '';
+
+  const quietSection = quietDeals.length > 0 ? `
+    <!-- Quiet Deals -->
+    <tr>
+      <td style="padding:16px 24px 0 24px;">
+        <p style="margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;font-weight:600;">Other Active Deals (${quietDeals.length})</p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0f172a;border-radius:8px;border:1px solid #1e293b;">
+          <thead>
+            <tr>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Deal</th>
+              <th style="padding:6px 6px;text-align:left;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Stage</th>
+              <th style="padding:6px 6px;text-align:left;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Status</th>
+              <th style="padding:6px 6px;text-align:center;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Lenders</th>
+              <th style="padding:6px 6px;text-align:right;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Value</th>
+            </tr>
+          </thead>
+          <tbody>${quietRows}</tbody>
+        </table>
+      </td>
+    </tr>` : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -187,6 +328,7 @@ function buildDigestEmailHtml(
                     <p style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#8B5CF6;font-weight:700;">Deal Activity Digest</p>
                     <h1 style="margin:0;font-size:18px;font-weight:600;color:#f1f5f9;">Hi ${recipientName || 'there'},</h1>
                     <p style="margin:6px 0 0;color:#94a3b8;font-size:13px;">${isAdmin ? 'Here\'s your full pipeline overview' : 'Here\'s an overview of your deals'}. ${subtitle}.</p>
+                    ${chipsHtml}
                   </td>
                 </tr>
 
@@ -195,22 +337,28 @@ function buildDigestEmailHtml(
                   <td style="padding:16px 24px 0 24px;">
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;">
                       <tr>
-                        <td style="padding:0 4px 0 0;">
-                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;text-align:center;">
-                            <div style="font-size:22px;font-weight:700;color:#f1f5f9;">${deals.length}</div>
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Active Deals</div>
+                        <td style="padding:0 3px 0 0;width:25%;">
+                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;text-align:center;">
+                            <div style="font-size:20px;font-weight:700;color:#f1f5f9;">${deals.length}</div>
+                            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Active Deals</div>
                           </div>
                         </td>
-                        <td style="padding:0 4px;">
-                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;text-align:center;">
-                            <div style="font-size:22px;font-weight:700;color:#22c55e;">${dealsWithActivity}</div>
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">With Activity</div>
+                        <td style="padding:0 3px;width:25%;">
+                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;text-align:center;">
+                            <div style="font-size:20px;font-weight:700;color:#22c55e;">${dealsWithActivity}</div>
+                            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">With Activity</div>
                           </div>
                         </td>
-                        <td style="padding:0 0 0 4px;">
-                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;text-align:center;">
-                            <div style="font-size:22px;font-weight:700;color:#c4b5fd;">${totalActivity}</div>
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Updates</div>
+                        <td style="padding:0 3px;width:25%;">
+                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;text-align:center;">
+                            <div style="font-size:20px;font-weight:700;color:#c4b5fd;">${totalActivity}</div>
+                            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Updates</div>
+                          </div>
+                        </td>
+                        <td style="padding:0 0 0 3px;width:25%;">
+                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;text-align:center;">
+                            <div style="font-size:20px;font-weight:700;color:#60a5fa;">${activeLenders}<span style="color:#64748b;font-size:13px;">/${totalLenders}</span></div>
+                            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Lenders Active</div>
                           </div>
                         </td>
                       </tr>
@@ -218,25 +366,16 @@ function buildDigestEmailHtml(
                   </td>
                 </tr>
 
-                <!-- Deals Table -->
+                ${activeDeals.length > 0 ? `
+                <!-- Deals with Activity -->
                 <tr>
                   <td style="padding:20px 24px 0 24px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0f172a;border-radius:8px;border:1px solid #1e293b;">
-                      <thead>
-                        <tr>
-                          <th style="padding:8px 12px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Deal</th>
-                          <th style="padding:8px 8px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Stage</th>
-                          <th style="padding:8px 8px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Status</th>
-                          <th style="padding:8px 8px;text-align:right;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Value</th>
-                          <th style="padding:8px 8px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Manager</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${dealRows}
-                      </tbody>
-                    </table>
+                    <p style="margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#8B5CF6;font-weight:600;">Recent Activity (${activeDeals.length} deal${activeDeals.length !== 1 ? 's' : ''})</p>
+                    ${activeDealCards}
                   </td>
-                </tr>
+                </tr>` : ''}
+
+                ${quietSection}
 
                 <!-- CTA -->
                 <tr>
@@ -328,6 +467,7 @@ function generateTestData() {
     'closing': 'Closing', 'on-track': 'On Track', 'at-risk': 'At Risk', 'off-track': 'Off Track',
     'reviewing-drl': 'Reviewing DRL', 'management-call-set': 'Mgmt Call Set',
     'management-call-completed': 'Mgmt Call Done', 'draft-terms': 'Draft Terms',
+    'active': 'Active', 'on-hold': 'On Hold', 'on-deck': 'On Deck', 'passed': 'Passed',
   };
 
   const deals: DealRow[] = [
@@ -345,13 +485,23 @@ function generateTestData() {
     '00000000-0000-0000-0000-000000000001': [
       { id: '1', deal_id: '1', company_id: 'test', event_type: 'lender_updated', entity_name: 'Trinity Capital', entity_id: '2', change_summary: { stage: { from: 'reviewing-drl', to: 'management-call-set' } }, changed_by: null, changed_by_name: 'Franco Fustinoni', metadata: {}, created_at: oneHourAgo },
       { id: '2', deal_id: '1', company_id: 'test', event_type: 'milestone_completed', entity_name: 'NDA Executed', entity_id: '4', change_summary: {}, changed_by: null, changed_by_name: 'Franco Fustinoni', metadata: {}, created_at: now },
+      { id: '6', deal_id: '1', company_id: 'test', event_type: 'lender_added', entity_name: 'SLR Capital', entity_id: '10', change_summary: {}, changed_by: null, changed_by_name: 'James Turner', metadata: {}, created_at: now },
     ],
     '00000000-0000-0000-0000-000000000002': [
-      { id: '3', deal_id: '2', company_id: 'test', event_type: 'lender_updated', entity_name: 'Hercules Capital', entity_id: '5', change_summary: { stage: { from: 'management-call-completed', to: 'draft-terms' } }, changed_by: null, changed_by_name: 'James Turner', metadata: {}, created_at: oneHourAgo },
+      { id: '3', deal_id: '2', company_id: 'test', event_type: 'lender_updated', entity_name: 'Hercules Capital', entity_id: '5', change_summary: { stage: { from: 'management-call-completed', to: 'draft-terms' }, tracking_status: { from: 'on-deck', to: 'active' } }, changed_by: null, changed_by_name: 'James Turner', metadata: {}, created_at: oneHourAgo },
+      { id: '7', deal_id: '2', company_id: 'test', event_type: 'deal_updated', entity_name: null, entity_id: null, change_summary: { status: { from: 'on-track', to: 'at-risk' } }, changed_by: null, changed_by_name: 'James Turner', metadata: {}, created_at: now },
     ],
   };
 
-  return { deals, activityByDeal, labels };
+  const lenderInfoByDeal: Record<string, DealLenderInfo> = {
+    '00000000-0000-0000-0000-000000000001': { total: 6, active: 4, passed: 1, onDeck: 1 },
+    '00000000-0000-0000-0000-000000000002': { total: 4, active: 3, passed: 0, onDeck: 1 },
+    '00000000-0000-0000-0000-000000000003': { total: 3, active: 2, passed: 0, onDeck: 1 },
+    '00000000-0000-0000-0000-000000000004': { total: 2, active: 2, passed: 0, onDeck: 0 },
+    '00000000-0000-0000-0000-000000000005': { total: 5, active: 3, passed: 2, onDeck: 0 },
+  };
+
+  return { deals, activityByDeal, labels, lenderInfoByDeal };
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -372,9 +522,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (isTestMode) {
       console.log(`Test mode: sending sample digest to ${testEmail}`);
-      const { deals, activityByDeal, labels } = generateTestData();
+      const { deals, activityByDeal, labels, lenderInfoByDeal } = generateTestData();
 
-      const emailHtml = buildDigestEmailHtml('James', deals, activityByDeal, labels, true);
+      const emailHtml = buildDigestEmailHtml('James', deals, activityByDeal, labels, true, lenderInfoByDeal);
 
       await resend.emails.send({
         from: "naitive <noreply@updates.naitive.co>",
@@ -515,6 +665,24 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
+        // Fetch lender counts per deal
+        const dealIds = allDeals.map(d => d.id);
+        const { data: dealLenders } = await supabaseAdmin
+          .from('deal_lenders')
+          .select('deal_id, tracking_status')
+          .in('deal_id', dealIds);
+
+        const lenderInfoByDeal: Record<string, DealLenderInfo> = {};
+        for (const d of allDeals) {
+          const dl = (dealLenders || []).filter(l => l.deal_id === d.id);
+          lenderInfoByDeal[d.id] = {
+            total: dl.length,
+            active: dl.filter(l => l.tracking_status === 'active').length,
+            passed: dl.filter(l => l.tracking_status === 'passed' || l.tracking_status === 'not-a-fit' || l.tracking_status === 'excluded').length,
+            onDeck: dl.filter(l => l.tracking_status === 'on-deck').length,
+          };
+        }
+
         // Get members and profiles
         const { data: members } = await supabaseAdmin
           .from('company_members')
@@ -587,7 +755,7 @@ const handler = async (req: Request): Promise<Response> => {
           if (!hasAnyActivity) continue;
 
           try {
-            const emailHtml = buildDigestEmailHtml(displayName, userDeals, userActivity, labels, isAdmin);
+            const emailHtml = buildDigestEmailHtml(displayName, userDeals, userActivity, labels, isAdmin, lenderInfoByDeal);
 
             const activityCount = Object.values(userActivity).reduce((sum, a) => sum + a.length, 0);
             const subject = `Pipeline Digest — ${userDeals.length} Deals · ${activityCount} Update${activityCount !== 1 ? 's' : ''}`;
