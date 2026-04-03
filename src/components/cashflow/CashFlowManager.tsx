@@ -399,6 +399,31 @@ export function CashFlowManager() {
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [recurringTags, setRecurringTags] = useState<RecurringTag[]>([]);
 
+  // Auto-save daily data + recurring tags to DB when they change (debounced)
+  useEffect(() => {
+    if (!company?.id || !dailyLoadedRef.current || role !== 'admin') return;
+
+    if (dailySaveTimerRef.current) clearTimeout(dailySaveTimerRef.current);
+    dailySaveTimerRef.current = setTimeout(async () => {
+      try {
+        await supabase
+          .from('cash_flow_imports' as any)
+          .upsert({
+            company_id: company.id,
+            daily_data: dailyData,
+            recurring_tags: recurringTags,
+            updated_at: new Date().toISOString(),
+          } as any, { onConflict: 'company_id' });
+      } catch (err) {
+        console.error('Error saving daily data:', err);
+      }
+    }, 800);
+
+    return () => {
+      if (dailySaveTimerRef.current) clearTimeout(dailySaveTimerRef.current);
+    };
+  }, [company?.id, dailyData, recurringTags, role]);
+
   // Date filter with debounce
   const [filterYears, setFilterYears] = useState<string[]>([]);
   const [filterQuarters, setFilterQuarters] = useState<string[]>([]);
