@@ -1081,6 +1081,7 @@ export type Database = {
           id: string
           imported_at: string
           imported_by: string | null
+          recurring_tags: Json | null
           row_structure: Json
           updated_at: string
         }
@@ -1091,6 +1092,7 @@ export type Database = {
           id?: string
           imported_at?: string
           imported_by?: string | null
+          recurring_tags?: Json | null
           row_structure?: Json
           updated_at?: string
         }
@@ -1101,6 +1103,7 @@ export type Database = {
           id?: string
           imported_at?: string
           imported_by?: string | null
+          recurring_tags?: Json | null
           row_structure?: Json
           updated_at?: string
         }

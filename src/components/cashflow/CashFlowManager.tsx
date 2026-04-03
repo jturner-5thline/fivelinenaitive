@@ -220,6 +220,44 @@ export function CashFlowManager() {
     };
   }, [company?.id, sidebarData]);
 
+  // --- Daily data + recurring tags persistence ---
+  const dailySaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const dailyLoadedRef = useRef(false);
+
+  // Load persisted daily data + recurring tags from DB
+  useEffect(() => {
+    if (!company?.id) return;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('cash_flow_imports' as any)
+          .select('daily_data, recurring_tags')
+          .eq('company_id', company.id)
+          .maybeSingle();
+
+        if (error) { console.error('Error loading daily data:', error); }
+
+        if (data) {
+          const dd = (data as any).daily_data;
+          if (dd && typeof dd === 'object' && Array.isArray(dd.dates)) {
+            setDailyData(normalizeDailyData(dd));
+          }
+          const rt = (data as any).recurring_tags;
+          if (Array.isArray(rt)) {
+            setRecurringTags(rt);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading daily data:', err);
+      } finally {
+        dailyLoadedRef.current = true;
+      }
+    })();
+  }, [company?.id]);
+
+
+
+
   // Inject cash-in DB items + manual sidebar items into dailyData and roll them through dependent cash rows
   const enhancedDailyData = useMemo(() => {
     const safeDailyData = normalizeDailyData(dailyData);
@@ -360,6 +398,31 @@ export function CashFlowManager() {
   const [role, setRole] = useState<RoleMode>('admin');
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [recurringTags, setRecurringTags] = useState<RecurringTag[]>([]);
+
+  // Auto-save daily data + recurring tags to DB when they change (debounced)
+  useEffect(() => {
+    if (!company?.id || !dailyLoadedRef.current || role !== 'admin') return;
+
+    if (dailySaveTimerRef.current) clearTimeout(dailySaveTimerRef.current);
+    dailySaveTimerRef.current = setTimeout(async () => {
+      try {
+        await supabase
+          .from('cash_flow_imports' as any)
+          .upsert({
+            company_id: company.id,
+            daily_data: dailyData,
+            recurring_tags: recurringTags,
+            updated_at: new Date().toISOString(),
+          } as any, { onConflict: 'company_id' });
+      } catch (err) {
+        console.error('Error saving daily data:', err);
+      }
+    }, 800);
+
+    return () => {
+      if (dailySaveTimerRef.current) clearTimeout(dailySaveTimerRef.current);
+    };
+  }, [company?.id, dailyData, recurringTags, role]);
 
   // Date filter with debounce
   const [filterYears, setFilterYears] = useState<string[]>([]);
