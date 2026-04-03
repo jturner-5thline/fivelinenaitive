@@ -1994,8 +1994,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <Tooltip>
                 <TooltipTrigger asChild>
                   <AlertDialogTrigger asChild>
-                    <button className="map-toolbar-btn map-toolbar-btn--destructive h-8 w-8 p-0 flex items-center justify-center" aria-label="Reset all mappings">
-                      <Trash2 className="h-8 w-8" />
+                    <button className="map-toolbar-btn map-toolbar-btn--destructive !h-auto !w-auto p-1.5 flex items-center justify-center" aria-label="Reset all mappings">
+                      <Trash2 className="h-5 w-5" />
                     </button>
                   </AlertDialogTrigger>
                 </TooltipTrigger>
