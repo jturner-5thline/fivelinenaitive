@@ -93,7 +93,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
       } else {
         next.add(key);
       }
-      saveVisibleTabs(next);
+      saveVisibleTabs(dealId, next);
       return next;
     });
   }, [activeTab]);
