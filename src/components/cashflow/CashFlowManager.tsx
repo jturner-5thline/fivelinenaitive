@@ -306,9 +306,10 @@ export function CashFlowManager() {
   useEffect(() => {
     if (isImported && importedDailyData) {
       const data = deepClone(importedDailyData);
+      if (!data.rows) { setDailyData(data); return; }
       const dateCount = data.dates.length;
       // Inject M&T Bank Balance rows if not present in imported data
-      const hasMtBegin = Object.values(data.rows).some(r => /M&T\s*Bank\s*Balance/i.test(r.label) && Object.entries(data.rows).some(([k]) => {
+      const hasMtBegin = Object.values(data.rows || {}).some(r => /M&T\s*Bank\s*Balance/i.test(r.label) && Object.entries(data.rows || {}).some(([k]) => {
         const struct = importedRowStructure?.rows.find(s => `row_${s.row_num}` === k);
         return struct?.section === 'balance_begin';
       }));
