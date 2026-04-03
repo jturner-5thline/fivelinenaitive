@@ -87,14 +87,12 @@ export function FPAWorkspace() {
                 ))}
               </TabsList>
               <div className="flex items-center gap-2">
-                <UndoRedoToolbar />
                 <BookmarkableViews
                   currentModule={effectiveModule}
                   currentState={{ module: effectiveModule }}
                   onRestoreView={handleRestoreView}
                 />
                 <ExportPresetsButton />
-                <ShortcutHintBar />
                 <FPATour onNavigateToTab={handleNavigateToTab} />
               </div>
             </div>
