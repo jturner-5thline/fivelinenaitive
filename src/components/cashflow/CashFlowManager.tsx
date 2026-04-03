@@ -7,16 +7,7 @@ import type {
 import {
   SEED_SIDEBAR_DATA,
 } from './seedData';
-// Lazy-load the large imported data to avoid blocking the dynamic import
-let _cachedImportedData: { IMPORTED_DAILY_DATA: DailyData; IMPORTED_ROW_STRUCTURE: any } | null = null;
-function getImportedData() {
-  if (!_cachedImportedData) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require('./importedCashFlowData');
-    _cachedImportedData = { IMPORTED_DAILY_DATA: mod.IMPORTED_DAILY_DATA, IMPORTED_ROW_STRUCTURE: mod.IMPORTED_ROW_STRUCTURE };
-  }
-  return _cachedImportedData;
-}
+import { IMPORTED_DAILY_DATA, IMPORTED_ROW_STRUCTURE } from './importedCashFlowData';
 import { aggregateDailyToWeekly } from './dailyToWeekly';
 import { CashFlowHeader } from './CashFlowHeader';
 import { DailySourceTab } from './DailySourceTab';
