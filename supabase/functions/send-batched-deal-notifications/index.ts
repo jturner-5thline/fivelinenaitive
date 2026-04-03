@@ -782,7 +782,7 @@ const handler = async (req: Request): Promise<Response> => {
           const userActivity: Record<string, PendingNotification[]> = {};
           let hasAnyActivity = false;
           for (const deal of userDeals) {
-            const dealAct = (activityByDeal[deal.id] || []).filter(n => n.changed_by !== member.user_id);
+            const dealAct = (activityByDeal[deal.id] || []).filter(n => n.changed_by !== userId);
             if (dealAct.length > 0) {
               userActivity[deal.id] = dealAct;
               hasAnyActivity = true;
