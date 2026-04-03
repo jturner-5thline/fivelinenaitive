@@ -190,7 +190,7 @@ function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
     company_profile: {
       name: m.settings.companyName,
       industry: `${m.settings.businessModel} · ${m.settings.customerBase}`,
-      hq: 'Austin, TX',
+      hq: '—',
     },
     header_meta: {
       actuals_through: m.settings.actualThruDate || currentMonth,
