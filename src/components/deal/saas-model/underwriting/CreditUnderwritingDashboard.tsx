@@ -21,7 +21,7 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
 
         {/* ═══ P&L ══════════════════════════════════════ */}
         <section>
-          <SectionDivider title="P&L" flags={d.flags.pnl} />
+          <SectionDivider title="P&L" flags={d.flags.pnl} className="mt-1 mb-3" />
 
           {/* KPI row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
