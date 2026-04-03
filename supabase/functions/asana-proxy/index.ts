@@ -131,6 +131,17 @@ serve(async (req) => {
         break;
       }
 
+      case "workspace_users": {
+        const resolvedToken = await resolveToken(token, integration_id);
+        const workspace = params.workspace_gid;
+        const data = await asanaFetch(
+          `/workspaces/${workspace}/users?opt_fields=name,email`,
+          resolvedToken
+        );
+        result = { success: true, users: data.data || [] };
+        break;
+      }
+
       default:
         result = { success: false, error: `Unknown action: ${action}` };
     }

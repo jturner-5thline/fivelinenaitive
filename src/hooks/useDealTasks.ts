@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 
 async function fireZapierWebhook(eventType: string, payload: Record<string, any>) {
   try {
@@ -98,6 +99,32 @@ export function useDealTasks(dealId: string | undefined) {
         };
         fireZapierWebhook('task_created', webhookPayload);
         fireZapierWebhook('task_assigned', webhookPayload);
+
+        // Native Asana sync (fire-and-forget)
+        (async () => {
+          try {
+            // Get user's company ID
+            const { data: memberData } = await supabase
+              .from('company_members')
+              .select('company_id')
+              .eq('user_id', user.id)
+              .limit(1)
+              .maybeSingle();
+
+            const ctx = await getAsanaSyncContext(memberData?.company_id || null);
+            if (ctx) {
+              await syncTaskToAsana(ctx, {
+                id: createdTask.id,
+                title: task.title,
+                description: task.description,
+                due_date: task.due_date,
+                assignee_email: assigneeProfile?.email || null,
+              });
+            }
+          } catch (e) {
+            console.error('Asana sync error:', e);
+          }
+        })();
 
         // Send enriched email notification to assignee (skip self-assignment, fire-and-forget)
         if (task.assigned_to !== user.id && assigneeProfile?.email) {
