@@ -133,6 +133,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [externalEmails]);
 
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
+  const [readingPaneExpanded, setReadingPaneExpanded] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string>('all_inbox');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [chipFilter, setChipFilter] = useState<ChipFilter>(null);
