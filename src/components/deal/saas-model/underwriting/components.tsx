@@ -130,15 +130,27 @@ export function AnnualCard({ title, headers, rows, footerLabel, footerValue, foo
               ))}
             </tr>
           ))}
+          {/* TTM footer as a proper table row */}
+          <tr className="border-t border-border bg-muted/5">
+            <td className={cn("px-4 py-2.5 text-[10px] uppercase tracking-wider font-medium", LABEL_MUTED)}>
+              {footerLabel}
+            </td>
+            <td className={cn("px-4 py-2.5 text-right text-sm tabular-nums", NUM_PRIMARY)}>
+              {footerValue}
+            </td>
+            {headers.length > 2 && (
+              <td className={cn("px-4 py-2.5 text-right text-[11px] tabular-nums", NUM_SECONDARY)}>
+                {footerSub || ''}
+              </td>
+            )}
+          </tr>
         </tbody>
       </table>
-      <div className="px-4 py-2.5 border-t border-border flex items-center justify-between">
-        <span className={cn("text-[10px] uppercase tracking-wider font-medium", LABEL_MUTED)}>{footerLabel}</span>
-        <div className="flex items-baseline gap-3">
-          <span className={cn("text-base", NUM_PRIMARY)}>{footerValue}</span>
-          {footerSub && <span className={cn("text-[11px]", NUM_SECONDARY)}>{footerSub}</span>}
+      {headers.length <= 2 && footerSub && (
+        <div className="px-4 pb-2 text-right">
+          <span className={cn("text-[11px]", NUM_SECONDARY)}>{footerSub}</span>
         </div>
-      </div>
+      )}
     </div>
   );
 }
