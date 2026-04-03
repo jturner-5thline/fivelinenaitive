@@ -840,7 +840,23 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               <TooltipContent side="bottom" className="text-xs">AI-powered email analysis</TooltipContent>
             </Tooltip>
 
-            <LinkToDealPopover
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => { setShowAiDraft(!showAiDraft); if (!showAiDraft) setShowAiAssist(false); }}
+                  className={cn(
+                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border',
+                    showAiDraft
+                      ? 'bg-[hsl(var(--outlook-blue)/0.1)] border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]'
+                      : 'border-transparent hover:bg-muted/40'
+                  )}
+                >
+                  <PenLine className={cn('h-4 w-4', showAiDraft ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/70')} />
+                  <span className={cn('text-[10px]', showAiDraft ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/60')}>AI Draft</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Generate AI email drafts</TooltipContent>
+            </Tooltip>
               trigger={
                 <button
                   className={cn(
