@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { FinancialIntelligencePanel } from './FinancialIntelligencePanel';
 import { SaaSModelData } from './types';
 import { fmtCurrency, fmtPct, fmtRatio, isNegative } from './formatters';
 import { annualRollup } from './calculations';
