@@ -72,9 +72,6 @@ export function FPAWorkspace() {
           {/* Setup Wizard (first-time) */}
           <FPASetupWizard onComplete={handleSetupComplete} />
 
-          {/* Command Palette (⌘K) + Keyboard Shortcuts (⌘/) */}
-          <FPACommandPalette onNavigateToTab={handleNavigateToTab} onAction={handleCommandAction} />
-          <FPAKeyboardShortcuts onNavigateToTab={handleNavigateToTab} onAction={handleCommandAction} />
           <SmartUploadWizard open={uploadWizardOpen} onOpenChange={setUploadWizardOpen} />
 
 
@@ -90,14 +87,12 @@ export function FPAWorkspace() {
                 ))}
               </TabsList>
               <div className="flex items-center gap-2">
-                <UndoRedoToolbar />
                 <BookmarkableViews
                   currentModule={effectiveModule}
                   currentState={{ module: effectiveModule }}
                   onRestoreView={handleRestoreView}
                 />
                 <ExportPresetsButton />
-                <ShortcutHintBar />
                 <FPATour onNavigateToTab={handleNavigateToTab} />
               </div>
             </div>
