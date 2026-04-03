@@ -726,6 +726,43 @@ Deno.serve(async (req: Request) => {
       // ops defaults to deal owner or manager
       const opsId = dealOwnerId || managerId;
 
+      // Auto-create wf_users records for all resolved team members (FK requirement)
+      const userIdsToSync = [managerId, analystId, opsId].filter(Boolean) as string[];
+      const uniqueUserIds = [...new Set(userIdsToSync)];
+      if (uniqueUserIds.length > 0) {
+        // Get emails from profiles for wf_users
+        const { data: userProfiles } = await supabase
+          .from("profiles")
+          .select("user_id, display_name")
+          .in("user_id", uniqueUserIds);
+
+        const { data: companyMembers } = await supabase
+          .from("company_members")
+          .select("user_id, role, company_id")
+          .in("user_id", uniqueUserIds);
+
+        for (const uid of uniqueUserIds) {
+          const profile = userProfiles?.find(p => p.user_id === uid);
+          const member = companyMembers?.find(m => m.user_id === uid);
+          const { data: authUser } = await supabase.auth.admin.getUserById(uid);
+          
+          const { error: wfUserError } = await supabase.from("wf_users").upsert({
+            id: uid,
+            name: profile?.display_name || "Unknown",
+            email: authUser?.user?.email || null,
+            role: member?.role || "member",
+            auth_user_id: uid,
+            company_id: member?.company_id || org_company_id || mainDeal.company_id,
+          }, { onConflict: "id" });
+
+          if (wfUserError) {
+            console.error(`[wf-stage-trigger] Failed to sync wf_user ${uid}:`, wfUserError);
+          } else {
+            console.log(`[wf-stage-trigger] ✅ Synced wf_user: ${profile?.display_name || uid}`);
+          }
+        }
+      }
+
       // Map the main deals stage to a wf_deal_stage enum value
       const wfStage = DEALS_TO_WF_STAGE[mainDeal.stage] || "nda_needs_list_sent";
       console.log(`[wf-stage-trigger] Mapping main deals stage "${mainDeal.stage}" → wf_deal_stage "${wfStage}"`);
