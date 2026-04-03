@@ -47,25 +47,21 @@ const ALL_TABS: TabDef[] = [
 
 const TAB_LABELS: Record<string, string> = Object.fromEntries(ALL_TABS.map(t => [t.key, t.label]));
 
-const STORAGE_KEY = 'naitive-analysis-visible-tabs';
-
-function loadVisibleTabs(): Set<string> {
+function loadVisibleTabs(dealId: string): Set<string> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(`naitive-analysis-visible-tabs-${dealId}`);
     if (raw) {
       const arr = JSON.parse(raw) as string[];
-      // Always include locked tabs
       const set = new Set(arr);
       ALL_TABS.filter(t => t.locked).forEach(t => set.add(t.key));
       return set;
     }
   } catch { /* ignore */ }
-  // Default: all visible
   return new Set(ALL_TABS.map(t => t.key));
 }
 
-function saveVisibleTabs(tabs: Set<string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(tabs)));
+function saveVisibleTabs(dealId: string, tabs: Set<string>) {
+  localStorage.setItem(`naitive-analysis-visible-tabs-${dealId}`, JSON.stringify(Array.from(tabs)));
 }
 
 interface SaaSModelTabProps {
@@ -85,7 +81,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
 
 
   // Tab visibility
-  const [visibleTabs, setVisibleTabs] = useState<Set<string>>(loadVisibleTabs);
+  const [visibleTabs, setVisibleTabs] = useState<Set<string>>(() => loadVisibleTabs(dealId));
 
   const toggleTab = useCallback((key: string) => {
     setVisibleTabs(prev => {
@@ -97,7 +93,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
       } else {
         next.add(key);
       }
-      saveVisibleTabs(next);
+      saveVisibleTabs(dealId, next);
       return next;
     });
   }, [activeTab]);
