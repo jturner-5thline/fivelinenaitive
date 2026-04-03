@@ -1,0 +1,1 @@
+ALTER TABLE public.asana_project_filters ADD COLUMN IF NOT EXISTS asana_section_gid text;

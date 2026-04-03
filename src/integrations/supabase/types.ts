@@ -896,6 +896,7 @@ export type Database = {
         Row: {
           asana_project_gid: string
           asana_project_name: string
+          asana_section_gid: string | null
           created_at: string
           id: string
           is_enabled: boolean
@@ -906,6 +907,7 @@ export type Database = {
         Insert: {
           asana_project_gid: string
           asana_project_name: string
+          asana_section_gid?: string | null
           created_at?: string
           id?: string
           is_enabled?: boolean
@@ -916,6 +918,7 @@ export type Database = {
         Update: {
           asana_project_gid?: string
           asana_project_name?: string
+          asana_section_gid?: string | null
           created_at?: string
           id?: string
           is_enabled?: boolean
