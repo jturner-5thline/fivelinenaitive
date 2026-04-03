@@ -434,7 +434,7 @@ export function CashFlowManager() {
 
   // KPIs from visible weekly data
   const { cashIn, cashOut, netChange } = useMemo(() => {
-    const weekEntries = Object.values(rawWeekly);
+    const weekEntries = Object.values(rawWeekly || {});
     const ci = weekEntries.reduce((s, e) => s + ((e["TOTAL RECEIPTS"] as number) || 0), 0);
     const co = weekEntries.reduce((s, e) => s + ((e["TOTAL DISBURSEMENTS"] as number) || 0), 0);
     return { cashIn: ci, cashOut: co, netChange: ci - co };
