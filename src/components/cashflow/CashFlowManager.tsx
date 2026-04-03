@@ -133,7 +133,9 @@ export function CashFlowManager() {
   const sidebarDbItems = useMemo(() => toSidebarItems(), [toSidebarItems]);
 
   // Master data — weekly is always derived from daily
-  const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(IMPORTED_DAILY_DATA));
+  const [dailyData, setDailyData] = useState<DailyData>(() => {
+    try { return deepClone(IMPORTED_DAILY_DATA); } catch { return { dates: [], rows: {} }; }
+  });
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => deepClone(SEED_SIDEBAR_DATA));
   const sidebarLoadedRef = useRef(false);
   const sidebarSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -201,9 +203,9 @@ export function CashFlowManager() {
       ...cashInDbItems.map(i => ({ date: i.target_date, amount: i.amount })),
       ...sidebarData.cash_in_next_8_weeks.map(i => ({ date: i.date, amount: i.amount })),
     ];
-    if (allCashInItems.length === 0) return dailyData;
+    if (allCashInItems.length === 0 || !dailyData.rows) return dailyData;
 
-    const findRowKey = (pattern: RegExp) => Object.entries(dailyData.rows).find(
+    const findRowKey = (pattern: RegExp) => Object.entries(dailyData.rows || {}).find(
       ([, row]) => pattern.test(row.label)
     )?.[0];
 
@@ -304,16 +306,17 @@ export function CashFlowManager() {
   useEffect(() => {
     if (isImported && importedDailyData) {
       const data = deepClone(importedDailyData);
+      if (!data.rows) { setDailyData(data); return; }
       const dateCount = data.dates.length;
       // Inject M&T Bank Balance rows if not present in imported data
-      const hasMtBegin = Object.values(data.rows).some(r => /M&T\s*Bank\s*Balance/i.test(r.label) && Object.entries(data.rows).some(([k]) => {
+      const hasMtBegin = Object.values(data.rows || {}).some(r => /M&T\s*Bank\s*Balance/i.test(r.label) && Object.entries(data.rows || {}).some(([k]) => {
         const struct = importedRowStructure?.rows.find(s => `row_${s.row_num}` === k);
         return struct?.section === 'balance_begin';
       }));
       if (!hasMtBegin) {
         data.rows['row_mt_begin'] = { label: 'M&T Bank Balance', entity: 'ALL', values: new Array(dateCount).fill(46000) };
       }
-      const hasMtEnd = Object.values(data.rows).some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
+      const hasMtEnd = Object.values(data.rows || {}).some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
       if (!hasMtEnd || !hasMtBegin) {
         if (!data.rows['row_mt_end']) {
           data.rows['row_mt_end'] = { label: 'M&T Bank Balance', entity: 'ALL', values: new Array(dateCount).fill(46000) };
@@ -431,7 +434,7 @@ export function CashFlowManager() {
 
   // KPIs from visible weekly data
   const { cashIn, cashOut, netChange } = useMemo(() => {
-    const weekEntries = Object.values(rawWeekly);
+    const weekEntries = Object.values(rawWeekly || {});
     const ci = weekEntries.reduce((s, e) => s + ((e["TOTAL RECEIPTS"] as number) || 0), 0);
     const co = weekEntries.reduce((s, e) => s + ((e["TOTAL DISBURSEMENTS"] as number) || 0), 0);
     return { cashIn: ci, cashOut: co, netChange: ci - co };
