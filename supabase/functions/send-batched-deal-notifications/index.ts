@@ -665,6 +665,24 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
+        // Fetch lender counts per deal
+        const dealIds = allDeals.map(d => d.id);
+        const { data: dealLenders } = await supabaseAdmin
+          .from('deal_lenders')
+          .select('deal_id, tracking_status')
+          .in('deal_id', dealIds);
+
+        const lenderInfoByDeal: Record<string, DealLenderInfo> = {};
+        for (const d of allDeals) {
+          const dl = (dealLenders || []).filter(l => l.deal_id === d.id);
+          lenderInfoByDeal[d.id] = {
+            total: dl.length,
+            active: dl.filter(l => l.tracking_status === 'active').length,
+            passed: dl.filter(l => l.tracking_status === 'passed' || l.tracking_status === 'not-a-fit' || l.tracking_status === 'excluded').length,
+            onDeck: dl.filter(l => l.tracking_status === 'on-deck').length,
+          };
+        }
+
         // Get members and profiles
         const { data: members } = await supabaseAdmin
           .from('company_members')
