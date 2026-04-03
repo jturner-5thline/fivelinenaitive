@@ -33,6 +33,27 @@ const QUARTER_RANGES: Record<string, [number, number]> = {
   Q4: [9, 11],
 };
 
+const EMPTY_DAILY_DATA: DailyData = { dates: [], rows: {} };
+const EMPTY_SIDEBAR_DATA: SidebarData = { cash_in_next_8_weeks: [], notes: [] };
+
+function normalizeDailyData(data: DailyData | null | undefined): DailyData {
+  return {
+    dates: Array.isArray(data?.dates) ? data.dates : [],
+    rows: data?.rows && typeof data.rows === 'object' ? data.rows : {},
+  };
+}
+
+function normalizeWeeklyData(data: WeeklyData | null | undefined): WeeklyData {
+  return data && typeof data === 'object' ? data : {};
+}
+
+function normalizeSidebarData(data: SidebarData | null | undefined): SidebarData {
+  return {
+    cash_in_next_8_weeks: Array.isArray(data?.cash_in_next_8_weeks) ? data.cash_in_next_8_weeks : [],
+    notes: Array.isArray(data?.notes) ? data.notes : [],
+  };
+}
+
 function getAvailableYears(dates: string[]): number[] {
   const years = new Set<number>();
   for (const d of dates) {
@@ -43,12 +64,13 @@ function getAvailableYears(dates: string[]): number[] {
 }
 
 function filterDailyByPeriod(data: DailyData, years: string[], quarters: string[]): DailyData {
-  if (years.length === 0 && quarters.length === 0) return data;
-  const yearNums = years.map(Number);
+  const safeData = normalizeDailyData(data);
+  if (years.length === 0 && quarters.length === 0) return safeData;
+  const yearNums = (years || []).map(Number);
   const indices: number[] = [];
 
-  for (let i = 0; i < data.dates.length; i++) {
-    const d = data.dates[i];
+  for (let i = 0; i < safeData.dates.length; i++) {
+    const d = safeData.dates[i] || '';
     const y = parseInt(d.slice(0, 4));
     const m = parseInt(d.slice(5, 7)) - 1;
 
@@ -66,15 +88,15 @@ function filterDailyByPeriod(data: DailyData, years: string[], quarters: string[
     indices.push(i);
   }
 
-  if (indices.length === data.dates.length) return data;
+  if (indices.length === safeData.dates.length) return safeData;
 
-  const filteredDates = indices.map(i => data.dates[i]);
+  const filteredDates = indices.map(i => safeData.dates[i]).filter((date): date is string => Boolean(date));
   const filteredRows: Record<string, { label: string; entity: string; values: number[] }> = {};
-  for (const [key, row] of Object.entries(data.rows)) {
+  for (const [key, row] of Object.entries(safeData.rows || {})) {
     filteredRows[key] = {
       label: row.label,
       entity: row.entity,
-      values: indices.map(i => row.values[i] ?? 0),
+      values: indices.map(i => row.values?.[i] ?? 0),
     };
   }
 
@@ -82,11 +104,12 @@ function filterDailyByPeriod(data: DailyData, years: string[], quarters: string[
 }
 
 function filterWeeklyByPeriod(data: WeeklyData, years: string[], quarters: string[]): WeeklyData {
-  if (years.length === 0 && quarters.length === 0) return data;
-  const yearNums = years.map(Number);
+  const safeData = normalizeWeeklyData(data);
+  if (years.length === 0 && quarters.length === 0) return safeData;
+  const yearNums = (years || []).map(Number);
   const filtered: WeeklyData = {};
 
-  for (const [key, entry] of Object.entries(data)) {
+  for (const [key, entry] of Object.entries(safeData || {})) {
     const y = parseInt(key.slice(0, 4));
     const m = parseInt(key.slice(5, 7)) - 1;
 
@@ -134,9 +157,9 @@ export function CashFlowManager() {
 
   // Master data — weekly is always derived from daily
   const [dailyData, setDailyData] = useState<DailyData>(() => {
-    try { return deepClone(IMPORTED_DAILY_DATA); } catch { return { dates: [], rows: {} }; }
+    try { return normalizeDailyData(deepClone(IMPORTED_DAILY_DATA)); } catch { return EMPTY_DAILY_DATA; }
   });
-  const [sidebarData, setSidebarData] = useState<SidebarData>(() => deepClone(SEED_SIDEBAR_DATA));
+  const [sidebarData, setSidebarData] = useState<SidebarData>(() => normalizeSidebarData(deepClone(SEED_SIDEBAR_DATA)));
   const sidebarLoadedRef = useRef(false);
   const sidebarSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -199,13 +222,15 @@ export function CashFlowManager() {
 
   // Inject cash-in DB items + manual sidebar items into dailyData and roll them through dependent cash rows
   const enhancedDailyData = useMemo(() => {
+    const safeDailyData = normalizeDailyData(dailyData);
+    const safeSidebarData = normalizeSidebarData(sidebarData);
     const allCashInItems = [
-      ...cashInDbItems.map(i => ({ date: i.target_date, amount: i.amount })),
-      ...sidebarData.cash_in_next_8_weeks.map(i => ({ date: i.date, amount: i.amount })),
+      ...(cashInDbItems || []).map(i => ({ date: i.target_date, amount: i.amount })),
+      ...safeSidebarData.cash_in_next_8_weeks.map(i => ({ date: i.date, amount: i.amount })),
     ];
-    if (allCashInItems.length === 0 || !dailyData.rows) return dailyData;
+    if (allCashInItems.length === 0 || !safeDailyData.rows) return safeDailyData;
 
-    const findRowKey = (pattern: RegExp) => Object.entries(dailyData.rows || {}).find(
+    const findRowKey = (pattern: RegExp) => Object.entries(safeDailyData.rows || {}).find(
       ([, row]) => pattern.test(row.label)
     )?.[0];
 
@@ -227,8 +252,8 @@ export function CashFlowManager() {
 
     // Build date→index lookup
     const dateIndexMap: Record<string, number> = {};
-    for (let i = 0; i < dailyData.dates.length; i++) {
-      dateIndexMap[dailyData.dates[i]] = i;
+    for (let i = 0; i < safeDailyData.dates.length; i++) {
+      dateIndexMap[safeDailyData.dates[i]] = i;
     }
 
     // Check if any cash-in dates match dailyData dates
@@ -238,12 +263,12 @@ export function CashFlowManager() {
     }
     if (!hasMatch) return dailyData;
 
-    const customerPaymentValues = [...dailyData.rows[custPayKey].values];
-    const totalReceiptsValues = totalReceiptsKey ? [...dailyData.rows[totalReceiptsKey].values] : null;
-    const netCashChangeValues = netCashChangeKey ? [...dailyData.rows[netCashChangeKey].values] : null;
-    const endingCashValues = endingCashKey ? [...dailyData.rows[endingCashKey].values] : null;
-    const beginningCashValues = beginningCashKey ? [...dailyData.rows[beginningCashKey].values] : null;
-    const dailyDeltas = new Array(dailyData.dates.length).fill(0);
+    const customerPaymentValues = [...(safeDailyData.rows[custPayKey]?.values || [])];
+    const totalReceiptsValues = totalReceiptsKey ? [...(safeDailyData.rows[totalReceiptsKey]?.values || [])] : null;
+    const netCashChangeValues = netCashChangeKey ? [...(safeDailyData.rows[netCashChangeKey]?.values || [])] : null;
+    const endingCashValues = endingCashKey ? [...(safeDailyData.rows[endingCashKey]?.values || [])] : null;
+    const beginningCashValues = beginningCashKey ? [...(safeDailyData.rows[beginningCashKey]?.values || [])] : null;
+    const dailyDeltas = new Array(safeDailyData.dates.length).fill(0);
 
     for (const [date, amount] of Object.entries(dateAmountMap)) {
       const idx = dateIndexMap[date];
@@ -274,45 +299,45 @@ export function CashFlowManager() {
     }
 
     const updatedRows = {
-      ...dailyData.rows,
-      [custPayKey]: { ...dailyData.rows[custPayKey], values: customerPaymentValues },
+      ...(safeDailyData.rows || {}),
+      [custPayKey]: { ...safeDailyData.rows[custPayKey], values: customerPaymentValues },
     };
 
     if (totalReceiptsKey && totalReceiptsValues) {
-      updatedRows[totalReceiptsKey] = { ...dailyData.rows[totalReceiptsKey], values: totalReceiptsValues };
+      updatedRows[totalReceiptsKey] = { ...safeDailyData.rows[totalReceiptsKey], values: totalReceiptsValues };
     }
 
     if (netCashChangeKey && netCashChangeValues) {
-      updatedRows[netCashChangeKey] = { ...dailyData.rows[netCashChangeKey], values: netCashChangeValues };
+      updatedRows[netCashChangeKey] = { ...safeDailyData.rows[netCashChangeKey], values: netCashChangeValues };
     }
 
     if (endingCashKey && endingCashValues) {
-      updatedRows[endingCashKey] = { ...dailyData.rows[endingCashKey], values: endingCashValues };
+      updatedRows[endingCashKey] = { ...safeDailyData.rows[endingCashKey], values: endingCashValues };
     }
 
     if (beginningCashKey && beginningCashValues) {
-      updatedRows[beginningCashKey] = { ...dailyData.rows[beginningCashKey], values: beginningCashValues };
+      updatedRows[beginningCashKey] = { ...safeDailyData.rows[beginningCashKey], values: beginningCashValues };
     }
 
     return {
-      ...dailyData,
+      ...safeDailyData,
       rows: updatedRows,
     };
   }, [dailyData, cashInDbItems, sidebarData.cash_in_next_8_weeks]);
 
   // Weekly data derived from enhanced daily (includes cash-in items)
-  const weeklyData = useMemo(() => aggregateDailyToWeekly(enhancedDailyData), [enhancedDailyData]);
+  const weeklyData = useMemo(() => aggregateDailyToWeekly(normalizeDailyData(enhancedDailyData)), [enhancedDailyData]);
 
   useEffect(() => {
     if (isImported && importedDailyData) {
-      const data = deepClone(importedDailyData);
-      if (!data.rows) { setDailyData(data); return; }
+      const data = normalizeDailyData(deepClone(importedDailyData));
+      const importedStructureRows = importedRowStructure?.rows ?? [];
       const dateCount = data.dates.length;
       // Inject M&T Bank Balance rows if not present in imported data
-      const hasMtBegin = Object.values(data.rows || {}).some(r => /M&T\s*Bank\s*Balance/i.test(r.label) && Object.entries(data.rows || {}).some(([k]) => {
-        const struct = importedRowStructure?.rows.find(s => `row_${s.row_num}` === k);
-        return struct?.section === 'balance_begin';
-      }));
+      const hasMtBegin = Object.entries(data.rows || {}).some(([k, r]) => {
+        const struct = importedStructureRows.find(s => `row_${s.row_num}` === k);
+        return /M&T\s*Bank\s*Balance/i.test(r.label) && struct?.section === 'balance_begin';
+      });
       if (!hasMtBegin) {
         data.rows['row_mt_begin'] = { label: 'M&T Bank Balance', entity: 'ALL', values: new Array(dateCount).fill(46000) };
       }
@@ -324,7 +349,7 @@ export function CashFlowManager() {
       }
       setDailyData(data);
     }
-  }, [isImported, importedDailyData]);
+  }, [isImported, importedDailyData, importedRowStructure]);
 
   // Sandbox data (viewer mode)
   const [sandboxDaily, setSandboxDaily] = useState<DailyData | null>(null);
@@ -367,9 +392,9 @@ export function CashFlowManager() {
   const [archiveEntries, setArchiveEntries] = useState<ExportArchiveEntry[]>([]);
 
   // Data accessors — stable references (use enhancedDailyData so cash-in items flow through)
-  const rawDaily = useMemo(() => role === 'viewer' && sandboxDaily ? sandboxDaily : enhancedDailyData, [role, sandboxDaily, enhancedDailyData]);
-  const rawWeekly = useMemo(() => aggregateDailyToWeekly(rawDaily), [rawDaily]);
-  const rawSidebar = useMemo(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
+  const rawDaily = useMemo(() => normalizeDailyData(role === 'viewer' && sandboxDaily ? sandboxDaily : enhancedDailyData), [role, sandboxDaily, enhancedDailyData]);
+  const rawWeekly = useMemo(() => normalizeWeeklyData(aggregateDailyToWeekly(rawDaily)), [rawDaily]);
+  const rawSidebar = useMemo(() => normalizeSidebarData(role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData), [role, sandboxSidebar, sidebarData]);
 
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
 
@@ -379,11 +404,11 @@ export function CashFlowManager() {
 
   const setActiveData = useCallback((setter: 'daily' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
-      if (setter === 'daily') setSandboxDaily(prev => updater(prev || dailyData));
-      if (setter === 'sidebar') setSandboxSidebar(prev => updater(prev || sidebarData));
+      if (setter === 'daily') setSandboxDaily(prev => normalizeDailyData(updater(normalizeDailyData(prev || dailyData))));
+      if (setter === 'sidebar') setSandboxSidebar(prev => normalizeSidebarData(updater(normalizeSidebarData(prev || sidebarData))));
     } else {
-      if (setter === 'daily') setDailyData(updater);
-      if (setter === 'sidebar') setSidebarData(updater);
+      if (setter === 'daily') setDailyData(prev => normalizeDailyData(updater(normalizeDailyData(prev))));
+      if (setter === 'sidebar') setSidebarData(prev => normalizeSidebarData(updater(normalizeSidebarData(prev))));
     }
   }, [role, dailyData, sidebarData]);
 
@@ -609,10 +634,11 @@ export function CashFlowManager() {
 
   const rowStructure = useMemo(() => {
     const base = isImported && importedRowStructure ? importedRowStructure : IMPORTED_ROW_STRUCTURE;
-    const hasMtInStruct = base.rows.some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
-    if (hasMtInStruct) return base;
+    const baseRows = base?.rows ?? [];
+    const hasMtInStruct = baseRows.some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
+    if (hasMtInStruct) return { rows: baseRows };
 
-    const rows = [...base.rows];
+    const rows = [...baseRows];
     const lastBeginIdx = rows.reduce((acc, r, i) => r.section === 'balance_begin' && !r.is_total ? i : acc, -1);
     if (lastBeginIdx >= 0) {
       rows.splice(lastBeginIdx + 1, 0, {
