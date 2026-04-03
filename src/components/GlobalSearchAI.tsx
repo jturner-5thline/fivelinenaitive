@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -208,21 +208,50 @@ export function GlobalSearchAI() {
     return Sparkles;
   };
 
+  const [expanded, setExpanded] = useState(false);
+  const triggerInputRef = useRef<HTMLInputElement>(null);
+
+  const handleTriggerFocus = () => {
+    setExpanded(true);
+    // Small delay to let transition start, then open dialog
+    setTimeout(() => {
+      setOpen(true);
+      setExpanded(false);
+    }, 150);
+  };
+
   return (
     <>
-      <Button
-        variant="outline"
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        onFocus={handleTriggerFocus}
+        aria-label="Search deals, lenders, and more"
         className={cn(
-          "relative h-8 w-full max-w-[240px] min-w-[140px] justify-start rounded-md bg-muted/50 text-xs font-normal text-muted-foreground shadow-none sm:pr-12",
-          "border border-primary/40 hover:border-primary focus-visible:border-primary",
+          "relative flex items-center h-9 rounded-md border border-border bg-muted/40 text-muted-foreground",
+          "transition-all duration-200 ease-in-out cursor-pointer",
+          "hover:border-primary/60 hover:bg-muted/60",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          expanded
+            ? "w-56 px-3 gap-2"
+            : "w-9 justify-center sm:w-auto sm:px-3 sm:gap-2 sm:pr-10",
           shouldPulse && "animate-glow-pulse"
         )}
-        onClick={() => setOpen(true)}
       >
-        <Sparkles className="mr-1.5 h-3.5 w-3.5 text-primary" />
-        <span className="hidden sm:inline-flex">Search deals, lenders...</span>
-        <span className="inline-flex sm:hidden">Search</span>
-      </Button>
+        <Sparkles className="h-4 w-4 shrink-0 text-primary" />
+        <span className={cn(
+          "text-xs whitespace-nowrap transition-opacity duration-200",
+          expanded ? "opacity-100" : "hidden sm:inline opacity-70"
+        )}>
+          Search...
+        </span>
+        <kbd className={cn(
+          "pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-5 select-none items-center gap-0.5 rounded border bg-muted px-1 font-mono text-[10px] font-medium text-muted-foreground",
+          "hidden sm:flex"
+        )}>
+          <span className="text-xs">⌘</span>K
+        </kbd>
+      </button>
 
       <CommandDialog open={open} onOpenChange={(isOpen) => {
         setOpen(isOpen);
