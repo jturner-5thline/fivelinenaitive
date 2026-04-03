@@ -338,7 +338,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         // Asana sync (fire-and-forget)
         (async () => {
           try {
-            const ctx = await getAsanaSyncContext(membership?.company_id || null);
+            const ctx = await getAsanaSyncContext((data as any).company_id || null);
             if (ctx) {
               await syncTaskToAsana(ctx, {
                 id: (data as any).id,
