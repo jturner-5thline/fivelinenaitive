@@ -255,30 +255,8 @@ export function CashFlowManager() {
     })();
   }, [company?.id]);
 
-  // Auto-save daily data + recurring tags to DB when they change (debounced)
-  useEffect(() => {
-    if (!company?.id || !dailyLoadedRef.current || role !== 'admin') return;
 
-    if (dailySaveTimerRef.current) clearTimeout(dailySaveTimerRef.current);
-    dailySaveTimerRef.current = setTimeout(async () => {
-      try {
-        await supabase
-          .from('cash_flow_imports' as any)
-          .upsert({
-            company_id: company.id,
-            daily_data: dailyData,
-            recurring_tags: recurringTags,
-            updated_at: new Date().toISOString(),
-          } as any, { onConflict: 'company_id' });
-      } catch (err) {
-        console.error('Error saving daily data:', err);
-      }
-    }, 800);
 
-    return () => {
-      if (dailySaveTimerRef.current) clearTimeout(dailySaveTimerRef.current);
-    };
-  }, [company?.id, dailyData, recurringTags, role]);
 
   // Inject cash-in DB items + manual sidebar items into dailyData and roll them through dependent cash rows
   const enhancedDailyData = useMemo(() => {
