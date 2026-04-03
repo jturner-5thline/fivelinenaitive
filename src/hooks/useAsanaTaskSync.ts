@@ -43,7 +43,7 @@ export async function getAsanaSyncContext(companyId: string | null): Promise<Asa
   // 4. Get first enabled project filter for this sync config
   const { data: projectFilter } = await supabase
     .from('asana_project_filters')
-    .select('asana_project_gid')
+    .select('asana_project_gid, asana_section_gid')
     .eq('sync_config_id', syncConfig.id)
     .eq('is_enabled', true)
     .limit(1)
