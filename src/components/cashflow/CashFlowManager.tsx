@@ -316,7 +316,7 @@ export function CashFlowManager() {
       if (!hasMtBegin) {
         data.rows['row_mt_begin'] = { label: 'M&T Bank Balance', entity: 'ALL', values: new Array(dateCount).fill(46000) };
       }
-      const hasMtEnd = Object.values(data.rows).some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
+      const hasMtEnd = Object.values(data.rows || {}).some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
       if (!hasMtEnd || !hasMtBegin) {
         if (!data.rows['row_mt_end']) {
           data.rows['row_mt_end'] = { label: 'M&T Bank Balance', entity: 'ALL', values: new Array(dateCount).fill(46000) };
