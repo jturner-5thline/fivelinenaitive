@@ -265,7 +265,7 @@ function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
       { label: 'GROSS MARGIN', value: fmtPct(m.latestGrossMargin), good: m.latestGrossMargin >= 60 },
       { label: 'YOY REV GROWTH', value: fmtPct(m.yoyRevGrowth), good: m.yoyRevGrowth > 20 },
       { label: 'NET REV RETENTION', value: m.netRevenueRetention > 0 ? fmtPct(m.netRevenueRetention) : '—', good: m.netRevenueRetention >= 100 },
-      { label: 'TOTAL CUSTOMERS', value: customerCount.toLocaleString(), good: true },
+      { label: 'TOTAL CUSTOMERS', value: customerCount > 0 ? customerCount.toLocaleString() : '—' },
       { label: 'RULE OF 40', value: `${ruleOf40.toFixed(0)}%`, good: ruleOf40 >= 40, icon: ruleOf40 >= 40 ? '✅' : '⚠️' },
       { label: 'MAGIC NUMBER', value: '—', good: true },
       { label: 'OPEX / REVENUE', value: `${opexPct.toFixed(1)}%`, good: opexPct < 80 },
