@@ -135,8 +135,8 @@ function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
   const ebitdaMargin = m.totalRevenue[last] > 0 ? (m.ebitda[last] / m.totalRevenue[last]) * 100 : 0;
   const ruleOf40 = m.yoyRevGrowth + ebitdaMargin;
   const opexPct = m.totalRevenue[last] > 0 ? (m.totalOpEx[last] / m.totalRevenue[last]) * 100 : 0;
-  const acv = 120_000;
-  const customerCount = m.arrToday > 0 ? Math.round(m.arrToday / acv) : 0;
+  const customerCount = 0; // Requires external customer data — not estimated
+  const acv = 0; // Requires customer count data
 
   const deferredRevToday = m.balanceSheet.deferredRevenue[last] || 0;
   const growthRate = m.yoyRevGrowth > 0 ? m.yoyRevGrowth / 100 : 0;
@@ -190,7 +190,7 @@ function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
     company_profile: {
       name: m.settings.companyName,
       industry: `${m.settings.businessModel} · ${m.settings.customerBase}`,
-      hq: 'Austin, TX',
+      hq: '—',
     },
     header_meta: {
       actuals_through: m.settings.actualThruDate || currentMonth,
@@ -265,7 +265,7 @@ function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
       { label: 'GROSS MARGIN', value: fmtPct(m.latestGrossMargin), good: m.latestGrossMargin >= 60 },
       { label: 'YOY REV GROWTH', value: fmtPct(m.yoyRevGrowth), good: m.yoyRevGrowth > 20 },
       { label: 'NET REV RETENTION', value: m.netRevenueRetention > 0 ? fmtPct(m.netRevenueRetention) : '—', good: m.netRevenueRetention >= 100 },
-      { label: 'TOTAL CUSTOMERS', value: customerCount.toLocaleString(), good: true },
+      { label: 'TOTAL CUSTOMERS', value: customerCount > 0 ? customerCount.toLocaleString() : '—' },
       { label: 'RULE OF 40', value: `${ruleOf40.toFixed(0)}%`, good: ruleOf40 >= 40, icon: ruleOf40 >= 40 ? '✅' : '⚠️' },
       { label: 'MAGIC NUMBER', value: '—', good: true },
       { label: 'OPEX / REVENUE', value: `${opexPct.toFixed(1)}%`, good: opexPct < 80 },
@@ -280,7 +280,7 @@ function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
       { label: 'NET RETENTION', value: m.netRevenueRetention > 0 ? fmtPct(m.netRevenueRetention) : '—' },
       { label: 'CHURN RATE', value: '—', sub: 'Requires cohort data' },
       { label: 'LARGEST CUSTOMER', value: '—', sub: '% of ARR' },
-      { label: 'AVG CONTRACT VALUE', value: `$${Math.round(acv / 1000)}K`, sub: 'Estimated' },
+      { label: 'AVG CONTRACT VALUE', value: acv > 0 ? `$${Math.round(acv / 1000)}K` : '—', sub: acv > 0 ? 'Calculated' : 'Requires customer data' },
     ],
     analyst_notes: [
       {
