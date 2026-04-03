@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { FPAStatusBar } from './FPAStatusBar';
@@ -16,18 +16,35 @@ import { UndoRedoProvider, UndoRedoToolbar } from './FPAUndoRedo';
 import { DataHealthIndicator } from './FPADataHealth';
 import { BookmarkableViews, type SavedView } from './FPABookmarkableViews';
 import { ExportPresetsButton } from './FPAExportPresets';
+import { useFPATabPermissions } from '@/hooks/useFPATabPermissions';
 import {
   Database, FileSpreadsheet, BarChart3, Sparkles, Zap
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
+const MODULE_TAB_DEFS = [
+  { key: 'dashboards', label: 'Dashboards', icon: BarChart3 },
+  { key: 'data', label: 'Data', icon: Database },
+  { key: 'sheets', label: 'Sheets', icon: FileSpreadsheet },
+  { key: 'ai', label: 'AI', icon: Sparkles },
+  { key: 'automations', label: 'Automations', icon: Zap },
+] as const;
+
 export function FPAWorkspace() {
   const [activeModule, setActiveModule] = useState('dashboards');
   const [uploadWizardOpen, setUploadWizardOpen] = useState(false);
+  const { canViewModuleTab } = useFPATabPermissions();
+
+  const visibleModuleTabs = useMemo(
+    () => MODULE_TAB_DEFS.filter(t => canViewModuleTab(t.key)),
+    [canViewModuleTab]
+  );
 
   const handleNavigateToTab = useCallback((tab: string) => {
-    setActiveModule(tab);
-  }, []);
+    if (canViewModuleTab(tab)) {
+      setActiveModule(tab);
+    }
+  }, [canViewModuleTab]);
 
   const handleCommandAction = useCallback((actionId: string) => {
     if (actionId === 'upload-workbook') {
@@ -45,6 +62,9 @@ export function FPAWorkspace() {
     setActiveModule(view.module || 'dashboards');
   }, []);
 
+  // If the active module is no longer visible, redirect to dashboards
+  const effectiveModule = canViewModuleTab(activeModule) ? activeModule : 'dashboards';
+
   return (
     <TooltipProvider>
       <UndoRedoProvider>
@@ -59,35 +79,21 @@ export function FPAWorkspace() {
 
 
           {/* Module Navigation */}
-          <Tabs value={activeModule} onValueChange={setActiveModule} className="space-y-4">
+          <Tabs value={effectiveModule} onValueChange={setActiveModule} className="space-y-4">
             <div className="flex items-center justify-between overflow-x-auto gap-2">
               <TabsList className="inline-flex w-auto">
-                <TabsTrigger value="dashboards" className="gap-1.5 px-4">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  <span className="text-xs">Dashboards</span>
-                </TabsTrigger>
-                <TabsTrigger value="data" className="gap-1.5 px-4">
-                  <Database className="h-3.5 w-3.5" />
-                  <span className="text-xs">Data</span>
-                </TabsTrigger>
-                <TabsTrigger value="sheets" className="gap-1.5 px-4">
-                  <FileSpreadsheet className="h-3.5 w-3.5" />
-                  <span className="text-xs">Sheets</span>
-                </TabsTrigger>
-                <TabsTrigger value="ai" className="gap-1.5 px-4">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span className="text-xs">AI</span>
-                </TabsTrigger>
-                <TabsTrigger value="automations" className="gap-1.5 px-4">
-                  <Zap className="h-3.5 w-3.5" />
-                  <span className="text-xs">Automations</span>
-                </TabsTrigger>
+                {visibleModuleTabs.map(tab => (
+                  <TabsTrigger key={tab.key} value={tab.key} className="gap-1.5 px-4">
+                    <tab.icon className="h-3.5 w-3.5" />
+                    <span className="text-xs">{tab.label}</span>
+                  </TabsTrigger>
+                ))}
               </TabsList>
               <div className="flex items-center gap-2">
                 <UndoRedoToolbar />
                 <BookmarkableViews
-                  currentModule={activeModule}
-                  currentState={{ module: activeModule }}
+                  currentModule={effectiveModule}
+                  currentState={{ module: effectiveModule }}
                   onRestoreView={handleRestoreView}
                 />
                 <ExportPresetsButton />
