@@ -419,16 +419,16 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
       </button>
 
       {expanded && (
-        <div className="px-5 pb-4 pl-[64px]">
+        <div className="px-6 pb-5 pl-[64px]">
           <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
             {email.has_attachments && <Paperclip className="h-3 w-3" />}
           </div>
-          <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
+          <div className="text-[14px] whitespace-pre-wrap leading-[1.7] text-foreground/90 [&>p]:mb-3">
             {bodyMain}
           </div>
           {bodyQuoted && (
-            <div className="mt-3">
+            <div className="mt-4">
               {!showQuoted ? (
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowQuoted(true); }}
@@ -446,7 +446,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
                     <ChevronUp className="h-3.5 w-3.5" />
                     <span>Hide quoted text</span>
                   </button>
-                  <div className="border-l-2 border-muted-foreground/20 pl-3 text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                  <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 whitespace-pre-wrap leading-[1.65]">
                     {bodyQuoted}
                   </div>
                 </>
@@ -454,7 +454,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
             </div>
           )}
           {email.has_attachments && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-4 flex gap-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded border bg-muted/20 text-sm hover:bg-muted/40 transition-colors cursor-pointer">
                 <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-foreground/80">document.pdf</span>
