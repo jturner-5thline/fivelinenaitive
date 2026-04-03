@@ -203,9 +203,9 @@ export function CashFlowManager() {
       ...cashInDbItems.map(i => ({ date: i.target_date, amount: i.amount })),
       ...sidebarData.cash_in_next_8_weeks.map(i => ({ date: i.date, amount: i.amount })),
     ];
-    if (allCashInItems.length === 0) return dailyData;
+    if (allCashInItems.length === 0 || !dailyData.rows) return dailyData;
 
-    const findRowKey = (pattern: RegExp) => Object.entries(dailyData.rows).find(
+    const findRowKey = (pattern: RegExp) => Object.entries(dailyData.rows || {}).find(
       ([, row]) => pattern.test(row.label)
     )?.[0];
 
