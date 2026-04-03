@@ -280,7 +280,7 @@ function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
       { label: 'NET RETENTION', value: m.netRevenueRetention > 0 ? fmtPct(m.netRevenueRetention) : '—' },
       { label: 'CHURN RATE', value: '—', sub: 'Requires cohort data' },
       { label: 'LARGEST CUSTOMER', value: '—', sub: '% of ARR' },
-      { label: 'AVG CONTRACT VALUE', value: `$${Math.round(acv / 1000)}K`, sub: 'Estimated' },
+      { label: 'AVG CONTRACT VALUE', value: acv > 0 ? `$${Math.round(acv / 1000)}K` : '—', sub: acv > 0 ? 'Calculated' : 'Requires customer data' },
     ],
     analyst_notes: [
       {
