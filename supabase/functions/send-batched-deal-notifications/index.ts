@@ -520,6 +520,27 @@ const handler = async (req: Request): Promise<Response> => {
       }
     } catch { /* cron mode */ }
 
+    // DST-aware guard: cron fires at both 23:00 and 00:00 UTC to cover EDT/EST.
+    // Only proceed if it's actually 7pm (19:00) in America/New_York.
+    if (!isTestMode) {
+      const etHour = new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'America/New_York' });
+      const currentETHour = parseInt(etHour, 10);
+      if (currentETHour !== 19) {
+        console.log(`Skipping: current ET hour is ${currentETHour}, waiting for 19 (7pm ET)`);
+        return new Response(JSON.stringify({ skipped: true, reason: `ET hour is ${currentETHour}, not 19` }), {
+          status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      // Also skip weekends (Sat=6, Sun=0) as extra safety
+      const etDay = new Date().toLocaleString('en-US', { weekday: 'short', timeZone: 'America/New_York' });
+      if (etDay === 'Sat' || etDay === 'Sun') {
+        console.log(`Skipping: ${etDay} is a weekend in ET`);
+        return new Response(JSON.stringify({ skipped: true, reason: `Weekend: ${etDay}` }), {
+          status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+    }
+
     if (isTestMode) {
       console.log(`Test mode: sending sample digest to ${testEmail}`);
       const { deals, activityByDeal, labels, lenderInfoByDeal } = generateTestData();
