@@ -19,28 +19,7 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
     <div className="min-h-screen">
       <div className="max-w-[1380px] mx-auto px-4 py-4 space-y-0">
 
-        {/* ═══ HEADER ═══════════════════════════════════ */}
-        <header className="flex items-baseline gap-8 border-b border-border pb-4 mb-2">
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">Company Dashboard</h1>
-          <div className="flex gap-7">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[9px] uppercase tracking-widest text-muted-foreground/60 font-medium">Actuals through</span>
-              <span className="text-[13px] text-muted-foreground font-medium">{d.header_meta.actuals_through}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[9px] uppercase tracking-widest text-muted-foreground/60 font-medium">Prepared by</span>
-              <span className="text-[13px] text-muted-foreground font-medium">{d.header_meta.prepared_by}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[9px] uppercase tracking-widest text-muted-foreground/60 font-medium">Date</span>
-              <span className="text-[13px] text-muted-foreground font-medium">{d.header_meta.date}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[9px] uppercase tracking-widest text-muted-foreground/60 font-medium">Current month</span>
-              <span className="text-[13px] text-primary font-medium">{d.charts.current_month}</span>
-            </div>
-          </div>
-        </header>
+        {/* Header removed per user request */}
 
         {/* ═══ P&L ══════════════════════════════════════ */}
         <section>
