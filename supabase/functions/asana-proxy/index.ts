@@ -125,7 +125,7 @@ serve(async (req) => {
         const resolvedToken = await resolveToken(token, integration_id);
         const data = await asanaFetch(`/tasks/${params.task_gid}`, resolvedToken, {
           method: "PUT",
-          body: JSON.stringify({ data: params.task_data }),
+          body: JSON.stringify({ data: params.data }),
         });
         result = { success: true, task: data.data };
         break;
