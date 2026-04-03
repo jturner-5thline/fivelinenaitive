@@ -522,9 +522,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (isTestMode) {
       console.log(`Test mode: sending sample digest to ${testEmail}`);
-      const { deals, activityByDeal, labels } = generateTestData();
+      const { deals, activityByDeal, labels, lenderInfoByDeal } = generateTestData();
 
-      const emailHtml = buildDigestEmailHtml('James', deals, activityByDeal, labels, true);
+      const emailHtml = buildDigestEmailHtml('James', deals, activityByDeal, labels, true, lenderInfoByDeal);
 
       await resend.emails.send({
         from: "naitive <noreply@updates.naitive.co>",
