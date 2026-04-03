@@ -902,7 +902,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               <EmailDetail
                 thread={currentThread}
                 dealId={dealId}
-                onBack={() => setSelectedThread(null)}
+                onBack={() => { setSelectedThread(null); setReadingPaneExpanded(false); }}
+                isExpanded={readingPaneExpanded}
+                onToggleExpand={() => setReadingPaneExpanded(prev => !prev)}
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
                 onSendReply={async (emailData, threadId) => {
