@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
 import { AiAssistInlinePanel } from './AiAssistInlinePanel';
+import { AiDraftReviewPanel } from './AiDraftReviewPanel';
 import { LinkToDealPopover } from './LinkToDealPopover';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,6 +44,7 @@ import {
   FolderInput,
   Maximize2,
   Minimize2,
+  PenLine,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
@@ -593,6 +595,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
   const [showAiAssist, setShowAiAssist] = useState(false);
+  const [showAiDraft, setShowAiDraft] = useState(false);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
   
   // Reply state
@@ -837,6 +840,24 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               <TooltipContent side="bottom" className="text-xs">AI-powered email analysis</TooltipContent>
             </Tooltip>
 
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => { setShowAiDraft(!showAiDraft); if (!showAiDraft) setShowAiAssist(false); }}
+                  className={cn(
+                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border',
+                    showAiDraft
+                      ? 'bg-[hsl(var(--outlook-blue)/0.1)] border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]'
+                      : 'border-transparent hover:bg-muted/40'
+                  )}
+                >
+                  <PenLine className={cn('h-4 w-4', showAiDraft ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/70')} />
+                  <span className={cn('text-[10px]', showAiDraft ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/60')}>AI Draft</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Generate AI email drafts</TooltipContent>
+            </Tooltip>
+
             <LinkToDealPopover
               trigger={
                 <button
@@ -900,7 +921,32 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             />
           )}
 
-          {/* Outlook-style reading pane header: subject + sender info */}
+          {/* AI Draft review panel */}
+          {showAiDraft && (
+            <AiDraftReviewPanel
+              thread={thread}
+              dealId={dealId}
+              onClose={() => setShowAiDraft(false)}
+              onApprove={(subject, body) => {
+                setShowAiDraft(false);
+                handleReply();
+                setTimeout(() => {
+                  const target = getReplyTarget();
+                  setInlineDraft({
+                    to: target.to_email,
+                    toName: target.to_name,
+                    body,
+                    subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
+                    cc: '',
+                    bcc: '',
+                    attachments: [],
+                    threadId: thread.threadId,
+                  });
+                }, 100);
+              }}
+            />
+          )}
+
           <div className="px-6 pt-5 pb-4 border-b border-border/30">
             {/* Large subject heading */}
             <h2 className="text-xl font-semibold text-foreground leading-snug mb-3">{thread.subject}</h2>
