@@ -133,7 +133,7 @@ export function CashFlowManager() {
   const sidebarDbItems = useMemo(() => toSidebarItems(), [toSidebarItems]);
 
   // Master data — weekly is always derived from daily
-  const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(SEED_DAILY_DATA));
+  const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(IMPORTED_DAILY_DATA));
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => deepClone(SEED_SIDEBAR_DATA));
   const sidebarLoadedRef = useRef(false);
   const sidebarSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
