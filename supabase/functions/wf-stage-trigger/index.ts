@@ -746,11 +746,17 @@ Deno.serve(async (req: Request) => {
           const member = companyMembers?.find(m => m.user_id === uid);
           const { data: authUser } = await supabase.auth.admin.getUserById(uid);
           
+          // Map company_members role to wf_user_role enum
+          const companyRole = member?.role || "member";
+          const wfRole = (companyRole === "owner" || companyRole === "admin") ? "admin" : 
+                         (companyRole === "analyst") ? "analyst" :
+                         (companyRole === "manager") ? "manager" : "other";
+
           const { error: wfUserError } = await supabase.from("wf_users").upsert({
             id: uid,
             name: profile?.display_name || "Unknown",
             email: authUser?.user?.email || null,
-            role: member?.role || "member",
+            role: wfRole,
             auth_user_id: uid,
             company_id: member?.company_id || org_company_id || mainDeal.company_id,
           }, { onConflict: "id" });
