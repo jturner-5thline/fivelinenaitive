@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, Zap, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter, Eraser, ArrowUpDown, PanelRightOpen, PanelRightClose, Calendar } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, ChevronRight, RefreshCw, ArrowLeft, CheckCircle2, Sparkles, Loader2, Settings, Trash2, ChevronDown, Save, ShieldAlert, Info, Columns, Maximize2, Download, Wand2, GripVertical, Undo2, Redo2, HelpCircle, Keyboard, PlusCircle, ZoomIn, ZoomOut, EyeOff, Eye, Filter, Eraser, ArrowUpDown, PanelRightOpen, PanelRightClose, Calendar } from 'lucide-react';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -1802,50 +1802,65 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       )}
 
       <div className="map-toolbar">
-        {/* Left: Intelligence + Edit tools */}
+        {/* Left: AI + Edit tools */}
         <div className="flex items-center gap-1">
-          <button className="map-toolbar-btn" onClick={handleAISuggest} disabled={isSuggestLoading}>
-            {isSuggestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-            {isSuggestLoading ? 'Analyzing…' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
-          </button>
-          <button className="map-toolbar-btn" onClick={handleAutoMap}>
-            <Zap className="h-3 w-3" /> Auto-Map
-          </button>
-
-           <div className="map-toolbar-divider" />
-
           <TooltipProvider delayDuration={200}>
+            {/* Combined AI Map button */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
+                <button className="map-toolbar-btn map-toolbar-btn--ai" onClick={async () => { await handleAISuggest(); handleAutoMap(); }} disabled={isSuggestLoading}>
+                  {isSuggestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  {isSuggestLoading ? 'Mapping…' : hasSuggestRun ? 'Re-map' : 'AI Map'}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">AI-powered field detection + keyword auto-mapping</TooltipContent>
+            </Tooltip>
+
+            <div className="map-toolbar-divider" />
+
+            {/* Flip sign */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0} aria-label="Flip sign on selected rows">
                   <span className="font-bold text-[10px]">±</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Flip +/− sign on selected rows</TooltipContent>
             </Tooltip>
-          </TooltipProvider>
-          <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-            <Undo2 className="h-3 w-3" />
-          </button>
-          <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
-            <Redo2 className="h-3 w-3" />
-          </button>
 
-          <div className="map-toolbar-divider" />
+            {/* Undo */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleUndo} disabled={!canUndo} aria-label="Undo">
+                  <Undo2 className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Undo (Ctrl+Z)</TooltipContent>
+            </Tooltip>
+
+            {/* Redo */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleRedo} disabled={!canRedo} aria-label="Redo">
+                  <Redo2 className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
+            </Tooltip>
+
+            <div className="map-toolbar-divider" />
 
           {/* Column visibility */}
           <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
             <PopoverTrigger asChild>
-              <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button className={cn("map-toolbar-btn h-6 w-6 p-0 justify-center", excludedColumns.size > 0 && "!border-[rgba(216,177,90,0.3)] !color-[var(--map-amber)]")} style={excludedColumns.size > 0 ? { color: 'var(--map-amber)', borderColor: 'rgba(216,177,90,0.3)' } : {}}>
+                    <button className={cn("map-toolbar-btn h-6 w-6 p-0 justify-center", excludedColumns.size > 0 && "!border-[rgba(216,177,90,0.3)]")} style={excludedColumns.size > 0 ? { color: 'var(--map-amber)', borderColor: 'rgba(216,177,90,0.3)' } : {}} aria-label="Toggle column visibility">
                       <Filter className="h-3 w-3" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">Column visibility {excludedColumns.size > 0 ? `(${excludedColumns.size} hidden)` : ''}</TooltipContent>
+                  <TooltipContent side="bottom">{excludedColumns.size > 0 ? `${excludedColumns.size} column${excludedColumns.size !== 1 ? 's' : ''} hidden` : 'Hide/show columns'}</TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
             </PopoverTrigger>
             <PopoverContent side="bottom" align="start" className="w-64 p-3 max-h-[350px] overflow-auto">
               <div className="flex items-center justify-between mb-2">
@@ -1877,15 +1892,25 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
           {/* Zoom */}
           <div className="flex items-center gap-0">
-            <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomOut} disabled={zoomLevel <= 50}>
-              <ZoomOut className="h-3 w-3" />
-            </button>
-            <span className="text-[10px] tabular-nums w-7 text-center text-[#64748b]">{zoomLevel}%</span>
-            <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomIn} disabled={zoomLevel >= 200}>
-              <ZoomIn className="h-3 w-3" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomOut} disabled={zoomLevel <= 50} aria-label="Zoom out">
+                  <ZoomOut className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Zoom out</TooltipContent>
+            </Tooltip>
+            <span className="text-[10px] tabular-nums w-7 text-center text-muted-foreground">{zoomLevel}%</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomIn} disabled={zoomLevel >= 200} aria-label="Zoom in">
+                  <ZoomIn className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Zoom in</TooltipContent>
+            </Tooltip>
           </div>
-
+          </TooltipProvider>
         </div>
 
         {/* Right: Start date, actions, primary CTA */}
@@ -1944,44 +1969,61 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </PopoverContent>
           </Popover>
 
-          <button className="map-toolbar-btn" onClick={() => {
-            if (selectedFile) {
-              const url = URL.createObjectURL(selectedFile.file);
-              setExpandedFileUrl(url);
-              setExpandedPreview(true);
-            }
-          }}>
-            <Maximize2 className="h-3 w-3" /> Expand
-          </button>
+          <TooltipProvider delayDuration={200}>
+            {/* Expand — icon only */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => {
+                  if (selectedFile) {
+                    const url = URL.createObjectURL(selectedFile.file);
+                    setExpandedFileUrl(url);
+                    setExpandedPreview(true);
+                  }
+                }} aria-label="Expand preview">
+                  <Maximize2 className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Expand file preview</TooltipContent>
+            </Tooltip>
 
-           <div className="map-toolbar-divider" />
+            <div className="map-toolbar-divider" />
 
-          {/* Destructive: New Mapping */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button className="map-toolbar-btn map-toolbar-btn--destructive">
-                <Trash2 className="h-3 w-3" /> Reset
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Start New Mapping?</AlertDialogTitle>
-                <AlertDialogDescription>This will remove all uploaded files and mappings for this deal. You'll start fresh with a new file upload.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleNewMapping}>Start Over</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            {/* Reset — icon only, destructive */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="map-toolbar-btn map-toolbar-btn--destructive h-6 w-6 p-0 justify-center" aria-label="Reset all mappings">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Reset all mappings &amp; start over</TooltipContent>
+                </Tooltip>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Start New Mapping?</AlertDialogTitle>
+                  <AlertDialogDescription>This will remove all uploaded files and mappings for this deal. You'll start fresh with a new file upload.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleNewMapping}>Start Over</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Save Draft — icon only */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} aria-label="Save draft">
+                  {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Save draft (without updating model)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <div className="map-toolbar-divider" />
-
-          {/* Secondary: Save Draft */}
-          <button className="map-toolbar-btn" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} title="Saves mapping assignments without updating the model">
-            {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-            Save Draft
-          </button>
 
           {/* Primary CTA */}
           <button className="map-toolbar-btn map-toolbar-btn--primary" onClick={handleRecalculateWithLog} disabled={mappedCount === 0} title="Saves all mappings AND pushes mapped data into the financial model">
