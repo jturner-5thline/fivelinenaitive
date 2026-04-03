@@ -1994,8 +1994,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <Tooltip>
                 <TooltipTrigger asChild>
                   <AlertDialogTrigger asChild>
-                    <button className="map-toolbar-btn map-toolbar-btn--destructive !h-auto !w-auto p-1.5 flex items-center justify-center" aria-label="Reset all mappings">
-                      <Trash2 className="h-5 w-5" />
+                    <button className="map-toolbar-btn map-toolbar-btn--destructive !h-auto !w-auto p-[5px] flex items-center justify-center" aria-label="Reset all mappings">
+                      <Trash2 className="h-[18px] w-[18px]" />
                     </button>
                   </AlertDialogTrigger>
                 </TooltipTrigger>
@@ -2016,8 +2016,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             {/* Save Draft — icon-only */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="map-toolbar-btn !h-auto !w-auto p-1.5 flex items-center justify-center" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} aria-label="Save draft">
-                  {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                <button className="map-toolbar-btn !h-auto !w-auto p-[5px] flex items-center justify-center" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} aria-label="Save draft">
+                  {isSaving ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Save className="h-[18px] w-[18px]" />}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Save draft</TooltipContent>
