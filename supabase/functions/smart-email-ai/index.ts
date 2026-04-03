@@ -30,7 +30,7 @@ serve(async (req) => {
       });
     }
 
-    const { action, dealId, emailData, threadData } = await req.json();
+    const { action, dealId, emailData, threadData, draftType, customInstructions } = await req.json();
 
     // Validate input lengths
     const threadStr = JSON.stringify(threadData || {});
@@ -41,50 +41,169 @@ serve(async (req) => {
       });
     }
 
-    // Fetch deal context
+    // ─── Assemble deal context ──────────────────────────────────
     let dealContext = "";
+    let dealContextSources: string[] = [];
     if (dealId) {
-      const [dealRes, writeupRes, lendersRes, milestonesRes] = await Promise.all([
+      const [dealRes, writeupRes, lendersRes, milestonesRes, activityRes, notesRes] = await Promise.all([
         supabase.from("deals").select("*").eq("id", dealId).single(),
         supabase.from("deal_writeups").select("*").eq("deal_id", dealId).single(),
         supabase.from("deal_lenders").select("*").eq("deal_id", dealId),
         supabase.from("deal_milestones").select("*").eq("deal_id", dealId).order("position"),
+        supabase.from("activity_logs").select("*").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(10),
+        supabase.from("deal_notes").select("*").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(5),
       ]);
 
       const deal = dealRes.data;
       const writeup = writeupRes.data;
       const lenders = lendersRes.data || [];
       const milestones = milestonesRes.data || [];
+      const activities = activityRes.data || [];
+      const notes = notesRes.data || [];
 
-      dealContext = `
-DEAL CONTEXT:
-- Company: ${deal?.company || "N/A"}
-- Stage: ${deal?.stage || "N/A"}
-- Value: $${deal?.value ? (deal.value / 1000000).toFixed(1) + "M" : "N/A"}
-- Deal Type: ${deal?.deal_type || "N/A"}
-- Status: ${deal?.status || "N/A"}
-- Contact: ${deal?.contact || "N/A"}
-${writeup ? `
-WRITEUP:
+      if (deal) {
+        dealContextSources.push("deal_metadata");
+        dealContext += `\nDEAL CONTEXT:
+- Company: ${deal.company || "N/A"}
+- Stage: ${deal.stage || "N/A"}
+- Value: $${deal.value ? (deal.value / 1000000).toFixed(1) + "M" : "N/A"}
+- Deal Type: ${deal.deal_type || "N/A"}
+- Status: ${deal.status || "N/A"}
+- Contact: ${deal.contact || "N/A"}
+- Contact Email: ${deal.contact_email || "N/A"}
+`;
+      }
+
+      if (writeup) {
+        dealContextSources.push("deal_writeup");
+        dealContext += `\nWRITEUP:
 - Industry: ${writeup.industry || "N/A"}
 - Capital Ask: ${writeup.capital_ask || "N/A"}
 - Revenue (This Year): ${writeup.this_year_revenue || "N/A"}
 - Revenue (Last Year): ${writeup.last_year_revenue || "N/A"}
 - Use of Funds: ${writeup.use_of_funds || "N/A"}
-- Description: ${writeup.description || "N/A"}
-` : ""}
-LENDERS (${lenders.length}):
-${lenders.map((l: any) => `- ${l.name}: stage=${l.stage}, substage=${l.substage || "none"}${l.quote_amount ? ", quote=$" + (l.quote_amount / 1000000).toFixed(1) + "M" : ""}${l.quote_rate ? ", rate=" + l.quote_rate + "%" : ""}`).join("\n")}
+- Description: ${(writeup.description || "N/A").substring(0, 500)}
+`;
+      }
 
-MILESTONES:
+      if (lenders.length > 0) {
+        dealContextSources.push("deal_lenders");
+        dealContext += `\nLENDERS (${lenders.length}):
+${lenders.map((l: any) => `- ${l.name}: stage=${l.stage}, substage=${l.substage || "none"}${l.quote_amount ? ", quote=$" + (l.quote_amount / 1000000).toFixed(1) + "M" : ""}${l.quote_rate ? ", rate=" + l.quote_rate + "%" : ""}`).join("\n")}
+`;
+      }
+
+      if (milestones.length > 0) {
+        dealContextSources.push("milestones");
+        dealContext += `\nMILESTONES:
 ${milestones.map((m: any) => `- ${m.title}: ${m.completed ? "✅ Done" : "⬜ Pending"}${m.due_date ? " (due: " + m.due_date + ")" : ""}`).join("\n")}
+`;
+      }
+
+      if (activities.length > 0) {
+        dealContextSources.push("recent_activity");
+        dealContext += `\nRECENT ACTIVITY (last 10):
+${activities.map((a: any) => `- [${a.activity_type}] ${a.description} (${a.created_at?.substring(0, 10)})`).join("\n")}
+`;
+      }
+
+      if (notes.length > 0) {
+        dealContextSources.push("deal_notes");
+        dealContext += `\nRECENT NOTES:
+${notes.map((n: any) => `- ${(n.content || n.note || "").substring(0, 200)} (${n.created_at?.substring(0, 10)})`).join("\n")}
+`;
+      }
+    }
+
+    // ─── Get user profile for signature context ─────────────────
+    let userContext = "";
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name, first_name, last_name, email")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profile) {
+      userContext = `\nSENDER IDENTITY:
+- Name: ${profile.display_name || `${profile.first_name || ""} ${profile.last_name || ""}`.trim()}
+- Email: ${profile.email || user.email}
 `;
     }
 
     let systemPrompt = "";
     let userPrompt = "";
 
+    // ─── Route by action ────────────────────────────────────────
     switch (action) {
+      case "generate_draft_options": {
+        // Determine draft type
+        const effectiveDraftType = draftType || "reply";
+        const threadEmails = threadData?.emails || [];
+        const latestEmail = threadEmails[0];
+
+        // Detect scheduling intent
+        const fullBody = threadEmails.map((e: any) => e.body_preview || "").join(" ").toLowerCase();
+        const hasSchedulingIntent = /\b(schedule|availability|calendar|meeting|call|slot|free|available|reschedule|time works|when can)\b/i.test(fullBody);
+
+        systemPrompt = `You are an expert debt advisory and capital markets professional drafting emails on behalf of the user. You write in a professional, polished, human tone suitable for dealmaking, lender relations, investor communications, and relationship management.
+
+CRITICAL RULES:
+- Use ONLY the provided structured context. Never fabricate deal facts, process status, attachment details, notes content, or scheduling availability.
+- If context is incomplete, note uncertainty — do NOT fill gaps with assumptions.
+- Generate exactly 2 draft options.
+- Both drafts must convey the SAME intent, recommendation, and tone.
+- They should differ only in wording, sentence structure, and phrasing — NOT in strategy or substance.
+- One may be slightly tighter/direct, the other slightly smoother/more polished.
+- Both must sound like the same professional sender.
+- Keep replies concise (under 150 words) unless complexity demands more.
+- Do NOT include email signatures — the app handles that.
+- Return ONLY valid JSON matching the required schema. No markdown fences, no commentary.
+${hasSchedulingIntent ? "\n- SCHEDULING DETECTED: Only reference specific availability times if they were provided in the context. If no calendar data is provided, suggest the recipient propose times rather than inventing availability." : ""}
+
+REQUIRED JSON SCHEMA:
+{
+  "detected_intent": "string — what the email is about",
+  "draft_type": "${effectiveDraftType}",
+  "confidence": "high|medium|low",
+  "requires_more_context": boolean,
+  "missing_context_items": ["string array of what's missing, if any"],
+  "used_deal_context": boolean,
+  "used_calendar_context": boolean,
+  "option_1_subject": "string — email subject line",
+  "option_1_body": "string — full email body text",
+  "option_1_tone_label": "string — e.g. 'Concise & Direct'",
+  "option_1_rationale": "string — why this version works",
+  "option_2_subject": "string — same or similar subject",
+  "option_2_body": "string — full email body text",
+  "option_2_tone_label": "string — e.g. 'Polished & Warm'",
+  "option_2_rationale": "string — why this version works",
+  "recommended_option": 1 or 2,
+  "recommended_option_reason": "string",
+  "suggested_follow_up_actions": ["string array"],
+  "cited_context_sources": ["string array of data sources used"]
+}`;
+
+        const threadForPrompt = threadEmails.map((e: any) =>
+          `From: ${e.from_name} <${e.from_email}>
+To: ${e.to_name} <${e.to_email}>
+Date: ${e.received_at}
+---
+${e.body_preview}
+---`
+        ).join("\n\n");
+
+        userPrompt = `${dealContext}${userContext}
+
+DRAFT TYPE: ${effectiveDraftType}
+${customInstructions ? `\nUSER INSTRUCTIONS: ${customInstructions}` : ""}
+
+EMAIL THREAD "${threadData?.subject || ""}":
+${threadForPrompt}
+
+Generate 2 closely-aligned draft ${effectiveDraftType} options based on the above context. Return strict JSON only.`;
+        break;
+      }
+
       case "draft_reply": {
         systemPrompt = `You are an expert debt advisory professional at a capital advisory firm. Draft a professional reply email based on the deal context and conversation. Be concise, professional, and action-oriented. Output ONLY the email body text (no subject, no "From:", etc.).`;
         userPrompt = `${dealContext}
@@ -239,12 +358,12 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: action === "generate_draft_options" ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: (action === "draft_reply" || action === "auto_draft") ? 0.7 : 0.3,
+        temperature: (action === "draft_reply" || action === "auto_draft" || action === "generate_draft_options") ? 0.7 : 0.3,
       }),
     });
 
@@ -273,7 +392,6 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
     let parsed: any = content;
     if (action !== "draft_reply" && action !== "auto_draft") {
       try {
-        // Strip markdown code fences if present
         const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
         parsed = JSON.parse(cleaned);
       } catch {
@@ -281,7 +399,38 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
       }
     }
 
-    // For email_to_activity, also log the activity to the database if dealId is provided
+    // For generate_draft_options, inject context sources
+    if (action === "generate_draft_options" && typeof parsed === "object" && !parsed.raw) {
+      parsed.cited_context_sources = dealContextSources.length > 0 ? dealContextSources : ["email_thread_only"];
+    }
+
+    // Log AI usage
+    if (action === "generate_draft_options") {
+      try {
+        const { data: membership } = await supabase
+          .from("company_members")
+          .select("company_id")
+          .eq("user_id", user.id)
+          .limit(1)
+          .single();
+
+        if (membership?.company_id) {
+          await supabase.from("ai_usage_logs").insert({
+            user_id: user.id,
+            company_id: membership.company_id,
+            feature: "email_draft_options",
+            model: "google/gemini-2.5-flash",
+            input_tokens: aiResult.usage?.prompt_tokens || 0,
+            output_tokens: aiResult.usage?.completion_tokens || 0,
+            status: "success",
+          });
+        }
+      } catch (logErr) {
+        console.error("Failed to log AI usage:", logErr);
+      }
+    }
+
+    // For email_to_activity, also log the activity
     if (action === "email_to_activity" && dealId && parsed?.summary) {
       try {
         await supabase.from("activity_logs").insert({
@@ -298,7 +447,6 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         });
       } catch (logErr) {
         console.error("Failed to log activity:", logErr);
-        // Don't fail the whole request
       }
     }
 

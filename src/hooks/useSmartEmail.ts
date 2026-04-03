@@ -12,7 +12,8 @@ export type SmartEmailAction =
   | 'follow_up_check'
   | 'email_to_activity'
   | 'parse_term_sheet'
-  | 'follow_up_sequence';
+  | 'follow_up_sequence'
+  | 'generate_draft_options';
 
 interface UseSmartEmailOptions {
   dealId: string;
