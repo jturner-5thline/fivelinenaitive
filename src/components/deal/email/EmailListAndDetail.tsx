@@ -857,6 +857,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Generate AI email drafts</TooltipContent>
             </Tooltip>
+
+            <LinkToDealPopover
               trigger={
                 <button
                   className={cn(
