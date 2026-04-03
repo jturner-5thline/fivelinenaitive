@@ -57,11 +57,6 @@ export function FPAWorkspace() {
           <FPAKeyboardShortcuts onNavigateToTab={handleNavigateToTab} onAction={handleCommandAction} />
           <SmartUploadWizard open={uploadWizardOpen} onOpenChange={setUploadWizardOpen} />
 
-          {/* Status Bar + Data Health */}
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <FPAStatusBar />
-            <DataHealthIndicator />
-          </div>
 
           {/* Module Navigation */}
           <Tabs value={activeModule} onValueChange={setActiveModule} className="space-y-4">
