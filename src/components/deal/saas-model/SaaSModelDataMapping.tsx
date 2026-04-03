@@ -1802,36 +1802,53 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       )}
 
       <div className="map-toolbar">
-        {/* Left: Intelligence + Edit tools */}
+        {/* Left: AI + Edit tools */}
         <div className="flex items-center gap-1">
-          <button className="map-toolbar-btn" onClick={handleAISuggest} disabled={isSuggestLoading}>
-            {isSuggestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-            {isSuggestLoading ? 'Analyzing…' : hasSuggestRun ? 'Re-analyze' : 'AI Suggest'}
-          </button>
-          <button className="map-toolbar-btn" onClick={handleAutoMap}>
-            <Zap className="h-3 w-3" /> Auto-Map
-          </button>
-
-           <div className="map-toolbar-divider" />
-
           <TooltipProvider delayDuration={200}>
+            {/* Combined AI Map button */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0}>
+                <button className="map-toolbar-btn map-toolbar-btn--ai" onClick={async () => { await handleAISuggest(); handleAutoMap(); }} disabled={isSuggestLoading}>
+                  {isSuggestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  {isSuggestLoading ? 'Mapping…' : hasSuggestRun ? 'Re-map' : 'AI Map'}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">AI-powered field detection + keyword auto-mapping</TooltipContent>
+            </Tooltip>
+
+            <div className="map-toolbar-divider" />
+
+            {/* Flip sign */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0} aria-label="Flip sign on selected rows">
                   <span className="font-bold text-[10px]">±</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Flip +/− sign on selected rows</TooltipContent>
             </Tooltip>
-          </TooltipProvider>
-          <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-            <Undo2 className="h-3 w-3" />
-          </button>
-          <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
-            <Redo2 className="h-3 w-3" />
-          </button>
 
-          <div className="map-toolbar-divider" />
+            {/* Undo */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleUndo} disabled={!canUndo} aria-label="Undo">
+                  <Undo2 className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Undo (Ctrl+Z)</TooltipContent>
+            </Tooltip>
+
+            {/* Redo */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleRedo} disabled={!canRedo} aria-label="Redo">
+                  <Redo2 className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
+            </Tooltip>
+
+            <div className="map-toolbar-divider" />
 
           {/* Column visibility */}
           <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
