@@ -605,7 +605,7 @@ export function CashFlowManager() {
   }, [performUndo]);
 
   const rowStructure = useMemo(() => {
-    const base = isImported && importedRowStructure ? importedRowStructure : SEED_ROW_STRUCTURE;
+    const base = isImported && importedRowStructure ? importedRowStructure : IMPORTED_ROW_STRUCTURE;
     const hasMtInStruct = base.rows.some(r => /M&T\s*Bank\s*Balance/i.test(r.label));
     if (hasMtInStruct) return base;
 
