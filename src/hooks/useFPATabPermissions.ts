@@ -4,7 +4,32 @@ import { useCompany } from './useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
- * All dashboard tab keys that can be permission-controlled.
+ * Top-level FPA module tab keys (shown in FPAWorkspace).
+ * 'dashboards' and 'data' are always visible (locked).
+ */
+export const ALL_MODULE_TABS = [
+  'dashboards',
+  'data',
+  'sheets',
+  'ai',
+  'automations',
+] as const;
+
+export type ModuleTabKey = (typeof ALL_MODULE_TABS)[number];
+
+export const MODULE_TAB_DISPLAY_NAMES: Record<ModuleTabKey, string> = {
+  dashboards: 'Dashboards',
+  data: 'Data',
+  sheets: 'Sheets',
+  ai: 'AI',
+  automations: 'Automations',
+};
+
+/** Module tabs that cannot be hidden */
+export const LOCKED_MODULE_TABS: ModuleTabKey[] = ['dashboards', 'data'];
+
+/**
+ * All dashboard sub-tab keys that can be permission-controlled.
  */
 export const ALL_DASHBOARD_TABS = [
   'overview',
@@ -32,11 +57,14 @@ export const TAB_DISPLAY_NAMES: Record<DashboardTabKey, string> = {
   salesModel: 'Sales Model',
 };
 
-/** Emails that can see and manage the Permissions tab */
-export const PERMISSIONS_ADMINS = ['jturner@5thline.co', 'jmoffitt@5thline.co'];
+/** Only jturner can manage tab visibility/permissions */
+export const PERMISSIONS_ADMINS = ['jturner@5thline.co'];
 
 /** Per-user permission map: email → set of allowed tab keys */
 export type TabPermissions = Record<string, DashboardTabKey[]>;
+
+/** Per-user module tab map: email → set of allowed module tab keys */
+export type ModuleTabPermissions = Record<string, ModuleTabKey[]>;
 
 /** Default permissions */
 const DEFAULT_PERMISSIONS: TabPermissions = {
@@ -44,6 +72,8 @@ const DEFAULT_PERMISSIONS: TabPermissions = {
   'jmoffitt@5thline.co': [...ALL_DASHBOARD_TABS],
   'cminaldi@5thline.co': ['salesBdRoi', 'salesModel'],
 };
+
+const DEFAULT_MODULE_PERMISSIONS: ModuleTabPermissions = {};
 
 /** Info about a company member for the permissions grid */
 export interface PermissionUser {
@@ -57,6 +87,7 @@ export function useFPATabPermissions() {
   const { company } = useCompany();
   const { user } = useAuth();
   const [permissions, setPermissions] = useState<TabPermissions>(DEFAULT_PERMISSIONS);
+  const [modulePermissions, setModulePermissions] = useState<ModuleTabPermissions>(DEFAULT_MODULE_PERMISSIONS);
   const [companyUsers, setCompanyUsers] = useState<PermissionUser[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,7 +118,7 @@ export function useFPATabPermissions() {
     })();
   }, [user?.id]);
 
-  // Load from company_settings.fpa_dashboard_config.tab_permissions
+  // Load from company_settings.fpa_dashboard_config
   useEffect(() => {
     if (!company?.id) return;
     (async () => {
@@ -103,6 +134,9 @@ export function useFPATabPermissions() {
         const cfg = (data?.fpa_dashboard_config as Record<string, any>) || {};
         if (cfg.tab_permissions && typeof cfg.tab_permissions === 'object') {
           setPermissions({ ...DEFAULT_PERMISSIONS, ...cfg.tab_permissions });
+        }
+        if (cfg.module_tab_permissions && typeof cfg.module_tab_permissions === 'object') {
+          setModulePermissions({ ...DEFAULT_MODULE_PERMISSIONS, ...cfg.module_tab_permissions });
         }
       } catch (err) {
         console.error('Error loading tab permissions:', err);
@@ -128,24 +162,40 @@ export function useFPATabPermissions() {
         if (cfg?.tab_permissions) {
           setPermissions({ ...DEFAULT_PERMISSIONS, ...cfg.tab_permissions });
         }
+        if (cfg?.module_tab_permissions) {
+          setModulePermissions({ ...DEFAULT_MODULE_PERMISSIONS, ...cfg.module_tab_permissions });
+        }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, [company?.id]);
 
-  const savePermissions = useCallback(async (newPerms: TabPermissions) => {
+  const savePermissions = useCallback(async (newPerms: TabPermissions, newModulePerms?: ModuleTabPermissions) => {
     if (!company?.id || !isPermissionsAdmin) return false;
 
     pendingSaveRef.current = true;
     setIsSaving(true);
     setPermissions(newPerms);
+    if (newModulePerms) setModulePermissions(newModulePerms);
+
     try {
+      // Save dashboard tab permissions
       await supabase.rpc('save_fpa_dashboard_config' as any, {
         _company_id: company.id,
         _config_key: 'tab_permissions',
         _config_value: newPerms,
       });
+
+      // Save module tab permissions
+      if (newModulePerms) {
+        await supabase.rpc('save_fpa_dashboard_config' as any, {
+          _company_id: company.id,
+          _config_key: 'module_tab_permissions',
+          _config_value: newModulePerms,
+        });
+      }
+
       return true;
     } catch (err) {
       console.error('Error saving tab permissions:', err);
@@ -156,26 +206,44 @@ export function useFPATabPermissions() {
     }
   }, [company?.id, isPermissionsAdmin]);
 
-  /** Which tabs the current user can see */
+  /** Which dashboard tabs the current user can see */
   const allowedTabs: DashboardTabKey[] = (() => {
     const userPerms = permissions[currentEmail];
     if (!userPerms) return [...ALL_DASHBOARD_TABS];
     return userPerms;
   })();
 
+  /** Which module tabs the current user can see */
+  const allowedModuleTabs: ModuleTabKey[] = (() => {
+    const userPerms = modulePermissions[currentEmail];
+    // If no explicit config for this user, show all
+    if (!userPerms) return [...ALL_MODULE_TABS];
+    // Always include locked tabs
+    const set = new Set(userPerms);
+    LOCKED_MODULE_TABS.forEach(t => set.add(t));
+    return ALL_MODULE_TABS.filter(t => set.has(t));
+  })();
+
   const canViewTab = useCallback((tab: string): boolean => {
     return allowedTabs.includes(tab as DashboardTabKey);
   }, [allowedTabs]);
 
+  const canViewModuleTab = useCallback((tab: string): boolean => {
+    return allowedModuleTabs.includes(tab as ModuleTabKey);
+  }, [allowedModuleTabs]);
+
   return {
     permissions,
+    modulePermissions,
     savePermissions,
     isLoaded,
     isSaving,
     isPermissionsAdmin,
     currentEmail,
     allowedTabs,
+    allowedModuleTabs,
     canViewTab,
+    canViewModuleTab,
     companyUsers,
   };
 }
