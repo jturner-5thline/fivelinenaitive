@@ -7,7 +7,7 @@ import type {
 import {
   SEED_SIDEBAR_DATA,
 } from './seedData';
-import { IMPORTED_DAILY_DATA, IMPORTED_ROW_STRUCTURE } from './importedCashFlowData';
+import type { DailyData as DailyDataType, DailyRowStructure } from './types';
 import { aggregateDailyToWeekly } from './dailyToWeekly';
 import { CashFlowHeader } from './CashFlowHeader';
 import { DailySourceTab } from './DailySourceTab';
