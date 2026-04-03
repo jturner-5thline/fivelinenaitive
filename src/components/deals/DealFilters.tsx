@@ -16,6 +16,7 @@ import { FiltersPopover, FilterKey, FILTER_LABELS, useFilterConfigs } from './Fi
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
+import { CollapsibleSearch } from './CollapsibleSearch';
 
 
 const PINNED_FILTERS_KEY = 'deals-pinned-filters';
