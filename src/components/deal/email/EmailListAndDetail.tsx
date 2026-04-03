@@ -585,9 +585,11 @@ interface EmailDetailProps {
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
   onSendReply: (email: Omit<MockEmail, 'id' | 'threadId'>, threadId: string) => void;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
-export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply }: EmailDetailProps) {
+export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand }: EmailDetailProps) {
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
   const [showAiAssist, setShowAiAssist] = useState(false);
