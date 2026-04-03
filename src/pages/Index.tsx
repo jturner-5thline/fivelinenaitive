@@ -4,16 +4,26 @@ import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { RateLimitGuard } from "@/components/RateLimitGuard";
 import { Logo } from "@/components/Logo";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user has access
-    const hasAccess = sessionStorage.getItem('landing-access') === 'granted';
-    if (!hasAccess) {
-      navigate('/', { replace: true });
-    }
+    // Safety net: if user already has an active session, send them to /deals
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/deals', { replace: true });
+        return;
+      }
+      // Check if user has access to landing page
+      const hasAccess = sessionStorage.getItem('landing-access') === 'granted';
+      if (!hasAccess) {
+        navigate('/', { replace: true });
+      }
+    };
+    checkSession();
   }, [navigate]);
 
   return (

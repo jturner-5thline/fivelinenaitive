@@ -239,9 +239,10 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      console.log("[GoogleSSO] Starting sign-in, redirect_uri:", window.location.origin);
+      const redirectUri = `${window.location.origin}/auth`;
+      console.log("[GoogleSSO] Starting sign-in, redirect_uri:", redirectUri);
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: redirectUri,
         extraParams: {
           prompt: "select_account",
         },
