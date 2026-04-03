@@ -430,34 +430,38 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         });
       }
 
-      // Asana sync: push due_date and assignee changes (fire-and-forget)
+      // Asana sync: push due date / assignee updates (fire-and-forget)
       if (updates.due_date !== undefined || updates.assigned_to !== undefined) {
-        const existingTask = tasks.find(t => t.id === id);
-        const asanaGid = (existingTask as any)?.asana_task_gid;
-        if (asanaGid) {
+        const updatedTask = tasks.find(t => t.id === id);
+        const asanaTaskGid = (updatedTask as any)?.asana_task_gid;
+
+        if (asanaTaskGid) {
           (async () => {
             try {
-              const ctx = await getAsanaSyncContext((existingTask as any)?.company_id || null);
-              if (ctx) {
-                const asanaUpdates: { due_date?: string | null; assignee_email?: string | null } = {};
-                if (updates.due_date !== undefined) {
-                  asanaUpdates.due_date = updates.due_date || null;
-                }
-                if (updates.assigned_to !== undefined) {
-                  // Look up assignee email if not already fetched
-                  if (updates.assigned_to) {
-                    const { data: profile } = await supabase
-                      .from('profiles')
-                      .select('email')
-                      .eq('user_id', updates.assigned_to)
-                      .single();
-                    asanaUpdates.assignee_email = profile?.email || null;
-                  } else {
-                    asanaUpdates.assignee_email = null;
-                  }
-                }
-                await updateTaskInAsana(ctx, asanaGid, asanaUpdates);
+              const ctx = await getAsanaSyncContext((updatedTask as any)?.company_id || null);
+              if (!ctx) return;
+
+              const asanaUpdates: { due_date?: string | null; assignee_email?: string | null } = {};
+
+              if (updates.due_date !== undefined) {
+                asanaUpdates.due_date = updates.due_date || null;
               }
+
+              if (updates.assigned_to !== undefined) {
+                if (updates.assigned_to) {
+                  const { data: assigneeProfile } = await supabase
+                    .from('profiles')
+                    .select('email')
+                    .eq('user_id', updates.assigned_to)
+                    .single();
+
+                  asanaUpdates.assignee_email = assigneeProfile?.email || null;
+                } else {
+                  asanaUpdates.assignee_email = null;
+                }
+              }
+
+              await updateTaskInAsana(ctx, asanaTaskGid, asanaUpdates);
             } catch (e) {
               console.error('Asana update sync failed:', e);
             }

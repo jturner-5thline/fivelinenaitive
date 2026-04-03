@@ -177,7 +177,6 @@ export async function syncTaskToAsana(
 
 /**
  * Update an existing Asana task's due date and/or assignee.
- * Returns true if the update succeeded.
  */
 export async function updateTaskInAsana(
   ctx: AsanaSyncContext,
@@ -185,42 +184,28 @@ export async function updateTaskInAsana(
   updates: { due_date?: string | null; assignee_email?: string | null }
 ): Promise<boolean> {
   try {
-    const taskData: Record<string, unknown> = {};
+    const asanaUpdates: Record<string, unknown> = {};
 
     if ('due_date' in updates) {
-      taskData.due_on = updates.due_date || null;
+      asanaUpdates.due_on = updates.due_date || null;
     }
 
     if ('assignee_email' in updates) {
       if (updates.assignee_email) {
-        const gid = await findAsanaUserByEmail(
-          ctx.integrationId,
-          ctx.workspaceGid,
-          updates.assignee_email
-        );
-        taskData.assignee = gid || null;
+        const gid = await findAsanaUserByEmail(ctx.integrationId, ctx.workspaceGid, updates.assignee_email);
+        asanaUpdates.assignee = gid || null;
       } else {
-        taskData.assignee = null;
+        asanaUpdates.assignee = null;
       }
     }
 
-    if (Object.keys(taskData).length === 0) return true;
+    if (Object.keys(asanaUpdates).length === 0) return true;
 
     const { data } = await supabase.functions.invoke('asana-proxy', {
-      body: {
-        action: 'update_task',
-        integration_id: ctx.integrationId,
-        task_gid: asanaTaskGid,
-        task_data: taskData,
-      },
+      body: { action: 'update_task', integration_id: ctx.integrationId, task_gid: asanaTaskGid, data: asanaUpdates }
     });
 
-    if (!data?.success) {
-      console.error('Asana task update failed:', data);
-      return false;
-    }
-
-    return true;
+    return data?.success ?? false;
   } catch (e) {
     console.error('Asana task update failed:', e);
     return false;
