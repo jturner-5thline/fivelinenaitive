@@ -5478,6 +5478,112 @@ export type Database = {
           },
         ]
       }
+      deal_computed_metrics: {
+        Row: {
+          category: string
+          company_id: string | null
+          computed_at: string
+          confidence: number | null
+          created_at: string
+          deal_id: string
+          fiscal_year: number | null
+          id: string
+          is_actual: boolean | null
+          is_missing: boolean | null
+          is_outlier: boolean | null
+          is_projection: boolean | null
+          metric_key: string
+          metric_label: string
+          period_end: string | null
+          period_label: string
+          period_start: string | null
+          period_type: string
+          source_file_id: string | null
+          subcategory: string | null
+          trend_direction: string | null
+          trend_magnitude: string | null
+          unit_type: string
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          category?: string
+          company_id?: string | null
+          computed_at?: string
+          confidence?: number | null
+          created_at?: string
+          deal_id: string
+          fiscal_year?: number | null
+          id?: string
+          is_actual?: boolean | null
+          is_missing?: boolean | null
+          is_outlier?: boolean | null
+          is_projection?: boolean | null
+          metric_key: string
+          metric_label: string
+          period_end?: string | null
+          period_label: string
+          period_start?: string | null
+          period_type?: string
+          source_file_id?: string | null
+          subcategory?: string | null
+          trend_direction?: string | null
+          trend_magnitude?: string | null
+          unit_type?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          category?: string
+          company_id?: string | null
+          computed_at?: string
+          confidence?: number | null
+          created_at?: string
+          deal_id?: string
+          fiscal_year?: number | null
+          id?: string
+          is_actual?: boolean | null
+          is_missing?: boolean | null
+          is_outlier?: boolean | null
+          is_projection?: boolean | null
+          metric_key?: string
+          metric_label?: string
+          period_end?: string | null
+          period_label?: string
+          period_start?: string | null
+          period_type?: string
+          source_file_id?: string | null
+          subcategory?: string | null
+          trend_direction?: string | null
+          trend_magnitude?: string | null
+          unit_type?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_computed_metrics_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_computed_metrics_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_computed_metrics_source_file_id_fkey"
+            columns: ["source_file_id"]
+            isOneToOne: false
+            referencedRelation: "deal_financial_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_emails: {
         Row: {
           deal_id: string
@@ -5642,6 +5748,72 @@ export type Database = {
           },
           {
             foreignKeyName: "deal_financial_files_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_financial_insights: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          deal_id: string
+          generated_at: string
+          id: string
+          input_hash: string | null
+          insight_type: string
+          is_stale: boolean | null
+          model_used: string | null
+          prompt_version: string | null
+          schema_version: string | null
+          structured_output: Json
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          deal_id: string
+          generated_at?: string
+          id?: string
+          input_hash?: string | null
+          insight_type: string
+          is_stale?: boolean | null
+          model_used?: string | null
+          prompt_version?: string | null
+          schema_version?: string | null
+          structured_output?: Json
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string
+          generated_at?: string
+          id?: string
+          input_hash?: string | null
+          insight_type?: string
+          is_stale?: boolean | null
+          model_used?: string | null
+          prompt_version?: string | null
+          schema_version?: string | null
+          structured_output?: Json
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_financial_insights_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_financial_insights_deal_id_fkey"
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
