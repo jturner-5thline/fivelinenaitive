@@ -17,6 +17,7 @@ import { AddCashInModal } from './AddCashInModal';
 import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useCompany } from '@/hooks/useCompany';
+import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import './cashflow.css';
 
