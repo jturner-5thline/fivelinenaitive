@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { SaaSModelData } from './types';
 import { SpreadsheetTable, RowDef, ViewMode } from './SpreadsheetTable';
-import { Card, CardContent } from '@/components/ui/card';
 import { Scale, TrendingUp, TrendingDown, Landmark, ShieldCheck } from 'lucide-react';
 import { fmtCurrency } from './formatters';
 import { cn } from '@/lib/utils';
@@ -10,6 +9,7 @@ interface Props {
   model: SaaSModelData;
 }
 
+/* ── KPI Card — aligned with mapping-theme surface system ── */
 function BsKpiCard({ label, value, prevValue, format, icon: Icon, warning }: {
   label: string;
   value: number;
@@ -26,26 +26,40 @@ function BsKpiCard({ label, value, prevValue, format, icon: Icon, warning }: {
   const isPositive = delta > 0;
 
   return (
-    <Card className={cn("border-border/20", warning && "border-destructive/30")}>
-      <CardContent className="p-3">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
-          <Icon className={cn("h-3.5 w-3.5", warning ? "text-destructive/50" : "text-muted-foreground/40")} />
+    <div className="rounded-lg border p-4"
+      style={{
+        background: 'var(--map-surface, hsl(var(--card)))',
+        borderColor: warning
+          ? 'hsl(var(--destructive) / 0.35)'
+          : 'var(--map-border, hsl(var(--border) / 0.3))',
+      }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.06em]"
+          style={{ color: 'var(--map-text-muted, hsl(var(--muted-foreground)))' }}
+        >{label}</span>
+        <Icon className="h-3.5 w-3.5"
+          style={{ color: warning ? 'hsl(var(--destructive) / 0.5)' : 'var(--map-text-faint, hsl(var(--muted-foreground) / 0.4))' }}
+        />
+      </div>
+      <div className={cn(
+        "text-lg font-bold tabular-nums tracking-[-0.01em]",
+        warning && "text-destructive"
+      )}
+        style={!warning ? { color: 'var(--map-text, hsl(var(--foreground)))' } : undefined}
+      >
+        {formatted}
+      </div>
+      {hasDelta && Math.abs(delta) > 0.01 && (
+        <div className={cn(
+          "flex items-center gap-1 mt-1.5 text-[10px] font-medium",
+          isPositive ? "text-emerald-400" : "text-destructive"
+        )}>
+          {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+          {isPositive ? '+' : ''}{format === 'ratio' ? delta.toFixed(2) : delta.toFixed(1) + '%'} MoM
         </div>
-        <div className={cn("text-base font-semibold font-mono tabular-nums", warning && "text-destructive")}>
-          {formatted}
-        </div>
-        {hasDelta && Math.abs(delta) > 0.01 && (
-          <div className={cn(
-            "flex items-center gap-1 mt-0.5 text-[10px] font-medium",
-            isPositive ? "text-emerald-500" : "text-destructive"
-          )}>
-            {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {isPositive ? '+' : ''}{format === 'ratio' ? delta.toFixed(2) : delta.toFixed(1) + '%'} MoM
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
 
@@ -72,7 +86,6 @@ export function SaaSModelBalanceSheet({ model }: Props) {
     const currentRatio = totalCL !== 0 ? totalCA / totalCL : 0;
     const prevCurrentRatio = prevCL !== 0 ? prevCA / prevCL : 0;
 
-    // Quick ratio = (Cash + Marketable Securities + AR) / Current Liabilities
     const quickAssets = (bs.cash[i] ?? 0) + (bs.marketableSecurities[i] ?? 0) + (bs.ar[i] ?? 0);
     const prevQuickAssets = p >= 0 ? (bs.cash[p] ?? 0) + (bs.marketableSecurities[p] ?? 0) + (bs.ar[p] ?? 0) : 0;
     const quickRatio = totalCL !== 0 ? quickAssets / totalCL : 0;
@@ -133,7 +146,7 @@ export function SaaSModelBalanceSheet({ model }: Props) {
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="mapping-workbench space-y-3">
       {/* KPI Cards */}
       {kpis && (
         <div className="grid grid-cols-5 gap-3">
@@ -141,20 +154,34 @@ export function SaaSModelBalanceSheet({ model }: Props) {
           <BsKpiCard label="Working Capital" value={kpis.workingCapital} prevValue={kpis.prevWorkingCapital} format="currency" icon={Scale} warning={kpis.workingCapital < 0} />
           <BsKpiCard label="Current Ratio" value={kpis.currentRatio} prevValue={kpis.prevCurrentRatio} format="ratio" icon={Scale} warning={kpis.currentRatio < 1} />
           <BsKpiCard label="Quick Ratio" value={kpis.quickRatio} prevValue={kpis.prevQuickRatio} format="ratio" icon={TrendingUp} warning={kpis.quickRatio < 1} />
-          <Card className={cn("border-border/20", !kpis.bsBalanced && "border-destructive/30")}>
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">BS Check</span>
-                <ShieldCheck className={cn("h-3.5 w-3.5", kpis.bsBalanced ? "text-emerald-500/60" : "text-destructive/50")} />
-              </div>
-              <div className={cn("text-base font-semibold", kpis.bsBalanced ? "text-emerald-500" : "text-destructive")}>
-                {kpis.bsBalanced ? '✓ Balanced' : '✗ Imbalanced'}
-              </div>
-              <div className="text-[10px] text-muted-foreground/50 mt-0.5">
-                Assets = L + E
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border p-4"
+            style={{
+              background: 'var(--map-surface, hsl(var(--card)))',
+              borderColor: !kpis.bsBalanced
+                ? 'hsl(var(--destructive) / 0.35)'
+                : 'var(--map-border, hsl(var(--border) / 0.3))',
+            }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.06em]"
+                style={{ color: 'var(--map-text-muted, hsl(var(--muted-foreground)))' }}
+              >BS Check</span>
+              <ShieldCheck className="h-3.5 w-3.5"
+                style={{ color: kpis.bsBalanced ? 'rgb(52 211 153 / 0.6)' : 'hsl(var(--destructive) / 0.5)' }}
+              />
+            </div>
+            <div className={cn(
+              "text-lg font-bold tabular-nums",
+              kpis.bsBalanced ? "text-emerald-400" : "text-destructive"
+            )}>
+              {kpis.bsBalanced ? '✓ Balanced' : '✗ Imbalanced'}
+            </div>
+            <div className="text-[10px] mt-1"
+              style={{ color: 'var(--map-text-faint, hsl(var(--muted-foreground) / 0.4))' }}
+            >
+              Assets = L + E
+            </div>
+          </div>
         </div>
       )}
 
