@@ -41,6 +41,8 @@ import {
   Flag,
   Pin,
   FolderInput,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
@@ -419,16 +421,16 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
       </button>
 
       {expanded && (
-        <div className="px-5 pb-4 pl-[64px]">
+        <div className="px-6 pb-5 pl-[64px]">
           <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
             {email.has_attachments && <Paperclip className="h-3 w-3" />}
           </div>
-          <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
+          <div className="text-[14px] whitespace-pre-wrap leading-[1.7] text-foreground/90 [&>p]:mb-3">
             {bodyMain}
           </div>
           {bodyQuoted && (
-            <div className="mt-3">
+            <div className="mt-4">
               {!showQuoted ? (
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowQuoted(true); }}
@@ -446,7 +448,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
                     <ChevronUp className="h-3.5 w-3.5" />
                     <span>Hide quoted text</span>
                   </button>
-                  <div className="border-l-2 border-muted-foreground/20 pl-3 text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                  <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 whitespace-pre-wrap leading-[1.65]">
                     {bodyQuoted}
                   </div>
                 </>
@@ -454,7 +456,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
             </div>
           )}
           {email.has_attachments && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-4 flex gap-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded border bg-muted/20 text-sm hover:bg-muted/40 transition-colors cursor-pointer">
                 <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-foreground/80">document.pdf</span>
@@ -583,9 +585,11 @@ interface EmailDetailProps {
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
   onSendReply: (email: Omit<MockEmail, 'id' | 'threadId'>, threadId: string) => void;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
-export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply }: EmailDetailProps) {
+export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand }: EmailDetailProps) {
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
   const [showAiAssist, setShowAiAssist] = useState(false);
@@ -860,6 +864,24 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 onToggleLink(thread.latestEmail);
               }}
             />
+
+            {onToggleExpand && (
+              <>
+                <div className="w-px h-8 bg-border/50 mx-1" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={onToggleExpand}
+                      className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors"
+                    >
+                      {isExpanded ? <Minimize2 className="h-4 w-4 text-foreground/70" /> : <Maximize2 className="h-4 w-4 text-foreground/70" />}
+                      <span className="text-[10px] text-foreground/60">{isExpanded ? 'Collapse' : 'Expand'}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">{isExpanded ? 'Show email list' : 'Expand reading pane'}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </div>
 
           {/* AI Assist inline panel */}
@@ -879,9 +901,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           )}
 
           {/* Outlook-style reading pane header: subject + sender info */}
-          <div className="px-5 pt-4 pb-3 border-b border-border/30">
+          <div className="px-6 pt-5 pb-4 border-b border-border/30">
             {/* Large subject heading */}
-            <h2 className="text-lg font-semibold text-foreground leading-tight mb-3">{thread.subject}</h2>
+            <h2 className="text-xl font-semibold text-foreground leading-snug mb-3">{thread.subject}</h2>
             
             {/* Sender info block */}
             <div className="flex items-start gap-3">

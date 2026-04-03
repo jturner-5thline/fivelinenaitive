@@ -133,6 +133,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [externalEmails]);
 
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
+  const [readingPaneExpanded, setReadingPaneExpanded] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string>('all_inbox');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [chipFilter, setChipFilter] = useState<ChipFilter>(null);
@@ -659,8 +660,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
           {/* ─── Middle: Email list ─── */}
           <div className={cn(
-            'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-[hsl(var(--email-list-bg))]',
-            (currentThread || composeOpen) ? 'hidden md:flex md:w-[340px]' : 'flex-1 md:w-[340px]'
+            'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-[hsl(var(--email-list-bg))] transition-all duration-200',
+            readingPaneExpanded ? 'hidden' :
+            (currentThread || composeOpen) ? 'hidden md:flex md:w-[280px]' : 'flex-1 md:w-[280px]'
           )}>
             {/* Search bar — full-width, flat, Outlook style */}
             <div className="px-2 py-1.5 border-b border-border/30">
@@ -900,7 +902,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               <EmailDetail
                 thread={currentThread}
                 dealId={dealId}
-                onBack={() => setSelectedThread(null)}
+                onBack={() => { setSelectedThread(null); setReadingPaneExpanded(false); }}
+                isExpanded={readingPaneExpanded}
+                onToggleExpand={() => setReadingPaneExpanded(prev => !prev)}
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
                 onSendReply={async (emailData, threadId) => {
