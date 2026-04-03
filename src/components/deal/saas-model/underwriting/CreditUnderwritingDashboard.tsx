@@ -17,9 +17,7 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-[1380px] mx-auto px-4 py-4 space-y-0">
-
-        {/* Header removed per user request */}
+      <div className="max-w-[1380px] mx-auto px-4 pt-1 pb-4 space-y-0">
 
         {/* ═══ P&L ══════════════════════════════════════ */}
         <section>
