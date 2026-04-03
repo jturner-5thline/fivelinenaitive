@@ -2,9 +2,9 @@ import React from 'react';
 import { MOCK_DEAL_DATA } from './mockData';
 import type { UnderwritingDealData } from './types';
 import {
-  SectionHeader, MetricCard, PnlBlock, SummaryTile, ChecklistMatrix,
+  SectionDivider, SubHeader, MetricCard, SummaryTile, ChecklistMatrix,
   KpiGrid, SaasMetricsGrid, NotesPanel, BalanceSheetTable, FinancialQuality,
-  FacilityBox, fmtMM,
+  FacilityBox, fmtMM, PnlKpiCard, AnnualCard, currencyColor,
 } from './components';
 import { RevenueBreakdownChart, RevenueVsExpensesChart, EbitdaChart } from './ChartPanel';
 
@@ -17,227 +17,198 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-[1400px] mx-auto px-4 py-4 space-y-5">
+      <div className="max-w-[1380px] mx-auto px-4 py-4 space-y-0">
 
         {/* ═══ HEADER ═══════════════════════════════════ */}
-        <header className="border-b border-border pb-4">
-          <div className="flex gap-8">
-            <div>
-              <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Actuals Through</span>
-              <p className="text-xs font-semibold text-foreground">{d.header_meta.actuals_through}</p>
+        <header className="flex items-baseline gap-8 border-b border-border pb-4 mb-2">
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">Company Dashboard</h1>
+          <div className="flex gap-7">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] uppercase tracking-widest text-muted-foreground/60 font-medium">Actuals through</span>
+              <span className="text-[13px] text-muted-foreground font-medium">{d.header_meta.actuals_through}</span>
             </div>
-            <div>
-              <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Prepared By</span>
-              <p className="text-xs font-semibold text-foreground">{d.header_meta.prepared_by}</p>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] uppercase tracking-widest text-muted-foreground/60 font-medium">Prepared by</span>
+              <span className="text-[13px] text-muted-foreground font-medium">{d.header_meta.prepared_by}</span>
             </div>
-            <div>
-              <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Date</span>
-              <p className="text-xs font-semibold text-foreground">{d.header_meta.date}</p>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] uppercase tracking-widest text-muted-foreground/60 font-medium">Date</span>
+              <span className="text-[13px] text-muted-foreground font-medium">{d.header_meta.date}</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] uppercase tracking-widest text-muted-foreground/60 font-medium">Current month</span>
+              <span className="text-[13px] text-primary font-medium">{d.charts.current_month}</span>
             </div>
           </div>
         </header>
 
         {/* ═══ P&L ══════════════════════════════════════ */}
         <section>
-          <SectionHeader title="P&L" flags={d.flags.pnl} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <PnlBlock
-              title="RECURRING REVENUE"
-              table={{
-                headers: ['YEAR', 'AMOUNT', 'GROWTH'],
-                rows: d.pnl.recurring_revenue.annual.map(r => [
-                  r.year,
-                  fmtMM(r.amount),
-                  r.growth !== null ? `${r.growth > 0 ? '+' : ''}${r.growth.toFixed(1)}%` : '—',
-                ]),
-              }}
-              summaryMetrics={[
-                { label: 'TTM Revenue', value: fmtMM(d.pnl.recurring_revenue.ttm_revenue) },
-                { label: 'Prior TTM', value: fmtMM(d.pnl.recurring_revenue.prior_ttm) },
-                { label: 'YoY Growth', value: `+${d.pnl.recurring_revenue.yoy_growth.toFixed(1)}%` },
-              ]}
-              flags={d.pnl.recurring_revenue.flags}
+          <SectionDivider title="P&L" flags={d.flags.pnl} />
+
+          {/* KPI row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
+            <PnlKpiCard
+              label="Recurring revenue (TTM)"
+              value={fmtMM(d.pnl.recurring_revenue.ttm_revenue)}
+              sub={<>Prior TTM {fmtMM(d.pnl.recurring_revenue.prior_ttm)} · <span className={d.pnl.recurring_revenue.yoy_growth >= 0 ? "text-success" : "text-destructive"}>{d.pnl.recurring_revenue.yoy_growth.toFixed(1)}% YoY</span></>}
+              ttmLabel="YoY growth"
+              ttmValue={`${d.pnl.recurring_revenue.yoy_growth.toFixed(1)}%`}
+              ttmColor={d.pnl.recurring_revenue.yoy_growth >= 0 ? "text-success" : "text-destructive"}
             />
-            <PnlBlock
-              title="TOTAL REVENUE"
-              table={{
-                headers: ['YEAR', 'AMOUNT', 'GROWTH'],
-                rows: d.pnl.total_revenue.annual.map(r => [
-                  r.year,
-                  fmtMM(r.amount),
-                  r.growth !== null ? `${r.growth > 0 ? '+' : ''}${r.growth.toFixed(1)}%` : '—',
-                ]),
-              }}
-              summaryMetrics={[
-                { label: 'TTM Revenue', value: fmtMM(d.pnl.total_revenue.ttm_revenue) },
-                { label: 'Prior Period', value: fmtMM(d.pnl.total_revenue.prior_ttm) },
-                { label: 'YoY Growth', value: `+${d.pnl.total_revenue.yoy_growth.toFixed(1)}%` },
-              ]}
-              flags={d.pnl.total_revenue.flags}
+            <PnlKpiCard
+              label="Total revenue (TTM)"
+              value={fmtMM(d.pnl.total_revenue.ttm_revenue)}
+              sub={<>Prior TTM {fmtMM(d.pnl.total_revenue.prior_ttm)} · <span className={d.pnl.total_revenue.yoy_growth >= 0 ? "text-success" : "text-destructive"}>{d.pnl.total_revenue.yoy_growth.toFixed(1)}% YoY</span></>}
+              ttmLabel="YoY growth"
+              ttmValue={`${d.pnl.total_revenue.yoy_growth.toFixed(1)}%`}
+              ttmColor={d.pnl.total_revenue.yoy_growth >= 0 ? "text-success" : "text-destructive"}
             />
-            <PnlBlock
-              title="GROSS MARGIN (%)"
-              table={{
-                headers: ['YEAR', 'MARGIN', 'Δ'],
-                rows: d.pnl.gross_margin.annual.map(r => [
-                  r.year,
-                  `${r.margin.toFixed(1)}%`,
-                  r.delta !== null ? `${r.delta > 0 ? '+' : ''}${r.delta.toFixed(1)}pp` : '—',
-                ]),
-              }}
-              summaryMetrics={[
-                { label: 'TTM Gross Profit', value: fmtMM(d.pnl.gross_margin.ttm_gross_profit) },
-                { label: 'TTM Avg Margin', value: `${d.pnl.gross_margin.ttm_avg_margin.toFixed(1)}%` },
-              ]}
-              flags={d.pnl.gross_margin.flags}
+            <PnlKpiCard
+              label="Gross margin (TTM avg)"
+              value={`${d.pnl.gross_margin.ttm_avg_margin.toFixed(1)}%`}
+              sub={<>TTM gross profit {fmtMM(d.pnl.gross_margin.ttm_gross_profit)}</>}
+              ttmLabel={`${d.pnl.gross_margin.annual[d.pnl.gross_margin.annual.length - 1]?.year || ''} annual`}
+              ttmValue={`${d.pnl.gross_margin.annual[d.pnl.gross_margin.annual.length - 1]?.margin.toFixed(1) || '—'}%`}
             />
-            <PnlBlock
-              title="OPERATING INCOME / EBITDA"
-              table={{
-                headers: ['YEAR', 'AMOUNT', 'MARGIN'],
-                rows: d.pnl.operating_income_ebitda.annual.map(r => [
-                  r.year,
-                  fmtMM(r.amount),
-                  `${r.margin > 0 ? '' : ''}${r.margin.toFixed(1)}%`,
-                ]),
-              }}
-              summaryMetrics={[
-                { label: 'TTM EBITDA', value: fmtMM(d.pnl.operating_income_ebitda.ttm_ebitda) },
-                { label: 'TTM Op. Income %', value: `${d.pnl.operating_income_ebitda.ttm_op_income_pct.toFixed(1)}%` },
-              ]}
-              flags={d.pnl.operating_income_ebitda.flags}
+            <PnlKpiCard
+              label="EBITDA (TTM)"
+              value={fmtMM(d.pnl.operating_income_ebitda.ttm_ebitda)}
+              sub={<>EBITDA margin <span className={d.pnl.operating_income_ebitda.ttm_op_income_pct >= 0 ? "text-success" : "text-destructive"}>{d.pnl.operating_income_ebitda.ttm_op_income_pct.toFixed(1)}%</span></>}
+              ttmLabel={`${d.pnl.operating_income_ebitda.annual[d.pnl.operating_income_ebitda.annual.length - 1]?.year || ''} annual`}
+              ttmValue={fmtMM(d.pnl.operating_income_ebitda.annual[d.pnl.operating_income_ebitda.annual.length - 1]?.amount || 0)}
             />
           </div>
-        </section>
 
-        {/* ═══ ANNUAL P&L SUMMARY ══════════════════════ */}
-        <section>
-          <SectionHeader title="Annual P&L Summary" />
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="py-2 px-3 text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Metric</th>
-                  {Object.keys(d.annual_pnl_summary[0]?.values || {}).map(yr => (
-                    <th key={yr} className="py-2 px-3 text-right font-bold text-[10px] uppercase tracking-wider text-muted-foreground">{yr}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {d.annual_pnl_summary.map((row) => (
-                  <tr key={row.label} className="border-b border-border/50 hover:bg-muted/30">
-                    <td className="py-2 px-3 font-semibold text-foreground">{row.label}</td>
-                    {Object.values(row.values).map((val, i) => (
-                      <td key={i} className="py-2 px-3 text-right font-mono tabular-nums text-foreground">{val}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Annual breakdown */}
+          <SubHeader>Annual breakdown</SubHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
+            <AnnualCard
+              title="Recurring revenue"
+              headers={['Year', 'Amount', 'Growth']}
+              rows={d.pnl.recurring_revenue.annual.map(r => ({
+                cells: [r.year, fmtMM(r.amount), r.growth !== null ? `${r.growth > 0 ? '+' : ''}${r.growth.toFixed(1)}%` : '—'],
+              }))}
+              footerLabel="TTM"
+              footerValue={fmtMM(d.pnl.recurring_revenue.ttm_revenue)}
+              footerSub={<span className={d.pnl.recurring_revenue.yoy_growth >= 0 ? "text-success" : "text-destructive"}>{d.pnl.recurring_revenue.yoy_growth.toFixed(1)}% YoY</span>}
+            />
+            <AnnualCard
+              title="Total revenue"
+              headers={['Year', 'Amount', 'Growth']}
+              rows={d.pnl.total_revenue.annual.map(r => ({
+                cells: [r.year, fmtMM(r.amount), r.growth !== null ? `${r.growth > 0 ? '+' : ''}${r.growth.toFixed(1)}%` : '—'],
+              }))}
+              footerLabel="TTM"
+              footerValue={fmtMM(d.pnl.total_revenue.ttm_revenue)}
+              footerSub={<span className={d.pnl.total_revenue.yoy_growth >= 0 ? "text-success" : "text-destructive"}>{d.pnl.total_revenue.yoy_growth.toFixed(1)}% YoY</span>}
+            />
+            <AnnualCard
+              title="Gross margin (%)"
+              headers={['Year', 'Margin', 'Δ']}
+              rows={d.pnl.gross_margin.annual.map(r => ({
+                cells: [r.year, `${r.margin.toFixed(1)}%`, r.delta !== null ? `${r.delta > 0 ? '+' : ''}${r.delta.toFixed(1)}pp` : '—'],
+              }))}
+              footerLabel="TTM gross profit"
+              footerValue={fmtMM(d.pnl.gross_margin.ttm_gross_profit)}
+              footerSub={<>Avg <span className="text-success">{d.pnl.gross_margin.ttm_avg_margin.toFixed(1)}%</span></>}
+            />
+            <AnnualCard
+              title="Operating income / EBITDA"
+              headers={['Year', 'Amount', 'Margin']}
+              rows={d.pnl.operating_income_ebitda.annual.map(r => ({
+                cells: [r.year, fmtMM(r.amount), `${r.margin.toFixed(1)}%`],
+              }))}
+              footerLabel="TTM EBITDA"
+              footerValue={fmtMM(d.pnl.operating_income_ebitda.ttm_ebitda)}
+              footerSub={<>Margin <span className="text-success">{d.pnl.operating_income_ebitda.ttm_op_income_pct.toFixed(1)}%</span></>}
+            />
           </div>
-        </section>
 
-        {/* ═══ CHARTS ═══════════════════════════════════ */}
-        <section>
-          <SectionHeader title="Charts" />
-          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-3">Current Month: {d.charts.current_month}</p>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {/* Trends (Charts) */}
+          <SubHeader>Trends</SubHeader>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5 mb-4">
             <RevenueBreakdownChart
-              title="Revenue Breakdown (18mo Historical + 6mo Projected)"
+              title="Revenue breakdown (18mo historical + 6mo projected)"
               data={d.charts.revenue_breakdown}
             />
             <RevenueVsExpensesChart
-              title="Revenue vs. Expenses (6mo Historical + Projected)"
+              title="Revenue vs. expenses (6mo historical + projected)"
               data={d.charts.revenue_vs_expenses}
             />
             <EbitdaChart
-              title="EBITDA & Operating Income (6mo Historical + Projected)"
+              title="EBITDA & operating income (6mo historical + projected)"
               data={d.charts.ebitda_operating}
             />
           </div>
-        </section>
 
-        {/* ═══ SUMMARY + SAAS FACILITY ═════════════════ */}
-        <section>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div>
-              <SectionHeader title="Summary" />
-              <div className="bg-card border border-border rounded-lg p-4">
-                <SummaryTile label="Business Model" value={d.summary.business_model} />
-                <SummaryTile label="Customer Base" value={d.summary.customer_base} />
-                <SummaryTile label="Founded" value={d.summary.founded} />
-                <SummaryTile label="Employees" value={d.summary.employees} />
-                <SummaryTile label="HQ" value={d.summary.hq} />
-                <SummaryTile label="Existing GTL Debt" value={d.summary.existing_gtl_debt} />
-              </div>
-            </div>
-            <div>
-              <SectionHeader title="SaaS Facility" />
-              <FacilityBox facility={d.saas_facility} />
-            </div>
-          </div>
-        </section>
-
-        {/* ═══ MATERIALS & CHECKLIST + FINANCIAL QUALITY */}
-        <section>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div>
-              <SectionHeader title="Materials & Checklist" />
-              <div className="bg-card border border-border rounded-lg p-4">
-                <ChecklistMatrix rows={d.materials_checklist} />
-              </div>
-            </div>
-            <div>
-              <SectionHeader title="Financial Quality" />
-              <div className="bg-card border border-border rounded-lg p-4">
-                <FinancialQuality quality={d.financial_quality} />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ═══ OPERATING KPIS ══════════════════════════ */}
-        <section>
-          <SectionHeader title="Operating Metrics" flags={d.flags.operating_kpis} />
-          <KpiGrid tiles={d.operating_kpis} />
-        </section>
-
-        {/* ═══ SAAS METRICS ════════════════════════════ */}
-        <section>
-          <SectionHeader title="SaaS Metrics" flags={d.flags.saas_metrics} />
-          <SaasMetricsGrid tiles={d.saas_metrics} />
-        </section>
-
-        {/* ═══ ANALYST NOTES ═══════════════════════════ */}
-        <section>
-          <SectionHeader title="Analyst Notes" />
+          {/* Analyst notes & flags */}
+          <SubHeader>Analyst notes & flags</SubHeader>
           <NotesPanel notes={d.analyst_notes} />
         </section>
 
         {/* ═══ BALANCE SHEET ═══════════════════════════ */}
         <section>
-          <SectionHeader title="Balance Sheet" flags={d.balance_sheet.flags} />
-          <div className="bg-card border border-border rounded-lg p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground mb-3">Current Balances</h3>
+          <SectionDivider title="Balance sheet" flags={d.balance_sheet.flags} />
+
+          <SubHeader>Current balances</SubHeader>
+          <div className="bg-card border border-border rounded-xl overflow-hidden py-1 mb-4">
             <BalanceSheetTable periods={d.balance_sheet.periods} rows={d.balance_sheet.rows} />
+          </div>
+
+          <SubHeader>AR availability</SubHeader>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+            <MetricCard label="Net AR availability" value={fmtMM(d.ar_availability.net_ar_availability)} />
+            <MetricCard label="Total AR" value={fmtMM(d.ar_availability.total_ar)} />
+            <MetricCard label="Total deferred revenue" value={fmtMM(d.ar_availability.total_deferred_revenue)} />
+            <MetricCard label="Overdue (>90 days)" value={fmtMM(d.ar_availability.overdue_90_days)} />
+            <MetricCard label="Net AR (eligible)" value={fmtMM(d.ar_availability.net_ar_eligible)} />
           </div>
         </section>
 
-        {/* ═══ AR AVAILABILITY ═════════════════════════ */}
+        {/* ═══ OPERATING & SAAS METRICS ═══════════════ */}
         <section>
-          <SectionHeader title="AR Availability" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            <MetricCard label="NET AR AVAILABILITY" value={fmtMM(d.ar_availability.net_ar_availability)} />
-            <MetricCard label="TOTAL AR" value={fmtMM(d.ar_availability.total_ar)} />
-            <MetricCard label="TOTAL DEFERRED REVENUE" value={fmtMM(d.ar_availability.total_deferred_revenue)} />
-            <MetricCard label="OVERDUE (>90 DAYS)" value={fmtMM(d.ar_availability.overdue_90_days)} />
-            <MetricCard label="NET AR (ELIGIBLE)" value={fmtMM(d.ar_availability.net_ar_eligible)} />
+          <SectionDivider title="Operating & SaaS metrics" flags={d.flags.operating_kpis} />
+          <KpiGrid tiles={d.operating_kpis} />
+
+          <SubHeader>SaaS detail</SubHeader>
+          <SaasMetricsGrid tiles={d.saas_metrics} />
+        </section>
+
+        {/* ═══ SAAS FACILITY ══════════════════════════ */}
+        <section>
+          <SectionDivider title="SaaS facility" />
+          <FacilityBox facility={d.saas_facility} />
+        </section>
+
+        {/* ═══ SUMMARY & QUALITY ═════════════════════ */}
+        <section>
+          <SectionDivider title="Summary & quality" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 mb-4">
+            {/* Summary table */}
+            <div className="bg-card border border-border rounded-xl p-5">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">Summary</p>
+              <SummaryTile label="Business model" value={d.summary.business_model} />
+              <SummaryTile label="Customer base" value={d.summary.customer_base} />
+              <SummaryTile label="Founded" value={d.summary.founded} />
+              <SummaryTile label="Employees" value={d.summary.employees} />
+              <SummaryTile label="HQ" value={d.summary.hq} />
+              <SummaryTile label="Existing GTL debt" value={d.summary.existing_gtl_debt} />
+            </div>
+
+            {/* Financial quality + checklist */}
+            <div className="bg-card border border-border rounded-xl p-5">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-2">Financial quality</p>
+              <FinancialQuality quality={d.financial_quality} />
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mt-5 mb-1">Materials & checklist</p>
+              <ChecklistMatrix rows={d.materials_checklist} />
+            </div>
           </div>
         </section>
 
         {/* ═══ FOOTER ══════════════════════════════════ */}
-        <footer className="border-t border-border pt-3 text-center">
-          <p className="text-[10px] text-muted-foreground">
+        <footer className="border-t border-border pt-6 mt-9 text-center">
+          <p className="text-[11px] text-muted-foreground/50">
             Prepared by {d.header_meta.prepared_by} · {d.header_meta.date} · Confidential
           </p>
         </footer>
