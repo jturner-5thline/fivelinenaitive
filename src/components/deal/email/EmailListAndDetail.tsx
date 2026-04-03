@@ -940,8 +940,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           </div>
 
           {/* Thread content - scrollable */}
-          <ScrollArea className="flex-1">
-            <div className="py-2 space-y-0">
+          <ScrollArea className="flex-1 min-w-0">
+            <div className="py-2 space-y-0 min-w-0 overflow-hidden">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
