@@ -467,6 +467,7 @@ function generateTestData() {
     'closing': 'Closing', 'on-track': 'On Track', 'at-risk': 'At Risk', 'off-track': 'Off Track',
     'reviewing-drl': 'Reviewing DRL', 'management-call-set': 'Mgmt Call Set',
     'management-call-completed': 'Mgmt Call Done', 'draft-terms': 'Draft Terms',
+    'active': 'Active', 'on-hold': 'On Hold', 'on-deck': 'On Deck', 'passed': 'Passed',
   };
 
   const deals: DealRow[] = [
@@ -484,13 +485,23 @@ function generateTestData() {
     '00000000-0000-0000-0000-000000000001': [
       { id: '1', deal_id: '1', company_id: 'test', event_type: 'lender_updated', entity_name: 'Trinity Capital', entity_id: '2', change_summary: { stage: { from: 'reviewing-drl', to: 'management-call-set' } }, changed_by: null, changed_by_name: 'Franco Fustinoni', metadata: {}, created_at: oneHourAgo },
       { id: '2', deal_id: '1', company_id: 'test', event_type: 'milestone_completed', entity_name: 'NDA Executed', entity_id: '4', change_summary: {}, changed_by: null, changed_by_name: 'Franco Fustinoni', metadata: {}, created_at: now },
+      { id: '6', deal_id: '1', company_id: 'test', event_type: 'lender_added', entity_name: 'SLR Capital', entity_id: '10', change_summary: {}, changed_by: null, changed_by_name: 'James Turner', metadata: {}, created_at: now },
     ],
     '00000000-0000-0000-0000-000000000002': [
-      { id: '3', deal_id: '2', company_id: 'test', event_type: 'lender_updated', entity_name: 'Hercules Capital', entity_id: '5', change_summary: { stage: { from: 'management-call-completed', to: 'draft-terms' } }, changed_by: null, changed_by_name: 'James Turner', metadata: {}, created_at: oneHourAgo },
+      { id: '3', deal_id: '2', company_id: 'test', event_type: 'lender_updated', entity_name: 'Hercules Capital', entity_id: '5', change_summary: { stage: { from: 'management-call-completed', to: 'draft-terms' }, tracking_status: { from: 'on-deck', to: 'active' } }, changed_by: null, changed_by_name: 'James Turner', metadata: {}, created_at: oneHourAgo },
+      { id: '7', deal_id: '2', company_id: 'test', event_type: 'deal_updated', entity_name: null, entity_id: null, change_summary: { status: { from: 'on-track', to: 'at-risk' } }, changed_by: null, changed_by_name: 'James Turner', metadata: {}, created_at: now },
     ],
   };
 
-  return { deals, activityByDeal, labels };
+  const lenderInfoByDeal: Record<string, DealLenderInfo> = {
+    '00000000-0000-0000-0000-000000000001': { total: 6, active: 4, passed: 1, onDeck: 1 },
+    '00000000-0000-0000-0000-000000000002': { total: 4, active: 3, passed: 0, onDeck: 1 },
+    '00000000-0000-0000-0000-000000000003': { total: 3, active: 2, passed: 0, onDeck: 1 },
+    '00000000-0000-0000-0000-000000000004': { total: 2, active: 2, passed: 0, onDeck: 0 },
+    '00000000-0000-0000-0000-000000000005': { total: 5, active: 3, passed: 2, onDeck: 0 },
+  };
+
+  return { deals, activityByDeal, labels, lenderInfoByDeal };
 }
 
 const handler = async (req: Request): Promise<Response> => {
