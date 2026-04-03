@@ -62,6 +62,10 @@ export function FPAWorkspace() {
           <Tabs value={activeModule} onValueChange={setActiveModule} className="space-y-4">
             <div className="flex items-center justify-between overflow-x-auto gap-2">
               <TabsList className="inline-flex w-auto">
+                <TabsTrigger value="dashboards" className="gap-1.5 px-4">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  <span className="text-xs">Dashboards</span>
+                </TabsTrigger>
                 <TabsTrigger value="data" className="gap-1.5 px-4">
                   <Database className="h-3.5 w-3.5" />
                   <span className="text-xs">Data</span>
@@ -69,10 +73,6 @@ export function FPAWorkspace() {
                 <TabsTrigger value="sheets" className="gap-1.5 px-4">
                   <FileSpreadsheet className="h-3.5 w-3.5" />
                   <span className="text-xs">Sheets</span>
-                </TabsTrigger>
-                <TabsTrigger value="dashboards" className="gap-1.5 px-4">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  <span className="text-xs">Dashboards</span>
                 </TabsTrigger>
                 <TabsTrigger value="ai" className="gap-1.5 px-4">
                   <Sparkles className="h-3.5 w-3.5" />
