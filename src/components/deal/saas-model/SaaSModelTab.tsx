@@ -81,7 +81,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
 
 
   // Tab visibility
-  const [visibleTabs, setVisibleTabs] = useState<Set<string>>(loadVisibleTabs);
+  const [visibleTabs, setVisibleTabs] = useState<Set<string>>(() => loadVisibleTabs(dealId));
 
   const toggleTab = useCallback((key: string) => {
     setVisibleTabs(prev => {
