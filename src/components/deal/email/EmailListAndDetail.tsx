@@ -901,9 +901,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           )}
 
           {/* Outlook-style reading pane header: subject + sender info */}
-          <div className="px-5 pt-4 pb-3 border-b border-border/30">
+          <div className="px-6 pt-5 pb-4 border-b border-border/30">
             {/* Large subject heading */}
-            <h2 className="text-lg font-semibold text-foreground leading-tight mb-3">{thread.subject}</h2>
+            <h2 className="text-xl font-semibold text-foreground leading-snug mb-3">{thread.subject}</h2>
             
             {/* Sender info block */}
             <div className="flex items-start gap-3">
