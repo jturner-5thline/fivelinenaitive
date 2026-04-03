@@ -1,15 +1,31 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useWfWorkflows, useWfUsers, useUpdateWfWorkflow } from "@/hooks/useWorkflowSystem";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Workflow, Activity, Settings2, Users, Zap, CheckCircle2, XCircle, Clock } from "lucide-react";
-import { format } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Search, Workflow, Users, CheckCircle2, XCircle, Edit, Save } from "lucide-react";
+import { useAdminRole } from "@/hooks/useAdminRole";
+
+const OWNER_ROLE_LABELS: Record<string, string> = {
+  manager: "Manager",
+  analyst: "Analyst",
+  ops: "Operations",
+  system: "System",
+};
 
 const TRIGGER_LABELS: Record<string, string> = {
   stage_change: "Stage Change",
@@ -19,35 +35,35 @@ const TRIGGER_LABELS: Record<string, string> = {
   external: "External",
 };
 
-const OWNER_ROLE_LABELS: Record<string, string> = {
-  Manager: "Manager",
-  Analyst: "Analyst",
-  Ops: "Operations",
-  System: "System",
-};
+interface EditState {
+  id: string;
+  name: string;
+  description: string;
+  default_owner_role: string;
+  default_owner_user_id: string | null;
+}
 
 export default function WfHub() {
   const { data: workflows = [], isLoading } = useWfWorkflows();
   const { data: users = [] } = useWfUsers();
   const updateWorkflow = useUpdateWfWorkflow();
+  const { isAdmin } = useAdminRole();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [editingWorkflow, setEditingWorkflow] = useState<EditState | null>(null);
 
   const filtered = workflows.filter((wf: any) => {
     const matchesSearch =
       wf.name.toLowerCase().includes(search.toLowerCase()) ||
       wf.key.toLowerCase().includes(search.toLowerCase()) ||
       (wf.description || "").toLowerCase().includes(search.toLowerCase());
-
     const matchesTab =
       activeTab === "all" ||
       (activeTab === "active" && wf.is_active) ||
       (activeTab === "inactive" && !wf.is_active);
-
     const matchesRole =
       roleFilter === "all" || wf.default_owner_role === roleFilter;
-
     return matchesSearch && matchesTab && matchesRole;
   });
 
@@ -58,6 +74,28 @@ export default function WfHub() {
     acc[w.default_owner_role] = (acc[w.default_owner_role] || 0) + 1;
     return acc;
   }, {});
+
+  const openEdit = (wf: any) => {
+    setEditingWorkflow({
+      id: wf.id,
+      name: wf.name,
+      description: wf.description || "",
+      default_owner_role: wf.default_owner_role,
+      default_owner_user_id: wf.default_owner_user_id,
+    });
+  };
+
+  const saveEdit = () => {
+    if (!editingWorkflow) return;
+    updateWorkflow.mutate({
+      id: editingWorkflow.id,
+      name: editingWorkflow.name,
+      description: editingWorkflow.description || null,
+      default_owner_role: editingWorkflow.default_owner_role,
+      default_owner_user_id: editingWorkflow.default_owner_user_id,
+    });
+    setEditingWorkflow(null);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -182,6 +220,17 @@ export default function WfHub() {
                   </div>
 
                   <div className="flex items-center gap-3 flex-shrink-0">
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => openEdit(wf)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+
                     <Select
                       value={wf.default_owner_user_id || "none"}
                       onValueChange={(v) =>
@@ -190,6 +239,7 @@ export default function WfHub() {
                           default_owner_user_id: v === "none" ? null : v,
                         })
                       }
+                      disabled={!isAdmin}
                     >
                       <SelectTrigger className="w-44 h-8 text-xs">
                         <SelectValue placeholder="Assign owner" />
@@ -209,6 +259,7 @@ export default function WfHub() {
                       onCheckedChange={(checked) =>
                         updateWorkflow.mutate({ id: wf.id, is_active: checked })
                       }
+                      disabled={!isAdmin}
                     />
                   </div>
                 </div>
@@ -225,6 +276,75 @@ export default function WfHub() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingWorkflow} onOpenChange={(open) => !open && setEditingWorkflow(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Workflow</DialogTitle>
+          </DialogHeader>
+          {editingWorkflow && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input
+                  value={editingWorkflow.name}
+                  onChange={(e) => setEditingWorkflow({ ...editingWorkflow, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={editingWorkflow.description}
+                  onChange={(e) => setEditingWorkflow({ ...editingWorkflow, description: e.target.value })}
+                  rows={3}
+                  placeholder="What does this workflow do?"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Default Owner Role</Label>
+                <Select
+                  value={editingWorkflow.default_owner_role}
+                  onValueChange={(v) => setEditingWorkflow({ ...editingWorkflow, default_owner_role: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(OWNER_ROLE_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Specific Owner Override</Label>
+                <Select
+                  value={editingWorkflow.default_owner_user_id || "none"}
+                  onValueChange={(v) => setEditingWorkflow({ ...editingWorkflow, default_owner_user_id: v === "none" ? null : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Use role default" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Use role default</SelectItem>
+                    {users.map((u: any) => (
+                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingWorkflow(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={updateWorkflow.isPending}>
+              <Save className="h-4 w-4 mr-1" />
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
