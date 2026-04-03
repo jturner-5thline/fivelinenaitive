@@ -92,7 +92,7 @@ export function FPAWorkspace() {
                   currentState={{ module: effectiveModule }}
                   onRestoreView={handleRestoreView}
                 />
-                <ExportPresetsButton />
+                
                 <FPATour onNavigateToTab={handleNavigateToTab} />
               </div>
             </div>
