@@ -41,31 +41,19 @@ export async function getAsanaSyncContext(companyId: string | null): Promise<Asa
   if (!workspaceGid) return null;
 
   // 4. Get first enabled project filter for this sync config
-  const { data: projectFilter } = await supabase
+  const { data: projectFilter } = await (supabase
     .from('asana_project_filters')
-    .select('asana_project_gid')
+    .select('asana_project_gid, asana_section_gid')
     .eq('sync_config_id', syncConfig.id)
     .eq('is_enabled', true)
     .limit(1)
-    .maybeSingle();
-
-  // Fetch asana_section_gid separately (column may not be in generated types yet)
-  let sectionGid: string | null = null;
-  if (projectFilter) {
-    const { data: sectionRow } = await supabase
-      .rpc('exec_sql_readonly', {
-        sql: `SELECT asana_section_gid FROM public.asana_project_filters WHERE asana_project_gid = '${projectFilter.asana_project_gid}' AND sync_config_id = '${syncConfig.id}' AND is_enabled = true LIMIT 1`
-      });
-    if (Array.isArray(sectionRow) && sectionRow.length > 0) {
-      sectionGid = (sectionRow[0] as any)?.asana_section_gid || null;
-    }
-  }
+    .maybeSingle() as any);
 
   return {
     integrationId: integration.id,
     workspaceGid,
     projectGid: projectFilter?.asana_project_gid || null,
-    sectionGid,
+    sectionGid: projectFilter?.asana_section_gid || null,
   };
 }
 
