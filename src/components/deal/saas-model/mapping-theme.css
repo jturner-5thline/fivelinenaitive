@@ -102,6 +102,17 @@
   border-color: rgba(220, 38, 38, 0.4);
 }
 
+.map-toolbar-btn--ai {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary) / 0.35);
+  font-weight: 600;
+}
+
+.map-toolbar-btn--ai:hover:not(:disabled) {
+  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.5);
+}
+
 .map-toolbar-divider {
   width: 1px;
   height: 18px;
