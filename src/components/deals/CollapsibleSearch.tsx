@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface CollapsibleSearchProps {
@@ -10,6 +11,7 @@ interface CollapsibleSearchProps {
 export function CollapsibleSearch({ value, onChange }: CollapsibleSearchProps) {
   const [expanded, setExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const isActive = expanded || value.length > 0;
 
   useEffect(() => {
@@ -29,23 +31,28 @@ export function CollapsibleSearch({ value, onChange }: CollapsibleSearchProps) {
     setExpanded(false);
   };
 
+  // Collapsed: render an actual Button matching Filters button exactly
+  if (!isActive) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+        onClick={() => setExpanded(true)}
+        aria-label="Search deals"
+      >
+        <Search className="h-4 w-4" />
+      </Button>
+    );
+  }
+
+  // Expanded: input styled to match the Button's border/height/radius
   return (
     <div
-      className={cn(
-        'relative inline-flex items-center h-9 rounded-md border border-input bg-background text-sm font-medium cursor-text transition-all duration-200 ease-in-out',
-        'hover:bg-accent hover:text-accent-foreground hover:border-[hsl(292,46%,72%)]/60',
-        isActive ? 'w-[180px] pl-8 pr-7' : 'w-9 justify-center'
-      )}
-      onClick={() => setExpanded(true)}
-      role="search"
-      aria-label="Search deals"
+      ref={containerRef}
+      className="relative inline-flex items-center h-9 w-[180px] rounded-md border border-input bg-background text-sm transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
     >
-      <Search
-        className={cn(
-          'h-4 w-4 text-muted-foreground shrink-0',
-          isActive ? 'absolute left-2.5 top-1/2 -translate-y-1/2' : ''
-        )}
-      />
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <input
         ref={inputRef}
         type="text"
@@ -55,10 +62,7 @@ export function CollapsibleSearch({ value, onChange }: CollapsibleSearchProps) {
         onBlur={handleBlur}
         placeholder="Search..."
         aria-label="Search deals"
-        className={cn(
-          'h-full w-full bg-transparent outline-none text-sm placeholder:text-muted-foreground transition-opacity duration-200',
-          isActive ? 'opacity-100' : 'opacity-0 w-0 pointer-events-none absolute'
-        )}
+        className="h-full w-full bg-transparent pl-8 pr-7 outline-none text-sm placeholder:text-muted-foreground"
       />
       {value.length > 0 && (
         <button
