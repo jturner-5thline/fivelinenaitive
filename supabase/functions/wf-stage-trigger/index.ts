@@ -855,44 +855,27 @@ Deno.serve(async (req: Request) => {
         // Create tasks
         let lastDueAt: string | null = null;
         for (const taskDef of wfDef.tasks) {
-          let assigneeWfUserId: string | null = null;
           const rawAssigneeId =
             taskDef.assigneeRole === "manager" ? deal.manager_id :
             taskDef.assigneeRole === "analyst" ? deal.analyst_id :
             taskDef.assigneeRole === "ops" ? deal.ops_id : null;
 
-          if (rawAssigneeId) {
-            const { data: wfUser } = await supabase
-              .from("wf_users")
-              .select("id")
-              .eq("id", rawAssigneeId)
-              .maybeSingle();
-            assigneeWfUserId = wfUser?.id || null;
-          }
-
-          let ownerWfUserId: string | null = null;
-          if (ownerId) {
-            const { data: wfOwner } = await supabase
-              .from("wf_users")
-              .select("id")
-              .eq("id", ownerId)
-              .maybeSingle();
-            ownerWfUserId = wfOwner?.id || null;
-          }
+          // Use auth user IDs directly (no wf_users FK constraint)
+          const assigneeId = rawAssigneeId || ownerId || null;
 
           const dueAt = new Date(Date.now() + taskDef.dueOffsetDays * 86400000).toISOString();
           lastDueAt = dueAt;
 
-          console.log(`[wf-stage-trigger] Creating task: "${taskDef.title}" → assignee: ${assigneeWfUserId || 'null (no wf_user match)'} (${taskDef.assigneeRole}), due: ${dueAt}`);
+          console.log(`[wf-stage-trigger] Creating task: "${taskDef.title}" → assignee: ${assigneeId} (${taskDef.assigneeRole}), due: ${dueAt}`);
 
           const { error: taskError } = await supabase.from("wf_tasks").insert({
             deal_id,
             title: taskDef.title,
             description: (taskDef.descriptionFn ? taskDef.descriptionFn(deal) : taskDef.description) || null,
             status: "open",
-            assignee_id: assigneeWfUserId,
-            created_by_id: ownerWfUserId,
-            workflow_owner_id: ownerWfUserId,
+            assignee_id: assigneeId,
+            created_by_id: ownerId,
+            workflow_owner_id: ownerId,
             workflow_key: wfDef.key,
             trigger_source: "stage_change",
             is_recurring: taskDef.isRecurring || false,
