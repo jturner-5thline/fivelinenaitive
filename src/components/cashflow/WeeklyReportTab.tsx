@@ -70,7 +70,14 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   onExport, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
-  const sortedWeeks = Object.entries(weeklyData).sort(([a], [b]) => a.localeCompare(b));
+  const safeWeeklyData = weeklyData || {};
+  const safeSidebarData: SidebarData = {
+    cash_in_next_8_weeks: Array.isArray(sidebarData?.cash_in_next_8_weeks) ? sidebarData.cash_in_next_8_weeks : [],
+    notes: Array.isArray(sidebarData?.notes) ? sidebarData.notes : [],
+  };
+  const safeSidebarDbItems = sidebarDbItems || [];
+  const safePlanSnapshots = planSnapshots || [];
+  const sortedWeeks = Object.entries(safeWeeklyData).sort(([a], [b]) => a.localeCompare(b));
   const totalWeeks = sortedWeeks.length;
 
   // Find the index of the current week (closest week_ending >= today)
@@ -97,7 +104,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
   }, []);
 
-  const activePlan = activePlanId ? planSnapshots.find(p => p.id === activePlanId) : null;
+  const activePlan = activePlanId ? safePlanSnapshots.find(p => p.id === activePlanId) : null;
 
   const renderVariance = (actual: number, plan: number) => {
     const diff = actual - plan;
@@ -125,7 +132,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   return (
     <div className="cf-weekly-layout">
       <div className="cf-weekly-main">
-        <WeeklyCharts weeklyData={weeklyData} theme={theme} />
+        <WeeklyCharts weeklyData={safeWeeklyData} theme={theme} />
 
         {/* Table card */}
         <div ref={gridWrapRef} className="cf-table-card">
@@ -159,7 +166,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
               onChange={e => onActivePlanChange(e.target.value || null)}
             >
               <option value="">No Comparison</option>
-              {planSnapshots.map(p => (
+              {safePlanSnapshots.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
@@ -214,7 +221,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                     {visibleWeeks.map(([weekKey, entry]) => {
                       const val = (entry[rowDef.key] as number) || 0;
                       const displayVal = rowDef.section === 'disbursements' && !isTotal && val > 0 ? -val : val;
-                      const planEntry = activePlan?.weeklyData[weekKey];
+                      const planEntry = activePlan?.weeklyData?.[weekKey];
                       const planVal = planEntry ? ((planEntry[rowDef.key] as number) || 0) : null;
 
                       return (
@@ -237,8 +244,8 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
       </div>
 
       <WeeklySidebar
-        data={sidebarData}
-        dbItems={sidebarDbItems}
+        data={safeSidebarData}
+        dbItems={safeSidebarDbItems}
         isAdmin={isAdmin}
         onEditItem={onSidebarEditItem}
         onRemoveItem={onSidebarRemoveItem}

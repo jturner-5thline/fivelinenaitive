@@ -24,7 +24,7 @@ export const ExportModal = memo(function ExportModal({ open, weeklyData, onClose
   const [notes, setNotes] = useState('');
   const [customFlag, setCustomFlag] = useState('');
 
-  const weeks = Object.entries(weeklyData).sort(([a], [b]) => a.localeCompare(b));
+  const weeks = Object.entries(weeklyData || {}).sort(([a], [b]) => a.localeCompare(b));
   const dateRange = weeks.length > 0
     ? `${new Date(weeks[0][0]).toLocaleDateString()} — ${new Date(weeks[weeks.length - 1][1].week_ending).toLocaleDateString()}`
     : '';

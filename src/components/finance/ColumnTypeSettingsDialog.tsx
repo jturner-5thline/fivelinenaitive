@@ -36,7 +36,7 @@ export function ColumnTypeSettingsDialog({
 
   const handleSave = async () => {
     setIsSaving(true);
-    const updates = Object.entries(localTypes).map(([columnKey, columnType]) => ({
+    const updates = Object.entries(localTypes || {}).map(([columnKey, columnType]) => ({
       columnKey,
       columnType,
     }));

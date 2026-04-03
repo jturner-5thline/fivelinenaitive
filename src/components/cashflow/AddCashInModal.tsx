@@ -171,7 +171,7 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
     let feeCount = 0;
     let total = 0;
     const dealIds = new Set<string>();
-    Object.entries(rows).forEach(([id, r]) => {
+    Object.entries(rows || {}).forEach(([id, r]) => {
       if (r.retainerEnabled && r.retainerAmt > 0) { feeCount++; total += r.retainerAmt; dealIds.add(id); }
       if (r.milestoneEnabled && r.milestoneAmt > 0) { feeCount++; total += r.milestoneAmt; dealIds.add(id); }
       if (r.closingEnabled && r.closingAmt > 0) { feeCount++; total += r.closingAmt; dealIds.add(id); }
@@ -183,7 +183,7 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
     if (!company?.id) return;
     setSaving(true);
     const items: Array<{ company_id: string; deal_id: string; deal_name: string; fee_type: string; amount: number; target_date: string }> = [];
-    Object.entries(rows).forEach(([id, r]) => {
+    Object.entries(rows || {}).forEach(([id, r]) => {
       const deal = deals.find(d => d.id === id);
       if (!deal) return;
       if (r.retainerEnabled && r.retainerAmt > 0) items.push({ company_id: company.id, deal_id: id, deal_name: deal.company, fee_type: 'retainer', amount: r.retainerAmt, target_date: r.date });

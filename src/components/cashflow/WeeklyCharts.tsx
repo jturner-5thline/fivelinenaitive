@@ -17,7 +17,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
 
   // Memoize chart data to avoid recalculation
   const chartData = useMemo(() => {
-    const entries = Object.entries(weeklyData).sort(([a], [b]) => a.localeCompare(b));
+    const entries = Object.entries(weeklyData || {}).sort(([a], [b]) => a.localeCompare(b));
     return {
       labels: entries.map(([, v]) => {
         const d = new Date(v.week_ending);
