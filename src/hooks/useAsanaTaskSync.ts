@@ -174,3 +174,55 @@ export async function syncTaskToAsana(
     return null;
   }
 }
+
+/**
+ * Update an existing Asana task's due date and/or assignee.
+ * Returns true if the update succeeded.
+ */
+export async function updateTaskInAsana(
+  ctx: AsanaSyncContext,
+  asanaTaskGid: string,
+  updates: { due_date?: string | null; assignee_email?: string | null }
+): Promise<boolean> {
+  try {
+    const taskData: Record<string, unknown> = {};
+
+    if ('due_date' in updates) {
+      taskData.due_on = updates.due_date || null;
+    }
+
+    if ('assignee_email' in updates) {
+      if (updates.assignee_email) {
+        const gid = await findAsanaUserByEmail(
+          ctx.integrationId,
+          ctx.workspaceGid,
+          updates.assignee_email
+        );
+        taskData.assignee = gid || null;
+      } else {
+        taskData.assignee = null;
+      }
+    }
+
+    if (Object.keys(taskData).length === 0) return true;
+
+    const { data } = await supabase.functions.invoke('asana-proxy', {
+      body: {
+        action: 'update_task',
+        integration_id: ctx.integrationId,
+        task_gid: asanaTaskGid,
+        task_data: taskData,
+      },
+    });
+
+    if (!data?.success) {
+      console.error('Asana task update failed:', data);
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    console.error('Asana task update failed:', e);
+    return false;
+  }
+}
