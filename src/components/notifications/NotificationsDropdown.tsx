@@ -157,8 +157,8 @@ export function NotificationsDropdown() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+        <Button variant="outline" size="icon" className="relative h-9 w-9">
+          <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <Badge 
               variant={hasAlerts ? "destructive" : "secondary"}

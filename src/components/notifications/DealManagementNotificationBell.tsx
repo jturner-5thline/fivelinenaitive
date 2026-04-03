@@ -19,12 +19,12 @@ export function DealManagementNotificationBell() {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
           onClick={() => navigate('/')}
-          className="relative"
+          className="relative h-9 w-9"
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-4 w-4" />
           <Badge
             variant="destructive"
             className="absolute -top-1 -right-1 h-5 min-w-5 rounded-full text-xs px-1.5"
