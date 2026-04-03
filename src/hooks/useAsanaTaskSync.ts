@@ -4,6 +4,7 @@ interface AsanaSyncContext {
   integrationId: string;
   workspaceGid: string;
   projectGid: string | null;
+  sectionGid: string | null;
 }
 
 /**
