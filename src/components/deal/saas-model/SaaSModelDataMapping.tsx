@@ -1802,7 +1802,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       )}
 
       <div className="map-toolbar">
-        {/* Left: AI + Edit tools */}
+        {/* Left: AI + labeled utility tools */}
         <div className="flex items-center gap-1">
           <TooltipProvider delayDuration={200}>
             {/* Combined AI Map button */}
@@ -1818,31 +1818,31 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
             <div className="map-toolbar-divider" />
 
-            {/* Flip sign */}
+            {/* Flip sign — labeled */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0} aria-label="Flip sign on selected rows">
-                  <span className="font-bold text-[10px]">±</span>
+                <button className="map-toolbar-btn" onClick={() => handleFlipRows(Array.from(selectedRows))} disabled={selectedRows.size === 0} aria-label="Flip sign on selected rows">
+                  <span className="font-bold text-[10px]">±</span> Flip Sign
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Flip +/− sign on selected rows</TooltipContent>
             </Tooltip>
 
-            {/* Undo */}
+            {/* Undo — labeled */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleUndo} disabled={!canUndo} aria-label="Undo">
-                  <Undo2 className="h-3 w-3" />
+                <button className="map-toolbar-btn" onClick={handleUndo} disabled={!canUndo} aria-label="Undo">
+                  <Undo2 className="h-3 w-3" /> Undo
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Undo (Ctrl+Z)</TooltipContent>
             </Tooltip>
 
-            {/* Redo */}
+            {/* Redo — labeled */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleRedo} disabled={!canRedo} aria-label="Redo">
-                  <Redo2 className="h-3 w-3" />
+                <button className="map-toolbar-btn" onClick={handleRedo} disabled={!canRedo} aria-label="Redo">
+                  <Redo2 className="h-3 w-3" /> Redo
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
@@ -1850,71 +1850,72 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
             <div className="map-toolbar-divider" />
 
-          {/* Column visibility */}
-          <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
-            <PopoverTrigger asChild>
+            {/* Column visibility — labeled */}
+            <Popover open={showColumnManager} onOpenChange={setShowColumnManager}>
+              <PopoverTrigger asChild>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button className={cn("map-toolbar-btn h-6 w-6 p-0 justify-center", excludedColumns.size > 0 && "!border-[rgba(216,177,90,0.3)]")} style={excludedColumns.size > 0 ? { color: 'var(--map-amber)', borderColor: 'rgba(216,177,90,0.3)' } : {}} aria-label="Toggle column visibility">
-                      <Filter className="h-3 w-3" />
+                    <button className={cn("map-toolbar-btn", excludedColumns.size > 0 && "!border-[rgba(216,177,90,0.3)]")} style={excludedColumns.size > 0 ? { color: 'var(--map-amber)', borderColor: 'rgba(216,177,90,0.3)' } : {}} aria-label="Toggle column visibility">
+                      <Filter className="h-3 w-3" /> Columns{excludedColumns.size > 0 ? ` (${excludedColumns.size})` : ''}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">{excludedColumns.size > 0 ? `${excludedColumns.size} column${excludedColumns.size !== 1 ? 's' : ''} hidden` : 'Hide/show columns'}</TooltipContent>
                 </Tooltip>
-            </PopoverTrigger>
-            <PopoverContent side="bottom" align="start" className="w-64 p-3 max-h-[350px] overflow-auto">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-semibold">Column Visibility</h4>
-                {excludedColumns.size > 0 && (
-                  <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={handleRestoreAllColumns}>
-                    Show All
-                  </Button>
-                )}
-              </div>
-              <div className="space-y-1">
-                {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
-                  const colIdx = i + 1;
-                  const isExcluded = excludedColumns.has(colIdx);
-                  const headerLabel = detectedHeaders.headers[i] || `Col ${String.fromCharCode(65 + (colIdx % 26))}`;
-                  return (
-                    <div key={colIdx} className="flex items-center justify-between gap-2 py-0.5">
-                      <span className={cn("text-[11px] truncate", isExcluded && "text-muted-foreground line-through")}>{headerLabel}</span>
-                      <Switch checked={!isExcluded} onCheckedChange={(checked) => {
-                        if (checked) handleRestoreColumn(colIdx);
-                        else handleExcludeColumns([colIdx]);
-                      }} className="h-4 w-7" />
-                    </div>
-                  );
-                })}
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="start" className="w-64 p-3 max-h-[350px] overflow-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold">Column Visibility</h4>
+                  {excludedColumns.size > 0 && (
+                    <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={handleRestoreAllColumns}>
+                      Show All
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
+                    const colIdx = i + 1;
+                    const isExcluded = excludedColumns.has(colIdx);
+                    const headerLabel = detectedHeaders.headers[i] || `Col ${String.fromCharCode(65 + (colIdx % 26))}`;
+                    return (
+                      <div key={colIdx} className="flex items-center justify-between gap-2 py-0.5">
+                        <span className={cn("text-[11px] truncate", isExcluded && "text-muted-foreground line-through")}>{headerLabel}</span>
+                        <Switch checked={!isExcluded} onCheckedChange={(checked) => {
+                          if (checked) handleRestoreColumn(colIdx);
+                          else handleExcludeColumns([colIdx]);
+                        }} className="h-4 w-7" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
 
-          {/* Zoom */}
-          <div className="flex items-center gap-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomOut} disabled={zoomLevel <= 50} aria-label="Zoom out">
-                  <ZoomOut className="h-3 w-3" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Zoom out</TooltipContent>
-            </Tooltip>
-            <span className="text-[10px] tabular-nums w-7 text-center text-muted-foreground">{zoomLevel}%</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleZoomIn} disabled={zoomLevel >= 200} aria-label="Zoom in">
-                  <ZoomIn className="h-3 w-3" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Zoom in</TooltipContent>
-            </Tooltip>
-          </div>
+            {/* Zoom — labeled */}
+            <div className="flex items-center gap-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button className="map-toolbar-btn h-6 px-1.5" onClick={handleZoomOut} disabled={zoomLevel <= 50} aria-label="Zoom out">
+                    <ZoomOut className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Zoom out</TooltipContent>
+              </Tooltip>
+              <span className="text-[10px] tabular-nums w-7 text-center text-muted-foreground">{zoomLevel}%</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button className="map-toolbar-btn h-6 px-1.5" onClick={handleZoomIn} disabled={zoomLevel >= 200} aria-label="Zoom in">
+                    <ZoomIn className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Zoom in</TooltipContent>
+              </Tooltip>
+            </div>
           </TooltipProvider>
         </div>
 
-        {/* Right: Start date, actions, primary CTA */}
+        {/* Right: Start date, expand, reset, save, primary CTA */}
         <div className="flex items-center gap-1.5">
+          {/* Start Month */}
           <Popover>
             <PopoverTrigger asChild>
               <button className="map-toolbar-btn">
@@ -1970,17 +1971,17 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </Popover>
 
           <TooltipProvider delayDuration={200}>
-            {/* Expand — icon only */}
+            {/* Expand — labeled with larger icon */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={() => {
+                <button className="map-toolbar-btn" onClick={() => {
                   if (selectedFile) {
                     const url = URL.createObjectURL(selectedFile.file);
                     setExpandedFileUrl(url);
                     setExpandedPreview(true);
                   }
                 }} aria-label="Expand preview">
-                  <Maximize2 className="h-3 w-3" />
+                  <Maximize2 className="h-4 w-4" /> Expand
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Expand file preview</TooltipContent>
@@ -1988,13 +1989,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
             <div className="map-toolbar-divider" />
 
-            {/* Reset — icon only, destructive */}
+            {/* Reset — icon-only, destructive red */}
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button className="map-toolbar-btn map-toolbar-btn--destructive h-6 w-6 p-0 justify-center" aria-label="Reset all mappings">
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">Reset all mappings &amp; start over</TooltipContent>
@@ -2012,11 +2013,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               </AlertDialogContent>
             </AlertDialog>
 
-            {/* Save Draft — icon only */}
+            {/* Save Draft — icon-only */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} aria-label="Save draft">
-                  {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                  {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Save draft (without updating model)</TooltipContent>
@@ -2031,6 +2032,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </button>
         </div>
       </div>
+
+
 
       {/* Split panel: spreadsheet + field sidebar */}
       <ResizablePanelGroup
