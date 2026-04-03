@@ -426,7 +426,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
             {email.has_attachments && <Paperclip className="h-3 w-3" />}
           </div>
-          <div className="text-[14px] whitespace-pre-wrap break-words overflow-wrap-anywhere leading-[1.7] text-foreground/90 [&>p]:mb-3 max-w-full overflow-hidden">
+          <div className="text-[14px] leading-[1.7] text-foreground/90 [&>p]:mb-3 max-w-full" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
             {bodyMain}
           </div>
           {bodyQuoted && (
