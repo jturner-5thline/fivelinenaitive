@@ -26,8 +26,11 @@ export const WeeklySidebar = memo(function WeeklySidebar({
   data, dbItems, isAdmin, onEditItem, onRemoveItem, onAddItem, onRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklySidebarProps) {
-  const manualTotal = data.cash_in_next_8_weeks.reduce((s, i) => s + i.amount, 0);
-  const dbTotal = dbItems.reduce((s, i) => s + i.amount, 0);
+  const cashInItems = Array.isArray(data?.cash_in_next_8_weeks) ? data.cash_in_next_8_weeks : [];
+  const notes = Array.isArray(data?.notes) ? data.notes : [];
+  const dbEntries = dbItems || [];
+  const manualTotal = cashInItems.reduce((s, i) => s + i.amount, 0);
+  const dbTotal = dbEntries.reduce((s, i) => s + i.amount, 0);
   const total = manualTotal + dbTotal;
 
   return (
@@ -37,7 +40,7 @@ export const WeeklySidebar = memo(function WeeklySidebar({
         <div className="cf-sidebar-total">{fmtShort(total)}</div>
 
         {/* DB-backed deal items */}
-        {dbItems.map((item) => (
+        {dbEntries.map((item) => (
           <div key={item.id} className="cf-pipeline-item">
             <span className="cf-pipeline-name" style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>
               {item.name}
@@ -57,7 +60,7 @@ export const WeeklySidebar = memo(function WeeklySidebar({
         ))}
 
         {/* Manual items */}
-        {data.cash_in_next_8_weeks.map((item, i) => (
+        {cashInItems.map((item, i) => (
           <div key={`manual-${i}`} className="cf-pipeline-item">
             {isAdmin ? (
               <input
@@ -100,7 +103,7 @@ export const WeeklySidebar = memo(function WeeklySidebar({
 
       <div className="cf-sidebar-card">
         <div className="cf-sidebar-title">Notes & Key Items</div>
-        {data.notes.map((note, i) => (
+        {notes.map((note, i) => (
           <div key={i} className="cf-note-item" style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
             {isAdmin ? (
               <>

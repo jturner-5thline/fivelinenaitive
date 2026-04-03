@@ -47,6 +47,7 @@ export function ConditionalFormatDialog({ open, onOpenChange, rules, onAddRule, 
   const [value1, setValue1] = useState('');
   const [value2, setValue2] = useState('');
   const [selectedPreset, setSelectedPreset] = useState(0);
+  const safeRules = rules || [];
 
   const handleAdd = () => {
     const preset = PRESET_COLORS[selectedPreset];
@@ -73,10 +74,10 @@ export function ConditionalFormatDialog({ open, onOpenChange, rules, onAddRule, 
 
         <div className="space-y-4">
           {/* Existing rules */}
-          {rules.length > 0 && (
+          {safeRules.length > 0 && (
             <div className="space-y-1.5">
               <Label className="text-xs">Active Rules</Label>
-              {rules.map(rule => (
+              {safeRules.map(rule => (
                 <div key={rule.id} className="flex items-center gap-2 text-xs border rounded px-2 py-1.5">
                   <div className="w-4 h-4 rounded" style={{ backgroundColor: rule.bgColor, border: '1px solid rgba(0,0,0,0.1)' }} />
                   <span className="flex-1">{CONDITION_LABELS[rule.condition]} {rule.value1}{rule.value2 ? ` and ${rule.value2}` : ''}</span>
@@ -95,7 +96,7 @@ export function ConditionalFormatDialog({ open, onOpenChange, rules, onAddRule, 
               <Select value={condition} onValueChange={(v) => setCondition(v as ConditionType)}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(CONDITION_LABELS).map(([k, v]) => (
+                  {Object.entries(CONDITION_LABELS || {}).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v}</SelectItem>
                   ))}
                 </SelectContent>

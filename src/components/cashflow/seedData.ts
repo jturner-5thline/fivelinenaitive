@@ -263,7 +263,17 @@ function generateSidebarData(): SidebarData {
 }
 
 function generateWeeklySummary(weekly: WeeklyData): WeeklySummary {
-  const entries = Object.values(weekly);
+  const entries = Object.values(weekly || {});
+  if (entries.length === 0) {
+    return {
+      total_cash_in: 0,
+      total_cash_out: 0,
+      net_change: 0,
+      avg_ending_cash: 0,
+      min_ending_cash: 0,
+      max_ending_cash: 0,
+    };
+  }
   const cashIns = entries.map(e => e["TOTAL RECEIPTS"] as number || 0);
   const cashOuts = entries.map(e => e["TOTAL DISBURSEMENTS"] as number || 0);
   const endings = entries.map(e => e["ENDING CASH"] as number || 0);

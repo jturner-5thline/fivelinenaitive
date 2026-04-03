@@ -360,7 +360,7 @@ export async function parseCashFlowExcel(file: File): Promise<{
     rowCounter += 1;
   }
 
-  if (Object.keys(rows).length === 0) {
+  if (Object.keys(rows || {}).length === 0) {
     throw new Error(
       `No data rows found in the spreadsheet. Date row ${dateRowNum}, daily columns ${firstDateCol}-${lastDateCol}, first data row ${firstDataRow}, last data row ${lastDataRow}.`
     );
@@ -383,7 +383,7 @@ export async function parseCashFlowExcel(file: File): Promise<{
 
   const jan1Index = dates.indexOf('2025-01-01');
   if (jan1Index >= 0) {
-    const beginCashRow = Object.values(rows).find((row) => /BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH.*ON.*HAND/i.test(row.label));
+    const beginCashRow = Object.values(rows || {}).find((row) => /BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH.*ON.*HAND/i.test(row.label));
     if (beginCashRow && beginCashRow.values[jan1Index] === 0) {
       throw new Error('The parser found the daily date columns, but the Jan 1 2025 beginning cash value came through as 0. Check the sheet layout and header detection.');
     }

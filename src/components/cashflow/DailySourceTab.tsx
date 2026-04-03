@@ -47,6 +47,17 @@ export const DailySourceTab = memo(function DailySourceTab({
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(1000);
 
+  const safeData = useMemo<DailyData>(() => ({
+    dates: Array.isArray(data?.dates) ? data.dates : [],
+    rows: data?.rows && typeof data.rows === 'object' ? data.rows : {},
+  }), [data]);
+
+  const safeRowStructure = useMemo<DailyRowStructure>(() => ({
+    rows: Array.isArray(rowStructure?.rows) ? rowStructure.rows : [],
+  }), [rowStructure]);
+
+  const safeRecurringTags = recurringTags || [];
+
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     setScrollLeft(e.currentTarget.scrollLeft);
   }, []);
@@ -85,12 +96,12 @@ export const DailySourceTab = memo(function DailySourceTab({
 
   const handleCellClick = useCallback((rowKey: string, colIdx: number, currentVal: number) => {
     if (!isAdmin) return;
-    const meta = rowStructure.rows.find(r => `row_${r.row_num}` === rowKey);
+    const meta = safeRowStructure.rows.find(r => `row_${r.row_num}` === rowKey);
     if (meta?.is_total || meta?.is_protected) return;
     setEditingCell({ rowKey, colIdx });
     setEditValue(currentVal === 0 ? '' : currentVal.toString());
     setTimeout(() => inputRef.current?.select(), 10);
-  }, [isAdmin, rowStructure]);
+  }, [isAdmin, safeRowStructure]);
 
   const commitCellEdit = useCallback(() => {
     if (!editingCell) return;
@@ -101,11 +112,11 @@ export const DailySourceTab = memo(function DailySourceTab({
 
   const handleLabelDblClick = useCallback((rowKey: string, label: string) => {
     if (!isAdmin) return;
-    const meta = rowStructure.rows.find(r => `row_${r.row_num}` === rowKey);
+    const meta = safeRowStructure.rows.find(r => `row_${r.row_num}` === rowKey);
     if (meta?.is_protected) return;
     setEditingLabel(rowKey);
     setEditValue(label);
-  }, [isAdmin, rowStructure]);
+  }, [isAdmin, safeRowStructure]);
 
   const commitLabelEdit = useCallback(() => {
     if (!editingLabel) return;
@@ -131,13 +142,13 @@ export const DailySourceTab = memo(function DailySourceTab({
       { key: 'summary', label: 'SUMMARY', cssClass: 'summary', rows: [], addable: false },
     ];
 
-    rowStructure.rows.forEach(meta => {
+    safeRowStructure.rows.forEach(meta => {
       const section = s.find(sec => sec.key === meta.section);
       if (section) section.rows.push(`row_${meta.row_num}`);
     });
 
-    const knownKeys = new Set(rowStructure.rows.map(r => `row_${r.row_num}`));
-    Object.keys(data.rows).forEach(key => {
+    const knownKeys = new Set(safeRowStructure.rows.map(r => `row_${r.row_num}`));
+    Object.keys(safeData.rows || {}).forEach(key => {
       if (!knownKeys.has(key)) {
         const num = parseInt(key.replace('row_', ''));
         if (num >= 27 && num < 38) s[2].rows.push(key);
@@ -147,9 +158,9 @@ export const DailySourceTab = memo(function DailySourceTab({
     });
 
     return s;
-  }, [rowStructure, data.rows]);
+  }, [safeRowStructure, safeData.rows]);
 
-  const totalDateCount = data.dates.length;
+  const totalDateCount = safeData.dates.length;
 
   // Compute visible column range for virtualization
   const { startCol, endCol, totalWidth } = useMemo(() => {
@@ -167,7 +178,7 @@ export const DailySourceTab = memo(function DailySourceTab({
     return indices;
   }, [startCol, endCol]);
 
-  const getRecurring = useCallback((rowKey: string) => recurringTags.find(t => t.rowKey === rowKey), [recurringTags]);
+  const getRecurring = useCallback((rowKey: string) => safeRecurringTags.find(t => t.rowKey === rowKey), [safeRecurringTags]);
 
   const formatDate = useCallback((dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00');
@@ -213,8 +224,8 @@ export const DailySourceTab = memo(function DailySourceTab({
               {leftSpacer > 0 && <th />}
               {visibleIndices.map(i => (
                 <th key={i}>
-                  <div>{getDayOfWeek(data.dates[i])}</div>
-                  <div>{formatDate(data.dates[i])}</div>
+                  <div>{getDayOfWeek(safeData.dates[i])}</div>
+                  <div>{formatDate(safeData.dates[i])}</div>
                 </th>
               ))}
               {rightSpacer > 0 && <th />}
@@ -233,8 +244,8 @@ export const DailySourceTab = memo(function DailySourceTab({
                   sectionLabel={section.label}
                   cssClass={section.cssClass}
                   rowKeys={sectionRows}
-                  data={data}
-                  rowStructure={rowStructure}
+                  data={safeData}
+                  rowStructure={safeRowStructure}
                   visibleIndices={visibleIndices}
                   leftSpacer={leftSpacer}
                   rightSpacer={rightSpacer}
@@ -329,6 +340,8 @@ const VirtualizedSectionBlock = memo(function VirtualizedSectionBlock({
 }: VirtualizedSectionBlockProps) {
   if (!sectionLabel) return null;
   const isCollapsible = cssClass === 'receipts' || cssClass === 'disbursements';
+  const rows = data.rows || {};
+  const structureRows = rowStructure.rows || [];
 
   return (
     <>
@@ -343,9 +356,9 @@ const VirtualizedSectionBlock = memo(function VirtualizedSectionBlock({
         </td>
       </tr>
       {rowKeys.map(rowKey => {
-        const row = data.rows[rowKey];
+        const row = rows[rowKey];
         if (!row) return null;
-        const meta = rowStructure.rows.find(r => `row_${r.row_num}` === rowKey);
+        const meta = structureRows.find(r => `row_${r.row_num}` === rowKey);
         const isTotal = meta?.is_total ?? false;
         const isProtected = meta?.is_protected ?? false;
         const indent = meta?.indent ?? false;
@@ -387,7 +400,7 @@ const VirtualizedSectionBlock = memo(function VirtualizedSectionBlock({
             </td>
             {leftSpacer > 0 && <td />}
             {visibleIndices.map(colIdx => {
-              const val = row.values[colIdx] || 0;
+              const val = row.values?.[colIdx] || 0;
               const isEditing = editingCell?.rowKey === rowKey && editingCell?.colIdx === colIdx;
               const editable = isAdmin && !isTotal && !isProtected;
 

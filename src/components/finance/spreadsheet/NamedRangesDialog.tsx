@@ -28,6 +28,7 @@ export function NamedRangesDialog({
   currentSheet, selectionRange, selectedCell,
 }: NamedRangesDialogProps) {
   const [newName, setNewName] = useState('');
+  const namedRangeEntries = Object.entries(namedRanges || {});
 
   const currentRange = selectionRange
     ? `${currentSheet}!${getCellRef(selectionRange.startRow, selectionRange.startCol)}:${getCellRef(selectionRange.endRow, selectionRange.endCol)}`
@@ -71,10 +72,10 @@ export function NamedRangesDialog({
 
           {/* Existing ranges */}
           <div className="space-y-1 max-h-48 overflow-y-auto">
-            {Object.entries(namedRanges).length === 0 ? (
+            {namedRangeEntries.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">No named ranges defined. Select cells and add a name above.</p>
             ) : (
-              Object.entries(namedRanges).map(([name, range]) => (
+              namedRangeEntries.map(([name, range]) => (
                 <div key={name} className="flex items-center justify-between px-2 py-1.5 bg-muted/30 rounded text-xs">
                   <span className="font-medium">{name}</span>
                   <div className="flex items-center gap-2">

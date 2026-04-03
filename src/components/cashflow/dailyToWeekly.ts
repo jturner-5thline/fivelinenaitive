@@ -3,8 +3,8 @@ import type { DailyData, WeeklyData } from './types';
 /**
  * Find a row key by matching its label against a regex pattern.
  */
-function findRowKey(rows: DailyData['rows'], pattern: RegExp): string | null {
-  for (const [key, row] of Object.entries(rows)) {
+function findRowKey(rows: DailyData['rows'] | null | undefined, pattern: RegExp): string | null {
+  for (const [key, row] of Object.entries(rows || {})) {
     if (pattern.test(row.label)) return key;
   }
   return null;
@@ -13,8 +13,8 @@ function findRowKey(rows: DailyData['rows'], pattern: RegExp): string | null {
 /**
  * Find all row keys matching a pattern.
  */
-function findRowKeys(rows: DailyData['rows'], pattern: RegExp): string[] {
-  return Object.entries(rows)
+function findRowKeys(rows: DailyData['rows'] | null | undefined, pattern: RegExp): string[] {
+  return Object.entries(rows || {})
     .filter(([, row]) => pattern.test(row.label))
     .map(([key]) => key);
 }
@@ -23,12 +23,16 @@ function findRowKeys(rows: DailyData['rows'], pattern: RegExp): string[] {
  * Aggregates daily cash flow data into weekly buckets.
  * Finds rows by label pattern instead of hardcoded row keys.
  */
-export function aggregateDailyToWeekly(daily: DailyData): WeeklyData {
+export function aggregateDailyToWeekly(daily: DailyData | null | undefined): WeeklyData {
+  const safeDaily: DailyData = {
+    dates: Array.isArray(daily?.dates) ? daily.dates : [],
+    rows: daily?.rows && typeof daily.rows === 'object' ? daily.rows : {},
+  };
   const weekly: WeeklyData = {};
-  const dates = daily.dates;
+  const dates = safeDaily.dates;
   if (dates.length === 0) return weekly;
 
-  const rows = daily.rows;
+  const rows = safeDaily.rows;
 
   // Identify key rows by label
   const beginCashKey = findRowKey(rows, /BEGINNING.*BANK.*BALANCE|BEGINNING.*CASH.*ON.*HAND/i);
@@ -94,10 +98,10 @@ export function aggregateDailyToWeekly(daily: DailyData): WeeklyData {
     };
 
     // Beginning Cash = value from first day of week
-    const beginCash = beginCashKey ? Math.round(rows[beginCashKey].values[weekStart] || 0) : 0;
+    const beginCash = beginCashKey ? Math.round(rows[beginCashKey]?.values?.[weekStart] || 0) : 0;
 
     // Ending Cash = value from last day of week
-    const endCash = endCashKey ? Math.round(rows[endCashKey].values[lastIdx] || 0) : 0;
+    const endCash = endCashKey ? Math.round(rows[endCashKey]?.values?.[lastIdx] || 0) : 0;
 
     // Receipts - sum individual items
     const revDeposits = sumKeys(revenueKeys);
@@ -144,8 +148,8 @@ export function aggregateDailyToWeekly(daily: DailyData): WeeklyData {
       week_ending: endDate,
       "BEGINNING CASH": beginCash,
       "ENDING CASH": endCash,
-      "Add'l Liquidity (Delayed Draw)": mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey].values[weekStart] || 0) : 0,
-      "TOTAL CASH ON HAND": endCash + (mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey].values[weekStart] || 0) : 0),
+      "Add'l Liquidity (Delayed Draw)": mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey]?.values?.[weekStart] || 0) : 0,
+      "TOTAL CASH ON HAND": endCash + (mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey]?.values?.[weekStart] || 0) : 0),
       "Revenue Deposits": Math.round(revDeposits),
       "Customer Payments": Math.round(custPay),
       "Consulting Fees": Math.round(consulting),

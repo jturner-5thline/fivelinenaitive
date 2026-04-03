@@ -25,15 +25,19 @@ const formatCurrency = (v: number) => {
 };
 
 export function PnLTrendCharts({ periodColumns, financialData, lineItems, className }: PnLTrendChartsProps) {
+  const safePeriodColumns = periodColumns || [];
+  const safeFinancialData = financialData || [];
+  const safeLineItems = lineItems || [];
+
   const getAmount = (periodId: string | undefined, name: string): number => {
     if (!periodId) return 0;
-    const li = lineItems.find(l => l.name.toLowerCase().includes(name.toLowerCase()));
+    const li = safeLineItems.find(l => l.name.toLowerCase().includes(name.toLowerCase()));
     if (!li) return 0;
-    return financialData.find(d => d.period_id === periodId && d.line_item_id === li.id)?.amount || 0;
+    return safeFinancialData.find(d => d.period_id === periodId && d.line_item_id === li.id)?.amount || 0;
   };
 
   const chartData = useMemo(() => {
-    return periodColumns
+    return safePeriodColumns
       .filter(col => col.period)
       .map(col => {
         const pid = col.period!.id;
@@ -60,7 +64,7 @@ export function PnLTrendCharts({ periodColumns, financialData, lineItems, classN
           opexPct: revenue > 0 ? (opex / revenue) * 100 : 0,
         };
       });
-  }, [periodColumns, financialData, lineItems]);
+  }, [safePeriodColumns, safeFinancialData, safeLineItems]);
 
   // Period-over-period changes
   const horizontalData = useMemo(() => {
