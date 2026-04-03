@@ -1,5 +1,4 @@
 import React from 'react';
-import { MOCK_DEAL_DATA } from './mockData';
 import type { UnderwritingDealData } from './types';
 import {
   SectionDivider, SubHeader, MetricCard, SummaryTile, ChecklistMatrix,
@@ -7,13 +6,26 @@ import {
   FacilityBox, fmtMM, PnlKpiCard, AnnualCard, currencyColor,
 } from './components';
 import { RevenueBreakdownChart, RevenueVsExpensesChart, EbitdaChart } from './ChartPanel';
+import { FileText } from 'lucide-react';
 
 interface Props {
   dealData?: UnderwritingDealData;
 }
 
 export function CreditUnderwritingDashboard({ dealData }: Props) {
-  const d = dealData || MOCK_DEAL_DATA;
+  if (!dealData) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
+        <h2 className="text-lg font-semibold text-foreground mb-1">No Financial Data</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
+          Upload and map financial files in the Data Mapping tab to populate this dashboard with live underwriting data.
+        </p>
+      </div>
+    );
+  }
+
+  const d = dealData;
 
   return (
     <div className="min-h-screen">
