@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, RotateCcw, LayoutDashboard, BarChart3, Eye, Layers, Users } from 'lucide-react';
 import { type FPADashboardConfig, DEFAULT_FPA_CONFIG } from '@/hooks/useFPADashboardConfig';
-import { useFPATabPermissions, type TabPermissions, type PermissionUser } from '@/hooks/useFPATabPermissions';
+import { useFPATabPermissions, type TabPermissions, type ModuleTabPermissions, type PermissionUser } from '@/hooks/useFPATabPermissions';
 import { FPAPermissionsTab } from './FPAPermissionsTab';
 import { toast } from 'sonner';
 
@@ -70,18 +70,20 @@ function ToggleSection({
 export function FPADashboardConfigPanel({ open, onOpenChange, config, onSave, isSaving }: FPADashboardConfigPanelProps) {
   const [local, setLocal] = useState<FPADashboardConfig>(config);
   const {
-    permissions, savePermissions, isSaving: permsSaving, isPermissionsAdmin, currentEmail, companyUsers,
+    permissions, modulePermissions, savePermissions, isSaving: permsSaving, isPermissionsAdmin, currentEmail, companyUsers,
   } = useFPATabPermissions();
   const [localPerms, setLocalPerms] = useState<TabPermissions>(permissions);
+  const [localModulePerms, setLocalModulePerms] = useState<ModuleTabPermissions>(modulePermissions);
   const [activeTab, setActiveTab] = useState('visibility');
 
   useEffect(() => {
     if (open) {
       setLocal(config);
       setLocalPerms(permissions);
+      setLocalModulePerms(modulePermissions);
       setActiveTab('visibility');
     }
-  }, [open, config, permissions]);
+  }, [open, config, permissions, modulePermissions]);
 
   const updateSection = <K extends keyof FPADashboardConfig>(section: K, key: string, value: boolean) => {
     setLocal(prev => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
@@ -89,7 +91,7 @@ export function FPADashboardConfigPanel({ open, onOpenChange, config, onSave, is
 
   const handleSave = async () => {
     if (activeTab === 'permissions') {
-      const ok = await savePermissions(localPerms);
+      const ok = await savePermissions(localPerms, localModulePerms);
       if (ok) {
         toast.success('Tab permissions saved');
         onOpenChange(false);
@@ -147,7 +149,9 @@ export function FPADashboardConfigPanel({ open, onOpenChange, config, onSave, is
                 <div className="pr-2">
                   <FPAPermissionsTab
                     permissions={localPerms}
+                    modulePermissions={localModulePerms}
                     onChange={setLocalPerms}
+                    onModuleChange={setLocalModulePerms}
                     currentEmail={currentEmail}
                     companyUsers={companyUsers}
                   />
