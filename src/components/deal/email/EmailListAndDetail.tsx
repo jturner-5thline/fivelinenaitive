@@ -595,6 +595,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
   const [showAiAssist, setShowAiAssist] = useState(false);
+  const [showAiDraft, setShowAiDraft] = useState(false);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
   
   // Reply state
