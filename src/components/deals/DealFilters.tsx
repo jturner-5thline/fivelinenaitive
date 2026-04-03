@@ -189,7 +189,7 @@ export function DealFilters({
             options={filterConfigs[key]}
             selected={filters[key] as string[]}
             onChange={getFilterOnChange(key)}
-            className="w-[130px]"
+            className={key === 'stage' || key === 'status' ? 'w-[105px]' : 'w-[130px]'}
           />
         ))}
 
