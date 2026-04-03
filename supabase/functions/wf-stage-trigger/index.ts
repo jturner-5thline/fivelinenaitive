@@ -687,7 +687,7 @@ Deno.serve(async (req: Request) => {
       // Fall back to main deals table
       const { data: mainDeal } = await supabase
         .from("deals")
-        .select("id, company, stage, status, user_id, company_id")
+        .select("id, company, stage, status, user_id, company_id, manager, analyst, deal_owner")
         .eq("id", deal_id)
         .maybeSingle();
 
@@ -702,10 +702,29 @@ Deno.serve(async (req: Request) => {
       dealName = mainDeal.company || "Unknown Deal";
       console.log(`[wf-stage-trigger] Found deal in main deals table: ${dealName}`);
 
-      // Use deal owner as default manager
-      const managerId = mainDeal.user_id;
-      const analystId: string | null = null;
-      const opsId: string | null = null;
+      // Resolve manager/analyst/deal_owner display names to auth user IDs via profiles
+      const namesToResolve = [mainDeal.manager, mainDeal.analyst, mainDeal.deal_owner].filter(Boolean);
+      const nameToUserIdMap: Record<string, string> = {};
+
+      if (namesToResolve.length > 0) {
+        const { data: matchedProfiles } = await supabase
+          .from("profiles")
+          .select("user_id, display_name")
+          .in("display_name", namesToResolve);
+
+        if (matchedProfiles) {
+          for (const p of matchedProfiles) {
+            if (p.display_name) nameToUserIdMap[p.display_name.toLowerCase()] = p.user_id;
+          }
+        }
+        console.log(`[wf-stage-trigger] Resolved ${Object.keys(nameToUserIdMap).length}/${namesToResolve.length} names to user IDs:`, JSON.stringify(nameToUserIdMap));
+      }
+
+      const managerId = (mainDeal.manager && nameToUserIdMap[mainDeal.manager.toLowerCase()]) || mainDeal.user_id;
+      const analystId = mainDeal.analyst ? (nameToUserIdMap[mainDeal.analyst.toLowerCase()] || null) : null;
+      const dealOwnerId = mainDeal.deal_owner ? (nameToUserIdMap[mainDeal.deal_owner.toLowerCase()] || null) : null;
+      // ops defaults to deal owner or manager
+      const opsId = dealOwnerId || managerId;
 
       // Map the main deals stage to a wf_deal_stage enum value
       const wfStage = DEALS_TO_WF_STAGE[mainDeal.stage] || "nda_needs_list_sent";
@@ -717,15 +736,14 @@ Deno.serve(async (req: Request) => {
         name: mainDeal.company || "Unknown Deal",
         company_name: mainDeal.company,
         stage: wfStage,
-        manager_id: null, // wf_users FK - can't use auth user IDs directly
-        analyst_id: null,
-        ops_id: null,
+        manager_id: managerId,
+        analyst_id: analystId,
+        ops_id: opsId,
         org_company_id: org_company_id || mainDeal.company_id,
       }, { onConflict: "id" });
 
       if (syncError) {
         console.error(`[wf-stage-trigger] Failed to sync deal to wf_deals:`, syncError);
-        // Continue anyway - tasks will fail but we still log the attempt
       } else {
         console.log(`[wf-stage-trigger] ✅ Synced deal to wf_deals table`);
       }
@@ -733,6 +751,8 @@ Deno.serve(async (req: Request) => {
       deal = {
         id: mainDeal.id,
         name: mainDeal.company,
+        company_name: mainDeal.company,
+        contact_email: null,
         stage: mainDeal.stage,
         manager_id: managerId,
         analyst_id: analystId,
@@ -740,7 +760,7 @@ Deno.serve(async (req: Request) => {
         org_company_id: org_company_id || mainDeal.company_id,
       };
 
-      console.log(`[wf-stage-trigger] Resolved roles - manager: ${managerId}, analyst: ${analystId}, ops: ${opsId}`);
+      console.log(`[wf-stage-trigger] Resolved roles - manager: ${managerId} (${mainDeal.manager}), analyst: ${analystId} (${mainDeal.analyst}), ops: ${opsId}`);
     }
 
     // Determine which workflow sets to check
