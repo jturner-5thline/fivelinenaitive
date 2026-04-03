@@ -421,7 +421,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
       </button>
 
       {expanded && (
-        <div className="px-6 pb-5 pl-[64px]">
+        <div className="px-6 pb-5 pl-[64px] min-w-0 overflow-hidden">
           <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
             {email.has_attachments && <Paperclip className="h-3 w-3" />}
