@@ -421,12 +421,12 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
       </button>
 
       {expanded && (
-        <div className="px-6 pb-5 pl-[64px]">
+        <div className="px-6 pb-5 pl-[64px] min-w-0 overflow-hidden">
           <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
             {email.has_attachments && <Paperclip className="h-3 w-3" />}
           </div>
-          <div className="text-[14px] whitespace-pre-wrap leading-[1.7] text-foreground/90 [&>p]:mb-3">
+          <div className="text-[14px] whitespace-pre-wrap break-words overflow-wrap-anywhere leading-[1.7] text-foreground/90 [&>p]:mb-3 max-w-full overflow-hidden">
             {bodyMain}
           </div>
           {bodyQuoted && (
@@ -448,7 +448,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
                     <ChevronUp className="h-3.5 w-3.5" />
                     <span>Hide quoted text</span>
                   </button>
-                  <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 whitespace-pre-wrap leading-[1.65]">
+                  <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 whitespace-pre-wrap break-words overflow-wrap-anywhere leading-[1.65] max-w-full overflow-hidden">
                     {bodyQuoted}
                   </div>
                 </>

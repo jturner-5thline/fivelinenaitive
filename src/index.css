@@ -382,3 +382,9 @@
   border: 1px dashed hsl(var(--primary) / 0.4);
   border-radius: var(--radius);
 }
+
+@layer utilities {
+  .overflow-wrap-anywhere {
+    overflow-wrap: anywhere;
+  }
+}
