@@ -2032,9 +2032,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </button>
         </div>
       </div>
-            <PopoverContent side="bottom" align="start" className="w-64 p-3 max-h-[350px] overflow-auto">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-semibold">Column Visibility</h4>
                 {excludedColumns.size > 0 && (
                   <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={handleRestoreAllColumns}>
                     Show All
