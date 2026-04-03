@@ -72,9 +72,6 @@ export function FPAWorkspace() {
           {/* Setup Wizard (first-time) */}
           <FPASetupWizard onComplete={handleSetupComplete} />
 
-          {/* Command Palette (⌘K) + Keyboard Shortcuts (⌘/) */}
-          <FPACommandPalette onNavigateToTab={handleNavigateToTab} onAction={handleCommandAction} />
-          <FPAKeyboardShortcuts onNavigateToTab={handleNavigateToTab} onAction={handleCommandAction} />
           <SmartUploadWizard open={uploadWizardOpen} onOpenChange={setUploadWizardOpen} />
 
 
