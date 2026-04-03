@@ -226,8 +226,8 @@ export function useUpdateWfTaskStatus() {
 export function useUpdateWfWorkflow() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; default_owner_user_id?: string | null; is_active?: boolean }) => {
-      const { error } = await supabase.from('wf_workflows').update(updates).eq('id', id);
+    mutationFn: async ({ id, ...updates }: { id: string; default_owner_user_id?: string | null; is_active?: boolean; name?: string; description?: string | null; default_owner_role?: string }) => {
+      const { error } = await supabase.from('wf_workflows').update(updates as any).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
