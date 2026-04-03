@@ -1991,16 +1991,16 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
             {/* Reset — icon-only, destructive red */}
             <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className="map-toolbar-btn map-toolbar-btn--destructive h-6 w-6 p-0 justify-center" aria-label="Reset all mappings">
-                      <Trash2 className="h-3.5 w-3.5" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertDialogTrigger asChild>
+                    <button className="map-toolbar-btn map-toolbar-btn--destructive h-7 w-7 p-0 flex items-center justify-center" aria-label="Reset all mappings">
+                      <Trash2 className="h-4 w-4" />
                     </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Reset all mappings &amp; start over</TooltipContent>
-                </Tooltip>
-              </AlertDialogTrigger>
+                  </AlertDialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Reset all mappings</TooltipContent>
+              </Tooltip>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Start New Mapping?</AlertDialogTitle>
@@ -2016,11 +2016,11 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             {/* Save Draft — icon-only */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="map-toolbar-btn h-6 w-6 p-0 justify-center" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} aria-label="Save draft">
-                  {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                <button className="map-toolbar-btn h-7 w-7 p-0 flex items-center justify-center" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} aria-label="Save draft">
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Save draft (without updating model)</TooltipContent>
+              <TooltipContent side="bottom">Save draft</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
