@@ -1165,6 +1165,38 @@ export type Database = {
           },
         ]
       }
+      cashflow_sidebar_data: {
+        Row: {
+          cash_in_items: Json
+          company_id: string
+          id: string
+          notes: Json
+          updated_at: string
+        }
+        Insert: {
+          cash_in_items?: Json
+          company_id: string
+          id?: string
+          notes?: Json
+          updated_at?: string
+        }
+        Update: {
+          cash_in_items?: Json
+          company_id?: string
+          id?: string
+          notes?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashflow_sidebar_data_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_conversations: {
         Row: {
           created_at: string
