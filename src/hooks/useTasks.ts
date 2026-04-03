@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { toast } from 'sonner';
 
 async function fireZapierWebhook(eventType: string, payload: Record<string, any>) {
@@ -333,6 +334,24 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         };
         fireZapierWebhook('task_created', payload);
         fireZapierWebhook('task_assigned', payload);
+
+        // Asana sync (fire-and-forget)
+        (async () => {
+          try {
+            const ctx = await getAsanaSyncContext((data as any).company_id || null);
+            if (ctx) {
+              await syncTaskToAsana(ctx, {
+                id: (data as any).id,
+                title: (data as any).title,
+                description: (data as any).description,
+                due_date: (data as any).due_date,
+                assignee_email: assigneeProfile?.email || null,
+              });
+            }
+          } catch (e) {
+            console.error('Asana sync failed:', e);
+          }
+        })();
       }
     },
     onError: () => toast.error('Failed to create task'),
