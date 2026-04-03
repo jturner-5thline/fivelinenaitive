@@ -194,7 +194,7 @@ export function CashFlowManager() {
     };
   }, [company?.id, sidebarData]);
 
-  // Inject cash-in DB items + manual sidebar items into dailyData's "Customer Payments" row
+  // Inject cash-in DB items + manual sidebar items into dailyData and roll them through dependent cash rows
   const enhancedDailyData = useMemo(() => {
     const allCashInItems = [
       ...cashInDbItems.map(i => ({ date: i.target_date, amount: i.amount })),
@@ -202,10 +202,15 @@ export function CashFlowManager() {
     ];
     if (allCashInItems.length === 0) return dailyData;
 
-    // Find the Customer Payments row key
-    const custPayKey = Object.entries(dailyData.rows).find(
-      ([, row]) => /Customer\s*Payment/i.test(row.label)
+    const findRowKey = (pattern: RegExp) => Object.entries(dailyData.rows).find(
+      ([, row]) => pattern.test(row.label)
     )?.[0];
+
+    const custPayKey = findRowKey(/Customer\s*Payment/i);
+    const totalReceiptsKey = findRowKey(/TOTAL.*CASH.*RECEIPTS|TOTAL.*RECEIPTS/i);
+    const netCashChangeKey = findRowKey(/NET.*CASH.*CHANGE/i);
+    const endingCashKey = findRowKey(/ENDING.*(CASH|BANK|BALANCE)/i);
+    const beginningCashKey = findRowKey(/BEGINNING.*(CASH|BANK|BALANCE)/i);
     if (!custPayKey) return dailyData;
 
     // Build a date→amount map from cash-in items
@@ -230,21 +235,65 @@ export function CashFlowManager() {
     }
     if (!hasMatch) return dailyData;
 
-    // Clone only the affected row's values
-    const newValues = [...dailyData.rows[custPayKey].values];
+    const customerPaymentValues = [...dailyData.rows[custPayKey].values];
+    const totalReceiptsValues = totalReceiptsKey ? [...dailyData.rows[totalReceiptsKey].values] : null;
+    const netCashChangeValues = netCashChangeKey ? [...dailyData.rows[netCashChangeKey].values] : null;
+    const endingCashValues = endingCashKey ? [...dailyData.rows[endingCashKey].values] : null;
+    const beginningCashValues = beginningCashKey ? [...dailyData.rows[beginningCashKey].values] : null;
+    const dailyDeltas = new Array(dailyData.dates.length).fill(0);
+
     for (const [date, amount] of Object.entries(dateAmountMap)) {
       const idx = dateIndexMap[date];
       if (idx !== undefined) {
-        newValues[idx] = (newValues[idx] || 0) + amount;
+        customerPaymentValues[idx] = (customerPaymentValues[idx] || 0) + amount;
+        if (totalReceiptsValues) totalReceiptsValues[idx] = (totalReceiptsValues[idx] || 0) + amount;
+        if (netCashChangeValues) netCashChangeValues[idx] = (netCashChangeValues[idx] || 0) + amount;
+        dailyDeltas[idx] += amount;
       }
+    }
+
+    let runningDelta = 0;
+    const cumulativeDelta = dailyDeltas.map((delta) => {
+      runningDelta += delta;
+      return runningDelta;
+    });
+
+    if (endingCashValues) {
+      for (let i = 0; i < endingCashValues.length; i++) {
+        endingCashValues[i] = (endingCashValues[i] || 0) + cumulativeDelta[i];
+      }
+    }
+
+    if (beginningCashValues) {
+      for (let i = 1; i < beginningCashValues.length; i++) {
+        beginningCashValues[i] = (beginningCashValues[i] || 0) + cumulativeDelta[i - 1];
+      }
+    }
+
+    const updatedRows = {
+      ...dailyData.rows,
+      [custPayKey]: { ...dailyData.rows[custPayKey], values: customerPaymentValues },
+    };
+
+    if (totalReceiptsKey && totalReceiptsValues) {
+      updatedRows[totalReceiptsKey] = { ...dailyData.rows[totalReceiptsKey], values: totalReceiptsValues };
+    }
+
+    if (netCashChangeKey && netCashChangeValues) {
+      updatedRows[netCashChangeKey] = { ...dailyData.rows[netCashChangeKey], values: netCashChangeValues };
+    }
+
+    if (endingCashKey && endingCashValues) {
+      updatedRows[endingCashKey] = { ...dailyData.rows[endingCashKey], values: endingCashValues };
+    }
+
+    if (beginningCashKey && beginningCashValues) {
+      updatedRows[beginningCashKey] = { ...dailyData.rows[beginningCashKey], values: beginningCashValues };
     }
 
     return {
       ...dailyData,
-      rows: {
-        ...dailyData.rows,
-        [custPayKey]: { ...dailyData.rows[custPayKey], values: newValues },
-      },
+      rows: updatedRows,
     };
   }, [dailyData, cashInDbItems, sidebarData.cash_in_next_8_weeks]);
 
