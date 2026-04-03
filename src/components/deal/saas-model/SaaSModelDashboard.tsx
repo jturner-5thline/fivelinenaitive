@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { FinancialIntelligencePanel } from './FinancialIntelligencePanel';
 import { SaaSModelData } from './types';
 import { fmtCurrency, fmtPct, fmtRatio, isNegative } from './formatters';
 import { annualRollup } from './calculations';
@@ -18,6 +19,7 @@ interface AnnotationHook {
 interface Props {
   model: SaaSModelData;
   annotations?: AnnotationHook;
+  dealId?: string;
 }
 
 function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
@@ -315,8 +317,16 @@ function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
   };
 }
 
-export function SaaSModelDashboard({ model: m, annotations: ann }: Props) {
+export function SaaSModelDashboard({ model: m, annotations: ann, dealId }: Props) {
   const underwritingData = useMemo(() => buildUnderwritingData(m), [m]);
+  const hasData = m.totalRevenue.some(v => v !== 0);
 
-  return <CreditUnderwritingDashboard dealData={underwritingData} />;
+  return (
+    <div className="space-y-4">
+      <CreditUnderwritingDashboard dealData={underwritingData} />
+      {dealId && (
+        <FinancialIntelligencePanel dealId={dealId} hasFinancialData={hasData} />
+      )}
+    </div>
+  );
 }
