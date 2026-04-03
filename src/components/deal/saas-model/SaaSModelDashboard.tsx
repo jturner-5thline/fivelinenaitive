@@ -18,6 +18,7 @@ interface AnnotationHook {
 interface Props {
   model: SaaSModelData;
   annotations?: AnnotationHook;
+  dealId?: string;
 }
 
 function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
