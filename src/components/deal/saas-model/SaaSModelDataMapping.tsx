@@ -2016,8 +2016,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             {/* Save Draft — icon-only */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="map-toolbar-btn h-8 w-8 p-0 flex items-center justify-center" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} aria-label="Save draft">
-                  {isSaving ? <Loader2 className="h-8 w-8 animate-spin" /> : <Save className="h-8 w-8" />}
+                <button className="map-toolbar-btn !h-auto !w-auto p-1.5 flex items-center justify-center" onClick={handleSaveProgress} disabled={mappedCount === 0 || isSaving || !hasUnsavedMappings} aria-label="Save draft">
+                  {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Save draft</TooltipContent>
