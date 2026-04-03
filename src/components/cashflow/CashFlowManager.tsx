@@ -134,8 +134,62 @@ export function CashFlowManager() {
   const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(SEED_DAILY_DATA));
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => deepClone(SEED_SIDEBAR_DATA));
 
-  // Weekly data derived from daily
-  const weeklyData = useMemo(() => aggregateDailyToWeekly(dailyData), [dailyData]);
+  // Inject cash-in DB items + manual sidebar items into dailyData's "Customer Payments" row
+  const enhancedDailyData = useMemo(() => {
+    const allCashInItems = [
+      ...cashInDbItems.map(i => ({ date: i.target_date, amount: i.amount })),
+      ...sidebarData.cash_in_next_8_weeks.map(i => ({ date: i.date, amount: i.amount })),
+    ];
+    if (allCashInItems.length === 0) return dailyData;
+
+    // Find the Customer Payments row key
+    const custPayKey = Object.entries(dailyData.rows).find(
+      ([, row]) => /Customer\s*Payment/i.test(row.label)
+    )?.[0];
+    if (!custPayKey) return dailyData;
+
+    // Build a date→amount map from cash-in items
+    const dateAmountMap: Record<string, number> = {};
+    for (const item of allCashInItems) {
+      if (!item.date || !item.amount) continue;
+      // Normalize to YYYY-MM-DD
+      const dateKey = item.date.slice(0, 10);
+      dateAmountMap[dateKey] = (dateAmountMap[dateKey] || 0) + item.amount;
+    }
+
+    // Build date→index lookup
+    const dateIndexMap: Record<string, number> = {};
+    for (let i = 0; i < dailyData.dates.length; i++) {
+      dateIndexMap[dailyData.dates[i]] = i;
+    }
+
+    // Check if any cash-in dates match dailyData dates
+    let hasMatch = false;
+    for (const d of Object.keys(dateAmountMap)) {
+      if (dateIndexMap[d] !== undefined) { hasMatch = true; break; }
+    }
+    if (!hasMatch) return dailyData;
+
+    // Clone only the affected row's values
+    const newValues = [...dailyData.rows[custPayKey].values];
+    for (const [date, amount] of Object.entries(dateAmountMap)) {
+      const idx = dateIndexMap[date];
+      if (idx !== undefined) {
+        newValues[idx] = (newValues[idx] || 0) + amount;
+      }
+    }
+
+    return {
+      ...dailyData,
+      rows: {
+        ...dailyData.rows,
+        [custPayKey]: { ...dailyData.rows[custPayKey], values: newValues },
+      },
+    };
+  }, [dailyData, cashInDbItems, sidebarData.cash_in_next_8_weeks]);
+
+  // Weekly data derived from enhanced daily (includes cash-in items)
+  const weeklyData = useMemo(() => aggregateDailyToWeekly(enhancedDailyData), [enhancedDailyData]);
 
   useEffect(() => {
     if (isImported && importedDailyData) {
@@ -199,8 +253,8 @@ export function CashFlowManager() {
   const [exportOpen, setExportOpen] = useState(false);
   const [archiveEntries, setArchiveEntries] = useState<ExportArchiveEntry[]>([]);
 
-  // Data accessors — stable references
-  const rawDaily = useMemo(() => role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData, [role, sandboxDaily, dailyData]);
+  // Data accessors — stable references (use enhancedDailyData so cash-in items flow through)
+  const rawDaily = useMemo(() => role === 'viewer' && sandboxDaily ? sandboxDaily : enhancedDailyData, [role, sandboxDaily, enhancedDailyData]);
   const rawWeekly = useMemo(() => aggregateDailyToWeekly(rawDaily), [rawDaily]);
   const rawSidebar = useMemo(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
 
