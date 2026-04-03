@@ -1,12 +1,10 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { fmtCurrency, fmtPct, isNegative } from './formatters';
 import { MonthEntry } from './types';
-import { Grid3X3, Calendar, Download, ChevronDown, ChevronRight, ArrowUpDown } from 'lucide-react';
+import { Calendar, Download, ChevronDown, ChevronRight, ArrowUpDown, Grid3X3 } from 'lucide-react';
 
 export interface RowDef {
   key: string;
@@ -42,7 +40,6 @@ interface SpreadsheetTableProps {
   compactCurrency?: boolean;
 }
 
-// Threshold for conditional formatting highlight (>20% MoM swing)
 const VARIANCE_THRESHOLD = 20;
 
 export function SpreadsheetTable({
@@ -107,10 +104,8 @@ export function SpreadsheetTable({
     return indices.reduce((s, i) => s + (values[i] || 0), 0);
   }, [years, months, annualAggregation]);
 
-  // Compute MoM variance percentage for a row at a given column index
   const getVariancePct = useCallback((values: number[], colIdx: number, isPct: boolean): number | null => {
     if (viewMode === 'annual') {
-      // YoY variance
       if (colIdx === 0) return null;
       const curr = getAnnualValue(values, colIdx, isPct);
       const prev = getAnnualValue(values, colIdx - 1, isPct);
@@ -118,7 +113,6 @@ export function SpreadsheetTable({
       if (prev === 0) return null;
       return ((curr - prev) / Math.abs(prev)) * 100;
     }
-    // MoM variance
     if (colIdx === 0) return null;
     const curr = values[colIdx] ?? 0;
     const prev = values[colIdx - 1] ?? 0;
@@ -186,238 +180,324 @@ export function SpreadsheetTable({
     : years.map((y, i) => ({ label: String(y), index: i, isForecast: false }));
 
   return (
-    <Card className="border-border/30">
-      <CardContent className="p-0">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/20">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          <div className="flex items-center gap-2">
-            {/* Variance toggle */}
-            {onToggleVariance && (
-              <Button
-                variant={showVariance ? 'default' : 'ghost'}
-                size="sm"
-                className="h-6 text-[11px] px-2.5 rounded-sm gap-1"
-                onClick={onToggleVariance}
-              >
-                <ArrowUpDown className="h-3 w-3" />
-                Δ Variance
-              </Button>
-            )}
-            <div className="flex gap-0.5 bg-muted/30 rounded-sm p-0.5">
-              <Button
-                variant={viewMode === 'monthly' ? 'default' : 'ghost'}
-                size="sm"
-                className="h-6 text-[11px] px-2.5 rounded-sm"
-                onClick={() => onViewModeChange('monthly')}
-              >
-                <Calendar className="h-3 w-3 mr-1" /> Monthly
-              </Button>
-              <Button
-                variant={viewMode === 'annual' ? 'default' : 'ghost'}
-                size="sm"
-                className="h-6 text-[11px] px-2.5 rounded-sm"
-                onClick={() => onViewModeChange('annual')}
-              >
-                <Grid3X3 className="h-3 w-3 mr-1" /> Annual
-              </Button>
-            </div>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleExport}>
-              <Download className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Formula Bar */}
-        <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border/15 bg-muted/10 min-h-[32px]">
-          {selectedCell ? (
-            <>
-              <Badge variant="outline" className="h-5 text-[10px] font-mono px-1.5 rounded-sm bg-muted/30">
-                {formulaBarContent.cellRef}
-              </Badge>
-              <span className="text-xs text-muted-foreground truncate">
-                {formulaBarContent.rowLabel}
-              </span>
-              <span className="text-xs font-mono ml-auto">
-                {formulaBarContent.formula ? (
-                  <span className="text-primary/70">ƒ {formulaBarContent.formula} = </span>
-                ) : null}
-                {formulaBarContent.value}
-              </span>
-            </>
-          ) : (
-            <span className="text-[11px] text-muted-foreground/50 italic">
-              Click a cell to inspect
-            </span>
+    <div className="rounded-lg border overflow-hidden"
+      style={{
+        background: 'var(--map-bg, hsl(var(--card)))',
+        borderColor: 'var(--map-border, hsl(var(--border) / 0.3))',
+      }}
+    >
+      {/* ── Toolbar ── */}
+      <div className="flex items-center justify-between px-4 py-2"
+        style={{
+          background: 'var(--map-surface, hsl(var(--card)))',
+          borderBottom: '1px solid var(--map-border, hsl(var(--border) / 0.2))',
+        }}
+      >
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--map-text, hsl(var(--foreground)))' }}>{title}</h3>
+        <div className="flex items-center gap-1.5">
+          {/* Variance toggle */}
+          {onToggleVariance && (
+            <button
+              className={cn(
+                "map-toolbar-btn",
+                showVariance && "map-toolbar-btn--primary"
+              )}
+              onClick={onToggleVariance}
+            >
+              <ArrowUpDown className="h-3 w-3" />
+              Δ Variance
+            </button>
           )}
-        </div>
 
-        {/* Actual/Forecast Legend */}
-        {viewMode === 'monthly' && forecastStartIdx < months.length && (
-          <div className="flex items-center gap-3 px-4 py-1 border-b border-border/10">
-            <div className="flex items-center gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-primary/60" />
-              <span className="text-[10px] text-muted-foreground">Actual</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-muted-foreground/30 border border-dashed border-muted-foreground/40" />
-              <span className="text-[10px] text-muted-foreground">Forecast</span>
-            </div>
+          {/* View mode toggle group */}
+          <div className="flex gap-px rounded p-px" style={{ background: 'var(--map-grid-soft, hsl(var(--muted) / 0.3))' }}>
+            <button
+              className={cn("map-toolbar-btn border-0", viewMode === 'monthly' && "map-toolbar-btn--primary")}
+              onClick={() => onViewModeChange('monthly')}
+            >
+              <Calendar className="h-3 w-3" /> Monthly
+            </button>
+            <button
+              className={cn("map-toolbar-btn border-0", viewMode === 'annual' && "map-toolbar-btn--primary")}
+              onClick={() => onViewModeChange('annual')}
+            >
+              <Grid3X3 className="h-3 w-3" /> Annual
+            </button>
           </div>
+
+          <div className="map-toolbar-divider" />
+
+          <button className="map-toolbar-btn !h-auto !w-auto p-1.5 flex items-center justify-center" onClick={handleExport} aria-label="Export CSV">
+            <Download className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Formula Bar ── */}
+      <div className="flex items-center gap-2 px-4 py-1.5 min-h-[30px]"
+        style={{
+          background: 'var(--map-surface-2, hsl(var(--muted) / 0.1))',
+          borderBottom: '1px solid var(--map-border, hsl(var(--border) / 0.15))',
+        }}
+      >
+        {selectedCell ? (
+          <>
+            <span className="inline-flex items-center h-5 text-[10px] font-mono px-1.5 rounded"
+              style={{
+                background: 'var(--map-grid-soft, hsl(var(--muted) / 0.3))',
+                border: '1px solid var(--map-border, hsl(var(--border) / 0.3))',
+                color: 'var(--map-text-secondary, hsl(var(--muted-foreground)))',
+              }}
+            >
+              {formulaBarContent.cellRef}
+            </span>
+            <span className="text-xs truncate" style={{ color: 'var(--map-text-muted, hsl(var(--muted-foreground)))' }}>
+              {formulaBarContent.rowLabel}
+            </span>
+            <span className="text-xs font-mono ml-auto tabular-nums" style={{ color: 'var(--map-text, hsl(var(--foreground)))' }}>
+              {formulaBarContent.formula ? (
+                <span style={{ color: 'var(--map-blue, hsl(var(--primary) / 0.7))' }}>ƒ {formulaBarContent.formula} = </span>
+              ) : null}
+              {formulaBarContent.value}
+            </span>
+          </>
+        ) : (
+          <span className="text-[11px] italic" style={{ color: 'var(--map-text-faint, hsl(var(--muted-foreground) / 0.5))' }}>
+            Click a cell to inspect
+          </span>
         )}
+      </div>
 
-        {/* Table */}
-        <div ref={tableRef} className="overflow-x-auto max-h-[68vh]">
-          <table className="w-full text-xs border-collapse select-none">
-            <thead className="sticky top-0 z-10 bg-card">
-              {/* Column number row */}
-              <tr className="border-b border-border/20">
-                <th className="sticky left-0 bg-card z-20 min-w-[200px] py-0.5 px-3">
-                  <span className="text-[9px] text-muted-foreground/40 font-normal">#</span>
-                </th>
-                {columns.map((c, i) => (
-                  <th key={i} className={cn(
-                    "py-0.5 px-2 min-w-[80px]",
-                    "text-[9px] text-muted-foreground/40 font-normal text-right"
-                  )}>
-                    {String.fromCharCode(65 + i)}
-                  </th>
-                ))}
-              </tr>
-              {/* Header row */}
-              <tr className="border-b border-border/40">
-                <th className="text-left py-2 px-3 font-medium text-muted-foreground sticky left-0 bg-card z-20 min-w-[200px]">
-                  Line Item
-                </th>
-                {columns.map((c, i) => (
-                  <th key={i} className={cn(
-                    "text-right py-2 px-2 font-medium text-muted-foreground min-w-[80px] whitespace-nowrap",
-                    c.isForecast && "text-muted-foreground/50"
-                  )}>
-                    <span className={cn(c.isForecast && "border-b border-dashed border-muted-foreground/30")}>
-                      {c.label}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map((row, visIdx) => {
-                if (row.isSection) {
-                  const isCollapsed = collapsedSections.has(row.key);
-                  return (
-                    <tr
-                      key={row.key}
-                      className="bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors"
-                      onClick={() => toggleSection(row.key)}
-                    >
-                      <td
-                        colSpan={columns.length + 1}
-                        className="pt-2.5 pb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          {isCollapsed ? (
-                            <ChevronRight className="h-3 w-3" />
-                          ) : (
-                            <ChevronDown className="h-3 w-3" />
-                          )}
-                          {row.label}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                }
+      {/* Actual/Forecast Legend */}
+      {viewMode === 'monthly' && forecastStartIdx < months.length && (
+        <div className="flex items-center gap-3 px-4 py-1"
+          style={{ borderBottom: '1px solid var(--map-border, hsl(var(--border) / 0.1))' }}
+        >
+          <div className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full" style={{ background: 'var(--map-blue, hsl(var(--primary) / 0.6))' }} />
+            <span className="text-[10px]" style={{ color: 'var(--map-text-muted)' }}>Actual</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full border border-dashed" style={{ borderColor: 'var(--map-text-faint)', background: 'var(--map-grid-soft)' }} />
+            <span className="text-[10px]" style={{ color: 'var(--map-text-muted)' }}>Forecast</span>
+          </div>
+        </div>
+      )}
 
+      {/* ── Table ── */}
+      <div ref={tableRef} className="overflow-x-auto max-h-[68vh]">
+        <table className="w-full border-collapse select-none" style={{ fontFeatureSettings: "'tnum' 1", fontSize: '13px' }}>
+          <thead className="sticky top-0 z-10" style={{ background: 'var(--map-header-bg, hsl(var(--card)))' }}>
+            {/* Column letter row */}
+            <tr style={{ borderBottom: '1px solid var(--map-border, hsl(var(--border) / 0.2))' }}>
+              <th className="sticky left-0 z-20 min-w-[200px] py-0.5 px-3"
+                style={{ background: 'var(--map-header-bg, hsl(var(--card)))' }}
+              >
+                <span className="text-[9px] font-normal" style={{ color: 'var(--map-text-faint)' }}>#</span>
+              </th>
+              {columns.map((c, i) => (
+                <th key={i} className="py-0.5 px-2 min-w-[80px] text-right"
+                  style={{ color: 'var(--map-text-faint)', fontSize: '9px', fontWeight: 400 }}
+                >
+                  {String.fromCharCode(65 + i)}
+                </th>
+              ))}
+            </tr>
+            {/* Header row */}
+            <tr style={{ borderBottom: '2px solid var(--map-border, hsl(var(--border) / 0.4))' }}>
+              <th className="text-left py-2 px-3 sticky left-0 z-20 min-w-[200px]"
+                style={{
+                  background: 'var(--map-header-bg, hsl(var(--card)))',
+                  color: 'var(--map-text-secondary)',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Line Item
+              </th>
+              {columns.map((c, i) => (
+                <th key={i} className="text-right py-2 px-2 min-w-[80px] whitespace-nowrap"
+                  style={{
+                    color: c.isForecast ? 'var(--map-text-faint)' : 'var(--map-text-secondary)',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  <span style={c.isForecast ? { borderBottom: '1px dashed var(--map-text-faint)' } : undefined}>
+                    {c.label}
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.map((row, visIdx) => {
+              if (row.isSection) {
+                const isCollapsed = collapsedSections.has(row.key);
                 return (
                   <tr
                     key={row.key}
-                    className={cn(
-                      "border-b border-border/10 transition-colors",
-                      (row.isTotal || row.isSubtotal) && "border-t border-border/30 bg-muted/5",
-                      row.isCheck && "bg-muted/10"
-                    )}
+                    className="cursor-pointer transition-colors"
+                    style={{ background: 'var(--map-grid-soft)' }}
+                    onClick={() => toggleSection(row.key)}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--map-row-hover)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--map-grid-soft)'; }}
                   >
-                    <td className={cn(
-                      "py-1.5 px-3 sticky left-0 bg-card z-10",
-                      (row.isTotal || row.isSubtotal) && "font-semibold",
-                      row.isCheck && "text-muted-foreground italic",
-                      row.indent && `pl-${3 + row.indent * 3}`
-                    )}>
+                    <td
+                      colSpan={columns.length + 1}
+                      className="pt-3 pb-1.5 px-3 sticky left-0"
+                      style={{
+                        color: 'var(--map-text-secondary)',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        borderTop: '1px solid var(--map-border)',
+                      }}
+                    >
                       <span className="flex items-center gap-1.5">
-                        {row.label}
-                        {row.formula && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-[9px] text-primary/40 font-mono">ƒ</span>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" className="text-[10px] font-mono">
-                                {row.formula}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                        {isCollapsed ? (
+                          <ChevronRight className="h-3 w-3" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3" />
                         )}
+                        {row.label}
                       </span>
                     </td>
-                    {columns.map((c, ci) => {
-                      const v = viewMode === 'monthly'
-                        ? (row.values[c.index] ?? 0)
-                        : getAnnualValue(row.values, ci, !!row.isPct);
-
-                      const isSelected = selectedCell?.rowIdx === visIdx && selectedCell?.colIdx === ci;
-                      
-                      // Variance
-                      const variancePct = showVariance ? getVariancePct(row.values, c.index, !!row.isPct) : null;
-                      const hasLargeSwing = conditionalFormatting && variancePct !== null && Math.abs(variancePct) > VARIANCE_THRESHOLD;
-
-                      return (
-                        <td
-                          key={ci}
-                          className={cn(
-                            "py-1.5 px-2 text-right font-mono tabular-nums whitespace-nowrap cursor-cell",
-                            (row.isTotal || row.isSubtotal) && "font-semibold",
-                            isNegative(v) && "text-destructive",
-                            row.isCheck && v !== 0 && "text-destructive font-bold",
-                            c.isForecast && "text-foreground/60",
-                            isSelected && "ring-2 ring-primary/50 ring-inset bg-primary/5 rounded-sm",
-                            !isSelected && "hover:bg-muted/20",
-                            hasLargeSwing && !isSelected && (variancePct! > 0 ? "bg-emerald-500/5" : "bg-destructive/5")
-                          )}
-                          onClick={() => setSelectedCell({ rowIdx: visIdx, colIdx: ci })}
-                        >
-                          <div className="flex flex-col items-end">
-                            <span>{row.isPct ? fmtPct(v) : fmtCurrency(v, compactCurrency)}</span>
-                            {showVariance && variancePct !== null && (
-                              <span className={cn(
-                                "text-[8px] leading-tight",
-                                variancePct > 0 ? "text-emerald-500" : variancePct < 0 ? "text-destructive" : "text-muted-foreground/40"
-                              )}>
-                                {variancePct > 0 ? '+' : ''}{variancePct.toFixed(1)}%
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      );
-                    })}
                   </tr>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
+              }
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-1.5 border-t border-border/15 bg-muted/5">
-          <span className="text-[10px] text-muted-foreground/50">
-            {rows.filter(r => !r.isSection).length} rows × {columns.length} columns
+              const isHighlightRow = row.isTotal || row.isSubtotal;
+
+              return (
+                <tr
+                  key={row.key}
+                  className="transition-colors"
+                  style={{
+                    borderBottom: `1px solid ${isHighlightRow ? 'var(--map-border)' : 'var(--map-border, hsl(var(--border) / 0.1))'}`,
+                    ...(isHighlightRow ? { background: 'rgba(255,255,255,0.02)' } : {}),
+                    ...(row.isTotal ? { borderTop: '2px solid var(--map-border)' } : {}),
+                  }}
+                >
+                  <td className="py-1.5 px-3 sticky left-0 z-10"
+                    style={{
+                      background: 'var(--map-bg, hsl(var(--card)))',
+                      color: row.isPct
+                        ? 'var(--map-text-faint)'
+                        : isHighlightRow
+                          ? 'var(--map-text)'
+                          : 'var(--map-text-secondary)',
+                      fontWeight: isHighlightRow ? 600 : 400,
+                      fontStyle: row.isCheck ? 'italic' : undefined,
+                      fontSize: row.isPct ? '12px' : '13px',
+                      paddingLeft: row.indent ? `${12 + row.indent * 12}px` : undefined,
+                    }}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      {row.label}
+                      {row.formula && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-[9px] font-mono" style={{ color: 'var(--map-blue, hsl(var(--primary) / 0.4))' }}>ƒ</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="text-[10px] font-mono">
+                              {row.formula}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </span>
+                  </td>
+                  {columns.map((c, ci) => {
+                    const v = viewMode === 'monthly'
+                      ? (row.values[c.index] ?? 0)
+                      : getAnnualValue(row.values, ci, !!row.isPct);
+
+                    const isSelected = selectedCell?.rowIdx === visIdx && selectedCell?.colIdx === ci;
+
+                    const variancePct = showVariance ? getVariancePct(row.values, c.index, !!row.isPct) : null;
+                    const hasLargeSwing = conditionalFormatting && variancePct !== null && Math.abs(variancePct) > VARIANCE_THRESHOLD;
+
+                    return (
+                      <td
+                        key={ci}
+                        className="py-1.5 px-2 text-right whitespace-nowrap cursor-cell tabular-nums"
+                        style={{
+                          fontFeatureSettings: "'tnum' 1",
+                          fontWeight: isHighlightRow ? 600 : 400,
+                          fontSize: '13px',
+                          color: isNegative(v)
+                            ? 'var(--map-red, hsl(var(--destructive)))'
+                            : row.isCheck && v !== 0
+                              ? 'var(--map-red)'
+                              : c.isForecast
+                                ? 'var(--map-text-faint)'
+                                : isHighlightRow
+                                  ? 'var(--map-text)'
+                                  : 'var(--map-text-secondary)',
+                          ...(isSelected ? {
+                            boxShadow: 'inset 0 0 0 2px var(--map-blue, hsl(var(--primary) / 0.5))',
+                            background: 'var(--map-selected, rgba(37, 99, 235, 0.08))',
+                            borderRadius: '2px',
+                          } : {}),
+                          ...(hasLargeSwing && !isSelected ? {
+                            background: variancePct! > 0 ? 'rgba(34, 197, 94, 0.06)' : 'rgba(220, 38, 38, 0.06)',
+                          } : {}),
+                        }}
+                        onClick={() => setSelectedCell({ rowIdx: visIdx, colIdx: ci })}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--map-row-hover)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected && !hasLargeSwing) (e.currentTarget as HTMLElement).style.background = '';
+                          else if (!isSelected && hasLargeSwing) {
+                            (e.currentTarget as HTMLElement).style.background = variancePct! > 0 ? 'rgba(34, 197, 94, 0.06)' : 'rgba(220, 38, 38, 0.06)';
+                          }
+                        }}
+                      >
+                        <div className="flex flex-col items-end">
+                          <span>{row.isPct ? fmtPct(v) : fmtCurrency(v, compactCurrency)}</span>
+                          {showVariance && variancePct !== null && (
+                            <span style={{
+                              fontSize: '9px',
+                              lineHeight: '1.2',
+                              color: variancePct > 0 ? 'var(--map-green)' : variancePct < 0 ? 'var(--map-red)' : 'var(--map-text-faint)',
+                            }}>
+                              {variancePct > 0 ? '+' : ''}{variancePct.toFixed(1)}%
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="flex items-center justify-between px-4 py-1.5"
+        style={{
+          borderTop: '1px solid var(--map-border, hsl(var(--border) / 0.15))',
+          background: 'var(--map-surface, hsl(var(--muted) / 0.05))',
+        }}
+      >
+        <span className="text-[10px] tabular-nums" style={{ color: 'var(--map-text-faint)' }}>
+          {rows.filter(r => !r.isSection).length} rows × {columns.length} columns
+        </span>
+        {selectedCell && (
+          <span className="text-[10px] font-mono tabular-nums" style={{ color: 'var(--map-text-muted)' }}>
+            {formulaBarContent.value}
           </span>
-          {selectedCell && (
-            <span className="text-[10px] text-muted-foreground/50 font-mono">
-              {formulaBarContent.value}
-            </span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        )}
+      </div>
+    </div>
   );
 }
