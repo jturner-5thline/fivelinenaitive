@@ -127,10 +127,11 @@ export async function syncTaskToAsana(
       taskData.assignee = assigneeGid;
     }
 
-    if (ctx.projectGid) {
+    if (ctx.projectGid && ctx.sectionGid) {
+      taskData.memberships = [{ project: ctx.projectGid, section: ctx.sectionGid }];
+    } else if (ctx.projectGid) {
       taskData.projects = [ctx.projectGid];
     } else {
-      // Must have at least a workspace
       taskData.workspace = ctx.workspaceGid;
     }
 
