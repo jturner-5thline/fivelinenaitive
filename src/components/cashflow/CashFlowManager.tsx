@@ -17,6 +17,7 @@ import { AddCashInModal } from './AddCashInModal';
 import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useCompany } from '@/hooks/useCompany';
+import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import './cashflow.css';
 
@@ -133,6 +134,65 @@ export function CashFlowManager() {
   // Master data — weekly is always derived from daily
   const [dailyData, setDailyData] = useState<DailyData>(() => deepClone(SEED_DAILY_DATA));
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => deepClone(SEED_SIDEBAR_DATA));
+  const sidebarLoadedRef = useRef(false);
+  const sidebarSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Load persisted sidebar data from DB
+  useEffect(() => {
+    if (!company?.id) return;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('cashflow_sidebar_data' as any)
+          .select('cash_in_items, notes')
+          .eq('company_id', company.id)
+          .maybeSingle();
+
+        if (error) { console.error('Error loading sidebar data:', error); }
+        
+        if (data) {
+          const cashInItems = (data as any).cash_in_items;
+          const notes = (data as any).notes;
+          if (Array.isArray(cashInItems) || Array.isArray(notes)) {
+            setSidebarData({
+              cash_in_next_8_weeks: Array.isArray(cashInItems) ? cashInItems : [],
+              notes: Array.isArray(notes) ? notes : [],
+            });
+          }
+        }
+        // If no data found, keep SEED_SIDEBAR_DATA as fallback
+      } catch (err) {
+        console.error('Error loading sidebar data:', err);
+      } finally {
+        sidebarLoadedRef.current = true;
+      }
+    })();
+  }, [company?.id]);
+
+  // Auto-save sidebar data to DB when it changes (debounced)
+  useEffect(() => {
+    if (!company?.id || !sidebarLoadedRef.current) return;
+    
+    if (sidebarSaveTimerRef.current) clearTimeout(sidebarSaveTimerRef.current);
+    sidebarSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await supabase
+          .from('cashflow_sidebar_data' as any)
+          .upsert({
+            company_id: company.id,
+            cash_in_items: sidebarData.cash_in_next_8_weeks,
+            notes: sidebarData.notes,
+            updated_at: new Date().toISOString(),
+          } as any, { onConflict: 'company_id' });
+      } catch (err) {
+        console.error('Error saving sidebar data:', err);
+      }
+    }, 800);
+
+    return () => {
+      if (sidebarSaveTimerRef.current) clearTimeout(sidebarSaveTimerRef.current);
+    };
+  }, [company?.id, sidebarData]);
 
   // Inject cash-in DB items + manual sidebar items into dailyData's "Customer Payments" row
   const enhancedDailyData = useMemo(() => {
