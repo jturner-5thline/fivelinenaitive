@@ -158,15 +158,10 @@ export function DealFilters({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         {/* Search */}
-        <div className="relative w-full max-w-[180px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search..."
-            value={filters.search}
-            onChange={(e) => onFilterChange({ search: e.target.value })}
-            className="pl-9 h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60 hover:border-[1.5px] focus:border-[hsl(292,46%,72%)]/60"
-          />
-        </div>
+        <CollapsibleSearch
+          value={filters.search}
+          onChange={(value) => onFilterChange({ search: value })}
+        />
 
         {/* Consolidated Filters Popover */}
         <HintTooltip
