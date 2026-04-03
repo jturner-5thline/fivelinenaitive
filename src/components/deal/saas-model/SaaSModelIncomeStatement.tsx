@@ -1,12 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { SaaSModelData } from './types';
 import { SpreadsheetTable, RowDef, ViewMode } from './SpreadsheetTable';
-import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, DollarSign, Percent } from 'lucide-react';
 import { fmtCurrency, fmtPct } from './formatters';
 import { cn } from '@/lib/utils';
 import { Toggle } from '@/components/ui/toggle';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { generateMonths } from './calculations';
 import type { MonthEntry } from './types';
@@ -16,6 +14,7 @@ interface Props {
   dealId?: string;
 }
 
+/* ── KPI Card — aligned with mapping-theme surface system ── */
 function KpiCard({ label, value, delta, format, icon: Icon }: {
   label: string;
   value: number;
@@ -28,24 +27,31 @@ function KpiCard({ label, value, delta, format, icon: Icon }: {
   const isPositive = (delta ?? 0) > 0;
 
   return (
-    <Card className="border-border/20">
-      <CardContent className="p-3">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
-          <Icon className="h-3.5 w-3.5 text-muted-foreground/40" />
+    <div className="rounded-lg border p-4"
+      style={{
+        background: 'var(--map-surface, hsl(var(--card)))',
+        borderColor: 'var(--map-border, hsl(var(--border) / 0.3))',
+      }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.06em]"
+          style={{ color: 'var(--map-text-muted, hsl(var(--muted-foreground)))' }}
+        >{label}</span>
+        <Icon className="h-3.5 w-3.5" style={{ color: 'var(--map-text-faint, hsl(var(--muted-foreground) / 0.4))' }} />
+      </div>
+      <div className="text-lg font-bold tabular-nums tracking-[-0.01em]"
+        style={{ color: 'var(--map-text, hsl(var(--foreground)))' }}
+      >{formatted}</div>
+      {hasDelta && (
+        <div className={cn(
+          "flex items-center gap-1 mt-1.5 text-[10px] font-medium",
+          isPositive ? "text-emerald-400" : "text-destructive"
+        )}>
+          {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+          {isPositive ? '+' : ''}{delta!.toFixed(1)}% MoM
         </div>
-        <div className="text-base font-semibold font-mono tabular-nums">{formatted}</div>
-        {hasDelta && (
-          <div className={cn(
-            "flex items-center gap-1 mt-0.5 text-[10px] font-medium",
-            isPositive ? "text-emerald-500" : "text-destructive"
-          )}>
-            {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {isPositive ? '+' : ''}{delta!.toFixed(1)}% MoM
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
 
@@ -96,7 +102,6 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
         .order('year_month');
       if (!cancelled && data) {
         setFinancialData(data as any as FinancialDataRow[]);
-        // Load file names for tooltips
         const fileIds = [...new Set((data as any[]).map(r => r.source_file_id))];
         if (fileIds.length > 0) {
           const { data: files } = await supabase
@@ -119,7 +124,6 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
   const mergedData = useMemo(() => {
     if (financialData.length === 0) return null;
 
-    // Find date range
     const yearMonths = [...new Set(financialData.map(r => r.year_month))].sort();
     if (yearMonths.length === 0) return null;
 
@@ -131,7 +135,6 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
     const monthCount = Math.min(Math.max(totalMonths, 12), 48);
 
     const months = generateMonths(firstYear, firstMonth).slice(0, monthCount);
-    // Extend if needed
     while (months.length < monthCount) {
       const prev = months[months.length - 1];
       const nextMonth = prev.month === 12 ? 1 : prev.month + 1;
@@ -148,10 +151,8 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
       });
     }
 
-    // Build value arrays per account key
     const zeros = () => new Array(monthCount).fill(0);
     const arrays: Record<string, number[]> = {};
-    // Source tracking: account_key -> monthIdx -> source_file_id
     const sources: Record<string, Record<number, string>> = {};
 
     financialData.forEach(row => {
@@ -166,7 +167,6 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
       sources[row.account_key][idx] = row.source_file_id;
     });
 
-    // Map to model structure
     const get = (key: string) => arrays[key] || zeros();
 
     const revenue = {
@@ -217,11 +217,9 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
     };
   }, [financialData]);
 
-  // Use merged data if available, otherwise fall back to model
   const displayData = mergedData || model;
   const displayMonths = mergedData?.months || model.months;
 
-  // Compute latest-period KPIs
   const kpis = useMemo(() => {
     const rev = displayData.totalRevenue;
     const len = rev.length;
@@ -281,7 +279,7 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 mapping-workbench">
       {/* Summary KPI Cards */}
       {kpis && (
         <div className="grid grid-cols-4 gap-3">
