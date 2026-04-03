@@ -921,7 +921,32 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             />
           )}
 
-          {/* Outlook-style reading pane header: subject + sender info */}
+          {/* AI Draft review panel */}
+          {showAiDraft && (
+            <AiDraftReviewPanel
+              thread={thread}
+              dealId={dealId}
+              onClose={() => setShowAiDraft(false)}
+              onApprove={(subject, body) => {
+                setShowAiDraft(false);
+                handleReply();
+                setTimeout(() => {
+                  const target = getReplyTarget();
+                  setInlineDraft({
+                    to: target.to_email,
+                    toName: target.to_name,
+                    body,
+                    subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
+                    cc: '',
+                    bcc: '',
+                    attachments: [],
+                    threadId: thread.threadId,
+                  });
+                }, 100);
+              }}
+            />
+          )}
+
           <div className="px-6 pt-5 pb-4 border-b border-border/30">
             {/* Large subject heading */}
             <h2 className="text-xl font-semibold text-foreground leading-snug mb-3">{thread.subject}</h2>
