@@ -448,7 +448,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
                     <ChevronUp className="h-3.5 w-3.5" />
                     <span>Hide quoted text</span>
                   </button>
-                  <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 whitespace-pre-wrap leading-[1.65]">
+                  <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 whitespace-pre-wrap break-words overflow-wrap-anywhere leading-[1.65] max-w-full overflow-hidden">
                     {bodyQuoted}
                   </div>
                 </>
