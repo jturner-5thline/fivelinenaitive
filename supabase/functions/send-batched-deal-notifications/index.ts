@@ -732,17 +732,36 @@ const handler = async (req: Request): Promise<Response> => {
           if (p.display_name) nameToUserId[p.display_name.toLowerCase()] = p.user_id;
         }
 
-        // Pipeline digest only goes to admins/owners
-        const adminMembers = members.filter(m => m.role === 'admin' || m.role === 'owner');
-        for (const member of adminMembers) {
-          const profile = profiles.find(p => p.user_id === member.user_id);
+        // Determine which members get digests:
+        // - Admins/owners get full pipeline digest
+        // - Deal managers get digest for their managed deals
+        const adminMemberIds = new Set(
+          members.filter(m => m.role === 'admin' || m.role === 'owner').map(m => m.user_id)
+        );
+
+        // Find non-admin members who are tagged as manager on at least one deal
+        const managerUserIds = new Set<string>();
+        for (const deal of allDeals as DealRow[]) {
+          if (deal.manager) {
+            const uid = nameToUserId[deal.manager.toLowerCase()];
+            if (uid && !adminMemberIds.has(uid)) managerUserIds.add(uid);
+          }
+        }
+
+        // Combine: admins + deal managers (deduplicated)
+        const digestRecipientIds = new Set([...adminMemberIds, ...managerUserIds]);
+
+        for (const userId of digestRecipientIds) {
+          const member = members.find(m => m.user_id === userId);
+          if (!member) continue;
+          const profile = profiles.find(p => p.user_id === userId);
           if (!profile) continue;
           if (!profile.email_notifications) continue;
 
-          const recipientEmail = emailMap[member.user_id];
+          const recipientEmail = emailMap[userId];
           if (!recipientEmail) continue;
 
-          const isAdmin = true;
+          const isAdmin = adminMemberIds.has(userId);
           const displayName = profile.display_name || 'there';
 
           // Determine which deals this user sees
@@ -751,11 +770,9 @@ const handler = async (req: Request): Promise<Response> => {
             // Admins see all active deals in the default pipeline
             userDeals = allDeals as DealRow[];
           } else {
-            // Deal managers/analysts see only their deals
+            // Deal managers see only deals where they are the manager
             userDeals = (allDeals as DealRow[]).filter(d =>
-              (d.manager && nameToUserId[d.manager.toLowerCase()] === member.user_id) ||
-              (d.analyst && nameToUserId[d.analyst.toLowerCase()] === member.user_id) ||
-              (d.deal_owner && nameToUserId[d.deal_owner.toLowerCase()] === member.user_id)
+              d.manager && nameToUserId[d.manager.toLowerCase()] === userId
             );
           }
 
