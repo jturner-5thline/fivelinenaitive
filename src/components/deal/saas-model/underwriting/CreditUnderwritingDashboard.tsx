@@ -17,13 +17,11 @@ export function CreditUnderwritingDashboard({ dealData }: Props) {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-[1380px] mx-auto px-4 py-4 space-y-0">
-
-        {/* Header removed per user request */}
+      <div className="max-w-[1380px] mx-auto px-4 pt-1 pb-4 space-y-0">
 
         {/* ═══ P&L ══════════════════════════════════════ */}
         <section>
-          <SectionDivider title="P&L" flags={d.flags.pnl} />
+          <SectionDivider title="P&L" flags={d.flags.pnl} className="mt-1 mb-3" />
 
           {/* KPI row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
