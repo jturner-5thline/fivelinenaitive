@@ -530,7 +530,7 @@ export default function Integrations() {
     });
   }
 
-  if (!isAsanaConnected) {
+  if (is5thLine && !isAsanaConnected) {
     availableIntegrations.push({
       key: "asana",
       render: () => (
