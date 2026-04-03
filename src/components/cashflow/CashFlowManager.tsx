@@ -253,8 +253,8 @@ export function CashFlowManager() {
   const [exportOpen, setExportOpen] = useState(false);
   const [archiveEntries, setArchiveEntries] = useState<ExportArchiveEntry[]>([]);
 
-  // Data accessors — stable references
-  const rawDaily = useMemo(() => role === 'viewer' && sandboxDaily ? sandboxDaily : dailyData, [role, sandboxDaily, dailyData]);
+  // Data accessors — stable references (use enhancedDailyData so cash-in items flow through)
+  const rawDaily = useMemo(() => role === 'viewer' && sandboxDaily ? sandboxDaily : enhancedDailyData, [role, sandboxDaily, enhancedDailyData]);
   const rawWeekly = useMemo(() => aggregateDailyToWeekly(rawDaily), [rawDaily]);
   const rawSidebar = useMemo(() => role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData, [role, sandboxSidebar, sidebarData]);
 
