@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
 import { AiAssistInlinePanel } from './AiAssistInlinePanel';
+import { AiDraftReviewPanel } from './AiDraftReviewPanel';
 import { LinkToDealPopover } from './LinkToDealPopover';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
