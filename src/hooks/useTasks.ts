@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { getAsanaSyncContext, syncTaskToAsana, updateTaskInAsana } from '@/hooks/useAsanaTaskSync';
 import { toast } from 'sonner';
-import { toast } from 'sonner';
 
 async function fireZapierWebhook(eventType: string, payload: Record<string, any>) {
   try {
