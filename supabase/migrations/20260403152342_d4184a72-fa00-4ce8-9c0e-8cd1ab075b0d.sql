@@ -1,0 +1,1 @@
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS asana_task_gid TEXT DEFAULT NULL;

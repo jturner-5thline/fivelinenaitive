@@ -14592,6 +14592,7 @@ export type Database = {
       tasks: {
         Row: {
           archived_at: string | null
+          asana_task_gid: string | null
           assigned_by: string
           assigned_to: string
           blocker_note: string | null
@@ -14625,6 +14626,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          asana_task_gid?: string | null
           assigned_by: string
           assigned_to: string
           blocker_note?: string | null
@@ -14658,6 +14660,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          asana_task_gid?: string | null
           assigned_by?: string
           assigned_to?: string
           blocker_note?: string | null
