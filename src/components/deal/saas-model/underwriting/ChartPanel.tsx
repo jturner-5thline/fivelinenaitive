@@ -21,8 +21,8 @@ const COLORS = {
   projected: 'hsl(213, 50%, 40%)',
 };
 
-const AXIS_STYLE = { fontSize: 9, fill: 'hsl(0, 0%, 50%)' };
-const GRID_COLOR = 'hsl(0, 0%, 100%, 0.06)';
+const AXIS_STYLE = { fontSize: 9, fill: 'hsl(0, 0%, 35%)' };
+const GRID_COLOR = 'hsl(0, 0%, 100%, 0.04)';
 const TOOLTIP_STYLE = {
   backgroundColor: 'hsl(230, 20%, 12%)',
   border: '1px solid hsl(0, 0%, 100%, 0.1)',
@@ -31,21 +31,20 @@ const TOOLTIP_STYLE = {
   color: 'hsl(0, 0%, 85%)',
 };
 
-export function RevenueBreakdownChart({ title, data, height = 220 }: ChartPanelProps) {
+const LEGEND_STYLE = { fontSize: 10, color: 'hsl(0, 0%, 55%)', paddingTop: 4 };
+
+export function RevenueBreakdownChart({ title, data, height = 180 }: ChartPanelProps) {
   return (
-    <div className="bg-card border border-border rounded-lg p-4">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-foreground mb-3">{title}</h3>
+    <div className="bg-card border border-border rounded-xl p-4">
+      <h3 className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-3 leading-snug">{title}</h3>
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barGap={0} barCategoryGap="20%">
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
             <XAxis dataKey="period" tick={AXIS_STYLE} angle={-45} textAnchor="end" height={50} />
             <YAxis tick={AXIS_STYLE} tickFormatter={v => fmtMM(v)} />
-            <Tooltip
-              formatter={(v: number, name: string) => [fmtMM(v), name]}
-              contentStyle={TOOLTIP_STYLE}
-            />
-            <Legend wrapperStyle={{ fontSize: 10, color: 'hsl(0, 0%, 60%)' }} />
+            <Tooltip formatter={(v: number, name: string) => [fmtMM(v), name]} contentStyle={TOOLTIP_STYLE} />
+            <Legend wrapperStyle={LEGEND_STYLE} />
             <Bar dataKey="recurring" name="Recurring" stackId="a" fill={COLORS.recurring}>
               {data.map((entry, i) => (
                 <Cell key={i} fill={entry.isProjected ? COLORS.projected : COLORS.recurring} />
@@ -63,21 +62,18 @@ export function RevenueBreakdownChart({ title, data, height = 220 }: ChartPanelP
   );
 }
 
-export function RevenueVsExpensesChart({ title, data, height = 220 }: ChartPanelProps) {
+export function RevenueVsExpensesChart({ title, data, height = 180 }: ChartPanelProps) {
   return (
-    <div className="bg-card border border-border rounded-lg p-4">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-foreground mb-3">{title}</h3>
+    <div className="bg-card border border-border rounded-xl p-4">
+      <h3 className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-3 leading-snug">{title}</h3>
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
             <XAxis dataKey="period" tick={AXIS_STYLE} angle={-45} textAnchor="end" height={50} />
             <YAxis tick={AXIS_STYLE} tickFormatter={v => fmtMM(v)} />
-            <Tooltip
-              formatter={(v: number, name: string) => [fmtMM(v), name]}
-              contentStyle={TOOLTIP_STYLE}
-            />
-            <Legend wrapperStyle={{ fontSize: 10, color: 'hsl(0, 0%, 60%)' }} />
+            <Tooltip formatter={(v: number, name: string) => [fmtMM(v), name]} contentStyle={TOOLTIP_STYLE} />
+            <Legend wrapperStyle={LEGEND_STYLE} />
             <Line type="monotone" dataKey="revenue" name="Revenue" stroke={COLORS.revenue} strokeWidth={2} dot={{ r: 2, fill: COLORS.revenue }} />
             <Line type="monotone" dataKey="expenses" name="Expenses" stroke={COLORS.expenses} strokeWidth={2} dot={{ r: 2, fill: COLORS.expenses }} strokeDasharray="5 5" />
           </ComposedChart>
@@ -87,21 +83,18 @@ export function RevenueVsExpensesChart({ title, data, height = 220 }: ChartPanel
   );
 }
 
-export function EbitdaChart({ title, data, height = 220 }: ChartPanelProps) {
+export function EbitdaChart({ title, data, height = 180 }: ChartPanelProps) {
   return (
-    <div className="bg-card border border-border rounded-lg p-4">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-foreground mb-3">{title}</h3>
+    <div className="bg-card border border-border rounded-xl p-4">
+      <h3 className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-3 leading-snug">{title}</h3>
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
             <XAxis dataKey="period" tick={AXIS_STYLE} angle={-45} textAnchor="end" height={50} />
             <YAxis tick={AXIS_STYLE} tickFormatter={v => fmtMM(v)} />
-            <Tooltip
-              formatter={(v: number, name: string) => [fmtMM(v), name]}
-              contentStyle={TOOLTIP_STYLE}
-            />
-            <Legend wrapperStyle={{ fontSize: 10, color: 'hsl(0, 0%, 60%)' }} />
+            <Tooltip formatter={(v: number, name: string) => [fmtMM(v), name]} contentStyle={TOOLTIP_STYLE} />
+            <Legend wrapperStyle={LEGEND_STYLE} />
             <ReferenceLine y={0} stroke="hsl(0, 0%, 30%)" strokeDasharray="3 3" />
             <Bar dataKey="ebitda" name="EBITDA" radius={[2, 2, 0, 0]}>
               {data.map((entry, i) => (
