@@ -396,7 +396,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
 
   return (
     <div ref={messageRef} className={cn(
-      'border-b border-border/30 transition-all duration-100',
+      'border-b border-border/30 transition-all duration-100 min-w-0 overflow-hidden',
       expanded ? 'bg-card/40' : 'hover:bg-[hsl(var(--foreground)/0.02)]'
     )}>
       <button
