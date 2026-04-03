@@ -36,8 +36,10 @@ export function InlineEditField({
   }, [isEditing]);
 
   useEffect(() => {
-    setEditValue(value);
-  }, [value]);
+    if (!isEditing) {
+      setEditValue(value);
+    }
+  }, [value, isEditing]);
 
   const handleSave = () => {
     onSave(editValue);
