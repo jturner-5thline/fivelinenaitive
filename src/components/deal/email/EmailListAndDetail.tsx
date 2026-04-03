@@ -864,6 +864,24 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 onToggleLink(thread.latestEmail);
               }}
             />
+
+            {onToggleExpand && (
+              <>
+                <div className="w-px h-8 bg-border/50 mx-1" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={onToggleExpand}
+                      className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors"
+                    >
+                      {isExpanded ? <Minimize2 className="h-4 w-4 text-foreground/70" /> : <Maximize2 className="h-4 w-4 text-foreground/70" />}
+                      <span className="text-[10px] text-foreground/60">{isExpanded ? 'Collapse' : 'Expand'}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">{isExpanded ? 'Show email list' : 'Expand reading pane'}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </div>
 
           {/* AI Assist inline panel */}
