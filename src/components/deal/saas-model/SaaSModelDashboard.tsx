@@ -135,8 +135,8 @@ function buildUnderwritingData(m: SaaSModelData): UnderwritingDealData {
   const ebitdaMargin = m.totalRevenue[last] > 0 ? (m.ebitda[last] / m.totalRevenue[last]) * 100 : 0;
   const ruleOf40 = m.yoyRevGrowth + ebitdaMargin;
   const opexPct = m.totalRevenue[last] > 0 ? (m.totalOpEx[last] / m.totalRevenue[last]) * 100 : 0;
-  const acv = ttmRecurring > 0 && customerCount > 0 ? ttmRecurring / customerCount : 0;
-  const customerCount = 0; // Requires external customer data
+  const customerCount = 0; // Requires external customer data — not estimated
+  const acv = 0; // Requires customer count data
 
   const deferredRevToday = m.balanceSheet.deferredRevenue[last] || 0;
   const growthRate = m.yoyRevGrowth > 0 ? m.yoyRevGrowth / 100 : 0;
