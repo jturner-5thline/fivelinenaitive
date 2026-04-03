@@ -4,6 +4,7 @@ interface AsanaSyncContext {
   integrationId: string;
   workspaceGid: string;
   projectGid: string | null;
+  sectionGid: string | null;
 }
 
 /**
@@ -48,10 +49,23 @@ export async function getAsanaSyncContext(companyId: string | null): Promise<Asa
     .limit(1)
     .maybeSingle();
 
+  // Fetch asana_section_gid separately (column may not be in generated types yet)
+  let sectionGid: string | null = null;
+  if (projectFilter) {
+    const { data: sectionRow } = await supabase
+      .rpc('exec_sql_readonly', {
+        sql: `SELECT asana_section_gid FROM public.asana_project_filters WHERE asana_project_gid = '${projectFilter.asana_project_gid}' AND sync_config_id = '${syncConfig.id}' AND is_enabled = true LIMIT 1`
+      });
+    if (Array.isArray(sectionRow) && sectionRow.length > 0) {
+      sectionGid = (sectionRow[0] as any)?.asana_section_gid || null;
+    }
+  }
+
   return {
     integrationId: integration.id,
     workspaceGid,
     projectGid: projectFilter?.asana_project_gid || null,
+    sectionGid,
   };
 }
 
@@ -125,10 +139,11 @@ export async function syncTaskToAsana(
       taskData.assignee = assigneeGid;
     }
 
-    if (ctx.projectGid) {
+    if (ctx.projectGid && ctx.sectionGid) {
+      taskData.memberships = [{ project: ctx.projectGid, section: ctx.sectionGid }];
+    } else if (ctx.projectGid) {
       taskData.projects = [ctx.projectGid];
     } else {
-      // Must have at least a workspace
       taskData.workspace = ctx.workspaceGid;
     }
 
