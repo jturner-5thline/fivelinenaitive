@@ -396,7 +396,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
 
   return (
     <div ref={messageRef} className={cn(
-      'border-b border-border/30 transition-all duration-100',
+      'border-b border-border/30 transition-all duration-100 min-w-0 overflow-hidden',
       expanded ? 'bg-card/40' : 'hover:bg-[hsl(var(--foreground)/0.02)]'
     )}>
       <button
@@ -426,7 +426,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
             {email.has_attachments && <Paperclip className="h-3 w-3" />}
           </div>
-          <div className="text-[14px] whitespace-pre-wrap break-words overflow-wrap-anywhere leading-[1.7] text-foreground/90 [&>p]:mb-3 max-w-full overflow-hidden">
+          <div className="text-[14px] leading-[1.7] text-foreground/90 [&>p]:mb-3 max-w-full" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
             {bodyMain}
           </div>
           {bodyQuoted && (
@@ -448,7 +448,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
                     <ChevronUp className="h-3.5 w-3.5" />
                     <span>Hide quoted text</span>
                   </button>
-                  <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 whitespace-pre-wrap break-words overflow-wrap-anywhere leading-[1.65] max-w-full overflow-hidden">
+                  <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 leading-[1.65] max-w-full" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                     {bodyQuoted}
                   </div>
                 </>
@@ -940,8 +940,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           </div>
 
           {/* Thread content - scrollable */}
-          <ScrollArea className="flex-1">
-            <div className="py-2 space-y-0">
+          <ScrollArea className="flex-1 min-w-0">
+            <div className="py-2 space-y-0 min-w-0 overflow-hidden">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
