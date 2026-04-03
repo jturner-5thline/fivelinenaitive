@@ -711,17 +711,17 @@ const handler = async (req: Request): Promise<Response> => {
           if (p.display_name) nameToUserId[p.display_name.toLowerCase()] = p.user_id;
         }
 
-        // For each member, determine their deal list
-        for (const member of members) {
+        // Pipeline digest only goes to admins/owners
+        const adminMembers = members.filter(m => m.role === 'admin' || m.role === 'owner');
+        for (const member of adminMembers) {
           const profile = profiles.find(p => p.user_id === member.user_id);
           if (!profile) continue;
           if (!profile.email_notifications) continue;
-          if (!profile.deal_updates_email && !profile.lender_updates_email) continue;
 
           const recipientEmail = emailMap[member.user_id];
           if (!recipientEmail) continue;
 
-          const isAdmin = member.role === 'admin' || member.role === 'owner';
+          const isAdmin = true;
           const displayName = profile.display_name || 'there';
 
           // Determine which deals this user sees
