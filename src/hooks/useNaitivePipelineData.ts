@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Deal, DealLender, DealMilestone } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
+import { resetNaitivePipelineCache } from '@/utils/naitivePipelineExclusion';
 
 const NAITIVE_PIPELINE_NAME = 'naitive Pipeline';
 
