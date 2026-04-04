@@ -201,6 +201,9 @@ const App = () => (
                           <Route path="/hr" element={
                             <ProtectedRoute><AppLayout><HR /></AppLayout></ProtectedRoute>
                           } />
+                          <Route path="/naitive-pipeline" element={
+                            <ProtectedRoute><AppLayout><NaitivePipeline /></AppLayout></ProtectedRoute>
+                          } />
                           <Route path="/operations" element={
                             <ProtectedRoute><AppLayout><Operations /></AppLayout></ProtectedRoute>
                           } />
