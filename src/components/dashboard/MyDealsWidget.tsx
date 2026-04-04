@@ -130,12 +130,26 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
             <CardTitle className="text-base font-medium flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Briefcase className="h-4 w-4 text-primary" />
-                My Deals
+                {scope === 'all' ? 'All Deals' : 'My Deals'}
                 <Badge variant="secondary" className="text-xs">{statusCounts.all}</Badge>
               </div>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-center gap-1">
+                {isAdmin && (
+                  <ToggleGroup
+                    type="single"
+                    value={scope}
+                    onValueChange={(v) => { if (v) setScope(v as DealScope); }}
+                    className="mr-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ToggleGroupItem value="my" className="text-[10px] h-6 px-2">Mine</ToggleGroupItem>
+                    <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
+                  </ToggleGroup>
+                )}
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
