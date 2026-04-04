@@ -102,6 +102,7 @@ export interface Deal {
   pipelineId?: string;
   closingDate?: string | null;
   sourcedVia?: string;
+  dealClass?: DealClass;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
