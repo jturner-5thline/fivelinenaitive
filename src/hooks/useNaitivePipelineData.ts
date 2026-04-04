@@ -136,6 +136,7 @@ export function useNaitivePipelineData(): NaitivePipelineData {
       pipelineId: d.pipeline_id || undefined,
       closingDate: d.closing_date || null,
       sourcedVia: d.sourced_via || undefined,
+      dealClass: (d.deal_class || 'naitive') as 'standard' | 'naitive',
       lenders: (d.deal_lenders || []).map((l: any) => ({
         id: l.id,
         name: l.name || '',
