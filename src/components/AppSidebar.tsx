@@ -70,6 +70,7 @@ export function AppSidebar() {
   const { hasPageAccess, isPageBeta, isLoading: isAccessLoading } = usePageAccessFlags();
   const { features: companyFeatures } = useCompanyFeatures();
   const { data: routingTasks = [] } = useClaapRoutingTasks();
+  const { hasAccess: hasNaitivePipelineAccess } = useNaitivePipelineAccess();
   const meetingTaskCount = routingTasks.length;
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
   const currentPath = location.pathname;
