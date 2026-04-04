@@ -702,6 +702,9 @@ export default function DealDetail() {
     }
   }, [contextDeal]);
   
+  // Determine if this is a naitive pipeline deal
+  const isNaitiveDeal = deal?.dealClass === 'naitive';
+
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
   
   // Memoize existing lender names to pass to the search component
