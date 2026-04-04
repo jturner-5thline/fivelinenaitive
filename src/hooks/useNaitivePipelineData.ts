@@ -78,6 +78,9 @@ export function useNaitivePipelineData(): NaitivePipelineData {
       return null;
     }
 
+    // Reset cache so the exclusion filter picks up the new ID
+    resetNaitivePipelineCache();
+
     return created.id;
   }, []);
 
