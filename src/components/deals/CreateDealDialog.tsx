@@ -61,6 +61,7 @@ export interface CreateDealInitialValues {
   dealStage?: string;
   pipelineId?: string;
   dealTypes?: string[];
+  dealClass?: 'standard' | 'naitive';
   /** If provided, called after deal is created successfully (instead of navigating) */
   onCreated?: (dealId: string) => void;
   /** If provided, shows a Dismiss button in the footer */
