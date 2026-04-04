@@ -74,9 +74,21 @@ function SortableTableHead({ id }: { id: DealListColumnId }) {
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid' }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (expandAllSignal && expandAllSignal > 0) {
+      setCollapsedGroups(new Set());
+    }
+  }, [expandAllSignal]);
+
+  useEffect(() => {
+    if (collapseAllSignal && collapseAllSignal > 0) {
+      setCollapsedGroups(new Set(orderedKeys));
+    }
+  }, [collapseAllSignal]);
   const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set());
   const { columnOrder, activeColumns, visibleColumns, updateColumnOrder, toggleColumnVisibility } = useDealListColumnOrder();
   
