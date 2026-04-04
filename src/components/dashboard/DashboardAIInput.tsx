@@ -37,10 +37,7 @@ const suggestions: SuggestionConfig[] = [
   { text: "What's my pipeline conversion rate?", requiresInput: false },
   { text: "Research [company name] for me", requiresInput: true, populateText: "Research [company name] for me" },
   { text: "Draft a lender outreach email", requiresInput: false },
-  { text: "Compare my top 3 deals", requiresInput: false },
-  { text: "What's my revenue forecast this quarter?", requiresInput: false },
   { text: "Find lenders for my biggest deal", requiresInput: false },
-  { text: "Generate a deal memo for [deal]", requiresInput: true, populateText: "Generate a deal memo for [deal]" },
 ];
 
 interface DashboardAIInputProps {
