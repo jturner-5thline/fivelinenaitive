@@ -1,8 +1,9 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Loader2, Plus, FileX, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
+import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Deal, DealStatus } from '@/types/deal';
@@ -13,6 +14,12 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { NaitivePipelineKPIStrip } from '@/components/naitive-pipeline/NaitivePipelineKPIStrip';
+import { NaitiveFunnelChart, NaitiveTrendChart, NaitivAgingChart, NaitivHealthMixChart } from '@/components/naitive-pipeline/NaitivePipelineCharts';
+import { NaitivePipelineNotifications } from '@/components/naitive-pipeline/NaitivePipelineNotifications';
+import { NaitivePipelineHurdles } from '@/components/naitive-pipeline/NaitivePipelineHurdles';
+import { NaitivePipelineRecommendations } from '@/components/naitive-pipeline/NaitivePipelineRecommendations';
+import { NaitivePipelinePartnerInfluence } from '@/components/naitive-pipeline/NaitivePipelinePartnerInfluence';
 import {
   DndContext,
   DragOverlay,
