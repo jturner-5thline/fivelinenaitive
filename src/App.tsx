@@ -92,6 +92,7 @@ function DealDetailKeyedWrapper() {
 const WfHub = lazy(lazyRetry(() => import("./pages/WfHub")));
 const WfDealDetail = lazy(lazyRetry(() => import("./pages/WfDealDetail")));
 const VirtualDataRoom = lazy(lazyRetry(() => import("./pages/VirtualDataRoom")));
+const NaitivePipeline = lazy(lazyRetry(() => import("./pages/NaitivePipeline")));
 
 const queryClient = new QueryClient();
 
