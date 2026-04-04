@@ -86,7 +86,7 @@ export function MyDayWidget({ defaultOpen = true }: MyDayWidgetProps) {
 
   if (!calendarStatus?.connected) {
     return (
-      <Card>
+      <Card className="h-full flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-medium flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" />
@@ -104,7 +104,7 @@ export function MyDayWidget({ defaultOpen = true }: MyDayWidgetProps) {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="h-full flex flex-col">
         <CardHeader className="pb-3"><Skeleton className="h-5 w-32" /></CardHeader>
         <CardContent className="space-y-3">
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
@@ -114,8 +114,8 @@ export function MyDayWidget({ defaultOpen = true }: MyDayWidgetProps) {
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={handleToggle}>
-      <Card>
+    <Collapsible open={isOpen} onOpenChange={handleToggle} className="h-full">
+      <Card className="h-full flex flex-col">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors">
             <CardTitle className="text-base font-medium flex items-center justify-between">
