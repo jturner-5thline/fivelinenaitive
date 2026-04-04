@@ -86,7 +86,8 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
 
   useEffect(() => {
     if (collapseAllSignal && collapseAllSignal > 0) {
-      setCollapsedGroups(new Set(orderedKeys));
+      // Collapse all by setting a marker; individual groups check membership
+      setCollapsedGroups(new Set(['__ALL__']));
     }
   }, [collapseAllSignal]);
   const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set());
