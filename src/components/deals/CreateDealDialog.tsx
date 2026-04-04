@@ -210,6 +210,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         engagementType: 'guided',
         sourcedVia: sourcedVia && sourcedVia !== '__none__' ? sourcedVia : undefined,
         pipelineId: selectedPipelineId || activePipelineId || undefined,
+        dealClass: initialValues?.dealClass || 'standard',
         referredBy: referralName.trim() ? {
           id: '',
           name: referralName.trim(),
