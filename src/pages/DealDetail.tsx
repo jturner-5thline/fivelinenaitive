@@ -2811,7 +2811,8 @@ export default function DealDetail() {
                 </div>
 
                 <TabsContent value="deal-info" className={cn("mt-6 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
-                  {/* Milestones Card */}
+                  {/* Milestones Card - hidden for naitive pipeline deals */}
+                  {!isNaitiveDeal && (
                   <Card>
                     <CardContent className="pt-2 pb-2">
                       <DealMilestones
@@ -2823,6 +2824,7 @@ export default function DealDetail() {
                       />
                     </CardContent>
                   </Card>
+                  )}
 
                   {/* Customize Layout Button */}
                   <div className="flex justify-end">

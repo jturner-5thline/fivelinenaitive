@@ -45,8 +45,9 @@ export function useAllMilestones(dealIds?: string[]) {
           completed,
           completed_at,
           status,
-          deals!inner(company, user_id, company_id, manager)
+          deals!inner(company, user_id, company_id, manager, deal_class)
         `)
+        .neq('deals.deal_class', 'naitive')
         .order('due_date', { ascending: true, nullsFirst: false });
 
       if (companyId) {
