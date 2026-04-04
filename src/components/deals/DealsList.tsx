@@ -315,7 +315,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
     <div className="space-y-6">
       {orderedKeys.map((groupValue, groupIdx) => {
         const groupDeals = groupMap.get(groupValue) || [];
-        const isCollapsed = collapsedGroups.has(groupValue);
+        const isCollapsed = collapsedGroups.has(groupValue) || collapsedGroups.has('__ALL__');
         const dotColor = groupBy === 'status' ? STATUS_CONFIG[groupValue as DealStatus]?.dotColor : undefined;
         
         return (
