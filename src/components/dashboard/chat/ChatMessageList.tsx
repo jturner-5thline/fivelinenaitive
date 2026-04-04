@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { ResearchCitations } from './ResearchCitations';
 import { EmailDraftCard, extractEmailDraft } from './EmailDraftCard';
+import { MorningBriefing, isBriefingMessage, BRIEFING_MARKER } from './MorningBriefing';
 
 interface Props {
   messages: ChatMessage[];
@@ -130,6 +131,12 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
           const tasks = msg.role === 'assistant' ? parseTaskSuggestions(msg.content) : [];
           const isUser = msg.role === 'user';
           const isPinned = pinnedContents.has(msg.content.slice(0, 100));
+          const isBriefing = !isUser && isBriefingMessage(msg.content);
+
+          // Extract optional AI summary from briefing message
+          const briefingAiSummary = isBriefing
+            ? msg.content.slice(BRIEFING_MARKER.length).trim() || undefined
+            : undefined;
 
           return (
             <div key={i} className={cn('flex gap-2.5 group', isUser ? 'justify-end' : 'justify-start')}>
@@ -151,7 +158,9 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                     : 'border border-[hsl(263,40%,30%,0.4)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.5)_0%,hsl(263,18%,8%,0.6)_100%)] backdrop-blur-md shadow-[inset_0_1px_1px_hsl(263,40%,40%,0.08),0_2px_8px_hsl(0,0%,0%,0.2)]',
                   isPinned && 'ring-1 ring-primary/40'
                 )}>
-                  {!isUser ? (
+                  {isBriefing ? (
+                    <MorningBriefing aiSummary={briefingAiSummary} />
+                  ) : !isUser ? (
                     <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                       <ReactMarkdown
                         components={{
@@ -188,13 +197,13 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                   ) : msg.content}
 
                   {/* Research citations */}
-                  {!isUser && (() => {
+                  {!isUser && !isBriefing && (() => {
                     const cites = extractCitations(msg.content);
                     return cites.length > 0 ? <ResearchCitations citations={cites} /> : null;
                   })()}
 
                   {/* Email draft card */}
-                  {!isUser && (() => {
+                  {!isUser && !isBriefing && (() => {
                     const draft = extractEmailDraft(msg.content);
                     return draft ? <EmailDraftCard draft={draft} onSend={onSendAction} /> : null;
                   })()}
