@@ -14,6 +14,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { usePageAccessFlags } from "@/hooks/useFeatureFlags";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { useCompany } from "@/hooks/useCompany";
+import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
 
 
 import {
