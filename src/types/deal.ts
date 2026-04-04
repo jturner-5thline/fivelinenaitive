@@ -62,6 +62,8 @@ export interface Referrer {
   company?: string;
 }
 
+export type DealClass = 'standard' | 'naitive';
+
 export interface Deal {
   id: string;
   name: string;
