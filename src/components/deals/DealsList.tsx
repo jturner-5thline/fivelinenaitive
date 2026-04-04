@@ -329,7 +329,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-2 px-2 py-2 h-auto hover:bg-muted/50"
+                className="w-full justify-start gap-2 px-2 py-2 h-auto hover:bg-muted/50 relative"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {isCollapsed ? (
@@ -355,7 +355,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                     ? `$${(totalVolume / 1_000).toFixed(1)}K`
                     : `$${totalVolume.toLocaleString()}`;
                   return (
-                    <div className="flex items-center gap-6 shrink-0 ml-4">
+                    <div className="absolute left-[220px] flex items-center gap-6">
                       <div className="flex items-baseline gap-1 w-[72px] justify-end">
                         <span className="text-sm font-medium text-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
                           {groupDeals.length}
