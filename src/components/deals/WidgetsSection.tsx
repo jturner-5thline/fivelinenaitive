@@ -721,6 +721,87 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
               </div>
             )}
           </div>
+          {/* Drilldown section */}
+          {drilldownStage && chartViewType === 'pie' && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {drilldownMetric === 'dollarVolume' ? 'Dollar Volume' : 'Revenue'} by Deal — {drilldownStage}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {drilldownDeals.length} deal{drilldownDeals.length !== 1 ? 's' : ''} · {formatCurrencyValue(drilldownTotal)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-0.5 border border-border rounded-md p-0.5">
+                    <button
+                      onClick={() => setDrilldownMetric('dollarVolume')}
+                      className={`px-2.5 py-1 text-[11px] rounded transition-colors ${
+                        drilldownMetric === 'dollarVolume'
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Dollar Volume
+                    </button>
+                    <button
+                      onClick={() => setDrilldownMetric('revenue')}
+                      className={`px-2.5 py-1 text-[11px] rounded transition-colors ${
+                        drilldownMetric === 'revenue'
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Revenue
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setDrilldownStage(null)}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    ← Back to overview
+                  </button>
+                </div>
+              </div>
+              <div style={{ height: Math.max(120, drilldownDeals.length * 36 + 40) }}>
+                {drilldownDeals.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={drilldownDeals}
+                      layout="vertical"
+                      margin={{ left: 8, right: 16, top: 4, bottom: 4 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                      <XAxis
+                        type="number"
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                        tickFormatter={(v: number) => formatCurrencyValue(v)}
+                      />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        width={120}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                        tickFormatter={(v: string) => v.length > 18 ? v.slice(0, 16) + '…' : v}
+                      />
+                      <Tooltip content={<DrilldownTooltip />} />
+                      <Bar
+                        dataKey={drilldownMetric}
+                        radius={[0, 3, 3, 0]}
+                        fill="hsl(var(--primary))"
+                        maxBarSize={24}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    No deals with {drilldownMetric === 'dollarVolume' ? 'dollar volume' : 'revenue'} data in this stage
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
