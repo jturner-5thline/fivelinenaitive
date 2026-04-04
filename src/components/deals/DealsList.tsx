@@ -329,7 +329,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
-                className="w-full justify-between gap-2 px-2 py-2 h-auto hover:bg-muted/50"
+                className="w-full justify-start gap-2 px-2 py-2 h-auto hover:bg-muted/50"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {isCollapsed ? (
