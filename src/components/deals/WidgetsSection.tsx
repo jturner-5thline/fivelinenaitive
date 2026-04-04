@@ -87,6 +87,8 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartFilterFn, setChartFilterFn] = useState<((d: Deal) => boolean) | null>(null);
   const [chartViewType, setChartViewType] = useState<'pie' | 'bar' | 'line'>('pie');
 
+  const [activeDonutIndex, setActiveDonutIndex] = useState<number | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
