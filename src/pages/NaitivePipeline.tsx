@@ -230,6 +230,47 @@ export default function NaitivePipeline() {
             />
           </div>
 
+          {/* Dashboard Command Center */}
+          {!isLoading && deals.length > 0 && (
+            <div className="mb-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Pipeline Command Center</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-xs text-muted-foreground h-7"
+                  onClick={() => setDashboardCollapsed(!dashboardCollapsed)}
+                >
+                  {dashboardCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+                  {dashboardCollapsed ? 'Show' : 'Hide'}
+                </Button>
+              </div>
+
+              {!dashboardCollapsed && (
+                <div className="space-y-4 animate-in fade-in-0 slide-in-from-top-2 duration-300">
+                  {/* KPI Strip */}
+                  <NaitivePipelineKPIStrip kpis={kpis} />
+
+                  {/* Charts Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <NaitiveFunnelChart data={funnelData} />
+                    <NaitiveTrendChart data={trendData} />
+                    <NaitivAgingChart data={agingData} />
+                    <NaitivHealthMixChart data={healthMix} />
+                  </div>
+
+                  {/* Intelligence Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <NaitivePipelineHurdles hurdles={hurdles} />
+                    <NaitivePipelineNotifications notifications={notifications} />
+                    <NaitivePipelineRecommendations recommendations={recommendations} />
+                    <NaitivePipelinePartnerInfluence deals={deals} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Pipeline Board */}
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
