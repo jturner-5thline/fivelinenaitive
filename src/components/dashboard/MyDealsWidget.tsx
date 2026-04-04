@@ -78,7 +78,7 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
     // 'all' — no additional filtering, includes on-track, at-risk, off-track, on-hold, etc.
 
     return filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [deals, profile, filter, preferences, searchQuery]);
+  }, [deals, profile, filter, preferences, searchQuery, scope]);
 
   const displayDeals = maxItems ? myDeals.slice(0, maxItems) : myDeals;
 
