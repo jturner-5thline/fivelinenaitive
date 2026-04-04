@@ -513,8 +513,9 @@ export function useDealsDatabase() {
           deal_type: dealData.dealTypes && dealData.dealTypes.length > 0 ? JSON.stringify(dealData.dealTypes) : null,
           user_id: userId,
           company_id: memberData?.company_id || null,
-          pipeline_id: dealData.pipelineId || null,
-        })
+           pipeline_id: dealData.pipelineId || null,
+           deal_class: dealData.dealClass || 'standard',
+         })
         .select()
         .single();
 
