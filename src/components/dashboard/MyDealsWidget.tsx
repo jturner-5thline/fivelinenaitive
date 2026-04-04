@@ -15,10 +15,12 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useProfile } from '@/hooks/useProfile';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDashboardLayout } from '@/contexts/DashboardLayoutContext';
+import { useCompany } from '@/hooks/useCompany';
 import { Deal, STAGE_CONFIG, STATUS_CONFIG } from '@/types/deal';
 import { differenceInDays } from 'date-fns';
 import { stripHtml } from '@/lib/stripHtml';
 
+type DealScope = 'my' | 'all';
 type StageFilter = 'all' | 'active' | 'at-risk' | 'stale';
 
 interface MyDealsWidgetProps {
@@ -32,16 +34,21 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
   const { profile } = useProfile();
   const { preferences } = usePreferences();
   const { toggles } = useDashboardLayout();
+  const { isAdmin } = useCompany();
   const [filter, setFilter] = useState<StageFilter>('all');
   const [isOpen, setIsOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [scope, setScope] = useState<DealScope>('my');
 
   const myDeals = useMemo(() => {
     const displayName = profile?.display_name || profile?.first_name || '';
-    let filtered = deals.filter(d =>
-      d.manager?.toLowerCase() === displayName?.toLowerCase() &&
-      d.status !== 'archived'
-    );
+    let filtered = deals.filter(d => {
+      if (d.status === 'archived') return false;
+      if (scope === 'my') {
+        return d.manager?.toLowerCase() === displayName?.toLowerCase();
+      }
+      return true; // 'all' scope — company RLS already scopes data
+    });
 
     // Apply search
     if (searchQuery.trim()) {
@@ -71,20 +78,24 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
     // 'all' — no additional filtering, includes on-track, at-risk, off-track, on-hold, etc.
 
     return filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [deals, profile, filter, preferences, searchQuery]);
+  }, [deals, profile, filter, preferences, searchQuery, scope]);
 
   const displayDeals = maxItems ? myDeals.slice(0, maxItems) : myDeals;
 
   // Count deals by status for filter badges
   const statusCounts = useMemo(() => {
     const displayName = profile?.display_name || profile?.first_name || '';
-    const mine = deals.filter(d => d.manager?.toLowerCase() === displayName?.toLowerCase() && d.status !== 'archived');
+    const mine = deals.filter(d => {
+      if (d.status === 'archived') return false;
+      if (scope === 'my') return d.manager?.toLowerCase() === displayName?.toLowerCase();
+      return true;
+    });
     return {
       all: mine.length,
       active: mine.filter(d => d.status === 'on-track').length,
       atRisk: mine.filter(d => d.status === 'at-risk' || d.status === 'off-track').length,
     };
-  }, [deals, profile]);
+  }, [deals, profile, scope]);
 
   const getStatusDot = (status: string) => {
     const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
@@ -119,12 +130,26 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
             <CardTitle className="text-base font-medium flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Briefcase className="h-4 w-4 text-primary" />
-                My Deals
+                {scope === 'all' ? 'All Deals' : 'My Deals'}
                 <Badge variant="secondary" className="text-xs">{statusCounts.all}</Badge>
               </div>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-center gap-1">
+                {isAdmin && (
+                  <ToggleGroup
+                    type="single"
+                    value={scope}
+                    onValueChange={(v) => { if (v) setScope(v as DealScope); }}
+                    className="mr-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ToggleGroupItem value="my" className="text-[10px] h-6 px-2">Mine</ToggleGroupItem>
+                    <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
+                  </ToggleGroup>
+                )}
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
