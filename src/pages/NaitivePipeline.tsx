@@ -1,8 +1,9 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Loader2, Plus, FileX, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
+import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Deal, DealStatus } from '@/types/deal';
@@ -13,6 +14,12 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { NaitivePipelineKPIStrip } from '@/components/naitive-pipeline/NaitivePipelineKPIStrip';
+import { NaitiveFunnelChart, NaitiveTrendChart, NaitivAgingChart, NaitivHealthMixChart } from '@/components/naitive-pipeline/NaitivePipelineCharts';
+import { NaitivePipelineNotifications } from '@/components/naitive-pipeline/NaitivePipelineNotifications';
+import { NaitivePipelineHurdles } from '@/components/naitive-pipeline/NaitivePipelineHurdles';
+import { NaitivePipelineRecommendations } from '@/components/naitive-pipeline/NaitivePipelineRecommendations';
+import { NaitivePipelinePartnerInfluence } from '@/components/naitive-pipeline/NaitivePipelinePartnerInfluence';
 import {
   DndContext,
   DragOverlay,
@@ -82,12 +89,14 @@ function StageColumn({
 export default function NaitivePipeline() {
   const { hasAccess, isLoading: accessLoading } = useNaitivePipelineAccess();
   const { pipelineId, stages, deals, isLoading: dataLoading, refetch } = useNaitivePipelineData();
+  const { kpis, funnelData, agingData, healthMix, trendData, notifications, recommendations, hurdles } = useNaitivePipelineMetrics(deals, stages);
   const navigate = useNavigate();
 
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [dashboardCollapsed, setDashboardCollapsed] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -220,6 +229,47 @@ export default function NaitivePipeline() {
                }}
             />
           </div>
+
+          {/* Dashboard Command Center */}
+          {!isLoading && deals.length > 0 && (
+            <div className="mb-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Pipeline Command Center</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-xs text-muted-foreground h-7"
+                  onClick={() => setDashboardCollapsed(!dashboardCollapsed)}
+                >
+                  {dashboardCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+                  {dashboardCollapsed ? 'Show' : 'Hide'}
+                </Button>
+              </div>
+
+              {!dashboardCollapsed && (
+                <div className="space-y-4 animate-in fade-in-0 slide-in-from-top-2 duration-300">
+                  {/* KPI Strip */}
+                  <NaitivePipelineKPIStrip kpis={kpis} />
+
+                  {/* Charts Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <NaitiveFunnelChart data={funnelData} />
+                    <NaitiveTrendChart data={trendData} />
+                    <NaitivAgingChart data={agingData} />
+                    <NaitivHealthMixChart data={healthMix} />
+                  </div>
+
+                  {/* Intelligence Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <NaitivePipelineHurdles hurdles={hurdles} />
+                    <NaitivePipelineNotifications notifications={notifications} />
+                    <NaitivePipelineRecommendations recommendations={recommendations} />
+                    <NaitivePipelinePartnerInfluence deals={deals} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Pipeline Board */}
           {isLoading ? (
