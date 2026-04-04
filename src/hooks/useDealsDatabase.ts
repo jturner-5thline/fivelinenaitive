@@ -383,7 +383,9 @@ export function useDealsDatabase() {
       if (dealsResult.error) throw dealsResult.error;
       if (lendersResult.error) throw lendersResult.error;
 
-      const dbDeals = dealsResult.data;
+      // Exclude naitive Pipeline deals from standard deal metrics
+      const naitivePipelineId = await getNaitivePipelineId();
+      const dbDeals = excludeNaitivePipelineDeals(dealsResult.data || [], naitivePipelineId);
       const dbLenders = lendersResult.data || [];
 
       if (!dbDeals || dbDeals.length === 0) {
