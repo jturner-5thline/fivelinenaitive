@@ -3,6 +3,7 @@ import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'reac
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
@@ -551,6 +552,108 @@ export default function DealDetail() {
   // Get deal from context
   const contextDeal = getDealById(id || '');
   const [deal, setDeal] = useState<Deal | undefined>(contextDeal);
+  const [naitiveFallbackLoading, setNaitiveFallbackLoading] = useState(false);
+  const { hasAccess: hasNaitivePipelineAccess } = useNaitivePipelineAccess();
+
+  // Fallback: if deal not in DealsContext and user is 5th Line member, fetch directly
+  useEffect(() => {
+    if (contextDeal || !id || !hasNaitivePipelineAccess || isDealsLoading) return;
+    // Don't re-fetch if we already have it
+    if (deal) return;
+
+    let cancelled = false;
+    setNaitiveFallbackLoading(true);
+
+    (async () => {
+      try {
+        const [dealRes, lendersRes] = await Promise.all([
+          supabase.from('deals').select('*').eq('id', id).maybeSingle(),
+          supabase.from('deal_lenders').select('*').eq('deal_id', id),
+        ]);
+
+        if (cancelled || !dealRes.data) {
+          setNaitiveFallbackLoading(false);
+          return;
+        }
+
+        const dbDeal = dealRes.data;
+        const dbLenders = (lendersRes.data || []) as any[];
+        const dealLenders: DealLender[] = dbLenders.map((l: any) => ({
+          id: l.id,
+          name: l.name,
+          status: 'in-review' as const,
+          stage: l.stage,
+          substage: l.substage || undefined,
+          trackingStatus: (l.tracking_status || 'active') as LenderTrackingStatus,
+          notes: l.notes || undefined,
+          passReason: l.pass_reason || undefined,
+          score: l.score ?? null,
+          updatedAt: l.updated_at,
+          notesHistory: [],
+        }));
+
+        const toReferrer = (name: string | null): Referrer | undefined => {
+          if (!name) return undefined;
+          return { id: `ref-${name.toLowerCase().replace(/\s+/g, '-')}`, name };
+        };
+
+        const parseDealTypes = (dealType: string | null): string[] | undefined => {
+          if (!dealType) return undefined;
+          try {
+            const parsed = JSON.parse(dealType);
+            return Array.isArray(parsed) ? parsed : [parsed];
+          } catch { return [dealType]; }
+        };
+
+        const mapped: Deal = {
+          id: dbDeal.id,
+          name: dbDeal.company,
+          company: dbDeal.company,
+          stage: dbDeal.stage as DealStage,
+          status: dbDeal.status as DealStatus,
+          engagementType: (dbDeal.engagement_type || 'guided') as EngagementType,
+          exclusivity: (dbDeal.exclusivity || undefined) as ExclusivityType | undefined,
+          dealTypes: parseDealTypes(dbDeal.deal_type),
+          manager: dbDeal.manager || '',
+          dealOwner: dbDeal.deal_owner || undefined,
+          analyst: (dbDeal as any).analyst || undefined,
+          isFlagged: dbDeal.is_flagged || false,
+          flagNotes: dbDeal.flag_notes || undefined,
+          referredBy: toReferrer(dbDeal.referred_by),
+          lender: dealLenders[0]?.name || '',
+          value: Number(dbDeal.value),
+          totalFee: Number(dbDeal.total_fee || 0),
+          retainerFee: Number(dbDeal.retainer_fee || 0),
+          milestoneFee: Number(dbDeal.milestone_fee || 0),
+          successFeePercent: Number(dbDeal.success_fee_percent || 0),
+          preSigningHours: Number(dbDeal.pre_signing_hours || 0),
+          postSigningHours: Number(dbDeal.post_signing_hours || 0),
+          notes: dbDeal.notes || undefined,
+          notesUpdatedAt: dbDeal.notes_updated_at || undefined,
+          narrative: dbDeal.narrative || undefined,
+          contact: dbDeal.contact || '',
+          contactInfo: dbDeal.contact_info || undefined,
+          companyUrl: (dbDeal as any).company_url || undefined,
+          businessModel: (dbDeal as any).business_model || undefined,
+          sourcedVia: (dbDeal as any).sourced_via || undefined,
+          createdAt: dbDeal.created_at,
+          updatedAt: dbDeal.updated_at,
+          lenders: dealLenders,
+          migratedFromPersonal: dbDeal.migrated_from_personal || false,
+          pipelineId: dbDeal.pipeline_id || undefined,
+          closingDate: (dbDeal as any).closing_date || null,
+        };
+
+        if (!cancelled) setDeal(mapped);
+      } catch (err) {
+        console.error('Failed to fetch naitive pipeline deal:', err);
+      } finally {
+        if (!cancelled) setNaitiveFallbackLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [contextDeal, id, hasNaitivePipelineAccess, isDealsLoading, deal]);
   
   // Update local deal state when context deal changes
   // Use the context (database) as source of truth, only preserve local order
@@ -2036,7 +2139,7 @@ export default function DealDetail() {
 
   // Show loading state only for the initial load.
   // During background refetches (e.g., realtime events), keep the page rendered to avoid a full-page "refresh".
-  if (isDealsLoading && !deal) {
+  if ((isDealsLoading || naitiveFallbackLoading) && !deal) {
     return (
       <div className="bg-transparent min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
