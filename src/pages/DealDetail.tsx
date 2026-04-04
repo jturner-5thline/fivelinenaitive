@@ -3273,6 +3273,7 @@ export default function DealDetail() {
                                   </div>
                                 );
                               case 'hoursAndFees':
+                                if (isNaitiveDeal) return null;
                                 return (
                                   <div key={fieldId}>
                                     <Separator className="my-4" />
