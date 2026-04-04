@@ -131,6 +131,22 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
     }));
   };
 
+  // Build donut-specific data with "Other" grouping for top-5 slices
+  const getDonutData = () => {
+    const raw = getChartData();
+    if (raw.length <= 6) return { slices: raw, otherDetails: [] };
+
+    const sorted = [...raw].sort((a, b) => b.value - a.value);
+    const top = sorted.slice(0, 5);
+    const rest = sorted.slice(5);
+    const otherValue = rest.reduce((s, r) => s + r.value, 0);
+
+    return {
+      slices: [...top, { name: 'Other', value: otherValue }],
+      otherDetails: rest,
+    };
+  };
+
   const getTimeSeriesData = () => {
     if (!chartDialogType || !chartFilterFn) return [];
 
