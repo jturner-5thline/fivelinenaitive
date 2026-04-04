@@ -606,6 +606,8 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                             stroke="none"
                             onMouseEnter={(_, index) => setActiveDonutIndex(index)}
                             onMouseLeave={() => setActiveDonutIndex(null)}
+                            onClick={(_, index) => handleSliceClick(donutData.slices[index]?.name)}
+                            style={{ cursor: 'pointer' }}
                           >
                             {donutData.slices.map((_, index) => (
                               <Cell
