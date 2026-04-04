@@ -266,7 +266,7 @@ export default function Dashboard() {
           {/* Dashboard Tabs */}
           <Tabs value={dashboardTab} onValueChange={handleDashboardTabChange}>
             <TabsList>
-              <TabsTrigger value="overview">My Dashboard</TabsTrigger>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="news-feed" className="gap-1.5">
                 <Newspaper className="h-3.5 w-3.5" />
                 News Feed
