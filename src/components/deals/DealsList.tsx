@@ -154,6 +154,8 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   const toggleGroup = (key: string) => {
     setCollapsedGroups(prev => {
       const next = new Set(prev);
+      // Clear __ALL__ marker when individual group is toggled
+      next.delete('__ALL__');
       if (next.has(key)) {
         next.delete(key);
       } else {
