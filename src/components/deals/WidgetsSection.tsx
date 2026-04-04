@@ -646,12 +646,15 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                         return (
                           <div
                             key={entry.name}
-                            className="flex items-center gap-2 cursor-default rounded px-1.5 py-0.5 transition-colors"
+                            className={`flex items-center gap-2 rounded px-1.5 py-0.5 transition-colors ${entry.name === 'Other' ? 'cursor-default' : 'cursor-pointer'}`}
                             style={{
-                              backgroundColor: activeDonutIndex === index ? 'hsl(var(--muted))' : 'transparent',
+                              backgroundColor: drilldownStage === entry.name
+                                ? 'hsl(var(--primary) / 0.1)'
+                                : activeDonutIndex === index ? 'hsl(var(--muted))' : 'transparent',
                             }}
                             onMouseEnter={() => setActiveDonutIndex(index)}
                             onMouseLeave={() => setActiveDonutIndex(null)}
+                            onClick={() => handleSliceClick(entry.name)}
                           >
                             <span
                               className="h-2 w-2 rounded-full shrink-0"
