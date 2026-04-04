@@ -34,9 +34,11 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
   const { profile } = useProfile();
   const { preferences } = usePreferences();
   const { toggles } = useDashboardLayout();
+  const { isAdmin } = useCompany();
   const [filter, setFilter] = useState<StageFilter>('all');
   const [isOpen, setIsOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [scope, setScope] = useState<DealScope>('my');
 
   const myDeals = useMemo(() => {
     const displayName = profile?.display_name || profile?.first_name || '';
