@@ -791,6 +791,8 @@ export default function Dashboard() {
                   sortField={sortField}
                   sortDirection={sortDirection}
                   viewMode={viewMode}
+                  expandAllSignal={expandAllSignal}
+                  collapseAllSignal={collapseAllSignal}
                 />
               )}
             </div>
