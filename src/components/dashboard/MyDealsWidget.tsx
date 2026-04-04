@@ -85,13 +85,17 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
   // Count deals by status for filter badges
   const statusCounts = useMemo(() => {
     const displayName = profile?.display_name || profile?.first_name || '';
-    const mine = deals.filter(d => d.manager?.toLowerCase() === displayName?.toLowerCase() && d.status !== 'archived');
+    const mine = deals.filter(d => {
+      if (d.status === 'archived') return false;
+      if (scope === 'my') return d.manager?.toLowerCase() === displayName?.toLowerCase();
+      return true;
+    });
     return {
       all: mine.length,
       active: mine.filter(d => d.status === 'on-track').length,
       atRisk: mine.filter(d => d.status === 'at-risk' || d.status === 'off-track').length,
     };
-  }, [deals, profile]);
+  }, [deals, profile, scope]);
 
   const getStatusDot = (status: string) => {
     const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
