@@ -89,12 +89,14 @@ function StageColumn({
 export default function NaitivePipeline() {
   const { hasAccess, isLoading: accessLoading } = useNaitivePipelineAccess();
   const { pipelineId, stages, deals, isLoading: dataLoading, refetch } = useNaitivePipelineData();
+  const { kpis, funnelData, agingData, healthMix, trendData, notifications, recommendations, hurdles } = useNaitivePipelineMetrics(deals, stages);
   const navigate = useNavigate();
 
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [dashboardCollapsed, setDashboardCollapsed] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
