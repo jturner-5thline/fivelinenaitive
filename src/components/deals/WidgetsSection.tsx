@@ -88,6 +88,8 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartViewType, setChartViewType] = useState<'pie' | 'bar' | 'line'>('pie');
 
   const [activeDonutIndex, setActiveDonutIndex] = useState<number | null>(null);
+  const [drilldownStage, setDrilldownStage] = useState<string | null>(null);
+  const [drilldownMetric, setDrilldownMetric] = useState<'dollarVolume' | 'revenue'>('dollarVolume');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
