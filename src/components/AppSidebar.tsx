@@ -168,6 +168,25 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+
+              {hasNaitivePipelineAccess && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive("/naitive-pipeline")}
+                    tooltip="naitive Pipeline"
+                  >
+                    <NavLink 
+                      to="/naitive-pipeline" 
+                      className="hover:bg-sidebar-accent/50"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <Handshake className="h-4 w-4" />
+                      {showExpanded && <span>naitive Pipeline</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
