@@ -557,6 +557,7 @@ export function useDealsDatabase() {
         lenders: [],
         dealTypes: dealData.dealTypes || undefined,
         pipelineId: (data as any).pipeline_id || undefined,
+        dealClass: ((data as any).deal_class || 'standard') as DealClass,
       };
 
       setDeals(prev => [newDeal, ...prev]);
