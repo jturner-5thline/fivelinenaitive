@@ -703,31 +703,33 @@ export default function Dashboard() {
                   </svg>
                   <span className="hidden sm:inline">Milestones</span>
                 </Button>
-                <DealSavedViewsMenu
-                  views={savedViews}
-                  onSave={handleSaveView}
-                  onRestore={handleRestoreView}
-                  onDelete={deleteView}
-                  onSetDefault={setDefault}
-                  hasActiveFilters={hasActiveFilters}
-                />
-                {(viewMode === 'grid' || viewMode === 'list') && groupBy && (
-                  <button
-                    onClick={() => {
-                      if (allExpanded) {
-                        setCollapseAllSignal(s => s + 1);
-                        setAllExpanded(false);
-                      } else {
-                        setExpandAllSignal(s => s + 1);
-                        setAllExpanded(true);
-                      }
-                    }}
-                    className="text-[10px] text-muted-foreground/70 hover:text-foreground/80 transition-colors cursor-pointer select-none"
-                    aria-label={allExpanded ? 'Collapse all groups' : 'Expand all groups'}
-                  >
-                    {allExpanded ? 'Collapse All' : 'Expand All'}
-                  </button>
-                )}
+                <div className="relative self-center">
+                  <DealSavedViewsMenu
+                    views={savedViews}
+                    onSave={handleSaveView}
+                    onRestore={handleRestoreView}
+                    onDelete={deleteView}
+                    onSetDefault={setDefault}
+                    hasActiveFilters={hasActiveFilters}
+                  />
+                  {(viewMode === 'grid' || viewMode === 'list') && groupBy && (
+                    <button
+                      onClick={() => {
+                        if (allExpanded) {
+                          setCollapseAllSignal(s => s + 1);
+                          setAllExpanded(false);
+                        } else {
+                          setExpandAllSignal(s => s + 1);
+                          setAllExpanded(true);
+                        }
+                      }}
+                      className="absolute left-1/2 -translate-x-1/2 top-full text-[10px] text-muted-foreground/70 hover:text-foreground/80 transition-colors cursor-pointer select-none whitespace-nowrap"
+                      aria-label={allExpanded ? 'Collapse all groups' : 'Expand all groups'}
+                    >
+                      {allExpanded ? 'Collapse All' : 'Expand All'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
