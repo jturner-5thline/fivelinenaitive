@@ -108,6 +108,9 @@ export default function Dashboard() {
   const [savedViewWarningDismissed, setSavedViewWarningDismissed] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [mergeCluster, setMergeCluster] = useState<DuplicateCluster | null>(null);
+  const [expandAllSignal, setExpandAllSignal] = useState(0);
+  const [collapseAllSignal, setCollapseAllSignal] = useState(0);
+  const [allExpanded, setAllExpanded] = useState(true);
   const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
