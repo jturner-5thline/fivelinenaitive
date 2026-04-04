@@ -57,6 +57,16 @@ const CHART_COLORS = [
   'hsl(150, 60%, 45%)',
 ];
 
+// Muted tonal palette for donut chart – primary accent + tonal variations + neutral for "Other"
+const DONUT_PALETTE = [
+  'hsl(var(--primary))',
+  'hsl(var(--primary) / 0.7)',
+  'hsl(var(--primary) / 0.5)',
+  'hsl(var(--primary) / 0.35)',
+  'hsl(var(--primary) / 0.22)',
+  'hsl(var(--muted-foreground) / 0.25)',
+];
+
 export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, specialWidgets, toggleSpecialWidget } = useWidgets();
   const { formatCurrencyValue } = usePreferences();
