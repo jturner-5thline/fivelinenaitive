@@ -42,10 +42,13 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
 
   const myDeals = useMemo(() => {
     const displayName = profile?.display_name || profile?.first_name || '';
-    let filtered = deals.filter(d =>
-      d.manager?.toLowerCase() === displayName?.toLowerCase() &&
-      d.status !== 'archived'
-    );
+    let filtered = deals.filter(d => {
+      if (d.status === 'archived') return false;
+      if (scope === 'my') {
+        return d.manager?.toLowerCase() === displayName?.toLowerCase();
+      }
+      return true; // 'all' scope — company RLS already scopes data
+    });
 
     // Apply search
     if (searchQuery.trim()) {
