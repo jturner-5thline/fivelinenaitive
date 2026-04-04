@@ -355,7 +355,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                     ? `$${(totalVolume / 1_000).toFixed(1)}K`
                     : `$${totalVolume.toLocaleString()}`;
                   return (
-                    <div className="flex items-center gap-6 shrink-0 w-[200px] justify-end">
+                    <div className="flex items-center gap-6 shrink-0 ml-4">
                       <div className="flex items-baseline gap-1 w-[72px] justify-end">
                         <span className="text-sm font-medium text-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
                           {groupDeals.length}
