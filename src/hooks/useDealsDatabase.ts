@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Deal, DealLender, DealStatus, DealStage, EngagementType, ExclusivityType, Referrer, LenderNoteHistory, LenderTrackingStatus } from '@/types/deal';
+import { Deal, DealLender, DealStatus, DealStage, DealClass, EngagementType, ExclusivityType, Referrer, LenderNoteHistory, LenderTrackingStatus } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 import { addDays } from 'date-fns';
