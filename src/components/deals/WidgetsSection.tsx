@@ -306,17 +306,43 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
     }
   };
 
+  const donutData = getDonutData();
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      const total = donutData.slices.reduce((s: number, d: any) => s + d.value, 0);
+      const pct = total > 0 ? ((data.value / total) * 100).toFixed(1) : '0';
+
+      if (data.name === 'Other' && donutData.otherDetails.length > 0) {
+        return (
+          <div className="bg-popover border border-border rounded-lg p-3 shadow-lg max-w-[220px]">
+            <p className="font-medium text-foreground text-xs mb-1">Other ({pct}%)</p>
+            <div className="space-y-0.5">
+              {donutData.otherDetails.map((d: any) => {
+                const itemPct = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0';
+                return (
+                  <div key={d.name} className="flex justify-between gap-3 text-[11px] text-muted-foreground">
+                    <span className="truncate">{d.name}</span>
+                    <span className="tabular-nums shrink-0">
+                      {chartDialogType === 'count' ? d.value : formatCurrencyValue(d.value)} ({itemPct}%)
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium text-foreground">{data.name}</p>
-          <p className="text-muted-foreground">
+          <p className="font-medium text-foreground text-xs">{data.name}</p>
+          <p className="text-muted-foreground text-[11px] tabular-nums">
             {chartDialogType === 'count' 
               ? `${data.value} deal${data.value !== 1 ? 's' : ''}`
               : formatCurrencyValue(data.value)
-            }
+            } · {pct}%
           </p>
         </div>
       );
