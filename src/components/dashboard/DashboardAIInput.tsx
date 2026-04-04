@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react';
-import { History, Maximize2, Minimize2, RotateCcw, Download, Share2 } from 'lucide-react';
+import { History, Maximize2, Minimize2, RotateCcw, Download, AlertCircle } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,13 @@ import { ProactiveAlerts } from './chat/ProactiveAlerts';
 import { QuickActionCards } from './chat/QuickActionCards';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-chat`;
+const CHAT_REQUEST_TIMEOUT_MS = 70_000;
+
+interface AssistantErrorState {
+  title: string;
+  message: string;
+  prompt: string;
+}
 
 interface SuggestionConfig {
   text: string;
@@ -52,6 +59,51 @@ function renderSuggestionText(text: string) {
   });
 }
 
+function extractTextContent(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(extractTextContent).filter(Boolean).join('');
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if (typeof record.text === 'string') return record.text;
+    if ('content' in record) return extractTextContent(record.content);
+  }
+  return '';
+}
+
+function extractAssistantPayloadText(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return '';
+  const record = payload as Record<string, any>;
+  return [
+    extractTextContent(record.choices?.[0]?.delta?.content),
+    extractTextContent(record.choices?.[0]?.message?.content),
+    extractTextContent(record.choices?.[0]?.text),
+    extractTextContent(record.response),
+    extractTextContent(record.content),
+  ].find(Boolean) || '';
+}
+
+function getVisibleErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : 'Unknown error';
+  if (/timed out/i.test(message)) {
+    return {
+      title: 'Assistant timed out',
+      message: 'The AI request took too long. Please retry.',
+    };
+  }
+
+  if (/empty response/i.test(message) || /malformed/i.test(message)) {
+    return {
+      title: 'No response returned',
+      message: 'The AI request completed without a usable response. Please retry.',
+    };
+  }
+
+  return {
+    title: 'Assistant request failed',
+    message: message || 'Something went wrong. Please retry.',
+  };
+}
+
 export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps) {
   const { user } = useAuth();
   const { company } = useCompany();
@@ -66,6 +118,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   const [expanded, setExpanded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [teamMembers, setTeamMembers] = useState<{ user_id: string; display_name: string; email: string }[]>([]);
+  const [requestError, setRequestError] = useState<AssistantErrorState | null>(null);
   const autoBriefedRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatSectionRef = useRef<HTMLDivElement>(null);
@@ -108,14 +161,24 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     }, 50);
   }, []);
 
-  const handleSend = useCallback(async (text?: string) => {
+  const handleSend = useCallback(async (text?: string, options?: { retry?: boolean }) => {
     const trimmed = (text || inputValue).trim();
     if (!trimmed || isLoading) return;
 
+    const isRetry = options?.retry === true;
+    const lastMessage = messages[messages.length - 1];
+    const shouldReuseLastUserMessage = isRetry && lastMessage?.role === 'user' && lastMessage.content === trimmed;
+
+    setRequestError(null);
+
     const userMsg: ChatMessage = { role: 'user', content: trimmed, created_at: new Date().toISOString() };
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
-    setInputValue('');
+    const updatedMessages = shouldReuseLastUserMessage ? messages : [...messages, userMsg];
+
+    if (!shouldReuseLastUserMessage) {
+      setMessages(updatedMessages);
+      setInputValue('');
+    }
+
     setIsLoading(true);
 
     // Scroll chat into view after sending
@@ -134,7 +197,9 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
       }
     }
 
-    await saveMessage(convId, 'user', trimmed);
+    if (!shouldReuseLastUserMessage || !activeConversationId) {
+      await saveMessage(convId, 'user', trimmed);
+    }
 
     // Track briefings
     if (/briefing|morning|catchup|catch up/i.test(trimmed)) {
@@ -142,8 +207,8 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     }
 
     let assistantContent = '';
-    const upsertAssistant = (chunk: string) => {
-      assistantContent += chunk;
+    const upsertAssistant = (nextContent: string, mode: 'append' | 'replace' = 'append') => {
+      assistantContent = mode === 'append' ? assistantContent + nextContent : nextContent;
       setMessages(prev => {
         const last = prev[prev.length - 1];
         if (last?.role === 'assistant') {
@@ -152,6 +217,9 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
         return [...prev, { role: 'assistant', content: assistantContent, created_at: new Date().toISOString() }];
       });
     };
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), CHAT_REQUEST_TIMEOUT_MS);
 
     try {
       const session = await supabase.auth.getSession();
@@ -168,24 +236,31 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ messages: updatedMessages.map(m => ({ role: m.role, content: m.content })) }),
+        signal: controller.signal,
       });
 
-      if (resp.status === 429) { toast.error('Rate limit reached.'); setIsLoading(false); return; }
-      if (resp.status === 402) { toast.error('AI credits exhausted.'); setIsLoading(false); return; }
+      if (resp.status === 429) throw new Error('Rate limit reached. Please try again in a moment.');
+      if (resp.status === 402) throw new Error('AI credits exhausted.');
       if (!resp.ok) {
         const errText = await resp.text().catch(() => 'Unknown error');
         console.error('[DashboardAI] Response error:', resp.status, errText);
-        throw new Error(`AI request failed (${resp.status})`);
+        throw new Error(errText || `AI request failed (${resp.status})`);
       }
       if (!resp.body) throw new Error('No response body');
 
       const contentType = resp.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const json = await resp.json();
-        const content = json.choices?.[0]?.message?.content;
-        if (content) upsertAssistant(content);
-        if (content && convId) await saveMessage(convId, 'assistant', content);
-        setIsLoading(false);
+        const content = extractAssistantPayloadText(json).trim();
+        if (json?.error && !content) {
+          throw new Error(String(json.error));
+        }
+        if (!content) {
+          console.error('[DashboardAI] Empty JSON response:', json);
+          throw new Error('The assistant returned an empty response.');
+        }
+        upsertAssistant(content, 'replace');
+        if (convId) await saveMessage(convId, 'assistant', content);
         return;
       }
 
@@ -209,9 +284,20 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
           if (jsonStr === '[DONE]') { streamDone = true; break; }
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) upsertAssistant(content);
-          } catch { /* partial chunk, wait for more data */ }
+            const delta = extractTextContent(parsed?.choices?.[0]?.delta?.content);
+            if (delta) {
+              upsertAssistant(delta, 'append');
+              continue;
+            }
+
+            const fullContent = extractAssistantPayloadText(parsed).trim();
+            if (fullContent) {
+              upsertAssistant(fullContent, 'replace');
+            }
+          } catch {
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
         }
       }
 
@@ -224,16 +310,41 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
           if (!raw.startsWith('data: ')) continue;
           const jsonStr = raw.slice(6).trim();
           if (jsonStr === '[DONE]') continue;
-          try { const p = JSON.parse(jsonStr); const c = p.choices?.[0]?.delta?.content; if (c) upsertAssistant(c); } catch {}
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = extractTextContent(parsed?.choices?.[0]?.delta?.content);
+            if (delta) {
+              upsertAssistant(delta, 'append');
+              continue;
+            }
+
+            const fullContent = extractAssistantPayloadText(parsed).trim();
+            if (fullContent) upsertAssistant(fullContent, 'replace');
+          } catch {}
         }
       }
 
-      if (assistantContent && convId) await saveMessage(convId, 'assistant', assistantContent);
+      if (!assistantContent.trim()) {
+        console.error('[DashboardAI] Empty stream response', {
+          prompt: trimmed,
+          contentType,
+          conversationId: convId,
+        });
+        throw new Error('The assistant returned an empty response.');
+      }
+
+      if (convId) await saveMessage(convId, 'assistant', assistantContent);
     } catch (err) {
-      console.error('[DashboardAI] Chat error:', err);
-      toast.error('Failed to get response. Please try again.');
-      upsertAssistant('Sorry, I encountered an error. Please try again.');
+      const visibleError = getVisibleErrorMessage(err);
+      console.error('[DashboardAI] Chat error:', {
+        error: err,
+        prompt: trimmed,
+        conversationId: convId,
+      });
+      setRequestError({ ...visibleError, prompt: trimmed });
+      toast.error(visibleError.title, { description: visibleError.message });
     } finally {
+      window.clearTimeout(timeoutId);
       setIsLoading(false);
     }
   }, [inputValue, isLoading, messages, activeConversationId, createConversation, saveMessage, setMessages]);
@@ -288,6 +399,11 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
       handleSend(textToUse);
     }
   }, [populateInput, handleSend]);
+
+  const handleRetry = useCallback(() => {
+    if (!requestError?.prompt || isLoading) return;
+    handleSend(requestError.prompt, { retry: true });
+  }, [requestError, isLoading, handleSend]);
 
   return (
     <div className="relative" ref={chatSectionRef}>
@@ -371,9 +487,26 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
               </div>
             )}
 
+            {requestError && !isLoading && (
+              <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-destructive">{requestError.title}</p>
+                      <p className="text-xs text-muted-foreground">{requestError.message}</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={handleRetry}>
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Retry
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Input bar — always visible */}
             <ChatInputBar
-              onSend={handleSend}
+              onSend={(text) => handleSend(text)}
               isLoading={isLoading}
               inputValue={inputValue}
               setInputValue={setInputValue}

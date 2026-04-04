@@ -5,6 +5,67 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const DASHBOARD_CHAT_MODEL = "google/gemini-3-flash-preview";
+const AI_GATEWAY_TIMEOUT_MS = 45_000;
+
+async function logDashboardChatFailure(
+  supabase: any,
+  userId: string | null,
+  companyId: string | null,
+  errorMessage: string,
+  promptPreview: string,
+) {
+  console.error('[dashboard-chat] request failed', {
+    userId,
+    companyId,
+    errorMessage,
+    promptPreview,
+  });
+
+  if (!userId || !companyId) return;
+
+  try {
+    await supabase.from('ai_usage_logs').insert({
+      company_id: companyId,
+      user_id: userId,
+      feature: 'dashboard_chat',
+      model: DASHBOARD_CHAT_MODEL,
+      input_tokens: 0,
+      output_tokens: 0,
+      status: 'error',
+      error_message: `${errorMessage} | prompt: ${promptPreview.slice(0, 300)}`,
+    });
+  } catch (logError) {
+    console.error('[dashboard-chat] failed to persist ai_usage_logs row', logError);
+  }
+}
+
+async function callAiGateway(
+  apiKey: string,
+  body: Record<string, unknown>,
+  timeoutMs = AI_GATEWAY_TIMEOUT_MS,
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Dashboard AI timed out after ${Math.round(timeoutMs / 1000)}s`);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 const platformKnowledge = `
 ## Platform Overview
 naitive is a commercial lending deal management platform by 5th Line Capital. It helps teams manage deals, lenders, analytics, and reporting.
@@ -1042,6 +1103,10 @@ function buildContextString(ctx: any, companyName: string, role: string) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  let userId: string | null = null;
+  let companyId: string | null = null;
+  let lastUserPrompt = '';
+
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -1062,6 +1127,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    userId = user.id;
+
     const { messages, includeAlerts } = await req.json();
 
     // Handle alerts-only request
@@ -1078,7 +1145,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: membership } = await supabase.from('company_members').select('company_id, role, companies(name)').eq('user_id', user.id).maybeSingle();
-    const companyId = membership?.company_id;
+    companyId = membership?.company_id ?? null;
     const companyName = (membership as any)?.companies?.name || 'Unknown';
 
     const ctx = await fetchUserContext(supabase, user.id, companyId);
@@ -1090,6 +1157,7 @@ Deno.serve(async (req) => {
 
     // ─── Multi-agent routing ────────────────────────────────────
     const lastUserMsg = messages.filter((m: any) => m.role === 'user').pop()?.content || '';
+    lastUserPrompt = lastUserMsg;
     const detectedIntent = detectIntent(lastUserMsg);
     const activePersona = detectedIntent ? agentPersonas[detectedIntent] : null;
     const personaAddendum = activePersona ? `\n\n## 🎯 Active Specialist: ${activePersona.icon} ${activePersona.name}\n${activePersona.systemAddendum}` : '';
@@ -1174,17 +1242,13 @@ ${personaAddendum}`;
 
     const apiCall = async (msgs: any[], stream: boolean, includeTools = false) => {
       const body: any = {
-        model: "google/gemini-3-flash-preview",
+        model: DASHBOARD_CHAT_MODEL,
         messages: msgs,
         temperature: 0.4,
         stream,
       };
       if (includeTools) body.tools = tools;
-      return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      return callAiGateway(LOVABLE_API_KEY, body);
     };
 
     const allMessages = [{ role: "system", content: systemPrompt }, ...messages.map((m: any) => ({ role: m.role, content: m.content }))];
@@ -1196,12 +1260,17 @@ ${personaAddendum}`;
       const status = firstResponse.status;
       if (status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       if (status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      console.error("AI error:", status, await firstResponse.text());
+      const errorText = await firstResponse.text();
+      await logDashboardChatFailure(supabase, userId, companyId, `AI gateway returned ${status}: ${errorText.slice(0, 300)}`, lastUserPrompt);
       return new Response(JSON.stringify({ error: "AI processing failed" }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const firstResult = await firstResponse.json();
     const choice = firstResult.choices?.[0];
+    if (!choice) {
+      await logDashboardChatFailure(supabase, userId, companyId, 'AI gateway returned a malformed response payload', lastUserPrompt);
+      return new Response(JSON.stringify({ error: 'AI returned a malformed response.' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     // Handle tool calls (supports multiple rounds)
     if (choice?.message?.tool_calls?.length > 0) {
@@ -1242,6 +1311,7 @@ ${personaAddendum}`;
 
       if (!streamResp.ok) {
         const fallback = lastChoice?.message?.content || "Actions completed.";
+        await logDashboardChatFailure(supabase, userId, companyId, `Final stream request failed with ${streamResp.status}`, lastUserPrompt);
         return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: fallback } }] }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -1252,6 +1322,7 @@ ${personaAddendum}`;
     const streamResp = await apiCall(allMessages, true);
     if (!streamResp.ok) {
       const content = choice?.message?.content || "I couldn't generate a response.";
+      await logDashboardChatFailure(supabase, userId, companyId, `Direct stream request failed with ${streamResp.status}`, lastUserPrompt);
       return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content } }] }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -1259,6 +1330,22 @@ ${personaAddendum}`;
 
   } catch (error: unknown) {
     console.error('Error in dashboard-chat:', error);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (supabaseUrl && supabaseAnonKey) {
+      try {
+        const loggingClient = createClient(supabaseUrl, supabaseAnonKey);
+        await logDashboardChatFailure(
+          loggingClient,
+          userId,
+          companyId,
+          error instanceof Error ? error.message : 'Unknown error',
+          lastUserPrompt,
+        );
+      } catch (loggingError) {
+        console.error('[dashboard-chat] catch-path logging failed', loggingError);
+      }
+    }
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
