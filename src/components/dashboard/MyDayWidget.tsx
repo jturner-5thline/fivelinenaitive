@@ -114,8 +114,8 @@ export function MyDayWidget({ defaultOpen = true }: MyDayWidgetProps) {
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={handleToggle}>
-      <Card>
+    <Collapsible open={isOpen} onOpenChange={handleToggle} className="h-full">
+      <Card className="h-full flex flex-col">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors">
             <CardTitle className="text-base font-medium flex items-center justify-between">
