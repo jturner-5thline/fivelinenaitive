@@ -532,73 +532,127 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
               </div>
             </div>
           </DialogHeader>
-          <div ref={chartRef} className="h-[300px] w-full">
+          <div ref={chartRef} className="h-[320px] w-full">
             {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <>
                 {chartViewType === 'pie' ? (
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={renderCustomLabel}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {chartData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                  </PieChart>
-                ) : chartViewType === 'bar' ? (
-                  <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      width={100} 
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      {chartData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
+                  <div className="flex items-center h-full gap-4">
+                    {/* Donut */}
+                    <div className="relative w-[200px] h-[200px] shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={donutData.slices}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={55}
+                            outerRadius={90}
+                            dataKey="value"
+                            paddingAngle={1.5}
+                            stroke="none"
+                            onMouseEnter={(_, index) => setActiveDonutIndex(index)}
+                            onMouseLeave={() => setActiveDonutIndex(null)}
+                          >
+                            {donutData.slices.map((_, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={DONUT_PALETTE[index % DONUT_PALETTE.length]}
+                                opacity={activeDonutIndex === null || activeDonutIndex === index ? 1 : 0.45}
+                                style={{ transition: 'opacity 150ms ease' }}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      {/* Center label */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-[10px] text-muted-foreground leading-tight">Active Deals</span>
+                        <span className="text-lg font-semibold text-foreground tabular-nums leading-tight">
+                          {chartDialogType === 'count'
+                            ? donutData.slices.reduce((s, d) => s + d.value, 0)
+                            : formatCurrencyValue(donutData.slices.reduce((s, d) => s + d.value, 0))
+                          }
+                        </span>
+                      </div>
+                    </div>
+                    {/* Right-side legend */}
+                    <div className="flex flex-col gap-1.5 min-w-0 overflow-y-auto max-h-[260px] pr-1">
+                      {donutData.slices.map((entry, index) => {
+                        const total = donutData.slices.reduce((s, d) => s + d.value, 0);
+                        const pct = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0';
+                        return (
+                          <div
+                            key={entry.name}
+                            className="flex items-center gap-2 cursor-default rounded px-1.5 py-0.5 transition-colors"
+                            style={{
+                              backgroundColor: activeDonutIndex === index ? 'hsl(var(--muted))' : 'transparent',
+                            }}
+                            onMouseEnter={() => setActiveDonutIndex(index)}
+                            onMouseLeave={() => setActiveDonutIndex(null)}
+                          >
+                            <span
+                              className="h-2 w-2 rounded-full shrink-0"
+                              style={{ backgroundColor: DONUT_PALETTE[index % DONUT_PALETTE.length] }}
+                            />
+                            <span className="text-[11px] text-muted-foreground truncate">{entry.name}</span>
+                            <span className="text-[11px] text-foreground font-medium tabular-nums ml-auto shrink-0">
+                              {pct}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ) : (
-                  <AreaChart data={chartData} margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
-                    <defs>
-                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="name" 
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                    />
-                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area 
-                      type="monotone" 
-                      dataKey="value" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={2}
-                      fill="url(#colorValue)" 
-                    />
-                  </AreaChart>
+                  <ResponsiveContainer width="100%" height="100%">
+                    {chartViewType === 'bar' ? (
+                      <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          width={100} 
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                          {chartData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    ) : (
+                      <AreaChart data={chartData} margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
+                        <defs>
+                          <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis 
+                          dataKey="name" 
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
+                        />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Area 
+                          type="monotone" 
+                          dataKey="value" 
+                          stroke="hsl(var(--primary))" 
+                          strokeWidth={2}
+                          fill="url(#colorValue)" 
+                        />
+                      </AreaChart>
+                    )}
+                  </ResponsiveContainer>
                 )}
-              </ResponsiveContainer>
+              </>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 No data available
