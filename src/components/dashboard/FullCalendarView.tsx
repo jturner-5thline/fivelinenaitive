@@ -173,10 +173,16 @@ function useDealMatches(events: CalendarEvent[]) {
 
   useEffect(() => {
     const fetchDeals = async () => {
-      const { data } = await supabase
+      const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
+      const naitivePipelineId = await getNaitivePipelineId();
+      let query = supabase
         .from('deals')
-        .select('id, company, stage')
+        .select('id, company, stage, pipeline_id')
         .limit(200);
+      if (naitivePipelineId) {
+        query = query.neq('pipeline_id', naitivePipelineId);
+      }
+      const { data } = await query;
       if (data) {
         setDeals(data.map(d => ({ id: d.id, name: d.company, stage: d.stage, contacts: [] as string[] })));
       }
