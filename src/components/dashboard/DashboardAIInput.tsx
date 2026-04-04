@@ -15,6 +15,7 @@ import { ChatHistorySidebar } from './chat/ChatHistorySidebar';
 import { ChatInputBar } from './chat/ChatInputBar';
 import { ProactiveAlerts } from './chat/ProactiveAlerts';
 import { QuickActionCards } from './chat/QuickActionCards';
+import { isBriefingPrompt, BRIEFING_MARKER } from './chat/MorningBriefing';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-chat`;
 const CHAT_REQUEST_TIMEOUT_MS = 70_000;
