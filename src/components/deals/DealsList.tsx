@@ -41,6 +41,8 @@ interface DealsListProps {
   sortField?: SortField;
   sortDirection?: SortDirection;
   viewMode?: 'grid' | 'list';
+  expandAllSignal?: number;
+  collapseAllSignal?: number;
 }
 
 function SortableTableHead({ id }: { id: DealListColumnId }) {
