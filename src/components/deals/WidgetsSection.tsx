@@ -535,7 +535,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       />
 
       <Dialog open={chartDialogOpen} onOpenChange={setChartDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
               <DialogTitle className="text-base">{chartDialogTitle}</DialogTitle>
