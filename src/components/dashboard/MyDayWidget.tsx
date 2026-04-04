@@ -86,7 +86,7 @@ export function MyDayWidget({ defaultOpen = true }: MyDayWidgetProps) {
 
   if (!calendarStatus?.connected) {
     return (
-      <Card>
+      <Card className="h-full flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-medium flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" />
