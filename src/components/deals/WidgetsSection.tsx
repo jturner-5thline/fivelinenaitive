@@ -88,6 +88,8 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartViewType, setChartViewType] = useState<'pie' | 'bar' | 'line'>('pie');
 
   const [activeDonutIndex, setActiveDonutIndex] = useState<number | null>(null);
+  const [drilldownStage, setDrilldownStage] = useState<string | null>(null);
+  const [drilldownMetric, setDrilldownMetric] = useState<'dollarVolume' | 'revenue'>('dollarVolume');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -188,6 +190,8 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
     setChartGroupBy(groupBy);
     setChartFilterFn(() => filterFn);
     setChartViewType('pie');
+    setDrilldownStage(null);
+    setDrilldownMetric('dollarVolume');
     setChartDialogOpen(true);
   };
 
@@ -307,6 +311,56 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   };
 
   const donutData = getDonutData();
+
+  // --- Drilldown logic ---
+  const handleSliceClick = (sliceName: string) => {
+    if (sliceName === 'Other') return; // disable drill-down for "Other"
+    if (drilldownStage === sliceName) {
+      setDrilldownStage(null); // toggle off
+    } else {
+      setDrilldownStage(sliceName);
+      setDrilldownMetric('dollarVolume');
+    }
+  };
+
+  const getDrilldownDeals = (): { name: string; company: string; manager: string; dollarVolume: number; revenue: number }[] => {
+    if (!drilldownStage || !chartFilterFn) return [];
+    const sourceDeals = deals.filter(chartFilterFn);
+    // Map formatted stage names back to raw stage values
+    const matchingDeals = sourceDeals.filter(d => {
+      const formatted = formatStageName(d.stage || 'Unknown');
+      return formatted === drilldownStage;
+    });
+    return matchingDeals
+      .map(d => ({
+        name: d.name || d.company || 'Unnamed Deal',
+        company: d.company || '',
+        manager: d.manager || '',
+        dollarVolume: d.value || 0,
+        revenue: d.totalFee || 0,
+      }))
+      .sort((a, b) => b[drilldownMetric === 'dollarVolume' ? 'dollarVolume' : 'revenue'] - a[drilldownMetric === 'dollarVolume' ? 'dollarVolume' : 'revenue']);
+  };
+
+  const drilldownDeals = getDrilldownDeals();
+  const drilldownTotal = drilldownDeals.reduce((s, d) => s + d[drilldownMetric], 0);
+
+  const DrilldownTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const d = payload[0].payload;
+      return (
+        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg max-w-[240px]">
+          <p className="font-medium text-foreground text-xs">{d.name}</p>
+          {d.company && <p className="text-muted-foreground text-[10px]">{d.company}</p>}
+          {d.manager && <p className="text-muted-foreground text-[10px]">Manager: {d.manager}</p>}
+          <p className="text-foreground text-[11px] tabular-nums mt-1">
+            {drilldownMetric === 'dollarVolume' ? 'Volume' : 'Revenue'}: {formatCurrencyValue(payload[0].value)}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -481,7 +535,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       />
 
       <Dialog open={chartDialogOpen} onOpenChange={setChartDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
               <DialogTitle className="text-base">{chartDialogTitle}</DialogTitle>
@@ -552,13 +606,21 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                             stroke="none"
                             onMouseEnter={(_, index) => setActiveDonutIndex(index)}
                             onMouseLeave={() => setActiveDonutIndex(null)}
+                            onClick={(_, index) => handleSliceClick(donutData.slices[index]?.name)}
+                            style={{ cursor: 'pointer' }}
                           >
                             {donutData.slices.map((_, index) => (
                               <Cell
                                 key={`cell-${index}`}
                                 fill={DONUT_PALETTE[index % DONUT_PALETTE.length]}
-                                opacity={activeDonutIndex === null || activeDonutIndex === index ? 1 : 0.45}
-                                style={{ transition: 'opacity 150ms ease' }}
+                                opacity={
+                                  drilldownStage
+                                    ? donutData.slices[index]?.name === drilldownStage ? 1 : 0.3
+                                    : activeDonutIndex === null || activeDonutIndex === index ? 1 : 0.45
+                                }
+                                strokeWidth={donutData.slices[index]?.name === drilldownStage ? 2 : 0}
+                                stroke={donutData.slices[index]?.name === drilldownStage ? 'hsl(var(--foreground))' : 'none'}
+                                style={{ transition: 'opacity 150ms ease', cursor: donutData.slices[index]?.name === 'Other' ? 'default' : 'pointer' }}
                               />
                             ))}
                           </Pie>
@@ -584,12 +646,15 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                         return (
                           <div
                             key={entry.name}
-                            className="flex items-center gap-2 cursor-default rounded px-1.5 py-0.5 transition-colors"
+                            className={`flex items-center gap-2 rounded px-1.5 py-0.5 transition-colors ${entry.name === 'Other' ? 'cursor-default' : 'cursor-pointer'}`}
                             style={{
-                              backgroundColor: activeDonutIndex === index ? 'hsl(var(--muted))' : 'transparent',
+                              backgroundColor: drilldownStage === entry.name
+                                ? 'hsl(var(--primary) / 0.1)'
+                                : activeDonutIndex === index ? 'hsl(var(--muted))' : 'transparent',
                             }}
                             onMouseEnter={() => setActiveDonutIndex(index)}
                             onMouseLeave={() => setActiveDonutIndex(null)}
+                            onClick={() => handleSliceClick(entry.name)}
                           >
                             <span
                               className="h-2 w-2 rounded-full shrink-0"
@@ -659,6 +724,87 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
               </div>
             )}
           </div>
+          {/* Drilldown section */}
+          {drilldownStage && chartViewType === 'pie' && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {drilldownMetric === 'dollarVolume' ? 'Dollar Volume' : 'Revenue'} by Deal — {drilldownStage}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {drilldownDeals.length} deal{drilldownDeals.length !== 1 ? 's' : ''} · {formatCurrencyValue(drilldownTotal)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-0.5 border border-border rounded-md p-0.5">
+                    <button
+                      onClick={() => setDrilldownMetric('dollarVolume')}
+                      className={`px-2.5 py-1 text-[11px] rounded transition-colors ${
+                        drilldownMetric === 'dollarVolume'
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Dollar Volume
+                    </button>
+                    <button
+                      onClick={() => setDrilldownMetric('revenue')}
+                      className={`px-2.5 py-1 text-[11px] rounded transition-colors ${
+                        drilldownMetric === 'revenue'
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Revenue
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setDrilldownStage(null)}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    ← Back to overview
+                  </button>
+                </div>
+              </div>
+              <div style={{ height: Math.max(120, drilldownDeals.length * 36 + 40) }}>
+                {drilldownDeals.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={drilldownDeals}
+                      layout="vertical"
+                      margin={{ left: 8, right: 16, top: 4, bottom: 4 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                      <XAxis
+                        type="number"
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                        tickFormatter={(v: number) => formatCurrencyValue(v)}
+                      />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        width={120}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                        tickFormatter={(v: string) => v.length > 18 ? v.slice(0, 16) + '…' : v}
+                      />
+                      <Tooltip content={<DrilldownTooltip />} />
+                      <Bar
+                        dataKey={drilldownMetric}
+                        radius={[0, 3, 3, 0]}
+                        fill="hsl(var(--primary))"
+                        maxBarSize={24}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    No deals with {drilldownMetric === 'dollarVolume' ? 'dollar volume' : 'revenue'} data in this stage
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
