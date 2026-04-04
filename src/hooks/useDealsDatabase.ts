@@ -384,9 +384,9 @@ export function useDealsDatabase() {
       if (dealsResult.error) throw dealsResult.error;
       if (lendersResult.error) throw lendersResult.error;
 
-      // Exclude naitive Pipeline deals from standard deal metrics
+      // Exclude naitive Pipeline deals from standard deal metrics using deal_class
       const naitivePipelineId = await getNaitivePipelineId();
-      const dbDeals = excludeNaitivePipelineDeals(dealsResult.data || [], naitivePipelineId);
+      const dbDeals = (dealsResult.data || []).filter((d: any) => (d.deal_class || 'standard') !== 'naitive');
       const dbLenders = lendersResult.data || [];
 
       if (!dbDeals || dbDeals.length === 0) {
