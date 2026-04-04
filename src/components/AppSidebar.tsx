@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCompanyFeatures } from "@/hooks/useCompanyFeatures";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
@@ -14,6 +14,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { usePageAccessFlags } from "@/hooks/useFeatureFlags";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { useCompany } from "@/hooks/useCompany";
+import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
 
 
 import {
@@ -69,6 +70,7 @@ export function AppSidebar() {
   const { hasPageAccess, isPageBeta, isLoading: isAccessLoading } = usePageAccessFlags();
   const { features: companyFeatures } = useCompanyFeatures();
   const { data: routingTasks = [] } = useClaapRoutingTasks();
+  const { hasAccess: hasNaitivePipelineAccess } = useNaitivePipelineAccess();
   const meetingTaskCount = routingTasks.length;
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
   const currentPath = location.pathname;
@@ -162,6 +164,25 @@ export function AppSidebar() {
                     >
                       <ShieldCheck className="h-4 w-4" />
                       {showExpanded && <span>Admin</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
+              {hasNaitivePipelineAccess && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive("/naitive-pipeline")}
+                    tooltip="naitive Pipeline"
+                  >
+                    <NavLink 
+                      to="/naitive-pipeline" 
+                      className="hover:bg-sidebar-accent/50"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <Handshake className="h-4 w-4" />
+                      {showExpanded && <span>naitive Pipeline</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
