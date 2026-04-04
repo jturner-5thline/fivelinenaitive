@@ -20,6 +20,7 @@ import { Deal, STAGE_CONFIG, STATUS_CONFIG } from '@/types/deal';
 import { differenceInDays } from 'date-fns';
 import { stripHtml } from '@/lib/stripHtml';
 
+type DealScope = 'my' | 'all';
 type StageFilter = 'all' | 'active' | 'at-risk' | 'stale';
 
 interface MyDealsWidgetProps {
