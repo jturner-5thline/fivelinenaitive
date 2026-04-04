@@ -312,6 +312,56 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
 
   const donutData = getDonutData();
 
+  // --- Drilldown logic ---
+  const handleSliceClick = (sliceName: string) => {
+    if (sliceName === 'Other') return; // disable drill-down for "Other"
+    if (drilldownStage === sliceName) {
+      setDrilldownStage(null); // toggle off
+    } else {
+      setDrilldownStage(sliceName);
+      setDrilldownMetric('dollarVolume');
+    }
+  };
+
+  const getDrilldownDeals = (): { name: string; company: string; manager: string; dollarVolume: number; revenue: number }[] => {
+    if (!drilldownStage || !chartFilterFn) return [];
+    const sourceDeals = deals.filter(chartFilterFn);
+    // Map formatted stage names back to raw stage values
+    const matchingDeals = sourceDeals.filter(d => {
+      const formatted = formatStageName(d.stage || 'Unknown');
+      return formatted === drilldownStage;
+    });
+    return matchingDeals
+      .map(d => ({
+        name: d.name || d.company || 'Unnamed Deal',
+        company: d.company || '',
+        manager: d.manager || '',
+        dollarVolume: d.value || 0,
+        revenue: d.totalFee || 0,
+      }))
+      .sort((a, b) => b[drilldownMetric === 'dollarVolume' ? 'dollarVolume' : 'revenue'] - a[drilldownMetric === 'dollarVolume' ? 'dollarVolume' : 'revenue']);
+  };
+
+  const drilldownDeals = getDrilldownDeals();
+  const drilldownTotal = drilldownDeals.reduce((s, d) => s + d[drilldownMetric], 0);
+
+  const DrilldownTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const d = payload[0].payload;
+      return (
+        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg max-w-[240px]">
+          <p className="font-medium text-foreground text-xs">{d.name}</p>
+          {d.company && <p className="text-muted-foreground text-[10px]">{d.company}</p>}
+          {d.manager && <p className="text-muted-foreground text-[10px]">Manager: {d.manager}</p>}
+          <p className="text-foreground text-[11px] tabular-nums mt-1">
+            {drilldownMetric === 'dollarVolume' ? 'Volume' : 'Revenue'}: {formatCurrencyValue(payload[0].value)}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
