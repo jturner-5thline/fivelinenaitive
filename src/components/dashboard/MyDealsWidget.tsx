@@ -15,6 +15,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useProfile } from '@/hooks/useProfile';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDashboardLayout } from '@/contexts/DashboardLayoutContext';
+import { useCompany } from '@/hooks/useCompany';
 import { Deal, STAGE_CONFIG, STATUS_CONFIG } from '@/types/deal';
 import { differenceInDays } from 'date-fns';
 import { stripHtml } from '@/lib/stripHtml';
