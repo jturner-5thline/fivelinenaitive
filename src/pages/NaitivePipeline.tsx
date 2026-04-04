@@ -213,10 +213,11 @@ export default function NaitivePipeline() {
                   Add Deal
                 </Button>
               }
-              initialValues={{
-                pipelineId: pipelineId || undefined,
-                dealStage: stages[0]?.id || 'prospect',
-              }}
+               initialValues={{
+                 pipelineId: pipelineId || undefined,
+                 dealStage: stages[0]?.id || 'prospect',
+                 dealClass: 'naitive',
+               }}
             />
           </div>
 
@@ -241,10 +242,11 @@ export default function NaitivePipeline() {
                     Add Your First Deal
                   </Button>
                 }
-                initialValues={{
-                  pipelineId: pipelineId || undefined,
-                  dealStage: stages[0]?.id || 'prospect',
-                }}
+                 initialValues={{
+                   pipelineId: pipelineId || undefined,
+                   dealStage: stages[0]?.id || 'prospect',
+                   dealClass: 'naitive',
+                 }}
               />
             </div>
           ) : (

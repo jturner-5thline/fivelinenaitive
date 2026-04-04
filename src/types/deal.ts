@@ -62,6 +62,8 @@ export interface Referrer {
   company?: string;
 }
 
+export type DealClass = 'standard' | 'naitive';
+
 export interface Deal {
   id: string;
   name: string;
@@ -100,6 +102,7 @@ export interface Deal {
   pipelineId?: string;
   closingDate?: string | null;
   sourcedVia?: string;
+  dealClass?: DealClass;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {

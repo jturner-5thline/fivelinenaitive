@@ -61,6 +61,7 @@ export interface CreateDealInitialValues {
   dealStage?: string;
   pipelineId?: string;
   dealTypes?: string[];
+  dealClass?: 'standard' | 'naitive';
   /** If provided, called after deal is created successfully (instead of navigating) */
   onCreated?: (dealId: string) => void;
   /** If provided, shows a Dismiss button in the footer */
@@ -209,6 +210,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         engagementType: 'guided',
         sourcedVia: sourcedVia && sourcedVia !== '__none__' ? sourcedVia : undefined,
         pipelineId: selectedPipelineId || activePipelineId || undefined,
+        dealClass: initialValues?.dealClass || 'standard',
         referredBy: referralName.trim() ? {
           id: '',
           name: referralName.trim(),

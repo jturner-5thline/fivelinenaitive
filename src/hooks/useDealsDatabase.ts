@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Deal, DealLender, DealStatus, DealStage, EngagementType, ExclusivityType, Referrer, LenderNoteHistory, LenderTrackingStatus } from '@/types/deal';
+import { Deal, DealLender, DealStatus, DealStage, DealClass, EngagementType, ExclusivityType, Referrer, LenderNoteHistory, LenderTrackingStatus } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 import { addDays } from 'date-fns';
@@ -324,6 +324,7 @@ export function useDealsDatabase() {
       migratedFromPersonal: dbDeal.migrated_from_personal || false,
       pipelineId: dbDeal.pipeline_id || undefined,
       closingDate: (dbDeal as any).closing_date || null,
+      dealClass: ((dbDeal as any).deal_class || 'standard') as DealClass,
     };
   }, []);
 
@@ -383,9 +384,9 @@ export function useDealsDatabase() {
       if (dealsResult.error) throw dealsResult.error;
       if (lendersResult.error) throw lendersResult.error;
 
-      // Exclude naitive Pipeline deals from standard deal metrics
+      // Exclude naitive Pipeline deals from standard deal metrics using deal_class
       const naitivePipelineId = await getNaitivePipelineId();
-      const dbDeals = excludeNaitivePipelineDeals(dealsResult.data || [], naitivePipelineId);
+      const dbDeals = (dealsResult.data || []).filter((d: any) => (d.deal_class || 'standard') !== 'naitive');
       const dbLenders = lendersResult.data || [];
 
       if (!dbDeals || dbDeals.length === 0) {
@@ -512,8 +513,9 @@ export function useDealsDatabase() {
           deal_type: dealData.dealTypes && dealData.dealTypes.length > 0 ? JSON.stringify(dealData.dealTypes) : null,
           user_id: userId,
           company_id: memberData?.company_id || null,
-          pipeline_id: dealData.pipelineId || null,
-        })
+           pipeline_id: dealData.pipelineId || null,
+           deal_class: dealData.dealClass || 'standard',
+         })
         .select()
         .single();
 
@@ -555,6 +557,7 @@ export function useDealsDatabase() {
         lenders: [],
         dealTypes: dealData.dealTypes || undefined,
         pipelineId: (data as any).pipeline_id || undefined,
+        dealClass: ((data as any).deal_class || 'standard') as DealClass,
       };
 
       setDeals(prev => [newDeal, ...prev]);
