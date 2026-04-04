@@ -104,14 +104,18 @@ export function PartnerInsightsFeed() {
     queryKey: ['insights-new-deals', company?.id, cutoff],
     enabled: !!company?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
+      const naitivePipelineId = await getNaitivePipelineId();
+      let query = supabase
         .from('deals')
-        .select('id, company, value, referred_by, sourced_via, created_at')
+        .select('id, company, value, referred_by, sourced_via, created_at, pipeline_id')
         .eq('company_id', company!.id)
         .gte('created_at', cutoff)
         .not('referred_by', 'is', null)
         .order('created_at', { ascending: false })
         .limit(50);
+      if (naitivePipelineId) query = query.neq('pipeline_id', naitivePipelineId);
+      const { data } = await query;
       return data || [];
     },
   });

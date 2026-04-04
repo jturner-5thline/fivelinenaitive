@@ -38,11 +38,15 @@ export function PartnerSourcedDeals() {
     queryKey: ['partner_referred_deals', company?.id],
     enabled: !!company?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
+      const naitivePipelineId = await getNaitivePipelineId();
+      let query = supabase
         .from('deals')
-        .select('id, company, value, stage, referred_by, sourced_via, created_at, closing_date')
+        .select('id, company, value, stage, referred_by, sourced_via, created_at, closing_date, pipeline_id')
         .eq('company_id', company!.id)
         .not('referred_by', 'is', null);
+      if (naitivePipelineId) query = query.neq('pipeline_id', naitivePipelineId);
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as DealRow[];
     },
