@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
@@ -41,6 +41,8 @@ interface DealsListProps {
   sortField?: SortField;
   sortDirection?: SortDirection;
   viewMode?: 'grid' | 'list';
+  expandAllSignal?: number;
+  collapseAllSignal?: number;
 }
 
 function SortableTableHead({ id }: { id: DealListColumnId }) {
@@ -72,9 +74,22 @@ function SortableTableHead({ id }: { id: DealListColumnId }) {
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid' }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (expandAllSignal && expandAllSignal > 0) {
+      setCollapsedGroups(new Set());
+    }
+  }, [expandAllSignal]);
+
+  useEffect(() => {
+    if (collapseAllSignal && collapseAllSignal > 0) {
+      // Collapse all by setting a marker; individual groups check membership
+      setCollapsedGroups(new Set(['__ALL__']));
+    }
+  }, [collapseAllSignal]);
   const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set());
   const { columnOrder, activeColumns, visibleColumns, updateColumnOrder, toggleColumnVisibility } = useDealListColumnOrder();
   
@@ -139,6 +154,8 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   const toggleGroup = (key: string) => {
     setCollapsedGroups(prev => {
       const next = new Set(prev);
+      // Clear __ALL__ marker when individual group is toggled
+      next.delete('__ALL__');
       if (next.has(key)) {
         next.delete(key);
       } else {
@@ -300,7 +317,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
     <div className="space-y-6">
       {orderedKeys.map((groupValue, groupIdx) => {
         const groupDeals = groupMap.get(groupValue) || [];
-        const isCollapsed = collapsedGroups.has(groupValue);
+        const isCollapsed = collapsedGroups.has(groupValue) || collapsedGroups.has('__ALL__');
         const dotColor = groupBy === 'status' ? STATUS_CONFIG[groupValue as DealStatus]?.dotColor : undefined;
         
         return (

@@ -108,6 +108,9 @@ export default function Dashboard() {
   const [savedViewWarningDismissed, setSavedViewWarningDismissed] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [mergeCluster, setMergeCluster] = useState<DuplicateCluster | null>(null);
+  const [expandAllSignal, setExpandAllSignal] = useState(0);
+  const [collapseAllSignal, setCollapseAllSignal] = useState(0);
+  const [allExpanded, setAllExpanded] = useState(true);
   const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
@@ -700,14 +703,33 @@ export default function Dashboard() {
                   </svg>
                   <span className="hidden sm:inline">Milestones</span>
                 </Button>
-                <DealSavedViewsMenu
-                  views={savedViews}
-                  onSave={handleSaveView}
-                  onRestore={handleRestoreView}
-                  onDelete={deleteView}
-                  onSetDefault={setDefault}
-                  hasActiveFilters={hasActiveFilters}
-                />
+                <div className="flex flex-col items-end">
+                  <DealSavedViewsMenu
+                    views={savedViews}
+                    onSave={handleSaveView}
+                    onRestore={handleRestoreView}
+                    onDelete={deleteView}
+                    onSetDefault={setDefault}
+                    hasActiveFilters={hasActiveFilters}
+                  />
+                  {(viewMode === 'grid' || viewMode === 'list') && groupBy && (
+                    <button
+                      onClick={() => {
+                        if (allExpanded) {
+                          setCollapseAllSignal(s => s + 1);
+                          setAllExpanded(false);
+                        } else {
+                          setExpandAllSignal(s => s + 1);
+                          setAllExpanded(true);
+                        }
+                      }}
+                      className="text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors mt-0.5 cursor-pointer select-none"
+                      aria-label={allExpanded ? 'Collapse all groups' : 'Expand all groups'}
+                    >
+                      {allExpanded ? 'Collapse All' : 'Expand All'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -769,6 +791,8 @@ export default function Dashboard() {
                   sortField={sortField}
                   sortDirection={sortDirection}
                   viewMode={viewMode}
+                  expandAllSignal={expandAllSignal}
+                  collapseAllSignal={collapseAllSignal}
                 />
               )}
             </div>
