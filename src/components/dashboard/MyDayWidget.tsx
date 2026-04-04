@@ -104,7 +104,7 @@ export function MyDayWidget({ defaultOpen = true }: MyDayWidgetProps) {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="h-full flex flex-col">
         <CardHeader className="pb-3"><Skeleton className="h-5 w-32" /></CardHeader>
         <CardContent className="space-y-3">
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
