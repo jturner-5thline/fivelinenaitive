@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { ResearchCitations } from './ResearchCitations';
 import { EmailDraftCard, extractEmailDraft } from './EmailDraftCard';
+import { MorningBriefing, isBriefingMessage, BRIEFING_MARKER } from './MorningBriefing';
 
 interface Props {
   messages: ChatMessage[];
