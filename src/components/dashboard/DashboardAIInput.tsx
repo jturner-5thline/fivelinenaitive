@@ -506,7 +506,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
 
             {/* Input bar — always visible */}
             <ChatInputBar
-              onSend={handleSend}
+              onSend={(text) => handleSend(text)}
               isLoading={isLoading}
               inputValue={inputValue}
               setInputValue={setInputValue}
