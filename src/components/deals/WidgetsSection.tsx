@@ -613,8 +613,14 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                               <Cell
                                 key={`cell-${index}`}
                                 fill={DONUT_PALETTE[index % DONUT_PALETTE.length]}
-                                opacity={activeDonutIndex === null || activeDonutIndex === index ? 1 : 0.45}
-                                style={{ transition: 'opacity 150ms ease' }}
+                                opacity={
+                                  drilldownStage
+                                    ? donutData.slices[index]?.name === drilldownStage ? 1 : 0.3
+                                    : activeDonutIndex === null || activeDonutIndex === index ? 1 : 0.45
+                                }
+                                strokeWidth={donutData.slices[index]?.name === drilldownStage ? 2 : 0}
+                                stroke={donutData.slices[index]?.name === drilldownStage ? 'hsl(var(--foreground))' : 'none'}
+                                style={{ transition: 'opacity 150ms ease', cursor: donutData.slices[index]?.name === 'Other' ? 'default' : 'pointer' }}
                               />
                             ))}
                           </Pie>
