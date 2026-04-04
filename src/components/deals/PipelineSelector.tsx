@@ -88,7 +88,7 @@ export function PipelineSelector() {
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          {pipelines.filter(p => !p.isDefault).map(pipeline => (
+          {pipelines.filter(p => !p.isDefault && p.name !== 'naitive Pipeline').map(pipeline => (
             <DropdownMenuItem
               key={pipeline.id}
               onSelect={() => setActivePipelineId(pipeline.id)}
