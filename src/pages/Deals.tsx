@@ -225,10 +225,9 @@ export default function Dashboard() {
 
   const savedViewLikelyHidingDeals = dealsInSelectedPipeline.length > 0 && pipelineFilteredDeals.length === 0 && (hasActiveFilters || !!defaultView);
 
-  const autoClearedBrokenSavedViewRef = useRef(false);
   useEffect(() => {
-    if (autoClearedBrokenSavedViewRef.current || !savedViewLikelyHidingDeals || isLoading) return;
-    autoClearedBrokenSavedViewRef.current = true;
+    if (!savedViewLikelyHidingDeals || isLoading) return;
+    // Auto-clear broken saved views that hide all deals
     resetDealViewState({ clearSavedViews: true, showToast: true });
     toast({
       title: 'Saved view cleared',
