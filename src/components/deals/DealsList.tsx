@@ -329,39 +329,49 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-2 px-2 py-2 h-auto hover:bg-muted/50"
+                className="w-full justify-between gap-2 px-2 py-2 h-auto hover:bg-muted/50"
               >
-                {isCollapsed ? (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
-                {dotColor && <span className={`h-2.5 w-2.5 rounded-full ${dotColor}`} />}
-                <h2 className="text-lg font-semibold text-foreground">
-                  {getGroupLabel(groupBy, groupValue)}
-                </h2>
-                <span className="text-sm text-muted-foreground">({groupDeals.length})</span>
-                {isCollapsed && (
-                  <div className="flex items-center gap-3 ml-2">
-                    <span className="text-xs text-muted-foreground font-medium">
-                      {groupDeals.length} {groupDeals.length === 1 ? 'deal' : 'deals'}
-                    </span>
-                    {(() => {
-                      const totalVolume = groupDeals.reduce((sum, d) => sum + (d.value || 0), 0);
-                      if (totalVolume <= 0) return null;
-                      const formatted = totalVolume >= 1_000_000
-                        ? `$${(totalVolume / 1_000_000).toFixed(1)}MM`
-                        : totalVolume >= 1_000
-                        ? `$${(totalVolume / 1_000).toFixed(0)}K`
-                        : `$${totalVolume.toLocaleString()}`;
-                      return (
-                        <span className="text-xs text-muted-foreground font-medium border-l border-border pl-3">
-                          {formatted}
+                <div className="flex items-center gap-2 min-w-0">
+                  {isCollapsed ? (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  {dotColor && <span className={`h-2.5 w-2.5 rounded-full ${dotColor} shrink-0`} />}
+                  <h2 className="text-lg font-semibold text-foreground truncate">
+                    {getGroupLabel(groupBy, groupValue)}
+                  </h2>
+                  {!isCollapsed && (
+                    <span className="text-sm text-muted-foreground">({groupDeals.length})</span>
+                  )}
+                </div>
+                {isCollapsed && (() => {
+                  const totalVolume = groupDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+                  const formattedVolume = totalVolume >= 1_000_000_000
+                    ? `$${(totalVolume / 1_000_000_000).toFixed(1)}B`
+                    : totalVolume >= 1_000_000
+                    ? `$${(totalVolume / 1_000_000).toFixed(1)}MM`
+                    : totalVolume >= 1_000
+                    ? `$${(totalVolume / 1_000).toFixed(1)}K`
+                    : `$${totalVolume.toLocaleString()}`;
+                  return (
+                    <div className="flex items-center gap-6 shrink-0 w-[200px] justify-end">
+                      <div className="flex items-baseline gap-1 w-[72px] justify-end">
+                        <span className="text-sm font-medium text-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {groupDeals.length}
                         </span>
-                      );
-                    })()}
-                  </div>
-                )}
+                        <span className="text-[11px] text-muted-foreground">
+                          {groupDeals.length === 1 ? 'deal' : 'deals'}
+                        </span>
+                      </div>
+                      <div className="w-[104px] text-right">
+                        <span className="text-sm font-medium text-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {formattedVolume}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
