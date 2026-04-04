@@ -190,6 +190,8 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
     setChartGroupBy(groupBy);
     setChartFilterFn(() => filterFn);
     setChartViewType('pie');
+    setDrilldownStage(null);
+    setDrilldownMetric('dollarVolume');
     setChartDialogOpen(true);
   };
 
