@@ -204,6 +204,75 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
       sessionStorage.setItem('lastBriefing', new Date().toISOString().slice(0, 10));
     }
 
+    // ── Structured morning briefing: render immediately, AI enhances later ──
+    if (isBriefingPrompt(trimmed)) {
+      const briefingMsg: ChatMessage = { role: 'assistant', content: BRIEFING_MARKER, created_at: new Date().toISOString() };
+      setMessages(prev => [...prev, briefingMsg]);
+      if (convId) await saveMessage(convId, 'assistant', BRIEFING_MARKER);
+
+      // Fire AI in background to optionally enhance with a summary
+      try {
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        if (token) {
+          const controller = new AbortController();
+          const tid = window.setTimeout(() => controller.abort(), 15_000); // short timeout for enhancement
+          const resp = await fetch(CHAT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ messages: [{ role: 'user', content: 'Give me a 1-2 sentence executive summary of my day ahead. Be concise and action-oriented. Do not list items — just summarize the key theme.' }] }),
+            signal: controller.signal,
+          });
+          window.clearTimeout(tid);
+          if (resp.ok) {
+            const contentType = resp.headers.get('content-type') || '';
+            let aiText = '';
+            if (contentType.includes('application/json')) {
+              const json = await resp.json();
+              aiText = extractAssistantPayloadText(json).trim();
+            } else if (resp.body) {
+              const reader = resp.body.getReader();
+              const decoder = new TextDecoder();
+              let buf = '';
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buf += decoder.decode(value, { stream: true });
+              }
+              // Try to extract from SSE lines
+              for (const line of buf.split('\n')) {
+                if (!line.startsWith('data: ')) continue;
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(jsonStr);
+                  const delta = extractTextContent(parsed?.choices?.[0]?.delta?.content);
+                  if (delta) aiText += delta;
+                  else {
+                    const full = extractAssistantPayloadText(parsed).trim();
+                    if (full) aiText = full;
+                  }
+                } catch {}
+              }
+            }
+            if (aiText) {
+              setMessages(prev => prev.map((m, idx) =>
+                idx === prev.length - 1 && m.content.startsWith(BRIEFING_MARKER)
+                  ? { ...m, content: BRIEFING_MARKER + aiText }
+                  : m
+              ));
+              if (convId) await saveMessage(convId, 'assistant', BRIEFING_MARKER + aiText);
+            }
+          }
+        }
+      } catch {
+        // AI enhancement failed silently — structured briefing still renders
+      }
+
+      setIsLoading(false);
+      return;
+    }
+
     let assistantContent = '';
     const upsertAssistant = (nextContent: string, mode: 'append' | 'replace' = 'append') => {
       assistantContent = mode === 'append' ? assistantContent + nextContent : nextContent;
