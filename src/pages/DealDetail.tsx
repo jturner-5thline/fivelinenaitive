@@ -2695,10 +2695,10 @@ export default function DealDetail() {
               {/* Tab Navigation */}
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}>
                 <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden flex-nowrap">
-                  {companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
+                  {!isNaitiveDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
                     <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
                   )}
-                  {companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
+                  {!isNaitiveDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
                     <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
                   )}
                   <HintTooltip
@@ -2708,7 +2708,7 @@ export default function DealDetail() {
                     side="bottom"
                   >
                     <TabsList className="inline-flex h-8 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink scrollbar-none gap-0" style={{ scrollbarWidth: 'none' }}>
-                    {hasDealSpaceAccess && (
+                    {hasDealSpaceAccess && !isNaitiveDeal && (
                     <TabsTrigger value="deal-space" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       <Sparkles className="h-3.5 w-3.5" />
                       Deal Space
@@ -2716,6 +2716,7 @@ export default function DealDetail() {
                     </TabsTrigger>
                     )}
                     <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Deal Info</TabsTrigger>
+                    {!isNaitiveDeal && (
                     <TabsTrigger value="lenders" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Lenders
                       {deal.lenders && deal.lenders.length > 0 && (
@@ -2724,7 +2725,8 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
-                    {hasDealManagementAccess && (
+                    )}
+                    {!isNaitiveDeal && hasDealManagementAccess && (
                     <TabsTrigger value="deal-management" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Management
                       {infoRequestActionCount > 0 && (
@@ -2734,7 +2736,10 @@ export default function DealDetail() {
                       )}
                     </TabsTrigger>
                     )}
+                    {!isNaitiveDeal && (
                     <TabsTrigger value="deal-writeup" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Write Up</TabsTrigger>
+                    )}
+                    {!isNaitiveDeal && (
                     <TabsTrigger value="data-room" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Data Room
                       {attachments.length > 0 && (
@@ -2743,6 +2748,7 @@ export default function DealDetail() {
                         </Badge>
                       )}
                     </TabsTrigger>
+                    )}
                     <TabsTrigger value="activity-log" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       <History className="h-3.5 w-3.5" />
                       Activity
