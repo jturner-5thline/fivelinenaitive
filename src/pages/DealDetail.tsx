@@ -642,6 +642,7 @@ export default function DealDetail() {
           migratedFromPersonal: dbDeal.migrated_from_personal || false,
           pipelineId: dbDeal.pipeline_id || undefined,
           closingDate: (dbDeal as any).closing_date || null,
+          dealClass: ((dbDeal as any).deal_class || 'standard') as 'standard' | 'naitive',
         };
 
         if (!cancelled) setDeal(mapped);
