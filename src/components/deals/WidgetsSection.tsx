@@ -326,18 +326,25 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const getDrilldownDeals = (): { name: string; company: string; manager: string; dollarVolume: number; revenue: number }[] => {
     if (!drilldownStage || !chartFilterFn) return [];
     const sourceDeals = deals.filter(chartFilterFn);
-    // Map formatted stage names back to raw stage values
+    // Use the same groupBy key as the top-level chart
     const matchingDeals = sourceDeals.filter(d => {
-      const formatted = formatStageName(d.stage || 'Unknown');
-      return formatted === drilldownStage;
+      let groupKey: string;
+      if (chartGroupBy === 'status') {
+        groupKey = d.status || 'Unknown';
+      } else if (chartGroupBy === 'manager') {
+        groupKey = d.manager || 'Unassigned';
+      } else {
+        groupKey = d.stage || 'Unknown';
+      }
+      return formatStageName(groupKey) === drilldownStage;
     });
     return matchingDeals
       .map(d => ({
         name: d.name || d.company || 'Unnamed Deal',
         company: d.company || '',
         manager: d.manager || '',
-        dollarVolume: d.value || 0,
-        revenue: d.totalFee || 0,
+        dollarVolume: d.value ?? 0,
+        revenue: d.totalFee ?? 0,
       }))
       .sort((a, b) => b[drilldownMetric === 'dollarVolume' ? 'dollarVolume' : 'revenue'] - a[drilldownMetric === 'dollarVolume' ? 'dollarVolume' : 'revenue']);
   };
