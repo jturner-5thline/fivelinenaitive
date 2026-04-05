@@ -809,7 +809,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                    No deals with {drilldownMetric === 'dollarVolume' ? 'dollar volume' : 'revenue'} data in this stage
+                    No deals found in this group
                   </div>
                 )}
               </div>
