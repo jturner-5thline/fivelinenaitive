@@ -4335,31 +4335,19 @@ export default function DealDetail() {
                                                 {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
                                               </span>
                                             )}
-                                            <div className="flex-1 relative">
-                                              <Textarea
-                                                placeholder="Add notes... (Press Enter to save)"
-                                                value={lender.notes || ''}
-                                                onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
-                                                onKeyDown={(e) => {
-                                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                                    e.preventDefault();
-                                                    commitLenderNotes(lender.id);
-                                                  }
-                                                }}
-                                                className={cn(
-                                                  "text-xs resize-none py-1.5 transition-all pr-8",
-                                                  expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8',
-                                                  savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
-                                                )}
-                                                rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
-                                              />
-                                              <div className="absolute right-2 top-1.5">
-                                                <SaveIndicator 
-                                                  isSaving={isSaving(`lender-notes-${lender.id}`)} 
-                                                  showSuccess={savedNotesFlash.has(lender.id)}
-                                                />
-                                              </div>
-                                            </div>
+                                            <LenderNotesField
+                                              lenderId={lender.id}
+                                              initialValue={lender.notes || ''}
+                                              onSave={commitLenderNotes}
+                                              isSaving={isSaving(`lender-notes-${lender.id}`)}
+                                              showSuccess={savedNotesFlash.has(lender.id)}
+                                              onFocusChange={handleNotesFocusChange}
+                                              className={cn(
+                                                "py-1.5",
+                                                expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8',
+                                              )}
+                                              rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
+                                            />
                                             <button
                                               onClick={() => {
                                                 setExpandedLenderNotes(prev => {
