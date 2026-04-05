@@ -1744,57 +1744,49 @@ export default function DealDetail() {
     });
   }, [deal, deleteLenderInDb, logActivity]);
 
-  const updateLenderNotes = useCallback((lenderId: string, notes: string, committed: Record<string, string>) => {
-    const committedNote = committed[lenderId]?.trim() || '';
-    
-    setDeal(prev => {
-      if (!prev) return prev;
-      const updatedLenders = prev.lenders?.map(l => {
-        if (l.id !== lenderId) return l;
-        
-        const currentNote = l.notes?.trim() || '';
-        
-        // If there's a committed note and user starts typing something different, log it to history
-        if (committedNote && notes.trim() !== committedNote && currentNote === committedNote) {
-          const newHistory = [...(l.notesHistory || [])];
-          newHistory.unshift({
-            text: committedNote,
-            updatedAt: new Date().toISOString(),
-          });
-          // Clear the committed note since it's now in history
-          setCommittedNotes(prev => {
-            const next = { ...prev };
-            delete next[lenderId];
-            return next;
-          });
-          return { ...l, notes, notesHistory: newHistory };
-        }
-        
-        return { ...l, notes };
-      });
-      return { ...prev, lenders: updatedLenders };
-    });
-  }, []);
-
-  // Track the last committed note for each lender to detect when user starts editing again
-  const [committedNotes, setCommittedNotes] = useState<Record<string, string>>({});
-  
   // Track which lender just had notes saved for visual feedback
   const [savedNotesFlash, setSavedNotesFlash] = useState<Set<string>>(new Set());
 
-  const commitLenderNotes = useCallback((lenderId: string) => {
+  // Track which lender notes fields are focused to defer refetches
+  const focusedNotesRef = useRef<Set<string>>(new Set());
+  const handleNotesFocusChange = useCallback((lenderId: string, focused: boolean) => {
+    if (focused) {
+      focusedNotesRef.current.add(lenderId);
+    } else {
+      focusedNotesRef.current.delete(lenderId);
+    }
+  }, []);
+
+  const commitLenderNotes = useCallback((lenderId: string, notes: string) => {
     const lender = deal?.lenders?.find(l => l.id === lenderId);
-    const currentNote = lender?.notes?.trim() || '';
+    const previousNote = lender?.notes?.trim() || '';
     
-    // Don't save empty notes
-    if (!currentNote) return;
+    // Don't save if nothing changed
+    if (notes === previousNote) return;
     
-    // Store this as the committed note
-    setCommittedNotes(prev => ({ ...prev, [lenderId]: currentNote }));
+    // Move previous note to history if it existed
+    if (previousNote) {
+      setDeal(prev => {
+        if (!prev) return prev;
+        const updatedLenders = prev.lenders?.map(l => {
+          if (l.id !== lenderId) return l;
+          const newHistory = [...(l.notesHistory || [])];
+          newHistory.unshift({ text: previousNote, updatedAt: new Date().toISOString() });
+          return { ...l, notes, notesHistory: newHistory };
+        });
+        return { ...prev, lenders: updatedLenders };
+      });
+    } else {
+      setDeal(prev => {
+        if (!prev) return prev;
+        const updatedLenders = prev.lenders?.map(l => l.id === lenderId ? { ...l, notes } : l);
+        return { ...prev, lenders: updatedLenders };
+      });
+    }
     
     // Persist to database with loading indicator
     withSavingAsync(`lender-notes-${lenderId}`, async () => {
-      await updateLenderInDb(lenderId, { notes: currentNote });
+      await updateLenderInDb(lenderId, { notes });
     });
     
     // Trigger visual feedback
