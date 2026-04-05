@@ -7635,6 +7635,78 @@ export type Database = {
           },
         ]
       }
+      email_analysis: {
+        Row: {
+          analyzed_at: string
+          category: string
+          created_at: string
+          deal_id: string | null
+          deal_name: string | null
+          email_cache_id: string
+          extracted_data: Json | null
+          follow_up_by: string | null
+          follow_up_needed: boolean | null
+          id: string
+          priority: string
+          sentiment: string
+          signals: string[] | null
+          suggested_action: string | null
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          analyzed_at?: string
+          category?: string
+          created_at?: string
+          deal_id?: string | null
+          deal_name?: string | null
+          email_cache_id: string
+          extracted_data?: Json | null
+          follow_up_by?: string | null
+          follow_up_needed?: boolean | null
+          id?: string
+          priority?: string
+          sentiment?: string
+          signals?: string[] | null
+          suggested_action?: string | null
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          analyzed_at?: string
+          category?: string
+          created_at?: string
+          deal_id?: string | null
+          deal_name?: string | null
+          email_cache_id?: string
+          extracted_data?: Json | null
+          follow_up_by?: string | null
+          follow_up_needed?: boolean | null
+          id?: string
+          priority?: string
+          sentiment?: string
+          signals?: string[] | null
+          suggested_action?: string | null
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_analysis_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_analysis_email_cache_id_fkey"
+            columns: ["email_cache_id"]
+            isOneToOne: true
+            referencedRelation: "email_cache"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_block_library: {
         Row: {
           block_json: Json
@@ -7675,6 +7747,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_cache: {
+        Row: {
+          body_text: string | null
+          cc_emails: string[] | null
+          created_at: string
+          fetched_at: string
+          from_email: string | null
+          from_name: string | null
+          gmail_message_id: string
+          id: string
+          is_read: boolean | null
+          is_starred: boolean | null
+          labels: string[] | null
+          received_at: string | null
+          snippet: string | null
+          subject: string | null
+          thread_id: string | null
+          to_emails: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_text?: string | null
+          cc_emails?: string[] | null
+          created_at?: string
+          fetched_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          gmail_message_id: string
+          id?: string
+          is_read?: boolean | null
+          is_starred?: boolean | null
+          labels?: string[] | null
+          received_at?: string | null
+          snippet?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_emails?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_text?: string | null
+          cc_emails?: string[] | null
+          created_at?: string
+          fetched_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          gmail_message_id?: string
+          id?: string
+          is_read?: boolean | null
+          is_starred?: boolean | null
+          labels?: string[] | null
+          received_at?: string | null
+          snippet?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_emails?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       email_distribution_stats: {
         Row: {
@@ -7740,6 +7875,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_intelligence_settings: {
+        Row: {
+          auto_extract: boolean | null
+          auto_tagging: boolean | null
+          created_at: string
+          follow_up_reminders: boolean | null
+          id: string
+          last_sync_at: string | null
+          sentiment_analysis: boolean | null
+          signal_detection: boolean | null
+          tag_rules: Json | null
+          thread_summaries: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_extract?: boolean | null
+          auto_tagging?: boolean | null
+          created_at?: string
+          follow_up_reminders?: boolean | null
+          id?: string
+          last_sync_at?: string | null
+          sentiment_analysis?: boolean | null
+          signal_detection?: boolean | null
+          tag_rules?: Json | null
+          thread_summaries?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_extract?: boolean | null
+          auto_tagging?: boolean | null
+          created_at?: string
+          follow_up_reminders?: boolean | null
+          id?: string
+          last_sync_at?: string | null
+          sentiment_analysis?: boolean | null
+          signal_detection?: boolean | null
+          tag_rules?: Json | null
+          thread_summaries?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       email_label_rules: {
         Row: {
