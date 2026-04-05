@@ -203,7 +203,10 @@ const App = () => (
                             <ProtectedRoute><AppLayout><HR /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/naitive-pipeline" element={
-                            <ProtectedRoute><AppLayout><NaitivePipeline /></AppLayout></ProtectedRoute>
+                             <ProtectedRoute><AppLayout><NaitivePipeline /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/email-intelligence" element={
+                            <ProtectedRoute><AppLayout><EmailIntelligencePage /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/operations" element={
                             <ProtectedRoute><AppLayout><Operations /></AppLayout></ProtectedRoute>
