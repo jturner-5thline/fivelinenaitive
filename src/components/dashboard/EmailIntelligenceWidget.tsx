@@ -1,25 +1,139 @@
 import { useEffect } from 'react';
-import { Mail, Tag, ArrowRight, Inbox, ExternalLink } from 'lucide-react';
+import { Mail, ArrowRight, Inbox, RefreshCw, AlertCircle, Clock, TrendingUp, Zap } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { useDashboardLayout } from '@/contexts/DashboardLayoutContext';
 import { useGmail } from '@/hooks/useGmail';
+import { useEmailIntelligence, EnrichedEmail } from '@/hooks/useEmailIntelligence';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+
+const CATEGORY_COLORS: Record<string, string> = {
+  deal_update: 'bg-primary/10 text-primary border-primary/20',
+  lender_communication: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  follow_up_needed: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  terms_discussion: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  due_diligence: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+  scheduling: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+  internal: 'bg-muted text-muted-foreground border-border',
+  newsletter: 'bg-muted text-muted-foreground border-border',
+  other: 'bg-muted text-muted-foreground border-border',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  deal_update: 'Deal Update',
+  lender_communication: 'Lender',
+  follow_up_needed: 'Follow-up',
+  terms_discussion: 'Terms',
+  due_diligence: 'DD',
+  scheduling: 'Scheduling',
+  internal: 'Internal',
+  newsletter: 'Newsletter',
+  other: 'Other',
+};
+
+const SENTIMENT_ICONS: Record<string, { icon: typeof TrendingUp; className: string }> = {
+  positive: { icon: TrendingUp, className: 'text-emerald-400' },
+  negative: { icon: AlertCircle, className: 'text-destructive' },
+  urgent: { icon: Zap, className: 'text-amber-400' },
+  neutral: { icon: Mail, className: 'text-muted-foreground' },
+};
+
+const PRIORITY_STYLES: Record<string, string> = {
+  high: 'border-l-2 border-l-destructive/50',
+  medium: '',
+  low: 'opacity-80',
+};
+
+function EmailRow({ email }: { email: EnrichedEmail }) {
+  const navigate = useNavigate();
+  const analysis = email.analysis;
+  const sentimentInfo = SENTIMENT_ICONS[analysis?.sentiment || 'neutral'] || SENTIMENT_ICONS.neutral;
+  const SentimentIcon = sentimentInfo.icon;
+
+  return (
+    <div
+      className={cn(
+        'flex items-start gap-3 p-2.5 rounded-lg border group cursor-pointer transition-colors hover:bg-muted/30',
+        !email.is_read ? 'bg-primary/5 border-primary/20' : 'bg-background/50',
+        PRIORITY_STYLES[analysis?.priority || 'medium']
+      )}
+    >
+      <div className="p-1.5 rounded-md bg-primary/10 shrink-0 mt-0.5">
+        <SentimentIcon className={cn('h-3.5 w-3.5', sentimentInfo.className)} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className={cn(
+            'text-sm truncate',
+            !email.is_read ? 'font-semibold text-foreground' : 'font-medium text-foreground'
+          )}>
+            {email.from_name || email.from_email}
+          </p>
+          {!email.is_read && (
+            <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+          )}
+          {analysis?.category && analysis.category !== 'other' && (
+            <Badge variant="outline" className={cn('text-[9px] h-4 px-1.5 shrink-0', CATEGORY_COLORS[analysis.category])}>
+              {CATEGORY_LABELS[analysis.category] || analysis.category}
+            </Badge>
+          )}
+        </div>
+        <p className="text-xs font-medium text-foreground/80 truncate mt-0.5">
+          {email.subject || '(No subject)'}
+        </p>
+        {analysis?.summary ? (
+          <p className="text-xs text-muted-foreground truncate mt-0.5 italic">
+            {analysis.summary}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
+            {email.snippet}
+          </p>
+        )}
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-[10px] text-muted-foreground">
+            {email.received_at ? formatDistanceToNow(new Date(email.received_at), { addSuffix: true }) : ''}
+          </p>
+          {analysis?.deal_name && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (analysis.deal_id) navigate(`/deal/${analysis.deal_id}`);
+              }}
+              className="text-[10px] text-primary hover:underline truncate max-w-[120px]"
+            >
+              {analysis.deal_name}
+            </button>
+          )}
+          {analysis?.follow_up_needed && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Clock className="h-3 w-3 text-amber-400" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Follow-up needed{analysis.follow_up_by ? ` by ${analysis.follow_up_by}` : ''}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function EmailIntelligenceWidget() {
   const { toggles } = useDashboardLayout();
-  const { status, messages, isLoading, listMessages } = useGmail();
+  const { status } = useGmail();
+  const { emails, stats, isLoading, isAnalyzing, syncEmails } = useEmailIntelligence();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (status.connected) {
-      listMessages({ maxResults: 5 });
-    }
-  }, [status.connected, listMessages]);
 
   if (toggles.hideEmailHints) return null;
 
@@ -43,12 +157,7 @@ export function EmailIntelligenceWidget() {
               Link your email in Integrations to see your inbox here.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-1"
-            onClick={() => navigate('/integrations')}
-          >
+          <Button variant="outline" size="sm" className="mt-1" onClick={() => navigate('/integrations')}>
             Go to Integrations
           </Button>
         </CardContent>
@@ -56,8 +165,8 @@ export function EmailIntelligenceWidget() {
     );
   }
 
-  // Connected + loading
-  if (isLoading && messages.length === 0) {
+  // Loading
+  if (isLoading && emails.length === 0) {
     return (
       <Card className="h-full flex flex-col border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
         <CardHeader className="pb-2">
@@ -76,6 +185,22 @@ export function EmailIntelligenceWidget() {
     );
   }
 
+  // Sort: follow-up needed first, then by priority, then by date
+  const sortedEmails = [...emails].sort((a, b) => {
+    const aFollowUp = a.analysis?.follow_up_needed ? 1 : 0;
+    const bFollowUp = b.analysis?.follow_up_needed ? 1 : 0;
+    if (bFollowUp !== aFollowUp) return bFollowUp - aFollowUp;
+
+    const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
+    const aPriority = priorityOrder[a.analysis?.priority || 'medium'] || 2;
+    const bPriority = priorityOrder[b.analysis?.priority || 'medium'] || 2;
+    if (bPriority !== aPriority) return bPriority - aPriority;
+
+    return new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime();
+  });
+
+  const displayEmails = sortedEmails.slice(0, 6);
+
   return (
     <Card className="h-full flex flex-col border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
       <CardHeader className="pb-2">
@@ -83,55 +208,65 @@ export function EmailIntelligenceWidget() {
           <CardTitle className="text-base font-medium flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             Email Intelligence
-            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30">Connected</Badge>
+            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30">Live</Badge>
+            {isAnalyzing && (
+              <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30 animate-pulse">
+                Analyzing...
+              </Badge>
+            )}
           </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1"
-            onClick={() => navigate('/integrations')}
-          >
-            <Inbox className="h-3 w-3" />
-            Full Inbox
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => syncEmails(true)}
+              disabled={isLoading}
+            >
+              <RefreshCw className={cn('h-3 w-3', isLoading && 'animate-spin')} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              onClick={() => navigate('/email-intelligence')}
+            >
+              <Inbox className="h-3 w-3" />
+              Full Inbox
+            </Button>
+          </div>
         </div>
+
+        {/* Stats bar */}
+        {(stats.unreadDealRelated > 0 || stats.needFollowUp > 0 || stats.urgent > 0) && (
+          <div className="flex items-center gap-3 mt-1.5">
+            {stats.unreadDealRelated > 0 && (
+              <span className="text-[10px] text-muted-foreground">
+                <span className="font-medium text-foreground">{stats.unreadDealRelated}</span> unread deal emails
+              </span>
+            )}
+            {stats.needFollowUp > 0 && (
+              <span className="text-[10px] text-amber-400">
+                <span className="font-medium">{stats.needFollowUp}</span> need follow-up
+              </span>
+            )}
+            {stats.urgent > 0 && (
+              <span className="text-[10px] text-destructive">
+                <span className="font-medium">{stats.urgent}</span> urgent
+              </span>
+            )}
+          </div>
+        )}
       </CardHeader>
-      <CardContent className="space-y-2 overflow-auto">
-        {messages.length === 0 ? (
+
+      <CardContent className="space-y-1.5 overflow-auto flex-1">
+        {displayEmails.length === 0 ? (
           <div className="text-center py-6">
             <p className="text-sm text-muted-foreground">No recent emails found.</p>
           </div>
         ) : (
-          messages.map(msg => (
-            <div
-              key={msg.id}
-              className={`flex items-start gap-3 p-2.5 rounded-lg border group cursor-pointer transition-colors hover:bg-muted/30 ${
-                !msg.is_read ? 'bg-primary/5 border-primary/20' : 'bg-background/50'
-              }`}
-            >
-              <div className="p-1.5 rounded-md bg-primary/10 shrink-0 mt-0.5">
-                <Mail className={`h-3.5 w-3.5 ${!msg.is_read ? 'text-primary' : 'text-muted-foreground'}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className={`text-sm truncate ${!msg.is_read ? 'font-semibold text-foreground' : 'font-medium text-foreground'}`}>
-                    {msg.from_name || msg.from_email}
-                  </p>
-                  {!msg.is_read && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                  )}
-                </div>
-                <p className="text-xs font-medium text-foreground/80 truncate mt-0.5">
-                  {msg.subject || '(No subject)'}
-                </p>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">
-                  {msg.snippet}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {formatDistanceToNow(new Date(msg.received_at), { addSuffix: true })}
-                </p>
-              </div>
-            </div>
+          displayEmails.map(email => (
+            <EmailRow key={email.id} email={email} />
           ))
         )}
       </CardContent>
