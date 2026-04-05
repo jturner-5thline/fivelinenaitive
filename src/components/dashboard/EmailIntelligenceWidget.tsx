@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { Mail, ArrowRight, Inbox, RefreshCw, AlertCircle, Clock, TrendingUp, Zap } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { useDashboardLayout } from '@/contexts/DashboardLayoutContext';
 import { useGmail } from '@/hooks/useGmail';
 import { useEmailIntelligence, EnrichedEmail } from '@/hooks/useEmailIntelligence';
+import { EmailDetailModal } from '@/components/dashboard/EmailDetailModal';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -50,7 +51,7 @@ const PRIORITY_STYLES: Record<string, string> = {
   low: 'opacity-80',
 };
 
-function EmailRow({ email }: { email: EnrichedEmail }) {
+function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => void }) {
   const navigate = useNavigate();
   const analysis = email.analysis;
   const sentimentInfo = SENTIMENT_ICONS[analysis?.sentiment || 'neutral'] || SENTIMENT_ICONS.neutral;
@@ -58,9 +59,16 @@ function EmailRow({ email }: { email: EnrichedEmail }) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       className={cn(
-        'flex items-start gap-3 p-2.5 rounded-lg border group cursor-pointer transition-colors hover:bg-muted/30',
-        !email.is_read ? 'bg-primary/5 border-primary/20' : 'bg-background/50',
+        'flex items-start gap-3 p-2.5 rounded-lg border group cursor-pointer transition-all duration-150',
+        'hover:bg-muted/40 hover:border-border/80 hover:shadow-sm',
+        'active:scale-[0.995] active:bg-muted/50',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+        !email.is_read ? 'bg-primary/5 border-primary/20' : 'bg-background/50 border-border/40',
         PRIORITY_STYLES[analysis?.priority || 'medium']
       )}
     >
@@ -125,6 +133,8 @@ function EmailRow({ email }: { email: EnrichedEmail }) {
           )}
         </div>
       </div>
+      {/* Subtle arrow affordance on hover */}
+      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors shrink-0 mt-2" />
     </div>
   );
 }
@@ -134,8 +144,20 @@ export function EmailIntelligenceWidget() {
   const { status } = useGmail();
   const { emails, stats, isLoading, isAnalyzing, syncEmails } = useEmailIntelligence();
   const navigate = useNavigate();
+  const [selectedEmail, setSelectedEmail] = useState<EnrichedEmail | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   if (toggles.hideEmailHints) return null;
+
+  const handleEmailClick = (email: EnrichedEmail) => {
+    setSelectedEmail(email);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = (open: boolean) => {
+    setIsModalOpen(open);
+    if (!open) setSelectedEmail(null);
+  };
 
   // Not connected state
   if (!status.connected) {
@@ -202,74 +224,82 @@ export function EmailIntelligenceWidget() {
   const displayEmails = sortedEmails.slice(0, 6);
 
   return (
-    <Card className="h-full flex flex-col border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Email Intelligence
-            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30">Live</Badge>
-            {isAnalyzing && (
-              <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30 animate-pulse">
-                Analyzing...
-              </Badge>
-            )}
-          </CardTitle>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
-              onClick={() => syncEmails(true)}
-              disabled={isLoading}
-            >
-              <RefreshCw className={cn('h-3 w-3', isLoading && 'animate-spin')} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs gap-1"
-              onClick={() => navigate('/email-intelligence')}
-            >
-              <Inbox className="h-3 w-3" />
-              Full Inbox
-            </Button>
+    <>
+      <Card className="h-full flex flex-col border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Email Intelligence
+              <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30">Live</Badge>
+              {isAnalyzing && (
+                <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30 animate-pulse">
+                  Analyzing...
+                </Badge>
+              )}
+            </CardTitle>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => syncEmails(true)}
+                disabled={isLoading}
+              >
+                <RefreshCw className={cn('h-3 w-3', isLoading && 'animate-spin')} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => navigate('/email-intelligence')}
+              >
+                <Inbox className="h-3 w-3" />
+                Full Inbox
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Stats bar */}
-        {(stats.unreadDealRelated > 0 || stats.needFollowUp > 0 || stats.urgent > 0) && (
-          <div className="flex items-center gap-3 mt-1.5">
-            {stats.unreadDealRelated > 0 && (
-              <span className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground">{stats.unreadDealRelated}</span> unread deal emails
-              </span>
-            )}
-            {stats.needFollowUp > 0 && (
-              <span className="text-[10px] text-amber-400">
-                <span className="font-medium">{stats.needFollowUp}</span> need follow-up
-              </span>
-            )}
-            {stats.urgent > 0 && (
-              <span className="text-[10px] text-destructive">
-                <span className="font-medium">{stats.urgent}</span> urgent
-              </span>
-            )}
-          </div>
-        )}
-      </CardHeader>
+          {/* Stats bar */}
+          {(stats.unreadDealRelated > 0 || stats.needFollowUp > 0 || stats.urgent > 0) && (
+            <div className="flex items-center gap-3 mt-1.5">
+              {stats.unreadDealRelated > 0 && (
+                <span className="text-[10px] text-muted-foreground">
+                  <span className="font-medium text-foreground">{stats.unreadDealRelated}</span> unread deal emails
+                </span>
+              )}
+              {stats.needFollowUp > 0 && (
+                <span className="text-[10px] text-amber-400">
+                  <span className="font-medium">{stats.needFollowUp}</span> need follow-up
+                </span>
+              )}
+              {stats.urgent > 0 && (
+                <span className="text-[10px] text-destructive">
+                  <span className="font-medium">{stats.urgent}</span> urgent
+                </span>
+              )}
+            </div>
+          )}
+        </CardHeader>
 
-      <CardContent className="space-y-1.5 overflow-auto flex-1">
-        {displayEmails.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-sm text-muted-foreground">No recent emails found.</p>
-          </div>
-        ) : (
-          displayEmails.map(email => (
-            <EmailRow key={email.id} email={email} />
-          ))
-        )}
-      </CardContent>
-    </Card>
+        <CardContent className="space-y-1.5 overflow-auto flex-1">
+          {displayEmails.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground">No recent emails found.</p>
+            </div>
+          ) : (
+            displayEmails.map(email => (
+              <EmailRow key={email.id} email={email} onClick={() => handleEmailClick(email)} />
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <EmailDetailModal
+        email={selectedEmail}
+        open={isModalOpen}
+        onOpenChange={handleModalClose}
+      />
+    </>
   );
 }
