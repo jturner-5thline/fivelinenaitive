@@ -3998,31 +3998,16 @@ export default function DealDetail() {
                                         {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
                                       </span>
                                     )}
-                                    <div className="flex-1 relative">
-                                      {/* Preview textarea - shows 2 lines */}
-                                      <Textarea
-                                        placeholder="Add notes... (Click to expand)"
-                                        value={lender.notes || ''}
-                                        onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            commitLenderNotes(lender.id);
-                                          }
-                                        }}
-                                        className={cn(
-                                          "text-xs resize-none py-1.5 transition-all pr-8 min-h-[48px] h-12",
-                                          savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
-                                        )}
-                                        rows={2}
-                                      />
-                                      <div className="absolute right-2 top-1.5">
-                                        <SaveIndicator 
-                                          isSaving={isSaving(`lender-notes-${lender.id}`)} 
-                                          showSuccess={savedNotesFlash.has(lender.id)}
-                                        />
-                                      </div>
-                                    </div>
+                                    <LenderNotesField
+                                      lenderId={lender.id}
+                                      initialValue={lender.notes || ''}
+                                      onSave={commitLenderNotes}
+                                      isSaving={isSaving(`lender-notes-${lender.id}`)}
+                                      showSuccess={savedNotesFlash.has(lender.id)}
+                                      onFocusChange={handleNotesFocusChange}
+                                      className="min-h-[48px] h-12"
+                                      rows={2}
+                                    />
                                     {/* Expand button - shows popover with full notes */}
                                     <Popover>
                                       <PopoverTrigger asChild>
@@ -4047,23 +4032,16 @@ export default function DealDetail() {
                                               </span>
                                             )}
                                           </div>
-                                          <Textarea
-                                            placeholder="Add notes... (Press Enter to save)"
-                                            value={lender.notes || ''}
-                                            onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                commitLenderNotes(lender.id);
-                                              }
-                                            }}
-                                            className={cn(
-                                              "text-xs resize-none min-h-[120px]",
-                                              savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
-                                            )}
+                                          <LenderNotesField
+                                            lenderId={lender.id}
+                                            initialValue={lender.notes || ''}
+                                            onSave={commitLenderNotes}
+                                            isSaving={isSaving(`lender-notes-${lender.id}`)}
+                                            showSuccess={savedNotesFlash.has(lender.id)}
+                                            onFocusChange={handleNotesFocusChange}
+                                            className="min-h-[120px]"
                                             rows={6}
                                           />
-                                          <p className="text-[10px] text-muted-foreground">Press Enter to save</p>
                                         </div>
                                       </PopoverContent>
                                     </Popover>
