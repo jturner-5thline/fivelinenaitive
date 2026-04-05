@@ -741,6 +741,9 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {drilldownDeals.length} deal{drilldownDeals.length !== 1 ? 's' : ''} · {formatCurrencyValue(drilldownTotal)}
+                    {drilldownDeals.length > 0 && drilldownTotal === 0 && (
+                      <span className="ml-1 italic">({drilldownMetric === 'dollarVolume' ? 'no dollar volume' : 'no revenue'} recorded)</span>
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
