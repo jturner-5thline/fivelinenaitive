@@ -359,7 +359,7 @@ export function EmailDetailModal({ email, open, onOpenChange }: EmailDetailModal
   const [actions, setActions] = useState<SuggestedAction[]>([]);
 
   // Reset actions when email changes
-  useMemo(() => {
+  useEffect(() => {
     if (email) {
       setActions(generateFallbackActions(email));
     }
