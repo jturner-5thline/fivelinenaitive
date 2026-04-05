@@ -93,6 +93,7 @@ const WfHub = lazy(lazyRetry(() => import("./pages/WfHub")));
 const WfDealDetail = lazy(lazyRetry(() => import("./pages/WfDealDetail")));
 const VirtualDataRoom = lazy(lazyRetry(() => import("./pages/VirtualDataRoom")));
 const NaitivePipeline = lazy(lazyRetry(() => import("./pages/NaitivePipeline")));
+const EmailIntelligencePage = lazy(lazyRetry(() => import("./pages/EmailIntelligencePage")));
 
 const queryClient = new QueryClient();
 
@@ -202,7 +203,10 @@ const App = () => (
                             <ProtectedRoute><AppLayout><HR /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/naitive-pipeline" element={
-                            <ProtectedRoute><AppLayout><NaitivePipeline /></AppLayout></ProtectedRoute>
+                             <ProtectedRoute><AppLayout><NaitivePipeline /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/email-intelligence" element={
+                            <ProtectedRoute><AppLayout><EmailIntelligencePage /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/operations" element={
                             <ProtectedRoute><AppLayout><Operations /></AppLayout></ProtectedRoute>

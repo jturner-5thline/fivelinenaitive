@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,24 +9,23 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Tags,
   Brain,
-  Bell,
-  Sparkles,
   Plus,
   X,
   TrendingUp,
   AlertTriangle,
   FileText,
   Clock,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { useEmailIntelligence, EmailIntelligenceSettings } from '@/hooks/useEmailIntelligence';
 
 interface EmailIntelligenceDialogProps {
   open: boolean;
@@ -48,26 +47,29 @@ const defaultTagRules: TagRule[] = [
 ];
 
 export function EmailIntelligenceDialog({ open, onOpenChange }: EmailIntelligenceDialogProps) {
+  const { settings, saveSettings, settingsLoaded } = useEmailIntelligence();
+  const [localSettings, setLocalSettings] = useState<EmailIntelligenceSettings>(settings);
   const [tagRules, setTagRules] = useState<TagRule[]>(defaultTagRules);
   const [newKeyword, setNewKeyword] = useState('');
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [newRuleLabel, setNewRuleLabel] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Intelligence toggles
-  const [autoTagging, setAutoTagging] = useState(true);
-  const [sentimentAnalysis, setSentimentAnalysis] = useState(true);
-  const [signalDetection, setSignalDetection] = useState(true);
-  const [followUpReminders, setFollowUpReminders] = useState(true);
-  const [threadSummaries, setThreadSummaries] = useState(false);
-  const [autoExtract, setAutoExtract] = useState(false);
+  // Sync from loaded settings
+  useEffect(() => {
+    if (settingsLoaded) {
+      setLocalSettings(settings);
+      if (settings.tag_rules && settings.tag_rules.length > 0) {
+        setTagRules(settings.tag_rules as TagRule[]);
+      }
+    }
+  }, [settingsLoaded, settings]);
 
   const addKeywordToRule = (ruleId: string) => {
     if (!newKeyword.trim()) return;
     setTagRules(prev =>
       prev.map(r =>
-        r.id === ruleId
-          ? { ...r, keywords: [...r.keywords, newKeyword.trim()] }
-          : r
+        r.id === ruleId ? { ...r, keywords: [...r.keywords, newKeyword.trim()] } : r
       )
     );
     setNewKeyword('');
@@ -76,9 +78,7 @@ export function EmailIntelligenceDialog({ open, onOpenChange }: EmailIntelligenc
   const removeKeywordFromRule = (ruleId: string, keyword: string) => {
     setTagRules(prev =>
       prev.map(r =>
-        r.id === ruleId
-          ? { ...r, keywords: r.keywords.filter(k => k !== keyword) }
-          : r
+        r.id === ruleId ? { ...r, keywords: r.keywords.filter(k => k !== keyword) } : r
       )
     );
   };
@@ -100,9 +100,18 @@ export function EmailIntelligenceDialog({ open, onOpenChange }: EmailIntelligenc
     setTagRules(prev => prev.filter(r => r.id !== ruleId));
   };
 
-  const handleSave = () => {
-    toast.success('Email intelligence settings saved');
+  const handleSave = async () => {
+    setIsSaving(true);
+    await saveSettings({
+      ...localSettings,
+      tag_rules: tagRules,
+    });
+    setIsSaving(false);
     onOpenChange(false);
+  };
+
+  const updateToggle = (key: keyof EmailIntelligenceSettings, value: boolean) => {
+    setLocalSettings(prev => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -114,64 +123,64 @@ export function EmailIntelligenceDialog({ open, onOpenChange }: EmailIntelligenc
             Email Intelligence Settings
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Configure auto-tagging rules, signal detection, and AI-powered email features.
+            Configure AI-powered email analysis. Settings are saved to your account.
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="flex-1 px-5 pb-5">
           <div className="space-y-5 pt-3">
-            {/* ─── AI Features Toggle ─── */}
+            {/* AI Features Toggle */}
             <div>
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">AI Features</h4>
               <div className="space-y-3">
                 <ToggleRow
                   icon={Tags}
                   label="Auto-Tagging"
-                  description="Automatically tag emails based on keyword rules"
-                  checked={autoTagging}
-                  onCheckedChange={setAutoTagging}
+                  description="Automatically categorize emails and match to deals"
+                  checked={localSettings.auto_tagging}
+                  onCheckedChange={(v) => updateToggle('auto_tagging', v)}
                 />
                 <ToggleRow
                   icon={TrendingUp}
                   label="Sentiment Analysis"
-                  description="Detect positive, neutral, or attention-needed tone"
-                  checked={sentimentAnalysis}
-                  onCheckedChange={setSentimentAnalysis}
+                  description="Detect tone and urgency in emails"
+                  checked={localSettings.sentiment_analysis}
+                  onCheckedChange={(v) => updateToggle('sentiment_analysis', v)}
                 />
                 <ToggleRow
                   icon={AlertTriangle}
                   label="Signal Detection"
-                  description="Detect stage changes, risks, and opportunities"
-                  checked={signalDetection}
-                  onCheckedChange={setSignalDetection}
+                  description="Detect deal signals: terms issued, LOI, closing language, risk"
+                  checked={localSettings.signal_detection}
+                  onCheckedChange={(v) => updateToggle('signal_detection', v)}
                 />
                 <ToggleRow
                   icon={Clock}
                   label="Follow-up Reminders"
-                  description="Alert when threads need a follow-up response"
-                  checked={followUpReminders}
-                  onCheckedChange={setFollowUpReminders}
+                  description="Surface emails needing follow-up in Key Alerts"
+                  checked={localSettings.follow_up_reminders}
+                  onCheckedChange={(v) => updateToggle('follow_up_reminders', v)}
                 />
                 <ToggleRow
                   icon={FileText}
                   label="Auto Thread Summaries"
-                  description="Generate TL;DR summaries for new threads"
-                  checked={threadSummaries}
-                  onCheckedChange={setThreadSummaries}
+                  description="Generate AI summaries for email threads"
+                  checked={localSettings.thread_summaries}
+                  onCheckedChange={(v) => updateToggle('thread_summaries', v)}
                 />
                 <ToggleRow
                   icon={Sparkles}
                   label="Auto-Extract Data"
-                  description="Automatically extract rates, amounts, and terms"
-                  checked={autoExtract}
-                  onCheckedChange={setAutoExtract}
+                  description="Extract rates, amounts, dates, and company names"
+                  checked={localSettings.auto_extract}
+                  onCheckedChange={(v) => updateToggle('auto_extract', v)}
                 />
               </div>
             </div>
 
             <Separator />
 
-            {/* ─── Tag Grouping Rules ─── */}
+            {/* Tag Grouping Rules */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tag Grouping Rules</h4>
@@ -183,25 +192,15 @@ export function EmailIntelligenceDialog({ open, onOpenChange }: EmailIntelligenc
                       <Badge variant="outline" className={cn('text-[11px] h-5', rule.color)}>
                         {rule.label}
                       </Badge>
-                      <button
-                        onClick={() => removeRule(rule.id)}
-                        className="p-0.5 rounded hover:bg-muted transition-colors"
-                      >
+                      <button onClick={() => removeRule(rule.id)} className="p-0.5 rounded hover:bg-muted transition-colors">
                         <X className="h-3 w-3 text-muted-foreground" />
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-1 mb-2">
                       {rule.keywords.map(kw => (
-                        <Badge
-                          key={kw}
-                          variant="secondary"
-                          className="text-[10px] h-5 gap-1 pr-1"
-                        >
+                        <Badge key={kw} variant="secondary" className="text-[10px] h-5 gap-1 pr-1">
                           {kw}
-                          <button
-                            onClick={() => removeKeywordFromRule(rule.id, kw)}
-                            className="ml-0.5 hover:text-destructive transition-colors"
-                          >
+                          <button onClick={() => removeKeywordFromRule(rule.id, kw)} className="ml-0.5 hover:text-destructive transition-colors">
                             <X className="h-2.5 w-2.5" />
                           </button>
                         </Badge>
@@ -213,50 +212,25 @@ export function EmailIntelligenceDialog({ open, onOpenChange }: EmailIntelligenc
                         className="h-7 text-xs flex-1"
                         value={editingRuleId === rule.id ? newKeyword : ''}
                         onFocus={() => setEditingRuleId(rule.id)}
-                        onChange={(e) => {
-                          setEditingRuleId(rule.id);
-                          setNewKeyword(e.target.value);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addKeywordToRule(rule.id);
-                          }
-                        }}
+                        onChange={(e) => { setEditingRuleId(rule.id); setNewKeyword(e.target.value); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addKeywordToRule(rule.id); } }}
                       />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-[11px] px-2"
-                        onClick={() => addKeywordToRule(rule.id)}
-                      >
+                      <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => addKeywordToRule(rule.id)}>
                         Add
                       </Button>
                     </div>
                   </div>
                 ))}
 
-                {/* Add new rule */}
                 <div className="flex gap-1.5">
                   <Input
                     placeholder="New tag name..."
                     className="h-8 text-xs flex-1"
                     value={newRuleLabel}
                     onChange={(e) => setNewRuleLabel(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addNewRule();
-                      }
-                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNewRule(); } }}
                   />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1 text-xs"
-                    onClick={addNewRule}
-                    disabled={!newRuleLabel.trim()}
-                  >
+                  <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={addNewRule} disabled={!newRuleLabel.trim()}>
                     <Plus className="h-3 w-3" />
                     Add Rule
                   </Button>
@@ -270,8 +244,8 @@ export function EmailIntelligenceDialog({ open, onOpenChange }: EmailIntelligenc
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button size="sm" onClick={handleSave}>
-            Save Settings
+          <Button size="sm" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving...</> : 'Save Settings'}
           </Button>
         </div>
       </DialogContent>
@@ -279,19 +253,11 @@ export function EmailIntelligenceDialog({ open, onOpenChange }: EmailIntelligenc
   );
 }
 
-// ─── Toggle Row ───
+// Toggle Row
 function ToggleRow({
-  icon: Icon,
-  label,
-  description,
-  checked,
-  onCheckedChange,
+  icon: Icon, label, description, checked, onCheckedChange,
 }: {
-  icon: any;
-  label: string;
-  description: string;
-  checked: boolean;
-  onCheckedChange: (v: boolean) => void;
+  icon: any; label: string; description: string; checked: boolean; onCheckedChange: (v: boolean) => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
