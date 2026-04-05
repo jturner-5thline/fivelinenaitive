@@ -7,6 +7,7 @@ import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
+import { LenderNotesField } from '@/components/deal/LenderNotesField';
 import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
 import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
