@@ -398,6 +398,192 @@ export function SpreadsheetTable({
               }
 
               const isHighlightRow = row.isTotal || row.isSubtotal;
+              const hasCommenting = !!statementType && !!onAddComment && !row.isSection;
+              const rowCommentCount = getCommentCountForRow ? getCommentCountForRow(row.key) : 0;
+              const rowAnchorKey = row.key;
+
+              const renderRowLabelCell = () => (
+                <td className="py-1.5 px-3 sticky left-0 z-10"
+                  style={{
+                    background: 'var(--map-bg, hsl(var(--card)))',
+                    color: row.isPct
+                      ? 'var(--map-text-faint)'
+                      : isHighlightRow
+                        ? 'var(--map-text)'
+                        : 'var(--map-text-secondary)',
+                    fontWeight: isHighlightRow ? 600 : 400,
+                    fontStyle: row.isCheck ? 'italic' : undefined,
+                    fontSize: row.isPct ? '12px' : '13px',
+                    paddingLeft: row.indent ? `${12 + row.indent * 12}px` : undefined,
+                  }}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {row.label}
+                    {row.formula && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-[9px] font-mono" style={{ color: 'var(--map-blue, hsl(var(--primary) / 0.4))' }}>ƒ</span>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="text-[10px] font-mono">
+                            {row.formula}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    {/* Comment indicator for row */}
+                    {hasCommenting && rowCommentCount > 0 && getCommentsForAnchor && onDeleteComment && (
+                      <FinancialCommentPopover
+                        anchorKey={rowAnchorKey}
+                        targetLabel={row.label}
+                        statementType={statementType!}
+                        lineItemKey={row.key}
+                        lineItemLabel={row.label}
+                        existingComments={getCommentsForAnchor(rowAnchorKey)}
+                        onAdd={onAddComment}
+                        onDelete={onDeleteComment}
+                      >
+                        <span
+                          className="inline-flex items-center gap-0.5 cursor-pointer"
+                          style={{ color: 'var(--map-blue, hsl(var(--primary) / 0.5))' }}
+                        >
+                          <MessageSquare className="h-3 w-3" />
+                          <span className="text-[9px] font-medium">{rowCommentCount}</span>
+                        </span>
+                      </FinancialCommentPopover>
+                    )}
+                  </span>
+                </td>
+              );
+
+              const renderValueCell = (c: typeof columns[0], ci: number) => {
+                const v = viewMode === 'monthly'
+                  ? (row.values[c.index] ?? 0)
+                  : getAnnualValue(row.values, ci, !!row.isPct);
+
+                const isSelected = selectedCell?.rowIdx === visIdx && selectedCell?.colIdx === ci;
+                const variancePct = showVariance ? getVariancePct(row.values, c.index, !!row.isPct) : null;
+                const hasLargeSwing = conditionalFormatting && variancePct !== null && Math.abs(variancePct) > VARIANCE_THRESHOLD;
+
+                const cellAnchorKey = `${row.key}|${c.label}`;
+                const cellComments = hasCommenting && getCommentsForAnchor ? getCommentsForAnchor(cellAnchorKey) : [];
+
+                return (
+                  <td
+                    key={ci}
+                    className="py-1.5 px-2 text-right whitespace-nowrap cursor-cell tabular-nums relative"
+                    style={{
+                      fontFeatureSettings: "'tnum' 1",
+                      fontWeight: isHighlightRow ? 600 : 400,
+                      fontSize: '13px',
+                      color: isNegative(v)
+                        ? 'var(--map-red, hsl(var(--destructive)))'
+                        : row.isCheck && v !== 0
+                          ? 'var(--map-red)'
+                          : c.isForecast
+                            ? 'var(--map-text-faint)'
+                            : isHighlightRow
+                              ? 'var(--map-text)'
+                              : 'var(--map-text-secondary)',
+                      ...(isSelected ? {
+                        boxShadow: 'inset 0 0 0 2px var(--map-blue, hsl(var(--primary) / 0.5))',
+                        background: 'var(--map-selected, rgba(37, 99, 235, 0.08))',
+                        borderRadius: '2px',
+                      } : {}),
+                      ...(hasLargeSwing && !isSelected ? {
+                        background: variancePct! > 0 ? 'rgba(34, 197, 94, 0.06)' : 'rgba(220, 38, 38, 0.06)',
+                      } : {}),
+                    }}
+                    onClick={() => setSelectedCell({ rowIdx: visIdx, colIdx: ci })}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--map-row-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected && !hasLargeSwing) (e.currentTarget as HTMLElement).style.background = '';
+                      else if (!isSelected && hasLargeSwing) {
+                        (e.currentTarget as HTMLElement).style.background = variancePct! > 0 ? 'rgba(34, 197, 94, 0.06)' : 'rgba(220, 38, 38, 0.06)';
+                      }
+                    }}
+                  >
+                    {/* Cell comment indicator */}
+                    {cellComments.length > 0 && (
+                      <div className="absolute top-0 right-0">
+                        <div className="w-0 h-0 border-l-[6px] border-b-[6px] border-l-transparent border-b-transparent"
+                          style={{ borderTopWidth: '6px', borderRightWidth: '6px', borderTopColor: 'hsl(var(--primary) / 0.6)', borderRightColor: 'hsl(var(--primary) / 0.6)' }}
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-col items-end">
+                      <span>{row.isPct ? fmtPct(v) : fmtCurrency(v, compactCurrency)}</span>
+                      {showVariance && variancePct !== null && (
+                        <span style={{
+                          fontSize: '9px',
+                          lineHeight: '1.2',
+                          color: variancePct > 0 ? 'var(--map-green)' : variancePct < 0 ? 'var(--map-red)' : 'var(--map-text-faint)',
+                        }}>
+                          {variancePct > 0 ? '+' : ''}{variancePct.toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                );
+              };
+
+              // Wrap entire row in context menu if commenting is enabled
+              if (hasCommenting && onAddComment && onDeleteComment && getCommentsForAnchor) {
+                return (
+                  <ContextMenu key={row.key}>
+                    <ContextMenuTrigger asChild>
+                      <tr
+                        className="transition-colors"
+                        style={{
+                          borderBottom: `1px solid ${isHighlightRow ? 'var(--map-border)' : 'var(--map-border, hsl(var(--border) / 0.1))'}`,
+                          ...(isHighlightRow ? { background: 'rgba(255,255,255,0.02)' } : {}),
+                          ...(row.isTotal ? { borderTop: '2px solid var(--map-border)' } : {}),
+                        }}
+                      >
+                        {renderRowLabelCell()}
+                        {columns.map((c, ci) => renderValueCell(c, ci))}
+                      </tr>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-56">
+                      <ContextMenuItem
+                        onClick={() => {
+                          // Row-level comment
+                          setCommentPopoverTarget({
+                            anchorKey: row.key,
+                            targetLabel: row.label,
+                            lineItemKey: row.key,
+                            lineItemLabel: row.label,
+                          });
+                        }}
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 mr-2" />
+                        Comment on row: {row.label}
+                      </ContextMenuItem>
+                      {selectedCell && selectedCell.rowIdx === visIdx && (
+                        <ContextMenuItem
+                          onClick={() => {
+                            const col = columns[selectedCell.colIdx];
+                            if (!col) return;
+                            setCommentPopoverTarget({
+                              anchorKey: `${row.key}|${col.label}`,
+                              targetLabel: `${row.label} — ${col.label}`,
+                              lineItemKey: row.key,
+                              lineItemLabel: row.label,
+                              periodKey: col.label,
+                              periodLabel: col.label,
+                            });
+                          }}
+                        >
+                          <MessageSquare className="h-3.5 w-3.5 mr-2" />
+                          Comment on cell: {row.label} — {columns[selectedCell.colIdx]?.label}
+                        </ContextMenuItem>
+                      )}
+                    </ContextMenuContent>
+                  </ContextMenu>
+                );
+              }
 
               return (
                 <tr
@@ -409,98 +595,8 @@ export function SpreadsheetTable({
                     ...(row.isTotal ? { borderTop: '2px solid var(--map-border)' } : {}),
                   }}
                 >
-                  <td className="py-1.5 px-3 sticky left-0 z-10"
-                    style={{
-                      background: 'var(--map-bg, hsl(var(--card)))',
-                      color: row.isPct
-                        ? 'var(--map-text-faint)'
-                        : isHighlightRow
-                          ? 'var(--map-text)'
-                          : 'var(--map-text-secondary)',
-                      fontWeight: isHighlightRow ? 600 : 400,
-                      fontStyle: row.isCheck ? 'italic' : undefined,
-                      fontSize: row.isPct ? '12px' : '13px',
-                      paddingLeft: row.indent ? `${12 + row.indent * 12}px` : undefined,
-                    }}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      {row.label}
-                      {row.formula && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-[9px] font-mono" style={{ color: 'var(--map-blue, hsl(var(--primary) / 0.4))' }}>ƒ</span>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="text-[10px] font-mono">
-                              {row.formula}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </span>
-                  </td>
-                  {columns.map((c, ci) => {
-                    const v = viewMode === 'monthly'
-                      ? (row.values[c.index] ?? 0)
-                      : getAnnualValue(row.values, ci, !!row.isPct);
-
-                    const isSelected = selectedCell?.rowIdx === visIdx && selectedCell?.colIdx === ci;
-
-                    const variancePct = showVariance ? getVariancePct(row.values, c.index, !!row.isPct) : null;
-                    const hasLargeSwing = conditionalFormatting && variancePct !== null && Math.abs(variancePct) > VARIANCE_THRESHOLD;
-
-                    return (
-                      <td
-                        key={ci}
-                        className="py-1.5 px-2 text-right whitespace-nowrap cursor-cell tabular-nums"
-                        style={{
-                          fontFeatureSettings: "'tnum' 1",
-                          fontWeight: isHighlightRow ? 600 : 400,
-                          fontSize: '13px',
-                          color: isNegative(v)
-                            ? 'var(--map-red, hsl(var(--destructive)))'
-                            : row.isCheck && v !== 0
-                              ? 'var(--map-red)'
-                              : c.isForecast
-                                ? 'var(--map-text-faint)'
-                                : isHighlightRow
-                                  ? 'var(--map-text)'
-                                  : 'var(--map-text-secondary)',
-                          ...(isSelected ? {
-                            boxShadow: 'inset 0 0 0 2px var(--map-blue, hsl(var(--primary) / 0.5))',
-                            background: 'var(--map-selected, rgba(37, 99, 235, 0.08))',
-                            borderRadius: '2px',
-                          } : {}),
-                          ...(hasLargeSwing && !isSelected ? {
-                            background: variancePct! > 0 ? 'rgba(34, 197, 94, 0.06)' : 'rgba(220, 38, 38, 0.06)',
-                          } : {}),
-                        }}
-                        onClick={() => setSelectedCell({ rowIdx: visIdx, colIdx: ci })}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--map-row-hover)';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected && !hasLargeSwing) (e.currentTarget as HTMLElement).style.background = '';
-                          else if (!isSelected && hasLargeSwing) {
-                            (e.currentTarget as HTMLElement).style.background = variancePct! > 0 ? 'rgba(34, 197, 94, 0.06)' : 'rgba(220, 38, 38, 0.06)';
-                          }
-                        }}
-                      >
-                        <div className="flex flex-col items-end">
-                          <span>{row.isPct ? fmtPct(v) : fmtCurrency(v, compactCurrency)}</span>
-                          {showVariance && variancePct !== null && (
-                            <span style={{
-                              fontSize: '9px',
-                              lineHeight: '1.2',
-                              color: variancePct > 0 ? 'var(--map-green)' : variancePct < 0 ? 'var(--map-red)' : 'var(--map-text-faint)',
-                            }}>
-                              {variancePct > 0 ? '+' : ''}{variancePct.toFixed(1)}%
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
+                  {renderRowLabelCell()}
+                  {columns.map((c, ci) => renderValueCell(c, ci))}
                 </tr>
               );
             })}
