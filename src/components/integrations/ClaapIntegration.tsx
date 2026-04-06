@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ClaapSyncSettings } from './ClaapSyncSettings';
 
-const ALLOWED_EMAIL = 'jturner@5thline.co';
+const ALLOWED_EMAILS = new Set(['jturner@5thline.co', 'ffustinoni@5thline.co']);
 
 export function ClaapIntegration() {
   const { user } = useAuth();
@@ -19,7 +19,7 @@ export function ClaapIntegration() {
   
   const claapIntegration = integrations.find(i => i.type === 'claap');
   const isEnabled = claapIntegration?.status === 'connected';
-  const canManage = user?.email === ALLOWED_EMAIL;
+  const canManage = !!user?.email && ALLOWED_EMAILS.has(user.email);
 
   const handleToggle = async (enabled: boolean) => {
     if (!claapIntegration) {
