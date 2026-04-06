@@ -90,6 +90,13 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
   const [compactCurrency, setCompactCurrency] = useState(true);
   const [financialData, setFinancialData] = useState<FinancialDataRow[]>([]);
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
+  const {
+    comments: financialComments,
+    addComment,
+    deleteComment,
+    getCommentsForAnchor,
+    getCommentCountForRow,
+  } = useFinancialComments(dealId || '');
 
   // Load multi-file financial data
   useEffect(() => {
@@ -316,6 +323,12 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
         onToggleVariance={() => setShowVariance(v => !v)}
         conditionalFormatting
         compactCurrency={compactCurrency}
+        statementType="income_statement"
+        comments={financialComments}
+        onAddComment={addComment}
+        onDeleteComment={deleteComment}
+        getCommentsForAnchor={getCommentsForAnchor}
+        getCommentCountForRow={getCommentCountForRow}
       />
     </div>
   );
