@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import type { FieldMapping } from './types';
 
 export interface EraserSnapshot {
-  sheetData: string[][];
+  sheetData: (string | number)[][];
   selectedColumns: Set<number>;
   excludedColumns: Set<number>;
   flippedColumns: Set<number>;
