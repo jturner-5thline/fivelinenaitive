@@ -126,61 +126,74 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
     : "flex h-[calc(100vh-280px)] min-h-[400px] border rounded-lg overflow-hidden bg-background";
 
   return (
-    <div className={containerClass}>
-      {/* Hidden file input for upload */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".docx,.doc"
-        className="hidden"
-        onChange={handleUploadDocx}
-      />
+    <div className="space-y-4">
+      <div className={containerClass}>
+        {/* Hidden file input for upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".docx,.doc"
+          className="hidden"
+          onChange={handleUploadDocx}
+        />
 
-      {/* Sidebar */}
-      <NotesSidebar
-        notes={notes}
-        selectedNoteId={selectedNoteId}
-        onSelectNote={(id) => setSelectedNoteId(id || null)}
-        onCreateNote={handleCreateNote}
-        onDeleteNote={(id) => { if (selectedNoteId === id) setSelectedNoteId(null); deleteNote(id); }}
-        onUpdateNote={updateNote}
-        onDownload={handleDownloadDocx}
-        onUpload={() => fileInputRef.current?.click()}
-        fileInputRef={fileInputRef}
-      />
+        {/* Sidebar */}
+        <NotesSidebar
+          notes={notes}
+          selectedNoteId={selectedNoteId}
+          onSelectNote={(id) => setSelectedNoteId(id || null)}
+          onCreateNote={handleCreateNote}
+          onDeleteNote={(id) => { if (selectedNoteId === id) setSelectedNoteId(null); deleteNote(id); }}
+          onUpdateNote={updateNote}
+          onDownload={handleDownloadDocx}
+          onUpload={() => fileInputRef.current?.click()}
+          fileInputRef={fileInputRef}
+        />
 
-      {/* Main editor */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {selectedNote ? (
-          <DealSpaceNoteEditor
-            note={selectedNote}
-            onUpdate={updateNote}
-            onDownload={handleDownloadDocx}
-            dealId={dealId}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-            showComments={showComments}
-            onToggleComments={() => setShowComments(!showComments)}
-            fetchVersions={fetchVersions}
-            restoreVersion={restoreVersion}
+        {/* Main editor */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {selectedNote ? (
+            <DealSpaceNoteEditor
+              note={selectedNote}
+              onUpdate={updateNote}
+              onDownload={handleDownloadDocx}
+              dealId={dealId}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+              showComments={showComments}
+              onToggleComments={() => setShowComments(!showComments)}
+              fetchVersions={fetchVersions}
+              restoreVersion={restoreVersion}
+            />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+              <FileText className="h-12 w-12 mb-3 opacity-30" />
+              <p className="text-sm">Select a note or create a new one</p>
+            </div>
+          )}
+        </div>
+
+        {/* Comments panel */}
+        {selectedNote && showComments && (
+          <NoteComments
+            noteId={selectedNote.id}
+            fetchComments={fetchComments}
+            addComment={addComment}
+            resolveComment={resolveComment}
+            deleteComment={deleteComment}
           />
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
-            <FileText className="h-12 w-12 mb-3 opacity-30" />
-            <p className="text-sm">Select a note or create a new one</p>
-          </div>
         )}
       </div>
 
-      {/* Comments panel */}
-      {selectedNote && showComments && (
-        <NoteComments
-          noteId={selectedNote.id}
-          fetchComments={fetchComments}
-          addComment={addComment}
-          resolveComment={resolveComment}
-          deleteComment={deleteComment}
-        />
+      {/* Financial Comments Section */}
+      {financialComments.length > 0 && (
+        <>
+          <Separator />
+          <FinancialCommentsSection
+            comments={financialComments}
+            onDelete={deleteFinancialComment}
+          />
+        </>
       )}
     </div>
   );
