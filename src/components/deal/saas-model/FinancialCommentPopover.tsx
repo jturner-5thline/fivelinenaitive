@@ -14,10 +14,13 @@ interface FinancialCommentPopoverProps {
   lineItemLabel: string;
   periodKey?: string | null;
   periodLabel?: string | null;
+  anchorType?: 'row' | 'cell' | 'metric' | 'widget';
   existingComments: FinancialComment[];
   onAdd: (params: AddCommentParams) => Promise<FinancialComment | null>;
   onDelete: (id: string) => Promise<void>;
   children: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function FinancialCommentPopover({
@@ -28,12 +31,17 @@ export function FinancialCommentPopover({
   lineItemLabel,
   periodKey,
   periodLabel,
+  anchorType,
   existingComments,
   onAdd,
   onDelete,
   children,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: FinancialCommentPopoverProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = controlledOnOpenChange || setInternalOpen;
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -42,7 +50,7 @@ export function FinancialCommentPopover({
     setSaving(true);
     await onAdd({
       statement_type: statementType,
-      anchor_type: periodKey ? 'cell' : 'row',
+      anchor_type: anchorType || (periodKey ? 'cell' : 'row'),
       anchor_key: anchorKey,
       target_label: targetLabel,
       line_item_key: lineItemKey,

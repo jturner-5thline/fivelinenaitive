@@ -7,7 +7,7 @@ export interface FinancialComment {
   id: string;
   deal_id: string;
   statement_type: 'income_statement' | 'balance_sheet';
-  anchor_type: 'row' | 'cell' | 'metric';
+  anchor_type: 'row' | 'cell' | 'metric' | 'widget';
   anchor_key: string;
   target_label: string;
   line_item_key: string;
@@ -22,7 +22,7 @@ export interface FinancialComment {
 
 export interface AddCommentParams {
   statement_type: 'income_statement' | 'balance_sheet';
-  anchor_type: 'row' | 'cell' | 'metric';
+  anchor_type: 'row' | 'cell' | 'metric' | 'widget';
   anchor_key: string;
   target_label: string;
   line_item_key: string;
