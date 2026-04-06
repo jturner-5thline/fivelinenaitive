@@ -1353,20 +1353,47 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     toast.success(`Accepted ${entries.length} mapping${entries.length !== 1 ? 's' : ''}`);
   }, [pendingAutoMaps, fieldMappings, pushAction]);
 
+  const restoreEraserSnapshot = useCallback((snapshot: import('./useMappingHistory').EraserSnapshot) => {
+    if (!selectedFile) return;
+    // Restore sheet data
+    const updatedSheets = selectedFile.sheets.map((s, i) => {
+      if (i !== activeSheet) return s;
+      return { ...s, data: snapshot.sheetData.map(row => [...row]) };
+    });
+    const updatedFile = { ...selectedFile, sheets: updatedSheets };
+    setSelectedFile(updatedFile);
+    setAnalyzedFiles(prev => prev.map(f => f === selectedFile ? updatedFile : f));
+    // Restore all index-based state
+    setSelectedColumns(new Set(snapshot.selectedColumns));
+    setExcludedColumns(new Set(snapshot.excludedColumns));
+    setFlippedColumns(new Set(snapshot.flippedColumns));
+    setSelectedRows(new Set(snapshot.selectedRows));
+    setFlippedRows(new Set(snapshot.flippedRows));
+    setFieldMappings(snapshot.fieldMappings);
+  }, [selectedFile, activeSheet]);
+
   // Undo/Redo handlers
   const handleUndo = useCallback(() => {
     const action = popUndo();
     if (!action) return;
-    setFieldMappings(action.before);
+    if (action.type === 'eraser-delete' && action.eraserBefore) {
+      restoreEraserSnapshot(action.eraserBefore);
+    } else {
+      setFieldMappings(action.before);
+    }
     toast.info(`Undid: ${action.description}`);
-  }, [popUndo]);
+  }, [popUndo, restoreEraserSnapshot]);
 
   const handleRedo = useCallback(() => {
     const action = popRedo();
     if (!action) return;
-    setFieldMappings(action.after);
+    if (action.type === 'eraser-delete' && action.eraserAfter) {
+      restoreEraserSnapshot(action.eraserAfter);
+    } else {
+      setFieldMappings(action.after);
+    }
     toast.info(`Redid: ${action.description}`);
-  }, [popRedo]);
+  }, [popRedo, restoreEraserSnapshot]);
 
   // Global keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, arrow keys for spreadsheet)
   useEffect(() => {
