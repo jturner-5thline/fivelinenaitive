@@ -1,11 +1,23 @@
 import { useState, useCallback, useRef } from 'react';
 import type { FieldMapping } from './types';
 
+export interface EraserSnapshot {
+  sheetData: string[][];
+  selectedColumns: Set<number>;
+  excludedColumns: Set<number>;
+  flippedColumns: Set<number>;
+  selectedRows: Set<number>;
+  flippedRows: Set<number>;
+  fieldMappings: Record<string, FieldMapping[]>;
+}
+
 export interface MappingAction {
-  type: 'assign' | 'remove' | 'bulk-assign' | 'bulk-remove' | 'clear-all' | 'accept-auto' | 'accept-all-auto';
+  type: 'assign' | 'remove' | 'bulk-assign' | 'bulk-remove' | 'clear-all' | 'accept-auto' | 'accept-all-auto' | 'eraser-delete';
   description: string;
   before: Record<string, FieldMapping[]>;
   after: Record<string, FieldMapping[]>;
+  eraserBefore?: EraserSnapshot;
+  eraserAfter?: EraserSnapshot;
 }
 
 export function useMappingHistory() {
