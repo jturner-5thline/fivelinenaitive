@@ -98,6 +98,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
     getCommentsForSection,
     getCommentCountForSection,
   } = useDealMemoComments(dealId);
+  const { comments: financialComments, deleteComment: deleteFinancialComment } = useFinancialComments(dealId);
   const [isOpen, setIsOpen] = useState(false);
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
