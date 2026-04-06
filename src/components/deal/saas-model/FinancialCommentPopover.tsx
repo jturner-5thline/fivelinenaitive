@@ -18,6 +18,8 @@ interface FinancialCommentPopoverProps {
   onAdd: (params: AddCommentParams) => Promise<FinancialComment | null>;
   onDelete: (id: string) => Promise<void>;
   children: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function FinancialCommentPopover({
