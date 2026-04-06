@@ -284,9 +284,8 @@ const Auth = () => {
         return;
       }
 
-      // Session set successfully, redirect to deals
-      console.log("[GoogleSSO] Session set successfully, redirecting to /deals");
-      window.location.href = "/deals";
+      // Session set successfully — the onAuthStateChange listener will handle redirect
+      console.log("[GoogleSSO] Session set successfully, onAuthStateChange will redirect");
     } catch (error: any) {
       console.error("[GoogleSSO] Caught exception:", error);
       setGoogleLoading(false);
