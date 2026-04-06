@@ -77,15 +77,25 @@ const Auth = () => {
     }
   }, []);
 
+  // Use a ref for mode so the onAuthStateChange listener always sees current value
+  // without needing to re-subscribe (which causes missed events)
+  const modeRef = useRef<AuthMode>(mode);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
+
   useEffect(() => {
     // Check for password recovery event
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === "PASSWORD_RECOVERY") {
           setMode("reset");
-        } else if (event === "SIGNED_IN" && session?.user && mode !== "reset" && mode !== "mfa") {
-          // Redirect to the specified URL or default to /deals
-          navigate(redirectUrl);
+        } else if (event === "SIGNED_IN" && session?.user) {
+          const currentMode = modeRef.current;
+          // Don't redirect if user is in the middle of password reset or MFA
+          if (currentMode !== "reset" && currentMode !== "mfa") {
+            // Use window.location for a hard redirect to avoid race conditions
+            // with the AuthContext listener and React Router state
+            window.location.href = redirectUrl;
+          }
         }
       }
     );
@@ -97,7 +107,8 @@ const Auth = () => {
     }
 
     return () => subscription.unsubscribe();
-  }, [navigate, mode, redirectUrl]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [redirectUrl]);
 
   const handleMFAVerify = async (e: React.FormEvent) => {
     e.preventDefault();
