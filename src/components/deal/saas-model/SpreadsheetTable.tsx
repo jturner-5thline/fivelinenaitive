@@ -4,7 +4,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { fmtCurrency, fmtPct, isNegative } from './formatters';
 import { MonthEntry } from './types';
-import { Calendar, Download, ChevronDown, ChevronRight, ArrowUpDown, Grid3X3 } from 'lucide-react';
+import { Calendar, Download, ChevronDown, ChevronRight, ArrowUpDown, Grid3X3, MessageSquare } from 'lucide-react';
+import { FinancialComment, AddCommentParams } from '@/hooks/useFinancialComments';
+import { FinancialCommentPopover } from './FinancialCommentPopover';
+import {
+  ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 export interface RowDef {
   key: string;
