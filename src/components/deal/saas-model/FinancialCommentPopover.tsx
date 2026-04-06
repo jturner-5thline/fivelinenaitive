@@ -34,8 +34,12 @@ export function FinancialCommentPopover({
   onAdd,
   onDelete,
   children,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: FinancialCommentPopoverProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = controlledOnOpenChange || setInternalOpen;
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
 
