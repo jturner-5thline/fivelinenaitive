@@ -66,6 +66,12 @@ export function SpreadsheetTable({
   onToggleVariance,
   conditionalFormatting,
   compactCurrency = false,
+  statementType,
+  comments: _comments,
+  onAddComment,
+  onDeleteComment,
+  getCommentsForAnchor,
+  getCommentCountForRow,
 }: SpreadsheetTableProps) {
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
