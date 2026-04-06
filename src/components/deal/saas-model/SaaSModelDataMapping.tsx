@@ -2156,9 +2156,38 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                <div className="h-[500px] overflow-auto relative" style={{ fontSize: `${zoomLevel}%` }}>
                <table className="w-max text-[13px] border-collapse" style={{ fontSize: 'inherit' }}>
                  <thead className="sticky top-0 z-20 bg-[#1b2635]">
-                   <tr>
-                     <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-[#64748b] text-[10px] bg-[#1b2635] border-b border-[#2a3a58]">#</th>
-                     <th className="sticky left-8 z-30 py-1.5 px-3 text-left text-[#94a3b8] w-[220px] min-w-[220px] max-w-[220px] font-semibold text-[11px] uppercase tracking-wide bg-[#1b2635] border-b border-[#2a3a58]" style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.3)' }}>Account</th>
+                    {/* Column letter header row (A, B, C...) */}
+                    <tr>
+                      <th className="sticky left-0 z-30 w-8 py-0.5 bg-[#1b2635] border-b border-[#2a3a58]" />
+                      <th className="sticky left-8 z-30 py-0.5 bg-[#1b2635] border-b border-[#2a3a58] w-[220px] min-w-[220px] max-w-[220px]" style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.3)' }} />
+                      {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
+                        const colIdx = i + 1;
+                        if (excludedColumns.has(colIdx)) return null;
+                        const colLetter = colIdx <= 26
+                          ? String.fromCharCode(64 + colIdx)
+                          : String.fromCharCode(64 + Math.floor((colIdx - 1) / 26)) + String.fromCharCode(65 + ((colIdx - 1) % 26));
+                        return (
+                          <th
+                            key={colIdx}
+                            className={cn(
+                              "py-1 px-2 text-center text-[10px] font-bold tracking-wider cursor-pointer select-none bg-[#1b2635] border-b border-[#2a3a58] text-[#64748b] hover:text-[#94a3b8] transition-colors",
+                              eraserMode && eraserSelectedCols.has(colIdx) && "bg-[rgba(220,38,38,0.15)] text-red-400 ring-1 ring-inset ring-[rgba(220,38,38,0.4)]",
+                              signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-[rgba(217,119,6,0.15)] text-amber-400 ring-1 ring-inset ring-[rgba(217,119,6,0.4)]",
+                              !eraserMode && !signFlipMode && selectedColumns.has(colIdx) && "bg-[rgba(37,99,235,0.15)] text-blue-400 ring-1 ring-inset ring-[rgba(96,165,250,0.3)]",
+                              flippedColumns.has(colIdx) && !signFlipMode && !eraserMode && "text-amber-500",
+                            )}
+                            onClick={(e) => signFlipMode ? handleSignFlipColClick(colIdx, e) : eraserMode ? handleEraserColClick(colIdx, e) : handleColumnHeaderClick(colIdx, e)}
+                            title={eraserMode ? `Select column ${colLetter} for deletion` : signFlipMode ? `Select column ${colLetter} for sign flip` : `Select column ${colLetter}`}
+                          >
+                            {colLetter}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                    {/* Data header row */}
+                    <tr>
+                      <th className="sticky left-0 z-30 w-8 py-1.5 px-1 text-center text-[#64748b] text-[10px] bg-[#1b2635] border-b border-[#2a3a58]">#</th>
+                      <th className="sticky left-8 z-30 py-1.5 px-3 text-left text-[#94a3b8] w-[220px] min-w-[220px] max-w-[220px] font-semibold text-[11px] uppercase tracking-wide bg-[#1b2635] border-b border-[#2a3a58]" style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.3)' }}>Account</th>
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         const isExcluded = excludedColumns.has(colIdx);
