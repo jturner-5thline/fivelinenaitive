@@ -7,12 +7,39 @@ import {
 } from './components';
 import { RevenueBreakdownChart, RevenueVsExpensesChart, EbitdaChart } from './ChartPanel';
 import { FileText } from 'lucide-react';
+import { useFinancialComments } from '@/hooks/useFinancialComments';
+import { CommentableWidget } from './CommentableWidget';
 
 interface Props {
   dealData?: UnderwritingDealData;
+  dealId?: string;
 }
 
-export function CreditUnderwritingDashboard({ dealData }: Props) {
+export function CreditUnderwritingDashboard({ dealData, dealId }: Props) {
+  const { comments, addComment, deleteComment, getCommentsForAnchor } = useFinancialComments(dealId || '');
+
+  // Helper to wrap any widget with commenting
+  function W({ anchorKey, label, stmt, wtype, children }: {
+    anchorKey: string; label: string; stmt: 'income_statement' | 'balance_sheet';
+    wtype: React.ComponentProps<typeof CommentableWidget>['widgetType']; children: React.ReactNode;
+  }) {
+    if (!dealId) return <>{children}</>;
+    return (
+      <CommentableWidget
+        anchorKey={anchorKey}
+        targetLabel={label}
+        statementType={stmt}
+        widgetType={wtype}
+        lineItemKey={anchorKey}
+        existingComments={getCommentsForAnchor(anchorKey)}
+        onAdd={addComment}
+        onDelete={deleteComment}
+      >
+        {children}
+      </CommentableWidget>
+    );
+  }
+
   if (!dealData) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
