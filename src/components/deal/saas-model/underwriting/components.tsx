@@ -77,16 +77,18 @@ export function PnlKpiCard({ label, value, sub, ttmLabel, ttmValue, ttmColor }: 
   ttmColor?: string;
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-4 relative">
-      <p className={cn("text-[9px] uppercase tracking-widest font-medium mb-2.5", LABEL_MUTED)}>{label}</p>
+    <div className="bg-card border border-border rounded-xl p-4">
+      <div className="flex items-start justify-between gap-2 mb-2.5">
+        <p className={cn("text-[9px] uppercase tracking-widest font-medium", LABEL_MUTED)}>{label}</p>
+        {ttmLabel && (
+          <div className="text-right shrink-0">
+            <p className={cn("text-[9px] uppercase tracking-widest font-medium", LABEL_MUTED)}>{ttmLabel}</p>
+            <p className={cn("text-[15px] mt-0.5", NUM_PRIMARY, ttmColor || '')}>{ttmValue}</p>
+          </div>
+        )}
+      </div>
       <p className={cn("text-[26px] leading-tight tracking-tight", NUM_PRIMARY, currencyColor(value))}>{value}</p>
       {sub && <p className={cn("text-[11px] mt-1.5", NUM_SECONDARY)}>{sub}</p>}
-      {ttmLabel && (
-        <div className="absolute top-4 right-4 text-right">
-          <p className={cn("text-[9px] uppercase tracking-widest font-medium", LABEL_MUTED)}>{ttmLabel}</p>
-          <p className={cn("text-[15px] mt-0.5", NUM_PRIMARY, ttmColor || '')}>{ttmValue}</p>
-        </div>
-      )}
     </div>
   );
 }
