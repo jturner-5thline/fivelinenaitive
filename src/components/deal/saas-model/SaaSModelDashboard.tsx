@@ -323,7 +323,7 @@ export function SaaSModelDashboard({ model: m, annotations: ann, dealId }: Props
 
   return (
     <div className="space-y-4">
-      <CreditUnderwritingDashboard dealData={underwritingData} />
+      <CreditUnderwritingDashboard dealData={underwritingData} dealId={dealId} />
       {dealId && (
         <FinancialIntelligencePanel dealId={dealId} hasFinancialData={hasData} />
       )}
