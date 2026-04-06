@@ -76,7 +76,6 @@ export function SaaSModelBalanceSheet({ model, dealId }: Props) {
     getCommentsForAnchor,
     getCommentCountForRow,
   } = useFinancialComments(dealId || '');
-  const bs = model.balanceSheet;
 
   // Compute KPIs from latest period
   const kpis = useMemo(() => {
