@@ -75,6 +75,14 @@ export function SpreadsheetTable({
 }: SpreadsheetTableProps) {
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [commentPopoverTarget, setCommentPopoverTarget] = useState<{
+    anchorKey: string;
+    targetLabel: string;
+    lineItemKey: string;
+    lineItemLabel: string;
+    periodKey?: string | null;
+    periodLabel?: string | null;
+  } | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
   const years = useMemo(() => [...new Set(months.map(m => m.year))], [months]);
