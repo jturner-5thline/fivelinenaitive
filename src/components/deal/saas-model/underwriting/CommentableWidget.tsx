@@ -58,8 +58,9 @@ export function CommentableWidget({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        {children}
-      </ContextMenuTrigger>
+        <div style={{ display: 'contents' }}>
+          {children}
+        </div>
       <ContextMenuContent className="w-52">
         <ContextMenuItem
           onClick={() => setPopoverOpen(true)}
