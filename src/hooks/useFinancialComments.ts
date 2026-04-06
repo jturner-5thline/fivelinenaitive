@@ -32,22 +32,42 @@ export interface AddCommentParams {
   comment_text: string;
 }
 
+// Use any-typed client to bypass missing type generation for new table
+const db = supabase as any;
+
 export function useFinancialComments(dealId: string) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [comments, setComments] = useState<FinancialComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userName, setUserName] = useState('');
+
+  // Fetch user display name once
+  useEffect(() => {
+    if (!user) return;
+    db.from('profiles')
+      .select('display_name, full_name')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }: any) => {
+        if (data) {
+          setUserName(data.display_name || data.full_name || user.email || 'Unknown');
+        } else {
+          setUserName(user.email || 'Unknown');
+        }
+      });
+  }, [user]);
 
   const fetchComments = useCallback(async () => {
     if (!dealId) return;
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('financial_comments')
         .select('*')
         .eq('deal_id', dealId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setComments((data as unknown as FinancialComment[]) || []);
+      setComments((data as FinancialComment[]) || []);
     } catch (err) {
       console.error('Failed to fetch financial comments:', err);
     } finally {
@@ -62,8 +82,6 @@ export function useFinancialComments(dealId: string) {
   const addComment = useCallback(async (params: AddCommentParams) => {
     if (!user || !dealId) return null;
 
-    const userName = profile?.display_name || profile?.full_name || user.email || 'Unknown';
-
     const record = {
       deal_id: dealId,
       statement_type: params.statement_type,
@@ -76,11 +94,11 @@ export function useFinancialComments(dealId: string) {
       period_label: params.period_label || null,
       comment_text: params.comment_text,
       created_by_user_id: user.id,
-      created_by_name: userName,
+      created_by_name: userName || user.email || 'Unknown',
     };
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('financial_comments')
         .insert(record)
         .select()
@@ -88,7 +106,7 @@ export function useFinancialComments(dealId: string) {
 
       if (error) throw error;
 
-      const newComment = data as unknown as FinancialComment;
+      const newComment = data as FinancialComment;
       setComments(prev => [newComment, ...prev]);
       toast.success('Comment added');
       return newComment;
@@ -97,11 +115,11 @@ export function useFinancialComments(dealId: string) {
       toast.error('Failed to add comment');
       return null;
     }
-  }, [user, profile, dealId]);
+  }, [user, userName, dealId]);
 
   const deleteComment = useCallback(async (commentId: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await db
         .from('financial_comments')
         .delete()
         .eq('id', commentId);
