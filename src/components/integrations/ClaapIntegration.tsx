@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ClaapSyncSettings } from './ClaapSyncSettings';
 
-const ALLOWED_EMAIL = 'jturner@5thline.co';
+const ALLOWED_EMAILS = new Set(['jturner@5thline.co', 'ffustinoni@5thline.co']);
 
 export function ClaapIntegration() {
   const { user } = useAuth();
