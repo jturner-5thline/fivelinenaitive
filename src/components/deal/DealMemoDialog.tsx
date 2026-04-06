@@ -3,7 +3,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck, MessageSquare } from 'lucide-react';
 import { useFinancialComments } from '@/hooks/useFinancialComments';
 import { FinancialCommentsSection } from './saas-model/FinancialCommentsSection';
-import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
