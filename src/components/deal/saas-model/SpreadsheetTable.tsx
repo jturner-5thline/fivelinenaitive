@@ -43,6 +43,13 @@ interface SpreadsheetTableProps {
   onToggleVariance?: () => void;
   conditionalFormatting?: boolean;
   compactCurrency?: boolean;
+  // Financial commenting
+  statementType?: 'income_statement' | 'balance_sheet';
+  comments?: FinancialComment[];
+  onAddComment?: (params: AddCommentParams) => Promise<FinancialComment | null>;
+  onDeleteComment?: (id: string) => Promise<void>;
+  getCommentsForAnchor?: (anchorKey: string) => FinancialComment[];
+  getCommentCountForRow?: (lineItemKey: string) => number;
 }
 
 const VARIANCE_THRESHOLD = 20;
