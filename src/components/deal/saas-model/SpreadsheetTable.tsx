@@ -620,6 +620,40 @@ export function SpreadsheetTable({
           </span>
         )}
       </div>
+
+      {/* Floating comment popover triggered from context menu */}
+      {commentPopoverTarget && statementType && onAddComment && onDeleteComment && getCommentsForAnchor && (
+        <FinancialCommentPopover
+          anchorKey={commentPopoverTarget.anchorKey}
+          targetLabel={commentPopoverTarget.targetLabel}
+          statementType={statementType}
+          lineItemKey={commentPopoverTarget.lineItemKey}
+          lineItemLabel={commentPopoverTarget.lineItemLabel}
+          periodKey={commentPopoverTarget.periodKey}
+          periodLabel={commentPopoverTarget.periodLabel}
+          existingComments={getCommentsForAnchor(commentPopoverTarget.anchorKey)}
+          onAdd={async (params) => {
+            const result = await onAddComment(params);
+            setCommentPopoverTarget(null);
+            return result;
+          }}
+          onDelete={onDeleteComment}
+        >
+          <div className="fixed bottom-4 right-4 z-50">
+            <button
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg shadow-lg"
+              style={{
+                background: 'hsl(var(--primary))',
+                color: 'hsl(var(--primary-foreground))',
+              }}
+              onClick={() => setCommentPopoverTarget(null)}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Add Comment: {commentPopoverTarget.targetLabel}
+            </button>
+          </div>
+        </FinancialCommentPopover>
+      )}
     </div>
   );
 }
