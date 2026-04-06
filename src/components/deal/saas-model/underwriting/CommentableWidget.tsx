@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -33,20 +33,17 @@ interface CommentableWidgetProps {
   onAdd: (params: AddCommentParams) => Promise<FinancialComment | null>;
   onDelete: (id: string) => Promise<void>;
   children: React.ReactNode;
-  className?: string;
 }
 
 /**
- * Layout-invisible wrapper: uses ContextMenuTrigger with asChild so
- * the trigger element IS the child — no extra div injected.
- * The comment indicator is rendered as a portal-style absolute overlay
- * only when comments exist, positioned via a ref on a zero-size span.
+ * Layout-invisible commenting wrapper.
+ * Uses `display: contents` so the wrapper div does not participate
+ * in layout — the child renders as if unwrapped in the parent grid/flex.
  */
 export function CommentableWidget({
   targetLabel,
   anchorKey,
   statementType,
-  widgetType,
   lineItemKey,
   existingComments,
   onAdd,
@@ -61,6 +58,7 @@ export function CommentableWidget({
         <div style={{ display: 'contents' }}>
           {children}
         </div>
+      </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
         <ContextMenuItem
           onClick={() => setPopoverOpen(true)}
