@@ -31,6 +31,7 @@ export function FinancialCommentPopover({
   lineItemLabel,
   periodKey,
   periodLabel,
+  anchorType,
   existingComments,
   onAdd,
   onDelete,
@@ -49,7 +50,7 @@ export function FinancialCommentPopover({
     setSaving(true);
     await onAdd({
       statement_type: statementType,
-      anchor_type: periodKey ? 'cell' : 'row',
+      anchor_type: anchorType || (periodKey ? 'cell' : 'row'),
       anchor_key: anchorKey,
       target_label: targetLabel,
       line_item_key: lineItemKey,
