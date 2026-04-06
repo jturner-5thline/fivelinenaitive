@@ -2172,7 +2172,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                             key={colIdx}
                             className={cn(
                               "py-1 px-2 text-center text-[10px] font-bold tracking-wider cursor-pointer select-none bg-[#1b2635] border-b border-[#2a3a58] text-[#64748b] hover:text-[#94a3b8] transition-colors",
-                              eraserMode && eraserSelectedCols.has(colIdx) && "bg-[rgba(220,38,38,0.15)] text-red-400 ring-1 ring-inset ring-[rgba(220,38,38,0.4)]",
+                              isExcludedCol && "opacity-40 line-through",
+                              eraserMode && eraserSelectedCols.has(colIdx) && "bg-[rgba(220,38,38,0.15)] text-red-400 ring-1 ring-inset ring-[rgba(220,38,38,0.4)] opacity-100",
                               signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-[rgba(217,119,6,0.15)] text-amber-400 ring-1 ring-inset ring-[rgba(217,119,6,0.4)]",
                               !eraserMode && !signFlipMode && selectedColumns.has(colIdx) && "bg-[rgba(37,99,235,0.15)] text-blue-400 ring-1 ring-inset ring-[rgba(96,165,250,0.3)]",
                               flippedColumns.has(colIdx) && !signFlipMode && !eraserMode && "text-amber-500",
