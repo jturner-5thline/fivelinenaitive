@@ -2531,10 +2531,6 @@ export default function DealDetail() {
                     ))}
                   </SelectContent>
                 </Select>
-                <StatusHistoryPopover 
-                  statusNotes={statusNotes} 
-                  onDeleteNote={deleteStatusNote} 
-                />
                 {deal.status === 'archived' && (
                   <Button
                     variant="outline"
