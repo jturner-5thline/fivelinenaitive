@@ -199,20 +199,29 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
     if (rowsToDelete.size === 0 && colsToDelete.size === 0) return;
 
+    // Snapshot state BEFORE deletion for undo
+    const eraserBefore: import('./useMappingHistory').EraserSnapshot = {
+      sheetData: sheet.data.map(row => [...row]),
+      selectedColumns: new Set(selectedColumns),
+      excludedColumns: new Set(excludedColumns),
+      flippedColumns: new Set(flippedColumns),
+      selectedRows: new Set(selectedRows),
+      flippedRows: new Set(flippedRows),
+      fieldMappings: { ...fieldMappings },
+    };
+
     // Build new data by filtering rows and columns
     let newData = sheet.data.map(row => [...row]);
 
-    // Remove rows (filter by index)
     if (rowsToDelete.size > 0) {
       newData = newData.filter((_, i) => !rowsToDelete.has(i));
     }
 
-    // Remove columns (filter each row)
     if (colsToDelete.size > 0) {
       newData = newData.map(row => row.filter((_, ci) => !colsToDelete.has(ci)));
     }
 
-    // Update the sheet data in-place
+    // Update sheet data
     const updatedSheets = selectedFile.sheets.map((s, i) => {
       if (i !== activeSheet) return s;
       return { ...s, data: newData };
@@ -222,76 +231,88 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     setSelectedFile(updatedFile);
     setAnalyzedFiles(prev => prev.map(f => f === selectedFile ? updatedFile : f));
 
-    // Fix field mappings: adjust row indices after row deletion
+    // Helper to shift indices after deletion
+    const shiftIndices = (indices: Set<number>, deletedSorted: number[]): Set<number> => {
+      const next = new Set<number>();
+      for (const idx of indices) {
+        if (deletedSorted.some(d => d === idx)) continue;
+        const offset = deletedSorted.filter(d => d < idx).length;
+        next.add(idx - offset);
+      }
+      return next;
+    };
+
+    let newFieldMappings = { ...fieldMappings };
+    let newFlippedRows = new Set(flippedRows);
+    let newExcludedColumns = new Set(excludedColumns);
+    let newFlippedColumns = new Set(flippedColumns);
+    let newSelectedColumns = new Set(selectedColumns);
+    let newSelectedRows = new Set(selectedRows);
+
+    // Fix field mappings & flippedRows after row deletion
     if (rowsToDelete.size > 0) {
       const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
-      setFieldMappings(prev => {
-        const next: Record<string, FieldMapping[]> = {};
-        for (const [field, maps] of Object.entries(prev)) {
-          const adjusted = maps
-            .filter(m => m.sheet !== sheet.name || !rowsToDelete.has(m.rowIdx))
-            .map(m => {
-              if (m.sheet !== sheet.name) return m;
-              // Count how many deleted rows are before this row
-              const offset = sortedDeletedRows.filter(d => d < m.rowIdx).length;
-              return { ...m, rowIdx: m.rowIdx - offset };
-            });
-          if (adjusted.length > 0) next[field] = adjusted;
-        }
-        return next;
-      });
+      const next: Record<string, FieldMapping[]> = {};
+      for (const [field, maps] of Object.entries(newFieldMappings)) {
+        const adjusted = maps
+          .filter(m => m.sheet !== sheet.name || !rowsToDelete.has(m.rowIdx))
+          .map(m => {
+            if (m.sheet !== sheet.name) return m;
+            const offset = sortedDeletedRows.filter(d => d < m.rowIdx).length;
+            return { ...m, rowIdx: m.rowIdx - offset };
+          });
+        if (adjusted.length > 0) next[field] = adjusted;
+      }
+      newFieldMappings = next;
+      newFlippedRows = shiftIndices(flippedRows, sortedDeletedRows);
+      newSelectedRows = shiftIndices(selectedRows, sortedDeletedRows);
     }
 
-    // Fix flipped rows similarly
-    if (rowsToDelete.size > 0) {
-      const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
-      setFlippedRows(prev => {
-        const next = new Set<number>();
-        for (const r of prev) {
-          if (rowsToDelete.has(r)) continue;
-          const offset = sortedDeletedRows.filter(d => d < r).length;
-          next.add(r - offset);
-        }
-        return next;
-      });
-    }
-
-    // Fix excluded columns similarly  
+    // Fix column-indexed state after column deletion
     if (colsToDelete.size > 0) {
       const sortedDeletedCols = Array.from(colsToDelete).sort((a, b) => a - b);
-      setExcludedColumns(prev => {
-        const next = new Set<number>();
-        for (const c of prev) {
-          if (colsToDelete.has(c)) continue;
-          const offset = sortedDeletedCols.filter(d => d < c).length;
-          next.add(c - offset);
-        }
-        return next;
-      });
+      newExcludedColumns = shiftIndices(excludedColumns, sortedDeletedCols);
+      newFlippedColumns = shiftIndices(flippedColumns, sortedDeletedCols);
+      newSelectedColumns = shiftIndices(selectedColumns, sortedDeletedCols);
+      // Remove deleted column indices from selectedColumns
+      for (const d of colsToDelete) newSelectedColumns.delete(d);
     }
 
-    // Fix flipped columns similarly
-    if (colsToDelete.size > 0) {
-      const sortedDeletedCols2 = Array.from(colsToDelete).sort((a, b) => a - b);
-      setFlippedColumns(prev => {
-        const next = new Set<number>();
-        for (const c of prev) {
-          if (colsToDelete.has(c)) continue;
-          const offset = sortedDeletedCols2.filter(d => d < c).length;
-          next.add(c - offset);
-        }
-        return next;
-      });
-    }
+    setFieldMappings(newFieldMappings);
+    setFlippedRows(newFlippedRows);
+    setSelectedRows(newSelectedRows);
+    setExcludedColumns(newExcludedColumns);
+    setFlippedColumns(newFlippedColumns);
+    setSelectedColumns(newSelectedColumns);
 
-    const totalRemoved = rowsToDelete.size + colsToDelete.size;
-    toast.success(`Removed ${rowsToDelete.size > 0 ? `${rowsToDelete.size} row${rowsToDelete.size > 1 ? 's' : ''}` : ''}${rowsToDelete.size > 0 && colsToDelete.size > 0 ? ' and ' : ''}${colsToDelete.size > 0 ? `${colsToDelete.size} column${colsToDelete.size > 1 ? 's' : ''}` : ''}`);
+    // Snapshot state AFTER deletion for redo
+    const eraserAfter: import('./useMappingHistory').EraserSnapshot = {
+      sheetData: newData.map(row => [...row]),
+      selectedColumns: new Set(newSelectedColumns),
+      excludedColumns: new Set(newExcludedColumns),
+      flippedColumns: new Set(newFlippedColumns),
+      selectedRows: new Set(newSelectedRows),
+      flippedRows: new Set(newFlippedRows),
+      fieldMappings: newFieldMappings,
+    };
+
+    // Push to undo history
+    const desc = `${rowsToDelete.size > 0 ? `${rowsToDelete.size} row${rowsToDelete.size > 1 ? 's' : ''}` : ''}${rowsToDelete.size > 0 && colsToDelete.size > 0 ? ' and ' : ''}${colsToDelete.size > 0 ? `${colsToDelete.size} column${colsToDelete.size > 1 ? 's' : ''}` : ''}`;
+    pushAction({
+      type: 'eraser-delete',
+      description: `Delete ${desc}`,
+      before: eraserBefore.fieldMappings,
+      after: newFieldMappings,
+      eraserBefore,
+      eraserAfter,
+    });
+
+    toast.success(`Removed ${desc}`);
 
     // Clear eraser selections
     setEraserSelectedRows(new Set());
     setEraserSelectedCols(new Set());
-    setSelectedRows(new Set());
-  }, [selectedFile, activeSheet, eraserSelectedRows, eraserSelectedCols]);
+  }, [selectedFile, activeSheet, eraserSelectedRows, eraserSelectedCols, selectedColumns, excludedColumns, flippedColumns, selectedRows, flippedRows, fieldMappings, pushAction]);
 
   // Column header click with shift/ctrl for multi-select
   const handleColumnHeaderClick = useCallback((colIdx: number, e: React.MouseEvent) => {
@@ -1332,20 +1353,47 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     toast.success(`Accepted ${entries.length} mapping${entries.length !== 1 ? 's' : ''}`);
   }, [pendingAutoMaps, fieldMappings, pushAction]);
 
+  const restoreEraserSnapshot = useCallback((snapshot: import('./useMappingHistory').EraserSnapshot) => {
+    if (!selectedFile) return;
+    // Restore sheet data
+    const updatedSheets = selectedFile.sheets.map((s, i) => {
+      if (i !== activeSheet) return s;
+      return { ...s, data: snapshot.sheetData.map(row => [...row]) };
+    });
+    const updatedFile = { ...selectedFile, sheets: updatedSheets };
+    setSelectedFile(updatedFile);
+    setAnalyzedFiles(prev => prev.map(f => f === selectedFile ? updatedFile : f));
+    // Restore all index-based state
+    setSelectedColumns(new Set(snapshot.selectedColumns));
+    setExcludedColumns(new Set(snapshot.excludedColumns));
+    setFlippedColumns(new Set(snapshot.flippedColumns));
+    setSelectedRows(new Set(snapshot.selectedRows));
+    setFlippedRows(new Set(snapshot.flippedRows));
+    setFieldMappings(snapshot.fieldMappings);
+  }, [selectedFile, activeSheet]);
+
   // Undo/Redo handlers
   const handleUndo = useCallback(() => {
     const action = popUndo();
     if (!action) return;
-    setFieldMappings(action.before);
+    if (action.type === 'eraser-delete' && action.eraserBefore) {
+      restoreEraserSnapshot(action.eraserBefore);
+    } else {
+      setFieldMappings(action.before);
+    }
     toast.info(`Undid: ${action.description}`);
-  }, [popUndo]);
+  }, [popUndo, restoreEraserSnapshot]);
 
   const handleRedo = useCallback(() => {
     const action = popRedo();
     if (!action) return;
-    setFieldMappings(action.after);
+    if (action.type === 'eraser-delete' && action.eraserAfter) {
+      restoreEraserSnapshot(action.eraserAfter);
+    } else {
+      setFieldMappings(action.after);
+    }
     toast.info(`Redid: ${action.description}`);
-  }, [popRedo]);
+  }, [popRedo, restoreEraserSnapshot]);
 
   // Global keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, arrow keys for spreadsheet)
   useEffect(() => {
