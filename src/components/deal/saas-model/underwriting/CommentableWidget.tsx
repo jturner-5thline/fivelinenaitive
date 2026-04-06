@@ -96,13 +96,13 @@ export function CommentableWidget({
         statementType={statementType}
         lineItemKey={lineItemKey}
         lineItemLabel={targetLabel}
+        anchorType="widget"
         existingComments={existingComments}
         onAdd={onAdd}
         onDelete={onDelete}
         open={popoverOpen}
         onOpenChange={setPopoverOpen}
       >
-        {/* Invisible trigger anchor — the popover is controlled via open/onOpenChange */}
         <span />
       </FinancialCommentPopover>
     </ContextMenu>
