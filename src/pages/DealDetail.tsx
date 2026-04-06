@@ -2531,10 +2531,6 @@ export default function DealDetail() {
                     ))}
                   </SelectContent>
                 </Select>
-                <StatusHistoryPopover 
-                  statusNotes={statusNotes} 
-                  onDeleteNote={deleteStatusNote} 
-                />
                 {deal.status === 'archived' && (
                   <Button
                     variant="outline"
@@ -2614,6 +2610,10 @@ export default function DealDetail() {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <StatusHistoryPopover 
+                  statusNotes={statusNotes} 
+                  onDeleteNote={deleteStatusNote} 
+                />
                 </div>
                 <div className="flex items-center gap-1.5 ml-auto">
                   <span className="text-xs text-muted-foreground">Close:</span>
