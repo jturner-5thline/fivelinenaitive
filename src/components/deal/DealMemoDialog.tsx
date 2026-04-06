@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck, MessageSquare } from 'lucide-react';
+import { useFinancialComments } from '@/hooks/useFinancialComments';
+import { FinancialCommentsSection } from './saas-model/FinancialCommentsSection';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -96,6 +98,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
     getCommentsForSection,
     getCommentCountForSection,
   } = useDealMemoComments(dealId);
+  const { comments: financialComments, deleteComment: deleteFinancialComment } = useFinancialComments(dealId);
   const [isOpen, setIsOpen] = useState(false);
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -799,6 +802,17 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                   </div>
                 </MemoSectionContextMenu>
               ))}
+
+              {/* Financial Comments from IS/BS */}
+              {financialComments.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-border">
+                  <FinancialCommentsSection
+                    comments={financialComments}
+                    onDelete={deleteFinancialComment}
+                    compact
+                  />
+                </div>
+              )}
             </div>
           )}
         </ScrollArea>

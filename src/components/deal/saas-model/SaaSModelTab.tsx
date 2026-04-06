@@ -317,7 +317,7 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
           <SaaSModelIncomeStatement model={model} dealId={dealId} />
         </TabsContent>
         <TabsContent value="balance-sheet" className="mt-4">
-          <SaaSModelBalanceSheet model={model} />
+          <SaaSModelBalanceSheet model={model} dealId={dealId} />
         </TabsContent>
         <TabsContent value="data-mapping" className="mt-4">
           <SaaSModelDataMapping ref={dataMappingRef} dealId={dealId} model={model} updateModel={updateModel} recalculate={recalculate} />

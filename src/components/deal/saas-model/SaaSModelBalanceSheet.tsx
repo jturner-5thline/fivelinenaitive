@@ -4,9 +4,11 @@ import { SpreadsheetTable, RowDef, ViewMode } from './SpreadsheetTable';
 import { Scale, TrendingUp, TrendingDown, Landmark, ShieldCheck } from 'lucide-react';
 import { fmtCurrency } from './formatters';
 import { cn } from '@/lib/utils';
+import { useFinancialComments } from '@/hooks/useFinancialComments';
 
 interface Props {
   model: SaaSModelData;
+  dealId?: string;
 }
 
 /* ── KPI Card — aligned with mapping-theme surface system ── */
@@ -63,10 +65,17 @@ function BsKpiCard({ label, value, prevValue, format, icon: Icon, warning }: {
   );
 }
 
-export function SaaSModelBalanceSheet({ model }: Props) {
+export function SaaSModelBalanceSheet({ model, dealId }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [showVariance, setShowVariance] = useState(false);
   const bs = model.balanceSheet;
+  const {
+    comments: financialComments,
+    addComment,
+    deleteComment,
+    getCommentsForAnchor,
+    getCommentCountForRow,
+  } = useFinancialComments(dealId || '');
 
   // Compute KPIs from latest period
   const kpis = useMemo(() => {
@@ -196,6 +205,12 @@ export function SaaSModelBalanceSheet({ model }: Props) {
         showVariance={showVariance}
         onToggleVariance={() => setShowVariance(v => !v)}
         conditionalFormatting
+        statementType="balance_sheet"
+        comments={financialComments}
+        onAddComment={addComment}
+        onDeleteComment={deleteComment}
+        getCommentsForAnchor={getCommentsForAnchor}
+        getCommentCountForRow={getCommentCountForRow}
       />
     </div>
   );
