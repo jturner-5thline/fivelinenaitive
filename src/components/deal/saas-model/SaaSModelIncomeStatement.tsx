@@ -8,6 +8,13 @@ import { Toggle } from '@/components/ui/toggle';
 import { supabase } from '@/integrations/supabase/client';
 import { generateMonths } from './calculations';
 import type { MonthEntry } from './types';
+import { useFinancialComments } from '@/hooks/useFinancialComments';
+import { fmtCurrency, fmtPct } from './formatters';
+import { cn } from '@/lib/utils';
+import { Toggle } from '@/components/ui/toggle';
+import { supabase } from '@/integrations/supabase/client';
+import { generateMonths } from './calculations';
+import type { MonthEntry } from './types';
 
 interface Props {
   model: SaaSModelData;
