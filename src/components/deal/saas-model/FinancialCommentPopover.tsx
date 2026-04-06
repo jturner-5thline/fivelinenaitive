@@ -14,6 +14,7 @@ interface FinancialCommentPopoverProps {
   lineItemLabel: string;
   periodKey?: string | null;
   periodLabel?: string | null;
+  anchorType?: 'row' | 'cell' | 'metric' | 'widget';
   existingComments: FinancialComment[];
   onAdd: (params: AddCommentParams) => Promise<FinancialComment | null>;
   onDelete: (id: string) => Promise<void>;
