@@ -802,6 +802,17 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                   </div>
                 </MemoSectionContextMenu>
               ))}
+
+              {/* Financial Comments from IS/BS */}
+              {financialComments.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-border">
+                  <FinancialCommentsSection
+                    comments={financialComments}
+                    onDelete={deleteFinancialComment}
+                    compact
+                  />
+                </div>
+              )}
             </div>
           )}
         </ScrollArea>
