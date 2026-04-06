@@ -24,59 +24,39 @@ export type WidgetType =
   | 'kpi_grid';
 
 interface CommentableWidgetProps {
-  /** Human-readable label shown in the comment popover */
   targetLabel: string;
-  /** Stable machine key for the anchor (e.g. 'recurring_revenue_ttm', 'chart_revenue_breakdown') */
   anchorKey: string;
-  /** Which statement this belongs to */
   statementType: 'income_statement' | 'balance_sheet';
-  /** Widget classification */
   widgetType: WidgetType;
-  /** Line item key for grouping */
   lineItemKey: string;
-  /** Existing comments for this anchor */
   existingComments: FinancialComment[];
-  /** Callback to add a comment */
   onAdd: (params: AddCommentParams) => Promise<FinancialComment | null>;
-  /** Callback to delete a comment */
   onDelete: (id: string) => Promise<void>;
   children: React.ReactNode;
-  className?: string;
 }
 
+/**
+ * Layout-invisible commenting wrapper.
+ * Uses `display: contents` so the wrapper div does not participate
+ * in layout — the child renders as if unwrapped in the parent grid/flex.
+ */
 export function CommentableWidget({
   targetLabel,
   anchorKey,
   statementType,
-  widgetType,
   lineItemKey,
   existingComments,
   onAdd,
   onDelete,
   children,
-  className,
 }: CommentableWidgetProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const commentCount = existingComments.length;
 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className={`relative group/commentable ${className || ''}`}>
+        <div style={{ display: 'contents' }}>
           {children}
-          {/* Comment indicator badge */}
-          {commentCount > 0 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setPopoverOpen(true);
-              }}
-              className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-primary/15 text-primary border border-primary/20 hover:bg-primary/25 transition-colors"
-            >
-              <MessageSquare className="h-2.5 w-2.5" />
-              {commentCount}
-            </button>
-          )}
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
@@ -87,9 +67,17 @@ export function CommentableWidget({
           <MessageSquare className="h-3.5 w-3.5" />
           Add comment on {targetLabel.length > 28 ? targetLabel.slice(0, 28) + '…' : targetLabel}
         </ContextMenuItem>
+        {existingComments.length > 0 && (
+          <ContextMenuItem
+            onClick={() => setPopoverOpen(true)}
+            className="gap-2 text-xs"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            View {existingComments.length} comment{existingComments.length !== 1 ? 's' : ''}
+          </ContextMenuItem>
+        )}
       </ContextMenuContent>
 
-      {/* Popover rendered separately, triggered by state */}
       <FinancialCommentPopover
         anchorKey={anchorKey}
         targetLabel={targetLabel}
