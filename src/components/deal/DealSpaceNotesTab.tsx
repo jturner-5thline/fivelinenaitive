@@ -6,6 +6,9 @@ import { NotesSidebar } from './notes/NotesSidebar';
 import { NoteComments } from './notes/NoteComments';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { toast } from '@/hooks/use-toast';
+import { useFinancialComments } from '@/hooks/useFinancialComments';
+import { FinancialCommentsSection } from './saas-model/FinancialCommentsSection';
+import { Separator } from '@/components/ui/separator';
 
 interface DealSpaceNotesTabProps {
   dealId: string;
@@ -17,6 +20,7 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
     fetchVersions, restoreVersion,
     fetchComments, addComment, resolveComment, deleteComment,
   } = useDealSpaceNotes(dealId);
+  const { comments: financialComments, deleteComment: deleteFinancialComment } = useFinancialComments(dealId);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
