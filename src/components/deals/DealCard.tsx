@@ -181,7 +181,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
   return (
     <>
-    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0 h-full">
+    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0 h-full" onClick={(e) => { if (isEditingStatus) { e.preventDefault(); } }}>
       <Card className={`group cursor-pointer h-full flex flex-col relative overflow-visible border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] transition-all duration-200 hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(222,30%,21%)_0%,hsl(230,25%,17%)_50%,hsl(238,22%,14%)_100%)] hover:shadow-[inset_0_1px_2px_hsl(272,100%,85%,0.2),inset_0_-1px_1px_hsl(0,0%,0%,0.25),0_0_20px_hsl(272,100%,70%,0.18),0_10px_40px_hsl(0,0%,0%,0.6)] hover:-translate-y-0.5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)] min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
         {/* Notification badge */}
@@ -383,13 +383,13 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           {!compact && (
             <div className="flex-1">
               {isEditingStatus ? (
-                <div className="min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                <div className="min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} onMouseDown={(e) => e.stopPropagation()}>
                   <MentionTextarea
                     value={statusText}
                     onChange={(html) => setStatusText(html)}
-                    onBlur={handleStatusSave}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
                         handleStatusSave();
                       } else if (e.key === 'Escape') {
                         setIsEditingStatus(false);
@@ -398,6 +398,24 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                     placeholder="Add a status note..."
                     mentionUsers={mentionUsers}
                   />
+                  <div className="flex items-center gap-1 mt-1">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="h-6 px-2 text-xs"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleStatusSave(); }}
+                    >
+                      <Check className="h-3 w-3 mr-1" /> Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-xs"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsEditingStatus(false); }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               ) : notesPlainText ? (
                 <div className="relative group/status">
