@@ -2695,7 +2695,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         const isExcluded = excludedColumns.has(colIdx);
-                        console.log('RENDER COL HEADER', colIdx, isExcluded, eraserMode)
                         const isColSelected = selectedColumns.has(colIdx);
                         if (isExcluded && !eraserMode) return null;
                         return (
@@ -2785,6 +2784,30 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                               </ContextMenuItem>
                             </ContextMenuContent>
                           </ContextMenu>
+                        );
+                      })}
+                    </tr>
+                    <tr className="h-5">
+                      <th className="sticky left-0 z-30 bg-[#1b2635] border-b border-[#2a3a58]" />
+                      <th className="sticky left-8 z-30 bg-[#1b2635] border-b border-[#2a3a58]" style={{ boxShadow: "2px 0 4px -2px rgba(0,0,0,0.3)" }} />
+                      {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
+                        const colIdx = i + 1;
+                        return (
+                          <th
+                            key={colIdx}
+                            className={cn(
+                              "py-0 px-1 text-center text-[9px] font-mono text-[#64748b] min-w-[80px] cursor-pointer select-none bg-[#1b2635] border-b border-[#2a3a58] hover:text-foreground/80",
+                              eraserMode && eraserSelectedCols.has(colIdx) && "bg-[rgba(220,38,38,0.15)] text-red-400",
+                              signFlipMode && signFlipSelectedCols.has(colIdx) && "bg-[rgba(217,119,6,0.15)] text-amber-400",
+                            )}
+                            onClick={(e) => {
+                              if (eraserMode) handleEraserColClick(colIdx, e);
+                              else if (signFlipMode) handleSignFlipColClick(colIdx, e);
+                              else handleColumnHeaderClick(colIdx, e);
+                            }}
+                          >
+                            {String.fromCharCode(65 + i)}
+                          </th>
                         );
                       })}
                     </tr>
