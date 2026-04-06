@@ -2695,6 +2695,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
                         const isExcluded = excludedColumns.has(colIdx);
+                        console.log('RENDER COL HEADER', colIdx, isExcluded, eraserMode)
                         const isColSelected = selectedColumns.has(colIdx);
                         if (isExcluded && !eraserMode) return null;
                         return (
