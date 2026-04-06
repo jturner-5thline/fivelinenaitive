@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
@@ -132,8 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (userEmail && isBlockedEmailDomain(userEmail)) {
             // Store the error so the Auth page can display it
             sessionStorage.setItem('naitive_blocked_domain_error', 'true');
-            // Sign out the user immediately
-            await supabase.auth.signOut();
+            // Sign out the user immediately (fire and forget to avoid blocking listener)
+            supabase.auth.signOut().catch(console.error);
             return;
           }
 
