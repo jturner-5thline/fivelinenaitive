@@ -154,42 +154,23 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       const from = pageIndex * pageSize;
       const to = from + pageSize - 1;
 
-      // When there's a search query, use the keyword search function for cross-entity matching
+      // When there's a search query, use simple ilike filters
       if (query) {
-        const { data: searchResults, error: searchError } = await supabase.rpc(
-          'search_lenders_keyword',
-          { _search_query: query, _limit: pageSize, _offset: from }
-        );
-
-        if (searchError) {
-          return { data: null, error: searchError, count: null };
-        }
-
-        const results = searchResults as Array<{ lender_id: string; relevance_score: number; total_count: number }> | null;
-        if (!results || results.length === 0) {
-          return { data: [] as MasterLender[], error: null, count: 0 };
-        }
-
-        const totalCount = results[0]?.total_count ?? results.length;
-        const lenderIds = results.map(r => r.lender_id);
-
-        // Hydrate with full lender data
-        const { data: lenderData, error: hydrateError } = await supabase
+        const pattern = `%${query}%`;
+        let builder = supabase
           .from('master_lenders')
-          .select('*')
-          .in('id', lenderIds);
+          .select('*', withCount ? { count: 'exact' } : { count: 'exact' })
+          .or(`name.ilike.${pattern},contact_name.ilike.${pattern},email.ilike.${pattern},lender_type.ilike.${pattern},geo.ilike.${pattern},tier.ilike.${pattern},relationship_owners.ilike.${pattern}`)
+          .order(orderColumn, { ascending: orderAscending })
+          .range(from, to);
 
-        if (hydrateError) {
-          return { data: null, error: hydrateError, count: null };
-        }
+        const { data, error: fetchError, count } = await builder;
 
-        // Preserve relevance ordering from search results
-        const lenderMap = new Map((lenderData as MasterLender[]).map(l => [l.id, l]));
-        const ordered = lenderIds
-          .map(id => lenderMap.get(id))
-          .filter(Boolean) as MasterLender[];
-
-        return { data: ordered, error: null, count: totalCount };
+        return {
+          data: (data as MasterLender[] | null) ?? null,
+          error: fetchError,
+          count: typeof count === 'number' ? count : null,
+        };
       }
 
       // No search query: standard paginated fetch
