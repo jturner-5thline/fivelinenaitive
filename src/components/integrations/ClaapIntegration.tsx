@@ -19,7 +19,7 @@ export function ClaapIntegration() {
   
   const claapIntegration = integrations.find(i => i.type === 'claap');
   const isEnabled = claapIntegration?.status === 'connected';
-  const canManage = user?.email === ALLOWED_EMAIL;
+  const canManage = !!user?.email && ALLOWED_EMAILS.has(user.email);
 
   const handleToggle = async (enabled: boolean) => {
     if (!claapIntegration) {
