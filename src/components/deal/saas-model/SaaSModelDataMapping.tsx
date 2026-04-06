@@ -2162,7 +2162,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                       <th className="sticky left-8 z-30 py-0.5 bg-[#1b2635] border-b border-[#2a3a58] w-[220px] min-w-[220px] max-w-[220px]" style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.3)' }} />
                       {Array.from({ length: Math.min((sheet?.data[0]?.length || 0) - 1, 49) }, (_, i) => {
                         const colIdx = i + 1;
-                        if (excludedColumns.has(colIdx)) return null;
+                         if (excludedColumns.has(colIdx) && !eraserMode) return null;
+                         const isExcludedCol = excludedColumns.has(colIdx);
                         const colLetter = colIdx <= 26
                           ? String.fromCharCode(64 + colIdx)
                           : String.fromCharCode(64 + Math.floor((colIdx - 1) / 26)) + String.fromCharCode(65 + ((colIdx - 1) % 26));
@@ -2192,7 +2193,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                         const colIdx = i + 1;
                         const isExcluded = excludedColumns.has(colIdx);
                         const isColSelected = selectedColumns.has(colIdx);
-                        if (isExcluded) return null;
+                        if (isExcluded && !eraserMode) return null;
                         return (
                           <ContextMenu key={colIdx}>
                             <ContextMenuTrigger asChild>
@@ -2417,7 +2418,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                           </td>
                           {Array.from({ length: Math.min(row.length - 1, 49) }, (_, colIdx) => {
                             const actualCol = colIdx + 1;
-                            if (excludedColumns.has(actualCol)) return null;
+                             if (excludedColumns.has(actualCol) && !eraserMode) return null;
                             const cellVal = row[actualCol];
                             const isNum = isNumericCell(cellVal);
                             const isColFlipped = flippedColumns.has(actualCol);
