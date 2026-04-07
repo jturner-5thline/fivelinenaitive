@@ -208,9 +208,9 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
     const interestIncome = get('interestIncome');
     const depreciation = get('depreciation');
     const otherExpense = get('otherExpense');
-    const ebt = months.map((_, i) => operatingIncome[i] - interestExpense[i] + interestIncome[i] - depreciation[i] - otherExpense[i]);
     const taxExpense = get('taxExpense');
-    const netIncome = months.map((_, i) => ebt[i] - taxExpense[i]);
+    const ebitda = months.map((_, i) => operatingIncome[i] + depreciation[i]);
+    const netIncome = months.map((_, i) => ebitda[i] - interestExpense[i] + interestIncome[i] - otherExpense[i] - taxExpense[i]);
 
     return {
       months,
@@ -220,7 +220,7 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
       opex, totalOpEx,
       operatingIncome, operatingMarginPct,
       interestExpense, interestIncome, depreciation, otherExpense,
-      ebt, taxExpense, netIncome,
+      ebitda, taxExpense, netIncome,
       sources,
     };
   }, [financialData]);
