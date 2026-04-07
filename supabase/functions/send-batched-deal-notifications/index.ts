@@ -816,7 +816,7 @@ const handler = async (req: Request): Promise<Response> => {
           if (!hasAnyActivity) continue;
 
           try {
-            const emailHtml = buildDigestEmailHtml(displayName, userDeals, userActivity, labels, isAdmin, lenderInfoByDeal);
+            const emailHtml = buildDigestEmailHtml(displayName, userDeals, userActivity, labels, isAdmin, lenderInfoByDeal, getLabelsForDeal);
 
             const activityCount = Object.values(userActivity).reduce((sum, a) => sum + a.length, 0);
             const subject = `Pipeline Digest — ${userDeals.length} Deals · ${activityCount} Update${activityCount !== 1 ? 's' : ''}`;
