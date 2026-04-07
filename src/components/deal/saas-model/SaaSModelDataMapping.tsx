@@ -2324,7 +2324,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   <Undo2 className="h-3 w-3" /> Undo
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Undo (Ctrl+Z)</TooltipContent>
+              <TooltipContent side="bottom">{peekUndo()?.description ? `Undo: ${peekUndo()?.description} (Ctrl+Z)` : 'Undo (Ctrl+Z)'}</TooltipContent>
             </Tooltip>
 
             {/* Redo — labeled */}
@@ -2334,7 +2334,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   <Redo2 className="h-3 w-3" /> Redo
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
+              <TooltipContent side="bottom">{peekRedo()?.description ? `Redo: ${peekRedo()?.description} (Ctrl+Shift+Z)` : 'Redo (Ctrl+Shift+Z)'}</TooltipContent>
             </Tooltip>
 
             <div className="map-toolbar-divider" />
