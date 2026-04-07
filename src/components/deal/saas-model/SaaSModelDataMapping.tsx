@@ -976,6 +976,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     acceptSuggestion,
     rejectSuggestion,
     acceptAll,
+    dismissAll,
     logPatterns,
     getSuggestionForRow,
   } = useMappingSuggestions();
