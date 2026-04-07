@@ -428,7 +428,8 @@ async function callWebhook(
   try {
     const url = config.url;
     if (!url) {
-      return { actionId, type: 'webhook', success: false, message: 'No webhook URL configured' };
+      console.log(`[Delayed Webhook] Skipped: no URL configured (non-blocking)`);
+      return { actionId, type: 'webhook', success: true, message: 'Skipped: no webhook URL configured' };
     }
 
     console.log(`[Delayed Webhook] Calling ${url}`);
