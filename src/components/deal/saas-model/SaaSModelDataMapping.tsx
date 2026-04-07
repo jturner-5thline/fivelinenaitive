@@ -81,7 +81,7 @@ import { formatUSD, extractAmount } from "@/lib/formatters/currency";
 import { useMappingSuggestions } from "@/hooks/useMappingSuggestions";
 import { supabase } from "@/integrations/supabase/client";
 import { DataMappingFieldSidebar, type FieldSidebarHandle } from "./DataMappingFieldSidebar";
-import { useMappingHistory, type MappingAction } from "./useMappingHistory";
+import { useMappingHistory, type HistoryEntry, type MappingSnapshot, type MappingActionType } from "./useMappingHistory";
 import { MappingFieldSettings } from "./MappingFieldSettings";
 import {
   type Phase,
@@ -156,7 +156,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [hoveredFieldId, setHoveredFieldId] = useState<string | null>(null);
 
   // (bidirectional lookup maps, scroll helpers, and hover handlers defined after useMappingSuggestions below)
-  const { canUndo, canRedo, pushAction, popUndo, popRedo, peekUndo, peekRedo } = useMappingHistory();
+  const { canUndo, canRedo, pushEntry, popUndo, popRedo, peekUndo, peekRedo, clearHistory } = useMappingHistory();
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storedFilePathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
@@ -219,7 +219,50 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [eraserSelectedRows, setEraserSelectedRows] = useState<Set<number>>(new Set());
   const [eraserSelectedCols, setEraserSelectedCols] = useState<Set<number>>(new Set());
 
-  const handleToggleEraser = useCallback(() => {
+  // ── Centralized snapshot-based history helpers ──
+  const getSnapshot = useCallback((): MappingSnapshot => {
+    const sheet = selectedFile?.sheets[activeSheet];
+    return {
+      sheetData: sheet ? sheet.data.map(row => [...row]) : [],
+      fieldMappings: structuredClone(fieldMappings),
+      selectedRows: Array.from(selectedRows),
+      selectedColumns: Array.from(selectedColumns),
+      excludedColumns: Array.from(excludedColumns),
+      flippedRows: Array.from(flippedRows),
+      flippedColumns: Array.from(flippedColumns),
+    };
+  }, [selectedFile, activeSheet, fieldMappings, selectedRows, selectedColumns, excludedColumns, flippedRows, flippedColumns]);
+
+  const applySnapshot = useCallback((snapshot: MappingSnapshot) => {
+    if (selectedFile) {
+      const updatedSheets = selectedFile.sheets.map((s, i) => {
+        if (i !== activeSheet) return s;
+        return { ...s, data: snapshot.sheetData.map(row => [...row]) };
+      });
+      const updatedFile = { ...selectedFile, sheets: updatedSheets };
+      setSelectedFile(updatedFile);
+      setAnalyzedFiles(prev => prev.map(f => f === selectedFile ? updatedFile : f));
+    }
+    setFieldMappings(structuredClone(snapshot.fieldMappings));
+    setSelectedRows(new Set(snapshot.selectedRows));
+    setSelectedColumns(new Set(snapshot.selectedColumns));
+    setExcludedColumns(new Set(snapshot.excludedColumns));
+    setFlippedRows(new Set(snapshot.flippedRows));
+    setFlippedColumns(new Set(snapshot.flippedColumns));
+  }, [selectedFile, activeSheet]);
+
+  const commitAction = useCallback((
+    type: MappingActionType,
+    description: string,
+    producer: (before: MappingSnapshot) => MappingSnapshot,
+  ) => {
+    const before = getSnapshot();
+    const after = producer(structuredClone(before));
+    const entry: HistoryEntry = { type, description, before, after, timestamp: Date.now() };
+    applySnapshot(after);
+    pushEntry(entry);
+  }, [getSnapshot, applySnapshot, pushEntry]);
+
     setEraserMode((prev) => {
       if (prev) {
         setEraserSelectedRows(new Set());
@@ -290,101 +333,67 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
     if (rowsToDelete.size === 0 && colsToDelete.size === 0) return;
 
-    // Build new data by filtering rows and columns
-    let newData = sheet.data.map((row) => [...row]);
+    const actionType: MappingActionType = rowsToDelete.size > 0 && colsToDelete.size > 0
+      ? 'delete-rows-columns'
+      : rowsToDelete.size > 0 ? 'delete-rows' : 'delete-columns';
+    const desc = `Removed ${rowsToDelete.size > 0 ? `${rowsToDelete.size} row${rowsToDelete.size > 1 ? "s" : ""}` : ""}${rowsToDelete.size > 0 && colsToDelete.size > 0 ? " and " : ""}${colsToDelete.size > 0 ? `${colsToDelete.size} column${colsToDelete.size > 1 ? "s" : ""}` : ""}`;
 
-    // Remove rows (filter by index)
-    if (rowsToDelete.size > 0) {
-      newData = newData.filter((_, i) => !rowsToDelete.has(i));
-    }
+    commitAction(actionType, desc, (snap) => {
+      let newData = snap.sheetData.map(row => [...row]);
 
-    // Remove columns (filter each row)
-    if (colsToDelete.size > 0) {
-      newData = newData.map((row) => row.filter((_, ci) => !colsToDelete.has(ci)));
-    }
+      // Remove rows
+      if (rowsToDelete.size > 0) {
+        newData = newData.filter((_, i) => !rowsToDelete.has(i));
+      }
+      // Remove columns
+      if (colsToDelete.size > 0) {
+        newData = newData.map(row => row.filter((_, ci) => !colsToDelete.has(ci)));
+      }
+      snap.sheetData = newData;
 
-    // Update the sheet data in-place
-    const updatedSheets = selectedFile.sheets.map((s, i) => {
-      if (i !== activeSheet) return s;
-      return { ...s, data: newData };
-    });
-
-    const updatedFile = { ...selectedFile, sheets: updatedSheets };
-    setSelectedFile(updatedFile);
-    setAnalyzedFiles((prev) => prev.map((f) => (f === selectedFile ? updatedFile : f)));
-
-    // Fix field mappings: adjust row indices after row deletion
-    if (rowsToDelete.size > 0) {
-      const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
-      setFieldMappings((prev) => {
+      // Fix field mappings row indices
+      if (rowsToDelete.size > 0) {
+        const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
         const next: Record<string, FieldMapping[]> = {};
-        for (const [field, maps] of Object.entries(prev)) {
+        for (const [field, maps] of Object.entries(snap.fieldMappings)) {
           const adjusted = maps
-            .filter((m) => m.sheet !== sheet.name || !rowsToDelete.has(m.rowIdx))
-            .map((m) => {
+            .filter(m => m.sheet !== sheet.name || !rowsToDelete.has(m.rowIdx))
+            .map(m => {
               if (m.sheet !== sheet.name) return m;
-              // Count how many deleted rows are before this row
-              const offset = sortedDeletedRows.filter((d) => d < m.rowIdx).length;
+              const offset = sortedDeletedRows.filter(d => d < m.rowIdx).length;
               return { ...m, rowIdx: m.rowIdx - offset };
             });
           if (adjusted.length > 0) next[field] = adjusted;
         }
-        return next;
-      });
-    }
+        snap.fieldMappings = next;
+      }
 
-    // Fix flipped rows similarly
-    if (rowsToDelete.size > 0) {
-      const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
-      setFlippedRows((prev) => {
-        const next = new Set<number>();
-        for (const r of prev) {
-          if (rowsToDelete.has(r)) continue;
-          const offset = sortedDeletedRows.filter((d) => d < r).length;
-          next.add(r - offset);
-        }
-        return next;
-      });
-    }
+      // Shift helper for index sets
+      const shiftIndices = (arr: number[], deleted: Set<number>): number[] => {
+        const sorted = Array.from(deleted).sort((a, b) => a - b);
+        return arr.filter(v => !deleted.has(v)).map(v => {
+          const offset = sorted.filter(d => d < v).length;
+          return v - offset;
+        });
+      };
 
-    // Fix excluded columns similarly
-    if (colsToDelete.size > 0) {
-      const sortedDeletedCols = Array.from(colsToDelete).sort((a, b) => a - b);
-      setExcludedColumns((prev) => {
-        const next = new Set<number>();
-        for (const c of prev) {
-          if (colsToDelete.has(c)) continue;
-          const offset = sortedDeletedCols.filter((d) => d < c).length;
-          next.add(c - offset);
-        }
-        return next;
-      });
-    }
+      if (rowsToDelete.size > 0) {
+        snap.flippedRows = shiftIndices(snap.flippedRows, rowsToDelete);
+        snap.selectedRows = [];
+      }
+      if (colsToDelete.size > 0) {
+        snap.excludedColumns = shiftIndices(snap.excludedColumns, colsToDelete);
+        snap.flippedColumns = shiftIndices(snap.flippedColumns, colsToDelete);
+        snap.selectedColumns = shiftIndices(snap.selectedColumns, colsToDelete);
+      }
 
-    // Fix flipped columns similarly
-    if (colsToDelete.size > 0) {
-      const sortedDeletedCols2 = Array.from(colsToDelete).sort((a, b) => a - b);
-      setFlippedColumns((prev) => {
-        const next = new Set<number>();
-        for (const c of prev) {
-          if (colsToDelete.has(c)) continue;
-          const offset = sortedDeletedCols2.filter((d) => d < c).length;
-          next.add(c - offset);
-        }
-        return next;
-      });
-    }
+      return snap;
+    });
 
-    const totalRemoved = rowsToDelete.size + colsToDelete.size;
-    toast.success(
-      `Removed ${rowsToDelete.size > 0 ? `${rowsToDelete.size} row${rowsToDelete.size > 1 ? "s" : ""}` : ""}${rowsToDelete.size > 0 && colsToDelete.size > 0 ? " and " : ""}${colsToDelete.size > 0 ? `${colsToDelete.size} column${colsToDelete.size > 1 ? "s" : ""}` : ""}`,
-    );
-
-    // Clear eraser selections
+    toast.success(desc);
     setEraserSelectedRows(new Set());
     setEraserSelectedCols(new Set());
-    setSelectedRows(new Set());
-  }, [selectedFile, activeSheet, eraserSelectedRows, eraserSelectedCols]);
+  }, [selectedFile, activeSheet, eraserSelectedRows, eraserSelectedCols, commitAction]);
 
   // Column header click with shift/ctrl for multi-select
   const handleColumnHeaderClick = useCallback(
@@ -524,11 +533,23 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   }, []);
 
   const handleApplySignFlip = useCallback(() => {
-    if (signFlipSelectedRows.size > 0) handleFlipRows(Array.from(signFlipSelectedRows));
-    if (signFlipSelectedCols.size > 0) handleFlipColumns(Array.from(signFlipSelectedCols));
+    const rowIndices = Array.from(signFlipSelectedRows);
+    const colIndices = Array.from(signFlipSelectedCols);
+    if (rowIndices.length === 0 && colIndices.length === 0) return;
+    const desc = `Flip sign on ${rowIndices.length > 0 ? `${rowIndices.length} row${rowIndices.length > 1 ? 's' : ''}` : ''}${rowIndices.length > 0 && colIndices.length > 0 ? ' and ' : ''}${colIndices.length > 0 ? `${colIndices.length} column${colIndices.length > 1 ? 's' : ''}` : ''}`;
+    commitAction('flip-sign', desc, (snap) => {
+      const toggleSet = (arr: number[], indices: number[]): number[] => {
+        const set = new Set(arr);
+        indices.forEach(i => set.has(i) ? set.delete(i) : set.add(i));
+        return Array.from(set);
+      };
+      if (rowIndices.length > 0) snap.flippedRows = toggleSet(snap.flippedRows, rowIndices);
+      if (colIndices.length > 0) snap.flippedColumns = toggleSet(snap.flippedColumns, colIndices);
+      return snap;
+    });
     setSignFlipSelectedRows(new Set());
     setSignFlipSelectedCols(new Set());
-  }, [signFlipSelectedRows, signFlipSelectedCols, handleFlipRows, handleFlipColumns]);
+  }, [signFlipSelectedRows, signFlipSelectedCols, commitAction]);
 
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
@@ -1079,8 +1100,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         rowIdx,
         label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`),
       };
-      setFieldMappings((prev) => ({ ...prev, [fieldName]: [...(prev[fieldName] || []), newMapping] }));
-      // Trigger flash
+      commitAction('accept-auto', `${newMapping.label} → ${fieldName}`, (snap) => {
+        snap.fieldMappings = { ...snap.fieldMappings, [fieldName]: [...(snap.fieldMappings[fieldName] || []), newMapping] };
+        return snap;
+      });
       setFlashedRows(new Set([rowIdx]));
       setFlashedFields(new Set([fieldName]));
       setTimeout(() => {
@@ -1089,14 +1112,28 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       }, 600);
       acceptSuggestion(rowIdx);
     },
-    [getSuggestionForRow, selectedFile, activeSheet, acceptSuggestion],
+    [getSuggestionForRow, selectedFile, activeSheet, acceptSuggestion, commitAction],
   );
 
   const handleAcceptAll = useCallback(() => {
     const pending = suggestions.filter((s) => s.status === "pending");
-    pending.forEach((s) => handleAcceptSuggestion(s.rowIdx));
+    if (pending.length === 0) return;
+    const sheet = selectedFile?.sheets[activeSheet];
+    if (!sheet) { pending.forEach((s) => handleAcceptSuggestion(s.rowIdx)); acceptAll(); return; }
+    // Batch all suggestions into one history entry
+    commitAction('accept-all-auto', `Accept ${pending.length} AI suggestions`, (snap) => {
+      const next = { ...snap.fieldMappings };
+      pending.forEach((s) => {
+        const fieldName = s.suggestedField;
+        const newMapping: FieldMapping = { sheet: sheet.name, rowIdx: s.rowIdx, label: String(sheet.data[s.rowIdx]?.[0] || `Row ${s.rowIdx + 1}`) };
+        next[fieldName] = [...(next[fieldName] || []), newMapping];
+      });
+      snap.fieldMappings = next;
+      return snap;
+    });
+    pending.forEach((s) => acceptSuggestion(s.rowIdx));
     acceptAll();
-  }, [suggestions, handleAcceptSuggestion, acceptAll]);
+  }, [suggestions, selectedFile, activeSheet, handleAcceptSuggestion, acceptAll, acceptSuggestion, commitAction]);
 
   // Upload file to storage immediately and persist reference
   const persistFileToStorage = useCallback(
@@ -1523,55 +1560,40 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         rowIdx,
         label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`),
       }));
-      const before = { ...fieldMappings };
-      setFieldMappings((prev) => {
-        const next = { ...prev, [fieldName]: [...(prev[fieldName] || []), ...newMappings] };
-        pushAction({
-          type: rowIndices.length > 1 ? "bulk-assign" : "assign",
-          description: `${newMappings.map((m) => m.label).join(", ")} → ${fieldName}`,
-          before,
-          after: next,
-        });
-        return next;
+      const desc = `${newMappings.map((m) => m.label).join(", ")} → ${fieldName}`;
+      commitAction(rowIndices.length > 1 ? 'bulk-assign' : 'map-field', desc, (snap) => {
+        snap.fieldMappings = { ...snap.fieldMappings, [fieldName]: [...(snap.fieldMappings[fieldName] || []), ...newMappings] };
+        snap.selectedRows = [];
+        return snap;
       });
       triggerFlash(rowIndices, fieldName);
-      setSelectedRows(new Set());
     },
-    [selectedFile, selectedRows, activeSheet, triggerFlash, fieldMappings, pushAction],
+    [selectedFile, selectedRows, activeSheet, triggerFlash, commitAction],
   );
 
   const handleRemoveMapping = useCallback(
     (fieldName: string, idx: number) => {
-      const before = { ...fieldMappings };
       const removedLabel = fieldMappings[fieldName]?.[idx]?.label || "Unknown";
-      setFieldMappings((prev) => {
-        const updated = { ...prev };
+      commitAction('unmap-field', `${removedLabel} ✕ ${fieldName}`, (snap) => {
+        const updated = { ...snap.fieldMappings };
         updated[fieldName] = updated[fieldName].filter((_, i) => i !== idx);
         if (!updated[fieldName].length) delete updated[fieldName];
-        pushAction({
-          type: "remove",
-          description: `${removedLabel} ✕ ${fieldName}`,
-          before,
-          after: updated,
-        });
-        return updated;
+        snap.fieldMappings = updated;
+        return snap;
       });
     },
-    [fieldMappings, pushAction],
+    [fieldMappings, commitAction],
   );
 
   const handleClearAllMappings = useCallback(() => {
-    const before = { ...fieldMappings };
-    pushAction({
-      type: "clear-all",
-      description: `Clear all ${Object.keys(fieldMappings).length} mappings`,
-      before,
-      after: {},
+    const count = Object.keys(fieldMappings).length;
+    commitAction('clear-all', `Clear all ${count} mappings`, (snap) => {
+      snap.fieldMappings = {};
+      return snap;
     });
-    setFieldMappings({});
     setAutoMapResults([]);
     toast.info("All mappings cleared");
-  }, [fieldMappings, pushAction]);
+  }, [fieldMappings, commitAction]);
 
   const handleRecalculate = useCallback(() => {
     if (!selectedFile) return;
@@ -1640,17 +1662,15 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     (fieldName: string) => {
       const pending = pendingAutoMaps[fieldName];
       if (!pending) return;
-      const before = { ...fieldMappings };
-      setFieldMappings((prev) => {
-        const next = {
-          ...prev,
+      commitAction('accept-auto', `${pending.label} → ${fieldName}`, (snap) => {
+        snap.fieldMappings = {
+          ...snap.fieldMappings,
           [fieldName]: [
-            ...(prev[fieldName] || []),
+            ...(snap.fieldMappings[fieldName] || []),
             { sheet: pending.sheetName, rowIdx: pending.rowIdx, label: pending.label },
           ],
         };
-        pushAction({ type: "accept-auto", description: `${pending.label} → ${fieldName}`, before, after: next });
-        return next;
+        return snap;
       });
       setPendingAutoMaps((prev) => {
         const next = { ...prev };
@@ -1664,7 +1684,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         setFlashedFields(new Set());
       }, 600);
     },
-    [pendingAutoMaps, fieldMappings, pushAction],
+    [pendingAutoMaps, commitAction],
   );
 
   const handleRejectAutoMap = useCallback((fieldName: string) => {
@@ -1678,14 +1698,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleAcceptAllAutoMaps = useCallback(() => {
     const entries = Object.entries(pendingAutoMaps);
     if (entries.length === 0) return;
-    const before = { ...fieldMappings };
-    setFieldMappings((prev) => {
-      const next = { ...prev };
+    commitAction('accept-all-auto', `Accept ${entries.length} auto-maps`, (snap) => {
+      const next = { ...snap.fieldMappings };
       entries.forEach(([field, p]) => {
         next[field] = [...(next[field] || []), { sheet: p.sheetName, rowIdx: p.rowIdx, label: p.label }];
       });
-      pushAction({ type: "accept-all-auto", description: `Accept ${entries.length} auto-maps`, before, after: next });
-      return next;
+      snap.fieldMappings = next;
+      return snap;
     });
     setPendingAutoMaps({});
     setFlashedRows(new Set(entries.map(([_, p]) => p.rowIdx)));
@@ -1695,22 +1714,22 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       setFlashedFields(new Set());
     }, 600);
     toast.success(`Accepted ${entries.length} mapping${entries.length !== 1 ? "s" : ""}`);
-  }, [pendingAutoMaps, fieldMappings, pushAction]);
+  }, [pendingAutoMaps, commitAction]);
 
   // Undo/Redo handlers
   const handleUndo = useCallback(() => {
-    const action = popUndo();
-    if (!action) return;
-    setFieldMappings(action.before);
-    toast.info(`Undid: ${action.description}`);
-  }, [popUndo]);
+    const entry = popUndo();
+    if (!entry) return;
+    applySnapshot(entry.before);
+    toast.info(`Undid: ${entry.description}`);
+  }, [popUndo, applySnapshot]);
 
   const handleRedo = useCallback(() => {
-    const action = popRedo();
-    if (!action) return;
-    setFieldMappings(action.after);
-    toast.info(`Redid: ${action.description}`);
-  }, [popRedo]);
+    const entry = popRedo();
+    if (!entry) return;
+    applySnapshot(entry.after);
+    toast.info(`Redid: ${entry.description}`);
+  }, [popRedo, applySnapshot]);
 
   // Global keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, arrow keys for spreadsheet)
   useEffect(() => {
@@ -2305,7 +2324,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   <Undo2 className="h-3 w-3" /> Undo
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Undo (Ctrl+Z)</TooltipContent>
+              <TooltipContent side="bottom">{peekUndo()?.description ? `Undo: ${peekUndo()?.description} (Ctrl+Z)` : 'Undo (Ctrl+Z)'}</TooltipContent>
             </Tooltip>
 
             {/* Redo — labeled */}
@@ -2315,7 +2334,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   <Redo2 className="h-3 w-3" /> Redo
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Redo (Ctrl+Shift+Z)</TooltipContent>
+              <TooltipContent side="bottom">{peekRedo()?.description ? `Redo: ${peekRedo()?.description} (Ctrl+Shift+Z)` : 'Redo (Ctrl+Shift+Z)'}</TooltipContent>
             </Tooltip>
 
             <div className="map-toolbar-divider" />
@@ -3129,11 +3148,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               if (!selectedFile) return;
               const s = selectedFile.sheets[activeSheet];
               const label = String(s.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`);
-              const before = { ...fieldMappings };
-              setFieldMappings((prev) => {
-                const next = { ...prev, [fieldName]: [...(prev[fieldName] || []), { sheet: s.name, rowIdx, label }] };
-                pushAction({ type: "assign", description: `${label} → ${fieldName}`, before, after: next });
-                return next;
+              commitAction('map-field', `${label} → ${fieldName}`, (snap) => {
+                snap.fieldMappings = { ...snap.fieldMappings, [fieldName]: [...(snap.fieldMappings[fieldName] || []), { sheet: s.name, rowIdx, label }] };
+                return snap;
               });
               triggerFlash([rowIdx], fieldName);
             }}
@@ -3462,14 +3479,12 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                     if (!selectedFile) return;
                     const s = selectedFile.sheets[activeSheet];
                     const label = String(s.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`);
-                    const before = { ...fieldMappings };
-                    setFieldMappings((prev) => {
-                      const next = {
-                        ...prev,
-                        [fieldName]: [...(prev[fieldName] || []), { sheet: s.name, rowIdx, label }],
+                    commitAction('map-field', `${label} → ${fieldName}`, (snap) => {
+                      snap.fieldMappings = {
+                        ...snap.fieldMappings,
+                        [fieldName]: [...(snap.fieldMappings[fieldName] || []), { sheet: s.name, rowIdx, label }],
                       };
-                      pushAction({ type: "assign", description: `${label} → ${fieldName}`, before, after: next });
-                      return next;
+                      return snap;
                     });
                     triggerFlash([rowIdx], fieldName);
                   }}
