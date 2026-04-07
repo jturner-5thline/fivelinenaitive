@@ -266,6 +266,13 @@ You MUST use the suggest_mappings tool to return your results.`;
 
     suggestions = suggestions.filter(s => s.confidence >= 0.5);
 
+    // Filter by statement type
+    if (stmtType === 'income-statement') {
+      suggestions = suggestions.filter(s => s.category === 'is');
+    } else if (stmtType === 'balance-sheet') {
+      suggestions = suggestions.filter(s => s.category === 'bs');
+    }
+
     return new Response(JSON.stringify({ suggestions }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
