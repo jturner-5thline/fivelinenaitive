@@ -219,7 +219,50 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const [eraserSelectedRows, setEraserSelectedRows] = useState<Set<number>>(new Set());
   const [eraserSelectedCols, setEraserSelectedCols] = useState<Set<number>>(new Set());
 
-  const handleToggleEraser = useCallback(() => {
+  // ── Centralized snapshot-based history helpers ──
+  const getSnapshot = useCallback((): MappingSnapshot => {
+    const sheet = selectedFile?.sheets[activeSheet];
+    return {
+      sheetData: sheet ? sheet.data.map(row => [...row]) : [],
+      fieldMappings: structuredClone(fieldMappings),
+      selectedRows: Array.from(selectedRows),
+      selectedColumns: Array.from(selectedColumns),
+      excludedColumns: Array.from(excludedColumns),
+      flippedRows: Array.from(flippedRows),
+      flippedColumns: Array.from(flippedColumns),
+    };
+  }, [selectedFile, activeSheet, fieldMappings, selectedRows, selectedColumns, excludedColumns, flippedRows, flippedColumns]);
+
+  const applySnapshot = useCallback((snapshot: MappingSnapshot) => {
+    if (selectedFile) {
+      const updatedSheets = selectedFile.sheets.map((s, i) => {
+        if (i !== activeSheet) return s;
+        return { ...s, data: snapshot.sheetData.map(row => [...row]) };
+      });
+      const updatedFile = { ...selectedFile, sheets: updatedSheets };
+      setSelectedFile(updatedFile);
+      setAnalyzedFiles(prev => prev.map(f => f === selectedFile ? updatedFile : f));
+    }
+    setFieldMappings(structuredClone(snapshot.fieldMappings));
+    setSelectedRows(new Set(snapshot.selectedRows));
+    setSelectedColumns(new Set(snapshot.selectedColumns));
+    setExcludedColumns(new Set(snapshot.excludedColumns));
+    setFlippedRows(new Set(snapshot.flippedRows));
+    setFlippedColumns(new Set(snapshot.flippedColumns));
+  }, [selectedFile, activeSheet]);
+
+  const commitAction = useCallback((
+    type: MappingActionType,
+    description: string,
+    producer: (before: MappingSnapshot) => MappingSnapshot,
+  ) => {
+    const before = getSnapshot();
+    const after = producer(structuredClone(before));
+    const entry: HistoryEntry = { type, description, before, after, timestamp: Date.now() };
+    applySnapshot(after);
+    pushEntry(entry);
+  }, [getSnapshot, applySnapshot, pushEntry]);
+
     setEraserMode((prev) => {
       if (prev) {
         setEraserSelectedRows(new Set());
