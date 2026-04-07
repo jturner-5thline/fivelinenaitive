@@ -333,101 +333,67 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
     if (rowsToDelete.size === 0 && colsToDelete.size === 0) return;
 
-    // Build new data by filtering rows and columns
-    let newData = sheet.data.map((row) => [...row]);
+    const actionType: MappingActionType = rowsToDelete.size > 0 && colsToDelete.size > 0
+      ? 'delete-rows-columns'
+      : rowsToDelete.size > 0 ? 'delete-rows' : 'delete-columns';
+    const desc = `Removed ${rowsToDelete.size > 0 ? `${rowsToDelete.size} row${rowsToDelete.size > 1 ? "s" : ""}` : ""}${rowsToDelete.size > 0 && colsToDelete.size > 0 ? " and " : ""}${colsToDelete.size > 0 ? `${colsToDelete.size} column${colsToDelete.size > 1 ? "s" : ""}` : ""}`;
 
-    // Remove rows (filter by index)
-    if (rowsToDelete.size > 0) {
-      newData = newData.filter((_, i) => !rowsToDelete.has(i));
-    }
+    commitAction(actionType, desc, (snap) => {
+      let newData = snap.sheetData.map(row => [...row]);
 
-    // Remove columns (filter each row)
-    if (colsToDelete.size > 0) {
-      newData = newData.map((row) => row.filter((_, ci) => !colsToDelete.has(ci)));
-    }
+      // Remove rows
+      if (rowsToDelete.size > 0) {
+        newData = newData.filter((_, i) => !rowsToDelete.has(i));
+      }
+      // Remove columns
+      if (colsToDelete.size > 0) {
+        newData = newData.map(row => row.filter((_, ci) => !colsToDelete.has(ci)));
+      }
+      snap.sheetData = newData;
 
-    // Update the sheet data in-place
-    const updatedSheets = selectedFile.sheets.map((s, i) => {
-      if (i !== activeSheet) return s;
-      return { ...s, data: newData };
-    });
-
-    const updatedFile = { ...selectedFile, sheets: updatedSheets };
-    setSelectedFile(updatedFile);
-    setAnalyzedFiles((prev) => prev.map((f) => (f === selectedFile ? updatedFile : f)));
-
-    // Fix field mappings: adjust row indices after row deletion
-    if (rowsToDelete.size > 0) {
-      const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
-      setFieldMappings((prev) => {
+      // Fix field mappings row indices
+      if (rowsToDelete.size > 0) {
+        const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
         const next: Record<string, FieldMapping[]> = {};
-        for (const [field, maps] of Object.entries(prev)) {
+        for (const [field, maps] of Object.entries(snap.fieldMappings)) {
           const adjusted = maps
-            .filter((m) => m.sheet !== sheet.name || !rowsToDelete.has(m.rowIdx))
-            .map((m) => {
+            .filter(m => m.sheet !== sheet.name || !rowsToDelete.has(m.rowIdx))
+            .map(m => {
               if (m.sheet !== sheet.name) return m;
-              // Count how many deleted rows are before this row
-              const offset = sortedDeletedRows.filter((d) => d < m.rowIdx).length;
+              const offset = sortedDeletedRows.filter(d => d < m.rowIdx).length;
               return { ...m, rowIdx: m.rowIdx - offset };
             });
           if (adjusted.length > 0) next[field] = adjusted;
         }
-        return next;
-      });
-    }
+        snap.fieldMappings = next;
+      }
 
-    // Fix flipped rows similarly
-    if (rowsToDelete.size > 0) {
-      const sortedDeletedRows = Array.from(rowsToDelete).sort((a, b) => a - b);
-      setFlippedRows((prev) => {
-        const next = new Set<number>();
-        for (const r of prev) {
-          if (rowsToDelete.has(r)) continue;
-          const offset = sortedDeletedRows.filter((d) => d < r).length;
-          next.add(r - offset);
-        }
-        return next;
-      });
-    }
+      // Shift helper for index sets
+      const shiftIndices = (arr: number[], deleted: Set<number>): number[] => {
+        const sorted = Array.from(deleted).sort((a, b) => a - b);
+        return arr.filter(v => !deleted.has(v)).map(v => {
+          const offset = sorted.filter(d => d < v).length;
+          return v - offset;
+        });
+      };
 
-    // Fix excluded columns similarly
-    if (colsToDelete.size > 0) {
-      const sortedDeletedCols = Array.from(colsToDelete).sort((a, b) => a - b);
-      setExcludedColumns((prev) => {
-        const next = new Set<number>();
-        for (const c of prev) {
-          if (colsToDelete.has(c)) continue;
-          const offset = sortedDeletedCols.filter((d) => d < c).length;
-          next.add(c - offset);
-        }
-        return next;
-      });
-    }
+      if (rowsToDelete.size > 0) {
+        snap.flippedRows = shiftIndices(snap.flippedRows, rowsToDelete);
+        snap.selectedRows = [];
+      }
+      if (colsToDelete.size > 0) {
+        snap.excludedColumns = shiftIndices(snap.excludedColumns, colsToDelete);
+        snap.flippedColumns = shiftIndices(snap.flippedColumns, colsToDelete);
+        snap.selectedColumns = shiftIndices(snap.selectedColumns, colsToDelete);
+      }
 
-    // Fix flipped columns similarly
-    if (colsToDelete.size > 0) {
-      const sortedDeletedCols2 = Array.from(colsToDelete).sort((a, b) => a - b);
-      setFlippedColumns((prev) => {
-        const next = new Set<number>();
-        for (const c of prev) {
-          if (colsToDelete.has(c)) continue;
-          const offset = sortedDeletedCols2.filter((d) => d < c).length;
-          next.add(c - offset);
-        }
-        return next;
-      });
-    }
+      return snap;
+    });
 
-    const totalRemoved = rowsToDelete.size + colsToDelete.size;
-    toast.success(
-      `Removed ${rowsToDelete.size > 0 ? `${rowsToDelete.size} row${rowsToDelete.size > 1 ? "s" : ""}` : ""}${rowsToDelete.size > 0 && colsToDelete.size > 0 ? " and " : ""}${colsToDelete.size > 0 ? `${colsToDelete.size} column${colsToDelete.size > 1 ? "s" : ""}` : ""}`,
-    );
-
-    // Clear eraser selections
+    toast.success(desc);
     setEraserSelectedRows(new Set());
     setEraserSelectedCols(new Set());
-    setSelectedRows(new Set());
-  }, [selectedFile, activeSheet, eraserSelectedRows, eraserSelectedCols]);
+  }, [selectedFile, activeSheet, eraserSelectedRows, eraserSelectedCols, commitAction]);
 
   // Column header click with shift/ctrl for multi-select
   const handleColumnHeaderClick = useCallback(
