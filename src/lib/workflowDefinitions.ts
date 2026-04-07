@@ -1,4 +1,4 @@
-import { registerWorkflow, createWorkflowTask } from './workflowEngine';
+import { registerWorkflow, createWorkflowTask, getRegisteredWorkflows } from './workflowEngine';
 import { supabase } from '@/integrations/supabase/client';
 
 // Helper to move deal stage
