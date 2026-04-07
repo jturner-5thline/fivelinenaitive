@@ -713,7 +713,7 @@ export default function DealDetail() {
     deal?.lenders?.map(l => l.name) || [], 
     [deal?.lenders]
   );
-  const [lenderSort, setLenderSort] = useState<'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest'>('updated-desc');
+  const [lenderSort, setLenderSort] = useState<'none' | 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest'>('none');
   const [lenderDropdownOpen, setLenderDropdownOpen] = useState(false);
   const pendingReorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stableLenderSnapshot, setStableLenderSnapshot] = useState<DealLender[] | null>(null);
@@ -722,6 +722,7 @@ export default function DealDetail() {
   const computedSortedLenders = useMemo(() => {
     const lenders = deal?.lenders ? [...deal.lenders] : [];
     if (lenders.length === 0) return lenders;
+    if (lenderSort === 'none') return lenders;
     
     switch (lenderSort) {
       case 'updated-desc':
@@ -3694,12 +3695,13 @@ export default function DealDetail() {
                               onAddLender={addLender}
                             />
                           )}
-                          <Select value={lenderSort} onValueChange={(v) => setLenderSort(v as 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest')}>
+                          <Select value={lenderSort} onValueChange={(v) => setLenderSort(v as 'none' | 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest')}>
                             <SelectTrigger className="h-8 w-[200px] text-xs">
                               <ArrowDownUp className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                               <SelectValue placeholder="Sort By" />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="none">No Sort</SelectItem>
                               <SelectItem value="updated-desc">Last Updated: Newest to Oldest</SelectItem>
                               <SelectItem value="updated-asc">Last Updated: Oldest to Newest</SelectItem>
                               <SelectItem value="stage-furthest">Stage: Furthest to Slowest</SelectItem>
