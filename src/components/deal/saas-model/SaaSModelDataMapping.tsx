@@ -1100,8 +1100,10 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         rowIdx,
         label: String(sheet.data[rowIdx]?.[0] || `Row ${rowIdx + 1}`),
       };
-      setFieldMappings((prev) => ({ ...prev, [fieldName]: [...(prev[fieldName] || []), newMapping] }));
-      // Trigger flash
+      commitAction('accept-auto', `${newMapping.label} → ${fieldName}`, (snap) => {
+        snap.fieldMappings = { ...snap.fieldMappings, [fieldName]: [...(snap.fieldMappings[fieldName] || []), newMapping] };
+        return snap;
+      });
       setFlashedRows(new Set([rowIdx]));
       setFlashedFields(new Set([fieldName]));
       setTimeout(() => {
@@ -1110,14 +1112,28 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       }, 600);
       acceptSuggestion(rowIdx);
     },
-    [getSuggestionForRow, selectedFile, activeSheet, acceptSuggestion],
+    [getSuggestionForRow, selectedFile, activeSheet, acceptSuggestion, commitAction],
   );
 
   const handleAcceptAll = useCallback(() => {
     const pending = suggestions.filter((s) => s.status === "pending");
-    pending.forEach((s) => handleAcceptSuggestion(s.rowIdx));
+    if (pending.length === 0) return;
+    const sheet = selectedFile?.sheets[activeSheet];
+    if (!sheet) { pending.forEach((s) => handleAcceptSuggestion(s.rowIdx)); acceptAll(); return; }
+    // Batch all suggestions into one history entry
+    commitAction('accept-all-auto', `Accept ${pending.length} AI suggestions`, (snap) => {
+      const next = { ...snap.fieldMappings };
+      pending.forEach((s) => {
+        const fieldName = s.suggestedField;
+        const newMapping: FieldMapping = { sheet: sheet.name, rowIdx: s.rowIdx, label: String(sheet.data[s.rowIdx]?.[0] || `Row ${s.rowIdx + 1}`) };
+        next[fieldName] = [...(next[fieldName] || []), newMapping];
+      });
+      snap.fieldMappings = next;
+      return snap;
+    });
+    pending.forEach((s) => acceptSuggestion(s.rowIdx));
     acceptAll();
-  }, [suggestions, handleAcceptSuggestion, acceptAll]);
+  }, [suggestions, selectedFile, activeSheet, handleAcceptSuggestion, acceptAll, acceptSuggestion, commitAction]);
 
   // Upload file to storage immediately and persist reference
   const persistFileToStorage = useCallback(
