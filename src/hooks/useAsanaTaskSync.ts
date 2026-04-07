@@ -47,7 +47,10 @@ export async function getAsanaSyncContext(companyId: string | null): Promise<Asa
     .eq('integration_id', integration.id)
     .maybeSingle();
 
-  if (!syncConfig?.sync_on_task_create) return null;
+  if (!syncConfig?.sync_on_task_create) {
+    console.warn('[AsanaSync] sync_on_task_create is disabled or no sync config found');
+    return null;
+  }
 
   // 3. Get workspace GID from integration config
   const config = integration.config as Record<string, string>;
