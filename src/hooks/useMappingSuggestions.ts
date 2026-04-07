@@ -28,31 +28,46 @@ export function useMappingSuggestions() {
     companyId: string,
     dealId?: string,
     checklistItems?: { id: string; name: string; category: string }[],
+    statementType?: 'income-statement' | 'balance-sheet' | 'both',
   ) => {
     if (!rows.length || !companyId) return;
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-mapping-suggest', {
-        body: { rows, company_id: companyId, deal_id: dealId, checklist_items: checklistItems },
+        body: {
+          rows,
+          company_id: companyId,
+          deal_id: dealId,
+          checklist_items: checklistItems,
+          statement_type: statementType || 'both',
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      const results: MappingSuggestion[] = (data.suggestions || []).map((s: any) => ({
+      let results: MappingSuggestion[] = (data.suggestions || []).map((s: any) => ({
         ...s,
         status: 'pending' as const,
       }));
+
+      // Filter by statement type on the client side as well
+      if (statementType === 'income-statement') {
+        results = results.filter(s => s.category === 'is');
+      } else if (statementType === 'balance-sheet') {
+        results = results.filter(s => s.category === 'bs');
+      }
+
       setSuggestions(results);
       setHasRun(true);
 
       if (results.length > 0) {
-        toast.success(`${results.length} mapping suggestion${results.length > 1 ? 's' : ''} found`);
+        toast.success(`AI Map found ${results.length} suggestion${results.length > 1 ? 's' : ''}`);
       } else {
         toast.info('No mapping suggestions found');
       }
     } catch (err: any) {
       console.error('Mapping suggestions failed:', err);
-      toast.error(err.message || 'Failed to get suggestions');
+      toast.error(err.message || 'Failed to get AI suggestions');
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +94,12 @@ export function useMappingSuggestions() {
   const acceptAll = useCallback(() => {
     setSuggestions(prev =>
       prev.map(s => s.status === 'pending' ? { ...s, status: 'accepted' as const } : s)
+    );
+  }, []);
+
+  const dismissAll = useCallback(() => {
+    setSuggestions(prev =>
+      prev.map(s => s.status === 'pending' ? { ...s, status: 'rejected' as const } : s)
     );
   }, []);
 
@@ -125,6 +146,7 @@ export function useMappingSuggestions() {
     rejectSuggestion,
     changeSuggestion,
     acceptAll,
+    dismissAll,
     logPatterns,
     getSuggestionForRow,
   };
