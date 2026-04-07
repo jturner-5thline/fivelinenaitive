@@ -333,7 +333,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
-                        className="ml-auto flex items-center gap-0.5 text-[9px] text-muted-foreground/60 hover:text-destructive opacity-0 group-hover/mapping:opacity-100 focus:opacity-100 transition-opacity cursor-pointer bg-transparent border-none p-0 touch-action-manipulation md:[&]:opacity-0 [&]:opacity-100"
+                        className="ml-auto flex items-center gap-0.5 text-[9px] text-muted-foreground/60 hover:text-destructive sm:opacity-0 sm:group-hover/mapping:opacity-100 sm:focus:opacity-100 transition-opacity cursor-pointer bg-transparent border-none p-0"
                         style={{ WebkitTapHighlightColor: 'transparent' }}
                         onClick={e => { e.stopPropagation(); onRemoveMapping(field, i); }}
                         aria-label={`Remove mapping for ${m.label}`}
