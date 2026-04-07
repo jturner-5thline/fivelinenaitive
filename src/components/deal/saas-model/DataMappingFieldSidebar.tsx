@@ -22,6 +22,8 @@ export interface FieldSidebarHandle {
   navigateField: (direction: 'up' | 'down') => void;
 }
 
+export type StatementTypeFilter = 'income-statement' | 'balance-sheet' | 'both';
+
 interface Props {
   fieldMappings: Record<string, FieldMapping[]>;
   selectedRows: Set<number>;
@@ -40,6 +42,7 @@ interface Props {
   linkedFieldFromRow?: string | null;
   linkedRowsFromField?: number[];
   hoveredRowIdx?: number | null;
+  statementType?: StatementTypeFilter;
   onFieldHover?: (fieldId: string | null) => void;
   onFieldSelect?: (fieldId: string) => void;
   onAssignField: (field: string) => void;
@@ -60,6 +63,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   lastSavedCount, hasUnsavedMappings, isSaving, selectedFile, activeSheet,
   flashedFields, pendingAutoMaps, draggingRowIdx, enabledFields,
   linkedFieldFromRow, linkedRowsFromField, hoveredRowIdx,
+  statementType = 'both',
   onFieldHover, onFieldSelect,
   onAssignField, onRemoveMapping, onAcceptSuggestion,
   onSaveProgress, onClearAllMappings, onDeselectRows, onAcceptAutoMap, onRejectAutoMap,
@@ -636,14 +640,18 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
               </div>
               <ScrollArea className="h-[280px]">
                 <div className="space-y-3">
-                  <div>
-                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Income Statement</h4>
-                    {renderFieldSections(IS_SECTIONS, true)}
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Balance Sheet</h4>
-                    {renderFieldSections(BS_SECTIONS, true)}
-                  </div>
+                  {(statementType === 'income-statement' || statementType === 'both') && (
+                    <div>
+                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Income Statement</h4>
+                      {renderFieldSections(IS_SECTIONS, true)}
+                    </div>
+                  )}
+                  {(statementType === 'balance-sheet' || statementType === 'both') && (
+                    <div>
+                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Balance Sheet</h4>
+                      {renderFieldSections(BS_SECTIONS, true)}
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </div>
@@ -742,14 +750,18 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
 
       <ScrollArea className="h-[500px]">
         <div className="space-y-4">
-          <div>
-            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Income Statement</h4>
-            {renderFieldSections(IS_SECTIONS)}
-          </div>
-          <div>
-            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Balance Sheet</h4>
-            {renderFieldSections(BS_SECTIONS)}
-          </div>
+          {(statementType === 'income-statement' || statementType === 'both') && (
+            <div>
+              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Income Statement</h4>
+              {renderFieldSections(IS_SECTIONS)}
+            </div>
+          )}
+          {(statementType === 'balance-sheet' || statementType === 'both') && (
+            <div>
+              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Balance Sheet</h4>
+              {renderFieldSections(BS_SECTIONS)}
+            </div>
+          )}
         </div>
       </ScrollArea>
     </>

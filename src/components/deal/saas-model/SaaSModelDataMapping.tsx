@@ -1022,6 +1022,15 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const linkedFieldFromRow = hoveredRowIdx !== null ? (rowToFieldMap.get(hoveredRowIdx)?.field ?? null) : null;
   const linkedRowsFromField = hoveredFieldId ? (fieldToRowsMap.get(hoveredFieldId) || []).map((r) => r.rowIdx) : [];
 
+  // Derive statement type filter from selected file's analysis
+  const sidebarStatementType = useMemo((): 'income-statement' | 'balance-sheet' | 'both' => {
+    if (!selectedFile) return 'both';
+    const t = selectedFile.analysis.type;
+    if (t === 'Income Statement') return 'income-statement';
+    if (t === 'Balance Sheet') return 'balance-sheet';
+    return 'both';
+  }, [selectedFile]);
+
   const scrollRowIntoView = useCallback((rowIdx: number) => {
     const row = spreadsheetRef.current?.querySelector(`[data-row-idx="${rowIdx}"]`);
     if (row) row.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -3133,6 +3142,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             linkedFieldFromRow={linkedFieldFromRow}
             linkedRowsFromField={linkedRowsFromField}
             hoveredRowIdx={hoveredRowIdx}
+            statementType={sidebarStatementType}
             onFieldHover={handleFieldHover}
             onFieldSelect={handleFieldSelect}
             onAssignField={handleAssignField}
@@ -3463,8 +3473,9 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   enabledFields={enabledFields}
                   linkedFieldFromRow={linkedFieldFromRow}
                   linkedRowsFromField={linkedRowsFromField}
-                  hoveredRowIdx={hoveredRowIdx}
-                  onFieldHover={handleFieldHover}
+                   hoveredRowIdx={hoveredRowIdx}
+                   statementType={sidebarStatementType}
+                   onFieldHover={handleFieldHover}
                   onFieldSelect={handleFieldSelect}
                   onAssignField={handleAssignField}
                   onRemoveMapping={handleRemoveMapping}
