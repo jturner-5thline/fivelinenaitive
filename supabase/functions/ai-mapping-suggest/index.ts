@@ -71,14 +71,17 @@ serve(async (req) => {
 
     const serviceClient = createClient(supabaseUrl, serviceKey);
 
-    const { rows, company_id, deal_id, checklist_items } = await req.json() as {
+    const { rows, company_id, deal_id, checklist_items, statement_type } = await req.json() as {
       rows: RowLabel[];
       company_id: string;
       deal_id?: string;
       checklist_items?: { id: string; name: string; category: string }[];
+      statement_type?: 'income-statement' | 'balance-sheet' | 'both';
     };
 
     if (!rows?.length || !company_id) throw new Error("Missing rows or company_id");
+
+    const stmtType = statement_type || 'both';
 
     // Fetch historical patterns
     const { data: patterns } = await serviceClient
