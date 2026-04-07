@@ -66,9 +66,21 @@ export function GlobalSearchAI() {
   const [aiResult, setAIResult] = useState<AISearchResult | null>(null);
   const [shouldPulse, setShouldPulse] = useState(false);
   const navigate = useNavigate();
-  const { deals } = useDealsContext();
-  const { lenders } = useLenders();
+  const { deals: liveDeals } = useDealsContext();
+  const { lenders: liveLenders } = useLenders();
   const { user } = useAuth();
+
+  // Snapshot data when dialog opens so background refetches don't reset results
+  const [snapshotDeals, setSnapshotDeals] = useState(liveDeals);
+  const [snapshotLenders, setSnapshotLenders] = useState(liveLenders);
+  useEffect(() => {
+    if (open) {
+      setSnapshotDeals(liveDeals);
+      setSnapshotLenders(liveLenders);
+    }
+  }, [open]); // intentionally only on open change
+  const deals = open ? snapshotDeals : liveDeals;
+  const lenders = open ? snapshotLenders : liveLenders;
 
   // One-time glow pulse on first session load
   useEffect(() => {
