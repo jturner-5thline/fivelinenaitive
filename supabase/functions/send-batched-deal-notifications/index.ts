@@ -247,20 +247,23 @@ function buildDigestEmailHtml(
   const activeDeals = sorted.filter(d => (activityByDeal[d.id]?.length || 0) > 0);
   const quietDeals = sorted.filter(d => (activityByDeal[d.id]?.length || 0) === 0);
 
+  const getDealLabels = (d: DealRow) => labelsForDeal ? labelsForDeal(d) : labels;
+
   const activeDealCards = activeDeals.map(d =>
-    buildDealCard(d, labels, activityByDeal[d.id] || [], lenderInfoByDeal?.[d.id] || null)
+    buildDealCard(d, getDealLabels(d), activityByDeal[d.id] || [], lenderInfoByDeal?.[d.id] || null)
   ).join('');
 
   // Quiet deals as compact table
   const quietRows = quietDeals.map(d => {
+    const dl = getDealLabels(d);
     const li = lenderInfoByDeal?.[d.id];
     const lenderCol = li ? `${li.active}/${li.total}` : '—';
     return `<tr>
       <td style="padding:6px 10px;border-bottom:1px solid #1e293b;font-size:12px;">
         <a href="https://fivelinenaitive.lovable.app/deal/${d.id}" style="color:#cbd5e1;text-decoration:none;font-weight:500;">${d.company}</a>
       </td>
-      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${stageBadge(d.stage, labels)}</td>
-      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${statusDot(d.status, labels)}</td>
+      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${stageBadge(d.stage, dl)}</td>
+      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${statusDot(d.status, dl)}</td>
       <td style="padding:6px 6px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:11px;text-align:center;" title="Active / Total lenders">${lenderCol}</td>
       <td style="padding:6px 6px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:11px;text-align:right;white-space:nowrap;">${formatCurrency(d.value)}</td>
     </tr>`;
