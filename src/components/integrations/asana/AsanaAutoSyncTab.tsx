@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Save } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Save, Webhook, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { AsanaSyncConfig } from "./AsanaSyncSettingsModal";
@@ -18,6 +19,9 @@ interface AsanaAutoSyncTabProps {
 export function AsanaAutoSyncTab({ syncConfig, onUpdate }: AsanaAutoSyncTabProps) {
   const [local, setLocal] = useState({ ...syncConfig });
   const [saving, setSaving] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState<'unknown' | 'active' | 'inactive'>('unknown');
+  const [registeringWebhook, setRegisteringWebhook] = useState(false);
+  const [loadingWebhook, setLoadingWebhook] = useState(true);
 
   const hasChanges =
     local.sync_direction !== syncConfig.sync_direction ||
@@ -26,6 +30,103 @@ export function AsanaAutoSyncTab({ syncConfig, onUpdate }: AsanaAutoSyncTabProps
     local.sync_on_task_create !== syncConfig.sync_on_task_create ||
     local.sync_on_task_update !== syncConfig.sync_on_task_update ||
     local.sync_on_task_complete !== syncConfig.sync_on_task_complete;
+
+  // Check existing webhook status
+  useEffect(() => {
+    async function checkWebhook() {
+      setLoadingWebhook(true);
+      try {
+        const { data } = await supabase
+          .from("asana_webhooks")
+          .select("id, is_active, asana_webhook_gid")
+          .eq("integration_id", syncConfig.integration_id)
+          .eq("is_active", true)
+          .limit(1)
+          .maybeSingle();
+
+        setWebhookStatus(data ? 'active' : 'inactive');
+      } catch {
+        setWebhookStatus('unknown');
+      } finally {
+        setLoadingWebhook(false);
+      }
+    }
+    checkWebhook();
+  }, [syncConfig.integration_id]);
+
+  const registerWebhook = async () => {
+    setRegisteringWebhook(true);
+    try {
+      // Get enabled project filters for this integration
+      const { data: filters } = await supabase
+        .from("asana_project_filters")
+        .select("asana_project_gid, asana_project_name, sync_config_id")
+        .eq("sync_config_id", syncConfig.id)
+        .eq("is_enabled", true);
+
+      if (!filters || filters.length === 0) {
+        toast.error("No Asana projects configured", {
+          description: "Please add at least one project in the Projects tab first.",
+        });
+        return;
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      let registeredCount = 0;
+
+      for (const filter of filters) {
+        const targetUrl = `${supabaseUrl}/functions/v1/asana-webhook?integration_id=${syncConfig.integration_id}&project_gid=${filter.asana_project_gid}`;
+
+        // Create DB record first
+        await supabase
+          .from("asana_webhooks")
+          .upsert({
+            integration_id: syncConfig.integration_id,
+            asana_project_gid: filter.asana_project_gid,
+            target_url: targetUrl,
+            is_active: true,
+          }, { onConflict: "integration_id,asana_project_gid" });
+
+        // Register with Asana
+        const { data } = await supabase.functions.invoke("asana-proxy", {
+          body: {
+            action: "register_webhook",
+            integration_id: syncConfig.integration_id,
+            project_gid: filter.asana_project_gid,
+            target_url: targetUrl,
+          },
+        });
+
+        if (data?.success && data.webhook?.gid) {
+          await supabase
+            .from("asana_webhooks")
+            .update({ asana_webhook_gid: data.webhook.gid })
+            .eq("integration_id", syncConfig.integration_id)
+            .eq("asana_project_gid", filter.asana_project_gid);
+
+          registeredCount++;
+        } else {
+          console.error("Webhook registration failed for project:", filter.asana_project_gid, data);
+        }
+      }
+
+      if (registeredCount > 0) {
+        setWebhookStatus('active');
+        toast.success(`Webhook registered for ${registeredCount} project(s)`, {
+          description: "Asana will now sync task completions back to nAItive.",
+        });
+      } else {
+        toast.error("Failed to register webhooks", {
+          description: "Check that your Asana token has webhook permissions.",
+        });
+      }
+    } catch (err: any) {
+      console.error("Webhook registration error:", err);
+      toast.error("Failed to register webhook", { description: err.message });
+    } finally {
+      setRegisteringWebhook(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -54,6 +155,51 @@ export function AsanaAutoSyncTab({ syncConfig, onUpdate }: AsanaAutoSyncTabProps
 
   return (
     <div className="space-y-6 pb-4">
+      {/* Reverse Sync Webhook */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-medium flex items-center gap-2">
+              <Webhook className="h-4 w-4" />
+              Reverse Sync (Asana → nAItive)
+            </h4>
+            <p className="text-xs text-muted-foreground mt-1">
+              Automatically sync task completions from Asana back to nAItive via webhook.
+            </p>
+          </div>
+          {loadingWebhook ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : webhookStatus === 'active' ? (
+            <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Active
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              Not configured
+            </Badge>
+          )}
+        </div>
+        {webhookStatus !== 'active' && !loadingWebhook && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={registerWebhook}
+            disabled={registeringWebhook}
+          >
+            {registeringWebhook ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Webhook className="h-4 w-4 mr-2" />
+            )}
+            Enable Reverse Sync
+          </Button>
+        )}
+      </div>
+
+      <Separator />
+
       {/* Sync Direction */}
       <div>
         <h4 className="text-sm font-medium mb-3">Sync Direction</h4>
