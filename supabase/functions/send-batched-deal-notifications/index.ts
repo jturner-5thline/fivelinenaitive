@@ -210,6 +210,7 @@ function buildDigestEmailHtml(
   labels: Record<string, string>,
   isAdmin: boolean,
   lenderInfoByDeal?: Record<string, DealLenderInfo>,
+  labelsForDeal?: (deal: DealRow) => Record<string, string>,
 ): string {
   const year = new Date().getFullYear();
   const now = new Date();
@@ -246,20 +247,23 @@ function buildDigestEmailHtml(
   const activeDeals = sorted.filter(d => (activityByDeal[d.id]?.length || 0) > 0);
   const quietDeals = sorted.filter(d => (activityByDeal[d.id]?.length || 0) === 0);
 
+  const getDealLabels = (d: DealRow) => labelsForDeal ? labelsForDeal(d) : labels;
+
   const activeDealCards = activeDeals.map(d =>
-    buildDealCard(d, labels, activityByDeal[d.id] || [], lenderInfoByDeal?.[d.id] || null)
+    buildDealCard(d, getDealLabels(d), activityByDeal[d.id] || [], lenderInfoByDeal?.[d.id] || null)
   ).join('');
 
   // Quiet deals as compact table
   const quietRows = quietDeals.map(d => {
+    const dl = getDealLabels(d);
     const li = lenderInfoByDeal?.[d.id];
     const lenderCol = li ? `${li.active}/${li.total}` : '—';
     return `<tr>
       <td style="padding:6px 10px;border-bottom:1px solid #1e293b;font-size:12px;">
         <a href="https://fivelinenaitive.lovable.app/deal/${d.id}" style="color:#cbd5e1;text-decoration:none;font-weight:500;">${d.company}</a>
       </td>
-      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${stageBadge(d.stage, labels)}</td>
-      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${statusDot(d.status, labels)}</td>
+      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${stageBadge(d.stage, dl)}</td>
+      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${statusDot(d.status, dl)}</td>
       <td style="padding:6px 6px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:11px;text-align:center;" title="Active / Total lenders">${lenderCol}</td>
       <td style="padding:6px 6px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:11px;text-align:right;white-space:nowrap;">${formatCurrency(d.value)}</td>
     </tr>`;
@@ -657,13 +661,32 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         const { data: pipelines } = await supabaseAdmin.from('deal_pipelines').select('id, stages, is_default').eq('company_id', companyId);
+        
+        // Build per-pipeline stage label maps so overloaded stage IDs resolve correctly
+        const pipelineStageLabels: Record<string, Record<string, string>> = {};
         if (pipelines) {
           for (const p of pipelines) {
             if (p.stages && Array.isArray(p.stages)) {
-              for (const s of p.stages as any[]) { if (s.id && s.label) labels[s.id] = s.label; }
+              const pLabels: Record<string, string> = {};
+              for (const s of p.stages as any[]) { if (s.id && s.label) pLabels[s.id] = s.label; }
+              pipelineStageLabels[p.id] = pLabels;
             }
           }
         }
+        
+        // Helper: get labels for a specific deal by merging base labels with pipeline-specific stage labels
+        const getLabelsForDeal = (deal: DealRow): Record<string, string> => {
+          const pipelineId = deal.pipeline_id;
+          if (pipelineId && pipelineStageLabels[pipelineId]) {
+            return { ...labels, ...pipelineStageLabels[pipelineId] };
+          }
+          // Fallback: use default pipeline labels
+          const defaultPl = pipelines?.find(p => p.is_default) || pipelines?.[0];
+          if (defaultPl && pipelineStageLabels[defaultPl.id]) {
+            return { ...labels, ...pipelineStageLabels[defaultPl.id] };
+          }
+          return labels;
+        };
 
         // Find the default pipeline
         const defaultPipeline = pipelines?.find(p => p.is_default) || pipelines?.[0];
@@ -793,7 +816,7 @@ const handler = async (req: Request): Promise<Response> => {
           if (!hasAnyActivity) continue;
 
           try {
-            const emailHtml = buildDigestEmailHtml(displayName, userDeals, userActivity, labels, isAdmin, lenderInfoByDeal);
+            const emailHtml = buildDigestEmailHtml(displayName, userDeals, userActivity, labels, isAdmin, lenderInfoByDeal, getLabelsForDeal);
 
             const activityCount = Object.values(userActivity).reduce((sum, a) => sum + a.length, 0);
             const subject = `Pipeline Digest — ${userDeals.length} Deals · ${activityCount} Update${activityCount !== 1 ? 's' : ''}`;
