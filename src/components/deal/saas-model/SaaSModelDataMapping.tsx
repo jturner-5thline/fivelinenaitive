@@ -1097,8 +1097,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         sampleValues: row.slice(1),
       }))
       .filter((r) => r.label.trim().length > 0);
-    await fetchSuggestions(rows, companyId, dealId);
-  }, [selectedFile, activeSheet, getCompanyId, fetchSuggestions, dealId]);
+    await fetchSuggestions(rows, companyId, dealId, undefined, sidebarStatementType);
+  }, [selectedFile, activeSheet, getCompanyId, fetchSuggestions, dealId, sidebarStatementType]);
 
   const handleAcceptSuggestion = useCallback(
     (rowIdx: number) => {
