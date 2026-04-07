@@ -430,8 +430,8 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         });
       }
 
-      // Asana sync: push due date / assignee / completion updates (fire-and-forget)
-      if (updates.due_date !== undefined || updates.assigned_to !== undefined || updates.status !== undefined) {
+      // Asana sync: push due date / assignee updates (fire-and-forget)
+      if (updates.due_date !== undefined || updates.assigned_to !== undefined) {
         const updatedTask = tasks.find(t => t.id === id);
         const asanaTaskGid = (updatedTask as any)?.asana_task_gid;
 
@@ -461,25 +461,39 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
                 }
               }
 
-              // Sync due_date and assignee if changed
-              if (Object.keys(asanaUpdates).length > 0) {
-                await updateTaskInAsana(ctx, asanaTaskGid, asanaUpdates);
-              }
-
-              // Sync completion status to Asana
-              if (updates.status !== undefined) {
-                const isCompleted = updates.status === 'complete' || updates.status === 'completed';
-                await supabase.functions.invoke('asana-proxy', {
-                  body: {
-                    action: 'update_task',
-                    integration_id: ctx.integrationId,
-                    task_gid: asanaTaskGid,
-                    data: { completed: isCompleted },
-                  },
-                });
-              }
+              await updateTaskInAsana(ctx, asanaTaskGid, asanaUpdates);
             } catch (e) {
               console.error('Asana update sync failed:', e);
+            }
+          })();
+        }
+      }
+
+      // Asana sync: push completion status (fire-and-forget)
+      if (updates.status !== undefined) {
+        const updatedTask = tasks.find(t => t.id === id);
+        const asanaTaskGid = (updatedTask as any)?.asana_task_gid;
+
+        if (asanaTaskGid) {
+          (async () => {
+            try {
+              const ctx = await getAsanaSyncContext((updatedTask as any)?.company_id || '');
+              if (!ctx) return;
+
+              const isCompleted = updates.status === 'complete' || updates.status === 'completed';
+
+              await supabase.functions.invoke('asana-proxy', {
+                body: {
+                  action: 'update_task',
+                  integration_id: ctx.integrationId,
+                  task_gid: asanaTaskGid,
+                  data: { completed: isCompleted },
+                },
+              });
+
+              console.log('Asana completion sync:', isCompleted ? 'marked complete' : 'marked incomplete');
+            } catch (e) {
+              console.error('Asana completion sync failed:', e);
             }
           })();
         }
