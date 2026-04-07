@@ -403,7 +403,7 @@ Generate product improvement insights with related deals where applicable.`;
         <!-- Footer -->
         <tr>
           <td style="padding:24px 32px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #1e293b;border-top:none;">
-            <p style="margin:0;font-size:11px;color:#475569;">This is an automated weekly report from naitive. Delivered every Friday at 3:00 PM ET.</p>
+            <p style="margin:0;font-size:11px;color:#475569;"><p style="margin:0;font-size:11px;color:#475569;">This is an automated weekly report from naitive. Delivered every Friday at 6:00 PM ET.</p></p>
             <p style="margin:4px 0 0;font-size:11px;color:#475569;">naitive • <a href="${appUrl}" style="color:#64748b;text-decoration:none;">fivelinenaitive.lovable.app</a></p>
           </td>
         </tr>
