@@ -430,8 +430,8 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         });
       }
 
-      // Asana sync: push due date / assignee updates (fire-and-forget)
-      if (updates.due_date !== undefined || updates.assigned_to !== undefined) {
+      // Asana sync: push due date / assignee / completion updates (fire-and-forget)
+      if (updates.due_date !== undefined || updates.assigned_to !== undefined || updates.status !== undefined) {
         const updatedTask = tasks.find(t => t.id === id);
         const asanaTaskGid = (updatedTask as any)?.asana_task_gid;
 
@@ -461,7 +461,23 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
                 }
               }
 
-              await updateTaskInAsana(ctx, asanaTaskGid, asanaUpdates);
+              // Sync due_date and assignee if changed
+              if (Object.keys(asanaUpdates).length > 0) {
+                await updateTaskInAsana(ctx, asanaTaskGid, asanaUpdates);
+              }
+
+              // Sync completion status to Asana
+              if (updates.status !== undefined) {
+                const isCompleted = updates.status === 'complete' || updates.status === 'completed';
+                await supabase.functions.invoke('asana-proxy', {
+                  body: {
+                    action: 'update_task',
+                    integration_id: ctx.integrationId,
+                    task_gid: asanaTaskGid,
+                    data: { completed: isCompleted },
+                  },
+                });
+              }
             } catch (e) {
               console.error('Asana update sync failed:', e);
             }
