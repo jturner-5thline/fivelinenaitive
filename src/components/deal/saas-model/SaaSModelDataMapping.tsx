@@ -1646,17 +1646,15 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     (fieldName: string) => {
       const pending = pendingAutoMaps[fieldName];
       if (!pending) return;
-      const before = { ...fieldMappings };
-      setFieldMappings((prev) => {
-        const next = {
-          ...prev,
+      commitAction('accept-auto', `${pending.label} → ${fieldName}`, (snap) => {
+        snap.fieldMappings = {
+          ...snap.fieldMappings,
           [fieldName]: [
-            ...(prev[fieldName] || []),
+            ...(snap.fieldMappings[fieldName] || []),
             { sheet: pending.sheetName, rowIdx: pending.rowIdx, label: pending.label },
           ],
         };
-        pushAction({ type: "accept-auto", description: `${pending.label} → ${fieldName}`, before, after: next });
-        return next;
+        return snap;
       });
       setPendingAutoMaps((prev) => {
         const next = { ...prev };
@@ -1670,7 +1668,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         setFlashedFields(new Set());
       }, 600);
     },
-    [pendingAutoMaps, fieldMappings, pushAction],
+    [pendingAutoMaps, commitAction],
   );
 
   const handleRejectAutoMap = useCallback((fieldName: string) => {
@@ -1684,14 +1682,13 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   const handleAcceptAllAutoMaps = useCallback(() => {
     const entries = Object.entries(pendingAutoMaps);
     if (entries.length === 0) return;
-    const before = { ...fieldMappings };
-    setFieldMappings((prev) => {
-      const next = { ...prev };
+    commitAction('accept-all-auto', `Accept ${entries.length} auto-maps`, (snap) => {
+      const next = { ...snap.fieldMappings };
       entries.forEach(([field, p]) => {
         next[field] = [...(next[field] || []), { sheet: p.sheetName, rowIdx: p.rowIdx, label: p.label }];
       });
-      pushAction({ type: "accept-all-auto", description: `Accept ${entries.length} auto-maps`, before, after: next });
-      return next;
+      snap.fieldMappings = next;
+      return snap;
     });
     setPendingAutoMaps({});
     setFlashedRows(new Set(entries.map(([_, p]) => p.rowIdx)));
@@ -1701,22 +1698,22 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       setFlashedFields(new Set());
     }, 600);
     toast.success(`Accepted ${entries.length} mapping${entries.length !== 1 ? "s" : ""}`);
-  }, [pendingAutoMaps, fieldMappings, pushAction]);
+  }, [pendingAutoMaps, commitAction]);
 
   // Undo/Redo handlers
   const handleUndo = useCallback(() => {
-    const action = popUndo();
-    if (!action) return;
-    setFieldMappings(action.before);
-    toast.info(`Undid: ${action.description}`);
-  }, [popUndo]);
+    const entry = popUndo();
+    if (!entry) return;
+    applySnapshot(entry.before);
+    toast.info(`Undid: ${entry.description}`);
+  }, [popUndo, applySnapshot]);
 
   const handleRedo = useCallback(() => {
-    const action = popRedo();
-    if (!action) return;
-    setFieldMappings(action.after);
-    toast.info(`Redid: ${action.description}`);
-  }, [popRedo]);
+    const entry = popRedo();
+    if (!entry) return;
+    applySnapshot(entry.after);
+    toast.info(`Redid: ${entry.description}`);
+  }, [popRedo, applySnapshot]);
 
   // Global keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, arrow keys for spreadsheet)
   useEffect(() => {
