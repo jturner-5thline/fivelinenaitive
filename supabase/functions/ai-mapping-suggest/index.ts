@@ -71,14 +71,17 @@ serve(async (req) => {
 
     const serviceClient = createClient(supabaseUrl, serviceKey);
 
-    const { rows, company_id, deal_id, checklist_items } = await req.json() as {
+    const { rows, company_id, deal_id, checklist_items, statement_type } = await req.json() as {
       rows: RowLabel[];
       company_id: string;
       deal_id?: string;
       checklist_items?: { id: string; name: string; category: string }[];
+      statement_type?: 'income-statement' | 'balance-sheet' | 'both';
     };
 
     if (!rows?.length || !company_id) throw new Error("Missing rows or company_id");
+
+    const stmtType = statement_type || 'both';
 
     // Fetch historical patterns
     const { data: patterns } = await serviceClient
@@ -132,7 +135,13 @@ serve(async (req) => {
       ? `\n\nPre-computed monthly trend statistics for revenue rows (use these to classify Recurring vs Non-Recurring Revenue):\n${trendAnalyses.join("\n")}`
       : "";
 
-    const systemPrompt = `You are a financial data mapping expert. Given rows from an Excel spreadsheet, suggest which standard financial field each row maps to.
+    const stmtTypeInstruction = stmtType === 'income-statement'
+      ? '\n\nIMPORTANT: Only suggest Income Statement mappings (category "is"). Do NOT suggest Balance Sheet mappings.'
+      : stmtType === 'balance-sheet'
+      ? '\n\nIMPORTANT: Only suggest Balance Sheet mappings (category "bs"). Do NOT suggest Income Statement mappings.'
+      : '';
+
+    const systemPrompt = `You are a financial data mapping expert. Given rows from an Excel spreadsheet, suggest which standard financial field each row maps to.${stmtTypeInstruction}
 
 Available financial fields:
 ${financialFields.join(", ")}
@@ -256,6 +265,13 @@ You MUST use the suggest_mappings tool to return your results.`;
     }
 
     suggestions = suggestions.filter(s => s.confidence >= 0.5);
+
+    // Filter by statement type
+    if (stmtType === 'income-statement') {
+      suggestions = suggestions.filter(s => s.category === 'is');
+    } else if (stmtType === 'balance-sheet') {
+      suggestions = suggestions.filter(s => s.category === 'bs');
+    }
 
     return new Response(JSON.stringify({ suggestions }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -976,38 +976,31 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     acceptSuggestion,
     rejectSuggestion,
     acceptAll,
+    dismissAll,
     logPatterns,
     getSuggestionForRow,
   } = useMappingSuggestions();
 
   // ── Bidirectional linking: lookup maps ──
   const rowToFieldMap = useMemo(() => {
-    const map = new Map<number, { field: string; origin: "mapped" | "pending" | "suggested" }>();
+    const map = new Map<number, { field: string; origin: "mapped" | "suggested" }>();
     for (const [field, mappings] of Object.entries(fieldMappings)) {
       for (const m of mappings) map.set(m.rowIdx, { field, origin: "mapped" });
-    }
-    for (const [field, p] of Object.entries(pendingAutoMaps)) {
-      if (!map.has(p.rowIdx)) map.set(p.rowIdx, { field, origin: "pending" });
     }
     for (const s of suggestions) {
       if (s.status === "pending" && !map.has(s.rowIdx))
         map.set(s.rowIdx, { field: s.suggestedField, origin: "suggested" });
     }
     return map;
-  }, [fieldMappings, pendingAutoMaps, suggestions]);
+  }, [fieldMappings, suggestions]);
 
   const fieldToRowsMap = useMemo(() => {
-    const map = new Map<string, { rowIdx: number; origin: "mapped" | "pending" | "suggested" }[]>();
+    const map = new Map<string, { rowIdx: number; origin: "mapped" | "suggested" }[]>();
     for (const [field, mappings] of Object.entries(fieldMappings)) {
       map.set(
         field,
         mappings.map((m) => ({ rowIdx: m.rowIdx, origin: "mapped" as const })),
       );
-    }
-    for (const [field, p] of Object.entries(pendingAutoMaps)) {
-      const existing = map.get(field) || [];
-      if (!existing.some((e) => e.rowIdx === p.rowIdx))
-        map.set(field, [...existing, { rowIdx: p.rowIdx, origin: "pending" as const }]);
     }
     for (const s of suggestions) {
       if (s.status === "pending") {
@@ -1017,7 +1010,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
       }
     }
     return map;
-  }, [fieldMappings, pendingAutoMaps, suggestions]);
+  }, [fieldMappings, suggestions]);
 
   const linkedFieldFromRow = hoveredRowIdx !== null ? (rowToFieldMap.get(hoveredRowIdx)?.field ?? null) : null;
   const linkedRowsFromField = hoveredFieldId ? (fieldToRowsMap.get(hoveredFieldId) || []).map((r) => r.rowIdx) : [];
@@ -1096,8 +1089,8 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
         sampleValues: row.slice(1),
       }))
       .filter((r) => r.label.trim().length > 0);
-    await fetchSuggestions(rows, companyId, dealId);
-  }, [selectedFile, activeSheet, getCompanyId, fetchSuggestions, dealId]);
+    await fetchSuggestions(rows, companyId, dealId, undefined, sidebarStatementType);
+  }, [selectedFile, activeSheet, getCompanyId, fetchSuggestions, dealId, sidebarStatementType]);
 
   const handleAcceptSuggestion = useCallback(
     (rowIdx: number) => {
@@ -2297,17 +2290,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <TooltipTrigger asChild>
                 <button
                   className="map-toolbar-btn map-toolbar-btn--ai"
-                  onClick={async () => {
-                    await handleAISuggest();
-                    handleAutoMap();
-                  }}
+                  onClick={handleAISuggest}
                   disabled={isSuggestLoading}
                 >
                   {isSuggestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                   {isSuggestLoading ? "Mapping…" : hasSuggestRun ? "Re-map" : "AI Map"}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">AI-powered field detection + keyword auto-mapping</TooltipContent>
+              <TooltipContent side="bottom">Claude-powered AI field mapping</TooltipContent>
             </Tooltip>
 
             <div className="map-toolbar-divider" />
@@ -3127,7 +3117,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             ref={sidebarRef}
             fieldMappings={fieldMappings}
             selectedRows={selectedRows}
-            autoMapResults={autoMapResults}
             suggestions={suggestions}
             mappedCount={mappedCount}
             lastSavedCount={lastSavedCount}
@@ -3136,25 +3125,26 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             selectedFile={selectedFile}
             activeSheet={activeSheet}
             flashedFields={flashedFields}
-            pendingAutoMaps={pendingAutoMaps}
             draggingRowIdx={draggingRowIdx}
             enabledFields={enabledFields}
             linkedFieldFromRow={linkedFieldFromRow}
             linkedRowsFromField={linkedRowsFromField}
             hoveredRowIdx={hoveredRowIdx}
             statementType={sidebarStatementType}
+            isSuggestLoading={isSuggestLoading}
+            hasSuggestRun={hasSuggestRun}
             onFieldHover={handleFieldHover}
             onFieldSelect={handleFieldSelect}
             onAssignField={handleAssignField}
             onRemoveMapping={handleRemoveMapping}
             onAcceptSuggestion={handleAcceptSuggestion}
+            onRejectSuggestion={(rowIdx) => rejectSuggestion(rowIdx)}
+            onAcceptAllSuggestions={handleAcceptAll}
+            onDismissAllSuggestions={dismissAll}
+            onAIMap={handleAISuggest}
             onSaveProgress={handleSaveProgress}
             onClearAllMappings={handleClearAllMappings}
             onDeselectRows={() => setSelectedRows(new Set())}
-            onAcceptAutoMap={handleAcceptAutoMap}
-            onRejectAutoMap={handleRejectAutoMap}
-            onAcceptAllAutoMaps={handleAcceptAllAutoMaps}
-            onAutoMap={handleAutoMap}
             onDropAssign={(fieldName, rowIdx) => {
               if (!selectedFile) return;
               const s = selectedFile.sheets[activeSheet];
@@ -3459,7 +3449,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                 <DataMappingFieldSidebar
                   fieldMappings={fieldMappings}
                   selectedRows={selectedRows}
-                  autoMapResults={autoMapResults}
                   suggestions={suggestions}
                   mappedCount={mappedCount}
                   lastSavedCount={lastSavedCount}
@@ -3468,25 +3457,26 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                   selectedFile={selectedFile}
                   activeSheet={activeSheet}
                   flashedFields={flashedFields}
-                  pendingAutoMaps={pendingAutoMaps}
                   draggingRowIdx={draggingRowIdx}
                   enabledFields={enabledFields}
                   linkedFieldFromRow={linkedFieldFromRow}
                   linkedRowsFromField={linkedRowsFromField}
-                   hoveredRowIdx={hoveredRowIdx}
-                   statementType={sidebarStatementType}
-                   onFieldHover={handleFieldHover}
+                  hoveredRowIdx={hoveredRowIdx}
+                  statementType={sidebarStatementType}
+                  isSuggestLoading={isSuggestLoading}
+                  hasSuggestRun={hasSuggestRun}
+                  onFieldHover={handleFieldHover}
                   onFieldSelect={handleFieldSelect}
                   onAssignField={handleAssignField}
                   onRemoveMapping={handleRemoveMapping}
                   onAcceptSuggestion={handleAcceptSuggestion}
+                  onRejectSuggestion={(rowIdx) => rejectSuggestion(rowIdx)}
+                  onAcceptAllSuggestions={handleAcceptAll}
+                  onDismissAllSuggestions={dismissAll}
+                  onAIMap={handleAISuggest}
                   onSaveProgress={handleSaveProgress}
                   onClearAllMappings={handleClearAllMappings}
                   onDeselectRows={() => setSelectedRows(new Set())}
-                  onAcceptAutoMap={handleAcceptAutoMap}
-                  onRejectAutoMap={handleRejectAutoMap}
-                  onAcceptAllAutoMaps={handleAcceptAllAutoMaps}
-                  onAutoMap={handleAutoMap}
                   onDropAssign={(fieldName, rowIdx) => {
                     if (!selectedFile) return;
                     const s = selectedFile.sheets[activeSheet];
