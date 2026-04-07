@@ -263,6 +263,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
     pushEntry(entry);
   }, [getSnapshot, applySnapshot, pushEntry]);
 
+  const handleToggleEraser = useCallback(() => {
     setEraserMode((prev) => {
       if (prev) {
         setEraserSelectedRows(new Set());
