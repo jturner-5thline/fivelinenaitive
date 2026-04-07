@@ -137,6 +137,7 @@ registerWorkflow('deal_active_followup_task', {
   name: 'New Deal → Follow-up Task (Request Materials)',
   description: 'Create recurring follow-up task when deal enters active pipeline to request materials',
   trigger: 'stage_change',
+  triggerFilter: { to_stage: 'nda_needs_list_sent' },
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
     // Pre-condition: check required fields
@@ -341,7 +342,7 @@ registerWorkflow('prop_issued_followup', {
   triggerFilter: { to_stage: 'prop_issued' },
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
-    // Pre-condition: check for existing open task
+    // Pre-condition: check for existing open follow-up task
     const { data: existing } = await supabase
       .from('wf_tasks')
       .select('id')
@@ -354,13 +355,26 @@ registerWorkflow('prop_issued_followup', {
       return;
     }
 
+    // Pre-condition: verify a proposal/follow-up has been set for this deal
+    const { data: proposalTask } = await supabase
+      .from('wf_tasks')
+      .select('id')
+      .eq('deal_id', deal.id)
+      .eq('workflow_key', 'proposal_completed_sent_task')
+      .maybeSingle();
+    if (!proposalTask) {
+      console.warn('[WF] prop_issued_followup: no proposal task found for deal, skipping');
+      return;
+    }
+
     await createWorkflowTask({
-      dealId: deal.id, title: 'Follow up: Pre-Credit Needs',
+      dealId: deal.id, title: 'Follow up on proposal',
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'prop_issued_followup', isRecurring: true,
       recurrenceRuleJson: { interval: 4, unit: 'days' },
       recurrenceStopConditions: [
-        { field: 'deal_stage_changed', operator: 'not_equals', value: 'pre_credit_needs' },
+        { field: 'deal_stage_changed', operator: 'not_equals', value: 'prop_issued' },
+        { field: 'manager_move_forward_decision', operator: 'equals', value: true },
       ],
       dueOffsetDays: 4, companyId: ctx.companyId,
     });
@@ -389,7 +403,28 @@ registerWorkflow('agreement_pending_followup', {
   triggerFilter: { to_stage: 'agreement_pending' },
   default_owner_role: 'manager',
   handler: async (deal, ctx) => {
-    // No pre-condition needed — entering "agreement pending" stage is sufficient to trigger follow-up
+    // Pre-condition: verify an agreement has been sent (check VDR or activity logs)
+    const { data: agreementDoc } = await supabase
+      .from('activity_logs')
+      .select('id')
+      .eq('deal_id', deal.id)
+      .in('activity_type', ['agreement_sent', 'document_uploaded', 'agreement_generated'])
+      .limit(1)
+      .maybeSingle();
+
+    if (!agreementDoc) {
+      // Also check for a proposal task completion as fallback indicator
+      const { data: propTask } = await supabase
+        .from('wf_tasks')
+        .select('id')
+        .eq('deal_id', deal.id)
+        .eq('workflow_key', 'prop_forward_to_agreement')
+        .maybeSingle();
+      if (!propTask) {
+        console.warn('[WF] agreement_pending_followup: no agreement document or prop-forward task found, skipping');
+        return;
+      }
+    }
 
     await createWorkflowTask({
       dealId: deal.id, title: 'Follow up on agreement',
