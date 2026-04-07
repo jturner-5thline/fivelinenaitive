@@ -82,7 +82,8 @@ function validateWebhookUrl(url: string): { valid: boolean; error?: string } {
 async function executeWebhookAction(config: Record<string, any>, triggerData: Record<string, any>): Promise<{ success: boolean; message: string }> {
   const url = config.url;
   if (!url) {
-    return { success: false, message: "No webhook URL configured" };
+    console.log("Webhook action skipped: no URL configured (non-blocking)");
+    return { success: true, message: "Skipped: no webhook URL configured" };
   }
 
   // Validate URL to prevent SSRF attacks
