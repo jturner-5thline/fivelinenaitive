@@ -210,6 +210,7 @@ function buildDigestEmailHtml(
   labels: Record<string, string>,
   isAdmin: boolean,
   lenderInfoByDeal?: Record<string, DealLenderInfo>,
+  labelsForDeal?: (deal: DealRow) => Record<string, string>,
 ): string {
   const year = new Date().getFullYear();
   const now = new Date();
