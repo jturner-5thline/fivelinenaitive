@@ -864,3 +864,49 @@ export const ALL_WORKFLOW_KEYS = [
   'due_diligence_client_flow', 'due_diligence_to_funded',
   'funded_naitive_main', 'funded_payment_workflow', 'funded_feedback_testimonials', 'funded_lender_review',
 ];
+
+/**
+ * Ensures all registered workflows from ALL_WORKFLOW_KEYS exist in the wf_workflows table.
+ * Missing workflows are inserted with is_active = true.
+ */
+export async function ensureWorkflowsSeeded(): Promise<void> {
+  try {
+    // Fetch existing workflow keys from the database
+    const { data: existing, error } = await supabase
+      .from('wf_workflows')
+      .select('key');
+    if (error) {
+      console.error('[WF Seed] Failed to fetch existing workflows:', error);
+      return;
+    }
+
+    const existingKeys = new Set((existing || []).map((w: any) => w.key));
+    const registeredWorkflows = getRegisteredWorkflows();
+    const missing = registeredWorkflows.filter(w => !existingKeys.has(w.key));
+
+    if (missing.length === 0) return;
+
+    console.log(`[WF Seed] Seeding ${missing.length} missing workflows:`, missing.map(w => w.key));
+
+    const rows = missing.map(w => ({
+      key: w.key,
+      name: w.name,
+      description: w.description || null,
+      trigger_type: w.trigger as any,
+      default_owner_role: w.default_owner_role as any,
+      is_active: true,
+    }));
+
+    const { error: insertError } = await supabase
+      .from('wf_workflows')
+      .insert(rows as any);
+
+    if (insertError) {
+      console.error('[WF Seed] Failed to seed workflows:', insertError);
+    } else {
+      console.log(`[WF Seed] Successfully seeded ${missing.length} workflows`);
+    }
+  } catch (err) {
+    console.error('[WF Seed] Unexpected error:', err);
+  }
+}
