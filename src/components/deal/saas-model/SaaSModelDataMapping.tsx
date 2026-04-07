@@ -2298,17 +2298,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
               <TooltipTrigger asChild>
                 <button
                   className="map-toolbar-btn map-toolbar-btn--ai"
-                  onClick={async () => {
-                    await handleAISuggest();
-                    handleAutoMap();
-                  }}
+                  onClick={handleAISuggest}
                   disabled={isSuggestLoading}
                 >
                   {isSuggestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                   {isSuggestLoading ? "Mapping…" : hasSuggestRun ? "Re-map" : "AI Map"}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">AI-powered field detection + keyword auto-mapping</TooltipContent>
+              <TooltipContent side="bottom">Claude-powered AI field mapping</TooltipContent>
             </Tooltip>
 
             <div className="map-toolbar-divider" />
