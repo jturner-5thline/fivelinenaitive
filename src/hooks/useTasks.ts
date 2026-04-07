@@ -338,18 +338,23 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         // Asana sync (fire-and-forget)
         (async () => {
           try {
-            const ctx = await getAsanaSyncContext((data as any).company_id || null);
+            const companyId = (data as any).company_id || null;
+            console.log('[AsanaSync] Task created — companyId:', companyId);
+            console.log('[AsanaSync] Assignee email:', assigneeProfile?.email || 'none');
+            const ctx = await getAsanaSyncContext(companyId);
+            console.log('[AsanaSync] Sync context:', ctx ? { integrationId: ctx.integrationId, projectGid: ctx.projectGid } : 'null (sync skipped)');
             if (ctx) {
-              await syncTaskToAsana(ctx, {
+              const gid = await syncTaskToAsana(ctx, {
                 id: (data as any).id,
                 title: (data as any).title,
                 description: (data as any).description,
                 due_date: (data as any).due_date,
                 assignee_email: assigneeProfile?.email || null,
               });
+              console.log('[AsanaSync] Task pushed to Asana, gid:', gid);
             }
           } catch (e) {
-            console.error('Asana sync failed:', e);
+            console.error('[AsanaSync] Sync failed:', e);
           }
         })();
       }

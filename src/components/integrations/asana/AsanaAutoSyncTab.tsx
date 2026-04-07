@@ -262,28 +262,37 @@ export function AsanaAutoSyncTab({ syncConfig, onUpdate }: AsanaAutoSyncTabProps
 
       <Separator />
 
-      {/* Event Triggers */}
+      {/* Outbound Sync: nAItive → Asana */}
       <div className="space-y-3">
-        <h4 className="text-sm font-medium">Event Triggers</h4>
-        <p className="text-xs text-muted-foreground">Sync when specific events happen in Asana.</p>
+        <h4 className="text-sm font-medium">Outbound Sync (nAItive → Asana)</h4>
+        <p className="text-xs text-muted-foreground">Push task changes from nAItive to Asana automatically.</p>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-sm">Task created</Label>
+            <div>
+              <Label className="text-sm">Sync tasks to Asana on creation</Label>
+              <p className="text-xs text-muted-foreground">When a task is created in nAItive, push it to the mapped Asana project.</p>
+            </div>
             <Switch
               checked={local.sync_on_task_create}
               onCheckedChange={(v) => setLocal((p) => ({ ...p, sync_on_task_create: v }))}
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label className="text-sm">Task updated</Label>
+            <div>
+              <Label className="text-sm">Sync task updates</Label>
+              <p className="text-xs text-muted-foreground">Push due date and assignee changes to Asana.</p>
+            </div>
             <Switch
               checked={local.sync_on_task_update}
               onCheckedChange={(v) => setLocal((p) => ({ ...p, sync_on_task_update: v }))}
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label className="text-sm">Task completed</Label>
+            <div>
+              <Label className="text-sm">Sync task completions</Label>
+              <p className="text-xs text-muted-foreground">Mark Asana tasks complete/incomplete when status changes in nAItive.</p>
+            </div>
             <Switch
               checked={local.sync_on_task_complete}
               onCheckedChange={(v) => setLocal((p) => ({ ...p, sync_on_task_complete: v }))}

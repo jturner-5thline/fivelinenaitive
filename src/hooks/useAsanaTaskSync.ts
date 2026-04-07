@@ -13,18 +13,32 @@ interface AsanaSyncContext {
  * Returns sync context if ready, or null if sync should be skipped.
  */
 export async function getAsanaSyncContext(companyId: string | null): Promise<AsanaSyncContext | null> {
-  if (!companyId) return null;
+  if (!companyId) {
+    console.warn('[AsanaSync] No companyId provided, skipping sync');
+    return null;
+  }
 
   // 1. Find a connected Asana integration for this company
-  const { data: integration } = await supabase
+  const { data: integration, error: intError } = await supabase
     .from('integrations')
     .select('id, config')
     .eq('type', 'asana')
     .eq('status', 'connected')
+    .eq('company_id', companyId)
     .limit(1)
     .maybeSingle();
 
-  if (!integration) return null;
+  if (intError) {
+    console.error('[AsanaSync] Integration lookup error:', intError);
+    return null;
+  }
+
+  if (!integration) {
+    console.warn('[AsanaSync] No connected Asana integration found for company:', companyId);
+    return null;
+  }
+
+  console.log('[AsanaSync] Found integration:', integration.id);
 
   // 2. Check if sync_on_task_create is enabled
   const { data: syncConfig } = await supabase
@@ -33,7 +47,10 @@ export async function getAsanaSyncContext(companyId: string | null): Promise<Asa
     .eq('integration_id', integration.id)
     .maybeSingle();
 
-  if (!syncConfig?.sync_on_task_create) return null;
+  if (!syncConfig?.sync_on_task_create) {
+    console.warn('[AsanaSync] sync_on_task_create is disabled or no sync config found');
+    return null;
+  }
 
   // 3. Get workspace GID from integration config
   const config = integration.config as Record<string, string>;
