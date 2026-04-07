@@ -274,16 +274,17 @@ export function SaaSModelIncomeStatement({ model, dealId }: Props) {
     { key: 'prof-fees', label: 'Professional Fees', values: displayData.opex.professionalFees },
     { key: 'gna', label: 'G&A', values: displayData.opex.gna },
     { key: 'total-opex', label: 'Total OpEx', values: displayData.totalOpEx, isTotal: true, formula: 'SUM(OpEx items)' },
-    { key: 'op-income', label: 'Operating Income', values: displayData.operatingIncome, isSubtotal: true, formula: 'Gross Profit - Total OpEx' },
+    { key: 'op-income', label: 'Operating Income / EBIT', values: displayData.operatingIncome, isSubtotal: true, formula: 'Gross Profit - Total OpEx' },
     { key: 'op-margin-pct', label: '% Operating Margin', values: displayData.operatingMarginPct, isPct: true, formula: 'Operating Income / Total Revenue' },
-    { key: 'sec-btl', label: 'BELOW THE LINE', values: [], isSection: true },
+    { key: 'sec-da', label: 'D&A ADD-BACKS', values: [], isSection: true },
+    { key: 'depreciation', label: 'Depreciation', values: displayData.depreciation },
+    { key: 'ebitda', label: 'EBITDA', values: displayData.ebitda, isSubtotal: true, formula: 'Operating Income + Depreciation' },
+    { key: 'sec-non-op', label: 'NON-OPERATING ITEMS', values: [], isSection: true },
     { key: 'int-expense', label: 'Interest Expense', values: displayData.interestExpense },
     { key: 'int-income', label: 'Interest Income', values: displayData.interestIncome },
-    { key: 'depreciation', label: 'Depreciation', values: displayData.depreciation },
     { key: 'other-expense', label: 'Other Expense', values: displayData.otherExpense },
-    { key: 'ebt', label: 'EBT', values: displayData.ebt, isSubtotal: true, formula: 'Operating Income ± Below the Line' },
     { key: 'tax-expense', label: 'Tax Expense', values: displayData.taxExpense },
-    { key: 'net-income', label: 'Net Income', values: displayData.netIncome, isTotal: true, formula: 'EBT - Tax Expense' },
+    { key: 'net-income', label: 'Net Income', values: displayData.netIncome, isTotal: true, formula: 'EBITDA - Interest + Other - Tax' },
   ];
 
   return (
