@@ -135,7 +135,13 @@ serve(async (req) => {
       ? `\n\nPre-computed monthly trend statistics for revenue rows (use these to classify Recurring vs Non-Recurring Revenue):\n${trendAnalyses.join("\n")}`
       : "";
 
-    const systemPrompt = `You are a financial data mapping expert. Given rows from an Excel spreadsheet, suggest which standard financial field each row maps to.
+    const stmtTypeInstruction = stmtType === 'income-statement'
+      ? '\n\nIMPORTANT: Only suggest Income Statement mappings (category "is"). Do NOT suggest Balance Sheet mappings.'
+      : stmtType === 'balance-sheet'
+      ? '\n\nIMPORTANT: Only suggest Balance Sheet mappings (category "bs"). Do NOT suggest Income Statement mappings.'
+      : '';
+
+    const systemPrompt = `You are a financial data mapping expert. Given rows from an Excel spreadsheet, suggest which standard financial field each row maps to.${stmtTypeInstruction}
 
 Available financial fields:
 ${financialFields.join(", ")}
