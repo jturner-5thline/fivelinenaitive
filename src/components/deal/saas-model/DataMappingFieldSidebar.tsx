@@ -63,6 +63,7 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
   lastSavedCount, hasUnsavedMappings, isSaving, selectedFile, activeSheet,
   flashedFields, pendingAutoMaps, draggingRowIdx, enabledFields,
   linkedFieldFromRow, linkedRowsFromField, hoveredRowIdx,
+  statementType = 'both',
   onFieldHover, onFieldSelect,
   onAssignField, onRemoveMapping, onAcceptSuggestion,
   onSaveProgress, onClearAllMappings, onDeselectRows, onAcceptAutoMap, onRejectAutoMap,
