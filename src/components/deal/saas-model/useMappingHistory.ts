@@ -1,60 +1,99 @@
 import { useState, useCallback, useRef } from 'react';
 import type { FieldMapping } from './types';
 
-export interface EraserSnapshot {
+/**
+ * Full snapshot of the mapping session state.
+ * Every undoable action captures before/after snapshots of ALL of this.
+ */
+export interface MappingSnapshot {
   sheetData: (string | number)[][];
-  selectedColumns: Set<number>;
-  excludedColumns: Set<number>;
-  flippedColumns: Set<number>;
-  selectedRows: Set<number>;
-  flippedRows: Set<number>;
   fieldMappings: Record<string, FieldMapping[]>;
+  selectedRows: number[];
+  selectedColumns: number[];
+  excludedColumns: number[];
+  flippedRows: number[];
+  flippedColumns: number[];
 }
 
-export interface MappingAction {
-  type: 'assign' | 'remove' | 'bulk-assign' | 'bulk-remove' | 'clear-all' | 'accept-auto' | 'accept-all-auto' | 'eraser-delete';
+export type MappingActionType =
+  | 'map-field'
+  | 'unmap-field'
+  | 'bulk-assign'
+  | 'delete-rows'
+  | 'delete-columns'
+  | 'delete-rows-columns'
+  | 'flip-sign'
+  | 'reset-all'
+  | 'auto-map'
+  | 'accept-auto'
+  | 'accept-all-auto'
+  | 'accept-suggestion'
+  | 'accept-all-suggestions'
+  | 'clear-all';
+
+export interface HistoryEntry {
+  type: MappingActionType;
   description: string;
-  before: Record<string, FieldMapping[]>;
-  after: Record<string, FieldMapping[]>;
-  eraserBefore?: EraserSnapshot;
-  eraserAfter?: EraserSnapshot;
+  before: MappingSnapshot;
+  after: MappingSnapshot;
+  timestamp: number;
+}
+
+const MAX_HISTORY = 50;
+
+function cloneSnapshot(s: MappingSnapshot): MappingSnapshot {
+  return structuredClone(s);
 }
 
 export function useMappingHistory() {
-  const [undoStack, setUndoStack] = useState<MappingAction[]>([]);
-  const [redoStack, setRedoStack] = useState<MappingAction[]>([]);
-
-  const pushAction = useCallback((action: MappingAction) => {
-    setUndoStack(prev => [...prev.slice(-49), action]);
-    setRedoStack([]);
-  }, []);
+  const [undoStack, setUndoStack] = useState<HistoryEntry[]>([]);
+  const [redoStack, setRedoStack] = useState<HistoryEntry[]>([]);
 
   const canUndo = undoStack.length > 0;
   const canRedo = redoStack.length > 0;
 
-  const peekUndo = useCallback((): MappingAction | null => {
+  const pushEntry = useCallback((entry: HistoryEntry) => {
+    setUndoStack(prev => [...prev.slice(-(MAX_HISTORY - 1)), entry]);
+    setRedoStack([]);
+  }, []);
+
+  const peekUndo = useCallback((): HistoryEntry | null => {
     return undoStack.length > 0 ? undoStack[undoStack.length - 1] : null;
   }, [undoStack]);
 
-  const peekRedo = useCallback((): MappingAction | null => {
+  const peekRedo = useCallback((): HistoryEntry | null => {
     return redoStack.length > 0 ? redoStack[redoStack.length - 1] : null;
   }, [redoStack]);
 
-  const popUndo = useCallback((): MappingAction | null => {
+  const popUndo = useCallback((): HistoryEntry | null => {
     if (undoStack.length === 0) return null;
-    const action = undoStack[undoStack.length - 1];
+    const entry = undoStack[undoStack.length - 1];
     setUndoStack(prev => prev.slice(0, -1));
-    setRedoStack(prev => [...prev, action]);
-    return action;
+    setRedoStack(prev => [...prev, entry]);
+    return entry;
   }, [undoStack]);
 
-  const popRedo = useCallback((): MappingAction | null => {
+  const popRedo = useCallback((): HistoryEntry | null => {
     if (redoStack.length === 0) return null;
-    const action = redoStack[redoStack.length - 1];
+    const entry = redoStack[redoStack.length - 1];
     setRedoStack(prev => prev.slice(0, -1));
-    setUndoStack(prev => [...prev, action]);
-    return action;
+    setUndoStack(prev => [...prev, entry]);
+    return entry;
   }, [redoStack]);
 
-  return { undoStack, redoStack, canUndo, canRedo, pushAction, popUndo, popRedo, peekUndo, peekRedo };
+  const clearHistory = useCallback(() => {
+    setUndoStack([]);
+    setRedoStack([]);
+  }, []);
+
+  return {
+    canUndo,
+    canRedo,
+    pushEntry,
+    popUndo,
+    popRedo,
+    peekUndo,
+    peekRedo,
+    clearHistory,
+  };
 }
