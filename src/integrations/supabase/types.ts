@@ -1037,6 +1037,50 @@ export type Database = {
           },
         ]
       }
+      asana_webhooks: {
+        Row: {
+          asana_project_gid: string
+          asana_webhook_gid: string | null
+          created_at: string
+          id: string
+          integration_id: string
+          is_active: boolean
+          target_url: string
+          updated_at: string
+          webhook_secret: string | null
+        }
+        Insert: {
+          asana_project_gid: string
+          asana_webhook_gid?: string | null
+          created_at?: string
+          id?: string
+          integration_id: string
+          is_active?: boolean
+          target_url: string
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Update: {
+          asana_project_gid?: string
+          asana_webhook_gid?: string | null
+          created_at?: string
+          id?: string
+          integration_id?: string
+          is_active?: boolean
+          target_url?: string
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asana_webhooks_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_tokens: {
         Row: {
           access_token: string
