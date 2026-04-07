@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/hooks/useCompany";
 import { toast } from "sonner";
+import { ensureWorkflowsSeeded } from "@/lib/workflowDefinitions";
 
 // Stage labels
 export const DEAL_STAGE_LABELS: Record<string, string> = {
@@ -84,6 +85,9 @@ export function useWfWorkflows() {
   return useQuery({
     queryKey: ['wf_workflows'],
     queryFn: async () => {
+      // Ensure all registered workflows are seeded before fetching
+      await ensureWorkflowsSeeded();
+
       const { data, error } = await supabase
         .from('wf_workflows')
         .select('*, owner:wf_users!wf_workflows_default_owner_user_id_fkey(id,name)')
