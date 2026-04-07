@@ -324,12 +324,26 @@ export const DataMappingFieldSidebar = forwardRef<FieldSidebarHandle, Props>(fun
             return null;
           })()}
           {mapped && !compact && (
-            <div className="flex gap-1 flex-shrink-0 flex-wrap">
+            <div className="flex flex-col gap-0.5 flex-shrink-0 w-full mt-0.5">
               {mapped.map((m, i) => (
-                <Badge key={i} variant="secondary" className="text-[9px] h-4 gap-1 max-w-[100px] truncate">
-                  {m.label}
-                  <X className="h-2.5 w-2.5 cursor-pointer flex-shrink-0" onClick={e => { e.stopPropagation(); onRemoveMapping(field, i); }} />
-                </Badge>
+                <div key={i} className="group/mapping flex items-center gap-1.5 rounded-md px-1.5 py-0.5 bg-muted/50 border border-border/40 hover:border-destructive/30 hover:bg-destructive/5 transition-colors">
+                  <span className="text-[9px] text-muted-foreground leading-none whitespace-nowrap">→</span>
+                  <span className="text-[10px] font-medium text-foreground truncate max-w-[90px]" title={m.label}>{m.label}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        className="ml-auto flex items-center gap-0.5 text-[9px] text-muted-foreground/60 hover:text-destructive opacity-0 group-hover/mapping:opacity-100 focus:opacity-100 transition-opacity cursor-pointer bg-transparent border-none p-0 touch-action-manipulation md:[&]:opacity-0 [&]:opacity-100"
+                        style={{ WebkitTapHighlightColor: 'transparent' }}
+                        onClick={e => { e.stopPropagation(); onRemoveMapping(field, i); }}
+                        aria-label={`Remove mapping for ${m.label}`}
+                      >
+                        <Unlink2 className="h-3 w-3" />
+                        <span className="hidden sm:inline">Unmap</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="text-xs">Remove mapping</TooltipContent>
+                  </Tooltip>
+                </div>
               ))}
             </div>
           )}
