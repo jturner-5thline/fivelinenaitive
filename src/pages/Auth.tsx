@@ -83,12 +83,24 @@ const Auth = () => {
   useEffect(() => { modeRef.current = mode; }, [mode]);
 
   useEffect(() => {
-    // Check for password recovery event
+    // Check if user already has a session (e.g. returning from OAuth redirect)
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const currentMode = modeRef.current;
+        if (currentMode !== "reset" && currentMode !== "mfa") {
+          window.location.href = redirectUrl;
+        }
+      }
+    };
+    checkExistingSession();
+
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === "PASSWORD_RECOVERY") {
           setMode("reset");
-        } else if (event === "SIGNED_IN" && session?.user) {
+        } else if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
           const currentMode = modeRef.current;
           // Don't redirect if user is in the middle of password reset or MFA
           if (currentMode !== "reset" && currentMode !== "mfa") {
