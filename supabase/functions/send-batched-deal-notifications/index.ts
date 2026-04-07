@@ -657,13 +657,32 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         const { data: pipelines } = await supabaseAdmin.from('deal_pipelines').select('id, stages, is_default').eq('company_id', companyId);
+        
+        // Build per-pipeline stage label maps so overloaded stage IDs resolve correctly
+        const pipelineStageLabels: Record<string, Record<string, string>> = {};
         if (pipelines) {
           for (const p of pipelines) {
             if (p.stages && Array.isArray(p.stages)) {
-              for (const s of p.stages as any[]) { if (s.id && s.label) labels[s.id] = s.label; }
+              const pLabels: Record<string, string> = {};
+              for (const s of p.stages as any[]) { if (s.id && s.label) pLabels[s.id] = s.label; }
+              pipelineStageLabels[p.id] = pLabels;
             }
           }
         }
+        
+        // Helper: get labels for a specific deal by merging base labels with pipeline-specific stage labels
+        const getLabelsForDeal = (deal: DealRow): Record<string, string> => {
+          const pipelineId = deal.pipeline_id;
+          if (pipelineId && pipelineStageLabels[pipelineId]) {
+            return { ...labels, ...pipelineStageLabels[pipelineId] };
+          }
+          // Fallback: use default pipeline labels
+          const defaultPl = pipelines?.find(p => p.is_default) || pipelines?.[0];
+          if (defaultPl && pipelineStageLabels[defaultPl.id]) {
+            return { ...labels, ...pipelineStageLabels[defaultPl.id] };
+          }
+          return labels;
+        };
 
         // Find the default pipeline
         const defaultPipeline = pipelines?.find(p => p.is_default) || pipelines?.[0];
