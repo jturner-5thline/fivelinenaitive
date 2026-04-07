@@ -142,6 +142,48 @@ serve(async (req) => {
         break;
       }
 
+      case "register_webhook": {
+        const resolvedToken = await resolveToken(token, integration_id);
+        const projectGid = params.project_gid;
+        const targetUrl = params.target_url;
+
+        if (!projectGid || !targetUrl) {
+          result = { success: false, error: "project_gid and target_url are required" };
+          break;
+        }
+
+        const webhookData = await asanaFetch("/webhooks", resolvedToken, {
+          method: "POST",
+          body: JSON.stringify({
+            data: {
+              resource: projectGid,
+              target: targetUrl,
+              filters: [
+                { resource_type: "task", action: "changed", fields: ["completed"] }
+              ]
+            }
+          }),
+        });
+
+        result = {
+          success: true,
+          webhook: webhookData.data,
+        };
+        break;
+      }
+
+      case "delete_webhook": {
+        const resolvedToken = await resolveToken(token, integration_id);
+        const webhookGid = params.webhook_gid;
+        if (!webhookGid) {
+          result = { success: false, error: "webhook_gid is required" };
+          break;
+        }
+        await asanaFetch(`/webhooks/${webhookGid}`, resolvedToken, { method: "DELETE" });
+        result = { success: true };
+        break;
+      }
+
       default:
         result = { success: false, error: `Unknown action: ${action}` };
     }
