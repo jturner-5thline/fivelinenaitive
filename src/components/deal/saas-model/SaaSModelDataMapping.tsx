@@ -157,56 +157,6 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   // (bidirectional lookup maps, scroll helpers, and hover handlers defined after useMappingSuggestions below)
   const { canUndo, canRedo, pushEntry, popUndo, popRedo, peekUndo, peekRedo, clearHistory } = useMappingHistory();
-
-  // ── Centralized snapshot-based history helpers ──
-  const getSnapshot = useCallback((): MappingSnapshot => {
-    const sheet = selectedFile?.sheets[activeSheet];
-    return {
-      sheetData: sheet ? sheet.data.map(row => [...row]) : [],
-      fieldMappings: structuredClone(fieldMappings),
-      selectedRows: Array.from(selectedRows),
-      selectedColumns: Array.from(selectedColumns),
-      excludedColumns: Array.from(excludedColumns),
-      flippedRows: Array.from(flippedRows),
-      flippedColumns: Array.from(flippedColumns),
-    };
-  }, [selectedFile, activeSheet, fieldMappings, selectedRows, selectedColumns, excludedColumns, flippedRows, flippedColumns]);
-
-  const applySnapshot = useCallback((snapshot: MappingSnapshot) => {
-    // Restore sheet data
-    if (selectedFile) {
-      const updatedSheets = selectedFile.sheets.map((s, i) => {
-        if (i !== activeSheet) return s;
-        return { ...s, data: snapshot.sheetData.map(row => [...row]) };
-      });
-      const updatedFile = { ...selectedFile, sheets: updatedSheets };
-      setSelectedFile(updatedFile);
-      setAnalyzedFiles(prev => prev.map(f => f === selectedFile ? updatedFile : f));
-    }
-    setFieldMappings(structuredClone(snapshot.fieldMappings));
-    setSelectedRows(new Set(snapshot.selectedRows));
-    setSelectedColumns(new Set(snapshot.selectedColumns));
-    setExcludedColumns(new Set(snapshot.excludedColumns));
-    setFlippedRows(new Set(snapshot.flippedRows));
-    setFlippedColumns(new Set(snapshot.flippedColumns));
-  }, [selectedFile, activeSheet]);
-
-  /**
-   * Central entry point for all undoable mapping mutations.
-   * Captures before snapshot, runs the producer to compute the after state,
-   * applies the after state, and pushes the history entry.
-   */
-  const commitAction = useCallback((
-    type: MappingActionType,
-    description: string,
-    producer: (before: MappingSnapshot) => MappingSnapshot,
-  ) => {
-    const before = getSnapshot();
-    const after = producer(structuredClone(before));
-    const entry: HistoryEntry = { type, description, before, after, timestamp: Date.now() };
-    applySnapshot(after);
-    pushEntry(entry);
-  }, [getSnapshot, applySnapshot, pushEntry]);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storedFilePathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
