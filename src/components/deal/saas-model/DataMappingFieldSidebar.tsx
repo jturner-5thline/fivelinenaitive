@@ -22,6 +22,8 @@ export interface FieldSidebarHandle {
   navigateField: (direction: 'up' | 'down') => void;
 }
 
+export type StatementTypeFilter = 'income-statement' | 'balance-sheet' | 'both';
+
 interface Props {
   fieldMappings: Record<string, FieldMapping[]>;
   selectedRows: Set<number>;
@@ -40,6 +42,7 @@ interface Props {
   linkedFieldFromRow?: string | null;
   linkedRowsFromField?: number[];
   hoveredRowIdx?: number | null;
+  statementType?: StatementTypeFilter;
   onFieldHover?: (fieldId: string | null) => void;
   onFieldSelect?: (fieldId: string) => void;
   onAssignField: (field: string) => void;
