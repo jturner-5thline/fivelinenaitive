@@ -1557,36 +1557,27 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   const handleRemoveMapping = useCallback(
     (fieldName: string, idx: number) => {
-      const before = { ...fieldMappings };
       const removedLabel = fieldMappings[fieldName]?.[idx]?.label || "Unknown";
-      setFieldMappings((prev) => {
-        const updated = { ...prev };
+      commitAction('unmap-field', `${removedLabel} ✕ ${fieldName}`, (snap) => {
+        const updated = { ...snap.fieldMappings };
         updated[fieldName] = updated[fieldName].filter((_, i) => i !== idx);
         if (!updated[fieldName].length) delete updated[fieldName];
-        pushAction({
-          type: "remove",
-          description: `${removedLabel} ✕ ${fieldName}`,
-          before,
-          after: updated,
-        });
-        return updated;
+        snap.fieldMappings = updated;
+        return snap;
       });
     },
-    [fieldMappings, pushAction],
+    [fieldMappings, commitAction],
   );
 
   const handleClearAllMappings = useCallback(() => {
-    const before = { ...fieldMappings };
-    pushAction({
-      type: "clear-all",
-      description: `Clear all ${Object.keys(fieldMappings).length} mappings`,
-      before,
-      after: {},
+    const count = Object.keys(fieldMappings).length;
+    commitAction('clear-all', `Clear all ${count} mappings`, (snap) => {
+      snap.fieldMappings = {};
+      return snap;
     });
-    setFieldMappings({});
     setAutoMapResults([]);
     toast.info("All mappings cleared");
-  }, [fieldMappings, pushAction]);
+  }, [fieldMappings, commitAction]);
 
   const handleRecalculate = useCallback(() => {
     if (!selectedFile) return;
