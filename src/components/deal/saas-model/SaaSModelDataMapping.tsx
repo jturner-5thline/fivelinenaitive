@@ -533,11 +533,23 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
   }, []);
 
   const handleApplySignFlip = useCallback(() => {
-    if (signFlipSelectedRows.size > 0) handleFlipRows(Array.from(signFlipSelectedRows));
-    if (signFlipSelectedCols.size > 0) handleFlipColumns(Array.from(signFlipSelectedCols));
+    const rowIndices = Array.from(signFlipSelectedRows);
+    const colIndices = Array.from(signFlipSelectedCols);
+    if (rowIndices.length === 0 && colIndices.length === 0) return;
+    const desc = `Flip sign on ${rowIndices.length > 0 ? `${rowIndices.length} row${rowIndices.length > 1 ? 's' : ''}` : ''}${rowIndices.length > 0 && colIndices.length > 0 ? ' and ' : ''}${colIndices.length > 0 ? `${colIndices.length} column${colIndices.length > 1 ? 's' : ''}` : ''}`;
+    commitAction('flip-sign', desc, (snap) => {
+      const toggleSet = (arr: number[], indices: number[]): number[] => {
+        const set = new Set(arr);
+        indices.forEach(i => set.has(i) ? set.delete(i) : set.add(i));
+        return Array.from(set);
+      };
+      if (rowIndices.length > 0) snap.flippedRows = toggleSet(snap.flippedRows, rowIndices);
+      if (colIndices.length > 0) snap.flippedColumns = toggleSet(snap.flippedColumns, colIndices);
+      return snap;
+    });
     setSignFlipSelectedRows(new Set());
     setSignFlipSelectedCols(new Set());
-  }, [signFlipSelectedRows, signFlipSelectedCols, handleFlipRows, handleFlipColumns]);
+  }, [signFlipSelectedRows, signFlipSelectedCols, commitAction]);
 
   // Computed unsaved state (used by hooks below — must be before any early returns)
   const mappedCount = Object.keys(fieldMappings).length;
