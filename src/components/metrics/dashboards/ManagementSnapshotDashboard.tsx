@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -60,7 +61,8 @@ export type EditableManagementSnapshotCardId =
   | 'clients-signed-finserv'
   | 'outstanding-ar'
   | 'debt-profit'
-  | 'finserv-profit';
+  | 'finserv-profit'
+  | 'avg-rev-per-client';
 
 export type WidgetSizeVariant = 'chart' | 'metric';
 
@@ -567,6 +569,7 @@ export function ManagementSnapshotDashboard({
     { cardId: 'outstanding-ar', props: getCardProps('outstanding-ar', 'Outstanding A/R', 'hsl(var(--primary))', 'ytd', 'metric') },
     { cardId: 'debt-profit', props: getCardProps('debt-profit', 'Debt Profit', 'hsl(var(--primary))', 'ytd', 'chart') },
     { cardId: 'finserv-profit', props: getCardProps('finserv-profit', 'FinServ Profit', 'hsl(var(--chart-4))', 'ytd', 'chart') },
+    { cardId: 'avg-rev-per-client', props: getCardProps('avg-rev-per-client', 'Avg Revenue per New Client Signed', 'hsl(var(--chart-3))', 'ytd', 'metric') },
   ];
 
   const visibleCards = allCards.filter(c => !isHidden(c.cardId));
@@ -602,6 +605,8 @@ export function ManagementSnapshotDashboard({
               entityFilter={props.entityFilter}
               isEditMode={isEditMode}
             />
+          ) : cardId === 'avg-rev-per-client' ? (
+            <AvgRevenuePerClientWidget />
           ) : (
             <GenericDashboardCard {...props} />
           )}

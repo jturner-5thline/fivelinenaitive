@@ -2591,6 +2591,62 @@ export type Database = {
           },
         ]
       }
+      computed_kpis: {
+        Row: {
+          company_id: string
+          created_at: string
+          denominator_value: number | null
+          error_message: string | null
+          id: string
+          last_refreshed_at: string
+          metric_key: string
+          metric_value: number | null
+          numerator_value: number | null
+          period_end: string
+          period_start: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          denominator_value?: number | null
+          error_message?: string | null
+          id?: string
+          last_refreshed_at?: string
+          metric_key: string
+          metric_value?: number | null
+          numerator_value?: number | null
+          period_end: string
+          period_start: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          denominator_value?: number | null
+          error_message?: string | null
+          id?: string
+          last_refreshed_at?: string
+          metric_key?: string
+          metric_value?: number | null
+          numerator_value?: number | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "computed_kpis_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_activities: {
         Row: {
           activity_type: string

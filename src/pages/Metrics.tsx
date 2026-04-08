@@ -213,6 +213,13 @@ const MANAGEMENT_SNAPSHOT_CARD_DEFAULTS: Record<EditableManagementSnapshotCardId
     size: 'medium',
     color: 'hsl(var(--chart-4))',
   },
+  'avg-rev-per-client': {
+    title: 'Avg Revenue per New Client Signed',
+    type: 'stat',
+    dataSource: 'computed-kpi',
+    size: 'small',
+    color: 'hsl(var(--chart-3))',
+  },
 };
 
 // Generate rolling 12 months labels
