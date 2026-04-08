@@ -265,6 +265,7 @@ const App = () => (
                             <ProtectedRoute><Finance /></ProtectedRoute>
                           } />
                           <Route path="/privacy" element={<PrivacyPolicy />} />
+                          <Route path="/unsubscribe" element={<Unsubscribe />} />
                           <Route path="/terms" element={<TermsOfService />} />
                           <Route path="/homepage" element={<Homepage />} />
                           <Route path="/promo" element={<Promo />} />
