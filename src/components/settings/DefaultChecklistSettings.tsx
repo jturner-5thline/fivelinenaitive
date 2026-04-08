@@ -32,9 +32,10 @@ import { cn } from '@/lib/utils';
 
 interface DefaultChecklistSettingsProps {
   isAdmin?: boolean;
+  embedded?: boolean;
 }
 
-export function DefaultChecklistSettings({ isAdmin = true }: DefaultChecklistSettingsProps) {
+export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: DefaultChecklistSettingsProps) {
   const { company } = useCompany();
   const { config, loading, saveConfig } = useDefaultChecklistConfig(company?.id);
   const [isOpen, setIsOpen] = useState(false);
