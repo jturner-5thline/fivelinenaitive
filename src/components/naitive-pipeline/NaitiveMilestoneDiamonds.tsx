@@ -29,8 +29,16 @@ export function NaitiveMilestoneDiamonds({ milestones, onToggle, showProgress }:
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1">
+      <div className="w-full">
+        {showProgress && (
+          <div className="text-[9px] text-muted-foreground/50 text-right mb-1">
+            {completed}/{milestones.length}
+          </div>
+        )}
+        <div
+          className="grid w-full"
+          style={{ gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))` }}
+        >
           {milestones.map((m) => (
             <Tooltip key={m.key}>
               <TooltipTrigger asChild>
@@ -42,13 +50,13 @@ export function NaitiveMilestoneDiamonds({ milestones, onToggle, showProgress }:
                     onToggle(m.key);
                   }}
                   className={cn(
-                    'transition-colors cursor-pointer rounded-sm p-0.5 hover:bg-muted',
+                    'flex items-center justify-center transition-colors cursor-pointer rounded-sm p-1 hover:bg-muted/50',
                     m.completed
                       ? 'text-primary'
                       : 'text-muted-foreground/40 hover:text-muted-foreground'
                   )}
                 >
-                  <DiamondIcon filled={m.completed} />
+                  <DiamondIcon filled={m.completed} className="h-3.5 w-3.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
@@ -60,11 +68,6 @@ export function NaitiveMilestoneDiamonds({ milestones, onToggle, showProgress }:
             </Tooltip>
           ))}
         </div>
-        {showProgress && (
-          <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap">
-            {completed}/{milestones.length}
-          </span>
-        )}
       </div>
     </TooltipProvider>
   );
