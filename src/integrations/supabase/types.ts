@@ -11351,6 +11351,47 @@ export type Database = {
         }
         Relationships: []
       }
+      naitive_stage_milestones: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          deal_id: string
+          id: string
+          milestone_key: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          deal_id: string
+          id?: string
+          milestone_key: string
+          stage: string
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          deal_id?: string
+          id?: string
+          milestone_key?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "naitive_stage_milestones_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_alerts: {
         Row: {
           created_at: string

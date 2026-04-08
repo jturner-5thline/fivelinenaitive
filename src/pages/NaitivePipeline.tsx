@@ -11,6 +11,8 @@ import { DealStageOption } from '@/contexts/DealStagesContext';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealCard } from '@/components/deals/DealCard';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { useNaitiveStageMilestones, DealStageMilestone } from '@/hooks/useNaitiveStageMilestones';
+import { NaitiveMilestoneDiamonds } from '@/components/naitive-pipeline/NaitiveMilestoneDiamonds';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -41,24 +43,38 @@ import {
   DialogContent,
 } from '@/components/ui/dialog';
 
-function DraggableCard({ deal, onStatusChange, isDragging }: { deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean }) {
+function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleMilestone }: {
+  deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
+  milestones: DealStageMilestone[]; onToggleMilestone: (dealId: string, stage: string, key: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: deal.id, data: { deal } });
   const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.5 : 1 };
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none w-full min-w-0">
       <DealCard deal={deal} onStatusChange={onStatusChange} compact />
+      {milestones.length > 0 && (
+        <div className="px-3 pb-2 -mt-1">
+          <NaitiveMilestoneDiamonds
+            milestones={milestones}
+            onToggle={(key) => onToggleMilestone(deal.id, deal.stage, key)}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
 function StageColumn({
   stage, deals, onStatusChange, onStageChange, activeDealId, isOver, fullscreen,
+  getMilestonesForDeal, onToggleMilestone,
 }: {
   stage: DealStageOption; deals: Deal[];
   onStatusChange: (id: string, s: DealStatus) => void;
   onStageChange?: (id: string, s: string) => void;
   activeDealId: string | null; isOver: boolean; fullscreen?: boolean;
+  getMilestonesForDeal: (dealId: string, stage: string) => DealStageMilestone[];
+  onToggleMilestone: (dealId: string, stage: string, key: string) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
 
@@ -78,7 +94,14 @@ function StageColumn({
               {isOver ? "Drop here" : "No deals"}
             </div>
           ) : deals.map((deal) => (
-            <DraggableCard key={deal.id} deal={deal} onStatusChange={onStatusChange} isDragging={activeDealId === deal.id} />
+            <DraggableCard
+              key={deal.id}
+              deal={deal}
+              onStatusChange={onStatusChange}
+              isDragging={activeDealId === deal.id}
+              milestones={getMilestonesForDeal(deal.id, deal.stage)}
+              onToggleMilestone={onToggleMilestone}
+            />
           ))}
         </div>
       </ScrollArea>
@@ -91,6 +114,8 @@ export default function NaitivePipeline() {
   const { pipelineId, stages, deals, isLoading: dataLoading, refetch } = useNaitivePipelineData();
   const { kpis, funnelData, agingData, healthMix, trendData, notifications, recommendations, hurdles } = useNaitivePipelineMetrics(deals, stages);
   const navigate = useNavigate();
+  const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
+  const { getMilestonesForDeal, toggleMilestone } = useNaitiveStageMilestones(dealIds);
 
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
@@ -185,6 +210,8 @@ export default function NaitivePipeline() {
               activeDealId={activeDealId}
               isOver={overId === stage.id}
               fullscreen={fullscreen}
+              getMilestonesForDeal={getMilestonesForDeal}
+              onToggleMilestone={toggleMilestone}
             />
           ))}
         </div>
