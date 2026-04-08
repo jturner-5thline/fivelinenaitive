@@ -77,6 +77,7 @@ const CrmCompanies = lazy(lazyRetry(() => import("./pages/CrmCompanies")));
 const CrmCompanyDetail = lazy(lazyRetry(() => import("./pages/CrmCompanyDetail")));
 const PrivacyPolicy = lazy(lazyRetry(() => import("./pages/PrivacyPolicy")));
 const TermsOfService = lazy(lazyRetry(() => import("./pages/TermsOfService")));
+const Unsubscribe = lazy(lazyRetry(() => import("./pages/Unsubscribe")));
 const PendingApproval = lazy(lazyRetry(() => import("./pages/PendingApproval")));
 const PendingCompanyApproval = lazy(lazyRetry(() => import("./pages/PendingCompanyApproval")));
 const Homepage = lazy(lazyRetry(() => import("./pages/Homepage")));
@@ -264,6 +265,7 @@ const App = () => (
                             <ProtectedRoute><Finance /></ProtectedRoute>
                           } />
                           <Route path="/privacy" element={<PrivacyPolicy />} />
+                          <Route path="/unsubscribe" element={<Unsubscribe />} />
                           <Route path="/terms" element={<TermsOfService />} />
                           <Route path="/homepage" element={<Homepage />} />
                           <Route path="/promo" element={<Promo />} />

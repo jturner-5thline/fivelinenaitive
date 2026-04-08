@@ -15,6 +15,38 @@ async function fireZapierWebhook(eventType: string, payload: Record<string, any>
   }
 }
 
+async function sendTaskAssignedEmail(params: {
+  taskId: string;
+  taskTitle: string;
+  assigneeEmail: string;
+  assigneeName?: string;
+  assignedByName?: string;
+  dealName?: string;
+  dueDate?: string | null;
+}) {
+  try {
+    const taskUrl = `https://fivelinenaitive.lovable.app/tasks?task=${params.taskId}`;
+    await supabase.functions.invoke('send-transactional-email', {
+      body: {
+        templateName: 'task-assigned',
+        recipientEmail: params.assigneeEmail,
+        idempotencyKey: `task-assigned-${params.taskId}-${Date.now()}`,
+        templateData: {
+          assigneeName: params.assigneeName || undefined,
+          taskTitle: params.taskTitle,
+          dealName: params.dealName || undefined,
+          assignedByName: params.assignedByName || undefined,
+          dueDate: params.dueDate || undefined,
+          taskUrl,
+        },
+      },
+    });
+    console.log('[TaskEmail] Task assigned email sent to', params.assigneeEmail);
+  } catch (e) {
+    console.error('[TaskEmail] Failed to send task assigned email:', e);
+  }
+}
+
 export interface Task {
   id: string;
   project_id: string | null;
@@ -335,6 +367,34 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         fireZapierWebhook('task_created', payload);
         fireZapierWebhook('task_assigned', payload);
 
+        // Send task assigned email notification (fire-and-forget)
+        if (assigneeProfile?.email && (data as any).assigned_to !== user.id) {
+          const { data: assignerProfile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', user.id)
+            .single();
+          // Look up deal name if deal_id exists
+          let dealName: string | undefined;
+          if ((data as any).deal_id) {
+            const { data: deal } = await supabase
+              .from('deals')
+              .select('company')
+              .eq('id', (data as any).deal_id)
+              .single();
+            dealName = deal?.company || undefined;
+          }
+          sendTaskAssignedEmail({
+            taskId: (data as any).id,
+            taskTitle: (data as any).title,
+            assigneeEmail: assigneeProfile.email,
+            assigneeName: assigneeProfile.display_name || undefined,
+            assignedByName: assignerProfile?.display_name || undefined,
+            dealName,
+            dueDate: (data as any).due_date,
+          });
+        }
+
         // Asana sync (fire-and-forget)
         (async () => {
           try {
@@ -433,6 +493,34 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           title: updates.title,
           task_url: taskUrl,
         });
+
+        // Send task assigned email notification on reassignment (fire-and-forget)
+        if (assigneeProfile?.email && updates.assigned_to !== user.id) {
+          const existingTask = tasks.find(t => t.id === id);
+          const { data: assignerProfile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', user.id)
+            .single();
+          let dealName: string | undefined;
+          if (existingTask?.deal_id) {
+            const { data: deal } = await supabase
+              .from('deals')
+              .select('company')
+              .eq('id', existingTask.deal_id)
+              .single();
+            dealName = deal?.company || undefined;
+          }
+          sendTaskAssignedEmail({
+            taskId: id,
+            taskTitle: existingTask?.title || updates.title || 'Task',
+            assigneeEmail: assigneeProfile.email,
+            assigneeName: assigneeProfile.display_name || undefined,
+            assignedByName: assignerProfile?.display_name || undefined,
+            dealName,
+            dueDate: existingTask?.due_date || updates.due_date || null,
+          });
+        }
       }
 
       // Asana sync: push due date / assignee updates (fire-and-forget)

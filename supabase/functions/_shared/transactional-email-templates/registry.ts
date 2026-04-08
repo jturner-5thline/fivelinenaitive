@@ -10,7 +10,9 @@ export interface TemplateEntry {
 }
 
 import { template as welcomeToNaitive } from './welcome-to-naitive.tsx'
+import { template as taskAssigned } from './task-assigned.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'welcome-to-naitive': welcomeToNaitive,
+  'task-assigned': taskAssigned,
 }
