@@ -11,6 +11,8 @@ import { DealStageOption } from '@/contexts/DealStagesContext';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealCard } from '@/components/deals/DealCard';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { useNaitiveStageMilestones, DealStageMilestone } from '@/hooks/useNaitiveStageMilestones';
+import { NaitiveMilestoneDiamonds } from '@/components/naitive-pipeline/NaitiveMilestoneDiamonds';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
