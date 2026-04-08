@@ -605,6 +605,8 @@ export function ManagementSnapshotDashboard({
               entityFilter={props.entityFilter}
               isEditMode={isEditMode}
             />
+          ) : cardId === 'avg-rev-per-client' ? (
+            <AvgRevenuePerClientWidget />
           ) : (
             <GenericDashboardCard {...props} />
           )}
