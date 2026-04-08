@@ -43,13 +43,24 @@ import {
   DialogContent,
 } from '@/components/ui/dialog';
 
-function DraggableCard({ deal, onStatusChange, isDragging }: { deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean }) {
+function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleMilestone }: {
+  deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
+  milestones: DealStageMilestone[]; onToggleMilestone: (dealId: string, stage: string, key: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: deal.id, data: { deal } });
   const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.5 : 1 };
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none w-full min-w-0">
       <DealCard deal={deal} onStatusChange={onStatusChange} compact />
+      {milestones.length > 0 && (
+        <div className="px-3 pb-2 -mt-1">
+          <NaitiveMilestoneDiamonds
+            milestones={milestones}
+            onToggle={(key) => onToggleMilestone(deal.id, deal.stage, key)}
+          />
+        </div>
+      )}
     </div>
   );
 }
