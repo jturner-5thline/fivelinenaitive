@@ -224,7 +224,7 @@ export default function NaitivePipeline() {
               }
                initialValues={{
                  pipelineId: pipelineId || undefined,
-                 dealStage: stages[0]?.id || 'prospect',
+                  dealStage: stages[0]?.id || 'prospects',
                  dealClass: 'naitive',
                }}
             />
@@ -294,7 +294,7 @@ export default function NaitivePipeline() {
                 }
                  initialValues={{
                    pipelineId: pipelineId || undefined,
-                   dealStage: stages[0]?.id || 'prospect',
+                   dealStage: stages[0]?.id || 'prospects',
                    dealClass: 'naitive',
                  }}
               />
