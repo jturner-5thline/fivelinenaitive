@@ -2833,7 +2833,11 @@ export default function DealDetail() {
                   </Card>
                   )}
 
-                  {/* Customize Layout Button */}
+                  {/* Naitive pipeline stage milestones */}
+                  {isNaitiveDeal && deal && (
+                    <NaitiveStageMilestonesSection dealId={deal.id} stage={deal.stage} />
+                  )}
+
                   <div className="flex justify-end">
                     <Button 
                       variant="ghost" 
