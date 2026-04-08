@@ -229,31 +229,7 @@ export function DataRoomChecklistSettings({ embedded = false }: DataRoomChecklis
 
   const requiredCount = items.filter(i => i.is_required).length;
 
-  return (
-    <>
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CollapsibleTrigger asChild>
-            <button className="flex items-center gap-2 text-left flex-1">
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <FileCheck className="h-5 w-5" />
-                  Data Room Checklist
-                </CardTitle>
-                <CardDescription className="mt-1">
-                  Define the standard information required for all deals. {items.length} items ({requiredCount} required)
-                  {!isAdmin && (
-                    <span className="block text-xs mt-1 text-muted-foreground/80">Only company admins can edit the default checklist.</span>
-                  )}
-                </CardDescription>
-              </div>
-            </button>
-          </CollapsibleTrigger>
-        </CardHeader>
-        <CollapsibleContent>
-          <CardContent>
+  const tabsContent = (
         <Tabs defaultValue="items" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="items">Checklist Items</TabsTrigger>
@@ -426,10 +402,50 @@ export function DataRoomChecklistSettings({ embedded = false }: DataRoomChecklis
             )}
           </TabsContent>
         </Tabs>
+  );
+
+  return (
+    <>
+    {embedded ? (
+      <div>
+        <p className="text-xs text-muted-foreground mb-3">
+          {items.length} items ({requiredCount} required)
+          {!isAdmin && (
+            <span className="block mt-1">Only company admins can edit the default checklist.</span>
+          )}
+        </p>
+        {tabsContent}
+      </div>
+    ) : (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 text-left flex-1">
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck className="h-5 w-5" />
+                  Data Room Checklist
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Define the standard information required for all deals. {items.length} items ({requiredCount} required)
+                  {!isAdmin && (
+                    <span className="block text-xs mt-1 text-muted-foreground/80">Only company admins can edit the default checklist.</span>
+                  )}
+                </CardDescription>
+              </div>
+            </button>
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent>
+            {tabsContent}
           </CardContent>
         </CollapsibleContent>
       </Card>
     </Collapsible>
+    )}
 
       {/* Add/Edit Item Dialog */}
       <Dialog 
