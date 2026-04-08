@@ -17,55 +17,41 @@ interface TaskAssignedProps {
   taskUrl?: string
 }
 
-const TaskAssignedEmail = ({
-  assigneeName,
-  taskTitle,
-  dealName,
-  assignedByName,
-  dueDate,
-  taskUrl,
-}: TaskAssignedProps) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>New task assigned: {taskTitle || 'Untitled task'}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Section style={logoSection}>
-          <Text style={logoText}>naitive</Text>
-        </Section>
-        <Hr style={divider} />
-        <Heading style={h1}>
-          {assigneeName ? `Hey ${assigneeName},` : 'Hey,'}
-        </Heading>
-        <Text style={text}>
-          {assignedByName
+const TaskAssignedEmail = (props: TaskAssignedProps) => {
+  const { assigneeName, taskTitle, dealName, assignedByName, dueDate, taskUrl } = props
+  const h = React.createElement
+
+  return h(Html, { lang: "en", dir: "ltr" },
+    h(Head, null),
+    h(Preview, null, `New task assigned: ${taskTitle || 'Untitled task'}`),
+    h(Body, { style: main },
+      h(Container, { style: container },
+        h(Section, { style: logoSection },
+          h(Text, { style: logoText }, "naitive")
+        ),
+        h(Hr, { style: divider }),
+        h(Heading, { style: h1Style },
+          assigneeName ? `Hey ${assigneeName},` : 'Hey,'
+        ),
+        h(Text, { style: text },
+          assignedByName
             ? `${assignedByName} assigned you a new task:`
-            : 'You've been assigned a new task:'}
-        </Text>
-        <Section style={taskCard}>
-          <Text style={taskTitle_style}>
-            {taskTitle || 'Untitled task'}
-          </Text>
-          {dealName && (
-            <Text style={metaText}>Deal: {dealName}</Text>
-          )}
-          {dueDate && (
-            <Text style={metaText}>Due: {dueDate}</Text>
-          )}
-        </Section>
-        <Section style={buttonSection}>
-          <Button style={button} href={taskUrl || PLATFORM_URL + '/tasks'}>
-            View Task
-          </Button>
-        </Section>
-        <Hr style={divider} />
-        <Text style={footer}>
-          — The naitive team
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+            : "You've been assigned a new task:"
+        ),
+        h(Section, { style: taskCard },
+          h(Text, { style: taskTitleStyle }, taskTitle || 'Untitled task'),
+          dealName ? h(Text, { style: metaText }, `Deal: ${dealName}`) : null,
+          dueDate ? h(Text, { style: metaText }, `Due: ${dueDate}`) : null
+        ),
+        h(Section, { style: buttonSection },
+          h(Button, { style: button, href: taskUrl || PLATFORM_URL + '/tasks' }, "View Task")
+        ),
+        h(Hr, { style: divider }),
+        h(Text, { style: footer }, `— The ${SITE_NAME} team`)
+      )
+    )
+  )
+}
 
 export const template = {
   component: TaskAssignedEmail,
@@ -87,7 +73,7 @@ const container = { padding: '40px 32px', maxWidth: '560px', margin: '0 auto' }
 const logoSection = { textAlign: 'center' as const, marginBottom: '8px' }
 const logoText = { fontSize: '20px', fontWeight: '700' as const, color: '#0f172a', letterSpacing: '-0.5px', margin: '0' }
 const divider = { borderColor: '#e2e8f0', margin: '24px 0' }
-const h1 = { fontSize: '24px', fontWeight: '600' as const, color: '#0f172a', margin: '0 0 16px', lineHeight: '1.3' }
+const h1Style = { fontSize: '24px', fontWeight: '600' as const, color: '#0f172a', margin: '0 0 16px', lineHeight: '1.3' }
 const text = { fontSize: '15px', color: '#475569', lineHeight: '1.6', margin: '0 0 16px' }
 const taskCard = {
   backgroundColor: '#f8fafc',
@@ -96,7 +82,7 @@ const taskCard = {
   padding: '16px 20px',
   margin: '0 0 24px',
 }
-const taskTitle_style = { fontSize: '16px', fontWeight: '600' as const, color: '#0f172a', margin: '0 0 8px' }
+const taskTitleStyle = { fontSize: '16px', fontWeight: '600' as const, color: '#0f172a', margin: '0 0 8px' }
 const metaText = { fontSize: '13px', color: '#64748b', margin: '0 0 4px', lineHeight: '1.4' }
 const buttonSection = { textAlign: 'center' as const, margin: '8px 0 16px' }
 const button = {
