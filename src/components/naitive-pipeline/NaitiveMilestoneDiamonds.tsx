@@ -49,57 +49,72 @@ export function NaitiveMilestoneDiamonds({ milestones, onToggle, showProgress }:
             {completed}/{count}
           </div>
         )}
-        {/* Track + diamonds layered */}
-        <div className="relative w-full" style={{ height: 24 }}>
-          {/* Base track - runs through vertical center */}
-          <div
-            className="absolute left-0 right-0 rounded-full bg-muted/30"
-            style={{ top: '50%', transform: 'translateY(-50%)', height: 3 }}
-          />
-          {/* Active fill track */}
-          {fillPercent > 0 && (
+        {/* Track + diamonds + labels */}
+        <div className="relative w-full">
+          {/* Track area with diamonds */}
+          <div className="relative w-full" style={{ height: 24 }}>
+            {/* Base track */}
             <div
-              className="absolute left-0 rounded-full bg-primary/70 transition-all duration-200"
-              style={{
-                top: '50%',
-                transform: 'translateY(-50%)',
-                height: 3,
-                width: `${fillPercent}%`,
-              }}
+              className="absolute left-0 right-0 rounded-full bg-muted/30"
+              style={{ top: '50%', transform: 'translateY(-50%)', height: 3 }}
             />
-          )}
-          {/* Diamond checkpoints */}
+            {/* Active fill */}
+            {fillPercent > 0 && (
+              <div
+                className="absolute left-0 rounded-full bg-primary/70 transition-all duration-200"
+                style={{ top: '50%', transform: 'translateY(-50%)', height: 3, width: `${fillPercent}%` }}
+              />
+            )}
+            {/* Diamond buttons */}
+            <div
+              className="relative grid w-full h-full"
+              style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
+            >
+              {milestones.map((m) => (
+                <Tooltip key={m.key}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onToggle(m.key);
+                      }}
+                      className={cn(
+                        'relative z-10 flex items-center justify-center transition-colors cursor-pointer rounded-sm hover:bg-muted/40',
+                        m.completed
+                          ? 'text-primary'
+                          : 'text-muted-foreground/40 hover:text-muted-foreground'
+                      )}
+                    >
+                      <DiamondIcon filled={m.completed} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <span>{m.label}</span>
+                    <span className="ml-1 text-muted-foreground">
+                      {m.completed ? '✓' : '○'}
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </div>
+          {/* Labels row - aligned to same grid */}
           <div
-            className="relative grid w-full h-full"
+            className="grid w-full mt-0.5"
             style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
           >
             {milestones.map((m) => (
-              <Tooltip key={m.key}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onToggle(m.key);
-                    }}
-                    className={cn(
-                      'relative z-10 flex items-center justify-center transition-colors cursor-pointer rounded-sm hover:bg-muted/40',
-                      m.completed
-                        ? 'text-primary'
-                        : 'text-muted-foreground/40 hover:text-muted-foreground'
-                    )}
-                  >
-                    <DiamondIcon filled={m.completed} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  <span>{m.label}</span>
-                  <span className="ml-1 text-muted-foreground">
-                    {m.completed ? '✓' : '○'}
-                  </span>
-                </TooltipContent>
-              </Tooltip>
+              <span
+                key={`label-${m.key}`}
+                className={cn(
+                  'text-[8px] leading-tight text-center line-clamp-2 px-0.5',
+                  m.completed ? 'text-muted-foreground/70' : 'text-muted-foreground/50'
+                )}
+              >
+                {m.label}
+              </span>
             ))}
           </div>
         </div>
