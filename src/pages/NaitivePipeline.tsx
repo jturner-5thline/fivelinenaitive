@@ -52,7 +52,7 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none w-full min-w-0">
-      <DealCard deal={deal} onStatusChange={onStatusChange} compact>
+      <DealCard deal={deal} onStatusChange={onStatusChange} compact hideStatus>
         {milestones.length > 0 && (
           <div className="px-3 pb-2 pt-1">
             <NaitiveMilestoneDiamonds
@@ -222,7 +222,7 @@ export default function NaitivePipeline() {
       <DragOverlay>
         {activeDeal ? (
           <div className="opacity-90 rotate-2 scale-105">
-            <DealCard deal={activeDeal} onStatusChange={handleStatusChange} compact />
+            <DealCard deal={activeDeal} onStatusChange={handleStatusChange} compact hideStatus />
           </div>
         ) : null}
       </DragOverlay>

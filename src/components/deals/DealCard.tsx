@@ -42,12 +42,13 @@ interface DealCardProps {
   flexEngagement?: DealFlexEngagement;
   flexNotificationCount?: number;
   compact?: boolean;
+  hideStatus?: boolean;
   onStageChange?: (dealId: string, newStage: string) => void;
   mentionUsers?: TeamMember[];
   children?: React.ReactNode;
 }
 
-export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, onStageChange, mentionUsers = [], children }: DealCardProps) {
+export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, hideStatus = false, onStageChange, mentionUsers = [], children }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -315,6 +316,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </div>
 
             {/* Right: Status + Stage pills */}
+            {!hideStatus && (
             <div className="flex flex-col items-end gap-1.5 shrink-0">
               <InlineStatusDropdown
                 dealId={deal.id}
@@ -330,6 +332,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 />
               )}
             </div>
+            )}
           </div>
 
           {/* Migrated + FLEx badges row */}
