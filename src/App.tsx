@@ -77,6 +77,7 @@ const CrmCompanies = lazy(lazyRetry(() => import("./pages/CrmCompanies")));
 const CrmCompanyDetail = lazy(lazyRetry(() => import("./pages/CrmCompanyDetail")));
 const PrivacyPolicy = lazy(lazyRetry(() => import("./pages/PrivacyPolicy")));
 const TermsOfService = lazy(lazyRetry(() => import("./pages/TermsOfService")));
+const Unsubscribe = lazy(lazyRetry(() => import("./pages/Unsubscribe")));
 const PendingApproval = lazy(lazyRetry(() => import("./pages/PendingApproval")));
 const PendingCompanyApproval = lazy(lazyRetry(() => import("./pages/PendingCompanyApproval")));
 const Homepage = lazy(lazyRetry(() => import("./pages/Homepage")));
