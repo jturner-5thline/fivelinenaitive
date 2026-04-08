@@ -1270,21 +1270,33 @@ export default function DealDetail() {
     files: File[];
   } | null>(null);
 
-  // Combine template and deal-specific checklist items for dialog
+  // Combine template and deal-specific checklist items with deduplication
+  // Deal-specific items override global template items matched by name
   const allChecklistItems = useMemo(() => {
-    const templates = templateChecklistItems.map(item => ({
-      id: item.id,
-      name: item.name,
-      category: item.category,
-      is_required: item.is_required,
-    }));
     const dealSpecific = dealChecklistItems.map(item => ({
       id: item.id,
       name: item.name,
       category: item.category,
       is_required: item.is_required,
     }));
-    return [...templates, ...dealSpecific];
+    if (dealSpecific.length > 0) {
+      const dealItemNames = new Set(dealSpecific.map(i => i.name.toLowerCase().trim()));
+      const nonOverlapping = templateChecklistItems
+        .filter(item => !dealItemNames.has(item.name.toLowerCase().trim()))
+        .map(item => ({
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          is_required: item.is_required,
+        }));
+      return [...nonOverlapping, ...dealSpecific];
+    }
+    return templateChecklistItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      is_required: item.is_required,
+    }));
   }, [templateChecklistItems, dealChecklistItems]);
   
   const filteredAttachments = attachmentFilter === 'all' 
