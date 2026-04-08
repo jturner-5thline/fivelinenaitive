@@ -41,7 +41,11 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useCompany } from '@/hooks/useCompany';
 
-export function DataRoomChecklistSettings() {
+interface DataRoomChecklistSettingsProps {
+  embedded?: boolean;
+}
+
+export function DataRoomChecklistSettings({ embedded = false }: DataRoomChecklistSettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { items, loading: itemsLoading, addItem, updateItem, deleteItem, reorderItems } = useDataRoomChecklist();
   const { categories, categoryNames, loading: categoriesLoading, addCategory, updateCategory, deleteCategory, reorderCategories, getCategoryByName } = useChecklistCategories();
