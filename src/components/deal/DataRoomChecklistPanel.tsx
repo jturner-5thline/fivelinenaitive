@@ -114,10 +114,17 @@ export function DataRoomChecklistPanel({
     return await addCategory(name, icon, color);
   };
   
-  // Combine template items and deal-specific items
+  // Combine template items and deal-specific items with deduplication
+  // Deal-specific items override global template items matched by name
   const checklistItems: UnifiedChecklistItem[] = useMemo(() => {
-    const templates = templateItems.map(item => ({ ...item, is_deal_specific: false as const }));
-    return [...templates, ...dealSpecificItems];
+    if (dealSpecificItems.length > 0) {
+      const dealItemNames = new Set(dealSpecificItems.map(i => i.name.toLowerCase().trim()));
+      const nonOverlapping = templateItems
+        .filter(item => !dealItemNames.has(item.name.toLowerCase().trim()))
+        .map(item => ({ ...item, is_deal_specific: false as const }));
+      return [...nonOverlapping, ...dealSpecificItems];
+    }
+    return templateItems.map(item => ({ ...item, is_deal_specific: false as const }));
   }, [templateItems, dealSpecificItems]);
   
   // View mode state - persisted across sessions
