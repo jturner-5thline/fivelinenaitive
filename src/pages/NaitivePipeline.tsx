@@ -67,11 +67,14 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
 
 function StageColumn({
   stage, deals, onStatusChange, onStageChange, activeDealId, isOver, fullscreen,
+  getMilestonesForDeal, onToggleMilestone,
 }: {
   stage: DealStageOption; deals: Deal[];
   onStatusChange: (id: string, s: DealStatus) => void;
   onStageChange?: (id: string, s: string) => void;
   activeDealId: string | null; isOver: boolean; fullscreen?: boolean;
+  getMilestonesForDeal: (dealId: string, stage: string) => DealStageMilestone[];
+  onToggleMilestone: (dealId: string, stage: string, key: string) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
 
@@ -91,7 +94,14 @@ function StageColumn({
               {isOver ? "Drop here" : "No deals"}
             </div>
           ) : deals.map((deal) => (
-            <DraggableCard key={deal.id} deal={deal} onStatusChange={onStatusChange} isDragging={activeDealId === deal.id} />
+            <DraggableCard
+              key={deal.id}
+              deal={deal}
+              onStatusChange={onStatusChange}
+              isDragging={activeDealId === deal.id}
+              milestones={getMilestonesForDeal(deal.id, deal.stage)}
+              onToggleMilestone={onToggleMilestone}
+            />
           ))}
         </div>
       </ScrollArea>
