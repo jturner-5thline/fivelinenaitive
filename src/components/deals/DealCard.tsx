@@ -44,9 +44,10 @@ interface DealCardProps {
   compact?: boolean;
   onStageChange?: (dealId: string, newStage: string) => void;
   mentionUsers?: TeamMember[];
+  children?: React.ReactNode;
 }
 
-export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, onStageChange, mentionUsers = [] }: DealCardProps) {
+export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, onStageChange, mentionUsers = [], children }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -491,6 +492,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
               ))}
             </div>
           )}
+        {children}
         </div>
       </Card>
     </Link>
