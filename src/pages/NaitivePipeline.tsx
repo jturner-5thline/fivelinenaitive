@@ -210,6 +210,8 @@ export default function NaitivePipeline() {
               activeDealId={activeDealId}
               isOver={overId === stage.id}
               fullscreen={fullscreen}
+              getMilestonesForDeal={getMilestonesForDeal}
+              onToggleMilestone={toggleMilestone}
             />
           ))}
         </div>
