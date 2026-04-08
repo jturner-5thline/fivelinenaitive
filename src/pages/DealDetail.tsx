@@ -2426,7 +2426,7 @@ export default function DealDetail() {
           {/* Back button, alerts, and undo - side by side */}
           <div className="flex items-center gap-3 mb-1 flex-wrap">
             <Button variant="ghost" size="sm" className="gap-2 shrink-0" asChild>
-              <Link to="/deals">
+              <Link to={isNaitiveDeal ? "/naitive-pipeline" : "/deals"}>
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">Back to Pipeline</span>
                 <span className="sm:hidden">Back</span>
