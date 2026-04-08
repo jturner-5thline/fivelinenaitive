@@ -52,16 +52,17 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none w-full min-w-0">
-      <DealCard deal={deal} onStatusChange={onStatusChange} compact>
+      <div className="rounded-lg border border-[hsl(272,100%,80%,0.35)] overflow-hidden">
+        <DealCard deal={deal} onStatusChange={onStatusChange} compact />
         {milestones.length > 0 && (
-          <div className="px-3 pb-2 pt-1 border-t border-border/30">
+          <div className="px-3 pb-2 pt-1.5 border-t border-border/30 bg-[hsl(230,25%,14%)]">
             <NaitiveMilestoneDiamonds
               milestones={milestones}
               onToggle={(key) => onToggleMilestone(deal.id, deal.stage, key)}
             />
           </div>
         )}
-      </DealCard>
+      </div>
     </div>
   );
 }
