@@ -65,13 +65,13 @@ export interface NaitiveDealHurdle {
 }
 
 const STAGE_WEIGHT_MAP: Record<string, number> = {
-  'prospect': 0.1,
-  'initial-review': 0.2,
-  'due-diligence': 0.4,
-  'terms-negotiation': 0.6,
-  'closing': 0.8,
-  'closed-won': 1.0,
-  'closed-lost': 0,
+  'prospects': 0.1,
+  'intro-conversations': 0.2,
+  'demo-completed': 0.4,
+  'offer-sent': 0.6,
+  'onboarding': 0.8,
+  'active-customer': 1.0,
+  'close-lost-opportunity': 0,
 };
 
 const STALLED_THRESHOLD_DAYS = 14;
