@@ -316,6 +316,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </div>
 
             {/* Right: Status + Stage pills */}
+            {!hideStatus && (
             <div className="flex flex-col items-end gap-1.5 shrink-0">
               <InlineStatusDropdown
                 dealId={deal.id}
@@ -331,6 +332,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 />
               )}
             </div>
+            )}
           </div>
 
           {/* Migrated + FLEx badges row */}
