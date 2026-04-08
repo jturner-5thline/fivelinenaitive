@@ -17,6 +17,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, 
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
 import { DealMilestones } from '@/components/deals/DealMilestones';
+import { NaitiveStageMilestonesSection } from '@/components/naitive-pipeline/NaitiveStageMilestonesSection';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
