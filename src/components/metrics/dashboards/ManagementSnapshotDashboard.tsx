@@ -60,7 +60,8 @@ export type EditableManagementSnapshotCardId =
   | 'clients-signed-finserv'
   | 'outstanding-ar'
   | 'debt-profit'
-  | 'finserv-profit';
+  | 'finserv-profit'
+  | 'avg-rev-per-client';
 
 export type WidgetSizeVariant = 'chart' | 'metric';
 
