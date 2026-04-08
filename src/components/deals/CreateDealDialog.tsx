@@ -39,6 +39,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
 import { populateDefaultChecklist } from '@/hooks/useDefaultChecklistConfig';
+import { autoPopulateOutstandingItems, isActivePipeline } from '@/utils/autoPopulateOutstandingItems';
 import { useProfile } from '@/hooks/useProfile';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
@@ -225,6 +226,13 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
           for (const dealType of selectedDealTypes) {
             const count = await populateDefaultChecklist(newDeal.id, dealType, company.id, user.id);
             if (count > 0) break; // First match wins
+          }
+
+          // Auto-populate Outstanding Items from Initial Items for Active Pipeline deals
+          const pipelineId = selectedPipelineId || activePipelineId || null;
+          const isActive = await isActivePipeline(pipelineId, company.id);
+          if (isActive) {
+            await autoPopulateOutstandingItems(newDeal.id, selectedDealTypes, company.id, user.id);
           }
         }
         toast.success(`Deal "${dealName}" created successfully!`);

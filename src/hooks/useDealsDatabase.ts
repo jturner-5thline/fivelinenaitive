@@ -5,6 +5,7 @@ import { toast } from '@/hooks/use-toast';
 import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 import { addDays } from 'date-fns';
 import { getNaitivePipelineId, excludeNaitivePipelineDeals } from '@/utils/naitivePipelineExclusion';
+import { autoPopulateOutstandingItems, isActivePipeline } from '@/utils/autoPopulateOutstandingItems';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
 type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -678,6 +679,37 @@ export function useDealsDatabase() {
 
       if (error) throw error;
       
+      // Auto-populate Outstanding Items when deal moves to Active Pipeline
+      if (updates.pipelineId && previousDeal && updates.pipelineId !== previousDeal.pipelineId) {
+        try {
+          const { data: membership } = await supabase
+            .from('company_members')
+            .select('company_id')
+            .eq('user_id', userId!)
+            .maybeSingle();
+          const companyId = membership?.company_id;
+          if (companyId) {
+            const isActive = await isActivePipeline(updates.pipelineId, companyId);
+            if (isActive) {
+              // Get deal types from the deal
+              const { data: dealRecord } = await supabase
+                .from('deals')
+                .select('deal_type')
+                .eq('id', dealId)
+                .single();
+              const dealTypes: string[] = dealRecord?.deal_type
+                ? (() => { try { return JSON.parse(dealRecord.deal_type); } catch { return []; } })()
+                : [];
+              if (dealTypes.length > 0) {
+                await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error auto-populating outstanding items on pipeline move:', err);
+        }
+      }
+
       // Auto-dismiss notifications when deal moves to archived or in_development
       if (updates.status && ['archived', 'in_development'].includes(updates.status)) {
         // Mark all activity_logs-based notifications as seen by updating localStorage
