@@ -114,6 +114,8 @@ export default function NaitivePipeline() {
   const { pipelineId, stages, deals, isLoading: dataLoading, refetch } = useNaitivePipelineData();
   const { kpis, funnelData, agingData, healthMix, trendData, notifications, recommendations, hurdles } = useNaitivePipelineMetrics(deals, stages);
   const navigate = useNavigate();
+  const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
+  const { getMilestonesForDeal, toggleMilestone } = useNaitiveStageMilestones(dealIds);
 
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
