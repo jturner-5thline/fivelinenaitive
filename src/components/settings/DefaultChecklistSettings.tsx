@@ -32,9 +32,10 @@ import { cn } from '@/lib/utils';
 
 interface DefaultChecklistSettingsProps {
   isAdmin?: boolean;
+  embedded?: boolean;
 }
 
-export function DefaultChecklistSettings({ isAdmin = true }: DefaultChecklistSettingsProps) {
+export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: DefaultChecklistSettingsProps) {
   const { company } = useCompany();
   const { config, loading, saveConfig } = useDefaultChecklistConfig(company?.id);
   const [isOpen, setIsOpen] = useState(false);
@@ -230,30 +231,8 @@ export function DefaultChecklistSettings({ isAdmin = true }: DefaultChecklistSet
     (sum, c) => sum + c.rounds.reduce((rs, r) => rs + r.items.length, 0), 0
   );
 
-  return (
-    <>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CollapsibleTrigger asChild>
-              <button className="flex items-center gap-2 text-left flex-1">
-                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", isOpen && 'rotate-180')} />
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Layers className="h-5 w-5" />
-                    Deal-Type Data Room Checklists
-                  </CardTitle>
-                  <CardDescription>
-                    Configure default checklist rounds &amp; items per deal type (matched by &quot;contains&quot;).
-                    {' '}{localConfig.configs.length} types, {totalItems} total items
-                  </CardDescription>
-                </div>
-              </button>
-            </CollapsibleTrigger>
-          </CardHeader>
-
-          <CollapsibleContent>
-            <CardContent className="space-y-4">
+  const innerContent = (
+            <div className="space-y-4">
               {/* Deal type config selector */}
               <div className="flex items-center gap-2 flex-wrap">
                 {localConfig.configs.map(c => (
@@ -400,10 +379,48 @@ export function DefaultChecklistSettings({ isAdmin = true }: DefaultChecklistSet
                   </Button>
                 </div>
               )}
+            </div>
+  );
+
+  return (
+    <>
+      {embedded ? (
+        <div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Configure default checklist rounds &amp; items per deal type (matched by &quot;contains&quot;).
+            {' '}{localConfig.configs.length} types, {totalItems} total items
+          </p>
+          {innerContent}
+        </div>
+      ) : (
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 text-left flex-1">
+                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", isOpen && 'rotate-180')} />
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Layers className="h-5 w-5" />
+                    Deal-Type Data Room Checklists
+                  </CardTitle>
+                  <CardDescription>
+                    Configure default checklist rounds &amp; items per deal type (matched by &quot;contains&quot;).
+                    {' '}{localConfig.configs.length} types, {totalItems} total items
+                  </CardDescription>
+                </div>
+              </button>
+            </CollapsibleTrigger>
+          </CardHeader>
+
+          <CollapsibleContent>
+            <CardContent>
+              {innerContent}
             </CardContent>
           </CollapsibleContent>
         </Card>
       </Collapsible>
+      )}
 
       {/* ─── Dialogs ─── */}
 

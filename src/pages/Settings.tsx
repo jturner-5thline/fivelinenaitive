@@ -15,8 +15,7 @@ import { DealStagesSettings } from '@/components/settings/DealStagesSettings';
 import { DefaultMilestonesSettings } from '@/components/settings/DefaultMilestonesSettings';
 import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
-import { DataRoomChecklistSettings } from '@/components/settings/DataRoomChecklistSettings';
-import { DefaultChecklistSettings } from '@/components/settings/DefaultChecklistSettings';
+import { UnifiedChecklistSettings } from '@/components/settings/UnifiedChecklistSettings';
 import { LenderMatchingSettings } from '@/components/settings/LenderMatchingSettings';
 import { ScheduledReportsSettings } from '@/components/settings/ScheduledReportsSettings';
 import { SLARulesSettings } from '@/components/settings/SLARulesSettings';
@@ -241,8 +240,7 @@ export default function Settings() {
                   {isVisible('deal-stages') && <DealStagesSettings isAdmin={isAdmin} />}
                   {isVisible('default-milestones') && <DefaultMilestonesSettings isAdmin={isAdmin} />}
                   {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
-                  {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
-                  {isVisible('data-room-checklist') && <DefaultChecklistSettings isAdmin={isAdmin} />}
+                  {isVisible('data-room-checklist') && <UnifiedChecklistSettings isAdmin={isAdmin} />}
                   {isVisible('gamma-templates') && <GammaTemplatesSettings isAdmin={isAdmin} />}
                   {isVisible('agreement-templates') && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
                     <AgreementTemplatesSettings isAdmin={isAdmin} />
