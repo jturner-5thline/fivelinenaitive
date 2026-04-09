@@ -17,7 +17,7 @@ export interface DashboardDealRow {
   milestone: string;
   closing: string;
   closingPill: string;
-  // raw values for aggregation
+  // raw values for aggregation & sorting
   _value: number;
   _totalFee: number;
   _successFeePercent: number;
@@ -29,9 +29,12 @@ export interface DashboardDealRow {
   _profit: number;
   _status: DealStatus;
   _closingDate: string | null;
+  _name: string; // lowercase name for sorting
+  _closingTs: number; // timestamp for date sorting (Infinity if TBD)
+  _milestoneTs: number;
 }
 
-// Commission rates (matching existing dashboard)
+// Commission rates
 const COMM_RATES = {
   referral: 0.10,
   origination: 0.025,
@@ -39,10 +42,10 @@ const COMM_RATES = {
   dirMd: 0.05,
 };
 
+// ── Formatting helpers ──
+
 function fmtMM(v: number): string {
   if (v === 0) return '$0.0MM';
-  if (Math.abs(v) >= 1_000_000) return '$' + (v / 1_000_000).toFixed(2) + 'MM';
-  if (Math.abs(v) >= 1_000) return '$' + (v / 1_000_000).toFixed(2) + 'MM';
   return '$' + (v / 1_000_000).toFixed(2) + 'MM';
 }
 
@@ -78,27 +81,50 @@ function statusPill(s: DealStatus): string {
 
 function closingLabel(d: Deal): string {
   if (d.closingDate) {
-    try {
-      return format(new Date(d.closingDate), 'MMM yyyy');
-    } catch { return 'TBD'; }
+    try { return format(new Date(d.closingDate), 'MMM yyyy'); } catch { return 'TBD'; }
   }
   return 'TBD';
 }
 
+function safeTs(dateStr: string | null | undefined): number {
+  if (!dateStr) return Infinity;
+  try { return new Date(dateStr).getTime(); } catch { return Infinity; }
+}
+
+// ── Filtering ──
+
+const EXCLUDED_NAMES = new Set(['test - niki\'s store', 'example deal']);
+
+export function filterDashboardDeals(deals: Deal[]): Deal[] {
+  return deals.filter(d => {
+    const stage = (d.stage || '').toLowerCase().trim();
+    const status = (d.status || '').toLowerCase().trim();
+    if (stage.includes('on hold') || stage.includes('on-hold')) return false;
+    if (status.includes('on hold') || status.includes('on-hold')) return false;
+
+    const name = (d.company || d.name || '').toLowerCase().trim();
+    if (EXCLUDED_NAMES.has(name)) return false;
+    if (name.startsWith('test ') || name === 'test') return false;
+
+    return true;
+  });
+}
+
+// ── Row mapper ──
+
 export function mapDealToDashboardRow(deal: Deal): DashboardDealRow {
   const gross = deal.totalFee || 0;
-  const billed = deal.retainerFee || 0; // retainer = billed at close
+  const billed = deal.retainerFee || 0;
   const referral = gross * COMM_RATES.referral;
-  // Only apply referral if deal has a referrer
   const actualReferral = deal.referredBy ? referral : 0;
   const origination = gross * COMM_RATES.origination;
   const assocDir = gross * COMM_RATES.assocDir;
   const dirMd = gross * COMM_RATES.dirMd;
   const totalComm = actualReferral + origination + assocDir + dirMd;
   const profit = gross > 0 ? gross - totalComm : 0;
-
   const closing = closingLabel(deal);
   const hasData = gross > 0;
+  const closingTs = safeTs(deal.closingDate);
 
   return {
     name: deal.company || deal.name,
@@ -115,7 +141,7 @@ export function mapDealToDashboardRow(deal: Deal): DashboardDealRow {
     profitCls: hasData && profit > 0 ? 'db-up' : '',
     milestone: deal.closingDate ? (() => { try { return format(new Date(deal.closingDate), 'MMM yyyy'); } catch { return '—'; } })() : '—',
     closing,
-    closingPill: closing === 'TBD' ? statusPill(deal.status) : statusPill(deal.status),
+    closingPill: statusPill(deal.status),
     _value: deal.value || 0,
     _totalFee: gross,
     _successFeePercent: deal.successFeePercent || 0,
@@ -127,8 +153,58 @@ export function mapDealToDashboardRow(deal: Deal): DashboardDealRow {
     _profit: profit,
     _status: deal.status,
     _closingDate: deal.closingDate || null,
+    _name: (deal.company || deal.name || '').toLowerCase(),
+    _closingTs: closingTs,
+    _milestoneTs: closingTs,
   };
 }
+
+// ── Sorting ──
+
+export type SortColumn =
+  | 'name' | 'size' | 'fee' | 'gross' | 'billed'
+  | 'referral' | 'origination' | 'assocDir' | 'dirMd'
+  | 'profit' | 'milestone' | 'closing';
+
+export type SortDir = 'asc' | 'desc';
+
+function getSortableValue(row: DashboardDealRow, col: SortColumn): number | string {
+  switch (col) {
+    case 'name': return row._name;
+    case 'size': return row._value;
+    case 'fee': return row._successFeePercent;
+    case 'gross': return row._totalFee;
+    case 'billed': return row._billedAtClose;
+    case 'referral': return row._referralComm;
+    case 'origination': return row._originationComm;
+    case 'assocDir': return row._assocDirComm;
+    case 'dirMd': return row._dirMdComm;
+    case 'profit': return row._profit;
+    case 'milestone': return row._milestoneTs;
+    case 'closing': return row._closingTs;
+    default: return 0;
+  }
+}
+
+export function sortDashboardRows(rows: DashboardDealRow[], col: SortColumn, dir: SortDir): DashboardDealRow[] {
+  const sorted = [...rows].sort((a, b) => {
+    const va = getSortableValue(a, col);
+    const vb = getSortableValue(b, col);
+    if (typeof va === 'string' && typeof vb === 'string') {
+      return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    }
+    const na = va as number;
+    const nb = vb as number;
+    // Push Infinity (TBD) to the bottom regardless of direction
+    if (na === Infinity && nb === Infinity) return 0;
+    if (na === Infinity) return 1;
+    if (nb === Infinity) return -1;
+    return dir === 'asc' ? na - nb : nb - na;
+  });
+  return sorted;
+}
+
+// ── Metrics ──
 
 export interface DashboardMetrics {
   dealCount: number;
@@ -144,12 +220,10 @@ export interface DashboardMetrics {
   atRisk: { count: number; volume: number; volumeStr: string; pct: string; feeTotal: number; feeTotalStr: string };
   offTrack: { count: number; volume: number; volumeStr: string; pct: string; feeTotal: number; feeTotalStr: string };
   donutData: number[];
-  // For bar chart - monthly revenue/commissions/profit by closing month
   months: string[];
   monthlyRevenue: number[];
   monthlyCommissions: number[];
   monthlyProfit: number[];
-  // Forecast grid
   forecast: Array<{ rev: string; revColor: string; comm: string; commColor: string; prof: string; profColor: string }>;
 }
 
@@ -159,7 +233,6 @@ export function buildDashboardMetrics(rows: DashboardDealRow[]): DashboardMetric
   const billedAtClose = rows.reduce((s, r) => s + r._billedAtClose, 0);
   const referralTotal = rows.reduce((s, r) => s + r._referralComm, 0);
   const totalProfit = rows.reduce((s, r) => s + r._profit, 0);
-  const totalComm = rows.reduce((s, r) => s + r._referralComm + r._originationComm + r._assocDirComm + r._dirMdComm, 0);
   const liveRevenue = grossRevenue - referralTotal;
 
   const groupBy = (status: DealStatus) => {
@@ -174,7 +247,6 @@ export function buildDashboardMetrics(rows: DashboardDealRow[]): DashboardMetric
   const atRisk = groupBy('at-risk');
   const offTrack = groupBy('off-track');
 
-  // Build monthly data from closing dates
   const monthMap = new Map<string, { rev: number; comm: number; prof: number }>();
   for (const r of rows) {
     if (r._closingDate && r._totalFee > 0) {
@@ -190,14 +262,10 @@ export function buildDashboardMetrics(rows: DashboardDealRow[]): DashboardMetric
     }
   }
 
-  // Sort months chronologically, take up to 6
   const sortedMonths = Array.from(monthMap.entries()).sort((a, b) => {
-    try {
-      return new Date(a[0]).getTime() - new Date(b[0]).getTime();
-    } catch { return 0; }
+    try { return new Date(a[0]).getTime() - new Date(b[0]).getTime(); } catch { return 0; }
   }).slice(0, 6);
 
-  // Pad to 6 if fewer
   while (sortedMonths.length < 6) {
     sortedMonths.push(['—', { rev: 0, comm: 0, prof: 0 }]);
   }

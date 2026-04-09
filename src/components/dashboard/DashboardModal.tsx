@@ -1,9 +1,16 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Chart, registerables } from 'chart.js';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
-import { mapDealToDashboardRow, buildDashboardMetrics } from './dashboardDataMapper';
+import {
+  mapDealToDashboardRow,
+  buildDashboardMetrics,
+  filterDashboardDeals,
+  sortDashboardRows,
+  type SortColumn,
+  type SortDir,
+} from './dashboardDataMapper';
 
 Chart.register(...registerables);
 
@@ -12,29 +19,64 @@ interface DashboardModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
+  { key: 'name', label: 'Deal Name', align: 'left' },
+  { key: 'size', label: 'Size', align: 'left' },
+  { key: 'fee', label: 'Fee' },
+  { key: 'gross', label: 'Gross' },
+  { key: 'billed', label: 'Billed @ Close' },
+  { key: 'referral', label: 'Referral' },
+  { key: 'origination', label: 'Origination' },
+  { key: 'assocDir', label: 'Assoc. Dir.' },
+  { key: 'dirMd', label: 'Director/MD' },
+  { key: 'profit', label: 'Profit' },
+  { key: 'milestone', label: 'Milestone' },
+  { key: 'closing', label: 'Closing Mo.' },
+];
+
 export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
   const donutRef = useRef<HTMLCanvasElement>(null);
   const barRef = useRef<HTMLCanvasElement>(null);
   const donutChart = useRef<Chart | null>(null);
   const barChart = useRef<Chart | null>(null);
 
+  const [sortCol, setSortCol] = useState<SortColumn | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
   const { deals } = useDealsContext();
   const { pipelines } = usePipelineContext();
 
-  // Filter to active pipeline deals only (exclude archived/on-hold, exclude naitive)
-  const activeDeals = useMemo(() => {
+  // Filter to active pipeline deals, then exclude on-hold + test/example
+  const filteredDeals = useMemo(() => {
     const defaultPipeline = pipelines.find(p => p.isDefault);
-    if (!defaultPipeline) return deals.filter(d => d.status !== 'archived' && d.dealClass !== 'naitive');
-    return deals.filter(d => d.pipelineId === defaultPipeline.id && d.status !== 'archived' && d.dealClass !== 'naitive');
+    const active = defaultPipeline
+      ? deals.filter(d => d.pipelineId === defaultPipeline.id && d.status !== 'archived' && d.dealClass !== 'naitive')
+      : deals.filter(d => d.status !== 'archived' && d.dealClass !== 'naitive');
+    return filterDashboardDeals(active);
   }, [deals, pipelines]);
 
-  const rows = useMemo(() => activeDeals.map(mapDealToDashboardRow), [activeDeals]);
+  const rows = useMemo(() => filteredDeals.map(mapDealToDashboardRow), [filteredDeals]);
   const metrics = useMemo(() => buildDashboardMetrics(rows), [rows]);
+
+  const sortedRows = useMemo(() => {
+    if (!sortCol) return rows;
+    return sortDashboardRows(rows, sortCol, sortDir);
+  }, [rows, sortCol, sortDir]);
+
+  const handleSort = useCallback((col: SortColumn) => {
+    setSortCol(prev => {
+      if (prev === col) {
+        setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        return col;
+      }
+      setSortDir('asc');
+      return col;
+    });
+  }, []);
 
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(() => {
-      // Donut
       if (donutRef.current) {
         donutChart.current?.destroy();
         donutChart.current = new Chart(donutRef.current, {
@@ -58,7 +100,6 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
           }
         });
       }
-      // Bar
       if (barRef.current) {
         barChart.current?.destroy();
         const gx = { ticks: { color: 'rgba(130,165,190,0.5)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
@@ -89,6 +130,11 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
       barChart.current = null;
     };
   }, [open, metrics]);
+
+  const sortArrow = (col: SortColumn) => {
+    if (sortCol !== col) return '';
+    return sortDir === 'asc' ? ' ▲' : ' ▼';
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -192,22 +238,19 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                     <thead>
                       <tr>
                         <th style={{ textAlign: 'left' }}>#</th>
-                        <th style={{ textAlign: 'left' }}>Deal Name</th>
-                        <th style={{ textAlign: 'left' }}>Size</th>
-                        <th>Fee</th>
-                        <th>Gross</th>
-                        <th>Billed @ Close</th>
-                        <th>Referral</th>
-                        <th>Origination</th>
-                        <th>Assoc. Dir.</th>
-                        <th>Director/MD</th>
-                        <th>Profit</th>
-                        <th>Milestone</th>
-                        <th>Closing Mo.</th>
+                        {TABLE_COLUMNS.map(col => (
+                          <th
+                            key={col.key}
+                            style={{ textAlign: col.align || 'right', cursor: 'pointer', userSelect: 'none' }}
+                            onClick={() => handleSort(col.key)}
+                          >
+                            {col.label}{sortArrow(col.key)}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((d, i) => (
+                      {sortedRows.map((d, i) => (
                         <tr key={i}>
                           <td style={{ color: 'rgba(130,165,190,0.5)' }}>{i + 1}</td>
                           <td style={{ color: d.nameColor }}>{d.name}</td>
@@ -224,7 +267,7 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                           <td><span className={`db-pill ${d.closingPill}`} style={{ fontSize: 9 }}>{d.closing}</span></td>
                         </tr>
                       ))}
-                      {rows.length === 0 && (
+                      {sortedRows.length === 0 && (
                         <tr><td colSpan={13} style={{ textAlign: 'center', color: 'rgba(130,165,190,0.4)', padding: 20 }}>No active deals in pipeline</td></tr>
                       )}
                     </tbody>
@@ -301,6 +344,7 @@ const DASHBOARD_CSS = `
 .db-tbl { width: 100%; border-collapse: collapse; font-size: 11px; }
 .db-tbl th { color: rgba(140,175,200,0.45); font-weight: 700; text-align: right; padding: 5px 7px; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 9px; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
 .db-tbl th:first-child, .db-tbl th:nth-child(2), .db-tbl th:nth-child(3) { text-align: left; }
+.db-tbl th:hover { color: rgba(200,225,240,0.7); }
 .db-tbl td { text-align: right; padding: 5px 7px; border-bottom: 1px solid rgba(255,255,255,0.04); color: rgba(190,215,230,0.7); font-size: 11px; white-space: nowrap; }
 .db-tbl td:first-child { text-align: left; font-weight: 600; color: #e8f4ff; }
 .db-tbl td:nth-child(2) { text-align: left; color: rgba(130,165,190,0.6); }
