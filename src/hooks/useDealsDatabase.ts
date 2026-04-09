@@ -325,6 +325,7 @@ export function useDealsDatabase() {
       migratedFromPersonal: dbDeal.migrated_from_personal || false,
       pipelineId: dbDeal.pipeline_id || undefined,
       closingDate: (dbDeal as any).closing_date || null,
+      dashboardClosingDate: (dbDeal as any).dashboard_closing_date || null,
       dealClass: ((dbDeal as any).deal_class || 'standard') as DealClass,
     };
   }, []);
@@ -694,6 +695,7 @@ export function useDealsDatabase() {
       if (updates.companyUrl !== undefined) dbUpdates.company_url = updates.companyUrl;
       if (updates.businessModel !== undefined) dbUpdates.business_model = updates.businessModel;
       if (updates.closingDate !== undefined) dbUpdates.closing_date = updates.closingDate;
+      if (updates.dashboardClosingDate !== undefined) (dbUpdates as any).dashboard_closing_date = updates.dashboardClosingDate;
       if (updates.pipelineId !== undefined) dbUpdates.pipeline_id = updates.pipelineId;
       if (updates.sourcedVia !== undefined) dbUpdates.sourced_via = updates.sourcedVia;
 

@@ -101,6 +101,7 @@ export interface Deal {
   migratedFromPersonal?: boolean;
   pipelineId?: string;
   closingDate?: string | null;
+  dashboardClosingDate?: string | null;
   sourcedVia?: string;
   dealClass?: DealClass;
 }
