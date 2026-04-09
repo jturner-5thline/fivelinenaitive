@@ -67,9 +67,9 @@ function MarkdownWithBadges({ content }: { content: string }) {
       <ReactMarkdown
         components={{
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          p: ({ node, ...props }) => <p>{renderContentWithBadges(String(props.children))}</p>,
+          p: ({ node, ...props }) => <p>{renderContentWithBadges(props.children)}</p>,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          li: ({ node, ...props }) => <li>{renderContentWithBadges(String(props.children))}</li>,
+          li: ({ node, ...props }) => <li>{renderContentWithBadges(props.children)}</li>,
         }}
       >
         {content}
