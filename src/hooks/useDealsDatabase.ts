@@ -710,6 +710,38 @@ export function useDealsDatabase() {
         }
       }
 
+      // Auto-populate Kick Off items when deal enters "final-credit-items" in Active Pipeline
+      if (updates.stage === 'final-credit-items' && previousDeal && updates.stage !== previousDeal.stage) {
+        try {
+          const { data: membership } = await supabase
+            .from('company_members')
+            .select('company_id')
+            .eq('user_id', userId!)
+            .maybeSingle();
+          const companyId = membership?.company_id;
+          if (companyId) {
+            // Check pipeline: use updated pipelineId if changed, else previous
+            const effectivePipelineId = updates.pipelineId ?? previousDeal?.pipelineId ?? null;
+            const isActive = await isActivePipeline(effectivePipelineId, companyId);
+            if (isActive) {
+              const { data: dealRecord } = await supabase
+                .from('deals')
+                .select('deal_type')
+                .eq('id', dealId)
+                .single();
+              const dealTypes: string[] = dealRecord?.deal_type
+                ? (() => { try { return JSON.parse(dealRecord.deal_type); } catch { return []; } })()
+                : [];
+              if (dealTypes.length > 0) {
+                await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!, 'kick off');
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error auto-populating Kick Off items on Final Credit Items stage entry:', err);
+        }
+      }
+
       // Auto-dismiss notifications when deal moves to archived or in_development
       if (updates.status && ['archived', 'in_development'].includes(updates.status)) {
         // Mark all activity_logs-based notifications as seen by updating localStorage

@@ -31,6 +31,7 @@ export async function autoPopulateOutstandingItems(
   dealTypes: string[],
   companyId: string,
   userId: string,
+  roundName: string = 'initial items',
 ): Promise<number> {
   try {
     // 1. Fetch the deal-type checklist config from company_settings
@@ -52,11 +53,13 @@ export async function autoPopulateOutstandingItems(
     }
     if (!matchedConfig) return 0;
 
-    // 3. Find the "Initial Items" round only
-    const initialRound = matchedConfig.rounds.find(
-      (r) => r.title.toLowerCase() === 'initial items',
+    // 3. Find the requested round with normalized matching
+    const normalizeRoundTitle = (t: string) => t.toLowerCase().replace(/\s+/g, '');
+    const normalizedTarget = normalizeRoundTitle(roundName);
+    const matchedRound = matchedConfig.rounds.find(
+      (r) => normalizeRoundTitle(r.title) === normalizedTarget,
     );
-    if (!initialRound || !initialRound.items.length) return 0;
+    if (!matchedRound || !matchedRound.items.length) return 0;
 
     // 4. Fetch existing outstanding items for dedup
     const { data: existingItems, error: fetchError } = await supabase
@@ -91,7 +94,8 @@ export async function autoPopulateOutstandingItems(
       nextPosition = (posData?.position ?? -1) + 1;
     }
 
-    const inserts = initialRound.items
+    const sourceLabel = matchedRound.title;
+    const inserts = matchedRound.items
       .sort((a, b) => a.order - b.order)
       .filter((item) => !existingNames.has(item.label.trim().toLowerCase()))
       .map((item, idx) => ({
@@ -101,7 +105,7 @@ export async function autoPopulateOutstandingItems(
         user_id: userId,
         priority: 'normal',
         position: nextPosition + idx,
-        notes: 'Auto-created from Deal-Type Checklist Defaults — Initial Items',
+        notes: `Auto-created from Deal-Type Checklist Defaults — ${sourceLabel}`,
       }));
 
     if (!inserts.length) return 0;
