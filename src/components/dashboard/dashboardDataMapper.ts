@@ -1,7 +1,8 @@
 import { Deal, DealStatus } from '@/types/deal';
-import { format } from 'date-fns';
+import { format, addMonths, startOfMonth } from 'date-fns';
 
 export interface DashboardDealRow {
+  dealId: string;
   name: string;
   nameColor: string;
   size: string;
@@ -28,13 +29,14 @@ export interface DashboardDealRow {
   _dirMdComm: number;
   _profit: number;
   _status: DealStatus;
-  _closingDate: string | null;
-  _name: string; // lowercase name for sorting
-  _closingTs: number; // timestamp for date sorting (Infinity if TBD)
+  _closingDate: string | null;        // effective closing date (override wins)
+  _rawClosingDate: string | null;     // original deal closingDate
+  _dashboardClosingDate: string | null; // manual override
+  _name: string;
+  _closingTs: number;
   _milestoneTs: number;
 }
 
-// Commission rates
 const COMM_RATES = {
   referral: 0.10,
   origination: 0.025,
@@ -79,21 +81,34 @@ function statusPill(s: DealStatus): string {
   return 'db-pill-risk';
 }
 
-function closingLabel(d: Deal): string {
-  if (d.closingDate) {
-    try { return format(new Date(d.closingDate), 'MMM yyyy'); } catch { return 'TBD'; }
-  }
-  return 'TBD';
-}
-
 function safeTs(dateStr: string | null | undefined): number {
   if (!dateStr) return Infinity;
   try { return new Date(dateStr).getTime(); } catch { return Infinity; }
 }
 
+// ── Month options for dropdown ──
+
+export interface MonthOption {
+  value: string; // YYYY-MM-DD (first of month)
+  label: string; // MMM yyyy
+}
+
+export function generateMonthOptions(): MonthOption[] {
+  const now = startOfMonth(new Date());
+  const options: MonthOption[] = [];
+  for (let i = -2; i <= 8; i++) {
+    const d = addMonths(now, i);
+    options.push({
+      value: format(d, 'yyyy-MM-dd'),
+      label: format(d, 'MMM yyyy'),
+    });
+  }
+  return options;
+}
+
 // ── Filtering ──
 
-const EXCLUDED_NAMES = new Set(['test - niki\'s store', 'example deal']);
+const EXCLUDED_NAMES = new Set(["test - niki's store", 'example deal']);
 
 export function filterDashboardDeals(deals: Deal[]): Deal[] {
   return deals.filter(d => {
@@ -112,6 +127,17 @@ export function filterDashboardDeals(deals: Deal[]): Deal[] {
 
 // ── Row mapper ──
 
+function effectiveClosingDate(deal: Deal): string | null {
+  return deal.dashboardClosingDate || deal.closingDate || null;
+}
+
+function closingLabel(effective: string | null): string {
+  if (effective) {
+    try { return format(new Date(effective), 'MMM yyyy'); } catch { return 'TBD'; }
+  }
+  return 'TBD';
+}
+
 export function mapDealToDashboardRow(deal: Deal): DashboardDealRow {
   const gross = deal.totalFee || 0;
   const billed = deal.retainerFee || 0;
@@ -122,11 +148,13 @@ export function mapDealToDashboardRow(deal: Deal): DashboardDealRow {
   const dirMd = gross * COMM_RATES.dirMd;
   const totalComm = actualReferral + origination + assocDir + dirMd;
   const profit = gross > 0 ? gross - totalComm : 0;
-  const closing = closingLabel(deal);
+  const effective = effectiveClosingDate(deal);
+  const closing = closingLabel(effective);
   const hasData = gross > 0;
-  const closingTs = safeTs(deal.closingDate);
+  const closingTs = safeTs(effective);
 
   return {
+    dealId: deal.id,
     name: deal.company || deal.name,
     nameColor: statusColor(deal.status),
     size: fmtMM(deal.value),
@@ -139,7 +167,7 @@ export function mapDealToDashboardRow(deal: Deal): DashboardDealRow {
     dirMd: fmtK(dirMd),
     profit: hasData ? fmtK(profit) : '—',
     profitCls: hasData && profit > 0 ? 'db-up' : '',
-    milestone: deal.closingDate ? (() => { try { return format(new Date(deal.closingDate), 'MMM yyyy'); } catch { return '—'; } })() : '—',
+    milestone: effective ? (() => { try { return format(new Date(effective), 'MMM yyyy'); } catch { return '—'; } })() : '—',
     closing,
     closingPill: statusPill(deal.status),
     _value: deal.value || 0,
@@ -152,7 +180,9 @@ export function mapDealToDashboardRow(deal: Deal): DashboardDealRow {
     _dirMdComm: dirMd,
     _profit: profit,
     _status: deal.status,
-    _closingDate: deal.closingDate || null,
+    _closingDate: effective,
+    _rawClosingDate: deal.closingDate || null,
+    _dashboardClosingDate: deal.dashboardClosingDate || null,
     _name: (deal.company || deal.name || '').toLowerCase(),
     _closingTs: closingTs,
     _milestoneTs: closingTs,
@@ -187,7 +217,7 @@ function getSortableValue(row: DashboardDealRow, col: SortColumn): number | stri
 }
 
 export function sortDashboardRows(rows: DashboardDealRow[], col: SortColumn, dir: SortDir): DashboardDealRow[] {
-  const sorted = [...rows].sort((a, b) => {
+  return [...rows].sort((a, b) => {
     const va = getSortableValue(a, col);
     const vb = getSortableValue(b, col);
     if (typeof va === 'string' && typeof vb === 'string') {
@@ -195,13 +225,11 @@ export function sortDashboardRows(rows: DashboardDealRow[], col: SortColumn, dir
     }
     const na = va as number;
     const nb = vb as number;
-    // Push Infinity (TBD) to the bottom regardless of direction
     if (na === Infinity && nb === Infinity) return 0;
     if (na === Infinity) return 1;
     if (nb === Infinity) return -1;
     return dir === 'asc' ? na - nb : nb - na;
   });
-  return sorted;
 }
 
 // ── Metrics ──
