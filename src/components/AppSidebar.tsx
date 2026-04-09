@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, FileBarChart } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCompanyFeatures } from "@/hooks/useCompanyFeatures";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
@@ -43,6 +43,7 @@ const menuItems = [
   
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
   { title: "Metrics", url: "/metrics", icon: BarChart3, featureKey: "metrics" },
+  { title: "Management Review", url: "/management-review", icon: FileBarChart, featureKey: "metrics" },
   { title: "Insights", url: "/insights", icon: Lightbulb, featureKey: "insights" },
   { title: "Sales & BD", url: "/sales-bd", icon: Users, featureKey: "sales_bd" },
   { title: "HR", url: "/hr", icon: UserCog, featureKey: "hr" },
