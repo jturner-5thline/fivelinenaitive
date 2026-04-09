@@ -9,7 +9,9 @@ function parseConfig(raw: unknown): DefaultChecklistConfigV2 {
   if (!raw) return { version: 2, configs: [] };
   const obj = raw as Record<string, unknown>;
   if (obj.version === 2) return obj as unknown as DefaultChecklistConfigV2;
-  // Legacy format not expected here; return empty
+  // Empty object {} or unrecognized format — treat as no config
+  if (!obj.version && Object.keys(obj).length === 0) return { version: 2, configs: [] };
+  // Legacy format — attempt migration not supported here; return empty
   return { version: 2, configs: [] };
 }
 
