@@ -11886,6 +11886,7 @@ export type Database = {
           notes: string | null
           position: number
           priority: string
+          source_metadata: Json | null
           status: string
           updated_at: string
           user_id: string | null
@@ -11902,6 +11903,7 @@ export type Database = {
           notes?: string | null
           position?: number
           priority?: string
+          source_metadata?: Json | null
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -11918,6 +11920,7 @@ export type Database = {
           notes?: string | null
           position?: number
           priority?: string
+          source_metadata?: Json | null
           status?: string
           updated_at?: string
           user_id?: string | null

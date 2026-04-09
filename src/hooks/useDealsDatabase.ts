@@ -5,7 +5,7 @@ import { toast } from '@/hooks/use-toast';
 import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 import { addDays } from 'date-fns';
 import { getNaitivePipelineId, excludeNaitivePipelineDeals } from '@/utils/naitivePipelineExclusion';
-import { autoPopulateOutstandingItems, isActivePipeline } from '@/utils/autoPopulateOutstandingItems';
+import { autoPopulateOutstandingItems, isActivePipeline, isFinalCreditItemsStage } from '@/utils/autoPopulateOutstandingItems';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
 type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -574,6 +574,31 @@ export function useDealsDatabase() {
       
       // Trigger webhook for new deal
       triggerWebhookSync(userId, 'deals', 'INSERT', data as unknown as Record<string, unknown>);
+
+      // Auto-populate Outstanding Items for Active Pipeline deals on creation
+      if (memberData?.company_id && dealData.dealTypes && dealData.dealTypes.length > 0) {
+        try {
+          const effectivePipelineId = (data as any).pipeline_id || null;
+          const isActive = await isActivePipeline(effectivePipelineId, memberData.company_id);
+          if (isActive) {
+            const initialResult = await autoPopulateOutstandingItems(
+              newDeal.id, dealData.dealTypes, memberData.company_id, userId, 'initial items'
+            );
+            console.log('[CreateDeal] Initial Items auto-populate:', initialResult);
+
+            // Also check if deal was created directly in Final Credit Items
+            const createdStage = (data as any).stage as string;
+            if (isFinalCreditItemsStage(createdStage)) {
+              const kickoffResult = await autoPopulateOutstandingItems(
+                newDeal.id, dealData.dealTypes, memberData.company_id, userId, 'kick off'
+              );
+              console.log('[CreateDeal] Kick Off auto-populate (created in Final Credit Items):', kickoffResult);
+            }
+          }
+        } catch (err) {
+          console.error('[CreateDeal] Error auto-populating outstanding items:', err);
+        }
+      }
       
       return newDeal;
     } catch (err) {
@@ -691,17 +716,24 @@ export function useDealsDatabase() {
           if (companyId) {
             const isActive = await isActivePipeline(updates.pipelineId, companyId);
             if (isActive) {
-              // Get deal types from the deal
               const { data: dealRecord } = await supabase
                 .from('deals')
-                .select('deal_type')
+                .select('deal_type, stage')
                 .eq('id', dealId)
                 .single();
               const dealTypes: string[] = dealRecord?.deal_type
                 ? (() => { try { return JSON.parse(dealRecord.deal_type); } catch { return []; } })()
                 : [];
               if (dealTypes.length > 0) {
-                await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!);
+                const initialResult = await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!);
+                console.log('[UpdateDeal] Pipeline move Initial Items:', initialResult);
+
+                // If the deal is already at Final Credit Items when moved, also populate Kick Off
+                const currentStage = updates.stage ?? dealRecord?.stage;
+                if (isFinalCreditItemsStage(currentStage)) {
+                  const kickoffResult = await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!, 'kick off');
+                  console.log('[UpdateDeal] Pipeline move + Final Credit Items Kick Off:', kickoffResult);
+                }
               }
             }
           }
@@ -710,8 +742,8 @@ export function useDealsDatabase() {
         }
       }
 
-      // Auto-populate Kick Off items when deal enters "final-credit-items" in Active Pipeline
-      if (updates.stage === 'final-credit-items' && previousDeal && updates.stage !== previousDeal.stage) {
+      // Auto-populate Kick Off items when deal enters Final Credit Items in Active Pipeline
+      if (updates.stage && previousDeal && isFinalCreditItemsStage(updates.stage) && !isFinalCreditItemsStage(previousDeal.stage)) {
         try {
           const { data: membership } = await supabase
             .from('company_members')
@@ -720,7 +752,6 @@ export function useDealsDatabase() {
             .maybeSingle();
           const companyId = membership?.company_id;
           if (companyId) {
-            // Check pipeline: use updated pipelineId if changed, else previous
             const effectivePipelineId = updates.pipelineId ?? previousDeal?.pipelineId ?? null;
             const isActive = await isActivePipeline(effectivePipelineId, companyId);
             if (isActive) {
@@ -733,7 +764,8 @@ export function useDealsDatabase() {
                 ? (() => { try { return JSON.parse(dealRecord.deal_type); } catch { return []; } })()
                 : [];
               if (dealTypes.length > 0) {
-                await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!, 'kick off');
+                const kickoffResult = await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!, 'kick off');
+                console.log('[UpdateDeal] Stage entry Final Credit Items Kick Off:', kickoffResult);
               }
             }
           }
