@@ -716,17 +716,24 @@ export function useDealsDatabase() {
           if (companyId) {
             const isActive = await isActivePipeline(updates.pipelineId, companyId);
             if (isActive) {
-              // Get deal types from the deal
               const { data: dealRecord } = await supabase
                 .from('deals')
-                .select('deal_type')
+                .select('deal_type, stage')
                 .eq('id', dealId)
                 .single();
               const dealTypes: string[] = dealRecord?.deal_type
                 ? (() => { try { return JSON.parse(dealRecord.deal_type); } catch { return []; } })()
                 : [];
               if (dealTypes.length > 0) {
-                await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!);
+                const initialResult = await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!);
+                console.log('[UpdateDeal] Pipeline move Initial Items:', initialResult);
+
+                // If the deal is already at Final Credit Items when moved, also populate Kick Off
+                const currentStage = updates.stage ?? dealRecord?.stage;
+                if (isFinalCreditItemsStage(currentStage)) {
+                  const kickoffResult = await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!, 'kick off');
+                  console.log('[UpdateDeal] Pipeline move + Final Credit Items Kick Off:', kickoffResult);
+                }
               }
             }
           }
@@ -735,8 +742,8 @@ export function useDealsDatabase() {
         }
       }
 
-      // Auto-populate Kick Off items when deal enters "final-credit-items" in Active Pipeline
-      if (updates.stage === 'final-credit-items' && previousDeal && updates.stage !== previousDeal.stage) {
+      // Auto-populate Kick Off items when deal enters Final Credit Items in Active Pipeline
+      if (updates.stage && previousDeal && isFinalCreditItemsStage(updates.stage) && !isFinalCreditItemsStage(previousDeal.stage)) {
         try {
           const { data: membership } = await supabase
             .from('company_members')
@@ -745,7 +752,6 @@ export function useDealsDatabase() {
             .maybeSingle();
           const companyId = membership?.company_id;
           if (companyId) {
-            // Check pipeline: use updated pipelineId if changed, else previous
             const effectivePipelineId = updates.pipelineId ?? previousDeal?.pipelineId ?? null;
             const isActive = await isActivePipeline(effectivePipelineId, companyId);
             if (isActive) {
@@ -758,7 +764,8 @@ export function useDealsDatabase() {
                 ? (() => { try { return JSON.parse(dealRecord.deal_type); } catch { return []; } })()
                 : [];
               if (dealTypes.length > 0) {
-                await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!, 'kick off');
+                const kickoffResult = await autoPopulateOutstandingItems(dealId, dealTypes, companyId, userId!, 'kick off');
+                console.log('[UpdateDeal] Stage entry Final Credit Items Kick Off:', kickoffResult);
               }
             }
           }
