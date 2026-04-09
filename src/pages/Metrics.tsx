@@ -104,6 +104,7 @@ import {
   ExecutiveDashboard,
   FinServFinancialMetricsDashboard,
   QuickBooksFinancialDashboard,
+  ManagementReviewDashboard,
 } from "@/components/metrics/dashboards";
 import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
 import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
@@ -135,6 +136,7 @@ const DASHBOARD_OPTIONS = [
   { id: 'paz-sales-commission', name: 'Paz Sales Commission Board', isFavorite: false },
   { id: 'chandler-sales-commission', name: 'Chandler Sales Commission Board', isFavorite: false },
   { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false },
+  { id: 'management-review', name: 'Management Review', isFavorite: false },
 ];
 
 type ManagementSnapshotCardState = Omit<MetricWidgetConfig, 'id' | 'createdAt'>;
@@ -2136,6 +2138,7 @@ export default function Metrics() {
             {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
+            {selectedDashboard === 'management-review' && <ManagementReviewDashboard />}
 
             {/* Custom user-created dashboards */}
             {isCustomDashboard && activeCustomDashboard && (
