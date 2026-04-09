@@ -212,13 +212,6 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                   ].map(([n, v, c], i) => (
                     <div key={i} className="db-stat-row"><span className="db-sn">{n}</span><span className={`db-sv ${c}`}>{v}</span></div>
                   ))}
-                  <div className="db-sep" />
-                  <div className="db-ct" style={{ marginTop: 4 }}>Commission Rates</div>
-                  <div className="db-comm-grid">
-                    {[['Referral', '10.0%'], ['Origination', '2.5%'], ['Assoc. Director', '3.5%'], ['Director / MD', '5.0%']].map(([l, v], i) => (
-                      <div key={i} className="db-comm-item"><div className="db-comm-label">{l}</div><div className="db-comm-val">{v}</div></div>
-                    ))}
-                  </div>
                 </div>
 
                 {/* Fee Revenue by Status */}
