@@ -106,7 +106,23 @@ export function generateMonthOptions(): MonthOption[] {
   return options;
 }
 
-// ── Filtering ──
+// ── Rolling 6-month window for charts/forecast ──
+
+export interface RollingMonth {
+  key: string;   // YYYY-MM
+  label: string; // MMM yyyy
+}
+
+export function generateRollingForecastMonths(): RollingMonth[] {
+  const now = startOfMonth(new Date());
+  const result: RollingMonth[] = [];
+  for (let i = -1; i <= 4; i++) {
+    const d = addMonths(now, i);
+    result.push({ key: format(d, 'yyyy-MM'), label: format(d, 'MMM yyyy') });
+  }
+  return result;
+}
+
 
 const EXCLUDED_NAMES = new Set(["test - niki's store", 'example deal']);
 
@@ -275,46 +291,42 @@ export function buildDashboardMetrics(rows: DashboardDealRow[]): DashboardMetric
   const atRisk = groupBy('at-risk');
   const offTrack = groupBy('off-track');
 
-  const monthMap = new Map<string, { rev: number; comm: number; prof: number }>();
+  // Rolling 6-month window: previous month, current, +4
+  const rollingMonths = generateRollingForecastMonths();
+  const buckets = rollingMonths.map(m => ({ key: m.key, label: m.label, rev: 0, comm: 0, prof: 0 }));
+
   for (const r of rows) {
     if (r._closingDate && r._totalFee > 0) {
       try {
-        const key = format(new Date(r._closingDate), 'MMM yyyy');
-        const existing = monthMap.get(key) || { rev: 0, comm: 0, prof: 0 };
-        const comm = r._referralComm + r._originationComm + r._assocDirComm + r._dirMdComm;
-        existing.rev += r._totalFee;
-        existing.comm += comm;
-        existing.prof += r._profit;
-        monthMap.set(key, existing);
+        const ym = r._closingDate.slice(0, 7); // YYYY-MM
+        const bucket = buckets.find(b => b.key === ym);
+        if (bucket) {
+          const comm = r._referralComm + r._originationComm + r._assocDirComm + r._dirMdComm;
+          bucket.rev += r._totalFee;
+          bucket.comm += comm;
+          bucket.prof += r._profit;
+        }
       } catch { /* skip */ }
     }
   }
 
-  const sortedMonths = Array.from(monthMap.entries()).sort((a, b) => {
-    try { return new Date(a[0]).getTime() - new Date(b[0]).getTime(); } catch { return 0; }
-  }).slice(0, 6);
-
-  while (sortedMonths.length < 6) {
-    sortedMonths.push(['—', { rev: 0, comm: 0, prof: 0 }]);
-  }
-
-  const months = sortedMonths.map(([m]) => m);
-  const monthlyRevenue = sortedMonths.map(([, d]) => Math.round(d.rev / 1000));
-  const monthlyCommissions = sortedMonths.map(([, d]) => Math.round(d.comm / 1000));
-  const monthlyProfit = sortedMonths.map(([, d]) => Math.round(d.prof / 1000));
+  const months = buckets.map(b => b.label);
+  const monthlyRevenue = buckets.map(b => Math.round(b.rev / 1000));
+  const monthlyCommissions = buckets.map(b => Math.round(b.comm / 1000));
+  const monthlyProfit = buckets.map(b => Math.round(b.prof / 1000));
 
   const zeroColor = 'rgba(160,190,210,0.35)';
   const zeroCommColor = 'rgba(160,190,210,0.25)';
   const zeroProfColor = 'rgba(160,190,210,0.3)';
 
-  const forecast = sortedMonths.map(([, d]) => {
-    const hasVal = d.rev > 0;
+  const forecast = buckets.map(b => {
+    const hasVal = b.rev > 0;
     return {
-      rev: fmtKInt(d.rev),
+      rev: fmtKInt(b.rev),
       revColor: hasVal ? '#e8f4ff' : zeroColor,
-      comm: fmtKInt(d.comm),
+      comm: fmtKInt(b.comm),
       commColor: hasVal ? 'rgba(220,70,85,0.7)' : zeroCommColor,
-      prof: fmtKInt(d.prof),
+      prof: fmtKInt(b.prof),
       profColor: hasVal ? '#3de89a' : zeroProfColor,
     };
   });
