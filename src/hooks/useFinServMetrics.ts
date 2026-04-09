@@ -133,7 +133,7 @@ export function useFinServMetrics(deals: Deal[], stages: DealStageOption[]) {
       clientMap.set(name, existing);
     });
     return Array.from(clientMap.entries())
-      .map(([name, data]) => ({ name, ...data }))
+      .map(([name, data]) => ({ name, dealCount: data.count, totalValue: data.value }))
       .sort((a, b) => b.totalValue - a.totalValue || b.dealCount - a.dealCount)
       .slice(0, 3);
   }, [deals]);
