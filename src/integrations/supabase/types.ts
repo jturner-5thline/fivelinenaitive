@@ -7335,6 +7335,7 @@ export type Database = {
           contact_info: string | null
           created_at: string
           crm_company_id: string | null
+          dashboard_closing_date: string | null
           deal_class: string
           deal_owner: string | null
           deal_type: string | null
@@ -7381,6 +7382,7 @@ export type Database = {
           contact_info?: string | null
           created_at?: string
           crm_company_id?: string | null
+          dashboard_closing_date?: string | null
           deal_class?: string
           deal_owner?: string | null
           deal_type?: string | null
@@ -7427,6 +7429,7 @@ export type Database = {
           contact_info?: string | null
           created_at?: string
           crm_company_id?: string | null
+          dashboard_closing_date?: string | null
           deal_class?: string
           deal_owner?: string | null
           deal_type?: string | null
