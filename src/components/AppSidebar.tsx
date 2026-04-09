@@ -43,7 +43,7 @@ const menuItems = [
   
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
   { title: "Metrics", url: "/metrics", icon: BarChart3, featureKey: "metrics" },
-  { title: "Management Review", url: "/management-review", icon: FileBarChart, featureKey: "metrics" },
+  
   { title: "Insights", url: "/insights", icon: Lightbulb, featureKey: "insights" },
   { title: "Sales & BD", url: "/sales-bd", icon: Users, featureKey: "sales_bd" },
   { title: "HR", url: "/hr", icon: UserCog, featureKey: "hr" },

@@ -13,3 +13,4 @@ export { DealStageTimelineDashboard } from './DealStageTimelineDashboard';
 export { ExecutiveDashboard } from './ExecutiveDashboard';
 export { FinServFinancialMetricsDashboard } from './FinServFinancialMetricsDashboard';
 export { QuickBooksFinancialDashboard } from './QuickBooksFinancialDashboard';
+export { ManagementReviewDashboard } from './ManagementReviewDashboard';
