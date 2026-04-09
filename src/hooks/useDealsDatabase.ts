@@ -740,6 +740,9 @@ export function useDealsDatabase() {
         } catch (err) {
           console.error('Error auto-populating Kick Off items on Final Credit Items stage entry:', err);
         }
+      }
+
+      // Auto-dismiss notifications when deal moves to archived or in_development
       if (updates.status && ['archived', 'in_development'].includes(updates.status)) {
         // Mark all activity_logs-based notifications as seen by updating localStorage
         const lastReadKey = 'latest-updates-last-read-at';
