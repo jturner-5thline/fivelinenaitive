@@ -21,6 +21,8 @@ export function DealsHeader() {
   const { user } = useAuth();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { hasPageAccess } = usePageAccessFlags();
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
 
 
   return (
