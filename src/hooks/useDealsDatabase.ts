@@ -5,7 +5,7 @@ import { toast } from '@/hooks/use-toast';
 import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 import { addDays } from 'date-fns';
 import { getNaitivePipelineId, excludeNaitivePipelineDeals } from '@/utils/naitivePipelineExclusion';
-import { autoPopulateOutstandingItems, isActivePipeline } from '@/utils/autoPopulateOutstandingItems';
+import { autoPopulateOutstandingItems, isActivePipeline, isFinalCreditItemsStage } from '@/utils/autoPopulateOutstandingItems';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
 type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
