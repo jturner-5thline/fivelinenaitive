@@ -3,28 +3,47 @@ import { findMatchingConfig, type DefaultChecklistConfigV2 } from '@/hooks/useDe
 
 /**
  * Parse stored checklist config from company_settings.
- * Duplicated parse logic to avoid circular deps with the hook file's internal parser.
  */
 function parseConfig(raw: unknown): DefaultChecklistConfigV2 {
   if (!raw) return { version: 2, configs: [] };
   const obj = raw as Record<string, unknown>;
   if (obj.version === 2) return obj as unknown as DefaultChecklistConfigV2;
-  // Empty object {} or unrecognized format — treat as no config
   if (!obj.version && Object.keys(obj).length === 0) return { version: 2, configs: [] };
-  // Legacy format — attempt migration not supported here; return empty
   return { version: 2, configs: [] };
+}
+
+/** Normalize text for comparison: lowercase, collapse whitespace, trim */
+function normalizeText(t: string): string {
+  return t.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/** Normalize for round/key matching: lowercase + strip ALL spaces */
+function normalizeKey(t: string): string {
+  return t.toLowerCase().replace(/\s+/g, '');
+}
+
+/** Generate a stable item key from its label for dedup */
+function itemKey(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+}
+
+interface AutoPopulateResult {
+  inserted: number;
+  skippedDuplicates: number;
+  matchedDealType: string | null;
+  matchedRound: string | null;
+  sourceItemCount: number;
+  reasons: string[];
 }
 
 /**
  * Automatically creates Outstanding Items for a deal from the matched
- * Deal-Type Checklist Defaults → "Initial Items" round.
+ * Deal-Type Checklist Defaults for the specified round.
  *
- * - Only creates items from the "Initial Items" round.
  * - Sets requester to "5th Line".
- * - Idempotent: skips items whose description already exists for the deal
- *   (case-insensitive match).
+ * - Idempotent: skips items that already exist via source_metadata or description match.
  *
- * @returns number of items inserted
+ * @returns AutoPopulateResult with full diagnostics
  */
 export async function autoPopulateOutstandingItems(
   dealId: string,
@@ -32,48 +51,114 @@ export async function autoPopulateOutstandingItems(
   companyId: string,
   userId: string,
   roundName: string = 'initial items',
-): Promise<number> {
+): Promise<AutoPopulateResult> {
+  const result: AutoPopulateResult = {
+    inserted: 0,
+    skippedDuplicates: 0,
+    matchedDealType: null,
+    matchedRound: null,
+    sourceItemCount: 0,
+    reasons: [],
+  };
+
+  const logPrefix = `[AutoPopulate] deal=${dealId} round="${roundName}"`;
+
   try {
-    // 1. Fetch the deal-type checklist config from company_settings
+    // 1. Fetch config
     const { data: settings, error: settingsError } = await supabase
       .from('company_settings')
       .select('data_room_default_checklists')
       .eq('company_id', companyId)
       .maybeSingle();
 
-    if (settingsError) throw settingsError;
-    const parsed = parseConfig(settings?.data_room_default_checklists);
-    if (!parsed.configs.length) return 0;
-
-    // 2. Find first matching config across deal types (first match wins)
-    let matchedConfig = null;
-    for (const dt of dealTypes) {
-      matchedConfig = findMatchingConfig(parsed.configs, dt);
-      if (matchedConfig) break;
+    if (settingsError) {
+      result.reasons.push(`Settings fetch error: ${settingsError.message}`);
+      console.error(logPrefix, 'Settings error:', settingsError);
+      return result;
     }
-    if (!matchedConfig) return 0;
+
+    if (!settings?.data_room_default_checklists) {
+      result.reasons.push('No data_room_default_checklists found in company_settings');
+      console.warn(logPrefix, 'No config found');
+      return result;
+    }
+
+    const parsed = parseConfig(settings.data_room_default_checklists);
+    if (!parsed.configs.length) {
+      result.reasons.push('Parsed config has 0 deal type configs');
+      console.warn(logPrefix, 'Empty config');
+      return result;
+    }
+
+    // 2. Find matching config — normalize deal types before matching
+    let matchedConfig = null;
+    let matchedDealTypeText = '';
+    for (const dt of dealTypes) {
+      const normalized = normalizeText(dt);
+      matchedConfig = findMatchingConfig(parsed.configs, normalized);
+      if (matchedConfig) {
+        matchedDealTypeText = dt;
+        break;
+      }
+    }
+
+    if (!matchedConfig) {
+      result.reasons.push(`No config matched for deal types: ${dealTypes.join(', ')}`);
+      console.warn(logPrefix, 'No matching config for', dealTypes);
+      return result;
+    }
+
+    result.matchedDealType = matchedConfig.dealTypeMatchString;
+    console.log(logPrefix, `Matched config: "${matchedConfig.dealTypeMatchString}" from deal type "${matchedDealTypeText}"`);
 
     // 3. Find the requested round with normalized matching
-    const normalizeRoundTitle = (t: string) => t.toLowerCase().replace(/\s+/g, '');
-    const normalizedTarget = normalizeRoundTitle(roundName);
+    const normalizedTarget = normalizeKey(roundName);
     const matchedRound = matchedConfig.rounds.find(
-      (r) => normalizeRoundTitle(r.title) === normalizedTarget,
+      (r) => normalizeKey(r.title) === normalizedTarget,
     );
-    if (!matchedRound || !matchedRound.items.length) return 0;
 
-    // 4. Fetch existing outstanding items for dedup
+    if (!matchedRound) {
+      result.reasons.push(`No round matched for "${roundName}" (normalized: "${normalizedTarget}"). Available rounds: ${matchedConfig.rounds.map(r => r.title).join(', ')}`);
+      console.warn(logPrefix, 'No matching round');
+      return result;
+    }
+
+    if (!matchedRound.items.length) {
+      result.reasons.push(`Matched round "${matchedRound.title}" has 0 items`);
+      console.warn(logPrefix, 'Round has no items');
+      return result;
+    }
+
+    result.matchedRound = matchedRound.title;
+    result.sourceItemCount = matchedRound.items.length;
+    console.log(logPrefix, `Matched round: "${matchedRound.title}" with ${matchedRound.items.length} items`);
+
+    // 4. Fetch existing outstanding items for dedup (both description and source_metadata)
     const { data: existingItems, error: fetchError } = await supabase
       .from('outstanding_items')
-      .select('description')
+      .select('description, source_metadata')
       .eq('deal_id', dealId);
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      result.reasons.push(`Fetch existing items error: ${fetchError.message}`);
+      console.error(logPrefix, 'Fetch error:', fetchError);
+      return result;
+    }
 
-    const existingNames = new Set(
-      (existingItems || []).map((i) => i.description.trim().toLowerCase()),
-    );
+    // Build dedup sets: by source_metadata key and by description
+    const existingBySourceKey = new Set<string>();
+    const existingByDescription = new Set<string>();
 
-    // 5. Build insert list, deduplicating
+    for (const item of existingItems || []) {
+      existingByDescription.add(normalizeText(item.description));
+
+      const meta = item.source_metadata as Record<string, unknown> | null;
+      if (meta?.source_item_key && meta?.source_round) {
+        existingBySourceKey.add(`${normalizeKey(meta.source_round as string)}::${meta.source_item_key}`);
+      }
+    }
+
+    // 5. Build insert list
     const status = JSON.stringify({
       received: false,
       approved: false,
@@ -81,7 +166,7 @@ export async function autoPopulateOutstandingItems(
       requestedBy: ['5th Line'],
     });
 
-    // Get max position of existing items
+    // Get max position
     let nextPosition = 0;
     if (existingItems && existingItems.length > 0) {
       const { data: posData } = await supabase
@@ -94,31 +179,66 @@ export async function autoPopulateOutstandingItems(
       nextPosition = (posData?.position ?? -1) + 1;
     }
 
-    const sourceLabel = matchedRound.title;
-    const inserts = matchedRound.items
-      .sort((a, b) => a.order - b.order)
-      .filter((item) => !existingNames.has(item.label.trim().toLowerCase()))
-      .map((item, idx) => ({
+    const sourceRoundNormalized = normalizeKey(matchedRound.title);
+    const inserts: Record<string, unknown>[] = [];
+    let skipped = 0;
+
+    for (const item of [...matchedRound.items].sort((a, b) => a.order - b.order)) {
+      const key = itemKey(item.label);
+      const sourceKey = `${sourceRoundNormalized}::${key}`;
+
+      // Check duplicates by source metadata key first, then by description
+      if (existingBySourceKey.has(sourceKey)) {
+        skipped++;
+        continue;
+      }
+      if (existingByDescription.has(normalizeText(item.label))) {
+        skipped++;
+        continue;
+      }
+
+      inserts.push({
         deal_id: dealId,
         description: item.label,
         status,
         user_id: userId,
         priority: 'normal',
-        position: nextPosition + idx,
-        notes: `Auto-created from Deal-Type Checklist Defaults — ${sourceLabel}`,
-      }));
+        position: nextPosition + inserts.length,
+        notes: `Auto-created from Deal-Type Checklist Defaults — ${matchedRound.title}`,
+        source_metadata: {
+          source_type: 'deal_type_checklist_default',
+          source_round: matchedRound.title,
+          source_deal_type_match: matchedConfig.dealTypeMatchString,
+          source_item_key: key,
+        },
+      });
+    }
 
-    if (!inserts.length) return 0;
+    result.skippedDuplicates = skipped;
+
+    if (!inserts.length) {
+      result.reasons.push(`All ${matchedRound.items.length} items already exist (${skipped} duplicates skipped)`);
+      console.log(logPrefix, 'All items already exist, nothing to insert');
+      return result;
+    }
 
     const { error: insertError } = await supabase
       .from('outstanding_items')
       .insert(inserts);
 
-    if (insertError) throw insertError;
-    return inserts.length;
+    if (insertError) {
+      result.reasons.push(`Insert error: ${insertError.message}`);
+      console.error(logPrefix, 'Insert error:', insertError);
+      return result;
+    }
+
+    result.inserted = inserts.length;
+    console.log(logPrefix, `Inserted ${inserts.length} items, skipped ${skipped} duplicates. Matched: "${matchedConfig.dealTypeMatchString}" / "${matchedRound.title}"`);
+    return result;
   } catch (err) {
-    console.error('Error auto-populating outstanding items:', err);
-    return 0;
+    result.reasons.push(`Unexpected error: ${err}`);
+    console.error(logPrefix, 'Unexpected error:', err);
+    return result;
   }
 }
 
@@ -130,7 +250,6 @@ export async function isActivePipeline(
   companyId: string,
 ): Promise<boolean> {
   if (!pipelineId) {
-    // Deals without a pipeline_id are considered Active Pipeline deals
     return true;
   }
   const { data } = await supabase
@@ -141,4 +260,16 @@ export async function isActivePipeline(
     .maybeSingle();
 
   return data?.is_default === true;
+}
+
+/** Canonical stage slugs for Final Credit Items */
+const FINAL_CREDIT_ITEMS_SLUGS = new Set([
+  'final-credit-items',
+  'final credit items',
+]);
+
+/** Check if a stage value represents "Final Credit Items" */
+export function isFinalCreditItemsStage(stage: string | null | undefined): boolean {
+  if (!stage) return false;
+  return FINAL_CREDIT_ITEMS_SLUGS.has(stage.toLowerCase().trim());
 }
