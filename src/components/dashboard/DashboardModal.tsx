@@ -3,13 +3,17 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Chart, registerables } from 'chart.js';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   mapDealToDashboardRow,
   buildDashboardMetrics,
   filterDashboardDeals,
   sortDashboardRows,
+  generateMonthOptions,
   type SortColumn,
   type SortDir,
+  type DashboardDealRow,
 } from './dashboardDataMapper';
 
 Chart.register(...registerables);
@@ -43,10 +47,11 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
   const [sortCol, setSortCol] = useState<SortColumn | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
-  const { deals } = useDealsContext();
+  const { deals, updateDeal } = useDealsContext();
   const { pipelines } = usePipelineContext();
 
-  // Filter to active pipeline deals, then exclude on-hold + test/example
+  const monthOptions = useMemo(() => generateMonthOptions(), []);
+
   const filteredDeals = useMemo(() => {
     const defaultPipeline = pipelines.find(p => p.isDefault);
     const active = defaultPipeline
@@ -73,6 +78,39 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
       return col;
     });
   }, []);
+
+  const handleClosingMonthChange = useCallback(async (dealId: string, value: string) => {
+    const dateValue = value || null;
+    try {
+      // Update in Supabase directly
+      const { error } = await supabase
+        .from('deals')
+        .update({ dashboard_closing_date: dateValue } as any)
+        .eq('id', dealId);
+      if (error) throw error;
+
+      // Update local context
+      updateDeal(dealId, { dashboardClosingDate: dateValue } as any);
+    } catch (err) {
+      console.error('Failed to save closing month:', err);
+      toast.error('Failed to save closing month');
+    }
+  }, [updateDeal]);
+
+  // Determine the current select value for a row
+  const getSelectValue = useCallback((row: DashboardDealRow): string => {
+    const effective = row._dashboardClosingDate || row._rawClosingDate || '';
+    if (!effective) return '';
+    // Check if it matches one of the options exactly
+    const match = monthOptions.find(o => o.value === effective);
+    if (match) return match.value;
+    // Try matching by year-month
+    const ym = effective.slice(0, 7);
+    const ymMatch = monthOptions.find(o => o.value.slice(0, 7) === ym);
+    if (ymMatch) return ymMatch.value;
+    // Out-of-range: return the raw value (will show as current text)
+    return effective;
+  }, [monthOptions]);
 
   useEffect(() => {
     if (!open) return;
@@ -180,7 +218,6 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,2.2fr)', gap: 10, marginBottom: 10 }}>
               {/* LEFT */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {/* Pipeline Summary */}
                 <div className="db-g db-p">
                   <div className="db-ct">Pipeline Summary</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
@@ -199,7 +236,6 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                   <div className="db-cw" style={{ height: 180 }}><canvas ref={donutRef} /></div>
                 </div>
 
-                {/* Revenue Totals */}
                 <div className="db-g db-p">
                   <div className="db-ct">Revenue Totals</div>
                   {[
@@ -214,7 +250,6 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                   ))}
                 </div>
 
-                {/* Fee Revenue by Status */}
                 <div className="db-g db-p">
                   <div className="db-ct">Fee Revenue by Status</div>
                   <div className="db-stat-row"><span className="db-sn">On Track</span><span className="db-sv db-up">{metrics.onTrack.feeTotalStr} <span style={{ fontSize: 10, opacity: 0.6 }}>· {metrics.onTrack.count} deals</span></span></div>
@@ -244,7 +279,7 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                     </thead>
                     <tbody>
                       {sortedRows.map((d, i) => (
-                        <tr key={i}>
+                        <tr key={d.dealId}>
                           <td style={{ color: 'rgba(130,165,190,0.5)' }}>{i + 1}</td>
                           <td style={{ color: d.nameColor }}>{d.name}</td>
                           <td>{d.size}</td>
@@ -257,7 +292,28 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                           <td>{d.dirMd}</td>
                           <td className={d.profitCls}>{d.profit}</td>
                           <td style={{ color: 'rgba(130,165,190,0.5)' }}>{d.milestone}</td>
-                          <td><span className={`db-pill ${d.closingPill}`} style={{ fontSize: 9 }}>{d.closing}</span></td>
+                          <td>
+                            <select
+                              className="db-closing-select"
+                              value={getSelectValue(d)}
+                              onChange={(e) => handleClosingMonthChange(d.dealId, e.target.value)}
+                            >
+                              <option value="">TBD</option>
+                              {/* If existing value is out of range, show it as first option */}
+                              {(() => {
+                                const current = d._dashboardClosingDate || d._rawClosingDate;
+                                if (current && !monthOptions.find(o => o.value.slice(0, 7) === current.slice(0, 7))) {
+                                  let label = 'TBD';
+                                  try { label = new Date(current).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); } catch { /* */ }
+                                  return <option value={current}>{label}</option>;
+                                }
+                                return null;
+                              })()}
+                              {monthOptions.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
+                            </select>
+                          </td>
                         </tr>
                       ))}
                       {sortedRows.length === 0 && (
@@ -354,4 +410,26 @@ const DASHBOARD_CSS = `
 .db-comm-item { background: #0f1923; border: 1px solid rgba(255,255,255,0.05); border-radius: 7px; padding: 7px 10px; }
 .db-comm-label { font-size: 9px; color: rgba(130,165,190,0.45); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
 .db-comm-val { font-size: 13px; font-weight: 700; color: #e8f4ff; }
+.db-closing-select {
+  background: rgba(15,25,35,0.8);
+  color: rgba(190,215,230,0.8);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 4px;
+  cursor: pointer;
+  outline: none;
+  min-width: 80px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(140,175,200,0.4)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  padding-right: 14px;
+}
+.db-closing-select:hover { border-color: rgba(255,255,255,0.2); }
+.db-closing-select:focus { border-color: rgba(91,163,208,0.5); }
+.db-closing-select option { background: #0f1923; color: #d0dce8; }
 `;
