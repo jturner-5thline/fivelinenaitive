@@ -1,6 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Chart, registerables } from 'chart.js';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { mapDealToDashboardRow, buildDashboardMetrics } from './dashboardDataMapper';
 
 Chart.register(...registerables);
 
@@ -15,6 +18,19 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
   const donutChart = useRef<Chart | null>(null);
   const barChart = useRef<Chart | null>(null);
 
+  const { deals } = useDealsContext();
+  const { pipelines } = usePipelineContext();
+
+  // Filter to active pipeline deals only (exclude archived/on-hold, exclude naitive)
+  const activeDeals = useMemo(() => {
+    const defaultPipeline = pipelines.find(p => p.isDefault);
+    if (!defaultPipeline) return deals.filter(d => d.status !== 'archived' && d.dealClass !== 'naitive');
+    return deals.filter(d => d.pipelineId === defaultPipeline.id && d.status !== 'archived' && d.dealClass !== 'naitive');
+  }, [deals, pipelines]);
+
+  const rows = useMemo(() => activeDeals.map(mapDealToDashboardRow), [activeDeals]);
+  const metrics = useMemo(() => buildDashboardMetrics(rows), [rows]);
+
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(() => {
@@ -26,7 +42,7 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
           data: {
             labels: ['On Track', 'At Risk', 'Off Track'],
             datasets: [{
-              data: [56.8, 123.5, 0.01],
+              data: metrics.donutData,
               backgroundColor: ['rgba(40,200,130,0.75)', 'rgba(220,175,40,0.75)', 'rgba(220,70,85,0.5)'],
               borderColor: ['rgba(40,220,140,0.9)', 'rgba(240,200,50,0.9)', 'rgba(255,100,115,0.6)'],
               borderWidth: 2,
@@ -45,20 +61,16 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
       // Bar
       if (barRef.current) {
         barChart.current?.destroy();
-        const months = ['Mar 2026', 'Apr 2026', 'May 2026', 'Jun 2026', 'Jul 2026', 'Aug 2026'];
-        const revenue = [181, 28, 0, 0, 40, 0];
-        const commissions = [18, 4, 0, 0, 0, 0];
-        const profit = [162, 24, 0, 0, 40, 0];
         const gx = { ticks: { color: 'rgba(130,165,190,0.5)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
         const gy = { ticks: { color: 'rgba(130,165,190,0.4)', font: { size: 9 }, callback: (v: any) => '$' + v + 'K' }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } };
         barChart.current = new Chart(barRef.current, {
           type: 'bar',
           data: {
-            labels: months,
+            labels: metrics.months,
             datasets: [
-              { label: 'Revenue', data: revenue, backgroundColor: 'rgba(50,120,190,0.45)', borderColor: 'rgba(80,155,210,0.8)', borderWidth: 1, borderRadius: 4 },
-              { label: 'Commissions', data: commissions, backgroundColor: 'rgba(210,60,75,0.4)', borderColor: 'rgba(220,70,85,0.75)', borderWidth: 1, borderRadius: 4 },
-              { label: 'Profit', data: profit, backgroundColor: 'rgba(30,160,100,0.45)', borderColor: 'rgba(40,200,130,0.8)', borderWidth: 1, borderRadius: 4 }
+              { label: 'Revenue', data: metrics.monthlyRevenue, backgroundColor: 'rgba(50,120,190,0.45)', borderColor: 'rgba(80,155,210,0.8)', borderWidth: 1, borderRadius: 4 },
+              { label: 'Commissions', data: metrics.monthlyCommissions, backgroundColor: 'rgba(210,60,75,0.4)', borderColor: 'rgba(220,70,85,0.75)', borderWidth: 1, borderRadius: 4 },
+              { label: 'Profit', data: metrics.monthlyProfit, backgroundColor: 'rgba(30,160,100,0.45)', borderColor: 'rgba(40,200,130,0.8)', borderWidth: 1, borderRadius: 4 }
             ]
           },
           options: {
@@ -76,7 +88,7 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
       donutChart.current = null;
       barChart.current = null;
     };
-  }, [open]);
+  }, [open, metrics]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,12 +115,12 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
             {/* KPI STRIP */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 8, marginBottom: 10 }}>
               {[
-                { label: 'Deals Closed', value: '6', cls: 'db-bl', sub: 'Target: 2025 goal' },
-                { label: 'Dollars Funded', value: '$75.5MM', cls: 'db-up', sub: 'On Track' },
-                { label: 'New Clients', value: '26', cls: 'db-bl', sub: '2025 target' },
-                { label: 'Fee Revenue', value: '$3.3MM', cls: 'db-am', sub: '9 deals' },
-                { label: 'Deal Volume', value: '$180.3MM', cls: 'db-bl', sub: '11 active deals' },
-                { label: 'Avg Deal Size', value: '$11.8MM', cls: 'db-bl', sub: '"Live" Rev: $293K' },
+                { label: 'Deals Closed', value: String(metrics.dealCount), cls: 'db-bl', sub: 'Target: 2025 goal' },
+                { label: 'Dollars Funded', value: metrics.totalVolume, cls: 'db-up', sub: 'On Track' },
+                { label: 'New Clients', value: String(metrics.dealCount), cls: 'db-bl', sub: '2025 target' },
+                { label: 'Fee Revenue', value: metrics.grossRevenue, cls: 'db-am', sub: `${metrics.dealCount} deals` },
+                { label: 'Deal Volume', value: metrics.totalVolume, cls: 'db-bl', sub: `${metrics.dealCount} active deals` },
+                { label: 'Avg Deal Size', value: metrics.avgDealSize, cls: 'db-bl', sub: `"Live" Rev: ${metrics.liveRevenue}` },
               ].map((k, i) => (
                 <div key={i} className="db-g db-p" style={{ padding: '12px 14px' }}>
                   <div className="db-kl">{k.label}</div>
@@ -127,9 +139,9 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                   <div className="db-ct">Pipeline Summary</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
                     {[
-                      { label: 'On Track', value: '$56.8MM', color: '#4de8a0', borderColor: 'rgba(40,190,120,0.2)', labelColor: 'rgba(40,220,140,0.5)', sub: '3 deals · 32%', subColor: 'rgba(160,210,180,0.5)' },
-                      { label: 'At Risk', value: '$123.5MM', color: '#f0c84a', borderColor: 'rgba(220,175,40,0.2)', labelColor: 'rgba(220,175,40,0.5)', sub: '9 deals · 68%', subColor: 'rgba(220,190,100,0.5)' },
-                      { label: 'Off Track', value: '$0.0MM', color: '#ff8a96', borderColor: 'rgba(220,70,85,0.2)', labelColor: 'rgba(220,70,85,0.5)', sub: '0 deals · 0%', subColor: 'rgba(220,120,130,0.5)' },
+                      { label: 'On Track', value: metrics.onTrack.volumeStr, color: '#4de8a0', borderColor: 'rgba(40,190,120,0.2)', labelColor: 'rgba(40,220,140,0.5)', sub: `${metrics.onTrack.count} deals · ${metrics.onTrack.pct}`, subColor: 'rgba(160,210,180,0.5)' },
+                      { label: 'At Risk', value: metrics.atRisk.volumeStr, color: '#f0c84a', borderColor: 'rgba(220,175,40,0.2)', labelColor: 'rgba(220,175,40,0.5)', sub: `${metrics.atRisk.count} deals · ${metrics.atRisk.pct}`, subColor: 'rgba(220,190,100,0.5)' },
+                      { label: 'Off Track', value: metrics.offTrack.volumeStr, color: '#ff8a96', borderColor: 'rgba(220,70,85,0.2)', labelColor: 'rgba(220,70,85,0.5)', sub: `${metrics.offTrack.count} deals · ${metrics.offTrack.pct}`, subColor: 'rgba(220,120,130,0.5)' },
                     ].map((s, i) => (
                       <div key={i} style={{ background: '#0f1923', border: `1px solid ${s.borderColor}`, borderRadius: 8, padding: 10, textAlign: 'center' }}>
                         <div style={{ fontSize: 9, color: s.labelColor, fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 4 }}>{s.label}</div>
@@ -145,12 +157,12 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                 <div className="db-g db-p">
                   <div className="db-ct">Revenue Totals</div>
                   {[
-                    ['Total Pipeline', '$2.5MM', 'db-bl'],
-                    ['Gross Revenue', '$365K', ''],
-                    ['Billed @ Close', '$248K', ''],
-                    ['Referral Comm.', '$12K', ''],
-                    ['"Live" Revenue', '$293K', 'db-up'],
-                    ['Total Profit', '$344K', ''],
+                    ['Total Pipeline', metrics.totalPipeline, 'db-bl'],
+                    ['Gross Revenue', metrics.grossRevenue, ''],
+                    ['Billed @ Close', metrics.billedAtClose, ''],
+                    ['Referral Comm.', metrics.referralTotal, ''],
+                    ['"Live" Revenue', metrics.liveRevenue, 'db-up'],
+                    ['Total Profit', metrics.totalProfit, ''],
                   ].map(([n, v, c], i) => (
                     <div key={i} className="db-stat-row"><span className="db-sn">{n}</span><span className={`db-sv ${c}`}>{v}</span></div>
                   ))}
@@ -166,9 +178,9 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                 {/* Fee Revenue by Status */}
                 <div className="db-g db-p">
                   <div className="db-ct">Fee Revenue by Status</div>
-                  <div className="db-stat-row"><span className="db-sn">On Track</span><span className="db-sv db-up">$1,081K <span style={{ fontSize: 10, opacity: 0.6 }}>· 2 deals</span></span></div>
-                  <div className="db-stat-row"><span className="db-sn">At Risk</span><span className="db-sv db-am">$2,263K <span style={{ fontSize: 10, opacity: 0.6 }}>· 7 deals</span></span></div>
-                  <div className="db-stat-row"><span className="db-sn">Off Track</span><span className="db-sv" style={{ color: 'rgba(160,190,210,0.35)' }}>$0K <span style={{ fontSize: 10, opacity: 0.6 }}>· 0 deals</span></span></div>
+                  <div className="db-stat-row"><span className="db-sn">On Track</span><span className="db-sv db-up">{metrics.onTrack.feeTotalStr} <span style={{ fontSize: 10, opacity: 0.6 }}>· {metrics.onTrack.count} deals</span></span></div>
+                  <div className="db-stat-row"><span className="db-sn">At Risk</span><span className="db-sv db-am">{metrics.atRisk.feeTotalStr} <span style={{ fontSize: 10, opacity: 0.6 }}>· {metrics.atRisk.count} deals</span></span></div>
+                  <div className="db-stat-row"><span className="db-sn">Off Track</span><span className="db-sv" style={{ color: 'rgba(160,190,210,0.35)' }}>{metrics.offTrack.feeTotalStr} <span style={{ fontSize: 10, opacity: 0.6 }}>· {metrics.offTrack.count} deals</span></span></div>
                 </div>
               </div>
 
@@ -195,7 +207,7 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {DEALS.map((d, i) => (
+                      {rows.map((d, i) => (
                         <tr key={i}>
                           <td style={{ color: 'rgba(130,165,190,0.5)' }}>{i + 1}</td>
                           <td style={{ color: d.nameColor }}>{d.name}</td>
@@ -212,6 +224,9 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                           <td><span className={`db-pill ${d.closingPill}`} style={{ fontSize: 9 }}>{d.closing}</span></td>
                         </tr>
                       ))}
+                      {rows.length === 0 && (
+                        <tr><td colSpan={13} style={{ textAlign: 'center', color: 'rgba(130,165,190,0.4)', padding: 20 }}>No active deals in pipeline</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -220,12 +235,12 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                 <div className="db-ttm-box" style={{ marginTop: 10 }}>
                   <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.9px', textTransform: 'uppercase', color: 'rgba(120,160,190,0.38)', marginBottom: 8 }}>Monthly Revenue Forecast</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 6, marginBottom: 8 }}>
-                    {['Mar 2026', 'Apr 2026', 'May 2026', 'Jun 2026', 'Jul 2026', 'Aug 2026'].map(m => (
+                    {metrics.months.map(m => (
                       <div key={m} style={{ fontSize: 9, color: 'rgba(140,175,200,0.35)', textAlign: 'center', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.5px' }}>{m}</div>
                     ))}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 6, marginBottom: 4 }}>
-                    {FORECAST.map((f, i) => (
+                    {metrics.forecast.map((f, i) => (
                       <div key={i} style={{ background: '#182535', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 7, padding: 8, textAlign: 'center' }}>
                         <div style={{ fontSize: 9, color: 'rgba(140,175,200,0.4)', marginBottom: 2 }}>Revenue</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: f.revColor }}>{f.rev}</div>
@@ -263,29 +278,6 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
     </Dialog>
   );
 }
-
-const DEALS = [
-  { name: 'TNT', nameColor: '#4de8a0', size: '$9.00MM', fee: '1.00%', gross: '$90.0K', billed: '$90.0K', referral: '$0.0K', origination: '$0.0K', assocDir: '$0.0K', dirMd: '$9.0K', profit: '$81.0K', profitCls: 'db-up', milestone: 'Sep 2025', closing: 'Mar 2026', closingPill: 'db-pill-on' },
-  { name: 'Infillion', nameColor: '#f0c84a', size: '$50.00MM', fee: '2.00%', gross: '$0.0K', billed: '$0.0K', referral: '$0.0K', origination: '$0.0K', assocDir: '$0.0K', dirMd: '$0.0K', profit: '—', profitCls: '', milestone: '—', closing: 'TBD', closingPill: 'db-pill-risk' },
-  { name: 'Back Bar Project', nameColor: '#4de8a0', size: '$6.00MM', fee: '1.50%', gross: '$90.0K', billed: '$40.0K', referral: '$0.0K', origination: '$0.0K', assocDir: '$1.0K', dirMd: '$0.0K', profit: '$90.0K', profitCls: 'db-up', milestone: '—', closing: 'Jul 2026', closingPill: 'db-pill-on' },
-  { name: 'OpConnect', nameColor: '#4de8a0', size: '$5.00MM', fee: '3.00%', gross: '$150.0K', billed: '$90.5K', referral: '$9.1K', origination: '$0.0K', assocDir: '$2.3K', dirMd: '$0.0K', profit: '$141.0K', profitCls: 'db-up', milestone: 'Nov 2025', closing: 'Mar 2026', closingPill: 'db-pill-on' },
-  { name: 'Athyna', nameColor: '#f0c84a', size: '$1.00MM', fee: '2.00%', gross: '$0.0K', billed: '$0.0K', referral: '$0.0K', origination: '$0.0K', assocDir: '$0.0K', dirMd: '$0.0K', profit: '—', profitCls: '', milestone: '—', closing: 'TBD', closingPill: 'db-pill-risk' },
-  { name: 'Arbolus', nameColor: '#f0c84a', size: '$10.00MM', fee: '2.00%', gross: '$0.0K', billed: '$0.0K', referral: '$0.0K', origination: '$0.0K', assocDir: '$0.0K', dirMd: '$0.0K', profit: '—', profitCls: '', milestone: '—', closing: 'TBD', closingPill: 'db-pill-risk' },
-  { name: 'Upflex', nameColor: '#f0c84a', size: '$2.50MM', fee: '2.00%', gross: '$0.0K', billed: '$0.0K', referral: '$0.0K', origination: '$0.0K', assocDir: '$0.0K', dirMd: '$0.0K', profit: '—', profitCls: '', milestone: '—', closing: 'TBD', closingPill: 'db-pill-risk' },
-  { name: 'Canela', nameColor: '#f0c84a', size: '$10.00MM', fee: '2.00%', gross: '$0.0K', billed: '$0.0K', referral: '$0.0K', origination: '$0.0K', assocDir: '$0.0K', dirMd: '$0.0K', profit: '—', profitCls: '', milestone: '—', closing: 'TBD', closingPill: 'db-pill-risk' },
-  { name: 'Xnergy', nameColor: '#f0c84a', size: '$20.00MM', fee: '2.00%', gross: '$0.0K', billed: '$0.0K', referral: '$0.0K', origination: '$0.0K', assocDir: '$0.0K', dirMd: '$0.0K', profit: '—', profitCls: '', milestone: '—', closing: 'TBD', closingPill: 'db-pill-risk' },
-  { name: 'Worthy', nameColor: '#f0c84a', size: '$15.00MM', fee: '2.00%', gross: '$0.0K', billed: '$0.0K', referral: '$0.0K', origination: '$0.0K', assocDir: '$0.0K', dirMd: '$0.0K', profit: '—', profitCls: '', milestone: '—', closing: 'TBD', closingPill: 'db-pill-risk' },
-  { name: 'Concierge Plus', nameColor: '#4de8a0', size: '$1.75MM', fee: '2.00%', gross: '$35.0K', billed: '$27.5K', referral: '$2.8K', origination: '$0.0K', assocDir: '$1.0K', dirMd: '$0.0K', profit: '$32.2K', profitCls: 'db-up', milestone: '—', closing: 'Apr 2026', closingPill: 'db-pill-on' },
-];
-
-const FORECAST = [
-  { rev: '$181K', revColor: '#e8f4ff', comm: '$18K', commColor: 'rgba(220,70,85,0.7)', prof: '$162K', profColor: '#3de89a' },
-  { rev: '$28K', revColor: '#e8f4ff', comm: '$4K', commColor: 'rgba(220,70,85,0.7)', prof: '$24K', profColor: '#3de89a' },
-  { rev: '$0K', revColor: 'rgba(160,190,210,0.35)', comm: '$0K', commColor: 'rgba(160,190,210,0.25)', prof: '$0K', profColor: 'rgba(160,190,210,0.3)' },
-  { rev: '$0K', revColor: 'rgba(160,190,210,0.35)', comm: '$0K', commColor: 'rgba(160,190,210,0.25)', prof: '$0K', profColor: 'rgba(160,190,210,0.3)' },
-  { rev: '$40K', revColor: '#e8f4ff', comm: '$0K', commColor: 'rgba(220,70,85,0.7)', prof: '$40K', profColor: '#3de89a' },
-  { rev: '$0K', revColor: 'rgba(160,190,210,0.35)', comm: '$0K', commColor: 'rgba(160,190,210,0.25)', prof: '$0K', profColor: 'rgba(160,190,210,0.3)' },
-];
 
 const DASHBOARD_CSS = `
 .db-root { background: #0f1923; }
