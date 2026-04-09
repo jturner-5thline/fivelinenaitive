@@ -165,6 +165,7 @@ export function DealsHeader() {
         </div>
       </div>
       <HeaderNotificationPreview />
+      {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
     </header>
   );
 }
