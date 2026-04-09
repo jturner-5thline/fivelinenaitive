@@ -707,6 +707,8 @@ export default function DealDetail() {
   // Determine if this is a naitive pipeline deal
   const isNaitiveDeal = deal?.dealClass === 'naitive';
   const isFinServDeal = deal?.dealClass === 'finserv';
+  // FinServ deals use same simplified detail view as naitive deals
+  const isSimplifiedDeal = isNaitiveDeal || isFinServDeal;
 
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
   
