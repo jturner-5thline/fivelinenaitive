@@ -120,6 +120,22 @@ export function DealsHeader() {
           )}
         </nav>
         <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
+          {isFifthLine && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="Open dashboard"
+                  onClick={() => setIsDashboardOpen(true)}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Dashboard</TooltipContent>
+            </Tooltip>
+          )}
           {!location.pathname.startsWith('/deal/') && (
             <Tooltip>
               <TooltipTrigger asChild>
