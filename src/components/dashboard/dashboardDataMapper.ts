@@ -106,7 +106,23 @@ export function generateMonthOptions(): MonthOption[] {
   return options;
 }
 
-// ── Filtering ──
+// ── Rolling 6-month window for charts/forecast ──
+
+export interface RollingMonth {
+  key: string;   // YYYY-MM
+  label: string; // MMM yyyy
+}
+
+export function generateRollingForecastMonths(): RollingMonth[] {
+  const now = startOfMonth(new Date());
+  const result: RollingMonth[] = [];
+  for (let i = -1; i <= 4; i++) {
+    const d = addMonths(now, i);
+    result.push({ key: format(d, 'yyyy-MM'), label: format(d, 'MMM yyyy') });
+  }
+  return result;
+}
+
 
 const EXCLUDED_NAMES = new Set(["test - niki's store", 'example deal']);
 
@@ -303,14 +319,14 @@ export function buildDashboardMetrics(rows: DashboardDealRow[]): DashboardMetric
   const zeroCommColor = 'rgba(160,190,210,0.25)';
   const zeroProfColor = 'rgba(160,190,210,0.3)';
 
-  const forecast = sortedMonths.map(([, d]) => {
-    const hasVal = d.rev > 0;
+  const forecast = buckets.map(b => {
+    const hasVal = b.rev > 0;
     return {
-      rev: fmtKInt(d.rev),
+      rev: fmtKInt(b.rev),
       revColor: hasVal ? '#e8f4ff' : zeroColor,
-      comm: fmtKInt(d.comm),
+      comm: fmtKInt(b.comm),
       commColor: hasVal ? 'rgba(220,70,85,0.7)' : zeroCommColor,
-      prof: fmtKInt(d.prof),
+      prof: fmtKInt(b.prof),
       profColor: hasVal ? '#3de89a' : zeroProfColor,
     };
   });
