@@ -1,4 +1,5 @@
-import { Settings2 } from 'lucide-react';
+import { useState } from 'react';
+import { Settings2, LayoutDashboard } from 'lucide-react';
 import { GlobalSearchAI } from '@/components/GlobalSearchAI';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
@@ -12,12 +13,16 @@ import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { CreateDealDialog } from './CreateDealDialog';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
+import { DashboardModal } from '@/components/dashboard/DashboardModal';
 
 export function DealsHeader() {
   const location = useLocation();
   const { user } = useAuth();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { hasPageAccess } = usePageAccessFlags();
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
 
 
   return (
@@ -115,6 +120,22 @@ export function DealsHeader() {
           )}
         </nav>
         <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
+          {isFifthLine && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="Open dashboard"
+                  onClick={() => setIsDashboardOpen(true)}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Dashboard</TooltipContent>
+            </Tooltip>
+          )}
           {!location.pathname.startsWith('/deal/') && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -144,6 +165,7 @@ export function DealsHeader() {
         </div>
       </div>
       <HeaderNotificationPreview />
+      {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
     </header>
   );
 }
