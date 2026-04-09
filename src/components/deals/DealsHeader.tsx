@@ -1,4 +1,5 @@
-import { Settings2 } from 'lucide-react';
+import { useState } from 'react';
+import { Settings2, LayoutDashboard } from 'lucide-react';
 import { GlobalSearchAI } from '@/components/GlobalSearchAI';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
@@ -12,6 +13,8 @@ import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { CreateDealDialog } from './CreateDealDialog';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
+import { DashboardModal } from '@/components/dashboard/DashboardModal';
 
 export function DealsHeader() {
   const location = useLocation();
