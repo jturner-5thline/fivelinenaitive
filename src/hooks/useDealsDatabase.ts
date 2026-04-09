@@ -574,6 +574,31 @@ export function useDealsDatabase() {
       
       // Trigger webhook for new deal
       triggerWebhookSync(userId, 'deals', 'INSERT', data as unknown as Record<string, unknown>);
+
+      // Auto-populate Outstanding Items for Active Pipeline deals on creation
+      if (memberData?.company_id && dealData.dealTypes && dealData.dealTypes.length > 0) {
+        try {
+          const effectivePipelineId = (data as any).pipeline_id || null;
+          const isActive = await isActivePipeline(effectivePipelineId, memberData.company_id);
+          if (isActive) {
+            const initialResult = await autoPopulateOutstandingItems(
+              newDeal.id, dealData.dealTypes, memberData.company_id, userId, 'initial items'
+            );
+            console.log('[CreateDeal] Initial Items auto-populate:', initialResult);
+
+            // Also check if deal was created directly in Final Credit Items
+            const createdStage = (data as any).stage as string;
+            if (isFinalCreditItemsStage(createdStage)) {
+              const kickoffResult = await autoPopulateOutstandingItems(
+                newDeal.id, dealData.dealTypes, memberData.company_id, userId, 'kick off'
+              );
+              console.log('[CreateDeal] Kick Off auto-populate (created in Final Credit Items):', kickoffResult);
+            }
+          }
+        } catch (err) {
+          console.error('[CreateDeal] Error auto-populating outstanding items:', err);
+        }
+      }
       
       return newDeal;
     } catch (err) {
