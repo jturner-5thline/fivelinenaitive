@@ -180,7 +180,16 @@ export async function autoPopulateOutstandingItems(
     }
 
     const sourceRoundNormalized = normalizeKey(matchedRound.title);
-    const inserts: Record<string, unknown>[] = [];
+    const inserts: {
+      deal_id: string;
+      description: string;
+      status: string;
+      user_id: string;
+      priority: string;
+      position: number;
+      notes: string;
+      source_metadata: Record<string, string>;
+    }[] = [];
     let skipped = 0;
 
     for (const item of [...matchedRound.items].sort((a, b) => a.order - b.order)) {
