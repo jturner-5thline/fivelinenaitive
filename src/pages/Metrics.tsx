@@ -104,7 +104,7 @@ import {
   ExecutiveDashboard,
   FinServFinancialMetricsDashboard,
   QuickBooksFinancialDashboard,
-  ManagementReviewDashboard,
+  ManagementReviewCarousel,
 } from "@/components/metrics/dashboards";
 import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
 import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
