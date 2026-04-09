@@ -644,7 +644,7 @@ export default function DealDetail() {
           migratedFromPersonal: dbDeal.migrated_from_personal || false,
           pipelineId: dbDeal.pipeline_id || undefined,
           closingDate: (dbDeal as any).closing_date || null,
-          dealClass: ((dbDeal as any).deal_class || 'standard') as 'standard' | 'naitive',
+          dealClass: ((dbDeal as any).deal_class || 'standard') as 'standard' | 'naitive' | 'finserv',
         };
 
         if (!cancelled) setDeal(mapped);
@@ -706,6 +706,7 @@ export default function DealDetail() {
   
   // Determine if this is a naitive pipeline deal
   const isNaitiveDeal = deal?.dealClass === 'naitive';
+  const isFinServDeal = deal?.dealClass === 'finserv';
 
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
   
@@ -2426,7 +2427,7 @@ export default function DealDetail() {
           {/* Back button, alerts, and undo - side by side */}
           <div className="flex items-center gap-3 mb-1 flex-wrap">
             <Button variant="ghost" size="sm" className="gap-2 shrink-0" asChild>
-              <Link to={isNaitiveDeal ? "/naitive-pipeline" : "/deals"}>
+              <Link to={isFinServDeal ? "/finserv" : isNaitiveDeal ? "/naitive-pipeline" : "/deals"}>
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">Back to Pipeline</span>
                 <span className="sm:hidden">Back</span>
