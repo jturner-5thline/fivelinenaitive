@@ -644,7 +644,7 @@ export default function DealDetail() {
           migratedFromPersonal: dbDeal.migrated_from_personal || false,
           pipelineId: dbDeal.pipeline_id || undefined,
           closingDate: (dbDeal as any).closing_date || null,
-          dealClass: ((dbDeal as any).deal_class || 'standard') as 'standard' | 'naitive',
+          dealClass: ((dbDeal as any).deal_class || 'standard') as 'standard' | 'naitive' | 'finserv',
         };
 
         if (!cancelled) setDeal(mapped);
@@ -706,6 +706,9 @@ export default function DealDetail() {
   
   // Determine if this is a naitive pipeline deal
   const isNaitiveDeal = deal?.dealClass === 'naitive';
+  const isFinServDeal = deal?.dealClass === 'finserv';
+  // FinServ deals use same simplified detail view as naitive deals
+  const isSimplifiedDeal = isNaitiveDeal || isFinServDeal;
 
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
   
@@ -2426,7 +2429,7 @@ export default function DealDetail() {
           {/* Back button, alerts, and undo - side by side */}
           <div className="flex items-center gap-3 mb-1 flex-wrap">
             <Button variant="ghost" size="sm" className="gap-2 shrink-0" asChild>
-              <Link to={isNaitiveDeal ? "/naitive-pipeline" : "/deals"}>
+              <Link to={isFinServDeal ? "/finserv" : isNaitiveDeal ? "/naitive-pipeline" : "/deals"}>
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">Back to Pipeline</span>
                 <span className="sm:hidden">Back</span>
@@ -2702,10 +2705,10 @@ export default function DealDetail() {
               {/* Tab Navigation */}
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}>
                 <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden flex-nowrap">
-                  {!isNaitiveDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
+                  {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
                     <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
                   )}
-                  {!isNaitiveDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
+                  {!isSimplifiedDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
                     <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
                   )}
                   <HintTooltip
@@ -2715,7 +2718,7 @@ export default function DealDetail() {
                     side="bottom"
                   >
                     <TabsList className="inline-flex h-8 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto min-w-0 flex-shrink scrollbar-none gap-0" style={{ scrollbarWidth: 'none' }}>
-                    {hasDealSpaceAccess && !isNaitiveDeal && (
+                    {hasDealSpaceAccess && !isSimplifiedDeal && (
                     <TabsTrigger value="deal-space" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       <Sparkles className="h-3.5 w-3.5" />
                       Deal Space
@@ -2723,7 +2726,7 @@ export default function DealDetail() {
                     </TabsTrigger>
                     )}
                     <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Deal Info</TabsTrigger>
-                    {!isNaitiveDeal && (
+                    {!isSimplifiedDeal && (
                     <TabsTrigger value="lenders" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Lenders
                       {deal.lenders && deal.lenders.length > 0 && (
@@ -2733,7 +2736,7 @@ export default function DealDetail() {
                       )}
                     </TabsTrigger>
                     )}
-                    {!isNaitiveDeal && hasDealManagementAccess && (
+                    {!isSimplifiedDeal && hasDealManagementAccess && (
                     <TabsTrigger value="deal-management" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Management
                       {infoRequestActionCount > 0 && (
@@ -2743,10 +2746,10 @@ export default function DealDetail() {
                       )}
                     </TabsTrigger>
                     )}
-                    {!isNaitiveDeal && (
+                    {!isSimplifiedDeal && (
                     <TabsTrigger value="deal-writeup" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Write Up</TabsTrigger>
                     )}
-                    {!isNaitiveDeal && (
+                    {!isSimplifiedDeal && (
                     <TabsTrigger value="data-room" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       Data Room
                       {attachments.length > 0 && (
@@ -2819,7 +2822,7 @@ export default function DealDetail() {
 
                 <TabsContent value="deal-info" className={cn("mt-6 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Milestones Card - hidden for naitive pipeline deals */}
-                  {!isNaitiveDeal && (
+                  {!isSimplifiedDeal && (
                   <Card>
                     <CardContent className="pt-2 pb-2">
                       <DealMilestones
@@ -3286,7 +3289,7 @@ export default function DealDetail() {
                                   </div>
                                 );
                               case 'hoursAndFees':
-                                if (isNaitiveDeal) return null;
+                                if (isSimplifiedDeal) return null;
                                 return (
                                   <div key={fieldId}>
                                     <Separator className="my-4" />

@@ -386,9 +386,12 @@ export function useDealsDatabase() {
       if (dealsResult.error) throw dealsResult.error;
       if (lendersResult.error) throw lendersResult.error;
 
-      // Exclude naitive Pipeline deals from standard deal metrics using deal_class
+      // Exclude naitive Pipeline and FinServ deals from standard deal metrics using deal_class
       const naitivePipelineId = await getNaitivePipelineId();
-      const dbDeals = (dealsResult.data || []).filter((d: any) => (d.deal_class || 'standard') !== 'naitive');
+      const dbDeals = (dealsResult.data || []).filter((d: any) => {
+        const dc = d.deal_class || 'standard';
+        return dc !== 'naitive' && dc !== 'finserv';
+      });
       const dbLenders = lendersResult.data || [];
 
       if (!dbDeals || dbDeals.length === 0) {
