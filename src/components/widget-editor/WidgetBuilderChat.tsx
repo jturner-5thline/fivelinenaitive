@@ -38,7 +38,20 @@ function SourceBadge({ tag }: { tag: string }) {
   );
 }
 
-function renderContentWithBadges(text: string) {
+function flattenChildren(children: any): string {
+  if (typeof children === 'string') return children;
+  if (typeof children === 'number') return String(children);
+  if (children == null) return '';
+  if (Array.isArray(children)) return children.map(flattenChildren).join('');
+  if (typeof children === 'object' && children.props) {
+    // React element — extract its children recursively
+    return flattenChildren(children.props.children);
+  }
+  return String(children);
+}
+
+function renderContentWithBadges(children: any) {
+  const text = flattenChildren(children);
   // Split on (QB), (HS), (NT) and render badges inline
   const parts = text.split(/(\(QB\)|\(HS\)|\(NT\))/g);
   return parts.map((part, i) => {

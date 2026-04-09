@@ -78,6 +78,58 @@ A widget has:
 - Either respond with a configUpdate tool call (when confident) OR just a content message with clarifying questions (when ambiguous). Avoid both simultaneously when uncertain.
 - After applying changes, describe each change referencing exact field names and source tags.`;
 
+const TOOL_DEFINITION = {
+  name: "update_widget_config",
+  description: "Apply configuration changes to the widget. Only include fields you want to change. Use this ONLY when you are confident about the user's intent.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      name: { type: "string" as const, description: "Widget display name" },
+      type: { type: "string" as const, enum: ["table", "bar", "line", "column", "columnChart", "kpi"] },
+      xAxis: {
+        type: "object" as const,
+        properties: {
+          fieldId: { type: "string" as const },
+          grain: { type: "string" as const, enum: ["day", "week", "month", "quarter", "year"] },
+          window: { type: "string" as const, enum: ["last3Months", "ytd", "all"] },
+        },
+      },
+      series: {
+        type: "object" as const,
+        properties: {
+          fieldId: { type: "string" as const },
+          mode: { type: "string" as const, enum: ["single", "many"] },
+        },
+      },
+      values: {
+        type: "array" as const,
+        items: {
+          type: "object" as const,
+          properties: {
+            fieldId: { type: "string" as const },
+            agg: { type: "string" as const, enum: ["sum", "avg", "count"] },
+            format: { type: "string" as const, enum: ["currency", "percent", "number"] },
+          },
+          required: ["fieldId", "agg", "format"],
+        },
+      },
+      filters: {
+        type: "array" as const,
+        items: {
+          type: "object" as const,
+          properties: {
+            fieldId: { type: "string" as const },
+            operator: { type: "string" as const, enum: ["eq", "neq", "in", "gte", "lte"] },
+            values: { type: "array" as const, items: {} },
+            scope: { type: "string" as const, enum: ["widget", "dashboard"] },
+          },
+          required: ["fieldId", "operator", "values"],
+        },
+      },
+    },
+  },
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -86,83 +138,34 @@ serve(async (req) => {
   try {
     const { messages, currentConfig } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const systemWithContext = `${SYSTEM_PROMPT}\n\n## Current Widget Config\n${JSON.stringify(currentConfig, null, 2)}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Convert messages to Anthropic format (no "system" role in messages array)
+    const anthropicMessages = messages.map((m: { role: string; content: string }) => ({
+      role: m.role === 'system' ? 'user' : m.role,
+      content: m.content,
+    }));
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemWithContext },
-          ...messages,
-        ],
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2048,
+        system: systemWithContext,
+        messages: anthropicMessages,
         temperature: 0.4,
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "update_widget_config",
-              description: "Apply configuration changes to the widget. Only include fields you want to change. Use this ONLY when you are confident about the user's intent.",
-              parameters: {
-                type: "object",
-                properties: {
-                  name: { type: "string", description: "Widget display name" },
-                  type: { type: "string", enum: ["table", "bar", "line", "column", "columnChart", "kpi"] },
-                  xAxis: {
-                    type: "object",
-                    properties: {
-                      fieldId: { type: "string" },
-                      grain: { type: "string", enum: ["day", "week", "month", "quarter", "year"] },
-                      window: { type: "string", enum: ["last3Months", "ytd", "all"] },
-                    },
-                  },
-                  series: {
-                    type: "object",
-                    properties: {
-                      fieldId: { type: "string" },
-                      mode: { type: "string", enum: ["single", "many"] },
-                    },
-                  },
-                  values: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        fieldId: { type: "string" },
-                        agg: { type: "string", enum: ["sum", "avg", "count"] },
-                        format: { type: "string", enum: ["currency", "percent", "number"] },
-                      },
-                      required: ["fieldId", "agg", "format"],
-                    },
-                  },
-                  filters: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        fieldId: { type: "string" },
-                        operator: { type: "string", enum: ["eq", "neq", "in", "gte", "lte"] },
-                        values: { type: "array", items: {} },
-                        scope: { type: "string", enum: ["widget", "dashboard"] },
-                      },
-                      required: ["fieldId", "operator", "values"],
-                    },
-                  },
-                },
-              },
-            },
-          },
-        ],
-        tool_choice: "auto",
+        tools: [TOOL_DEFINITION],
+        tool_choice: { type: "auto" },
       }),
     });
 
@@ -178,31 +181,24 @@ serve(async (req) => {
         });
       }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Anthropic API error:", response.status, errorText);
       throw new Error("Failed to get AI response");
     }
 
     const data = await response.json();
-    const choice = data.choices?.[0];
-
-    if (!choice) throw new Error("No response from AI");
 
     const result: { content: string; configUpdate?: Record<string, any> } = { content: "" };
 
-    // Handle tool calls
-    if (choice.message?.tool_calls?.length) {
-      const toolCall = choice.message.tool_calls[0];
-      if (toolCall.function?.name === "update_widget_config") {
-        try {
-          result.configUpdate = JSON.parse(toolCall.function.arguments);
-        } catch {
-          console.error("Failed to parse tool call args");
+    // Anthropic returns content as an array of content blocks
+    if (data.content && Array.isArray(data.content)) {
+      for (const block of data.content) {
+        if (block.type === "text") {
+          result.content += block.text;
+        } else if (block.type === "tool_use" && block.name === "update_widget_config") {
+          result.configUpdate = block.input;
         }
       }
     }
-
-    // Get text content
-    result.content = choice.message?.content || "";
 
     // If tool was called but no text, generate a brief confirmation
     if (result.configUpdate && !result.content) {
