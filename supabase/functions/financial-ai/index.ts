@@ -82,6 +82,22 @@ serve(async (req) => {
       });
     }
 
+    // Demo account restriction: check can_ai_sync capability
+    const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: permRow } = await serviceClient
+      .from("user_permissions")
+      .select("can_ai_sync")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (permRow && permRow.can_ai_sync === false) {
+      console.warn(`Demo user ${user.id} blocked from AI sync`);
+      return new Response(
+        JSON.stringify({ error: "Demo account restriction: AI analysis is not available for demo accounts." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 

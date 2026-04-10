@@ -112,6 +112,21 @@ serve(async (req) => {
 
     console.log(`FLEx request from user: ${user.id}`);
 
+    // Demo account restriction: check can_push_flex capability
+    const { data: permRow } = await supabase
+      .from("user_permissions")
+      .select("can_push_flex")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (permRow && permRow.can_push_flex === false) {
+      console.warn(`Demo user ${user.id} blocked from FLEx push`);
+      return new Response(
+        JSON.stringify({ error: "Demo account restriction: FLEx push is not available for demo accounts." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const body: PushToFlexRequest = await req.json();
     const { dealId, action = "publish", writeUpData, dataRoomFiles } = body;
 
