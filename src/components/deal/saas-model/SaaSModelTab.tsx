@@ -74,21 +74,42 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [versioningOpen, setVersioningOpen] = useState(false);
 
+  // Tab visibility – global platform setting
+  const [visibleTabs, setVisibleTabs] = useState<Set<string>>(() => new Set(ALL_TABS.map(t => t.key)));
+  const [globalTabsLoaded, setGlobalTabsLoaded] = useState(false);
 
-  // Tab visibility
-  const [visibleTabs, setVisibleTabs] = useState<Set<string>>(() => loadVisibleTabs(dealId));
+  // Load global visible tabs from platform_settings
+  useEffect(() => {
+    supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'analysis_visible_tabs')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) {
+          setVisibleTabs(parseVisibleTabs(data.value));
+        }
+        setGlobalTabsLoaded(true);
+      });
+  }, []);
 
   const toggleTab = useCallback((key: string) => {
     setVisibleTabs(prev => {
       const next = new Set(prev);
       if (next.has(key)) {
         next.delete(key);
-        // If hiding the active tab, switch to dashboard
         if (key === activeTab) setActiveTab('dashboard');
       } else {
         next.add(key);
       }
-      saveVisibleTabs(dealId, next);
+      // Persist globally
+      const arr = Array.from(next);
+      supabase
+        .from('platform_settings')
+        .upsert({ key: 'analysis_visible_tabs', value: arr as any, updated_at: new Date().toISOString(), updated_by: null }, { onConflict: 'key' })
+        .then(({ error }) => {
+          if (error) console.error('Failed to save visible tabs globally:', error);
+        });
       return next;
     });
   }, [activeTab]);
