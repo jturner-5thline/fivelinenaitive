@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const { deal_id, pipeline_id, stage, hubspot_deal_id, company_id } = await req.json();
+    const { deal_id, pipeline_id, stage, hubspot_deal_id, company_id, amount } = await req.json();
 
     // Skip if no HubSpot link
     if (!hubspot_deal_id) {
@@ -60,12 +60,14 @@ Deno.serve(async (req) => {
     }
 
     // Push to HubSpot
-    const hubspotPayload = {
-      properties: {
-        pipeline: mapping.hubspot_pipeline_id,
-        dealstage: mapping.hubspot_dealstage_id,
-      },
+    const properties: Record<string, string> = {
+      pipeline: mapping.hubspot_pipeline_id,
+      dealstage: mapping.hubspot_dealstage_id,
     };
+    if (amount !== undefined && amount !== null) {
+      properties.amount = String(amount);
+    }
+    const hubspotPayload = { properties };
 
     const hsResponse = await fetch(
       `https://api.hubapi.com/crm/v3/objects/deals/${hubspot_deal_id}`,
@@ -101,6 +103,12 @@ Deno.serve(async (req) => {
       action: 'stage_push', status: 'success',
       request_payload: hubspotPayload,
     });
+
+    // Update hubspot_last_synced_at on the deal
+    await supabase
+      .from('deals')
+      .update({ hubspot_last_synced_at: new Date().toISOString() })
+      .eq('id', deal_id);
 
     return new Response(JSON.stringify({ success: true, hubspot_deal_id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
