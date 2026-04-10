@@ -105,12 +105,12 @@ import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
-import { DealUpdatesDropdown } from '@/components/deal/DealUpdatesDropdown';
+import { DealUpdatesUnified } from '@/components/deal/DealUpdatesUnified';
 import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
 import { useLenderScoreConfig, getScoreStyles } from '@/hooks/useLenderScoreConfig';
 import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
-import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
+
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useUserEditedFields } from '@/hooks/useUserEditedFields';
