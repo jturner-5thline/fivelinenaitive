@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, FolderOpen } from "lucide-react";
+import { Loader2, RefreshCw, FolderOpen, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -247,6 +247,12 @@ export function AsanaProjectsTab({ syncConfigId, integrationId }: AsanaProjectsT
                             ))}
                           </SelectContent>
                         </Select>
+                      )}
+                      {!filter.asana_section_gid && !isLoadingSection && (
+                        <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <AlertTriangle className="h-3 w-3" />
+                          <span className="text-[11px]">No section selected — tasks will land in default section</span>
+                        </div>
                       )}
                     </div>
                   )}
