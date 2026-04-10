@@ -110,6 +110,19 @@ serve(async (req: Request): Promise<Response> => {
 
         if (!listResponse.ok) {
           console.error("Nylas list error:", listData);
+          const isRateLimit = listResponse.status === 429;
+          const isServerError = listResponse.status >= 500;
+          if (isRateLimit || isServerError) {
+            return new Response(JSON.stringify({
+              error: isRateLimit ? "RATE_LIMITED" : "SERVICE_UNAVAILABLE",
+              fallback: true,
+              messages: [],
+              next_page_token: null,
+            }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
           return new Response(JSON.stringify({ error: listData.message || "Failed to list messages" }), {
             status: listResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
