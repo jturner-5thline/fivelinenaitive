@@ -2693,6 +2693,9 @@ export default function DealDetail() {
                   {deal.manager && (
                     <span className="text-sm text-white">{deal.manager}</span>
                   )}
+                  {!isSimplifiedDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
+                    <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -2706,9 +2709,7 @@ export default function DealDetail() {
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}>
                 <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden flex-nowrap">
                   
-                  {!isSimplifiedDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
-                    <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
-                  )}
+                  
                   <HintTooltip
                     hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
                     visible={isHintVisible('deal-tabs')}
