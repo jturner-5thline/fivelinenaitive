@@ -5684,6 +5684,90 @@ export type Database = {
           },
         ]
       }
+      deal_email_prompts: {
+        Row: {
+          cc_json: Json
+          company_id: string
+          created_at: string
+          deal_id: string
+          dismissed_at: string | null
+          dismissed_by: string | null
+          email_template_number: number
+          id: string
+          merged_body_html: string
+          merged_subject: string
+          metadata: Json | null
+          recipients_json: Json
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          trigger_reason: string
+          triggered_at: string
+          updated_at: string
+          workflow_key: string
+          workflow_name: string
+        }
+        Insert: {
+          cc_json?: Json
+          company_id: string
+          created_at?: string
+          deal_id: string
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          email_template_number: number
+          id?: string
+          merged_body_html?: string
+          merged_subject?: string
+          metadata?: Json | null
+          recipients_json?: Json
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          trigger_reason: string
+          triggered_at?: string
+          updated_at?: string
+          workflow_key: string
+          workflow_name: string
+        }
+        Update: {
+          cc_json?: Json
+          company_id?: string
+          created_at?: string
+          deal_id?: string
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          email_template_number?: number
+          id?: string
+          merged_body_html?: string
+          merged_subject?: string
+          metadata?: Json | null
+          recipients_json?: Json
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          trigger_reason?: string
+          triggered_at?: string
+          updated_at?: string
+          workflow_key?: string
+          workflow_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_email_prompts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_email_prompts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_emails: {
         Row: {
           deal_id: string
