@@ -6,6 +6,7 @@ import type { TriggerType, WorkflowAction } from '@/components/workflows/Workflo
 import { addDays } from 'date-fns';
 import { getNaitivePipelineId, excludeNaitivePipelineDeals } from '@/utils/naitivePipelineExclusion';
 import { autoPopulateOutstandingItems, isActivePipeline, isFinalCreditItemsStage } from '@/utils/autoPopulateOutstandingItems';
+import { checkStageChangeWorkflows } from '@/lib/emailWorkflowTrigger';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
 type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -826,6 +827,22 @@ export function useDealsDatabase() {
             dealName: previousDeal.company,
             status: updates.stage,
           });
+        }
+
+        // Email workflow triggers (fire-and-forget, never auto-sends)
+        const companyId = previousDeal.companyId || previousDeal.company_id;
+        if (companyId) {
+          checkStageChangeWorkflows(
+            {
+              dealId,
+              companyId,
+              dealName: previousDeal.company || '',
+              facilitySize: previousDeal.value,
+              lenderCount: previousDeal.lenders?.length,
+            },
+            updates.stage,
+            previousDeal.stage
+          ).catch(err => console.error('Email workflow trigger error:', err));
         }
       }
       
