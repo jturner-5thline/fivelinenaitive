@@ -2,6 +2,8 @@
  * Email Workflow Trigger Engine
  * Evaluates deal events against workflow definitions and creates pending prompts.
  * NEVER sends email automatically — only creates recommendations.
+ *
+ * Source of truth: Emails_Workflow_1.xlsx
  */
 import { supabase } from '@/integrations/supabase/client';
 import { EMAIL_WORKFLOW_DEFINITIONS, type EmailWorkflowDefinition } from './emailWorkflowConfig';
@@ -11,15 +13,19 @@ interface TriggerContext {
   companyId: string;
   dealName: string;
   clientName?: string;
+  clientContactInfo?: string;
   facilitySize?: number;
   useOfFunds?: string;
   dealType?: string;
   lenderCount?: number;
+  lenderName?: string;
   outstandingItemsCount?: number;
 }
 
 /**
- * Check stage-change workflows and create prompts if matched.
+ * Check stage_enter workflows and create prompts if matched.
+ * Sequence 1: Deal → "Submitted to Lenders"
+ * Sequence 2: Write-up "Pushed to FLEx" (treated as stage_enter on milestone)
  */
 export async function checkStageChangeWorkflows(
   ctx: TriggerContext,
@@ -27,7 +33,7 @@ export async function checkStageChangeWorkflows(
   oldStage?: string
 ): Promise<void> {
   const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
-    w => w.triggerType === 'stage_change' && w.triggerStage === newStage
+    w => w.triggerType === 'stage_enter' && w.triggerStage === newStage
   );
 
   for (const workflow of matched) {
@@ -36,30 +42,29 @@ export async function checkStageChangeWorkflows(
 }
 
 /**
- * Check milestone-based workflows.
+ * Check milestone-based workflows (Sequence 2: Write-up Pushed to FLEx).
  */
 export async function checkMilestoneWorkflows(
   ctx: TriggerContext,
   milestoneTitle: string
 ): Promise<void> {
-  const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
-    w => w.triggerType === 'milestone_event' && w.triggerMilestoneTitle &&
-      milestoneTitle.toLowerCase().includes(w.triggerMilestoneTitle.toLowerCase())
-  );
-
-  for (const workflow of matched) {
-    await createPromptFromWorkflow(workflow, ctx, `Milestone completed: "${milestoneTitle}"`);
+  // Sequence 2 triggers on "Pushed to FLEx" milestone
+  if (milestoneTitle.toLowerCase().includes('pushed to flex')) {
+    const workflow = EMAIL_WORKFLOW_DEFINITIONS.find(w => w.key === 'lender_submission_to_lender');
+    if (workflow) {
+      await createPromptFromWorkflow(workflow, ctx, `Milestone completed: "${milestoneTitle}"`);
+    }
   }
 }
 
 /**
- * Check conditional triggers (e.g., outstanding items thresholds).
+ * Check conditional/timer triggers (Sequence 4: outstanding items thresholds).
  */
 export async function checkConditionalWorkflows(
   ctx: TriggerContext
 ): Promise<void> {
   const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
-    w => w.triggerType === 'conditional_timer'
+    w => w.triggerType === 'timer' && !w.recurring && w.conditionMinItems
   );
 
   for (const workflow of matched) {
@@ -115,7 +120,7 @@ async function createPromptFromWorkflow(
     .maybeSingle();
 
   const subject = mergeTemplate(
-    (template as any)?.subject_line || `[${workflow.name}] – ${ctx.dealName}`,
+    (template as any)?.subject_line || workflow.subjectTemplate,
     ctx
   );
   const bodyHtml = mergeTemplate(
@@ -143,6 +148,11 @@ async function createPromptFromWorkflow(
     metadata: {
       template_id: (template as any)?.id || null,
       triggered_by: user?.id || null,
+      sequence_number: workflow.sequenceNumber,
+      sequence_name: workflow.sequenceName,
+      recurring: workflow.recurring,
+      condition: workflow.conditionDescription,
+      notes: workflow.notes,
     },
   } as any);
 }
@@ -151,11 +161,15 @@ function mergeTemplate(text: string, ctx: TriggerContext): string {
   return text
     .replace(/\[COMPANY NAME\]/gi, ctx.dealName || '')
     .replace(/\[CLIENT NAME\]/gi, ctx.clientName || '')
+    .replace(/\[CLIENT CONTACT INFO\]/gi, ctx.clientContactInfo || '')
     .replace(/\[DEAL NAME\]/gi, ctx.dealName || '')
     .replace(/\[FACILITY SIZE\]/gi, ctx.facilitySize ? `$${(ctx.facilitySize / 1_000_000).toFixed(1)}M` : '')
+    .replace(/\[FACILITY_SIZE_SHORT\]/gi, ctx.facilitySize ? `${(ctx.facilitySize / 1_000_000).toFixed(0)}MM` : 'XMM')
     .replace(/\[USE OF FUNDS\]/gi, ctx.useOfFunds || '')
     .replace(/\[DEAL TYPE\]/gi, ctx.dealType || '')
     .replace(/\[LENDER COUNT\]/gi, String(ctx.lenderCount || 0))
+    .replace(/\[LENDER NAME\]/gi, ctx.lenderName || '')
+    .replace(/LENDER NAME/g, ctx.lenderName || 'LENDER NAME')
     .replace(/\[OUTSTANDING ITEMS COUNT\]/gi, String(ctx.outstandingItemsCount || 0));
 }
 
@@ -163,13 +177,12 @@ async function resolveRecipients(
   context: string,
   ctx: TriggerContext
 ): Promise<Array<{ name: string; email: string }>> {
-  // For now return empty — recipients will be resolved from deal contacts/lenders
-  // when the full contact system is wired up
   switch (context) {
     case 'client':
-      return [{ name: ctx.clientName || 'Client', email: '' }];
+      return [{ name: ctx.clientName || 'Client', email: ctx.clientContactInfo || '' }];
+    case 'lender':
     case 'lender_contacts':
-      return [{ name: 'Lender Contacts', email: '' }];
+      return [{ name: ctx.lenderName || 'Lender', email: '' }];
     case 'deal_manager':
       return [{ name: 'Deal Manager', email: '' }];
     default:
