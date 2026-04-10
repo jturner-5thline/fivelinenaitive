@@ -7343,6 +7343,9 @@ export type Database = {
           exclusivity: string | null
           flag_notes: string | null
           hubspot_deal_id: string | null
+          hubspot_last_synced_at: string | null
+          hubspot_sync_error: string | null
+          hubspot_sync_status: string | null
           id: string
           is_flagged: boolean
           manager: string | null
@@ -7390,6 +7393,9 @@ export type Database = {
           exclusivity?: string | null
           flag_notes?: string | null
           hubspot_deal_id?: string | null
+          hubspot_last_synced_at?: string | null
+          hubspot_sync_error?: string | null
+          hubspot_sync_status?: string | null
           id?: string
           is_flagged?: boolean
           manager?: string | null
@@ -7437,6 +7443,9 @@ export type Database = {
           exclusivity?: string | null
           flag_notes?: string | null
           hubspot_deal_id?: string | null
+          hubspot_last_synced_at?: string | null
+          hubspot_sync_error?: string | null
+          hubspot_sync_status?: string | null
           id?: string
           is_flagged?: boolean
           manager?: string | null
