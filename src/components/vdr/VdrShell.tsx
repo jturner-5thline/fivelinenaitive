@@ -7,6 +7,7 @@ import { useCompany } from '@/hooks/useCompany';
 
 import { useVdrDocuments } from '@/hooks/useVdrDocuments';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
+import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
 import { useDefaultChecklistConfig, findMatchingConfig } from '@/hooks/useDefaultChecklistConfig';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,7 +58,8 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
 
   const vdrDocs = useVdrDocuments(dealId);
   const { hasPageAccess } = usePageAccessFlags();
-  const canPushToFlex = hasPageAccess('flex_push');
+  const { canPushFlex: demoCanPushFlex } = useDemoCapabilities();
+  const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
 
   // Upload dialog state
