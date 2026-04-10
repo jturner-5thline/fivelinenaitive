@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 // ─── Tab definitions ────────────────────────────────────────────────
 interface TabDef {
@@ -47,21 +48,15 @@ const ALL_TABS: TabDef[] = [
 
 const TAB_LABELS: Record<string, string> = Object.fromEntries(ALL_TABS.map(t => [t.key, t.label]));
 
-function loadVisibleTabs(dealId: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(`naitive-analysis-visible-tabs-${dealId}`);
-    if (raw) {
-      const arr = JSON.parse(raw) as string[];
-      const set = new Set(arr);
-      ALL_TABS.filter(t => t.locked).forEach(t => set.add(t.key));
-      return set;
-    }
-  } catch { /* ignore */ }
-  return new Set(ALL_TABS.map(t => t.key));
-}
+const ALL_TAB_KEYS = new Set(ALL_TABS.map(t => t.key));
 
-function saveVisibleTabs(dealId: string, tabs: Set<string>) {
-  localStorage.setItem(`naitive-analysis-visible-tabs-${dealId}`, JSON.stringify(Array.from(tabs)));
+function parseVisibleTabs(raw: unknown): Set<string> {
+  if (Array.isArray(raw)) {
+    const set = new Set(raw.filter((k): k is string => typeof k === 'string' && ALL_TAB_KEYS.has(k)));
+    ALL_TABS.filter(t => t.locked).forEach(t => set.add(t.key));
+    return set;
+  }
+  return new Set(ALL_TABS.map(t => t.key));
 }
 
 interface SaaSModelTabProps {
