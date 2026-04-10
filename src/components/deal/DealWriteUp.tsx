@@ -279,9 +279,10 @@ type ViewMode = 'tabs' | 'long';
 export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle', markFieldEdited, isFieldEdited, editedCount = 0, editedFieldKeys = [], resetAllEditFlags }: DealWriteUpProps) => {
   const queryClient = useQueryClient();
   const { hasPageAccess } = usePageAccessFlags();
-  const canPushToFlex = hasPageAccess('flex_push');
-  const canAutoFill = hasPageAccess('autofill_deal_space');
-  const canGenerateMemo = hasPageAccess('generate_ai_memo');
+  const { canPushFlex: demoCanPushFlex, canAiSync: demoCanAiSync, isDemoUser } = useDemoCapabilities();
+  const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
+  const canAutoFill = hasPageAccess('autofill_deal_space') && demoCanAiSync;
+  const canGenerateMemo = hasPageAccess('generate_ai_memo') && demoCanAiSync;
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [isRepublishing, setIsRepublishing] = useState(false);
