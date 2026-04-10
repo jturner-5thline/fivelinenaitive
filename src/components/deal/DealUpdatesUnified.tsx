@@ -147,18 +147,18 @@ export function DealUpdatesUnified({
         sideOffset={8}
       >
         <Tabs defaultValue="updates" className="w-full">
-          <div className="px-4 pt-3 pb-0 border-b bg-muted/30">
-            <TabsList className="w-full h-8 bg-transparent p-0 gap-4">
+          <div className="p-1.5 border-b border-border bg-muted/30">
+            <TabsList className="w-full h-9 grid grid-cols-2 bg-muted/60 rounded-md p-0.5 gap-0">
               <TabsTrigger
                 value="updates"
-                className="h-8 px-0 pb-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-medium"
+                className="h-full rounded-[5px] text-xs font-medium text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all"
               >
                 <Clock className="h-3.5 w-3.5 mr-1.5" />
                 Latest Updates
               </TabsTrigger>
               <TabsTrigger
                 value="history"
-                className="h-8 px-0 pb-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-medium"
+                className="h-full rounded-[5px] text-xs font-medium text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all"
               >
                 <History className="h-3.5 w-3.5 mr-1.5" />
                 Status History
