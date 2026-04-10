@@ -11,13 +11,9 @@ const corsHeaders = {
 const HUBSPOT_SYNC_ENABLED_FROM = '2026-04-10T00:00:00Z';
 
 // ─── Pipeline mapping ─────────────────────────────────────────────────
-// Map Naitive pipeline names → HubSpot pipeline IDs (internal names).
-// TODO: Replace placeholder values with actual HubSpot pipeline IDs
-//       found at HubSpot → Settings → Objects → Deals → Pipelines,
-//       or via GET /crm/v3/pipelines/deals.
 const HUBSPOT_PIPELINE_MAP: Record<string, string> = {
-  'Active Pipeline': 'DEBT_SALES_PIPELINE_ID',        // ← Fill in real HubSpot pipeline ID
-  'In Development': 'DEBT_IN_DEVELOPMENT_PIPELINE_ID', // ← Fill in real HubSpot pipeline ID
+  'Active Pipeline': 'default',
+  'In Development': '1768501',
 };
 
 // ─── Stage resolver ───────────────────────────────────────────────────
