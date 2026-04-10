@@ -2627,9 +2627,13 @@ export default function DealDetail() {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <StatusHistoryPopover 
-                  statusNotes={statusNotes} 
-                  onDeleteNote={deleteStatusNote} 
+                <DealUpdatesUnified
+                  activities={activityLogs}
+                  isLoadingActivities={isLoadingActivities}
+                  timeAgoText={timeAgoData.text}
+                  highlightClass={timeAgoData.highlightClass}
+                  statusNotes={statusNotes}
+                  onDeleteNote={deleteStatusNote}
                 />
                 </div>
                 <div className="flex items-center gap-1.5 ml-auto">
@@ -2684,12 +2688,6 @@ export default function DealDetail() {
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <DealUpdatesDropdown
-                    activities={activityLogs}
-                    isLoading={isLoadingActivities}
-                    timeAgoText={timeAgoData.text}
-                    highlightClass={timeAgoData.highlightClass}
-                  />
                   {deal.manager && (
                     <span className="text-sm text-white">{deal.manager}</span>
                   )}
