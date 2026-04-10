@@ -105,12 +105,12 @@ import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
-import { DealUpdatesDropdown } from '@/components/deal/DealUpdatesDropdown';
+import { DealUpdatesUnified } from '@/components/deal/DealUpdatesUnified';
 import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
 import { useLenderScoreConfig, getScoreStyles } from '@/hooks/useLenderScoreConfig';
 import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
-import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
+
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useUserEditedFields } from '@/hooks/useUserEditedFields';
@@ -2627,9 +2627,13 @@ export default function DealDetail() {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <StatusHistoryPopover 
-                  statusNotes={statusNotes} 
-                  onDeleteNote={deleteStatusNote} 
+                <DealUpdatesUnified
+                  activities={activityLogs}
+                  isLoadingActivities={isLoadingActivities}
+                  timeAgoText={timeAgoData.text}
+                  highlightClass={timeAgoData.highlightClass}
+                  statusNotes={statusNotes}
+                  onDeleteNote={deleteStatusNote}
                 />
                 </div>
                 <div className="flex items-center gap-1.5 ml-auto">
@@ -2684,12 +2688,6 @@ export default function DealDetail() {
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <DealUpdatesDropdown
-                    activities={activityLogs}
-                    isLoading={isLoadingActivities}
-                    timeAgoText={timeAgoData.text}
-                    highlightClass={timeAgoData.highlightClass}
-                  />
                   {deal.manager && (
                     <span className="text-sm text-white">{deal.manager}</span>
                   )}
