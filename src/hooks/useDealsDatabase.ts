@@ -840,6 +840,32 @@ export function useDealsDatabase() {
           previousDeal as unknown as Record<string, unknown>
         );
       }
+
+      // ── HubSpot update sync (fire-and-forget) ──
+      if (previousDeal?.hubspotDealId) {
+        const stageChanged = updates.stage !== undefined && updates.stage !== previousDeal.stage;
+        const pipelineChanged = updates.pipelineId !== undefined && updates.pipelineId !== previousDeal.pipelineId;
+        const amountChanged = updates.value !== undefined && updates.value !== previousDeal.value;
+
+        if (stageChanged || pipelineChanged || amountChanged) {
+          const effectiveStage = updates.stage ?? previousDeal.stage;
+          const effectivePipelineId = updates.pipelineId ?? previousDeal.pipelineId;
+          const effectiveAmount = updates.value ?? previousDeal.value;
+
+          supabase.functions.invoke('hubspot-deal-stage-push', {
+            body: {
+              deal_id: dealId,
+              pipeline_id: effectivePipelineId,
+              stage: effectiveStage,
+              hubspot_deal_id: previousDeal.hubspotDealId,
+              company_id: previousDeal.companyId,
+              amount: effectiveAmount,
+            },
+          }).then(({ error: hsErr }) => {
+            if (hsErr) console.error('[HubSpot update sync] Edge function error:', hsErr);
+          });
+        }
+      }
     } catch (err) {
       // Rollback on error
       setDeals(previousDeals);
