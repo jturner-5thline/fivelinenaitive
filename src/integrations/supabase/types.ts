@@ -11850,6 +11850,65 @@ export type Database = {
           },
         ]
       }
+      outbound_email_templates: {
+        Row: {
+          body_plain_text: string | null
+          body_rich_text: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          sequence_name: string | null
+          sort_order: number | null
+          subject_line: string
+          template_number: number
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body_plain_text?: string | null
+          body_rich_text?: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          sequence_name?: string | null
+          sort_order?: number | null
+          subject_line: string
+          template_number: number
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body_plain_text?: string | null
+          body_rich_text?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          sequence_name?: string | null
+          sort_order?: number | null
+          subject_line?: string
+          template_number?: number
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_email_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outstanding_item_comments: {
         Row: {
           content: string
