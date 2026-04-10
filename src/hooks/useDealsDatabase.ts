@@ -6,6 +6,7 @@ import type { TriggerType, WorkflowAction } from '@/components/workflows/Workflo
 import { addDays } from 'date-fns';
 import { getNaitivePipelineId, excludeNaitivePipelineDeals } from '@/utils/naitivePipelineExclusion';
 import { autoPopulateOutstandingItems, isActivePipeline, isFinalCreditItemsStage } from '@/utils/autoPopulateOutstandingItems';
+import { checkStageChangeWorkflows } from '@/lib/emailWorkflowTrigger';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
 type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -827,6 +828,32 @@ export function useDealsDatabase() {
             status: updates.stage,
           });
         }
+
+        // Email workflow triggers (fire-and-forget, never auto-sends)
+        (async () => {
+          try {
+            const { data: mem } = await supabase
+              .from('company_members')
+              .select('company_id')
+              .eq('user_id', userId!)
+              .maybeSingle();
+            if (mem?.company_id) {
+              await checkStageChangeWorkflows(
+                {
+                  dealId,
+                  companyId: mem.company_id,
+                  dealName: previousDeal.company || '',
+                  facilitySize: previousDeal.value,
+                  lenderCount: previousDeal.lenders?.length,
+                },
+                updates.stage!,
+                previousDeal.stage
+              );
+            }
+          } catch (err) {
+            console.error('Email workflow trigger error:', err);
+          }
+        })();
       }
       
       // Trigger webhook for deal update

@@ -96,6 +96,7 @@ import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
 import { DealMemoDialog } from '@/components/deal/DealMemoDialog';
 import { AgreementDrafterDialog } from '@/components/agreement/AgreementDrafterDialog';
+import { EmailPromptCenterButton } from '@/components/deal/EmailPromptCenter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
@@ -2764,6 +2765,7 @@ export default function DealDetail() {
                   </HintTooltip>
                    <div className="flex items-center gap-2 ml-auto flex-shrink-0">
                     <CreateTaskButton dealId={id!} dealName={deal?.company} />
+                    <EmailPromptCenterButton dealId={id!} dealName={deal?.company} />
                     {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
                       <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
                     )}
