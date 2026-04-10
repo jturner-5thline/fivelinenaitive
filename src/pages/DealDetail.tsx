@@ -61,6 +61,7 @@ import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
+import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
 import { LenderDirectoryDialog } from '@/components/deal/LenderDirectoryDialog';
 import { RequestedItemsSummary } from '@/components/deal/RequestedItemsSummary';
@@ -494,7 +495,8 @@ export default function DealDetail() {
   const { hasPageAccess } = usePageAccessFlags();
   const hasDealSpaceAccess = hasPageAccess('deal_space');
   const hasDealManagementAccess = hasPageAccess('deal_management');
-  const canPushToFlex = hasPageAccess('flex_push');
+  const { canPushFlex: demoCanPushFlex } = useDemoCapabilities();
+  const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading } = useDealsContext();
   const { activities: activityLogs, logActivity, isLoading: isLoadingActivities } = useActivityLog(id);
