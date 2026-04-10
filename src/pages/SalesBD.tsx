@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { Users, Mail, Handshake } from "lucide-react";
+import { Users, Handshake } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazy, Suspense, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,18 +11,16 @@ import { PartnerInsightsFeed } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 
-const EmailDesigner = lazy(() => import("./EmailDesigner"));
 const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
 export default function SalesBD() {
-  const [activeTab, setActiveTab] = useState("email-designer");
+  const [activeTab, setActiveTab] = useState("overview");
   const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
 
   const navigateToStage = (stageId: string) => {
     setActiveTab("partners-pipeline");
-    // Could pass stageId filter in the future
   };
 
   return (
@@ -47,9 +45,6 @@ export default function SalesBD() {
               <TabsTrigger value="partners-pipeline" className="gap-1.5">
                 <Handshake className="h-3.5 w-3.5" /> Partners Pipeline
               </TabsTrigger>
-              <TabsTrigger value="email-designer" className="gap-1.5">
-                <Mail className="h-3.5 w-3.5" /> Email Designer
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
@@ -67,12 +62,6 @@ export default function SalesBD() {
             <TabsContent value="partners-pipeline">
               <Suspense fallback={<Skeleton className="h-96 w-full" />}>
                 <PartnersPipeline />
-              </Suspense>
-            </TabsContent>
-
-            <TabsContent value="email-designer">
-              <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-                <EmailDesigner />
               </Suspense>
             </TabsContent>
           </Tabs>
