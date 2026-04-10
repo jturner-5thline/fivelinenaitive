@@ -2706,7 +2706,7 @@ export default function DealDetail() {
             <div className="flex flex-col gap-6 min-w-0 w-full">
               {/* Tab Navigation */}
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}>
-                <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden flex-nowrap">
+                <div className="flex items-center gap-2 min-w-0 w-full overflow-x-auto overflow-y-visible flex-nowrap scrollbar-none" style={{ scrollbarWidth: 'none' }}>
                   
                   
                   <HintTooltip
