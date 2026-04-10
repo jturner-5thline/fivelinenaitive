@@ -7,6 +7,12 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { EMAIL_WORKFLOW_DEFINITIONS, type EmailWorkflowDefinition } from './emailWorkflowConfig';
+import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
+
+/** Guard: only 5th Line company triggers email workflows */
+function isFifthLine(companyId: string): boolean {
+  return companyId === FIFTH_LINE_COMPANY_ID;
+}
 
 interface TriggerContext {
   dealId: string;
@@ -32,6 +38,8 @@ export async function checkStageChangeWorkflows(
   newStage: string,
   oldStage?: string
 ): Promise<void> {
+  if (!isFifthLine(ctx.companyId)) return;
+
   const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
     w => w.triggerType === 'stage_enter' && w.triggerStage === newStage
   );
@@ -48,6 +56,8 @@ export async function checkMilestoneWorkflows(
   ctx: TriggerContext,
   milestoneTitle: string
 ): Promise<void> {
+  if (!isFifthLine(ctx.companyId)) return;
+
   // Sequence 2 triggers on "Pushed to FLEx" milestone
   if (milestoneTitle.toLowerCase().includes('pushed to flex')) {
     const workflow = EMAIL_WORKFLOW_DEFINITIONS.find(w => w.key === 'lender_submission_to_lender');
@@ -63,6 +73,8 @@ export async function checkMilestoneWorkflows(
 export async function checkConditionalWorkflows(
   ctx: TriggerContext
 ): Promise<void> {
+  if (!isFifthLine(ctx.companyId)) return;
+
   const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
     w => w.triggerType === 'timer' && !w.recurring && w.conditionMinItems
   );
@@ -96,6 +108,7 @@ export async function manuallyTriggerWorkflow(
   workflowKey: string,
   ctx: TriggerContext
 ): Promise<boolean> {
+  if (!isFifthLine(ctx.companyId)) return false;
   const workflow = EMAIL_WORKFLOW_DEFINITIONS.find(w => w.key === workflowKey);
   if (!workflow) return false;
   await createPromptFromWorkflow(workflow, ctx, 'Manually triggered by user');
