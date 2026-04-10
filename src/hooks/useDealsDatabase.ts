@@ -579,6 +579,15 @@ export function useDealsDatabase() {
       // Trigger webhook for new deal
       triggerWebhookSync(userId, 'deals', 'INSERT', data as unknown as Record<string, unknown>);
 
+      // ── HubSpot deal sync (forward-only, fire-and-forget) ──
+      supabase.functions.invoke('hubspot-create-deal', {
+        body: { deal_id: data.id },
+      }).then(({ error: hsErr }) => {
+        if (hsErr) {
+          console.error('[HubSpot sync] Edge function error:', hsErr);
+        }
+      });
+
       // Auto-populate Outstanding Items for Active Pipeline deals on creation
       if (memberData?.company_id && dealData.dealTypes && dealData.dealTypes.length > 0) {
         try {

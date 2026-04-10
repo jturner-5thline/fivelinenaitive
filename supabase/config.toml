@@ -209,3 +209,6 @@ verify_jwt = false
 
 [functions.handle-email-suppression]
 verify_jwt = false
+
+[functions.hubspot-create-deal]
+verify_jwt = false
