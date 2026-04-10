@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-
 const ADMIN_EMAIL = 'jturner@5thline.co';
+const JAMES_TURNER_USER_ID = 'e3e13611-b7b7-4d2d-b52b-141434219e09';
+const NAITIVE_BASE_URL = 'https://fivelinenaitive.lovable.app';
 
 export type ApprovalState = 'not_submitted' | 'pending' | 'approved' | 'rejected';
 export type ApprovalRole = 'analyst' | 'deal_manager' | 'admin' | null;
@@ -277,6 +278,30 @@ export function useDealMemoApproval(
 
       if (taskError) {
         console.error('Failed to create approval task:', taskError);
+      }
+
+      // 5th Line specific: Always create a task for James Turner to review the deal memo
+      // This fires in addition to the normal approval chain task
+      if (nextApprover.userId !== JAMES_TURNER_USER_ID) {
+        const dealUrl = `${NAITIVE_BASE_URL}/deal/${dealId}`;
+        const { error: jamesTaskError } = await supabase
+          .from('tasks')
+          .insert({
+            title: `Review ${companyName} Deal Memo`,
+            assigned_to: JAMES_TURNER_USER_ID,
+            assigned_by: user.id,
+            deal_id: dealId,
+            company_id: membership?.company_id || deal?.company_id || null,
+            due_date: today,
+            status: 'not_started',
+            priority: 'high',
+            task_type: 'deal_memo_approval',
+            description: `A Deal Memo has been submitted for ${companyName}. Please review it here: ${dealUrl}`,
+          } as any);
+
+        if (jamesTaskError) {
+          console.error('Failed to create James Turner review task:', jamesTaskError);
+        }
       }
 
       // Create approval record
