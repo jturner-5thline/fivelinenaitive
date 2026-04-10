@@ -15944,6 +15944,9 @@ export type Database = {
       }
       user_permissions: {
         Row: {
+          can_ai_sync: boolean
+          can_build_writeup: boolean
+          can_push_flex: boolean
           company_id: string | null
           created_at: string
           id: string
@@ -15953,6 +15956,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          can_ai_sync?: boolean
+          can_build_writeup?: boolean
+          can_push_flex?: boolean
           company_id?: string | null
           created_at?: string
           id?: string
@@ -15962,6 +15968,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          can_ai_sync?: boolean
+          can_build_writeup?: boolean
+          can_push_flex?: boolean
           company_id?: string | null
           created_at?: string
           id?: string
@@ -18534,6 +18543,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_user_capability: {
+        Args: { _capability: string; _user_id: string }
+        Returns: boolean
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_company_role: {
@@ -18561,6 +18574,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_demo_user: { Args: { _user_id: string }; Returns: boolean }
       is_same_company_as_user: {
         Args: { _current_user_id: string; _deal_owner_id: string }
         Returns: boolean

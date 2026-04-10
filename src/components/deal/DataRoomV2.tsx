@@ -9,6 +9,7 @@ import JSZip from 'jszip';
 import { supabase } from '@/integrations/supabase/client';
 import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
+import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
 
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
@@ -43,7 +44,8 @@ interface DataRoomV2Props {
 export function DataRoomV2({ dealId }: DataRoomV2Props) {
   const { user } = useAuth();
   const { hasPageAccess } = usePageAccessFlags();
-  const canPushToFlex = hasPageAccess('flex_push');
+  const { canPushFlex: demoCanPushFlex } = useDemoCapabilities();
+  const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
 
   // Data sources
   const { items: templateItems, loading: l1, addItem: addTemplateItem, updateItem: updateTemplateItem, deleteItem: deleteTemplateItem } = useDataRoomChecklist();
