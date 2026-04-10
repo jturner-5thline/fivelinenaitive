@@ -111,6 +111,21 @@ serve(async (req) => {
         break;
       }
 
+      case "sections": {
+        const resolvedToken = await resolveToken(token, integration_id);
+        const projectGid = params.project_gid;
+        if (!projectGid) {
+          result = { success: false, error: "project_gid is required" };
+          break;
+        }
+        const data = await asanaFetch(
+          `/projects/${projectGid}/sections?opt_fields=name`,
+          resolvedToken
+        );
+        result = { success: true, sections: data.data || [] };
+        break;
+      }
+
       case "create_task": {
         const resolvedToken = await resolveToken(token, integration_id);
         const data = await asanaFetch("/tasks", resolvedToken, {

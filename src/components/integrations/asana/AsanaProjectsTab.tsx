@@ -13,12 +13,18 @@ interface AsanaProject {
   archived: boolean;
 }
 
+interface AsanaSection {
+  gid: string;
+  name: string;
+}
+
 interface ProjectFilter {
   id: string;
   asana_project_gid: string;
   asana_project_name: string;
   is_enabled: boolean;
   map_to: string;
+  asana_section_gid: string | null;
 }
 
 interface AsanaProjectsTabProps {
@@ -31,6 +37,8 @@ export function AsanaProjectsTab({ syncConfigId, integrationId }: AsanaProjectsT
   const [filters, setFilters] = useState<ProjectFilter[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingProjects, setFetchingProjects] = useState(false);
+  const [sectionsMap, setSectionsMap] = useState<Record<string, AsanaSection[]>>({});
+  const [loadingSections, setLoadingSections] = useState<Record<string, boolean>>({});
 
   // Load saved filters
   const loadFilters = useCallback(async () => {
@@ -43,11 +51,37 @@ export function AsanaProjectsTab({ syncConfigId, integrationId }: AsanaProjectsT
 
   useEffect(() => { loadFilters(); }, [loadFilters]);
 
+  // Fetch sections for a project
+  const fetchSections = async (projectGid: string) => {
+    if (sectionsMap[projectGid]) return;
+    setLoadingSections((prev) => ({ ...prev, [projectGid]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke("asana-proxy", {
+        body: { action: "sections", integration_id: integrationId, project_gid: projectGid },
+      });
+      if (!error && data?.success) {
+        setSectionsMap((prev) => ({ ...prev, [projectGid]: data.sections || [] }));
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingSections((prev) => ({ ...prev, [projectGid]: false }));
+    }
+  };
+
+  // Auto-fetch sections for enabled filters
+  useEffect(() => {
+    filters.filter((f) => f.is_enabled).forEach((f) => {
+      if (!sectionsMap[f.asana_project_gid]) {
+        fetchSections(f.asana_project_gid);
+      }
+    });
+  }, [filters]);
+
   // Fetch projects from Asana
   const fetchProjects = async () => {
     setFetchingProjects(true);
     try {
-      // Get workspace from integration config
       const { data: intData } = await supabase
         .from("integrations")
         .select("config")
@@ -69,7 +103,6 @@ export function AsanaProjectsTab({ syncConfigId, integrationId }: AsanaProjectsT
       const projects = (data.projects || []).filter((p: AsanaProject) => !p.archived);
       setAsanaProjects(projects);
 
-      // Auto-create filter entries for new projects
       const existingGids = new Set(filters.map((f) => f.asana_project_gid));
       const newProjects = projects.filter((p: AsanaProject) => !existingGids.has(p.gid));
 
@@ -101,6 +134,12 @@ export function AsanaProjectsTab({ syncConfigId, integrationId }: AsanaProjectsT
       .eq("id", filterId);
     if (error) { toast.error("Failed to update"); return; }
     setFilters((prev) => prev.map((f) => f.id === filterId ? { ...f, is_enabled: enabled } : f));
+
+    // Fetch sections when enabling
+    if (enabled) {
+      const filter = filters.find((f) => f.id === filterId);
+      if (filter) fetchSections(filter.asana_project_gid);
+    }
   };
 
   const updateMapTo = async (filterId: string, mapTo: string) => {
@@ -110,6 +149,17 @@ export function AsanaProjectsTab({ syncConfigId, integrationId }: AsanaProjectsT
       .eq("id", filterId);
     if (error) { toast.error("Failed to update"); return; }
     setFilters((prev) => prev.map((f) => f.id === filterId ? { ...f, map_to: mapTo } : f));
+  };
+
+  const updateSectionGid = async (filterId: string, sectionGid: string | null) => {
+    const value = sectionGid === "none" ? null : sectionGid;
+    const { error } = await supabase
+      .from("asana_project_filters")
+      .update({ asana_section_gid: value })
+      .eq("id", filterId);
+    if (error) { toast.error("Failed to update section"); return; }
+    setFilters((prev) => prev.map((f) => f.id === filterId ? { ...f, asana_section_gid: value } : f));
+    toast.success("Section updated");
   };
 
   const enabledCount = filters.filter((f) => f.is_enabled).length;
@@ -144,32 +194,65 @@ export function AsanaProjectsTab({ syncConfigId, integrationId }: AsanaProjectsT
             {enabledCount} of {filters.length} projects enabled for sync
           </div>
           <div className="space-y-2">
-            {filters.map((filter) => (
-              <div
-                key={filter.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Switch
-                    checked={filter.is_enabled}
-                    onCheckedChange={(v) => toggleFilter(filter.id, v)}
-                  />
-                  <span className="text-sm truncate">{filter.asana_project_name}</span>
+            {filters.map((filter) => {
+              const sections = sectionsMap[filter.asana_project_gid] || [];
+              const isLoadingSection = loadingSections[filter.asana_project_gid];
+
+              return (
+                <div
+                  key={filter.id}
+                  className="flex flex-col gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Switch
+                        checked={filter.is_enabled}
+                        onCheckedChange={(v) => toggleFilter(filter.id, v)}
+                      />
+                      <span className="text-sm truncate">{filter.asana_project_name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Select value={filter.map_to} onValueChange={(v) => updateMapTo(filter.id, v)}>
+                        <SelectTrigger className="h-7 w-[120px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="deals">→ Deals</SelectItem>
+                          <SelectItem value="milestones">→ Milestones</SelectItem>
+                          <SelectItem value="tasks">→ Tasks</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {filter.is_enabled && (
+                    <div className="flex items-center gap-2 pl-10">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">Section:</span>
+                      {isLoadingSection ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                      ) : (
+                        <Select
+                          value={filter.asana_section_gid || "none"}
+                          onValueChange={(v) => updateSectionGid(filter.id, v)}
+                        >
+                          <SelectTrigger className="h-7 w-[200px] text-xs">
+                            <SelectValue placeholder="No section (project default)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No section (default)</SelectItem>
+                            {sections.map((s) => (
+                              <SelectItem key={s.gid} value={s.gid}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Select value={filter.map_to} onValueChange={(v) => updateMapTo(filter.id, v)}>
-                    <SelectTrigger className="h-7 w-[120px] text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="deals">→ Deals</SelectItem>
-                      <SelectItem value="milestones">→ Milestones</SelectItem>
-                      <SelectItem value="tasks">→ Tasks</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
