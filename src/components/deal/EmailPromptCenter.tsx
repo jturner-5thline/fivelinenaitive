@@ -40,7 +40,7 @@ export function EmailPromptCenterButton({ dealId, dealName }: EmailPromptCenterP
       >
         <Mail className="h-4 w-4" />
         {pendingCount > 0 && (
-          <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+          <span className="absolute -top-1.5 -right-1.5 h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center ring-2 ring-background z-10 pointer-events-none">
             {pendingCount}
           </span>
         )}
