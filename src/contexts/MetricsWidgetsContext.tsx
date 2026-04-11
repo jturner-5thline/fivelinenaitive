@@ -181,7 +181,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
   }, [company?.id]);
 
   const persistWidgets = useCallback((newWidgets: MetricWidgetConfig[]) => {
-    if (!isLoaded || !company?.id) {
+    if (!isLoaded || !company?.id || !canEditMetrics) {
       return;
     }
     if (widgetsSaveTimerRef.current) clearTimeout(widgetsSaveTimerRef.current);
@@ -292,6 +292,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
       savePreset,
       loadPreset,
       deletePreset,
+      canEditMetrics,
     }}>
       {children}
     </MetricsWidgetsContext.Provider>
