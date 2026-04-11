@@ -2140,6 +2140,7 @@ export default function Metrics() {
             {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
+            {selectedDashboard === 'revenue-overview' && <RevenueOverviewDashboard />}
             {selectedDashboard === 'management-review' && <ManagementReviewCarousel />}
 
             {/* Custom user-created dashboards */}
