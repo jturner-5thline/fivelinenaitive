@@ -624,6 +624,9 @@ export function ManagementSnapshotDashboard({
 
       {/* Pipeline Metrics Section */}
       <PipelineMetricsSection />
+
+      {/* Signed Deals & AR Section */}
+      <SignedDealsAndARSection />
     </div>
   );
 }
