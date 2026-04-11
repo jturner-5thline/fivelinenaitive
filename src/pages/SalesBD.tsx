@@ -1,15 +1,15 @@
 import { Helmet } from "react-helmet-async";
-import { Users, Handshake } from "lucide-react";
+import { Users, Handshake, Network } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazy, Suspense, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PartnersByStageCards } from "@/components/partners/PartnersByStageCards";
 import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
 import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
-
 import { PartnerInsightsFeed } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
+import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 
 const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
@@ -42,6 +42,9 @@ export default function SalesBD() {
               <TabsTrigger value="overview" className="gap-1.5">
                 <Users className="h-3.5 w-3.5" /> Overview
               </TabsTrigger>
+              <TabsTrigger value="channels" className="gap-1.5">
+                <Network className="h-3.5 w-3.5" /> Channels
+              </TabsTrigger>
               <TabsTrigger value="partners-pipeline" className="gap-1.5">
                 <Handshake className="h-3.5 w-3.5" /> Partners Pipeline
               </TabsTrigger>
@@ -55,8 +58,11 @@ export default function SalesBD() {
                   <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
                 </div>
                 <PartnerSourcedDeals />
-                
               </div>
+            </TabsContent>
+
+            <TabsContent value="channels">
+              <ChannelsBoard />
             </TabsContent>
 
             <TabsContent value="partners-pipeline">
