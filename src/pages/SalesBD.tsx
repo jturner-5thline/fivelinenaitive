@@ -63,7 +63,13 @@ export default function SalesBD() {
             </TabsContent>
 
             <TabsContent value="channels">
-              <ChannelsBoard />
+              <div className="space-y-8">
+                <ChannelsDashboard />
+                <div className="border-t border-border/30 pt-6">
+                  <h2 className="text-lg font-semibold mb-4">Channel Board</h2>
+                  <ChannelsBoard />
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="partners-pipeline">
