@@ -20,10 +20,11 @@ const COLUMNS: { type: ChannelType; label: string; color: string }[] = [
 
 const COLUMN_TYPES = new Set(COLUMNS.map(c => c.type));
 
-function DroppableColumn({ type, label, color, entries, onCardClick }: {
+function DroppableColumn({ type, label, color, entries, onCardClick, onEntityClick }: {
   type: ChannelType; label: string; color: string;
   entries: ChannelEntry[];
   onCardClick: (e: ChannelEntry) => void;
+  onEntityClick: (e: ChannelEntry, entityType: 'company' | 'contact') => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: type });
 
