@@ -218,7 +218,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
         console.error('Error saving metrics presets:', err);
       }
     }, 500);
-  }, [company?.id]);
+  }, [company?.id, canEditMetrics]);
 
   const addWidget = (widget: Omit<MetricWidgetConfig, 'id' | 'createdAt'>): string => {
     const newWidget: MetricWidgetConfig = {
