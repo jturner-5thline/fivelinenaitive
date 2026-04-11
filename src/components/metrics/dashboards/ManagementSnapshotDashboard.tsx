@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
+import { RevenueQuarterlySection } from './RevenueOverviewDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -575,44 +576,49 @@ export function ManagementSnapshotDashboard({
   const visibleCards = allCards.filter(c => !isHidden(c.cardId));
 
   return (
-    <DraggableGridLayout
-      layout={gridLayout}
-      onLayoutChange={onGridLayoutChange}
-      isEditMode={isEditMode}
-      rowHeight={60}
-      className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20 bg-primary/[0.02]')}
-    >
-      {visibleCards.map(({ cardId, props }) => (
-        <div key={cardId} className="relative group">
-          {/* Pencil edit button for all cards */}
-          {onEditCard && (
-            <div className="absolute top-1.5 right-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-          {cardId === 'total-revenue-detail' ? (
-            <KPIDetailCard
-              kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
-              datarailsConfig={props.datarailsConfig}
-              timeWindow={props.timeWindow}
-              entityFilter={props.entityFilter}
-              isEditMode={isEditMode}
-            />
-          ) : cardId === 'avg-rev-per-client' ? (
-            <AvgRevenuePerClientWidget />
-          ) : (
-            <GenericDashboardCard {...props} />
-          )}
-        </div>
-      ))}
-      {children}
-    </DraggableGridLayout>
+    <div className="space-y-6">
+      <DraggableGridLayout
+        layout={gridLayout}
+        onLayoutChange={onGridLayoutChange}
+        isEditMode={isEditMode}
+        rowHeight={60}
+        className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20 bg-primary/[0.02]')}
+      >
+        {visibleCards.map(({ cardId, props }) => (
+          <div key={cardId} className="relative group">
+            {/* Pencil edit button for all cards */}
+            {onEditCard && (
+              <div className="absolute top-1.5 right-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+            {cardId === 'total-revenue-detail' ? (
+              <KPIDetailCard
+                kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
+                datarailsConfig={props.datarailsConfig}
+                timeWindow={props.timeWindow}
+                entityFilter={props.entityFilter}
+                isEditMode={isEditMode}
+              />
+            ) : cardId === 'avg-rev-per-client' ? (
+              <AvgRevenuePerClientWidget />
+            ) : (
+              <GenericDashboardCard {...props} />
+            )}
+          </div>
+        ))}
+        {children}
+      </DraggableGridLayout>
+
+      {/* Revenue Quarterly Section */}
+      <RevenueQuarterlySection />
+    </div>
   );
 }

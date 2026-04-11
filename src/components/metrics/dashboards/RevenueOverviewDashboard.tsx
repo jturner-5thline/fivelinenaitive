@@ -248,7 +248,7 @@ function DrilldownModal({
   );
 }
 
-export function RevenueOverviewDashboard() {
+export function RevenueQuarterlySection() {
   const quarterOptions = useMemo(() => buildQuarterOptions(8), []);
   const [selectedQuarterValue, setSelectedQuarterValue] = useState(() => getCurrentQuarter().value);
   const selectedQuarter = quarterOptions.find(q => q.value === selectedQuarterValue) ?? quarterOptions[0];
