@@ -1,42 +1,46 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useChannelPerformanceData, type ChannelTimePeriod, type AttributedDeal } from '@/hooks/useChannelPerformanceData';
 import { ChannelDrilldownModal, type DrilldownContext } from './ChannelDrilldownModal';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart3, TrendingUp, DollarSign, Layers, AlertCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, Layers, AlertCircle, X, RotateCcw } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 
-const TIME_PRESETS: { value: ChannelTimePeriod; label: string }[] = [
-  { value: 'last-30d', label: 'Last 30 Days' },
-  { value: 'qtd', label: 'QTD' },
-  { value: 'last-quarter', label: 'Last Quarter' },
-  { value: 'last-6m', label: 'Last 6 Months' },
-  { value: 'last-12m', label: 'Last 12 Months' },
+// ── Constants ──
+const TIME_PRESETS: { value: ChannelTimePeriod; label: string; short: string }[] = [
+  { value: 'last-30d', label: 'Last 30 Days', short: '30D' },
+  { value: 'qtd', label: 'Quarter to Date', short: 'QTD' },
+  { value: 'last-quarter', label: 'Last Quarter', short: 'Last Q' },
+  { value: 'last-6m', label: 'Last 6 Months', short: '6M' },
+  { value: 'last-12m', label: 'Last 12 Months', short: '12M' },
 ];
 
-const CHANNEL_TYPES = [
-  { value: 'all', label: 'All Channels' },
+const CHANNEL_OPTIONS = [
   { value: 'Banks', label: 'Banks' },
   { value: 'M&A and Investment Bankers', label: 'M&A / IB' },
   { value: 'Service Providers', label: 'Service Providers' },
   { value: 'Investors', label: 'Investors' },
 ];
 
-const STAGE_KEYS = ['added', 'proposalIssued', 'finalCreditItems', 'fundedInvoiced'] as const;
 const STAGE_LABELS: Record<string, string> = {
   added: 'Added',
   proposalIssued: 'Proposal Issued',
   finalCreditItems: 'Final Credit Items',
   fundedInvoiced: 'Funded / Invoiced',
 };
-const STAGE_COLORS: Record<string, string> = {
-  added: 'hsl(var(--primary))',
-  proposalIssued: '#8b5cf6',
-  finalCreditItems: '#f59e0b',
-  fundedInvoiced: '#10b981',
+
+const SERIES_COLORS = {
+  added: 'hsl(263, 70%, 58%)',
+  proposalIssued: 'hsl(280, 65%, 55%)',
+  finalCreditItems: 'hsl(38, 92%, 55%)',
+  fundedInvoiced: 'hsl(160, 65%, 45%)',
 };
 
 type ChartGroupBy = 'channel' | 'source';
@@ -47,7 +51,7 @@ function formatCurrency(v: number): string {
   return `$${v.toLocaleString()}`;
 }
 
-// Stage matching (duplicated from hook for filtering deals by stage in drilldown)
+// Stage helpers
 const STAGE_MATCHERS: Record<string, (s: string) => boolean> = {
   proposalIssued: (s) => /proposal.issued/i.test(s),
   finalCreditItems: (s) => /final.credit/i.test(s),
@@ -62,16 +66,18 @@ function classifyStage(stage: string): string {
 }
 const STAGE_ORDER = ['added', 'proposalIssued', 'finalCreditItems', 'fundedInvoiced'];
 function dealReachedStage(deal: AttributedDeal, stageKey: string): boolean {
-  const classification = classifyStage(deal.stage);
-  const classIdx = STAGE_ORDER.indexOf(classification);
-  const targetIdx = STAGE_ORDER.indexOf(stageKey);
-  return classIdx >= targetIdx;
+  const idx = STAGE_ORDER.indexOf(classifyStage(deal.stage));
+  return idx >= STAGE_ORDER.indexOf(stageKey);
 }
 
+// ── Glass card wrapper ──
+const glassCard = "relative rounded-xl border border-white/[0.06] bg-[linear-gradient(135deg,hsl(260,20%,13%,0.6)_0%,hsl(260,15%,10%,0.4)_100%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(0,0%,100%,0.04),0_4px_24px_hsl(0,0%,0%,0.25)] before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:bg-[linear-gradient(180deg,hsl(0,0%,100%,0.03)_0%,transparent_40%)]";
+
+// ── Tooltip ──
 function CustomBarTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-xs space-y-1">
+    <div className="bg-popover/95 backdrop-blur-lg border border-white/[0.08] rounded-lg p-3 shadow-2xl text-xs space-y-1">
       <p className="font-medium text-foreground">{label}</p>
       {payload.map((p: any, i: number) => (
         <div key={i} className="flex items-center gap-2">
@@ -80,41 +86,95 @@ function CustomBarTooltip({ active, payload, label }: any) {
           <span className="font-mono font-medium">{typeof p.value === 'number' && p.value < 1 ? p.value.toFixed(2) : p.value}</span>
         </div>
       ))}
-      <p className="text-[9px] text-muted-foreground/50 pt-1 border-t border-border/30">Click bar to see deals</p>
+      <p className="text-[9px] text-muted-foreground/50 pt-1 border-t border-white/[0.06]">Click bar to see deals</p>
     </div>
   );
 }
 
+// ── Multi-select popover ──
+function MultiSelectFilter({ label, options, selected, onChange }: {
+  label: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const toggle = (val: string) => {
+    onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val]);
+  };
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={`h-7 text-xs gap-1.5 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] ${selected.length > 0 ? 'border-primary/30 text-foreground' : 'text-muted-foreground'}`}
+        >
+          {label}
+          {selected.length > 0 && (
+            <Badge variant="secondary" className="h-4 px-1 text-[9px] rounded-full bg-primary/20 text-primary">
+              {selected.length}
+            </Badge>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-2" align="start">
+        <ScrollArea className="max-h-48">
+          {options.map(opt => (
+            <label
+              key={opt.value}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent/40 cursor-pointer text-xs"
+            >
+              <Checkbox
+                checked={selected.includes(opt.value)}
+                onCheckedChange={() => toggle(opt.value)}
+                className="h-3.5 w-3.5"
+              />
+              <span>{opt.label}</span>
+            </label>
+          ))}
+        </ScrollArea>
+        {selected.length > 0 && (
+          <Button variant="ghost" size="sm" className="w-full mt-1 h-6 text-[10px]" onClick={() => onChange([])}>
+            Clear selection
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ── Main ──
 export function ChannelsDashboard() {
   const [timePeriod, setTimePeriod] = useState<ChannelTimePeriod>('last-12m');
-  const [channelTypeFilter, setChannelTypeFilter] = useState('all');
-  const [referralSourceFilter, setReferralSourceFilter] = useState('all');
+  const [channelTypeFilters, setChannelTypeFilters] = useState<string[]>([]);
+  const [sourceFilters, setSourceFilters] = useState<string[]>([]);
   const [chartGroupBy, setChartGroupBy] = useState<ChartGroupBy>('channel');
   const [drilldown, setDrilldown] = useState<DrilldownContext | null>(null);
 
   const { channelSources, attributedDeals, performanceRows, kpis, isLoading } = useChannelPerformanceData(
-    timePeriod, channelTypeFilter, referralSourceFilter,
+    timePeriod, channelTypeFilters, sourceFilters,
   );
 
-  // --- Drilldown helpers ---
+  const hasActiveFilters = channelTypeFilters.length > 0 || sourceFilters.length > 0 || timePeriod !== 'last-12m';
+  const clearAll = () => { setTimePeriod('last-12m'); setChannelTypeFilters([]); setSourceFilters([]); };
+
+  // Source options filtered by selected channels
+  const sourceOptions = useMemo(() => {
+    return channelSources
+      .filter(s => channelTypeFilters.length === 0 || channelTypeFilters.includes(s.channelType))
+      .map(s => ({ value: s.channelEntryId, label: s.name }));
+  }, [channelSources, channelTypeFilters]);
+
+  // ── Drilldown ──
   const openDrilldown = useCallback((title: string, deals: AttributedDeal[]) => {
     setDrilldown({ title, deals });
   }, []);
-
-  // KPI click: filter deals that reached a given stage
   const handleKPIClick = useCallback((stageKey: string) => {
     const deals = attributedDeals.filter(d => dealReachedStage(d, stageKey));
     openDrilldown(`${STAGE_LABELS[stageKey]} — ${deals.length} deal${deals.length !== 1 ? 's' : ''}`, deals);
   }, [attributedDeals, openDrilldown]);
-
-  // Funnel step click
-  const handleFunnelClick = useCallback((stageKey: string) => {
-    handleKPIClick(stageKey);
-  }, [handleKPIClick]);
-
-  // Chart bar click — grouped by channel or source, for a specific stage
+  const handleFunnelClick = useCallback((stageKey: string) => handleKPIClick(stageKey), [handleKPIClick]);
   const handleBarClick = useCallback((groupName: string, stageKey: string) => {
-    // Map stage data keys back to canonical keys
     const stageKeyMap: Record<string, string> = {
       added: 'added', Added: 'added',
       proposalIssued: 'proposalIssued', 'Proposal Issued': 'proposalIssued',
@@ -122,108 +182,74 @@ export function ChannelsDashboard() {
       funded: 'fundedInvoiced', Funded: 'fundedInvoiced',
     };
     const canonicalStage = stageKeyMap[stageKey] || 'added';
-
     let deals: AttributedDeal[];
     if (chartGroupBy === 'channel') {
-      // groupName is the channel type label — resolve back
       const channelType = groupName === 'M&A / IB' ? 'M&A and Investment Bankers' : groupName;
       deals = attributedDeals.filter(d => d.channelType === channelType && dealReachedStage(d, canonicalStage));
     } else {
-      // groupName is truncated source name — match prefix
       deals = attributedDeals.filter(d => {
         const truncated = d.channelName.length > 18 ? d.channelName.slice(0, 16) + '…' : d.channelName;
         return truncated === groupName && dealReachedStage(d, canonicalStage);
       });
     }
-    const label = `${STAGE_LABELS[canonicalStage]} — ${groupName}`;
-    openDrilldown(`${label} · ${deals.length} deal${deals.length !== 1 ? 's' : ''}`, deals);
+    openDrilldown(`${STAGE_LABELS[canonicalStage]} — ${groupName} · ${deals.length} deal${deals.length !== 1 ? 's' : ''}`, deals);
   }, [attributedDeals, chartGroupBy, openDrilldown]);
-
-  // Table row click
   const handleTableRowClick = useCallback((channelEntryId: string, channelName: string) => {
     const deals = attributedDeals.filter(d => d.channelEntryId === channelEntryId);
     openDrilldown(`${channelName} — All Stages · ${deals.length} deal${deals.length !== 1 ? 's' : ''}`, deals);
   }, [attributedDeals, openDrilldown]);
 
-  // --- Chart data ---
+  // ── Chart data ──
   const channelGroupedDeals = useMemo(() => {
     const map = new Map<string, { name: string; added: number; proposalIssued: number; finalCredit: number; funded: number }>();
     for (const row of performanceRows) {
       const key = row.channelType;
       const label = key === 'M&A and Investment Bankers' ? 'M&A / IB' : key;
       const existing = map.get(key) || { name: label, added: 0, proposalIssued: 0, finalCredit: 0, funded: 0 };
-      existing.added += row.added.count;
-      existing.proposalIssued += row.proposalIssued.count;
-      existing.finalCredit += row.finalCreditItems.count;
-      existing.funded += row.fundedInvoiced.count;
+      existing.added += row.added.count; existing.proposalIssued += row.proposalIssued.count;
+      existing.finalCredit += row.finalCreditItems.count; existing.funded += row.fundedInvoiced.count;
       map.set(key, existing);
     }
     return Array.from(map.values()).filter(r => r.added > 0).sort((a, b) => b.funded - a.funded);
   }, [performanceRows]);
-
   const channelGroupedVolume = useMemo(() => {
     const map = new Map<string, { name: string; added: number; proposalIssued: number; finalCredit: number; funded: number }>();
     for (const row of performanceRows) {
       const key = row.channelType;
       const label = key === 'M&A and Investment Bankers' ? 'M&A / IB' : key;
       const existing = map.get(key) || { name: label, added: 0, proposalIssued: 0, finalCredit: 0, funded: 0 };
-      existing.added += row.added.volume / 1_000_000;
-      existing.proposalIssued += row.proposalIssued.volume / 1_000_000;
-      existing.finalCredit += row.finalCreditItems.volume / 1_000_000;
-      existing.funded += row.fundedInvoiced.volume / 1_000_000;
+      existing.added += row.added.volume / 1e6; existing.proposalIssued += row.proposalIssued.volume / 1e6;
+      existing.finalCredit += row.finalCreditItems.volume / 1e6; existing.funded += row.fundedInvoiced.volume / 1e6;
       map.set(key, existing);
     }
     return Array.from(map.values()).filter(r => r.added > 0).sort((a, b) => b.funded - a.funded);
   }, [performanceRows]);
-
-  const sourceGroupedDeals = useMemo(() => {
-    return performanceRows
-      .filter(r => r.added.count > 0)
-      .slice(0, 10)
-      .map(r => ({
-        name: r.channelName.length > 18 ? r.channelName.slice(0, 16) + '…' : r.channelName,
-        Added: r.added.count,
-        'Proposal Issued': r.proposalIssued.count,
-        'Final Credit': r.finalCreditItems.count,
-        Funded: r.fundedInvoiced.count,
-      }));
-  }, [performanceRows]);
-
-  const sourceGroupedVolume = useMemo(() => {
-    return performanceRows
-      .filter(r => r.added.volume > 0)
-      .slice(0, 10)
-      .map(r => ({
-        name: r.channelName.length > 18 ? r.channelName.slice(0, 16) + '…' : r.channelName,
-        Added: r.added.volume / 1_000_000,
-        'Proposal Issued': r.proposalIssued.volume / 1_000_000,
-        'Final Credit': r.finalCreditItems.volume / 1_000_000,
-        Funded: r.fundedInvoiced.volume / 1_000_000,
-      }));
-  }, [performanceRows]);
+  const sourceGroupedDeals = useMemo(() => performanceRows.filter(r => r.added.count > 0).slice(0, 10).map(r => ({
+    name: r.channelName.length > 18 ? r.channelName.slice(0, 16) + '…' : r.channelName,
+    Added: r.added.count, 'Proposal Issued': r.proposalIssued.count, 'Final Credit': r.finalCreditItems.count, Funded: r.fundedInvoiced.count,
+  })), [performanceRows]);
+  const sourceGroupedVolume = useMemo(() => performanceRows.filter(r => r.added.volume > 0).slice(0, 10).map(r => ({
+    name: r.channelName.length > 18 ? r.channelName.slice(0, 16) + '…' : r.channelName,
+    Added: r.added.volume / 1e6, 'Proposal Issued': r.proposalIssued.volume / 1e6, 'Final Credit': r.finalCreditItems.volume / 1e6, Funded: r.fundedInvoiced.volume / 1e6,
+  })), [performanceRows]);
 
   const dealChartData = chartGroupBy === 'channel' ? channelGroupedDeals : sourceGroupedDeals;
   const volumeChartData = chartGroupBy === 'channel' ? channelGroupedVolume : sourceGroupedVolume;
-
   const barKeysChannel = [
-    { key: 'added', label: 'Added' },
-    { key: 'proposalIssued', label: 'Proposal Issued' },
-    { key: 'finalCredit', label: 'Final Credit' },
-    { key: 'funded', label: 'Funded' },
+    { key: 'added', label: 'Added' }, { key: 'proposalIssued', label: 'Proposal Issued' },
+    { key: 'finalCredit', label: 'Final Credit' }, { key: 'funded', label: 'Funded' },
   ];
   const barKeysSource = [
-    { key: 'Added', label: 'Added' },
-    { key: 'Proposal Issued', label: 'Proposal Issued' },
-    { key: 'Final Credit', label: 'Final Credit' },
-    { key: 'Funded', label: 'Funded' },
+    { key: 'Added', label: 'Added' }, { key: 'Proposal Issued', label: 'Proposal Issued' },
+    { key: 'Final Credit', label: 'Final Credit' }, { key: 'Funded', label: 'Funded' },
   ];
   const barKeys = chartGroupBy === 'channel' ? barKeysChannel : barKeysSource;
 
   const funnelData = useMemo(() => [
-    { name: 'Added', stageKey: 'added', count: kpis.added.count, volume: kpis.added.volume, fill: STAGE_COLORS.added },
-    { name: 'Proposal Issued', stageKey: 'proposalIssued', count: kpis.proposalIssued.count, volume: kpis.proposalIssued.volume, fill: STAGE_COLORS.proposalIssued },
-    { name: 'Final Credit Items', stageKey: 'finalCreditItems', count: kpis.finalCreditItems.count, volume: kpis.finalCreditItems.volume, fill: STAGE_COLORS.finalCreditItems },
-    { name: 'Funded / Invoiced', stageKey: 'fundedInvoiced', count: kpis.fundedInvoiced.count, volume: kpis.fundedInvoiced.volume, fill: STAGE_COLORS.fundedInvoiced },
+    { name: 'Added', stageKey: 'added', count: kpis.added.count, volume: kpis.added.volume, fill: SERIES_COLORS.added },
+    { name: 'Proposal Issued', stageKey: 'proposalIssued', count: kpis.proposalIssued.count, volume: kpis.proposalIssued.volume, fill: SERIES_COLORS.proposalIssued },
+    { name: 'Final Credit Items', stageKey: 'finalCreditItems', count: kpis.finalCreditItems.count, volume: kpis.finalCreditItems.volume, fill: SERIES_COLORS.finalCreditItems },
+    { name: 'Funded / Invoiced', stageKey: 'fundedInvoiced', count: kpis.fundedInvoiced.count, volume: kpis.fundedInvoiced.volume, fill: SERIES_COLORS.fundedInvoiced },
   ], [kpis]);
 
   if (isLoading) {
@@ -242,51 +268,109 @@ export function ChannelsDashboard() {
   const volumeChartTitle = chartGroupBy === 'channel' ? 'Dollar Volume by Channel ($M)' : 'Dollar Volume by Referral Source ($M)';
 
   const kpiCards = [
-    { stageKey: 'added', label: 'Deals Added', subtitle: 'Sourced deals entering the pipeline', count: kpis.added.count, volume: kpis.added.volume, icon: Layers, color: STAGE_COLORS.added },
-    { stageKey: 'proposalIssued', label: 'Proposal Issued', subtitle: 'Deals reaching proposal stage', count: kpis.proposalIssued.count, volume: kpis.proposalIssued.volume, icon: BarChart3, color: STAGE_COLORS.proposalIssued },
-    { stageKey: 'finalCreditItems', label: 'Final Credit Items', subtitle: 'Deals in final credit review', count: kpis.finalCreditItems.count, volume: kpis.finalCreditItems.volume, icon: TrendingUp, color: STAGE_COLORS.finalCreditItems },
-    { stageKey: 'fundedInvoiced', label: 'Funded / Invoiced', subtitle: 'Closed and funded deals', count: kpis.fundedInvoiced.count, volume: kpis.fundedInvoiced.volume, icon: DollarSign, color: STAGE_COLORS.fundedInvoiced },
+    { stageKey: 'added', label: 'Deals Added', subtitle: 'Sourced deals entering the pipeline', count: kpis.added.count, volume: kpis.added.volume, icon: Layers, color: SERIES_COLORS.added },
+    { stageKey: 'proposalIssued', label: 'Proposal Issued', subtitle: 'Deals reaching proposal stage', count: kpis.proposalIssued.count, volume: kpis.proposalIssued.volume, icon: BarChart3, color: SERIES_COLORS.proposalIssued },
+    { stageKey: 'finalCreditItems', label: 'Final Credit Items', subtitle: 'Deals in final credit review', count: kpis.finalCreditItems.count, volume: kpis.finalCreditItems.volume, icon: TrendingUp, color: SERIES_COLORS.finalCreditItems },
+    { stageKey: 'fundedInvoiced', label: 'Funded / Invoiced', subtitle: 'Closed and funded deals', count: kpis.fundedInvoiced.count, volume: kpis.fundedInvoiced.volume, icon: DollarSign, color: SERIES_COLORS.fundedInvoiced },
   ];
+
+  const seriesColors = Object.values(SERIES_COLORS);
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Select value={timePeriod} onValueChange={(v) => setTimePeriod(v as ChannelTimePeriod)}>
-          <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
+      {/* ── Filters: Time pills + multi-select + clear ── */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Time pills */}
+          <div className="flex items-center bg-white/[0.03] border border-white/[0.06] rounded-lg p-0.5 gap-0.5">
             {TIME_PRESETS.map(p => (
-              <SelectItem key={p.value} value={p.value} className="text-xs">{p.label}</SelectItem>
+              <button
+                key={p.value}
+                onClick={() => setTimePeriod(p.value)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                  timePeriod === p.value
+                    ? 'bg-primary/20 text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]'
+                }`}
+              >
+                {p.short}
+              </button>
             ))}
-          </SelectContent>
-        </Select>
-        <Select value={channelTypeFilter} onValueChange={setChannelTypeFilter}>
-          <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {CHANNEL_TYPES.map(t => (
-              <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={referralSourceFilter} onValueChange={setReferralSourceFilter}>
-          <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="All Referral Sources" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-xs">All Referral Sources</SelectItem>
-            {channelSources
-              .filter(s => channelTypeFilter === 'all' || s.channelType === channelTypeFilter)
-              .map(s => (
-                <SelectItem key={s.channelEntryId} value={s.channelEntryId} className="text-xs">{s.name}</SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
+          </div>
+
+          <div className="h-4 w-px bg-white/[0.08]" />
+
+          {/* Multi-select: Channels */}
+          <MultiSelectFilter
+            label="Channels"
+            options={CHANNEL_OPTIONS}
+            selected={channelTypeFilters}
+            onChange={setChannelTypeFilters}
+          />
+
+          {/* Multi-select: Referral Sources */}
+          <MultiSelectFilter
+            label="Sources"
+            options={sourceOptions}
+            selected={sourceFilters}
+            onChange={setSourceFilters}
+          />
+
+          {/* Clear All */}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-[11px] text-muted-foreground hover:text-foreground gap-1"
+              onClick={clearAll}
+            >
+              <RotateCcw className="h-3 w-3" />
+              Clear all
+            </Button>
+          )}
+        </div>
+
+        {/* Active filter chips */}
+        {(channelTypeFilters.length > 0 || sourceFilters.length > 0) && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {channelTypeFilters.map(ct => {
+              const label = CHANNEL_OPTIONS.find(o => o.value === ct)?.label || ct;
+              return (
+                <Badge
+                  key={ct}
+                  variant="secondary"
+                  className="text-[10px] gap-1 pl-2 pr-1 py-0.5 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 cursor-pointer"
+                  onClick={() => setChannelTypeFilters(prev => prev.filter(v => v !== ct))}
+                >
+                  {label}
+                  <X className="h-2.5 w-2.5" />
+                </Badge>
+              );
+            })}
+            {sourceFilters.map(sf => {
+              const label = channelSources.find(s => s.channelEntryId === sf)?.name || sf;
+              return (
+                <Badge
+                  key={sf}
+                  variant="secondary"
+                  className="text-[10px] gap-1 pl-2 pr-1 py-0.5 bg-accent/20 text-accent-foreground border-accent/20 hover:bg-accent/30 cursor-pointer"
+                  onClick={() => setSourceFilters(prev => prev.filter(v => v !== sf))}
+                >
+                  {label}
+                  <X className="h-2.5 w-2.5" />
+                </Badge>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* KPI Cards — clickable */}
+      {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpiCards.map(kpi => (
           <div
             key={kpi.stageKey}
-            className="rounded-xl border border-border/30 bg-card p-4 space-y-2 cursor-pointer hover:border-border/60 hover:bg-accent/10 transition-colors group"
+            className={`${glassCard} p-4 space-y-2 cursor-pointer hover:border-white/[0.12] transition-all group`}
             onClick={() => handleKPIClick(kpi.stageKey)}
             role="button"
             tabIndex={0}
@@ -303,14 +387,14 @@ export function ChannelsDashboard() {
               <span className="text-sm text-muted-foreground font-mono pb-0.5">{formatCurrency(kpi.volume)}</span>
             </div>
             <p className="text-[10px] text-muted-foreground/60 group-hover:text-muted-foreground/80 transition-colors">
-              {kpi.subtitle} · Click to view deals
+              {kpi.subtitle} · Click to view
             </p>
           </div>
         ))}
       </div>
 
       {!hasData ? (
-        <div className="rounded-xl border border-border/30 bg-card p-12 text-center space-y-3">
+        <div className={`${glassCard} p-12 text-center space-y-3`}>
           <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto" />
           <p className="text-sm text-muted-foreground">No attributed deals found for this period.</p>
           <p className="text-xs text-muted-foreground/60">
@@ -319,8 +403,8 @@ export function ChannelsDashboard() {
         </div>
       ) : (
         <>
-          {/* Stage Funnel — clickable steps */}
-          <div className="rounded-xl border border-border/30 bg-card p-4">
+          {/* ── Stage Funnel ── */}
+          <div className={`${glassCard} p-4`}>
             <h3 className="text-sm font-medium text-foreground mb-4">Stage Progression — Sourced Deals</h3>
             <div className="grid grid-cols-4 gap-2">
               {funnelData.map((stage, i) => {
@@ -357,94 +441,76 @@ export function ChannelsDashboard() {
             </div>
           </div>
 
-          {/* Group-by toggle */}
+          {/* ── Group-by toggle ── */}
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">Group by:</span>
             <Tabs value={chartGroupBy} onValueChange={(v) => setChartGroupBy(v as ChartGroupBy)}>
-              <TabsList className="h-7">
-                <TabsTrigger value="channel" className="text-xs h-6 px-3">Channel</TabsTrigger>
-                <TabsTrigger value="source" className="text-xs h-6 px-3">Referral Source</TabsTrigger>
+              <TabsList className="h-7 bg-white/[0.03] border border-white/[0.06]">
+                <TabsTrigger value="channel" className="text-xs h-6 px-3 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Channel</TabsTrigger>
+                <TabsTrigger value="source" className="text-xs h-6 px-3 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Referral Source</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
 
-          {/* Charts — clickable bars */}
+          {/* ── Charts ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-border/30 bg-card p-4">
-              <h3 className="text-sm font-medium text-foreground mb-4">{dealChartTitle}</h3>
-              {dealChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={dealChartData} layout="vertical" margin={{ left: 10, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                    <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                    <Tooltip content={<CustomBarTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: 10 }} />
-                    {barKeys.map((bk, idx) => (
-                      <Bar
-                        key={bk.key}
-                        dataKey={bk.key}
-                        name={bk.label}
-                        fill={Object.values(STAGE_COLORS)[idx]}
-                        radius={[0, 2, 2, 0]}
-                        cursor="pointer"
-                        onClick={(data: any) => {
-                          if (data?.name || data?.payload?.name) {
-                            handleBarClick(data.payload?.name || data.name, bk.key);
-                          }
-                        }}
+            {[
+              { data: dealChartData, title: dealChartTitle, formatter: undefined },
+              { data: volumeChartData, title: volumeChartTitle, formatter: (v: number) => `$${v.toFixed(1)}M` },
+            ].map(({ data, title, formatter }) => (
+              <div key={title} className={`${glassCard} p-4`}>
+                <h3 className="text-sm font-medium text-foreground mb-4">{title}</h3>
+                {data.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={data} layout="vertical" margin={{ left: 10, right: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(0,0%,100%,0.04)" />
+                      <XAxis
+                        type="number"
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        axisLine={{ stroke: 'hsl(0,0%,100%,0.06)' }}
+                        tickLine={false}
+                        tickFormatter={formatter}
                       />
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-xs text-muted-foreground text-center py-12">No data</p>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-border/30 bg-card p-4">
-              <h3 className="text-sm font-medium text-foreground mb-4">{volumeChartTitle}</h3>
-              {volumeChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={volumeChartData} layout="vertical" margin={{ left: 10, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                    <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `$${v.toFixed(1)}M`} />
-                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                    <Tooltip content={<CustomBarTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: 10 }} />
-                    {barKeys.map((bk, idx) => (
-                      <Bar
-                        key={bk.key}
-                        dataKey={bk.key}
-                        name={bk.label}
-                        fill={Object.values(STAGE_COLORS)[idx]}
-                        radius={[0, 2, 2, 0]}
-                        cursor="pointer"
-                        onClick={(data: any) => {
-                          if (data?.name || data?.payload?.name) {
-                            handleBarClick(data.payload?.name || data.name, bk.key);
-                          }
-                        }}
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        width={120}
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        axisLine={false}
+                        tickLine={false}
                       />
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-xs text-muted-foreground text-center py-12">No data</p>
-              )}
-            </div>
+                      <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'hsl(0,0%,100%,0.03)' }} />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      {barKeys.map((bk, idx) => (
+                        <Bar
+                          key={bk.key}
+                          dataKey={bk.key}
+                          name={bk.label}
+                          fill={seriesColors[idx]}
+                          radius={[0, 3, 3, 0]}
+                          cursor="pointer"
+                          onClick={(d: any) => d?.payload?.name && handleBarClick(d.payload.name, bk.key)}
+                        />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-12">No data</p>
+                )}
+              </div>
+            ))}
           </div>
 
-          {/* Performance Table — clickable rows */}
-          <div className="rounded-xl border border-border/30 bg-card overflow-hidden">
-            <div className="p-4 border-b border-border/30">
+          {/* ── Performance Table ── */}
+          <div className={`${glassCard} overflow-hidden`}>
+            <div className="p-4 border-b border-white/[0.06]">
               <h3 className="text-sm font-medium text-foreground">Referral Source Performance</h3>
               <p className="text-[10px] text-muted-foreground mt-0.5">Click any row to view underlying deals</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-border/20">
+                  <tr className="border-b border-white/[0.06]">
                     <th className="text-left p-3 text-muted-foreground font-medium">Referral Source</th>
                     <th className="text-left p-3 text-muted-foreground font-medium">Channel</th>
                     <th className="text-right p-3 text-muted-foreground font-medium">Added</th>
@@ -458,12 +524,12 @@ export function ChannelsDashboard() {
                   {performanceRows.filter(r => r.added.count > 0).map(row => (
                     <tr
                       key={row.channelEntryId}
-                      className="border-b border-border/10 hover:bg-muted/20 transition-colors cursor-pointer"
+                      className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer"
                       onClick={() => handleTableRowClick(row.channelEntryId, row.channelName)}
                     >
                       <td className="p-3 font-medium text-foreground">{row.channelName}</td>
                       <td className="p-3">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-muted-foreground">
                           {row.channelType === 'M&A and Investment Bankers' ? 'M&A / IB' : row.channelType}
                         </span>
                       </td>
@@ -486,7 +552,6 @@ export function ChannelsDashboard() {
         </>
       )}
 
-      {/* Universal Drilldown Modal */}
       <ChannelDrilldownModal context={drilldown} onClose={() => setDrilldown(null)} />
     </div>
   );
