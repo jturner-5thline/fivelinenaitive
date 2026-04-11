@@ -155,7 +155,7 @@ export function AddChannelDialog({ open, onClose }: Props) {
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {c.crm_company_id && <Link2 className="h-3 w-3 text-muted-foreground" title="Has linked company" />}
+                      {c.crm_company_id && <Link2 className="h-3 w-3 text-muted-foreground" />}
                       {alreadyAdded && <span className="text-[10px] text-muted-foreground">Added</span>}
                       {selectedContactId === c.id && <Check className="h-4 w-4 text-primary" />}
                     </div>
