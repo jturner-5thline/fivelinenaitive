@@ -55,6 +55,7 @@ interface MetricsWidgetsContextType {
   savePreset: (name: string) => void;
   loadPreset: (id: string) => void;
   deletePreset: (id: string) => void;
+  canEditMetrics: boolean;
 }
 
 const MetricsWidgetsContext = createContext<MetricsWidgetsContextType | undefined>(undefined);
