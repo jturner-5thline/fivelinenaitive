@@ -1372,7 +1372,8 @@ export default function Metrics() {
     presets,
     savePreset,
     loadPreset,
-    deletePreset 
+    deletePreset,
+    canEditMetrics,
   } = useMetricsWidgets();
 
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
