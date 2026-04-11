@@ -70,18 +70,42 @@ function dealReachedStage(deal: AttributedDeal, stageKey: string): boolean {
   return idx >= STAGE_ORDER.indexOf(stageKey);
 }
 
-// ── Glass card wrapper ──
-const glassCard = "relative rounded-xl border border-white/[0.06] bg-[linear-gradient(135deg,hsl(260,20%,13%,0.6)_0%,hsl(260,15%,10%,0.4)_100%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(0,0%,100%,0.04),0_4px_24px_hsl(0,0%,0%,0.25)] before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:bg-[linear-gradient(180deg,hsl(0,0%,100%,0.03)_0%,transparent_40%)]";
+// ── Glass card wrapper — premium frosted glass ──
+const glassCard = [
+  "relative isolate rounded-xl overflow-hidden",
+  // Border: double-layer rim light
+  "border border-[hsl(260,40%,50%,0.12)]",
+  "ring-1 ring-inset ring-white/[0.05]",
+  // Background: frosted translucent layers
+  "bg-[linear-gradient(145deg,hsl(260,25%,16%,0.72)_0%,hsl(255,20%,11%,0.58)_50%,hsl(250,18%,9%,0.65)_100%)]",
+  "backdrop-blur-2xl backdrop-saturate-150",
+  // Outer shadow: depth + glow
+  "shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_8px_32px_hsl(260,40%,8%,0.5),0_0_0_1px_hsl(260,30%,40%,0.04)]",
+  // Top highlight shimmer (::before)
+  "before:pointer-events-none before:absolute before:inset-0 before:rounded-xl",
+  "before:bg-[linear-gradient(175deg,hsl(0,0%,100%,0.07)_0%,hsl(0,0%,100%,0.02)_25%,transparent_50%)]",
+  // Bottom subtle glow (::after)
+  "after:pointer-events-none after:absolute after:inset-0 after:rounded-xl",
+  "after:bg-[radial-gradient(ellipse_at_50%_100%,hsl(263,50%,40%,0.06)_0%,transparent_70%)]",
+].join(" ");
 
-// ── Tooltip ──
+// KPI card variant — slightly more elevated
+const glassCardKPI = [
+  glassCard,
+  "hover:border-[hsl(263,50%,55%,0.2)] hover:shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_12px_40px_hsl(260,50%,10%,0.55),0_0_20px_hsl(263,60%,50%,0.05)]",
+  "hover:before:bg-[linear-gradient(175deg,hsl(0,0%,100%,0.10)_0%,hsl(0,0%,100%,0.03)_25%,transparent_50%)]",
+  "transition-all duration-300",
+].join(" ");
+
+// ── Tooltip — frosted glass popover ──
 function CustomBarTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-popover/95 backdrop-blur-lg border border-white/[0.08] rounded-lg p-3 shadow-2xl text-xs space-y-1">
+    <div className="bg-[hsl(260,20%,12%,0.92)] backdrop-blur-2xl border border-[hsl(260,30%,50%,0.15)] ring-1 ring-inset ring-white/[0.04] rounded-xl p-3 shadow-[0_8px_32px_hsl(0,0%,0%,0.5)] text-xs space-y-1">
       <p className="font-medium text-foreground">{label}</p>
       {payload.map((p: any, i: number) => (
         <div key={i} className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+          <span className="w-2 h-2 rounded-full shadow-[0_0_4px_currentColor]" style={{ backgroundColor: p.color, color: p.color }} />
           <span className="text-muted-foreground">{p.name}:</span>
           <span className="font-mono font-medium">{typeof p.value === 'number' && p.value < 1 ? p.value.toFixed(2) : p.value}</span>
         </div>
