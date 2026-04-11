@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { useMetricsEditPermission } from '@/hooks/useMetricsEditPermission';
 
 export type MetricWidgetType = 'stat' | 'chart';
 export type MetricChartType = 'bar' | 'line' | 'pie' | 'area' | 'composed' | 'waterfall' | 'gauge' | 'bullet' | 'treemap' | 'funnel' | 'radar' | 'heatmap' | 'forecast';
