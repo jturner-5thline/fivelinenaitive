@@ -22,7 +22,7 @@ export interface ProfitMonthBucket {
 function buildMonthBuckets(n: number): { label: string; key: string; start: string; end: string }[] {
   const now = new Date();
   const buckets: { label: string; key: string; start: string; end: string }[] = [];
-  for (let i = n - 1; i >= 0; i--) {
+  for (let i = n; i >= 1; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const endDate = new Date(d.getFullYear(), d.getMonth() + 1, 0);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
