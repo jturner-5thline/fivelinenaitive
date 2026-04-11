@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
 } from 'recharts';
 import { useQBStackedDebtRevenue, STACKED_CATEGORIES, type StackedDebtMonth } from '@/hooks/useQBStackedDebtRevenue';
+import { useQBStackedFinServRevenue, FINSERV_STACKED_CATEGORIES, type StackedFinServMonth } from '@/hooks/useQBStackedFinServRevenue';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
@@ -370,8 +371,92 @@ function StackedDebtRevenueChart({
     </Card>
   );
 }
+function StackedGenericRevenueChart({
+  title,
+  subtitle,
+  data,
+  isLoading,
+  total,
+  categories,
+  onBarClick,
+}: {
+  title: string;
+  subtitle: string;
+  data: Record<string, unknown>[];
+  isLoading: boolean;
+  total: number;
+  categories: readonly { key: string; label: string; color: string }[];
+  onBarClick: (monthKey: string, category?: string) => void;
+}) {
+  if (isLoading) {
+    return (
+      <Card className="bg-card/50 backdrop-blur border-border/50">
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-3 w-48 mt-1" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[220px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
-export function RevenueQuarterlySection() {
+  return (
+    <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
+      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
+          <p className="text-[10px] text-muted-foreground">Quarter Total</p>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div style={{ height: 220 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} />
+              <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  const monthTotal = payload.reduce((s, p) => s + (Number(p.value) || 0), 0);
+                  return (
+                    <div style={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: 'hsl(var(--popover-foreground))' }}>
+                      <p style={{ fontWeight: 600, marginBottom: 4, color: 'hsl(var(--muted-foreground))' }}>{label}</p>
+                      {payload.filter(p => (Number(p.value) || 0) !== 0).map((p, i) => (
+                        <div key={i} className="flex items-center gap-2 py-0.5">
+                          <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+                          <span className="text-xs">{categories.find(c => c.key === p.dataKey)?.label ?? p.dataKey}</span>
+                          <span className="ml-auto font-mono text-xs">{formatCurrencyFull(Number(p.value))}</span>
+                        </div>
+                      ))}
+                      <div className="border-t mt-1 pt-1 flex justify-between text-xs font-semibold" style={{ borderColor: 'hsl(var(--border))' }}>
+                        <span>Total</span>
+                        <span className="font-mono">{formatCurrencyFull(monthTotal)}</span>
+                      </div>
+                    </div>
+                  );
+                }}
+                cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
+              />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} formatter={(value) => categories.find(c => c.key === value)?.label ?? value} />
+              {categories.map(cat => (
+                <Bar key={cat.key} dataKey={cat.key} stackId="stack" fill={cat.color} fillOpacity={0.85} cursor="pointer" onClick={(d: Record<string, unknown>) => onBarClick(d.monthKey as string, cat.key)} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
   const quarterOptions = useMemo(() => buildQuarterOptions(8), []);
   const [selectedQuarterValue, setSelectedQuarterValue] = useState(() => getCurrentQuarter().value);
   const selectedQuarter = quarterOptions.find(q => q.value === selectedQuarterValue) ?? quarterOptions[0];
@@ -381,8 +466,8 @@ export function RevenueQuarterlySection() {
   // Stacked Debt Revenue: 5th Line Capital Advisors LLC
   const debtRevenue = useQBStackedDebtRevenue(selectedQuarter);
 
-  // FinServ Revenue: 5th Line Financial Services, LLC
-  const finservRevenue = useQBQuarterlyRevenue(FINSERV_REALM_ID, selectedQuarter);
+  // Stacked FinServ Revenue: 5th Line Financial Services, LLC
+  const finservRevenue = useQBStackedFinServRevenue(selectedQuarter);
 
   // Total Revenue: Debt + FinServ combined
   const totalRevenue = useQBCombinedQuarterlyRevenue(
@@ -424,13 +509,13 @@ export function RevenueQuarterlySection() {
             setDrilldown({ title: 'Debt Revenue', monthKey, realmIds: [DEBT_REALM_ID] })
           }
         />
-        <RevenueBarChart
+        <StackedGenericRevenueChart
           title="FinServ Revenue"
           subtitle="5th Line Financial Services, LLC"
           data={finservRevenue.months}
           isLoading={finservRevenue.isLoading}
           total={finservRevenue.total}
-          color="hsl(var(--chart-2))"
+          categories={FINSERV_STACKED_CATEGORIES}
           onBarClick={(monthKey) =>
             setDrilldown({ title: 'FinServ Revenue', monthKey, realmIds: [FINSERV_REALM_ID] })
           }
