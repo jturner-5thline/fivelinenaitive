@@ -1247,6 +1247,64 @@ export type Database = {
           },
         ]
       }
+      channel_entries: {
+        Row: {
+          channel_type: Database["public"]["Enums"]["channel_type"]
+          company_id: string
+          contact_id: string | null
+          created_at: string
+          created_by: string | null
+          crm_company_id: string | null
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel_type?: Database["public"]["Enums"]["channel_type"]
+          company_id: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_company_id?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel_type?: Database["public"]["Enums"]["channel_type"]
+          company_id?: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_company_id?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_entries_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_entries_crm_company_id_fkey"
+            columns: ["crm_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_conversations: {
         Row: {
           created_at: string
@@ -18644,6 +18702,11 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "support_admin"
+      channel_type:
+        | "Banks"
+        | "M&A and Investment Bankers"
+        | "Service Providers"
+        | "Investors"
       claap_meeting_status:
         | "pending_review"
         | "routed"
@@ -18875,6 +18938,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user", "support_admin"],
+      channel_type: [
+        "Banks",
+        "M&A and Investment Bankers",
+        "Service Providers",
+        "Investors",
+      ],
       claap_meeting_status: [
         "pending_review",
         "routed",
