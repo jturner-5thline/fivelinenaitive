@@ -16,7 +16,7 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { ConfigureStagesModal } from '@/components/partners/ConfigureStagesModal';
 import { AddPartnerDialog } from '@/components/partners/AddPartnerDialog';
 import { PartnerDetailPanel } from '@/components/partners/PartnerDetailPanel';
-import { ReferralSourcesSection } from '@/components/partners/ReferralSourcesSection';
+
 
 
 function SortablePartnerCard({ partner, owners, onClick }: { partner: Partner; owners: Map<string, { display_name: string; avatar_url?: string }>; onClick: () => void }) {
@@ -169,8 +169,6 @@ export default function PartnersPipeline() {
         </div>
       </div>
 
-      {/* Referral Sources */}
-      <ReferralSourcesSection />
 
       {/* Kanban Board */}
       {isLoading ? (
