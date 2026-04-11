@@ -41,7 +41,7 @@ function DroppableColumn({ type, label, color, entries, onCardClick, onEntityCli
       <div className="p-2 space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto flex-1">
         <SortableContext items={entries.map(e => e.id)} strategy={verticalListSortingStrategy}>
           {entries.map((entry) => (
-            <ChannelCard key={entry.id} entry={entry} onClick={() => onCardClick(entry)} />
+            <ChannelCard key={entry.id} entry={entry} onClick={() => onCardClick(entry)} onEntityClick={(entityType) => onEntityClick(entry, entityType)} />
           ))}
         </SortableContext>
         {entries.length === 0 && (
