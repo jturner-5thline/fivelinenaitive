@@ -82,7 +82,7 @@ export function useCreateChannelEntry() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['channel_entries'] });
-      toast.success('Channel added');
+      toast.success('Company added to channel');
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -101,7 +101,7 @@ export function useUpdateChannelEntry() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['channel_entries'] });
-      toast.success('Channel updated');
+      toast.success('Company updated');
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -120,7 +120,7 @@ export function useDeleteChannelEntry() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['channel_entries'] });
-      toast.success('Channel removed');
+      toast.success('Company removed from channel');
     },
     onError: (e: any) => toast.error(e.message),
   });
