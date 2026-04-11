@@ -68,10 +68,17 @@ export default function SalesBD() {
                 <ChannelsDashboard />
                 <div className="border-t border-border/30 pt-6">
                   <div className="mb-4">
-                    <h2 className="text-lg font-semibold">Referral Sources by Channel</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Each column is a channel. Cards are individual referral sources (companies and contacts) within that channel.</p>
+                    <h2 className="text-lg font-semibold">Companies by Channel</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Each column is a channel. Cards are individual companies and contacts within that channel.</p>
                   </div>
                   <ChannelsBoard />
+                </div>
+                <div className="border-t border-border/30 pt-6">
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold">Referral Sources</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Contacts who have referred deals in Active or In Development pipelines, sorted by total referred volume.</p>
+                  </div>
+                  <ReferralSourcesView />
                 </div>
               </div>
             </TabsContent>
