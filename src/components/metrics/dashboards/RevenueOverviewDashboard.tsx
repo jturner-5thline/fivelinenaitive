@@ -1,0 +1,340 @@
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { DollarSign, TrendingUp, Building2, Loader2 } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+} from 'recharts';
+import {
+  buildQuarterOptions,
+  getCurrentQuarter,
+  useQBQuarterlyRevenue,
+  useQBCombinedQuarterlyRevenue,
+  type QuarterOption,
+  type MonthlyRevenue,
+} from '@/hooks/useQBQuarterlyRevenue';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+// Entity realm IDs
+const DEBT_REALM_ID = '193514877331929';
+const FINSERV_REALM_ID = '9341451968897660';
+
+const formatCurrency = (value: number) => {
+  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${value.toFixed(0)}`;
+};
+
+const formatCurrencyFull = (value: number) =>
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+
+interface DrilldownData {
+  title: string;
+  monthKey: string;
+  realmIds: string[];
+}
+
+interface InvoiceRow {
+  id: string;
+  txn_date: string;
+  customer_name: string | null;
+  total_amt: number | null;
+  doc_number: string | null;
+  realm_id: string;
+}
+
+function RevenueBarChart({
+  title,
+  subtitle,
+  data,
+  isLoading,
+  total,
+  color,
+  onBarClick,
+}: {
+  title: string;
+  subtitle: string;
+  data: MonthlyRevenue[];
+  isLoading: boolean;
+  total: number;
+  color: string;
+  onBarClick: (monthKey: string) => void;
+}) {
+  if (isLoading) {
+    return (
+      <Card className="bg-card/50 backdrop-blur border-border/50">
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-3 w-48 mt-1" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[220px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
+      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
+          <p className="text-[10px] text-muted-foreground">Quarter Total</p>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div style={{ height: 220 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data}
+              margin={{ top: 8, right: 8, left: -10, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                strokeOpacity={0.4}
+                vertical={false}
+              />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={{ stroke: 'hsl(var(--border))' }}
+                tickLine={false}
+              />
+              <YAxis
+                tickFormatter={formatCurrency}
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                formatter={(v: number) => [formatCurrencyFull(v), 'Revenue']}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--popover))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  color: 'hsl(var(--popover-foreground))',
+                }}
+                labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 500 }}
+                cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
+              />
+              <Bar
+                dataKey="amount"
+                radius={[6, 6, 0, 0]}
+                cursor="pointer"
+                onClick={(d: MonthlyRevenue) => onBarClick(d.monthKey)}
+              >
+                {data.map((entry, i) => (
+                  <Cell
+                    key={i}
+                    fill={entry.amount > 0 ? color : 'hsl(var(--muted))'}
+                    fillOpacity={entry.amount > 0 ? 0.85 : 0.3}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DrilldownModal({
+  open,
+  onClose,
+  drilldown,
+  quarter,
+}: {
+  open: boolean;
+  onClose: () => void;
+  drilldown: DrilldownData | null;
+  quarter: QuarterOption;
+}) {
+  const { user } = useAuth();
+  const month = quarter.months.find(m => m.key === drilldown?.monthKey);
+
+  const { data: invoices, isLoading } = useQuery({
+    queryKey: ['qb-drilldown-invoices', drilldown?.realmIds, drilldown?.monthKey],
+    queryFn: async () => {
+      if (!month || !drilldown) return [];
+      const { data, error } = await supabase
+        .from('quickbooks_invoices')
+        .select('id, txn_date, customer_name, total_amt, doc_number, realm_id')
+        .in('realm_id', drilldown.realmIds)
+        .gte('txn_date', month.start)
+        .lte('txn_date', month.end)
+        .order('txn_date', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as InvoiceRow[];
+    },
+    enabled: open && !!drilldown && !!month && !!user,
+  });
+
+  const total = (invoices ?? []).reduce((s, r) => s + (r.total_amt ?? 0), 0);
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            {drilldown?.title} — {month?.label} Detail
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex items-center gap-3 mb-4">
+          <Badge variant="outline" className="text-xs">
+            {invoices?.length ?? 0} invoices
+          </Badge>
+          <Badge variant="secondary" className="text-xs font-mono">
+            {formatCurrencyFull(total)}
+          </Badge>
+          <span className="text-xs text-muted-foreground">Accrual basis · Invoice date</span>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : !invoices?.length ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No invoices found for this month.</p>
+        ) : (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Date</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Invoice #</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Customer</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map(inv => (
+                  <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/20">
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{inv.txn_date}</td>
+                    <td className="px-3 py-2 text-xs font-mono">{inv.doc_number || '—'}</td>
+                    <td className="px-3 py-2 text-xs">{inv.customer_name || '—'}</td>
+                    <td className="px-3 py-2 text-xs text-right font-mono">
+                      {formatCurrencyFull(inv.total_amt ?? 0)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-muted/20">
+                  <td colSpan={3} className="px-3 py-2 text-xs font-medium">Total</td>
+                  <td className="px-3 py-2 text-xs text-right font-mono font-bold">
+                    {formatCurrencyFull(total)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function RevenueOverviewDashboard() {
+  const quarterOptions = useMemo(() => buildQuarterOptions(8), []);
+  const [selectedQuarterValue, setSelectedQuarterValue] = useState(() => getCurrentQuarter().value);
+  const selectedQuarter = quarterOptions.find(q => q.value === selectedQuarterValue) ?? quarterOptions[0];
+
+  const [drilldown, setDrilldown] = useState<DrilldownData | null>(null);
+
+  // Debt Revenue: 5th Line Capital Advisors LLC
+  const debtRevenue = useQBQuarterlyRevenue(DEBT_REALM_ID, selectedQuarter);
+
+  // FinServ Revenue: 5th Line Financial Services, LLC
+  const finservRevenue = useQBQuarterlyRevenue(FINSERV_REALM_ID, selectedQuarter);
+
+  // Total Revenue: Debt + FinServ combined
+  const totalRevenue = useQBCombinedQuarterlyRevenue(
+    [DEBT_REALM_ID, FINSERV_REALM_ID],
+    selectedQuarter,
+  );
+
+  return (
+    <div className="space-y-5">
+      {/* Header with quarter selector */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Revenue Overview</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Monthly revenue by entity · QuickBooks accrual basis · Click bars for detail
+          </p>
+        </div>
+        <Select value={selectedQuarterValue} onValueChange={setSelectedQuarterValue}>
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {quarterOptions.map(q => (
+              <SelectItem key={q.value} value={q.value} className="text-xs">
+                {q.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* 3 charts in a row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <RevenueBarChart
+          title="Debt Revenue"
+          subtitle="5th Line Capital Advisors, LLC"
+          data={debtRevenue.months}
+          isLoading={debtRevenue.isLoading}
+          total={debtRevenue.total}
+          color="hsl(var(--primary))"
+          onBarClick={(monthKey) =>
+            setDrilldown({ title: 'Debt Revenue', monthKey, realmIds: [DEBT_REALM_ID] })
+          }
+        />
+        <RevenueBarChart
+          title="FinServ Revenue"
+          subtitle="5th Line Financial Services, LLC"
+          data={finservRevenue.months}
+          isLoading={finservRevenue.isLoading}
+          total={finservRevenue.total}
+          color="hsl(var(--chart-2))"
+          onBarClick={(monthKey) =>
+            setDrilldown({ title: 'FinServ Revenue', monthKey, realmIds: [FINSERV_REALM_ID] })
+          }
+        />
+        <RevenueBarChart
+          title="Total Revenue"
+          subtitle="Debt + FinServ combined"
+          data={totalRevenue.months}
+          isLoading={totalRevenue.isLoading}
+          total={totalRevenue.total}
+          color="hsl(var(--chart-3))"
+          onBarClick={(monthKey) =>
+            setDrilldown({ title: 'Total Revenue', monthKey, realmIds: [DEBT_REALM_ID, FINSERV_REALM_ID] })
+          }
+        />
+      </div>
+
+      {/* Drilldown Modal */}
+      <DrilldownModal
+        open={!!drilldown}
+        onClose={() => setDrilldown(null)}
+        drilldown={drilldown}
+        quarter={selectedQuarter}
+      />
+    </div>
+  );
+}
