@@ -167,7 +167,13 @@ export function ChannelsBoard() {
               label={col.label}
               color={col.color}
               entries={grouped[col.type]}
-              onCardClick={setDetailEntry}
+              onCardClick={(entry) => {
+                if (entry.crm_company_id || entry.contact_id) {
+                  setEntityDetailEntry(entry);
+                } else {
+                  setDetailEntry(entry);
+                }
+              }}
               onEntityClick={handleEntityClick}
             />
           ))}
