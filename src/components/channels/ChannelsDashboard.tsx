@@ -490,7 +490,17 @@ export function ChannelsDashboard() {
               { data: volumeChartData, title: volumeChartTitle, formatter: (v: number) => `$${v.toFixed(1)}M` },
             ].map(({ data, title, formatter }) => (
               <div key={title} className={`${glassCard} p-4`}>
-                <h3 className="relative z-10 text-sm font-medium text-foreground mb-3">{title}</h3>
+                <div className="relative z-10 flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-foreground">{title}</h3>
+                  <div className="flex items-center gap-3">
+                    {barKeys.map((bk, idx) => (
+                      <span key={bk.key} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <span className="w-2 h-2 rounded-full" style={{ background: seriesColors[idx] }} />
+                        {bk.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
                 {data.length > 0 ? (
                   <div className="rounded-lg bg-[hsl(260,18%,9%,0.5)] border border-white/[0.03] ring-1 ring-inset ring-white/[0.02] p-2 shadow-[inset_0_2px_6px_hsl(0,0%,0%,0.15)]">
                     <ResponsiveContainer width="100%" height={300}>
