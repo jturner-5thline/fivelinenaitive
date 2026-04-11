@@ -138,6 +138,7 @@ const PRESETS_CONFIG_KEY = 'metrics_presets';
 
 export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
   const { company } = useCompany();
+  const { canEditMetrics } = useMetricsEditPermission();
   const [widgets, setWidgets] = useState<MetricWidgetConfig[]>([]);
   const [presets, setPresets] = useState<MetricsLayoutPreset[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
