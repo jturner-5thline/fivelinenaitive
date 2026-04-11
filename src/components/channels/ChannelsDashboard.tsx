@@ -490,38 +490,52 @@ export function ChannelsDashboard() {
               { data: volumeChartData, title: volumeChartTitle, formatter: (v: number) => `$${v.toFixed(1)}M` },
             ].map(({ data, title, formatter }) => (
               <div key={title} className={`${glassCard} p-4`}>
-                <h3 className="relative z-10 text-sm font-medium text-foreground mb-3">{title}</h3>
+                <div className="relative z-10 flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-foreground">{title}</h3>
+                  <div className="flex items-center gap-3">
+                    {barKeys.map((bk, idx) => (
+                      <span key={bk.key} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <span className="w-2 h-2 rounded-full" style={{ background: seriesColors[idx] }} />
+                        {bk.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
                 {data.length > 0 ? (
                   <div className="rounded-lg bg-[hsl(260,18%,9%,0.5)] border border-white/[0.03] ring-1 ring-inset ring-white/[0.02] p-2 shadow-[inset_0_2px_6px_hsl(0,0%,0%,0.15)]">
-                    <ResponsiveContainer width="100%" height={270}>
-                      <BarChart data={data} layout="vertical" margin={{ left: 8, right: 8, top: 4, bottom: 4 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(260,20%,30%,0.08)" />
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={data} margin={{ left: 4, right: 8, top: 8, bottom: data.length > 4 ? 60 : 24 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(260,20%,30%,0.08)" vertical={false} />
                         <XAxis
+                          dataKey="name"
+                          type="category"
+                          tick={{ fontSize: 10, fill: 'hsl(260,10%,60%)' }}
+                          axisLine={false}
+                          tickLine={false}
+                          interval={0}
+                          angle={data.length > 4 ? -35 : 0}
+                          textAnchor={data.length > 4 ? 'end' : 'middle'}
+                          height={data.length > 4 ? 60 : 24}
+                        />
+                        <YAxis
                           type="number"
                           tick={{ fontSize: 10, fill: 'hsl(260,10%,55%)' }}
                           axisLine={false}
                           tickLine={false}
                           tickFormatter={formatter}
-                        />
-                        <YAxis
-                          dataKey="name"
-                          type="category"
-                          width={120}
-                          tick={{ fontSize: 10, fill: 'hsl(260,10%,60%)' }}
-                          axisLine={false}
-                          tickLine={false}
+                          width={formatter ? 55 : 35}
                         />
                         <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'hsl(263,30%,40%,0.06)' }} />
-                        <Legend wrapperStyle={{ fontSize: 10, color: 'hsl(260,10%,55%)' }} />
                         {barKeys.map((bk, idx) => (
                           <Bar
                             key={bk.key}
                             dataKey={bk.key}
                             name={bk.label}
                             fill={seriesColors[idx]}
-                            radius={[0, 3, 3, 0]}
+                            radius={[3, 3, 0, 0]}
                             cursor="pointer"
                             onClick={(d: any) => d?.payload?.name && handleBarClick(d.payload.name, bk.key)}
+                            maxBarSize={48}
                           />
                         ))}
                       </BarChart>
