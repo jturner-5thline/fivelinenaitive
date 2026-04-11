@@ -1,0 +1,282 @@
+import { useState, useMemo } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, Users, DollarSign, FileCheck, Building2, UserCheck } from 'lucide-react';
+import {
+  buildQuarterOptions,
+  getCurrentQuarter,
+  type QuarterOption,
+} from '@/hooks/useQBQuarterlyRevenue';
+import { usePipelineStageMetrics, type StageEntryDeal } from '@/hooks/usePipelineStageMetrics';
+import { cn } from '@/lib/utils';
+
+const formatCurrency = (value: number) => {
+  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
+  return `$${value.toFixed(0)}`;
+};
+
+const formatCurrencyFull = (value: number) =>
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 });
+
+interface MetricCardConfig {
+  id: string;
+  title: string;
+  icon: typeof Users;
+  value: string | number;
+  isLoading: boolean;
+  deals: StageEntryDeal[];
+  color: string;
+  drilldownTitle: string;
+}
+
+function MetricKPICard({
+  config,
+  onClick,
+}: {
+  config: MetricCardConfig;
+  onClick: () => void;
+}) {
+  const Icon = config.icon;
+
+  return (
+    <Card
+      onClick={onClick}
+      className={cn(
+        'relative group cursor-pointer overflow-hidden transition-all duration-200',
+        'border border-border/30 bg-card/50 backdrop-blur-xl',
+        'hover:border-primary/40 hover:-translate-y-0.5',
+        'hover:shadow-[0_0_20px_hsl(var(--primary)/0.1),0_8px_32px_hsl(0,0%,0%,0.4)]',
+      )}
+    >
+      {/* Top gradient accent */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
+        style={{ background: `linear-gradient(90deg, ${config.color}, transparent)` }}
+      />
+      <CardContent className="flex items-center gap-4 p-4">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/20"
+          style={{
+            background: `linear-gradient(135deg, ${config.color}20, transparent)`,
+          }}
+        >
+          <Icon className="h-5 w-5" style={{ color: config.color }} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] text-muted-foreground font-medium truncate">{config.title}</p>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            {config.isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : (
+              <span className="text-xl font-bold font-mono tabular-nums text-foreground">
+                {config.value}
+              </span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DrilldownModal({
+  open,
+  onClose,
+  title,
+  deals,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  deals: StageEntryDeal[];
+}) {
+  const total = deals.reduce((s, d) => s + d.value, 0);
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileCheck className="h-4 w-4" />
+            {title}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex items-center gap-3 mb-4">
+          <Badge variant="outline" className="text-xs">
+            {deals.length} deal{deals.length !== 1 ? 's' : ''}
+          </Badge>
+          <Badge variant="secondary" className="text-xs font-mono">
+            {formatCurrencyFull(total)}
+          </Badge>
+          <span className="text-xs text-muted-foreground">Stage-entry based · First entry only</span>
+        </div>
+
+        {deals.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No deals found for this period.</p>
+        ) : (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Deal / Company</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Amount</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Current Stage</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Entered</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Owner</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deals.map(deal => (
+                  <tr key={deal.deal_id} className="border-b last:border-0 hover:bg-muted/20">
+                    <td className="px-3 py-2 text-xs font-medium">{deal.company}</td>
+                    <td className="px-3 py-2 text-xs text-right font-mono">
+                      {formatCurrencyFull(deal.value)}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {deal.current_stage?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || '—'}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {new Date(deal.entered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{deal.manager || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-muted/20">
+                  <td className="px-3 py-2 text-xs font-medium">Total</td>
+                  <td className="px-3 py-2 text-xs text-right font-mono font-bold">
+                    {formatCurrencyFull(total)}
+                  </td>
+                  <td colSpan={3} />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function PipelineMetricsSection() {
+  const quarterOptions = useMemo(() => buildQuarterOptions(8), []);
+  const [selectedQuarterValue, setSelectedQuarterValue] = useState(() => getCurrentQuarter().value);
+  const selectedQuarter = quarterOptions.find(q => q.value === selectedQuarterValue) ?? quarterOptions[0];
+
+  const metrics = usePipelineStageMetrics(selectedQuarter);
+
+  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[] } | null>(null);
+
+  const cards: MetricCardConfig[] = [
+    {
+      id: 'deals-on-board',
+      title: 'Deals on the Board',
+      icon: Users,
+      value: metrics.dealsOnBoard.count,
+      isLoading: metrics.dealsOnBoard.isLoading,
+      deals: metrics.dealsOnBoard.deals,
+      color: 'hsl(var(--primary))',
+      drilldownTitle: 'Deals on the Board — NDA/Needs List Sent',
+    },
+    {
+      id: 'debt-dollar-on-board',
+      title: 'Debt $ on the Board',
+      icon: DollarSign,
+      value: formatCurrency(metrics.debtDollarOnBoard.dollarVolume),
+      isLoading: metrics.debtDollarOnBoard.isLoading,
+      deals: metrics.debtDollarOnBoard.deals,
+      color: 'hsl(var(--chart-2))',
+      drilldownTitle: 'Debt $ on the Board — NDA/Needs List Sent',
+    },
+    {
+      id: 'debt-deals-signed',
+      title: 'Debt Deals Signed',
+      icon: FileCheck,
+      value: metrics.debtDealsSigned.count,
+      isLoading: metrics.debtDealsSigned.isLoading,
+      deals: metrics.debtDealsSigned.deals,
+      color: 'hsl(var(--chart-3))',
+      drilldownTitle: 'Debt Deals Signed — Final Credit Items',
+    },
+    {
+      id: 'debt-dollar-signed',
+      title: 'Debt $ Signed',
+      icon: DollarSign,
+      value: formatCurrency(metrics.debtDollarSigned.dollarVolume),
+      isLoading: metrics.debtDollarSigned.isLoading,
+      deals: metrics.debtDollarSigned.deals,
+      color: 'hsl(var(--chart-4))',
+      drilldownTitle: 'Debt $ Signed — Final Credit Items',
+    },
+    {
+      id: 'finserv-deals-on-board',
+      title: 'FinServ: Deals on the Board',
+      icon: Building2,
+      value: metrics.finservDealsOnBoard.count,
+      isLoading: metrics.finservDealsOnBoard.isLoading,
+      deals: metrics.finservDealsOnBoard.deals,
+      color: 'hsl(var(--chart-5))',
+      drilldownTitle: 'FinServ: Deals on the Board — Added to Pipeline',
+    },
+    {
+      id: 'finserv-clients-signed',
+      title: 'FinServ Clients Signed',
+      icon: UserCheck,
+      value: metrics.finservClientsSigned.count,
+      isLoading: metrics.finservClientsSigned.isLoading,
+      deals: metrics.finservClientsSigned.deals,
+      color: 'hsl(var(--success))',
+      drilldownTitle: 'FinServ Clients Signed — Active Client',
+    },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Pipeline Metrics</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Stage-entry based · First entry per deal · Click for detail
+          </p>
+        </div>
+        <Select value={selectedQuarterValue} onValueChange={setSelectedQuarterValue}>
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {quarterOptions.map(q => (
+              <SelectItem key={q.value} value={q.value} className="text-xs">
+                {q.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* 6 KPI cards in 3-col grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {cards.map(card => (
+          <MetricKPICard
+            key={card.id}
+            config={card}
+            onClick={() => setDrilldown({ title: card.drilldownTitle, deals: card.deals })}
+          />
+        ))}
+      </div>
+
+      {/* Drilldown modal */}
+      <DrilldownModal
+        open={!!drilldown}
+        onClose={() => setDrilldown(null)}
+        title={drilldown?.title ?? ''}
+        deals={drilldown?.deals ?? []}
+      />
+    </div>
+  );
+}
