@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,11 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Building2, User, Search, Check, Loader2 } from 'lucide-react';
-import { useSearchContacts, useSearchCrmCompanies, useCreateChannelEntry, type ChannelType } from '@/hooks/useChannelEntries';
-import { supabase } from '@/integrations/supabase/client';
-import { useCompany } from '@/hooks/useCompany';
+import { Building2, User, Search, Check, Loader2, AlertCircle, Link2 } from 'lucide-react';
+import { useSearchContacts, useSearchCrmCompanies, useCreateChannelEntry, useChannelEntries, type ChannelType } from '@/hooks/useChannelEntries';
 
 const CHANNEL_TYPES: ChannelType[] = ['Banks', 'M&A and Investment Bankers', 'Service Providers', 'Investors'];
 
@@ -28,11 +25,23 @@ export function AddChannelDialog({ open, onClose }: Props) {
   const [selectedContactCompanyId, setSelectedContactCompanyId] = useState<string | null>(null);
   const [channelType, setChannelType] = useState<ChannelType>('Banks');
   const [notes, setNotes] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { data: contacts = [], isLoading: contactsLoading } = useSearchContacts(contactSearch);
   const { data: companies = [], isLoading: companiesLoading } = useSearchCrmCompanies(companySearch);
+  const { data: existingEntries = [] } = useChannelEntries();
   const createChannel = useCreateChannelEntry();
-  const { company } = useCompany();
+
+  // Check if a contact/company pair already exists in channels
+  const isDuplicate = useMemo(() => {
+    const contactId = selectedContactId;
+    const companyId = selectedCompanyId || selectedContactCompanyId;
+    if (!contactId && !companyId) return false;
+    return existingEntries.some(e =>
+      (contactId ? e.contact_id === contactId : !e.contact_id) &&
+      (companyId ? e.crm_company_id === companyId : !e.crm_company_id)
+    );
+  }, [selectedContactId, selectedCompanyId, selectedContactCompanyId, existingEntries]);
 
   const reset = () => {
     setContactSearch('');
@@ -43,41 +52,56 @@ export function AddChannelDialog({ open, onClose }: Props) {
     setChannelType('Banks');
     setNotes('');
     setSearchTab('contacts');
+    setSaveError(null);
   };
 
-  const handleSelectContact = async (contact: typeof contacts[0]) => {
+  const handleSelectContact = (contact: typeof contacts[0]) => {
     setSelectedContactId(contact.id);
     setSelectedCompanyId(null);
+    setSaveError(null);
     // Auto-attach company if contact has one
     const crmId = contact.crm_company_id || contact.primary_company_id;
-    if (crmId) {
-      setSelectedContactCompanyId(crmId);
-    } else {
-      setSelectedContactCompanyId(null);
-    }
+    setSelectedContactCompanyId(crmId || null);
   };
 
   const handleSelectCompany = (comp: typeof companies[0]) => {
     setSelectedCompanyId(comp.id);
     setSelectedContactId(null);
     setSelectedContactCompanyId(null);
+    setSaveError(null);
   };
 
   const handleSave = async () => {
-    const contactId = selectedContactId;
-    const crmCompanyId = selectedCompanyId || selectedContactCompanyId;
-
-    await createChannel.mutateAsync({
-      channel_type: channelType,
-      contact_id: contactId,
-      crm_company_id: crmCompanyId,
-      notes: notes || null,
-    });
-    reset();
-    onClose();
+    if (isDuplicate) {
+      setSaveError('This contact/company is already in your channels.');
+      return;
+    }
+    setSaveError(null);
+    try {
+      const contactId = selectedContactId;
+      const crmCompanyId = selectedCompanyId || selectedContactCompanyId;
+      await createChannel.mutateAsync({
+        channel_type: channelType,
+        contact_id: contactId,
+        crm_company_id: crmCompanyId,
+        notes: notes || null,
+      });
+      reset();
+      onClose();
+    } catch (err: any) {
+      if (err.message?.includes('duplicate') || err.message?.includes('unique')) {
+        setSaveError('This contact/company is already in your channels.');
+      } else {
+        setSaveError(err.message || 'Failed to save. Please try again.');
+      }
+    }
   };
 
   const hasSelection = selectedContactId || selectedCompanyId;
+
+  // Find contacts already in channels for visual indication
+  const existingContactIds = useMemo(() => new Set(existingEntries.map(e => e.contact_id).filter(Boolean)), [existingEntries]);
+  const existingCompanyIds = useMemo(() => new Set(existingEntries.map(e => e.crm_company_id).filter(Boolean)), [existingEntries]);
 
   return (
     <Dialog open={open} onOpenChange={() => { reset(); onClose(); }}>
@@ -104,34 +128,45 @@ export function AddChannelDialog({ open, onClose }: Props) {
                 value={contactSearch}
                 onChange={(e) => setContactSearch(e.target.value)}
                 className="pl-9"
+                autoFocus
               />
             </div>
-            <div className="max-h-40 overflow-y-auto space-y-1 border rounded-md p-1">
-              {contactsLoading && <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin" /></div>}
+            <div className="max-h-48 overflow-y-auto space-y-0.5 border rounded-md p-1">
+              {contactsLoading && <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>}
               {!contactsLoading && contactSearch.length >= 2 && contacts.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-3">No contacts found</p>
               )}
-              {contactSearch.length < 2 && (
+              {contactSearch.length < 2 && !contactsLoading && (
                 <p className="text-xs text-muted-foreground text-center py-3">Type at least 2 characters to search</p>
               )}
-              {contacts.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => handleSelectContact(c)}
-                  className={`w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent transition-colors flex items-center justify-between ${selectedContactId === c.id ? 'bg-accent' : ''}`}
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground truncate">{c.full_name || 'Unnamed'}</p>
-                    <p className="text-muted-foreground truncate">{c.email} {c.job_title && `· ${c.job_title}`}</p>
-                  </div>
-                  {selectedContactId === c.id && <Check className="h-4 w-4 text-primary shrink-0" />}
-                </button>
-              ))}
+              {contacts.map((c) => {
+                const alreadyAdded = existingContactIds.has(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => handleSelectContact(c)}
+                    disabled={alreadyAdded}
+                    className={`w-full text-left px-2.5 py-2 rounded text-xs hover:bg-accent transition-colors flex items-center justify-between gap-2 ${selectedContactId === c.id ? 'bg-accent ring-1 ring-primary/30' : ''} ${alreadyAdded ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground truncate">{c.full_name || 'Unnamed'}</p>
+                      <p className="text-muted-foreground truncate">
+                        {c.email}{c.job_title ? ` · ${c.job_title}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {c.crm_company_id && <Link2 className="h-3 w-3 text-muted-foreground" title="Has linked company" />}
+                      {alreadyAdded && <span className="text-[10px] text-muted-foreground">Added</span>}
+                      {selectedContactId === c.id && <Check className="h-4 w-4 text-primary" />}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
             {selectedContactCompanyId && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md px-2.5 py-1.5">
-                <Building2 className="h-3.5 w-3.5" />
-                <span>Associated company will be auto-linked</span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md px-2.5 py-2">
+                <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span>Associated company will be auto-linked to this channel</span>
               </div>
             )}
           </TabsContent>
@@ -146,27 +181,34 @@ export function AddChannelDialog({ open, onClose }: Props) {
                 className="pl-9"
               />
             </div>
-            <div className="max-h-40 overflow-y-auto space-y-1 border rounded-md p-1">
-              {companiesLoading && <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin" /></div>}
+            <div className="max-h-48 overflow-y-auto space-y-0.5 border rounded-md p-1">
+              {companiesLoading && <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>}
               {!companiesLoading && companySearch.length >= 2 && companies.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-3">No companies found</p>
               )}
-              {companySearch.length < 2 && (
+              {companySearch.length < 2 && !companiesLoading && (
                 <p className="text-xs text-muted-foreground text-center py-3">Type at least 2 characters to search</p>
               )}
-              {companies.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => handleSelectCompany(c)}
-                  className={`w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent transition-colors flex items-center justify-between ${selectedCompanyId === c.id ? 'bg-accent' : ''}`}
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground truncate">{c.name}</p>
-                    <p className="text-muted-foreground truncate">{c.industry || c.domain || ''}</p>
-                  </div>
-                  {selectedCompanyId === c.id && <Check className="h-4 w-4 text-primary shrink-0" />}
-                </button>
-              ))}
+              {companies.map((c) => {
+                const alreadyAdded = existingCompanyIds.has(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => handleSelectCompany(c)}
+                    disabled={alreadyAdded}
+                    className={`w-full text-left px-2.5 py-2 rounded text-xs hover:bg-accent transition-colors flex items-center justify-between gap-2 ${selectedCompanyId === c.id ? 'bg-accent ring-1 ring-primary/30' : ''} ${alreadyAdded ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground truncate">{c.name}</p>
+                      <p className="text-muted-foreground truncate">{c.industry || c.domain || ''}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {alreadyAdded && <span className="text-[10px] text-muted-foreground">Added</span>}
+                      {selectedCompanyId === c.id && <Check className="h-4 w-4 text-primary" />}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </TabsContent>
         </Tabs>
@@ -191,9 +233,23 @@ export function AddChannelDialog({ open, onClose }: Props) {
           </div>
         )}
 
+        {saveError && (
+          <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 rounded-md px-2.5 py-2">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>{saveError}</span>
+          </div>
+        )}
+
+        {isDuplicate && hasSelection && (
+          <div className="flex items-center gap-2 text-xs text-amber-500 bg-amber-500/10 rounded-md px-2.5 py-2">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>This contact/company is already in your channels.</span>
+          </div>
+        )}
+
         <DialogFooter>
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!hasSelection || createChannel.isPending}>
+          <Button onClick={handleSave} disabled={!hasSelection || createChannel.isPending || isDuplicate}>
             {createChannel.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
             Add Channel
           </Button>

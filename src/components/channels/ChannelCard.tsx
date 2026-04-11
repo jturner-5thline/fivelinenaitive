@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,7 @@ interface Props {
 export function ChannelCard({ entry, onClick }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
 
   const companyName = entry.crm_company?.name;
   const contactName = entry.contact?.full_name;
@@ -25,29 +27,56 @@ export function ChannelCard({ entry, onClick }: Props) {
       ? 'Contact'
       : 'Company';
 
+  // Distinguish click from drag: only fire onClick if pointer barely moved
+  const handlePointerDown = (e: React.PointerEvent) => {
+    pointerDownPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (!pointerDownPos.current) { onClick(); return; }
+    const dx = Math.abs(e.clientX - pointerDownPos.current.x);
+    const dy = Math.abs(e.clientY - pointerDownPos.current.y);
+    if (dx < 5 && dy < 5) onClick();
+    pointerDownPos.current = null;
+  };
+
+  // If neither company nor contact name, show a fallback
+  const displayName = companyName || contactName || 'Unnamed Channel';
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      onClick={onClick}
-      className="bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-colors space-y-1.5"
+      onPointerDown={handlePointerDown}
+      onClick={handleClick}
+      className="bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-colors space-y-1.5 touch-none"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          {companyName && (
+        <div className="min-w-0 flex-1">
+          {companyName ? (
             <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
               <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               {companyName}
             </p>
+          ) : contactName ? (
+            <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
+              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              {contactName}
+            </p>
+          ) : (
+            <p className="text-sm font-medium text-muted-foreground truncate">{displayName}</p>
           )}
-          {contactName && (
+          {companyName && contactName && (
             <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
               <User className="h-3 w-3 text-muted-foreground shrink-0" />
               {contactName}
               {contactTitle && <span className="text-muted-foreground/60">· {contactTitle}</span>}
             </p>
+          )}
+          {!companyName && contactName && contactTitle && (
+            <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{contactTitle}</p>
           )}
         </div>
         <Badge variant="outline" className="text-[9px] shrink-0 uppercase tracking-wider">
