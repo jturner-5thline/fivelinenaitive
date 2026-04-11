@@ -39,7 +39,7 @@ export function ChannelDetailDialog({ entry, onClose }: Props) {
       <Dialog open onOpenChange={() => onClose()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Referral Source Details</DialogTitle>
+            <DialogTitle>Company Details</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -108,9 +108,9 @@ export function ChannelDetailDialog({ entry, onClose }: Props) {
       <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Referral Source?</AlertDialogTitle>
+            <AlertDialogTitle>Remove Company?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the referral source from this channel. The original contact or company record will not be deleted.
+              This will remove the company from this channel. The original contact or company record will not be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
