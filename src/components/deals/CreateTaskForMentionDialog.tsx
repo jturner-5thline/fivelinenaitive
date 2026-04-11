@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { CalendarIcon } from 'lucide-react';
+import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 
 export interface MentionedUser {
   id: string;
@@ -100,14 +101,25 @@ export function CreateTaskForMentionDialog({
     if (!title.trim() || !user) return;
     setIsSubmitting(true);
 
-    const { error } = await supabase.from('tasks').insert({
+    // Look up the user's company_id
+    const { data: memberData } = await supabase
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    const companyId = memberData?.company_id || null;
+
+    const { data, error } = await supabase.from('tasks').insert({
       title: title.trim(),
       description: description.trim() || null,
       due_date: dueDate || null,
       assigned_to: currentUser.id,
       assigned_by: user.id,
       deal_id: dealId || null,
-    } as any);
+      company_id: companyId,
+    } as any).select().single();
 
     setIsSubmitting(false);
 
@@ -118,6 +130,34 @@ export function CreateTaskForMentionDialog({
     }
 
     toast.success(`Task assigned to ${currentUser.label}`);
+
+    // Asana sync (fire-and-forget)
+    if (data) {
+      (async () => {
+        try {
+          const ctx = await getAsanaSyncContext(companyId);
+          if (ctx) {
+            // Look up assignee email
+            const { data: assigneeProfile } = await supabase
+              .from('profiles')
+              .select('email')
+              .eq('user_id', currentUser.id)
+              .maybeSingle();
+
+            const gid = await syncTaskToAsana(ctx, {
+              id: (data as any).id,
+              title: (data as any).title,
+              description: (data as any).description,
+              due_date: (data as any).due_date,
+              assignee_email: assigneeProfile?.email || null,
+            });
+            console.log('[AsanaSync] Mention task pushed to Asana, gid:', gid);
+          }
+        } catch (e) {
+          console.error('[AsanaSync] Mention task sync failed:', e);
+        }
+      })();
+    }
 
     if (currentIndex < mentionedUsers.length - 1) {
       setCurrentIndex((i) => i + 1);

@@ -44,6 +44,7 @@ import { MentionTaskDialog } from './notes/MentionTaskDialog';
 import mentionSuggestion from './notes/mentionSuggestion';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 
 // ─── Ribbon helpers ───
 function RibbonBtn({ onClick, isActive, icon: Icon, label, disabled, className }: {
@@ -268,15 +269,27 @@ export function DealSpaceNoteEditor({
   const handleMentionTask = async (task: { title: string; description: string; due_date?: string }) => {
     if (!pendingMention || !user) return;
     try {
+      // Look up the user's company_id
+      const { data: memberData } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+
+      const companyId = memberData?.company_id || null;
+
       // Create task
-      await supabase.from('tasks').insert({
+      const { data: createdTask } = await supabase.from('tasks').insert({
         deal_id: dealId,
         assigned_to: pendingMention.userId,
         assigned_by: user.id,
         title: task.title,
         description: task.description || null,
         due_date: task.due_date || null,
-      } as any);
+        company_id: companyId,
+      } as any).select().single();
+
       // Also send notification
       await supabase.from('flex_notifications').insert({
         user_id: pendingMention.userId,
@@ -286,6 +299,33 @@ export function DealSpaceNoteEditor({
         message: `${user.email} assigned you a task: "${task.title}" on the ${dealData?.company} deal.`,
       } as any);
       toast({ title: `Task assigned to ${pendingMention.userName}` });
+
+      // Asana sync (fire-and-forget)
+      if (createdTask) {
+        (async () => {
+          try {
+            const ctx = await getAsanaSyncContext(companyId);
+            if (ctx) {
+              const { data: assigneeProfile } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('user_id', pendingMention.userId)
+                .maybeSingle();
+
+              const gid = await syncTaskToAsana(ctx, {
+                id: (createdTask as any).id,
+                title: (createdTask as any).title,
+                description: (createdTask as any).description,
+                due_date: (createdTask as any).due_date,
+                assignee_email: assigneeProfile?.email || null,
+              });
+              console.log('[AsanaSync] DealSpace mention task pushed to Asana, gid:', gid);
+            }
+          } catch (e) {
+            console.error('[AsanaSync] DealSpace mention task sync failed:', e);
+          }
+        })();
+      }
     } catch (err) {
       console.error('Error creating task:', err);
       toast({ title: 'Failed to create task', variant: 'destructive' });
