@@ -288,8 +288,8 @@ export function ChannelsDashboard() {
   }
 
   const hasData = performanceRows.some(r => r.added.count > 0);
-  const dealChartTitle = chartGroupBy === 'channel' ? 'Deals by Channel' : 'Deals by Referral Source';
-  const volumeChartTitle = chartGroupBy === 'channel' ? 'Dollar Volume by Channel ($M)' : 'Dollar Volume by Referral Source ($M)';
+  const dealChartTitle = chartGroupBy === 'channel' ? 'Deals by Channel' : 'Deals by Company';
+  const volumeChartTitle = chartGroupBy === 'channel' ? 'Dollar Volume by Channel ($M)' : 'Dollar Volume by Company ($M)';
 
   const kpiCards = [
     { stageKey: 'added', label: 'Deals Added', subtitle: 'Sourced deals entering the pipeline', count: kpis.added.count, volume: kpis.added.volume, icon: Layers, color: SERIES_COLORS.added },
@@ -332,9 +332,9 @@ export function ChannelsDashboard() {
             onChange={setChannelTypeFilters}
           />
 
-          {/* Multi-select: Referral Sources */}
+          {/* Multi-select: Companies */}
           <MultiSelectFilter
-            label="Sources"
+            label="Companies"
             options={sourceOptions}
             selected={sourceFilters}
             onChange={setSourceFilters}
@@ -429,7 +429,7 @@ export function ChannelsDashboard() {
           <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto" />
           <p className="text-sm text-muted-foreground">No attributed deals found for this period.</p>
           <p className="text-xs text-muted-foreground/60">
-            Deals are attributed to referral sources when the deal's referral field matches a source's company or contact name.
+            Deals are attributed to companies when the deal's referral field matches a company or contact name.
           </p>
         </div>
       ) : (
@@ -478,7 +478,7 @@ export function ChannelsDashboard() {
             <Tabs value={chartGroupBy} onValueChange={(v) => setChartGroupBy(v as ChartGroupBy)}>
               <TabsList className="h-7 bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] shadow-[0_2px_8px_hsl(0,0%,0%,0.15)]">
                 <TabsTrigger value="channel" className="text-xs h-6 px-3 data-[state=active]:bg-[hsl(263,60%,55%,0.2)] data-[state=active]:text-primary data-[state=active]:shadow-[0_0_6px_hsl(263,60%,55%,0.12)]">Channel</TabsTrigger>
-                <TabsTrigger value="source" className="text-xs h-6 px-3 data-[state=active]:bg-[hsl(263,60%,55%,0.2)] data-[state=active]:text-primary data-[state=active]:shadow-[0_0_6px_hsl(263,60%,55%,0.12)]">Referral Source</TabsTrigger>
+                <TabsTrigger value="source" className="text-xs h-6 px-3 data-[state=active]:bg-[hsl(263,60%,55%,0.2)] data-[state=active]:text-primary data-[state=active]:shadow-[0_0_6px_hsl(263,60%,55%,0.12)]">Company</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -552,14 +552,14 @@ export function ChannelsDashboard() {
           {/* ── Performance Table ── */}
           <div className={`${glassCard} overflow-hidden`}>
             <div className="relative z-10 p-4 border-b border-white/[0.06]">
-              <h3 className="text-sm font-medium text-foreground">Referral Source Performance</h3>
+              <h3 className="text-sm font-medium text-foreground">Company Performance</h3>
               <p className="text-[10px] text-muted-foreground mt-0.5">Click any row to view underlying deals</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-white/[0.06] bg-[hsl(260,18%,12%,0.4)] backdrop-blur-sm">
-                    <th className="text-left p-3 text-muted-foreground font-medium">Referral Source</th>
+                    <th className="text-left p-3 text-muted-foreground font-medium">Company</th>
                     <th className="text-left p-3 text-muted-foreground font-medium">Channel</th>
                     <th className="text-right p-3 text-muted-foreground font-medium">Added</th>
                     <th className="text-right p-3 text-muted-foreground font-medium">Proposal</th>
@@ -590,7 +590,7 @@ export function ChannelsDashboard() {
                   ))}
                   {performanceRows.every(r => r.added.count === 0) && (
                     <tr>
-                      <td colSpan={7} className="p-6 text-center text-muted-foreground">No attributed referral sources</td>
+                      <td colSpan={7} className="p-6 text-center text-muted-foreground">No attributed companies</td>
                     </tr>
                   )}
                 </tbody>
