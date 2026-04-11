@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
 } from 'recharts';
 import { useQBStackedDebtRevenue, STACKED_CATEGORIES, type StackedDebtMonth } from '@/hooks/useQBStackedDebtRevenue';
+import { useQBStackedFinServRevenue, FINSERV_STACKED_CATEGORIES, type StackedFinServMonth } from '@/hooks/useQBStackedFinServRevenue';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
@@ -381,8 +382,8 @@ export function RevenueQuarterlySection() {
   // Stacked Debt Revenue: 5th Line Capital Advisors LLC
   const debtRevenue = useQBStackedDebtRevenue(selectedQuarter);
 
-  // FinServ Revenue: 5th Line Financial Services, LLC
-  const finservRevenue = useQBQuarterlyRevenue(FINSERV_REALM_ID, selectedQuarter);
+  // Stacked FinServ Revenue: 5th Line Financial Services, LLC
+  const finservRevenue = useQBStackedFinServRevenue(selectedQuarter);
 
   // Total Revenue: Debt + FinServ combined
   const totalRevenue = useQBCombinedQuarterlyRevenue(
@@ -424,13 +425,13 @@ export function RevenueQuarterlySection() {
             setDrilldown({ title: 'Debt Revenue', monthKey, realmIds: [DEBT_REALM_ID] })
           }
         />
-        <RevenueBarChart
+        <StackedGenericRevenueChart
           title="FinServ Revenue"
           subtitle="5th Line Financial Services, LLC"
           data={finservRevenue.months}
           isLoading={finservRevenue.isLoading}
           total={finservRevenue.total}
-          color="hsl(var(--chart-2))"
+          categories={FINSERV_STACKED_CATEGORIES}
           onBarClick={(monthKey) =>
             setDrilldown({ title: 'FinServ Revenue', monthKey, realmIds: [FINSERV_REALM_ID] })
           }
