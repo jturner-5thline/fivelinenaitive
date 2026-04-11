@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { Users, Handshake, Network } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazy, Suspense, useState } from "react";
+import { Building2, UserCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PartnersByStageCards } from "@/components/partners/PartnersByStageCards";
 import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
