@@ -105,6 +105,7 @@ import {
   FinServFinancialMetricsDashboard,
   QuickBooksFinancialDashboard,
   ManagementReviewCarousel,
+  RevenueOverviewDashboard,
 } from "@/components/metrics/dashboards";
 import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
 import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
@@ -136,6 +137,7 @@ const DASHBOARD_OPTIONS = [
   { id: 'paz-sales-commission', name: 'Paz Sales Commission Board', isFavorite: false },
   { id: 'chandler-sales-commission', name: 'Chandler Sales Commission Board', isFavorite: false },
   { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false },
+  { id: 'revenue-overview', name: 'Revenue Overview', isFavorite: false },
   { id: 'management-review', name: 'Management Review', isFavorite: false },
 ];
 
