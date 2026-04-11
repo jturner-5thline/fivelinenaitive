@@ -9,6 +9,7 @@ import { useChannelEntries, useUpdateChannelEntry, type ChannelType, type Channe
 import { ChannelCard } from './ChannelCard';
 import { AddChannelDialog } from './AddChannelDialog';
 import { ChannelDetailDialog } from './ChannelDetailDialog';
+import { ChannelEntityDetailModal } from './ChannelEntityDetailModal';
 
 const COLUMNS: { type: ChannelType; label: string; color: string }[] = [
   { type: 'Banks', label: 'Banks', color: 'bg-blue-500' },
