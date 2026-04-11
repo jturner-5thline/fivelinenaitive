@@ -46,7 +46,7 @@ function DroppableColumn({ type, label, color, entries, onCardClick, onEntityCli
         </SortableContext>
         {entries.length === 0 && (
           <div className="flex items-center justify-center min-h-[80px]">
-            <p className="text-xs text-slate-500">Drop referral source here</p>
+            <p className="text-xs text-slate-500">Drop company here</p>
           </div>
         )}
       </div>
@@ -117,7 +117,7 @@ export function ChannelsBoard() {
   if (isError) {
     return (
       <div className="text-center py-12 space-y-3">
-        <p className="text-sm text-destructive">Failed to load referral sources.</p>
+        <p className="text-sm text-destructive">Failed to load companies.</p>
         <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
       </div>
     );
@@ -130,13 +130,13 @@ export function ChannelsBoard() {
           <Network className="h-6 w-6 text-muted-foreground" />
         </div>
         <div>
-          <h3 className="text-sm font-medium text-foreground">No referral sources yet</h3>
+          <h3 className="text-sm font-medium text-foreground">No companies yet</h3>
           <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
-            Add your first referral source to start tracking your channel network. Each source belongs to a channel category.
+            Add your first company to start tracking your channel network. Each company belongs to a channel category.
           </p>
         </div>
         <Button size="sm" onClick={() => setAddOpen(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Add Referral Source
+          <Plus className="h-3.5 w-3.5 mr-1" /> Add Company
         </Button>
         <AddChannelDialog open={addOpen} onClose={() => setAddOpen(false)} />
       </div>
@@ -146,9 +146,9 @@ export function ChannelsBoard() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-xs text-muted-foreground">{entries.length} referral source{entries.length !== 1 ? 's' : ''} · Drag cards between channels to reclassify</p>
+        <p className="text-xs text-muted-foreground">{entries.length} compan{entries.length !== 1 ? 'ies' : 'y'} · Drag cards between channels to reclassify</p>
         <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Add Referral Source
+          <Plus className="h-3.5 w-3.5 mr-1" /> Add Company
         </Button>
       </div>
 

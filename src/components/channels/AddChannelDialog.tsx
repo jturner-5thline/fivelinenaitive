@@ -71,7 +71,7 @@ export function AddChannelDialog({ open, onClose }: Props) {
 
   const handleSave = async () => {
     if (isDuplicate) {
-      setSaveError('This contact/company is already a referral source.');
+      setSaveError('This contact/company is already added to a channel.');
       return;
     }
     setSaveError(null);
@@ -88,7 +88,7 @@ export function AddChannelDialog({ open, onClose }: Props) {
       onClose();
     } catch (err: any) {
       if (err.message?.includes('duplicate') || err.message?.includes('unique')) {
-        setSaveError('This contact/company is already a referral source.');
+        setSaveError('This contact/company is already added to a channel.');
       } else {
         setSaveError(err.message || 'Failed to save. Please try again.');
       }
@@ -104,11 +104,11 @@ export function AddChannelDialog({ open, onClose }: Props) {
     <Dialog open={open} onOpenChange={() => { reset(); onClose(); }}>
       <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Add Referral Source</DialogTitle>
+          <DialogTitle>Add Company to Channel</DialogTitle>
         </DialogHeader>
 
         <p className="text-xs text-muted-foreground -mt-2">
-          Search for a contact or company to add as a referral source within a channel.
+          Search for a contact or company to add within a channel.
         </p>
 
         <Tabs value={searchTab} onValueChange={(v) => setSearchTab(v as any)} className="flex-1 min-h-0">
@@ -166,8 +166,8 @@ export function AddChannelDialog({ open, onClose }: Props) {
             </div>
             {selectedContactCompanyId && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md px-2.5 py-2">
-                <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span>Associated company will be auto-linked to this referral source</span>
+                 <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                 <span>Associated company will be auto-linked</span>
               </div>
             )}
           </TabsContent>
@@ -229,7 +229,7 @@ export function AddChannelDialog({ open, onClose }: Props) {
             </div>
             <div>
               <Label className="text-xs">Notes (optional)</Label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-1" placeholder="Add notes about this referral source..." />
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-1" placeholder="Add notes..." />
             </div>
           </div>
         )}
@@ -244,7 +244,7 @@ export function AddChannelDialog({ open, onClose }: Props) {
         {isDuplicate && hasSelection && (
           <div className="flex items-center gap-2 text-xs text-amber-500 bg-amber-500/10 rounded-md px-2.5 py-2">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            <span>This contact/company is already a referral source.</span>
+            <span>This contact/company is already added to a channel.</span>
           </div>
         )}
 
@@ -252,7 +252,7 @@ export function AddChannelDialog({ open, onClose }: Props) {
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
           <Button onClick={handleSave} disabled={!hasSelection || createChannel.isPending || isDuplicate}>
             {createChannel.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-            Add Referral Source
+            Add Company
           </Button>
         </DialogFooter>
       </DialogContent>
