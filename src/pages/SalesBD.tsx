@@ -66,7 +66,10 @@ export default function SalesBD() {
               <div className="space-y-8">
                 <ChannelsDashboard />
                 <div className="border-t border-border/30 pt-6">
-                  <h2 className="text-lg font-semibold mb-4">Channel Board</h2>
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold">Referral Sources by Channel</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Each column is a channel. Cards are individual referral sources (companies and contacts) within that channel.</p>
+                  </div>
                   <ChannelsBoard />
                 </div>
               </div>

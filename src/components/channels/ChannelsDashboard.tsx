@@ -3,6 +3,7 @@ import { useChannelPerformanceData, type ChannelTimePeriod } from '@/hooks/useCh
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3, TrendingUp, DollarSign, Layers, AlertCircle } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
@@ -30,14 +31,16 @@ const STAGE_COLORS: Record<string, string> = {
   fundedInvoiced: '#10b981',
 };
 
+type ChartGroupBy = 'channel' | 'source';
+
 function formatCurrency(v: number): string {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
   if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
   return `$${v.toLocaleString()}`;
 }
 
-function KPICard({ label, count, volume, icon: Icon, color }: {
-  label: string; count: number; volume: number; icon: any; color: string;
+function KPICard({ label, subtitle, count, volume, icon: Icon, color }: {
+  label: string; subtitle: string; count: number; volume: number; icon: any; color: string;
 }) {
   return (
     <div className="rounded-xl border border-border/30 bg-card p-4 space-y-2">
@@ -45,12 +48,15 @@ function KPICard({ label, count, volume, icon: Icon, color }: {
         <div className="p-1.5 rounded-md" style={{ backgroundColor: color + '20' }}>
           <Icon className="h-3.5 w-3.5" style={{ color }} />
         </div>
-        <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{label}</span>
+        <div className="min-w-0">
+          <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{label}</span>
+        </div>
       </div>
       <div className="flex items-end gap-3">
         <span className="text-2xl font-bold font-mono tabular-nums">{count}</span>
         <span className="text-sm text-muted-foreground font-mono pb-0.5">{formatCurrency(volume)}</span>
       </div>
+      <p className="text-[10px] text-muted-foreground/60">{subtitle}</p>
     </div>
   );
 }
@@ -64,7 +70,7 @@ function CustomBarTooltip({ active, payload, label }: any) {
         <div key={i} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
           <span className="text-muted-foreground">{p.name}:</span>
-          <span className="font-mono font-medium">{p.value}</span>
+          <span className="font-mono font-medium">{typeof p.value === 'number' && p.value < 1 ? p.value.toFixed(2) : p.value}</span>
         </div>
       ))}
     </div>
@@ -74,14 +80,46 @@ function CustomBarTooltip({ active, payload, label }: any) {
 export function ChannelsDashboard() {
   const [timePeriod, setTimePeriod] = useState<ChannelTimePeriod>('last-12m');
   const [channelTypeFilter, setChannelTypeFilter] = useState('all');
-  const [channelEntryFilter, setChannelEntryFilter] = useState('all');
+  const [referralSourceFilter, setReferralSourceFilter] = useState('all');
+  const [chartGroupBy, setChartGroupBy] = useState<ChartGroupBy>('channel');
 
   const { channelSources, performanceRows, kpis, isLoading } = useChannelPerformanceData(
-    timePeriod, channelTypeFilter, channelEntryFilter,
+    timePeriod, channelTypeFilter, referralSourceFilter,
   );
 
-  // Chart data: deals by channel (bar chart)
-  const dealsByChannelData = useMemo(() => {
+  // Group by Channel (aggregate by channel type)
+  const channelGroupedDeals = useMemo(() => {
+    const map = new Map<string, { name: string; added: number; proposalIssued: number; finalCredit: number; funded: number }>();
+    for (const row of performanceRows) {
+      const key = row.channelType;
+      const label = key === 'M&A and Investment Bankers' ? 'M&A / IB' : key;
+      const existing = map.get(key) || { name: label, added: 0, proposalIssued: 0, finalCredit: 0, funded: 0 };
+      existing.added += row.added.count;
+      existing.proposalIssued += row.proposalIssued.count;
+      existing.finalCredit += row.finalCreditItems.count;
+      existing.funded += row.fundedInvoiced.count;
+      map.set(key, existing);
+    }
+    return Array.from(map.values()).filter(r => r.added > 0).sort((a, b) => b.funded - a.funded);
+  }, [performanceRows]);
+
+  const channelGroupedVolume = useMemo(() => {
+    const map = new Map<string, { name: string; added: number; proposalIssued: number; finalCredit: number; funded: number }>();
+    for (const row of performanceRows) {
+      const key = row.channelType;
+      const label = key === 'M&A and Investment Bankers' ? 'M&A / IB' : key;
+      const existing = map.get(key) || { name: label, added: 0, proposalIssued: 0, finalCredit: 0, funded: 0 };
+      existing.added += row.added.volume / 1_000_000;
+      existing.proposalIssued += row.proposalIssued.volume / 1_000_000;
+      existing.finalCredit += row.finalCreditItems.volume / 1_000_000;
+      existing.funded += row.fundedInvoiced.volume / 1_000_000;
+      map.set(key, existing);
+    }
+    return Array.from(map.values()).filter(r => r.added > 0).sort((a, b) => b.funded - a.funded);
+  }, [performanceRows]);
+
+  // Group by Referral Source (individual source rows)
+  const sourceGroupedDeals = useMemo(() => {
     return performanceRows
       .filter(r => r.added.count > 0)
       .slice(0, 10)
@@ -94,8 +132,7 @@ export function ChannelsDashboard() {
       }));
   }, [performanceRows]);
 
-  // Volume by channel (bar chart)
-  const volumeByChannelData = useMemo(() => {
+  const sourceGroupedVolume = useMemo(() => {
     return performanceRows
       .filter(r => r.added.volume > 0)
       .slice(0, 10)
@@ -108,7 +145,26 @@ export function ChannelsDashboard() {
       }));
   }, [performanceRows]);
 
-  // Stage progression funnel
+  // Select data based on group-by toggle
+  const dealChartData = chartGroupBy === 'channel' ? channelGroupedDeals : sourceGroupedDeals;
+  const volumeChartData = chartGroupBy === 'channel' ? channelGroupedVolume : sourceGroupedVolume;
+
+  // Chart bar data keys differ by mode
+  const barKeysChannel = [
+    { key: 'added', label: 'Added' },
+    { key: 'proposalIssued', label: 'Proposal Issued' },
+    { key: 'finalCredit', label: 'Final Credit' },
+    { key: 'funded', label: 'Funded' },
+  ];
+  const barKeysSource = [
+    { key: 'Added', label: 'Added' },
+    { key: 'Proposal Issued', label: 'Proposal Issued' },
+    { key: 'Final Credit', label: 'Final Credit' },
+    { key: 'Funded', label: 'Funded' },
+  ];
+  const barKeys = chartGroupBy === 'channel' ? barKeysChannel : barKeysSource;
+
+  // Stage funnel
   const funnelData = useMemo(() => [
     { name: 'Added', count: kpis.added.count, volume: kpis.added.volume, fill: STAGE_COLORS.added },
     { name: 'Proposal Issued', count: kpis.proposalIssued.count, volume: kpis.proposalIssued.volume, fill: STAGE_COLORS.proposalIssued },
@@ -128,6 +184,8 @@ export function ChannelsDashboard() {
   }
 
   const hasData = performanceRows.some(r => r.added.count > 0);
+  const dealChartTitle = chartGroupBy === 'channel' ? 'Deals by Channel' : 'Deals by Referral Source';
+  const volumeChartTitle = chartGroupBy === 'channel' ? 'Dollar Volume by Channel ($M)' : 'Dollar Volume by Referral Source ($M)';
 
   return (
     <div className="space-y-6">
@@ -155,12 +213,12 @@ export function ChannelsDashboard() {
           </SelectContent>
         </Select>
 
-        <Select value={channelEntryFilter} onValueChange={setChannelEntryFilter}>
+        <Select value={referralSourceFilter} onValueChange={setReferralSourceFilter}>
           <SelectTrigger className="w-[180px] h-8 text-xs">
-            <SelectValue placeholder="All Sources" />
+            <SelectValue placeholder="All Referral Sources" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-xs">All Sources</SelectItem>
+            <SelectItem value="all" className="text-xs">All Referral Sources</SelectItem>
             {channelSources
               .filter(s => channelTypeFilter === 'all' || s.channelType === channelTypeFilter)
               .map(s => (
@@ -172,25 +230,25 @@ export function ChannelsDashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard label="Added" count={kpis.added.count} volume={kpis.added.volume} icon={Layers} color={STAGE_COLORS.added} />
-        <KPICard label="Proposal Issued" count={kpis.proposalIssued.count} volume={kpis.proposalIssued.volume} icon={BarChart3} color={STAGE_COLORS.proposalIssued} />
-        <KPICard label="Final Credit Items" count={kpis.finalCreditItems.count} volume={kpis.finalCreditItems.volume} icon={TrendingUp} color={STAGE_COLORS.finalCreditItems} />
-        <KPICard label="Funded / Invoiced" count={kpis.fundedInvoiced.count} volume={kpis.fundedInvoiced.volume} icon={DollarSign} color={STAGE_COLORS.fundedInvoiced} />
+        <KPICard label="Deals Added" subtitle="Sourced deals entering the pipeline" count={kpis.added.count} volume={kpis.added.volume} icon={Layers} color={STAGE_COLORS.added} />
+        <KPICard label="Proposal Issued" subtitle="Deals reaching proposal stage" count={kpis.proposalIssued.count} volume={kpis.proposalIssued.volume} icon={BarChart3} color={STAGE_COLORS.proposalIssued} />
+        <KPICard label="Final Credit Items" subtitle="Deals in final credit review" count={kpis.finalCreditItems.count} volume={kpis.finalCreditItems.volume} icon={TrendingUp} color={STAGE_COLORS.finalCreditItems} />
+        <KPICard label="Funded / Invoiced" subtitle="Closed and funded deals" count={kpis.fundedInvoiced.count} volume={kpis.fundedInvoiced.volume} icon={DollarSign} color={STAGE_COLORS.fundedInvoiced} />
       </div>
 
       {!hasData ? (
         <div className="rounded-xl border border-border/30 bg-card p-12 text-center space-y-3">
           <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto" />
-          <p className="text-sm text-muted-foreground">No channel-attributed deals found for this period.</p>
+          <p className="text-sm text-muted-foreground">No attributed deals found for this period.</p>
           <p className="text-xs text-muted-foreground/60">
-            Deals are attributed when their referral source matches a channel contact or company name.
+            Deals are attributed to referral sources when the deal's referral field matches a source's company or contact name.
           </p>
         </div>
       ) : (
         <>
           {/* Stage Funnel */}
           <div className="rounded-xl border border-border/30 bg-card p-4">
-            <h3 className="text-sm font-medium text-foreground mb-4">Stage Progression</h3>
+            <h3 className="text-sm font-medium text-foreground mb-4">Stage Progression — Sourced Deals</h3>
             <div className="grid grid-cols-4 gap-2">
               {funnelData.map((stage, i) => {
                 const maxCount = Math.max(...funnelData.map(f => f.count), 1);
@@ -219,23 +277,32 @@ export function ChannelsDashboard() {
             </div>
           </div>
 
+          {/* Group-by toggle */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">Group by:</span>
+            <Tabs value={chartGroupBy} onValueChange={(v) => setChartGroupBy(v as ChartGroupBy)}>
+              <TabsList className="h-7">
+                <TabsTrigger value="channel" className="text-xs h-6 px-3">Channel</TabsTrigger>
+                <TabsTrigger value="source" className="text-xs h-6 px-3">Referral Source</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Deal Count by Channel */}
             <div className="rounded-xl border border-border/30 bg-card p-4">
-              <h3 className="text-sm font-medium text-foreground mb-4">Deals by Channel</h3>
-              {dealsByChannelData.length > 0 ? (
+              <h3 className="text-sm font-medium text-foreground mb-4">{dealChartTitle}</h3>
+              {dealChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={dealsByChannelData} layout="vertical" margin={{ left: 10, right: 10 }}>
+                  <BarChart data={dealChartData} layout="vertical" margin={{ left: 10, right: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                     <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                    <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                     <Tooltip content={<CustomBarTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 10 }} />
-                    <Bar dataKey="Added" fill={STAGE_COLORS.added} radius={[0, 2, 2, 0]} />
-                    <Bar dataKey="Proposal Issued" fill={STAGE_COLORS.proposalIssued} radius={[0, 2, 2, 0]} />
-                    <Bar dataKey="Final Credit" fill={STAGE_COLORS.finalCreditItems} radius={[0, 2, 2, 0]} />
-                    <Bar dataKey="Funded" fill={STAGE_COLORS.fundedInvoiced} radius={[0, 2, 2, 0]} />
+                    {barKeys.map((bk, idx) => (
+                      <Bar key={bk.key} dataKey={bk.key} name={bk.label} fill={Object.values(STAGE_COLORS)[idx]} radius={[0, 2, 2, 0]} />
+                    ))}
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -243,21 +310,19 @@ export function ChannelsDashboard() {
               )}
             </div>
 
-            {/* Dollar Volume by Channel */}
             <div className="rounded-xl border border-border/30 bg-card p-4">
-              <h3 className="text-sm font-medium text-foreground mb-4">Volume by Channel ($M)</h3>
-              {volumeByChannelData.length > 0 ? (
+              <h3 className="text-sm font-medium text-foreground mb-4">{volumeChartTitle}</h3>
+              {volumeChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={volumeByChannelData} layout="vertical" margin={{ left: 10, right: 10 }}>
+                  <BarChart data={volumeChartData} layout="vertical" margin={{ left: 10, right: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                     <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `$${v.toFixed(1)}M`} />
-                    <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                     <Tooltip content={<CustomBarTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 10 }} />
-                    <Bar dataKey="Added" fill={STAGE_COLORS.added} radius={[0, 2, 2, 0]} />
-                    <Bar dataKey="Proposal Issued" fill={STAGE_COLORS.proposalIssued} radius={[0, 2, 2, 0]} />
-                    <Bar dataKey="Final Credit" fill={STAGE_COLORS.finalCreditItems} radius={[0, 2, 2, 0]} />
-                    <Bar dataKey="Funded" fill={STAGE_COLORS.fundedInvoiced} radius={[0, 2, 2, 0]} />
+                    {barKeys.map((bk, idx) => (
+                      <Bar key={bk.key} dataKey={bk.key} name={bk.label} fill={Object.values(STAGE_COLORS)[idx]} radius={[0, 2, 2, 0]} />
+                    ))}
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -269,14 +334,15 @@ export function ChannelsDashboard() {
           {/* Performance Table */}
           <div className="rounded-xl border border-border/30 bg-card overflow-hidden">
             <div className="p-4 border-b border-border/30">
-              <h3 className="text-sm font-medium text-foreground">Channel Performance Summary</h3>
+              <h3 className="text-sm font-medium text-foreground">Referral Source Performance</h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Individual referral sources within each channel, sorted by funded volume</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border/20">
-                    <th className="text-left p-3 text-muted-foreground font-medium">Source</th>
-                    <th className="text-left p-3 text-muted-foreground font-medium">Type</th>
+                    <th className="text-left p-3 text-muted-foreground font-medium">Referral Source</th>
+                    <th className="text-left p-3 text-muted-foreground font-medium">Channel</th>
                     <th className="text-right p-3 text-muted-foreground font-medium">Added</th>
                     <th className="text-right p-3 text-muted-foreground font-medium">Proposal</th>
                     <th className="text-right p-3 text-muted-foreground font-medium">Final Credit</th>
@@ -302,7 +368,7 @@ export function ChannelsDashboard() {
                   ))}
                   {performanceRows.every(r => r.added.count === 0) && (
                     <tr>
-                      <td colSpan={7} className="p-6 text-center text-muted-foreground">No attributed deals</td>
+                      <td colSpan={7} className="p-6 text-center text-muted-foreground">No attributed referral sources</td>
                     </tr>
                   )}
                 </tbody>

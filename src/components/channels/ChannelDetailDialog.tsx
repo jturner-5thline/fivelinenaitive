@@ -39,7 +39,7 @@ export function ChannelDetailDialog({ entry, onClose }: Props) {
       <Dialog open onOpenChange={() => onClose()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Channel Details</DialogTitle>
+            <DialogTitle>Referral Source Details</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -73,7 +73,7 @@ export function ChannelDetailDialog({ entry, onClose }: Props) {
             )}
 
             <div>
-              <Label className="text-xs">Channel Type</Label>
+              <Label className="text-xs">Channel</Label>
               <Select value={channelType} onValueChange={(v) => setChannelType(v as ChannelType)}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -108,9 +108,9 @@ export function ChannelDetailDialog({ entry, onClose }: Props) {
       <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove from Channels?</AlertDialogTitle>
+            <AlertDialogTitle>Remove Referral Source?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the channel entry. The original contact/company will not be deleted.
+              This will remove the referral source from this channel. The original contact or company record will not be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
