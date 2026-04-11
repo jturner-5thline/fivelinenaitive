@@ -5,7 +5,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3, TrendingUp, DollarSign, Layers, AlertCircle } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  Treemap,
 } from 'recharts';
 
 const TIME_PRESETS: { value: ChannelTimePeriod; label: string }[] = [
