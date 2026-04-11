@@ -18,6 +18,7 @@ const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
 export default function SalesBD() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [channelsSubView, setChannelsSubView] = useState<"companies" | "referral-sources">("companies");
   const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
