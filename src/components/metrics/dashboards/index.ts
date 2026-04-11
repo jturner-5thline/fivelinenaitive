@@ -15,4 +15,4 @@ export { FinServFinancialMetricsDashboard } from './FinServFinancialMetricsDashb
 export { QuickBooksFinancialDashboard } from './QuickBooksFinancialDashboard';
 export { ManagementReviewDashboard } from './ManagementReviewDashboard';
 export { ManagementReviewCarousel } from './ManagementReviewCarousel';
-export { RevenueOverviewDashboard } from './RevenueOverviewDashboard';
+export { RevenueQuarterlySection } from './RevenueOverviewDashboard';

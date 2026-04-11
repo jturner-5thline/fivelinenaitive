@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
+import { RevenueQuarterlySection } from './RevenueOverviewDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
