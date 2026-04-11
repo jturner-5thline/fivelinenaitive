@@ -620,6 +620,9 @@ export function ManagementSnapshotDashboard({
 
       {/* Revenue Quarterly Section */}
       <RevenueQuarterlySection />
+
+      {/* Pipeline Metrics Section */}
+      <PipelineMetricsSection />
     </div>
   );
 }
