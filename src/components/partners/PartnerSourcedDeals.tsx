@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { usePartners } from '@/hooks/usePartnersPipeline';
-import { useReferralSourcesList } from '@/hooks/useReferralSourcesPipeline';
+
 import { ChevronDown, ChevronRight, DollarSign, Hash, TrendingUp, ArrowUpDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -23,15 +23,15 @@ interface DealRow {
 export function PartnerSourcedDeals() {
   const { company } = useCompany();
   const { data: partners = [] } = usePartners();
-  const { data: referralSources = [] } = useReferralSourcesList();
+  
   const [showDetails, setShowDetails] = useState(false);
   const [sortCol, setSortCol] = useState<string>('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   // Get all deal names that could match partners/referral sources
   const partnerNames = useMemo(
-    () => new Set([...partners.map(p => p.name.toLowerCase()), ...referralSources.map(r => r.name.toLowerCase())]),
-    [partners, referralSources]
+    () => new Set(partners.map(p => p.name.toLowerCase())),
+    [partners]
   );
 
   const { data: deals = [] } = useQuery({
