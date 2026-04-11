@@ -33,13 +33,6 @@ export interface AttributedDeal extends ChannelDeal {
   channelType: string;
 }
 
-export interface StageMetrics {
-  label: string;
-  stageKey: string;
-  dealCount: number;
-  volume: number;
-}
-
 export interface ChannelPerformanceRow {
   channelEntryId: string;
   channelName: string;
@@ -51,7 +44,6 @@ export interface ChannelPerformanceRow {
   deals: AttributedDeal[];
 }
 
-// Stage matching helpers
 const STAGE_MATCHERS: Record<string, (s: string) => boolean> = {
   proposalIssued: (s) => /proposal.issued/i.test(s),
   finalCreditItems: (s) => /final.credit/i.test(s),
@@ -63,11 +55,9 @@ function classifyStage(stage: string): string | null {
   if (STAGE_MATCHERS.fundedInvoiced(lower)) return 'fundedInvoiced';
   if (STAGE_MATCHERS.finalCreditItems(lower)) return 'finalCreditItems';
   if (STAGE_MATCHERS.proposalIssued(lower)) return 'proposalIssued';
-  // Everything that made it into the pipeline counts as "added"
   return 'added';
 }
 
-// Pipeline progression: a deal at "funded" has also been through all prior stages
 const STAGE_ORDER = ['added', 'proposalIssued', 'finalCreditItems', 'fundedInvoiced'];
 function stageReached(classification: string | null): string[] {
   if (!classification) return ['added'];
@@ -95,17 +85,13 @@ function fuzzyMatch(referredBy: string, name: string): boolean {
   if (!referredBy || !name) return false;
   const ref = referredBy.toLowerCase().trim();
   const n = name.toLowerCase().trim();
-  // Exact contain
   if (ref.includes(n) || n.includes(ref)) return true;
-  // Check if last name + first word match (e.g. "Nandini @ Wells Fargo" -> "Wells Fargo")
   const refWords = ref.split(/[\s@,]+/).filter(Boolean);
   const nWords = n.split(/[\s]+/).filter(Boolean);
-  // If any two consecutive words from name appear in referred_by
   for (let i = 0; i < nWords.length - 1; i++) {
     const pair = nWords[i] + ' ' + nWords[i + 1];
     if (ref.includes(pair)) return true;
   }
-  // Single significant word match (>= 4 chars)
   for (const w of nWords) {
     if (w.length >= 4 && refWords.some(rw => rw === w)) return true;
   }
@@ -114,8 +100,8 @@ function fuzzyMatch(referredBy: string, name: string): boolean {
 
 export function useChannelPerformanceData(
   timePeriod: ChannelTimePeriod = 'last-12m',
-  channelTypeFilter: string = 'all',
-  channelEntryFilter: string = 'all',
+  channelTypeFilters: string[] = [],
+  channelEntryFilters: string[] = [],
 ) {
   const { company } = useCompany();
 
@@ -154,7 +140,6 @@ export function useChannelPerformanceData(
 
   const isLoading = channelsLoading || dealsLoading;
 
-  // Build channel sources list
   const channelSources = useMemo<ChannelSource[]>(() => {
     return channelEntries.map((ce: any) => ({
       channelEntryId: ce.id,
@@ -165,11 +150,9 @@ export function useChannelPerformanceData(
     }));
   }, [channelEntries]);
 
-  // Attribution: match deals to channel entries
   const { attributedDeals, performanceRows, kpis } = useMemo(() => {
     const timeRange = getTimePeriodRange(timePeriod);
     
-    // Filter deals by time
     let filteredDeals = deals;
     if (timeRange) {
       filteredDeals = deals.filter(d => {
@@ -178,7 +161,6 @@ export function useChannelPerformanceData(
       });
     }
 
-    // Attribution pass - each deal attributed to at most one channel
     const attributed: AttributedDeal[] = [];
     const usedDealIds = new Set<string>();
 
@@ -188,12 +170,10 @@ export function useChannelPerformanceData(
       let bestMatch: ChannelSource | null = null;
 
       for (const src of channelSources) {
-        // Direct CRM company match
         if (deal.crm_company_id && channelEntries.find((ce: any) => ce.id === src.channelEntryId)?.crm_company_id === deal.crm_company_id) {
           bestMatch = src;
           break;
         }
-        // Fuzzy match on referred_by
         if (deal.referred_by) {
           if (src.companyName && fuzzyMatch(deal.referred_by, src.companyName)) {
             bestMatch = src;
@@ -217,21 +197,20 @@ export function useChannelPerformanceData(
       }
     }
 
-    // Apply filters
+    // Multi-select filters
     let filtered = attributed;
-    if (channelTypeFilter !== 'all') {
-      filtered = filtered.filter(d => d.channelType === channelTypeFilter);
+    if (channelTypeFilters.length > 0) {
+      filtered = filtered.filter(d => channelTypeFilters.includes(d.channelType));
     }
-    if (channelEntryFilter !== 'all') {
-      filtered = filtered.filter(d => d.channelEntryId === channelEntryFilter);
+    if (channelEntryFilters.length > 0) {
+      filtered = filtered.filter(d => channelEntryFilters.includes(d.channelEntryId));
     }
 
-    // Build performance rows by channel
     const rowMap = new Map<string, ChannelPerformanceRow>();
     
     for (const src of channelSources) {
-      if (channelTypeFilter !== 'all' && src.channelType !== channelTypeFilter) continue;
-      if (channelEntryFilter !== 'all' && src.channelEntryId !== channelEntryFilter) continue;
+      if (channelTypeFilters.length > 0 && !channelTypeFilters.includes(src.channelType)) continue;
+      if (channelEntryFilters.length > 0 && !channelEntryFilters.includes(src.channelEntryId)) continue;
       
       rowMap.set(src.channelEntryId, {
         channelEntryId: src.channelEntryId,
@@ -265,7 +244,6 @@ export function useChannelPerformanceData(
 
     const rows = Array.from(rowMap.values()).sort((a, b) => b.fundedInvoiced.volume - a.fundedInvoiced.volume);
 
-    // Aggregate KPIs
     const kpis = {
       added: { count: 0, volume: 0 },
       proposalIssued: { count: 0, volume: 0 },
@@ -289,7 +267,7 @@ export function useChannelPerformanceData(
     }
 
     return { attributedDeals: filtered, performanceRows: rows, kpis };
-  }, [deals, channelSources, channelEntries, timePeriod, channelTypeFilter, channelEntryFilter]);
+  }, [deals, channelSources, channelEntries, timePeriod, channelTypeFilters, channelEntryFilters]);
 
   return {
     channelSources,
