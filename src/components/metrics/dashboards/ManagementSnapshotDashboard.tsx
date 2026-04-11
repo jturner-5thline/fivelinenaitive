@@ -3,6 +3,7 @@ import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerCli
 import { RevenueQuarterlySection } from './RevenueOverviewDashboard';
 import { PipelineMetricsSection } from './PipelineMetricsSection';
 import { SignedDealsAndARSection } from './SignedDealsAndARSection';
+import { ProfitByEntitySection } from './ProfitByEntitySection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -627,6 +628,9 @@ export function ManagementSnapshotDashboard({
 
       {/* Signed Deals & AR Section */}
       <SignedDealsAndARSection />
+
+      {/* Profit by Entity Section */}
+      <ProfitByEntitySection />
     </div>
   );
 }
