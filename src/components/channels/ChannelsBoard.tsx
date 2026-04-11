@@ -168,6 +168,7 @@ export function ChannelsBoard() {
               color={col.color}
               entries={grouped[col.type]}
               onCardClick={setDetailEntry}
+              onEntityClick={handleEntityClick}
             />
           ))}
         </div>
@@ -184,6 +185,7 @@ export function ChannelsBoard() {
 
       <AddChannelDialog open={addOpen} onClose={() => setAddOpen(false)} />
       {detailEntry && <ChannelDetailDialog entry={detailEntry} onClose={() => setDetailEntry(null)} />}
+      {entityDetailEntry && <ChannelEntityDetailModal entry={entityDetailEntry} onClose={() => setEntityDetailEntry(null)} />}
     </div>
   );
 }
