@@ -1,8 +1,7 @@
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Badge } from '@/components/ui/badge';
-import { Building2, User, Mail, Phone, StickyNote } from 'lucide-react';
+import { GripVertical, User } from 'lucide-react';
 import type { ChannelEntry } from '@/hooks/useChannelEntries';
 
 interface Props {
@@ -21,13 +20,19 @@ export function ChannelCard({ entry, onClick }: Props) {
   const email = entry.contact?.email || entry.crm_company?.main_contact_email;
   const phone = entry.contact?.phone_work || entry.contact?.phone_mobile || entry.crm_company?.phone;
 
-  const entityBadge = entry.contact_id && entry.crm_company_id
+  const entityLabel = entry.contact_id && entry.crm_company_id
     ? 'Both'
     : entry.contact_id
       ? 'Contact'
       : 'Company';
 
-  // Distinguish click from drag: only fire onClick if pointer barely moved
+  const primaryName = companyName || contactName || 'Unnamed Channel';
+  const secondaryLine = companyName && contactName
+    ? `${contactName}${contactTitle ? ' · ' + contactTitle : ''}`
+    : !companyName && contactName && contactTitle
+      ? contactTitle
+      : null;
+
   const handlePointerDown = (e: React.PointerEvent) => {
     pointerDownPos.current = { x: e.clientX, y: e.clientY };
   };
@@ -40,9 +45,6 @@ export function ChannelCard({ entry, onClick }: Props) {
     pointerDownPos.current = null;
   };
 
-  // If neither company nor contact name, show a fallback
-  const displayName = companyName || contactName || 'Unnamed Channel';
-
   return (
     <div
       ref={setNodeRef}
@@ -51,58 +53,39 @@ export function ChannelCard({ entry, onClick }: Props) {
       {...listeners}
       onPointerDown={handlePointerDown}
       onClick={handleClick}
-      className="bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-colors space-y-1.5 touch-none"
+      className="group bg-slate-800 border border-slate-600 rounded-md p-3 cursor-grab hover:border-slate-500 transition-colors touch-none"
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          {companyName ? (
-            <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              {companyName}
-            </p>
-          ) : contactName ? (
-            <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              {contactName}
-            </p>
-          ) : (
-            <p className="text-sm font-medium text-muted-foreground truncate">{displayName}</p>
-          )}
-          {companyName && contactName && (
-            <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
-              <User className="h-3 w-3 text-muted-foreground shrink-0" />
-              {contactName}
-              {contactTitle && <span className="text-muted-foreground/60">· {contactTitle}</span>}
-            </p>
-          )}
-          {!companyName && contactName && contactTitle && (
-            <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{contactTitle}</p>
-          )}
-        </div>
-        <Badge variant="outline" className="text-[9px] shrink-0 uppercase tracking-wider">
-          {entityBadge}
-        </Badge>
+      {/* Row 1: Primary name + drag handle */}
+      <div className="flex items-start justify-between">
+        <span className="font-medium text-sm text-white truncate">{primaryName}</span>
+        <GripVertical data-drag-handle className="h-4 w-4 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </div>
 
-      {(email || phone) && (
-        <div className="space-y-0.5">
-          {email && (
-            <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
-              <Mail className="h-2.5 w-2.5 shrink-0" /> {email}
-            </p>
-          )}
-          {phone && (
-            <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
-              <Phone className="h-2.5 w-2.5 shrink-0" /> {phone}
-            </p>
+      {/* Row 2: Secondary line (contact name / title) */}
+      <p className="text-xs text-slate-400 mt-0.5 truncate">
+        {secondaryLine || (email || phone || entry.crm_company?.industry || entityLabel)}
+      </p>
+
+      {/* Row 3: Contact detail + entity badge */}
+      <div className="flex items-center justify-between gap-1.5 mt-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <User className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+          {contactName ? (
+            <span className="text-xs font-medium truncate" style={{ color: 'hsl(var(--primary))' }}>
+              {contactName}
+            </span>
+          ) : (
+            <span className="text-xs text-slate-500">No contact</span>
           )}
         </div>
-      )}
+        <span className="text-[10px] text-slate-400 bg-slate-700 rounded px-1.5 py-0.5 shrink-0 uppercase tracking-wider">
+          {entityLabel}
+        </span>
+      </div>
 
+      {/* Row 4: Notes preview (compact) */}
       {entry.notes && (
-        <p className="text-[11px] text-muted-foreground/70 truncate flex items-center gap-1">
-          <StickyNote className="h-2.5 w-2.5 shrink-0" /> {entry.notes}
-        </p>
+        <p className="text-xs text-slate-500 mt-1.5 truncate">{entry.notes}</p>
       )}
     </div>
   );

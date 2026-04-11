@@ -11,10 +11,10 @@ import { AddChannelDialog } from './AddChannelDialog';
 import { ChannelDetailDialog } from './ChannelDetailDialog';
 
 const COLUMNS: { type: ChannelType; label: string; color: string }[] = [
-  { type: 'Banks', label: 'Banks', color: 'border-t-blue-500' },
-  { type: 'M&A and Investment Bankers', label: 'M&A / IB', color: 'border-t-violet-500' },
-  { type: 'Service Providers', label: 'Service Providers', color: 'border-t-amber-500' },
-  { type: 'Investors', label: 'Investors', color: 'border-t-emerald-500' },
+  { type: 'Banks', label: 'Banks', color: 'bg-blue-500' },
+  { type: 'M&A and Investment Bankers', label: 'M&A / IB', color: 'bg-violet-500' },
+  { type: 'Service Providers', label: 'Service Providers', color: 'bg-amber-500' },
+  { type: 'Investors', label: 'Investors', color: 'bg-emerald-500' },
 ];
 
 const COLUMN_TYPES = new Set(COLUMNS.map(c => c.type));
@@ -29,23 +29,22 @@ function DroppableColumn({ type, label, color, entries, onCardClick }: {
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col min-w-[220px] sm:min-w-[240px] flex-1 rounded-lg border ${color} border-t-2 bg-muted/30 transition-colors ${isOver ? 'ring-2 ring-primary/30 bg-primary/5' : ''}`}
+      className={`w-full flex flex-col bg-slate-800/50 rounded-lg border border-slate-700 transition-colors ${isOver ? 'ring-2 ring-primary/30' : ''}`}
     >
-      <div className="px-3 py-2 border-b border-border">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">{label}</h3>
-          <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">{entries.length}</span>
-        </div>
+      <div className="flex items-center gap-2 p-3 border-b border-slate-700">
+        <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${color}`} />
+        <span className="text-sm font-medium text-white truncate">{label}</span>
+        <span className="text-xs text-slate-400 bg-slate-700 rounded px-1.5 ml-auto">{entries.length}</span>
       </div>
-      <div className="p-2 flex-1 space-y-2 min-h-[100px]">
+      <div className="p-2 space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto flex-1">
         <SortableContext items={entries.map(e => e.id)} strategy={verticalListSortingStrategy}>
           {entries.map((entry) => (
             <ChannelCard key={entry.id} entry={entry} onClick={() => onCardClick(entry)} />
           ))}
         </SortableContext>
         {entries.length === 0 && (
-          <div className="flex items-center justify-center h-full min-h-[80px]">
-            <p className="text-[11px] text-muted-foreground">Drop here</p>
+          <div className="flex items-center justify-center min-h-[80px]">
+            <p className="text-xs text-slate-500">Drop here</p>
           </div>
         )}
       </div>
@@ -170,8 +169,9 @@ export function ChannelsBoard() {
 
         <DragOverlay>
           {activeEntry && (
-            <div className="opacity-90 rotate-2 scale-105">
-              <ChannelCard entry={activeEntry} onClick={() => {}} />
+            <div className="bg-slate-800 border border-slate-500 rounded-md p-3 shadow-lg scale-[1.02] w-64 opacity-90">
+              <span className="font-medium text-sm text-white">{activeEntry.crm_company?.name || activeEntry.contact?.full_name || 'Channel'}</span>
+              <p className="text-xs text-slate-400 mt-0.5">{activeEntry.channel_type}</p>
             </div>
           )}
         </DragOverlay>
