@@ -459,20 +459,40 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           const { data: { user: u } } = await supabase.auth.getUser();
           if (u) {
             const nextDueDate = calculateNextDueDate(completedTask.due_date, completedTask.recurrence_rule);
-            await supabase.from('tasks').insert({
-              title: completedTask.title,
-              description: completedTask.description,
-              assigned_to: completedTask.assigned_to,
-              assigned_by: completedTask.assigned_by,
-              priority: completedTask.priority,
-              company_id: completedTask.company_id,
-              project_id: completedTask.project_id,
-              section_id: completedTask.section_id,
-              recurrence_rule: completedTask.recurrence_rule,
-              recurrence_source_id: completedTask.recurrence_source_id || id,
-              due_date: nextDueDate,
-              task_type: completedTask.task_type,
-            } as any);
+             const { data: newRecurringTask } = await supabase.from('tasks').insert({
+               title: completedTask.title,
+               description: completedTask.description,
+               assigned_to: completedTask.assigned_to,
+               assigned_by: completedTask.assigned_by,
+               priority: completedTask.priority,
+               company_id: completedTask.company_id,
+               project_id: completedTask.project_id,
+               section_id: completedTask.section_id,
+               recurrence_rule: completedTask.recurrence_rule,
+               recurrence_source_id: completedTask.recurrence_source_id || id,
+               due_date: nextDueDate,
+               task_type: completedTask.task_type,
+             } as any).select().single();
+
+             // Fire-and-forget Asana sync for the new recurring task
+             try {
+               const ctx = await getAsanaSyncContext(completedTask.company_id || null);
+               if (ctx && newRecurringTask) {
+                 let assigneeEmail: string | null = null;
+                 if (completedTask.assigned_to) {
+                   const { data: assigneeProfile } = await supabase.from('profiles').select('email').eq('user_id', completedTask.assigned_to).maybeSingle();
+                   assigneeEmail = assigneeProfile?.email || null;
+                 }
+                 await syncTaskToAsana(ctx, {
+                   id: (newRecurringTask as any).id,
+                   title: completedTask.title,
+                   due_date: nextDueDate || null,
+                   assignee_email: assigneeEmail,
+                 });
+               }
+             } catch (e) {
+               console.error('[AsanaSync] Recurring task sync failed:', e);
+             }
           }
         }
       }

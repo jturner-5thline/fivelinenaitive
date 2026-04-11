@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { useChatPersistence, ChatMessage } from '@/hooks/useChatPersistence';
 import { ChatMessageList } from './chat/ChatMessageList';
 import { ChatHistorySidebar } from './chat/ChatHistorySidebar';
@@ -418,11 +419,37 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
 
   const handleCreateTask = useCallback(async (title: string, priority: string) => {
     if (!user) return;
-    const { error } = await supabase.from('tasks').insert({
+
+    // Look up company_id
+    const { data: memberData } = await supabase
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    const { data: newTask, error } = await supabase.from('tasks').insert({
       title, priority, status: 'todo', user_id: user.id, assigned_to: user.id, assigned_by: user.id,
-    } as any);
-    if (error) toast.error('Failed to create task');
-    else toast.success(`Task created: ${title}`);
+      company_id: memberData?.company_id || null,
+    } as any).select().single();
+    if (error) { toast.error('Failed to create task'); return; }
+    toast.success(`Task created: ${title}`);
+
+    // Fire-and-forget Asana sync
+    try {
+      const companyId = memberData?.company_id || null;
+      const ctx = await getAsanaSyncContext(companyId);
+      if (ctx && newTask) {
+        const { data: profile } = await supabase.from('profiles').select('email').eq('user_id', user.id).maybeSingle();
+        await syncTaskToAsana(ctx, {
+          id: (newTask as any).id,
+          title,
+          assignee_email: profile?.email || null,
+        });
+      }
+    } catch (e) {
+      console.error('[AsanaSync] Dashboard task sync failed:', e);
+    }
   }, [user]);
 
   const handleExport = useCallback(() => {

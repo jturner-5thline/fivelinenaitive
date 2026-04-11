@@ -96,8 +96,27 @@ export function useTaskTemplates() {
           : null,
       }));
 
-      const { error } = await supabase.from('tasks').insert(tasks as any);
+      const { data: createdTasks, error } = await supabase.from('tasks').insert(tasks as any).select();
       if (error) throw error;
+
+      // Fire-and-forget Asana sync for each created task
+      try {
+        const companyId = membership?.company_id || null;
+        const ctx = await getAsanaSyncContext(companyId);
+        if (ctx && createdTasks) {
+          const { data: profile } = await supabase.from('profiles').select('email').eq('user_id', user.id).maybeSingle();
+          for (const t of createdTasks) {
+            await syncTaskToAsana(ctx, {
+              id: (t as any).id,
+              title: (t as any).title,
+              due_date: (t as any).due_date || null,
+              assignee_email: profile?.email || null,
+            });
+          }
+        }
+      } catch (e) {
+        console.error('[AsanaSync] Template task sync failed:', e);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
