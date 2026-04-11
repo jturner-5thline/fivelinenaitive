@@ -169,8 +169,9 @@ export function ChannelsBoard() {
 
         <DragOverlay>
           {activeEntry && (
-            <div className="opacity-90 rotate-2 scale-105">
-              <ChannelCard entry={activeEntry} onClick={() => {}} />
+            <div className="bg-slate-800 border border-slate-500 rounded-md p-3 shadow-lg scale-[1.02] w-64 opacity-90">
+              <span className="font-medium text-sm text-white">{activeEntry.crm_company?.name || activeEntry.contact?.full_name || 'Channel'}</span>
+              <p className="text-xs text-slate-400 mt-0.5">{activeEntry.channel_type}</p>
             </div>
           )}
         </DragOverlay>
