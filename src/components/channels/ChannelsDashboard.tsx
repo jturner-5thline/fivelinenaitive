@@ -70,18 +70,42 @@ function dealReachedStage(deal: AttributedDeal, stageKey: string): boolean {
   return idx >= STAGE_ORDER.indexOf(stageKey);
 }
 
-// ── Glass card wrapper ──
-const glassCard = "relative rounded-xl border border-white/[0.06] bg-[linear-gradient(135deg,hsl(260,20%,13%,0.6)_0%,hsl(260,15%,10%,0.4)_100%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(0,0%,100%,0.04),0_4px_24px_hsl(0,0%,0%,0.25)] before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:bg-[linear-gradient(180deg,hsl(0,0%,100%,0.03)_0%,transparent_40%)]";
+// ── Glass card wrapper — premium frosted glass ──
+const glassCard = [
+  "relative isolate rounded-xl overflow-hidden",
+  // Border: double-layer rim light
+  "border border-[hsl(260,40%,50%,0.12)]",
+  "ring-1 ring-inset ring-white/[0.05]",
+  // Background: frosted translucent layers
+  "bg-[linear-gradient(145deg,hsl(260,25%,16%,0.72)_0%,hsl(255,20%,11%,0.58)_50%,hsl(250,18%,9%,0.65)_100%)]",
+  "backdrop-blur-2xl backdrop-saturate-150",
+  // Outer shadow: depth + glow
+  "shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_8px_32px_hsl(260,40%,8%,0.5),0_0_0_1px_hsl(260,30%,40%,0.04)]",
+  // Top highlight shimmer (::before)
+  "before:pointer-events-none before:absolute before:inset-0 before:rounded-xl",
+  "before:bg-[linear-gradient(175deg,hsl(0,0%,100%,0.07)_0%,hsl(0,0%,100%,0.02)_25%,transparent_50%)]",
+  // Bottom subtle glow (::after)
+  "after:pointer-events-none after:absolute after:inset-0 after:rounded-xl",
+  "after:bg-[radial-gradient(ellipse_at_50%_100%,hsl(263,50%,40%,0.06)_0%,transparent_70%)]",
+].join(" ");
 
-// ── Tooltip ──
+// KPI card variant — slightly more elevated
+const glassCardKPI = [
+  glassCard,
+  "hover:border-[hsl(263,50%,55%,0.2)] hover:shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_12px_40px_hsl(260,50%,10%,0.55),0_0_20px_hsl(263,60%,50%,0.05)]",
+  "hover:before:bg-[linear-gradient(175deg,hsl(0,0%,100%,0.10)_0%,hsl(0,0%,100%,0.03)_25%,transparent_50%)]",
+  "transition-all duration-300",
+].join(" ");
+
+// ── Tooltip — frosted glass popover ──
 function CustomBarTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-popover/95 backdrop-blur-lg border border-white/[0.08] rounded-lg p-3 shadow-2xl text-xs space-y-1">
+    <div className="bg-[hsl(260,20%,12%,0.92)] backdrop-blur-2xl border border-[hsl(260,30%,50%,0.15)] ring-1 ring-inset ring-white/[0.04] rounded-xl p-3 shadow-[0_8px_32px_hsl(0,0%,0%,0.5)] text-xs space-y-1">
       <p className="font-medium text-foreground">{label}</p>
       {payload.map((p: any, i: number) => (
         <div key={i} className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+          <span className="w-2 h-2 rounded-full shadow-[0_0_4px_currentColor]" style={{ backgroundColor: p.color, color: p.color }} />
           <span className="text-muted-foreground">{p.name}:</span>
           <span className="font-mono font-medium">{typeof p.value === 'number' && p.value < 1 ? p.value.toFixed(2) : p.value}</span>
         </div>
@@ -282,15 +306,15 @@ export function ChannelsDashboard() {
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           {/* Time pills */}
-          <div className="flex items-center bg-white/[0.03] border border-white/[0.06] rounded-lg p-0.5 gap-0.5">
+          <div className="flex items-center bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 gap-0.5 shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
             {TIME_PRESETS.map(p => (
               <button
                 key={p.value}
                 onClick={() => setTimePeriod(p.value)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
                   timePeriod === p.value
-                    ? 'bg-primary/20 text-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]'
+                    ? 'bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15),inset_0_1px_0_hsl(0,0%,100%,0.06)] border border-[hsl(263,50%,55%,0.15)]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]'
                 }`}
               >
                 {p.short}
@@ -370,23 +394,30 @@ export function ChannelsDashboard() {
         {kpiCards.map(kpi => (
           <div
             key={kpi.stageKey}
-            className={`${glassCard} p-4 space-y-2 cursor-pointer hover:border-white/[0.12] transition-all group`}
+            className={`${glassCardKPI} p-4 space-y-2 cursor-pointer group`}
             onClick={() => handleKPIClick(kpi.stageKey)}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && handleKPIClick(kpi.stageKey)}
           >
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-md" style={{ backgroundColor: kpi.color + '20' }}>
+            <div className="relative z-10 flex items-center gap-2">
+              <div
+                className="p-1.5 rounded-lg border backdrop-blur-sm"
+                style={{
+                  backgroundColor: kpi.color + '15',
+                  borderColor: kpi.color + '25',
+                  boxShadow: `0 0 12px ${kpi.color}15, inset 0 1px 1px ${kpi.color}10`,
+                }}
+              >
                 <kpi.icon className="h-3.5 w-3.5" style={{ color: kpi.color }} />
               </div>
               <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{kpi.label}</span>
             </div>
-            <div className="flex items-end gap-3">
+            <div className="relative z-10 flex items-end gap-3">
               <span className="text-2xl font-bold font-mono tabular-nums">{kpi.count}</span>
               <span className="text-sm text-muted-foreground font-mono pb-0.5">{formatCurrency(kpi.volume)}</span>
             </div>
-            <p className="text-[10px] text-muted-foreground/60 group-hover:text-muted-foreground/80 transition-colors">
+            <p className="relative z-10 text-[10px] text-muted-foreground/60 group-hover:text-muted-foreground/80 transition-colors">
               {kpi.subtitle} · Click to view
             </p>
           </div>
@@ -445,9 +476,9 @@ export function ChannelsDashboard() {
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">Group by:</span>
             <Tabs value={chartGroupBy} onValueChange={(v) => setChartGroupBy(v as ChartGroupBy)}>
-              <TabsList className="h-7 bg-white/[0.03] border border-white/[0.06]">
-                <TabsTrigger value="channel" className="text-xs h-6 px-3 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Channel</TabsTrigger>
-                <TabsTrigger value="source" className="text-xs h-6 px-3 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Referral Source</TabsTrigger>
+              <TabsList className="h-7 bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] shadow-[0_2px_8px_hsl(0,0%,0%,0.15)]">
+                <TabsTrigger value="channel" className="text-xs h-6 px-3 data-[state=active]:bg-[hsl(263,60%,55%,0.2)] data-[state=active]:text-primary data-[state=active]:shadow-[0_0_6px_hsl(263,60%,55%,0.12)]">Channel</TabsTrigger>
+                <TabsTrigger value="source" className="text-xs h-6 px-3 data-[state=active]:bg-[hsl(263,60%,55%,0.2)] data-[state=active]:text-primary data-[state=active]:shadow-[0_0_6px_hsl(263,60%,55%,0.12)]">Referral Source</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -459,41 +490,43 @@ export function ChannelsDashboard() {
               { data: volumeChartData, title: volumeChartTitle, formatter: (v: number) => `$${v.toFixed(1)}M` },
             ].map(({ data, title, formatter }) => (
               <div key={title} className={`${glassCard} p-4`}>
-                <h3 className="text-sm font-medium text-foreground mb-4">{title}</h3>
+                <h3 className="relative z-10 text-sm font-medium text-foreground mb-3">{title}</h3>
                 {data.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={data} layout="vertical" margin={{ left: 10, right: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(0,0%,100%,0.04)" />
-                      <XAxis
-                        type="number"
-                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                        axisLine={{ stroke: 'hsl(0,0%,100%,0.06)' }}
-                        tickLine={false}
-                        tickFormatter={formatter}
-                      />
-                      <YAxis
-                        dataKey="name"
-                        type="category"
-                        width={120}
-                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'hsl(0,0%,100%,0.03)' }} />
-                      <Legend wrapperStyle={{ fontSize: 10 }} />
-                      {barKeys.map((bk, idx) => (
-                        <Bar
-                          key={bk.key}
-                          dataKey={bk.key}
-                          name={bk.label}
-                          fill={seriesColors[idx]}
-                          radius={[0, 3, 3, 0]}
-                          cursor="pointer"
-                          onClick={(d: any) => d?.payload?.name && handleBarClick(d.payload.name, bk.key)}
+                  <div className="rounded-lg bg-[hsl(260,18%,9%,0.5)] border border-white/[0.03] ring-1 ring-inset ring-white/[0.02] p-2 shadow-[inset_0_2px_6px_hsl(0,0%,0%,0.15)]">
+                    <ResponsiveContainer width="100%" height={270}>
+                      <BarChart data={data} layout="vertical" margin={{ left: 8, right: 8, top: 4, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(260,20%,30%,0.08)" />
+                        <XAxis
+                          type="number"
+                          tick={{ fontSize: 10, fill: 'hsl(260,10%,55%)' }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={formatter}
                         />
-                      ))}
-                    </BarChart>
-                  </ResponsiveContainer>
+                        <YAxis
+                          dataKey="name"
+                          type="category"
+                          width={120}
+                          tick={{ fontSize: 10, fill: 'hsl(260,10%,60%)' }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'hsl(263,30%,40%,0.06)' }} />
+                        <Legend wrapperStyle={{ fontSize: 10, color: 'hsl(260,10%,55%)' }} />
+                        {barKeys.map((bk, idx) => (
+                          <Bar
+                            key={bk.key}
+                            dataKey={bk.key}
+                            name={bk.label}
+                            fill={seriesColors[idx]}
+                            radius={[0, 3, 3, 0]}
+                            cursor="pointer"
+                            onClick={(d: any) => d?.payload?.name && handleBarClick(d.payload.name, bk.key)}
+                          />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 ) : (
                   <p className="text-xs text-muted-foreground text-center py-12">No data</p>
                 )}
@@ -503,14 +536,14 @@ export function ChannelsDashboard() {
 
           {/* ── Performance Table ── */}
           <div className={`${glassCard} overflow-hidden`}>
-            <div className="p-4 border-b border-white/[0.06]">
+            <div className="relative z-10 p-4 border-b border-white/[0.06]">
               <h3 className="text-sm font-medium text-foreground">Referral Source Performance</h3>
               <p className="text-[10px] text-muted-foreground mt-0.5">Click any row to view underlying deals</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-white/[0.06]">
+                  <tr className="border-b border-white/[0.06] bg-[hsl(260,18%,12%,0.4)] backdrop-blur-sm">
                     <th className="text-left p-3 text-muted-foreground font-medium">Referral Source</th>
                     <th className="text-left p-3 text-muted-foreground font-medium">Channel</th>
                     <th className="text-right p-3 text-muted-foreground font-medium">Added</th>
