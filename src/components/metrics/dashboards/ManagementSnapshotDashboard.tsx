@@ -564,16 +564,7 @@ export function ManagementSnapshotDashboard({
   };
 
   const allCards: CardEntry[] = [
-    { cardId: 'debt-revenue', props: getCardProps('debt-revenue', 'Debt Revenue', 'hsl(var(--primary))', 'ytd', 'chart') },
-    { cardId: 'finserv-revenue', props: getCardProps('finserv-revenue', 'FinServ Revenue', 'hsl(var(--chart-4))', 'ytd', 'chart') },
-    { cardId: 'total-revenue', props: getCardProps('total-revenue', 'Total Revenue', 'hsl(var(--chart-2))', 'ytd', 'chart') },
     { cardId: 'total-revenue-detail', props: getCardProps('total-revenue-detail', 'Total Revenue Detail', 'hsl(var(--chart-2))', 'ytd', 'metric') },
-    { cardId: 'clients-signed-debt', props: getCardProps('clients-signed-debt', 'Clients Signed - Debt', 'hsl(var(--primary))', 'ytd', 'metric') },
-    { cardId: 'clients-signed-finserv', props: getCardProps('clients-signed-finserv', 'Clients Signed - FinServ', 'hsl(var(--chart-4))', 'ytd', 'metric') },
-    { cardId: 'outstanding-ar', props: getCardProps('outstanding-ar', 'Outstanding A/R', 'hsl(var(--primary))', 'ytd', 'metric') },
-    { cardId: 'debt-profit', props: getCardProps('debt-profit', 'Debt Profit', 'hsl(var(--primary))', 'ytd', 'chart') },
-    { cardId: 'finserv-profit', props: getCardProps('finserv-profit', 'FinServ Profit', 'hsl(var(--chart-4))', 'ytd', 'chart') },
-    { cardId: 'avg-rev-per-client', props: getCardProps('avg-rev-per-client', 'Avg Revenue per New Client Signed', 'hsl(var(--chart-3))', 'ytd', 'metric') },
   ];
 
   const visibleCards = allCards.filter(c => !isHidden(c.cardId));
