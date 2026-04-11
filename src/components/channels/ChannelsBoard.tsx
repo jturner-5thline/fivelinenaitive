@@ -9,6 +9,7 @@ import { useChannelEntries, useUpdateChannelEntry, type ChannelType, type Channe
 import { ChannelCard } from './ChannelCard';
 import { AddChannelDialog } from './AddChannelDialog';
 import { ChannelDetailDialog } from './ChannelDetailDialog';
+import { ChannelEntityDetailModal } from './ChannelEntityDetailModal';
 
 const COLUMNS: { type: ChannelType; label: string; color: string }[] = [
   { type: 'Banks', label: 'Banks', color: 'bg-blue-500' },
@@ -19,10 +20,11 @@ const COLUMNS: { type: ChannelType; label: string; color: string }[] = [
 
 const COLUMN_TYPES = new Set(COLUMNS.map(c => c.type));
 
-function DroppableColumn({ type, label, color, entries, onCardClick }: {
+function DroppableColumn({ type, label, color, entries, onCardClick, onEntityClick }: {
   type: ChannelType; label: string; color: string;
   entries: ChannelEntry[];
   onCardClick: (e: ChannelEntry) => void;
+  onEntityClick: (e: ChannelEntry, entityType: 'company' | 'contact') => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: type });
 
@@ -39,7 +41,7 @@ function DroppableColumn({ type, label, color, entries, onCardClick }: {
       <div className="p-2 space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto flex-1">
         <SortableContext items={entries.map(e => e.id)} strategy={verticalListSortingStrategy}>
           {entries.map((entry) => (
-            <ChannelCard key={entry.id} entry={entry} onClick={() => onCardClick(entry)} />
+            <ChannelCard key={entry.id} entry={entry} onClick={() => onCardClick(entry)} onEntityClick={(entityType) => onEntityClick(entry, entityType)} />
           ))}
         </SortableContext>
         {entries.length === 0 && (
@@ -57,7 +59,12 @@ export function ChannelsBoard() {
   const updateChannel = useUpdateChannelEntry();
   const [addOpen, setAddOpen] = useState(false);
   const [detailEntry, setDetailEntry] = useState<ChannelEntry | null>(null);
+  const [entityDetailEntry, setEntityDetailEntry] = useState<ChannelEntry | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  const handleEntityClick = useCallback((entry: ChannelEntry, _entityType: 'company' | 'contact') => {
+    setEntityDetailEntry(entry);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -160,7 +167,14 @@ export function ChannelsBoard() {
               label={col.label}
               color={col.color}
               entries={grouped[col.type]}
-              onCardClick={setDetailEntry}
+              onCardClick={(entry) => {
+                if (entry.crm_company_id || entry.contact_id) {
+                  setEntityDetailEntry(entry);
+                } else {
+                  setDetailEntry(entry);
+                }
+              }}
+              onEntityClick={handleEntityClick}
             />
           ))}
         </div>
@@ -177,6 +191,7 @@ export function ChannelsBoard() {
 
       <AddChannelDialog open={addOpen} onClose={() => setAddOpen(false)} />
       {detailEntry && <ChannelDetailDialog entry={detailEntry} onClose={() => setDetailEntry(null)} />}
+      {entityDetailEntry && <ChannelEntityDetailModal entry={entityDetailEntry} onClose={() => setEntityDetailEntry(null)} />}
     </div>
   );
 }

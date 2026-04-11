@@ -1,15 +1,16 @@
 import { useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, User } from 'lucide-react';
+import { GripVertical, User, Building2 } from 'lucide-react';
 import type { ChannelEntry } from '@/hooks/useChannelEntries';
 
 interface Props {
   entry: ChannelEntry;
   onClick: () => void;
+  onEntityClick?: (type: 'company' | 'contact') => void;
 }
 
-export function ChannelCard({ entry, onClick }: Props) {
+export function ChannelCard({ entry, onClick, onEntityClick }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
@@ -45,6 +46,11 @@ export function ChannelCard({ entry, onClick }: Props) {
     pointerDownPos.current = null;
   };
 
+  const handleEntityNameClick = (e: React.MouseEvent, type: 'company' | 'contact') => {
+    e.stopPropagation();
+    onEntityClick?.(type);
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -57,7 +63,16 @@ export function ChannelCard({ entry, onClick }: Props) {
     >
       {/* Row 1: Primary name + drag handle */}
       <div className="flex items-start justify-between">
-        <span className="font-medium text-sm text-white truncate">{primaryName}</span>
+        {companyName && onEntityClick ? (
+          <span
+            className="font-medium text-sm text-primary truncate cursor-pointer hover:underline"
+            onClick={(e) => handleEntityNameClick(e, 'company')}
+          >
+            {companyName}
+          </span>
+        ) : (
+          <span className="font-medium text-sm text-white truncate">{primaryName}</span>
+        )}
         <GripVertical data-drag-handle className="h-4 w-4 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </div>
 
@@ -71,9 +86,19 @@ export function ChannelCard({ entry, onClick }: Props) {
         <div className="flex items-center gap-1.5 min-w-0">
           <User className="h-3.5 w-3.5 shrink-0 text-slate-500" />
           {contactName ? (
-            <span className="text-xs font-medium truncate" style={{ color: 'hsl(var(--primary))' }}>
-              {contactName}
-            </span>
+            onEntityClick ? (
+              <span
+                className="text-xs font-medium truncate cursor-pointer hover:underline"
+                style={{ color: 'hsl(var(--primary))' }}
+                onClick={(e) => handleEntityNameClick(e, 'contact')}
+              >
+                {contactName}
+              </span>
+            ) : (
+              <span className="text-xs font-medium truncate" style={{ color: 'hsl(var(--primary))' }}>
+                {contactName}
+              </span>
+            )
           ) : (
             <span className="text-xs text-slate-500">No contact</span>
           )}
