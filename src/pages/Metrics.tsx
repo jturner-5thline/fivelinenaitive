@@ -2050,16 +2050,18 @@ export default function Metrics() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button
-                variant={isEditMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => setIsEditMode(!isEditMode)}
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                {isEditMode ? "Done Editing" : "Edit Layout"}
-              </Button>
+              {canEditMetrics && (
+                <Button
+                  variant={isEditMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsEditMode(!isEditMode)}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  {isEditMode ? "Done Editing" : "Edit Layout"}
+                </Button>
+              )}
 
-              {isEditMode && (
+              {isEditMode && canEditMetrics && (
                 <>
                   <Button size="sm" onClick={handleAdd}>
                     <Plus className="h-4 w-4 mr-2" />
