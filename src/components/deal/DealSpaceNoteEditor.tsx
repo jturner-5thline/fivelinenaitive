@@ -44,6 +44,7 @@ import { MentionTaskDialog } from './notes/MentionTaskDialog';
 import mentionSuggestion from './notes/mentionSuggestion';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 
 // ─── Ribbon helpers ───
 function RibbonBtn({ onClick, isActive, icon: Icon, label, disabled, className }: {
