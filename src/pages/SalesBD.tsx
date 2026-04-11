@@ -11,6 +11,7 @@ import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
+import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
 
 const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 

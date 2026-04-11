@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDealReferralSources, type DealReferralSourceEntry } from '@/hooks/useDealReferralSources';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -298,7 +298,7 @@ export function ReferralSourcesView() {
                 {filteredSources.map((entry) => {
                   const isExpanded = expandedId === entry.referredBy;
                   return (
-                    <tr key={entry.referredBy} className="contents">
+                    <React.Fragment key={entry.referredBy}>
                       <tr
                         className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer"
                         onClick={() => setExpandedId(isExpanded ? null : entry.referredBy)}
@@ -343,7 +343,7 @@ export function ReferralSourcesView() {
                           </td>
                         </tr>
                       )}
-                    </tr>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
