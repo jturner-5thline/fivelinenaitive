@@ -382,7 +382,7 @@ function StackedGenericRevenueChart({
 }: {
   title: string;
   subtitle: string;
-  data: Record<string, unknown>[];
+  data: any[];
   isLoading: boolean;
   total: number;
   categories: readonly { key: string; label: string; color: string }[];
@@ -456,7 +456,7 @@ function StackedGenericRevenueChart({
   );
 }
 
-
+export function RevenueQuarterlySection() {
   const quarterOptions = useMemo(() => buildQuarterOptions(8), []);
   const [selectedQuarterValue, setSelectedQuarterValue] = useState(() => getCurrentQuarter().value);
   const selectedQuarter = quarterOptions.find(q => q.value === selectedQuarterValue) ?? quarterOptions[0];
