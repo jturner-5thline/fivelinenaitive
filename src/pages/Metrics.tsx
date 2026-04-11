@@ -73,6 +73,7 @@ import { DEFAULT_WIDGET_CONFIG, WidgetConfig as DatarailsWidgetConfig } from "@/
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useCompanyDashboardConfig } from "@/hooks/useCompanyDashboardConfig";
+import { useMetricsEditPermission } from "@/hooks/useMetricsEditPermission";
 import { useDashboardFolders } from "@/contexts/DashboardFoldersContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
