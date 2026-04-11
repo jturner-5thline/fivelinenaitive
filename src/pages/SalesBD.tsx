@@ -10,6 +10,7 @@ import { PartnerInsightsFeed } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
+import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
 
 const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
