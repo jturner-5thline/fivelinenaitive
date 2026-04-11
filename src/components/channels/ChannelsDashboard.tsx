@@ -524,6 +524,7 @@ export function ChannelsDashboard() {
                           tickLine={false}
                           tickFormatter={formatter}
                           width={formatter ? 55 : 35}
+                          allowDecimals={!(!formatter)}
                         />
                         <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'hsl(263,30%,40%,0.06)' }} />
                         {barKeys.map((bk, idx) => (
