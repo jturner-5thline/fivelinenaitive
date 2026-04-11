@@ -11,10 +11,10 @@ import { AddChannelDialog } from './AddChannelDialog';
 import { ChannelDetailDialog } from './ChannelDetailDialog';
 
 const COLUMNS: { type: ChannelType; label: string; color: string }[] = [
-  { type: 'Banks', label: 'Banks', color: 'border-t-blue-500' },
-  { type: 'M&A and Investment Bankers', label: 'M&A / IB', color: 'border-t-violet-500' },
-  { type: 'Service Providers', label: 'Service Providers', color: 'border-t-amber-500' },
-  { type: 'Investors', label: 'Investors', color: 'border-t-emerald-500' },
+  { type: 'Banks', label: 'Banks', color: 'bg-blue-500' },
+  { type: 'M&A and Investment Bankers', label: 'M&A / IB', color: 'bg-violet-500' },
+  { type: 'Service Providers', label: 'Service Providers', color: 'bg-amber-500' },
+  { type: 'Investors', label: 'Investors', color: 'bg-emerald-500' },
 ];
 
 const COLUMN_TYPES = new Set(COLUMNS.map(c => c.type));
