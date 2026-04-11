@@ -1977,21 +1977,25 @@ export default function Metrics() {
                       </DropdownMenuSub>
                     ))}
 
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="flex items-center gap-2 text-primary"
-                      onClick={() => setNewFolderOpen(true)}
-                    >
-                      <FolderPlus className="h-4 w-4" />
-                      <span>New Folder</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="flex items-center gap-2 text-primary"
-                      onClick={() => setCreateDashboardOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Create New Dashboard</span>
-                    </DropdownMenuItem>
+                    {canEditMetrics && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="flex items-center gap-2 text-primary"
+                          onClick={() => setNewFolderOpen(true)}
+                        >
+                          <FolderPlus className="h-4 w-4" />
+                          <span>New Folder</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="flex items-center gap-2 text-primary"
+                          onClick={() => setCreateDashboardOpen(true)}
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>Create New Dashboard</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
 
