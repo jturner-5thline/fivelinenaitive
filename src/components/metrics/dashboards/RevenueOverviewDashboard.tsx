@@ -382,7 +382,7 @@ function StackedGenericRevenueChart({
 }: {
   title: string;
   subtitle: string;
-  data: Record<string, unknown>[] | { month: string; monthKey: string; totalRevenue: number }[];
+  data: any[];
   isLoading: boolean;
   total: number;
   categories: readonly { key: string; label: string; color: string }[];
