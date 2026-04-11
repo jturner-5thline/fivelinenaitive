@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { useMetricsEditPermission } from '@/hooks/useMetricsEditPermission';
 
 export type MetricWidgetType = 'stat' | 'chart';
 export type MetricChartType = 'bar' | 'line' | 'pie' | 'area' | 'composed' | 'waterfall' | 'gauge' | 'bullet' | 'treemap' | 'funnel' | 'radar' | 'heatmap' | 'forecast';
@@ -54,6 +55,7 @@ interface MetricsWidgetsContextType {
   savePreset: (name: string) => void;
   loadPreset: (id: string) => void;
   deletePreset: (id: string) => void;
+  canEditMetrics: boolean;
 }
 
 const MetricsWidgetsContext = createContext<MetricsWidgetsContextType | undefined>(undefined);
@@ -136,6 +138,7 @@ const PRESETS_CONFIG_KEY = 'metrics_presets';
 
 export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
   const { company } = useCompany();
+  const { canEditMetrics } = useMetricsEditPermission();
   const [widgets, setWidgets] = useState<MetricWidgetConfig[]>([]);
   const [presets, setPresets] = useState<MetricsLayoutPreset[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -178,7 +181,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
   }, [company?.id]);
 
   const persistWidgets = useCallback((newWidgets: MetricWidgetConfig[]) => {
-    if (!isLoaded || !company?.id) {
+    if (!isLoaded || !company?.id || !canEditMetrics) {
       return;
     }
     if (widgetsSaveTimerRef.current) clearTimeout(widgetsSaveTimerRef.current);
@@ -196,10 +199,10 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
         console.error('Error saving metrics widgets:', err);
       }
     }, 500);
-  }, [isLoaded, company?.id]);
+  }, [isLoaded, company?.id, canEditMetrics]);
 
   const persistPresets = useCallback((newPresets: MetricsLayoutPreset[]) => {
-    if (!company?.id) return;
+    if (!company?.id || !canEditMetrics) return;
     if (presetsSaveTimerRef.current) clearTimeout(presetsSaveTimerRef.current);
     presetsSaveTimerRef.current = setTimeout(async () => {
       try {
@@ -215,7 +218,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
         console.error('Error saving metrics presets:', err);
       }
     }, 500);
-  }, [company?.id]);
+  }, [company?.id, canEditMetrics]);
 
   const addWidget = (widget: Omit<MetricWidgetConfig, 'id' | 'createdAt'>): string => {
     const newWidget: MetricWidgetConfig = {
@@ -289,6 +292,7 @@ export function MetricsWidgetsProvider({ children }: { children: ReactNode }) {
       savePreset,
       loadPreset,
       deletePreset,
+      canEditMetrics,
     }}>
       {children}
     </MetricsWidgetsContext.Provider>

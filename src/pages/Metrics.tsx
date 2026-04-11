@@ -73,6 +73,7 @@ import { DEFAULT_WIDGET_CONFIG, WidgetConfig as DatarailsWidgetConfig } from "@/
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useCompanyDashboardConfig } from "@/hooks/useCompanyDashboardConfig";
+import { useMetricsEditPermission } from "@/hooks/useMetricsEditPermission";
 import { useDashboardFolders } from "@/contexts/DashboardFoldersContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -1371,7 +1372,8 @@ export default function Metrics() {
     presets,
     savePreset,
     loadPreset,
-    deletePreset 
+    deletePreset,
+    canEditMetrics,
   } = useMetricsWidgets();
 
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
@@ -1975,21 +1977,25 @@ export default function Metrics() {
                       </DropdownMenuSub>
                     ))}
 
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="flex items-center gap-2 text-primary"
-                      onClick={() => setNewFolderOpen(true)}
-                    >
-                      <FolderPlus className="h-4 w-4" />
-                      <span>New Folder</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="flex items-center gap-2 text-primary"
-                      onClick={() => setCreateDashboardOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Create New Dashboard</span>
-                    </DropdownMenuItem>
+                    {canEditMetrics && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="flex items-center gap-2 text-primary"
+                          onClick={() => setNewFolderOpen(true)}
+                        >
+                          <FolderPlus className="h-4 w-4" />
+                          <span>New Folder</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="flex items-center gap-2 text-primary"
+                          onClick={() => setCreateDashboardOpen(true)}
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>Create New Dashboard</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -2048,16 +2054,18 @@ export default function Metrics() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button
-                variant={isEditMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => setIsEditMode(!isEditMode)}
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                {isEditMode ? "Done Editing" : "Edit Layout"}
-              </Button>
+              {canEditMetrics && (
+                <Button
+                  variant={isEditMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsEditMode(!isEditMode)}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  {isEditMode ? "Done Editing" : "Edit Layout"}
+                </Button>
+              )}
 
-              {isEditMode && (
+              {isEditMode && canEditMetrics && (
                 <>
                   <Button size="sm" onClick={handleAdd}>
                     <Plus className="h-4 w-4 mr-2" />
