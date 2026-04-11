@@ -59,7 +59,12 @@ export function ChannelsBoard() {
   const updateChannel = useUpdateChannelEntry();
   const [addOpen, setAddOpen] = useState(false);
   const [detailEntry, setDetailEntry] = useState<ChannelEntry | null>(null);
+  const [entityDetailEntry, setEntityDetailEntry] = useState<ChannelEntry | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  const handleEntityClick = useCallback((entry: ChannelEntry, _entityType: 'company' | 'contact') => {
+    setEntityDetailEntry(entry);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
