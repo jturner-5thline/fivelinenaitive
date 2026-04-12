@@ -1395,6 +1395,8 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   useEffect(() => {
     if (!open) return;
     refreshEvents();
+    const interval = setInterval(refreshEvents, 3 * 60 * 1000); // refresh every 3 minutes
+    return () => clearInterval(interval);
   }, [open, refreshEvents]);
 
   const handleSaveEvent = useCallback(async (eventData: {

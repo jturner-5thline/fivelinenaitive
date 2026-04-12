@@ -115,6 +115,8 @@ export function GoogleCalendarIntegration({ onDisconnect }: GoogleCalendarIntegr
   useEffect(() => {
     if (status.connected && user) {
       loadEvents();
+      const interval = setInterval(loadEvents, 3 * 60 * 1000); // refresh every 3 minutes
+      return () => clearInterval(interval);
     }
   }, [status.connected, user, dateRange.start.toISOString(), dateRange.end.toISOString()]);
 
