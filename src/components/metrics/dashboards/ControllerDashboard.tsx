@@ -223,7 +223,7 @@ export function ControllerDashboard() {
       {/* Credit Card Balances */}
       <ChartCard
         title="Credit Card Balances"
-        subtitle="5th Line Capital Advisors, LLC"
+        subtitle="All Connected Entities"
         isLoading={creditCards.isLoading}
         isError={creditCards.isError}
         isEmpty={!creditCards.data?.length}
