@@ -95,6 +95,7 @@ import {
   IncomeBoardDashboard,
   SalesBDROIDashboard,
   SalesTeamBoardDashboard,
+  SalesCommissionBoardDashboard,
   HarvestMonthlyTrackingDashboard,
   ConsolidatedDebtPipelineDashboard,
   ControllerDashboard,
