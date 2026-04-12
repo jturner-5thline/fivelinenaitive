@@ -167,7 +167,7 @@ export function QuickBooksFinancialDashboard() {
                     <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 9 }} />
                     <Tooltip formatter={(v: number) => [formatCurrency(v), "Revenue"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                    <Bar dataKey="revenue" shape={createGlassBarShape({ radius: 4 })}>
+                    <Bar dataKey="revenue" shape={createGlassBarShape({ radius: 3 })}>
                       {metrics.topCustomers.map((_, index) => (
                         <Cell key={index} fill={COLORS[index % COLORS.length]} />
                       ))}

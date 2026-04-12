@@ -92,7 +92,7 @@ function SignedBarChart({
                 }}
                 cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
               />
-              <Bar dataKey="count" shape={createGlassBarShape({ radius: 6 })} cursor="pointer" onClick={(d: MonthBucket) => onBarClick(d)}>
+              <Bar dataKey="count" shape={createGlassBarShape({ radius: 3 })} cursor="pointer" onClick={(d: MonthBucket) => onBarClick(d)}>
                 {months.map((m, i) => (
                   <Cell key={i} fill={m.count > 0 ? color : 'hsl(var(--muted))'} fillOpacity={m.count > 0 ? 0.85 : 0.3} />
                 ))}

@@ -147,7 +147,7 @@ export function SalesTeamBoardDashboard() {
                   <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="count" fill="hsl(var(--primary))" name="Count" shape={createGlassBarShape({ radius: 4 })} />
+                  <Bar yAxisId="left" dataKey="count" fill="hsl(var(--primary))" name="Count" shape={createGlassBarShape({ radius: 3 })} />
                   <Line yAxisId="right" type="monotone" dataKey="amount" stroke="hsl(var(--chart-2))" name="Amount" />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -169,7 +169,7 @@ export function SalesTeamBoardDashboard() {
                   <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="count" fill="hsl(var(--primary))" name="Clients Signed" shape={createGlassBarShape({ radius: 4 })} />
+                  <Bar yAxisId="left" dataKey="count" fill="hsl(var(--primary))" name="Clients Signed" shape={createGlassBarShape({ radius: 3 })} />
                   <Line yAxisId="right" type="monotone" dataKey="amount" stroke="hsl(var(--chart-2))" name="Dollars Signed" />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -189,7 +189,7 @@ export function SalesTeamBoardDashboard() {
                   <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
+                  <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 3 })} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
