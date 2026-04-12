@@ -44,6 +44,15 @@ function ProfitBarChart({
   }
 
   const hasNegative = months.some(m => m.profit < 0);
+  const hasPositive = months.some(m => m.profit > 0);
+
+  // Compute a domain that keeps all bars within the chart area.
+  // When all values are negative, set max to 0 so the $0 line is at the top.
+  const minVal = Math.min(...months.map(m => m.profit), 0);
+  const maxVal = Math.max(...months.map(m => m.profit), 0);
+  const padding = Math.max(Math.abs(minVal), Math.abs(maxVal)) * 0.15 || 1000;
+  const domainMin = minVal < 0 ? minVal - padding : 0;
+  const domainMax = maxVal > 0 ? maxVal + padding : (hasNegative && !hasPositive ? padding * 0.3 : 0);
 
   return (
     <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
@@ -69,6 +78,7 @@ function ProfitBarChart({
                 tickLine={false}
               />
               <YAxis
+                domain={[domainMin, domainMax]}
                 tickFormatter={formatCurrency}
                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                 axisLine={false}
