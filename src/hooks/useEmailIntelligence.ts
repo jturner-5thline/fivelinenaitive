@@ -69,7 +69,7 @@ const DEFAULT_SETTINGS: EmailIntelligenceSettings = {
   tag_rules: [],
 };
 
-const SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+const SYNC_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
 
 export function useEmailIntelligence() {
   const { user } = useAuth();
