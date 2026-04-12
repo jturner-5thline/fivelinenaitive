@@ -179,15 +179,12 @@ function buildActivityBlock(notifications: PendingNotification[], labels: Record
 function buildDealCard(deal: DealRow, labels: Record<string, string>, activity: PendingNotification[], lenderInfo: DealLenderInfo | null): string {
   const hasActivity = activity.length > 0;
 
-  // Lender metadata line
+  // Passed lenders metadata line
   let lenderLine = '';
-  if (lenderInfo && lenderInfo.total > 0) {
-    const parts: string[] = [];
-    parts.push(`<strong style="color:#111827;">${lenderInfo.total}</strong> <span style="color:#6b7280;">total</span>`);
-    if (lenderInfo.active > 0) parts.push(`<strong style="color:#16a34a;">${lenderInfo.active}</strong> <span style="color:#6b7280;">active</span>`);
-    if (lenderInfo.onDeck > 0) parts.push(`<strong style="color:#2563eb;">${lenderInfo.onDeck}</strong> <span style="color:#6b7280;">on deck</span>`);
-    if (lenderInfo.passed > 0) parts.push(`<strong style="color:#9ca3af;">${lenderInfo.passed}</strong> <span style="color:#6b7280;">passed</span>`);
-    lenderLine = `<tr><td style="padding:0 20px 4px 20px;font-size:11px;color:#6b7280;">Lenders: ${parts.join(' · ')}</td></tr>`;
+  if (lenderInfo) {
+    const passedCount = lenderInfo.passed;
+    const passedLabel = passedCount === 1 ? 'lender' : 'lenders';
+    lenderLine = `<tr><td style="padding:0 20px 4px 20px;font-size:11px;color:#6b7280;">Passed: <strong style="color:#9ca3af;">${passedCount}</strong> ${passedLabel}</td></tr>`;
   }
 
   const activityHtml = buildActivityBlock(activity, labels);
@@ -289,14 +286,14 @@ function buildDigestEmailHtml(
   const quietRows = quietDeals.map(d => {
     const dl = getDealLabels(d);
     const li = lenderInfoByDeal?.[d.id];
-    const lenderCol = li ? `${li.active}/${li.total}` : '—';
+    const lenderCol = li ? String(li.passed) : '—';
     return `<tr>
       <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:12px;">
         <a href="https://fivelinenaitive.lovable.app/deal/${d.id}" style="color:#111827;text-decoration:none;font-weight:500;">${d.company}</a>
       </td>
       <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">${stagePill(d.stage, dl)}</td>
       <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">${statusPill(d.status, dl)}</td>
-      <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:11px;text-align:center;" title="Active / Total lenders">${lenderCol}</td>
+      <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;color:#9ca3af;font-size:11px;text-align:center;" title="Passed lenders">${lenderCol}</td>
       <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;color:#111827;font-size:12px;text-align:right;white-space:nowrap;font-weight:500;">${formatCurrency(d.value)}</td>
     </tr>`;
   }).join('');
@@ -319,7 +316,7 @@ function buildDigestEmailHtml(
               <th style="padding:8px 12px;text-align:left;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Deal</th>
               <th style="padding:8px 8px;text-align:left;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Stage</th>
               <th style="padding:8px 8px;text-align:left;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Status</th>
-              <th style="padding:8px 8px;text-align:center;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Lenders</th>
+              <th style="padding:8px 8px;text-align:center;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Passed</th>
               <th style="padding:8px 8px;text-align:right;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Value</th>
             </tr>
           </thead>
