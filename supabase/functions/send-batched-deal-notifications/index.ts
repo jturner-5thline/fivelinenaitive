@@ -56,34 +56,41 @@ function formatCurrency(val: number | null | undefined): string {
 
 function statusColor(status: string | null): string {
   switch (status) {
-    case 'on-track': return '#22c55e';
-    case 'at-risk': return '#f59e0b';
-    case 'off-track': return '#ef4444';
-    case 'on-hold': return '#94a3b8';
-    default: return '#64748b';
+    case 'on-track': return '#16a34a';
+    case 'at-risk': return '#d97706';
+    case 'off-track': return '#dc2626';
+    case 'on-hold': return '#6b7280';
+    default: return '#6b7280';
   }
 }
 
-function statusDot(status: string | null, labels: Record<string, string>): string {
+function statusPill(status: string | null, labels: Record<string, string>): string {
   const color = statusColor(status);
   const label = resolveLabel(status, labels);
-  return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;vertical-align:middle;"></span><span style="color:${color};font-size:12px;font-weight:600;">${label}</span>`;
+  const bgMap: Record<string, string> = {
+    '#16a34a': '#f0fdf4', '#d97706': '#fffbeb', '#dc2626': '#fef2f2', '#6b7280': '#f3f4f6',
+  };
+  const bg = bgMap[color] || '#f3f4f6';
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;color:${color};background:${bg};line-height:1.4;">${label}</span>`;
 }
 
-function stageBadge(stage: string | null, labels: Record<string, string>): string {
-  return `<span style="background:#334155;color:#e2e8f0;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;display:inline-block;">${resolveLabel(stage, labels)}</span>`;
+function stagePill(stage: string | null, labels: Record<string, string>): string {
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:500;color:#4338ca;background:#eef2ff;line-height:1.4;">${resolveLabel(stage, labels)}</span>`;
 }
 
 function trackingBadge(status: string, labels: Record<string, string>): string {
-  const colors: Record<string, string> = {
-    'active': '#22c55e', 'on-hold': '#f59e0b', 'on-deck': '#3b82f6', 'passed': '#64748b',
+  const colors: Record<string, { text: string; bg: string }> = {
+    'active': { text: '#16a34a', bg: '#f0fdf4' },
+    'on-hold': { text: '#d97706', bg: '#fffbeb' },
+    'on-deck': { text: '#2563eb', bg: '#eff6ff' },
+    'passed': { text: '#6b7280', bg: '#f3f4f6' },
   };
-  const c = colors[status] || '#64748b';
-  return `<span style="background:${c}22;color:${c};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;display:inline-block;">${resolveLabel(status, labels)}</span>`;
+  const c = colors[status] || { text: '#6b7280', bg: '#f3f4f6' };
+  return `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;color:${c.text};background:${c.bg};line-height:1.5;">${resolveLabel(status, labels)}</span>`;
 }
 
 function changeBadge(from: string, to: string, labels: Record<string, string>): string {
-  return `<span style="color:#94a3b8;font-size:11px;">${resolveLabel(from, labels)}</span> <span style="color:#64748b;font-size:11px;">→</span> <span style="color:#f1f5f9;font-size:11px;font-weight:600;">${resolveLabel(to, labels)}</span>`;
+  return `<span style="color:#9ca3af;font-size:11px;">${resolveLabel(from, labels)}</span> <span style="color:#9ca3af;font-size:11px;">→</span> <span style="color:#111827;font-size:11px;font-weight:600;">${resolveLabel(to, labels)}</span>`;
 }
 
 interface DealLenderInfo {
@@ -93,29 +100,45 @@ interface DealLenderInfo {
   onDeck: number;
 }
 
+// Event type icon + color mapping
+function eventIcon(type: string): { icon: string; color: string } {
+  switch (type) {
+    case 'lender_added': return { icon: '+', color: '#16a34a' };
+    case 'lender_removed': return { icon: '−', color: '#dc2626' };
+    case 'lender_updated': return { icon: '●', color: '#7c3aed' };
+    case 'deal_updated': case 'stage_changed': return { icon: '●', color: '#2563eb' };
+    case 'milestone_completed': return { icon: '✓', color: '#16a34a' };
+    case 'milestone_missed': return { icon: '!', color: '#d97706' };
+    case 'milestone_added': return { icon: '+', color: '#16a34a' };
+    case 'deal_created': return { icon: '★', color: '#7c3aed' };
+    default: return { icon: '●', color: '#6b7280' };
+  }
+}
+
 // Build detailed activity block for a deal
 function buildActivityBlock(notifications: PendingNotification[], labels: Record<string, string>): string {
   if (!notifications || notifications.length === 0) return '';
-  
+
   const items: string[] = [];
-  
+
   for (const n of notifications) {
     const cs = n.change_summary || {};
-    const byName = n.changed_by_name ? `<span style="color:#94a3b8;font-size:11px;"> by ${n.changed_by_name}</span>` : '';
-    
+    const byName = n.changed_by_name ? `<span style="color:#9ca3af;font-size:11px;"> · ${n.changed_by_name}</span>` : '';
+    const { icon, color } = eventIcon(n.event_type);
+
     if (n.event_type === 'lender_added') {
-      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#22c55e;font-size:12px;font-weight:600;">＋</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;"><strong>${n.entity_name || 'Lender'}</strong> added${byName}</td></tr>`);
+      items.push(`<tr><td style="padding:3px 0;width:18px;vertical-align:top;"><span style="color:${color};font-size:13px;font-weight:700;line-height:1;">${icon}</span></td><td style="padding:3px 0 3px 6px;font-size:12px;color:#374151;line-height:1.4;"><strong style="color:#111827;">${n.entity_name || 'Lender'}</strong> added${byName}</td></tr>`);
     } else if (n.event_type === 'lender_removed') {
-      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#ef4444;font-size:12px;font-weight:600;">−</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;"><strong>${n.entity_name || 'Lender'}</strong> removed${byName}</td></tr>`);
+      items.push(`<tr><td style="padding:3px 0;width:18px;vertical-align:top;"><span style="color:${color};font-size:13px;font-weight:700;line-height:1;">${icon}</span></td><td style="padding:3px 0 3px 6px;font-size:12px;color:#374151;line-height:1.4;"><strong style="color:#111827;">${n.entity_name || 'Lender'}</strong> removed${byName}</td></tr>`);
     } else if (n.event_type === 'lender_updated') {
       const changes: string[] = [];
       if (cs.stage) changes.push(`Stage: ${changeBadge(cs.stage.from, cs.stage.to, labels)}`);
       if (cs.substage) changes.push(`Substage: ${changeBadge(cs.substage.from, cs.substage.to, labels)}`);
       if (cs.tracking_status) changes.push(`Tracking: ${changeBadge(cs.tracking_status.from, cs.tracking_status.to, labels)}`);
-      if (cs.score) changes.push(`Score: <span style="color:#f59e0b;font-size:11px;">${cs.score.from || '—'} → ${cs.score.to || '—'}</span>`);
-      if (cs.notes) changes.push(`<span style="color:#94a3b8;font-size:11px;">Notes updated</span>`);
-      if (changes.length === 0) changes.push(`<span style="color:#94a3b8;font-size:11px;">Updated</span>`);
-      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#8B5CF6;font-size:11px;">●</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;"><strong>${n.entity_name || 'Lender'}</strong>: ${changes.join(' · ')}${byName}</td></tr>`);
+      if (cs.score) changes.push(`Score: <span style="color:#d97706;font-size:11px;">${cs.score.from || '—'} → ${cs.score.to || '—'}</span>`);
+      if (cs.notes) changes.push(`<span style="color:#6b7280;font-size:11px;">Notes updated</span>`);
+      if (changes.length === 0) changes.push(`<span style="color:#6b7280;font-size:11px;">Updated</span>`);
+      items.push(`<tr><td style="padding:3px 0;width:18px;vertical-align:top;"><span style="color:${color};font-size:11px;line-height:1.6;">${icon}</span></td><td style="padding:3px 0 3px 6px;font-size:12px;color:#374151;line-height:1.4;"><strong style="color:#111827;">${n.entity_name || 'Lender'}</strong> · ${changes.join(' · ')}${byName}</td></tr>`);
     } else if (n.event_type === 'deal_updated' || n.event_type === 'stage_changed') {
       const changes: string[] = [];
       if (cs.stage) changes.push(`Stage: ${changeBadge(cs.stage.from, cs.stage.to, labels)}`);
@@ -124,7 +147,6 @@ function buildActivityBlock(notifications: PendingNotification[], labels: Record
       if (cs.manager) changes.push(`Manager: ${cs.manager.from || '—'} → ${cs.manager.to || '—'}`);
       if (cs.analyst) changes.push(`Analyst: ${cs.analyst.from || '—'} → ${cs.analyst.to || '—'}`);
       if (cs.engagement_type) changes.push(`Engagement: ${changeBadge(cs.engagement_type.from, cs.engagement_type.to, labels)}`);
-      // Catch any other field changes
       for (const [field, val] of Object.entries(cs)) {
         if (['stage','status','value','manager','analyst','engagement_type'].includes(field)) continue;
         const v = val as any;
@@ -134,72 +156,82 @@ function buildActivityBlock(notifications: PendingNotification[], labels: Record
         }
       }
       if (changes.length > 0) {
-        items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#3b82f6;font-size:11px;">●</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;">${changes.join('<br/>')}${byName}</td></tr>`);
+        items.push(`<tr><td style="padding:3px 0;width:18px;vertical-align:top;"><span style="color:${color};font-size:11px;line-height:1.6;">${icon}</span></td><td style="padding:3px 0 3px 6px;font-size:12px;color:#374151;line-height:1.4;">${changes.join('<br/>')}${byName}</td></tr>`);
       }
     } else if (n.event_type === 'milestone_completed') {
-      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="font-size:12px;">✅</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;"><strong>${n.entity_name || 'Milestone'}</strong> completed${byName}</td></tr>`);
+      items.push(`<tr><td style="padding:3px 0;width:18px;vertical-align:top;"><span style="color:${color};font-size:13px;font-weight:700;line-height:1;">${icon}</span></td><td style="padding:3px 0 3px 6px;font-size:12px;color:#374151;line-height:1.4;"><strong style="color:#111827;">${n.entity_name || 'Milestone'}</strong> completed${byName}</td></tr>`);
     } else if (n.event_type === 'milestone_missed') {
-      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="font-size:12px;">⚠️</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;"><strong>${n.entity_name || 'Milestone'}</strong> missed deadline${byName}</td></tr>`);
+      items.push(`<tr><td style="padding:3px 0;width:18px;vertical-align:top;"><span style="color:${color};font-size:13px;font-weight:700;line-height:1;">${icon}</span></td><td style="padding:3px 0 3px 6px;font-size:12px;color:#374151;line-height:1.4;"><strong style="color:#111827;">${n.entity_name || 'Milestone'}</strong> missed deadline${byName}</td></tr>`);
     } else if (n.event_type === 'milestone_added') {
-      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#22c55e;font-size:12px;">＋</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;">Milestone added: <strong>${n.entity_name || 'New'}</strong>${byName}</td></tr>`);
+      items.push(`<tr><td style="padding:3px 0;width:18px;vertical-align:top;"><span style="color:${color};font-size:13px;font-weight:700;line-height:1;">${icon}</span></td><td style="padding:3px 0 3px 6px;font-size:12px;color:#374151;line-height:1.4;">Milestone added: <strong style="color:#111827;">${n.entity_name || 'New'}</strong>${byName}</td></tr>`);
     } else if (n.event_type === 'deal_created') {
-      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#22c55e;font-size:12px;">★</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;">Deal created${byName}</td></tr>`);
+      items.push(`<tr><td style="padding:3px 0;width:18px;vertical-align:top;"><span style="color:${color};font-size:13px;line-height:1;">${icon}</span></td><td style="padding:3px 0 3px 6px;font-size:12px;color:#374151;line-height:1.4;">Deal created${byName}</td></tr>`);
     } else {
       const label = n.event_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      items.push(`<tr><td style="padding:4px 0;vertical-align:top;"><span style="color:#64748b;font-size:11px;">●</span></td><td style="padding:4px 0 4px 8px;font-size:12px;color:#e2e8f0;">${label}${n.entity_name ? `: ${n.entity_name}` : ''}${byName}</td></tr>`);
+      items.push(`<tr><td style="padding:3px 0;width:18px;vertical-align:top;"><span style="color:${color};font-size:11px;line-height:1.6;">${icon}</span></td><td style="padding:3px 0 3px 6px;font-size:12px;color:#374151;line-height:1.4;">${label}${n.entity_name ? `: <strong style="color:#111827;">${n.entity_name}</strong>` : ''}${byName}</td></tr>`);
     }
   }
-  
+
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;">${items.join('')}</table>`;
 }
 
 // Build a deal card for the email
 function buildDealCard(deal: DealRow, labels: Record<string, string>, activity: PendingNotification[], lenderInfo: DealLenderInfo | null): string {
   const hasActivity = activity.length > 0;
-  const borderColor = hasActivity ? '#8B5CF6' : '#1e293b';
-  
-  // Deal header row
+
+  // Lender metadata line
   let lenderLine = '';
   if (lenderInfo && lenderInfo.total > 0) {
     const parts: string[] = [];
-    parts.push(`<span style="color:#e2e8f0;font-weight:600;">${lenderInfo.total}</span> <span style="color:#94a3b8;">total</span>`);
-    if (lenderInfo.active > 0) parts.push(`<span style="color:#22c55e;font-weight:600;">${lenderInfo.active}</span> <span style="color:#94a3b8;">active</span>`);
-    if (lenderInfo.onDeck > 0) parts.push(`<span style="color:#3b82f6;font-weight:600;">${lenderInfo.onDeck}</span> <span style="color:#94a3b8;">on deck</span>`);
-    if (lenderInfo.passed > 0) parts.push(`<span style="color:#64748b;font-weight:600;">${lenderInfo.passed}</span> <span style="color:#94a3b8;">passed</span>`);
-    lenderLine = `<div style="margin-top:6px;font-size:11px;">Lenders: ${parts.join(' · ')}</div>`;
+    parts.push(`<strong style="color:#111827;">${lenderInfo.total}</strong> <span style="color:#6b7280;">total</span>`);
+    if (lenderInfo.active > 0) parts.push(`<strong style="color:#16a34a;">${lenderInfo.active}</strong> <span style="color:#6b7280;">active</span>`);
+    if (lenderInfo.onDeck > 0) parts.push(`<strong style="color:#2563eb;">${lenderInfo.onDeck}</strong> <span style="color:#6b7280;">on deck</span>`);
+    if (lenderInfo.passed > 0) parts.push(`<strong style="color:#9ca3af;">${lenderInfo.passed}</strong> <span style="color:#6b7280;">passed</span>`);
+    lenderLine = `<tr><td style="padding:0 20px 4px 20px;font-size:11px;color:#6b7280;">Lenders: ${parts.join(' · ')}</td></tr>`;
   }
 
   const activityHtml = buildActivityBlock(activity, labels);
   const activitySection = activityHtml
-    ? `<tr><td style="padding:0 16px 12px 16px;"><div style="background:#0f172a;border-radius:6px;padding:10px 12px;border:1px solid #1e293b;">${activityHtml}</div></td></tr>`
-    : '';
-  
-  const actBadge = hasActivity
-    ? `<span style="background:#8B5CF622;color:#c4b5fd;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:8px;">${activity.length} UPDATE${activity.length !== 1 ? 'S' : ''}</span>`
+    ? `<tr><td style="padding:8px 20px 4px 20px;"><div style="background:#f9fafb;border-radius:8px;padding:10px 12px;border:1px solid #f3f4f6;">${activityHtml}</div></td></tr>`
     : '';
 
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#1a1a2e;border-radius:8px;border:1px solid ${borderColor};margin-bottom:12px;">
+  const updateBadge = hasActivity
+    ? `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:#7c3aed;background:#f5f3ff;margin-left:8px;line-height:1.5;">${activity.length} update${activity.length !== 1 ? 's' : ''}</span>`
+    : '';
+
+  // Metadata row
+  const metaParts: string[] = [];
+  if (deal.manager) metaParts.push(`<span style="color:#6b7280;font-size:11px;">Owner: <strong style="color:#374151;">${deal.manager}</strong></span>`);
+  if (deal.value) metaParts.push(`<span style="color:#6b7280;font-size:11px;">Amount: <strong style="color:#374151;">${formatCurrency(deal.value)}</strong></span>`);
+  const metaRow = metaParts.length > 0
+    ? `<tr><td style="padding:4px 20px 0 20px;font-size:11px;">${metaParts.join('<span style="color:#d1d5db;margin:0 6px;">|</span>')}</td></tr>`
+    : '';
+
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff;border-radius:10px;border:1px solid #e5e7eb;margin-bottom:12px;">
     <tr>
-      <td style="padding:14px 16px 8px 16px;">
+      <td style="padding:16px 20px 6px 20px;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
           <tr>
-            <td>
-              <a href="https://fivelinenaitive.lovable.app/deal/${deal.id}" style="color:#f1f5f9;text-decoration:none;font-weight:700;font-size:14px;">${deal.company}</a>${actBadge}
+            <td style="vertical-align:middle;">
+              <a href="https://fivelinenaitive.lovable.app/deal/${deal.id}" style="color:#111827;text-decoration:none;font-weight:700;font-size:15px;line-height:1.3;">${deal.company}</a>${updateBadge}
             </td>
-            <td style="text-align:right;white-space:nowrap;">
-              <span style="color:#e2e8f0;font-weight:600;font-size:13px;">${formatCurrency(deal.value)}</span>
+            <td style="text-align:right;white-space:nowrap;vertical-align:middle;">
+              <span style="color:#111827;font-weight:700;font-size:14px;">${formatCurrency(deal.value)}</span>
             </td>
           </tr>
         </table>
-        <div style="margin-top:8px;">
-          ${stageBadge(deal.stage, labels)}
-          <span style="margin-left:6px;">${statusDot(deal.status, labels)}</span>
-          ${deal.manager ? `<span style="color:#64748b;font-size:11px;margin-left:10px;">👤 ${deal.manager}</span>` : ''}
-        </div>
-        ${lenderLine}
       </td>
     </tr>
+    <tr>
+      <td style="padding:6px 20px 0 20px;">
+        ${stagePill(deal.stage, labels)}
+        <span style="margin-left:6px;">${statusPill(deal.status, labels)}</span>
+      </td>
+    </tr>
+    ${metaRow}
+    ${lenderLine}
     ${activitySection}
+    <tr><td style="padding:0 0 14px 0;"></td></tr>
   </table>`;
 }
 
@@ -219,7 +251,7 @@ function buildDigestEmailHtml(
 
   const dealsWithActivity = deals.filter(d => activityByDeal[d.id]?.length > 0).length;
   const totalActivity = Object.values(activityByDeal).reduce((sum, a) => sum + a.length, 0);
-  
+
   // Count lender stats
   const totalLenders = Object.values(lenderInfoByDeal || {}).reduce((s, l) => s + l.total, 0);
   const activeLenders = Object.values(lenderInfoByDeal || {}).reduce((s, l) => s + l.active, 0);
@@ -259,37 +291,36 @@ function buildDigestEmailHtml(
     const li = lenderInfoByDeal?.[d.id];
     const lenderCol = li ? `${li.active}/${li.total}` : '—';
     return `<tr>
-      <td style="padding:6px 10px;border-bottom:1px solid #1e293b;font-size:12px;">
-        <a href="https://fivelinenaitive.lovable.app/deal/${d.id}" style="color:#cbd5e1;text-decoration:none;font-weight:500;">${d.company}</a>
+      <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:12px;">
+        <a href="https://fivelinenaitive.lovable.app/deal/${d.id}" style="color:#111827;text-decoration:none;font-weight:500;">${d.company}</a>
       </td>
-      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${stageBadge(d.stage, dl)}</td>
-      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">${statusDot(d.status, dl)}</td>
-      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:11px;text-align:center;" title="Active / Total lenders">${lenderCol}</td>
-      <td style="padding:6px 6px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:11px;text-align:right;white-space:nowrap;">${formatCurrency(d.value)}</td>
+      <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">${stagePill(d.stage, dl)}</td>
+      <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">${statusPill(d.status, dl)}</td>
+      <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:11px;text-align:center;" title="Active / Total lenders">${lenderCol}</td>
+      <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;color:#111827;font-size:12px;text-align:right;white-space:nowrap;font-weight:500;">${formatCurrency(d.value)}</td>
     </tr>`;
   }).join('');
 
   // Activity summary chips
   const summaryChips: string[] = [];
-  if (lendersAdded > 0) summaryChips.push(`<span style="background:#22c55e22;color:#4ade80;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:6px;">＋${lendersAdded} Lender${lendersAdded !== 1 ? 's' : ''} Added</span>`);
-  if (lendersUpdated > 0) summaryChips.push(`<span style="background:#8B5CF622;color:#c4b5fd;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:6px;">${lendersUpdated} Lender Update${lendersUpdated !== 1 ? 's' : ''}</span>`);
-  if (stageChanges > 0) summaryChips.push(`<span style="background:#3b82f622;color:#93c5fd;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:6px;">${stageChanges} Stage Change${stageChanges !== 1 ? 's' : ''}</span>`);
-  if (milestonesCompleted > 0) summaryChips.push(`<span style="background:#22c55e22;color:#4ade80;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:6px;">✅ ${milestonesCompleted} Milestone${milestonesCompleted !== 1 ? 's' : ''}</span>`);
-  const chipsHtml = summaryChips.length > 0 ? `<div style="margin-top:10px;">${summaryChips.join('')}</div>` : '';
+  if (lendersAdded > 0) summaryChips.push(`<span style="display:inline-block;background:#f0fdf4;color:#16a34a;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-right:6px;margin-bottom:4px;">+${lendersAdded} Lender${lendersAdded !== 1 ? 's' : ''} Added</span>`);
+  if (lendersUpdated > 0) summaryChips.push(`<span style="display:inline-block;background:#f5f3ff;color:#7c3aed;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-right:6px;margin-bottom:4px;">${lendersUpdated} Lender Update${lendersUpdated !== 1 ? 's' : ''}</span>`);
+  if (stageChanges > 0) summaryChips.push(`<span style="display:inline-block;background:#eff6ff;color:#2563eb;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-right:6px;margin-bottom:4px;">${stageChanges} Stage Change${stageChanges !== 1 ? 's' : ''}</span>`);
+  if (milestonesCompleted > 0) summaryChips.push(`<span style="display:inline-block;background:#f0fdf4;color:#16a34a;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-right:6px;margin-bottom:4px;">✓ ${milestonesCompleted} Milestone${milestonesCompleted !== 1 ? 's' : ''}</span>`);
+  const chipsHtml = summaryChips.length > 0 ? `<div style="margin-top:12px;">${summaryChips.join('')}</div>` : '';
 
-  const quietSection = quietDeals.length > 0 ? `
-    <!-- Quiet Deals -->
+  const quietSectionHtml = quietDeals.length > 0 ? `
     <tr>
-      <td style="padding:16px 24px 0 24px;">
-        <p style="margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;font-weight:600;">Other Active Deals (${quietDeals.length})</p>
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0f172a;border-radius:8px;border:1px solid #1e293b;">
+      <td style="padding:24px 28px 0 28px;">
+        <p style="margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:#9ca3af;font-weight:600;">Other Active Deals (${quietDeals.length})</p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff;border-radius:10px;border:1px solid #e5e7eb;">
           <thead>
-            <tr>
-              <th style="padding:6px 10px;text-align:left;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Deal</th>
-              <th style="padding:6px 6px;text-align:left;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Stage</th>
-              <th style="padding:6px 6px;text-align:left;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Status</th>
-              <th style="padding:6px 6px;text-align:center;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Lenders</th>
-              <th style="padding:6px 6px;text-align:right;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e293b;font-weight:600;">Value</th>
+            <tr style="background:#f9fafb;">
+              <th style="padding:8px 12px;text-align:left;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Deal</th>
+              <th style="padding:8px 8px;text-align:left;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Stage</th>
+              <th style="padding:8px 8px;text-align:left;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Status</th>
+              <th style="padding:8px 8px;text-align:center;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Lenders</th>
+              <th style="padding:8px 8px;text-align:right;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Value</th>
             </tr>
           </thead>
           <tbody>${quietRows}</tbody>
@@ -297,100 +328,91 @@ function buildDigestEmailHtml(
       </td>
     </tr>` : '';
 
+  // KPI card helper
+  const kpiCard = (value: string, label: string, color: string) => `
+    <td style="padding:0 4px;width:25%;">
+      <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 10px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:${color};line-height:1.2;">${value}</div>
+        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;font-weight:500;">${label}</div>
+      </div>
+    </td>`;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <!--[if mso]><style>table{border-collapse:collapse;}td{font-family:Arial,sans-serif;}</style><![endif]-->
 </head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background-color:#0f172a;">
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background-color:#f4f5f7;-webkit-font-smoothing:antialiased;">
   <div style="display:none;max-height:0;overflow:hidden;">
-    ${deals.length} Active Deals — ${subtitle}
+    ${subtitle}
     &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
   </div>
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#0f172a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f5f7;">
     <tr>
-      <td align="center" style="padding:40px 16px;">
-        <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;width:100%;">
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;">
 
           <!-- Logo -->
           <tr>
             <td style="padding:0 0 24px 0;text-align:center;">
-              <span style="font-size:22px;font-weight:700;color:#f8fafc;letter-spacing:-0.5px;">naitive</span>
+              <span style="font-size:20px;font-weight:700;color:#111827;letter-spacing:-0.5px;">naitive</span>
             </td>
           </tr>
 
           <!-- Main Card -->
           <tr>
-            <td style="background:#1a1a2e;border-radius:12px;border:1px solid #2d2d52;">
+            <td style="background:#ffffff;border-radius:12px;border:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                 <!-- Header -->
                 <tr>
-                  <td style="padding:24px 24px 0 24px;">
-                    <p style="margin:0 0 4px;font-size:11px;color:#64748b;font-weight:500;">${dateStr} · ${timeStr}</p>
-                    <p style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#8B5CF6;font-weight:700;">Deal Activity Digest</p>
-                    <h1 style="margin:0;font-size:18px;font-weight:600;color:#f1f5f9;">Hi ${recipientName || 'there'},</h1>
-                    <p style="margin:6px 0 0;color:#94a3b8;font-size:13px;">${isAdmin ? 'Here\'s your full pipeline overview' : 'Here\'s an overview of your deals'}. ${subtitle}.</p>
+                  <td style="padding:28px 28px 0 28px;">
+                    <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;font-weight:500;">${dateStr} · ${timeStr}</p>
+                    <p style="margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:#7c3aed;font-weight:700;">Deal Activity Digest</p>
+                    <h1 style="margin:0;font-size:20px;font-weight:600;color:#111827;line-height:1.3;">Hi ${recipientName || 'there'},</h1>
+                    <p style="margin:6px 0 0;color:#6b7280;font-size:13px;line-height:1.5;">${isAdmin ? 'Here\'s your full pipeline overview' : 'Here\'s an overview of your deals'}. ${subtitle}.</p>
                     ${chipsHtml}
                   </td>
                 </tr>
 
-                <!-- Summary Stats -->
+                <!-- KPI Summary Strip -->
                 <tr>
-                  <td style="padding:16px 24px 0 24px;">
+                  <td style="padding:20px 24px 0 24px;">
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;">
                       <tr>
-                        <td style="padding:0 3px 0 0;width:25%;">
-                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;text-align:center;">
-                            <div style="font-size:20px;font-weight:700;color:#f1f5f9;">${deals.length}</div>
-                            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Active Deals</div>
-                          </div>
-                        </td>
-                        <td style="padding:0 3px;width:25%;">
-                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;text-align:center;">
-                            <div style="font-size:20px;font-weight:700;color:#22c55e;">${dealsWithActivity}</div>
-                            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">With Activity</div>
-                          </div>
-                        </td>
-                        <td style="padding:0 3px;width:25%;">
-                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;text-align:center;">
-                            <div style="font-size:20px;font-weight:700;color:#c4b5fd;">${totalActivity}</div>
-                            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Updates</div>
-                          </div>
-                        </td>
-                        <td style="padding:0 0 0 3px;width:25%;">
-                          <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;text-align:center;">
-                            <div style="font-size:20px;font-weight:700;color:#60a5fa;">${activeLenders}<span style="color:#64748b;font-size:13px;">/${totalLenders}</span></div>
-                            <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Lenders Active</div>
-                          </div>
-                        </td>
+                        ${kpiCard(String(deals.length), 'Active Deals', '#111827')}
+                        ${kpiCard(String(dealsWithActivity), 'With Activity', '#16a34a')}
+                        ${kpiCard(String(totalActivity), 'Updates', '#7c3aed')}
+                        ${kpiCard(`${activeLenders}<span style="color:#9ca3af;font-size:14px;font-weight:500;">/${totalLenders}</span>`, 'Lenders Active', '#2563eb')}
                       </tr>
                     </table>
                   </td>
                 </tr>
 
                 ${activeDeals.length > 0 ? `
-                <!-- Deals with Activity -->
+                <!-- Recent Activity -->
                 <tr>
-                  <td style="padding:20px 24px 0 24px;">
-                    <p style="margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#8B5CF6;font-weight:600;">Recent Activity (${activeDeals.length} deal${activeDeals.length !== 1 ? 's' : ''})</p>
+                  <td style="padding:24px 28px 0 28px;">
+                    <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:#7c3aed;font-weight:600;">Recent Activity (${activeDeals.length} deal${activeDeals.length !== 1 ? 's' : ''})</p>
                     ${activeDealCards}
                   </td>
                 </tr>` : ''}
 
-                ${quietSection}
+                ${quietSectionHtml}
 
                 <!-- CTA -->
                 <tr>
-                  <td style="padding:24px 24px 24px 24px;">
+                  <td style="padding:28px 28px 28px 28px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
                         <td align="center">
                           <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                             <tr>
-                              <td style="border-radius:8px;background:linear-gradient(135deg,#8B5CF6 0%,#D946EF 100%);">
-                                <a href="https://fivelinenaitive.lovable.app/deals" target="_blank" style="display:inline-block;padding:12px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">View Pipeline</a>
+                              <td style="border-radius:8px;background:#7c3aed;">
+                                <a href="https://fivelinenaitive.lovable.app/deals" target="_blank" style="display:inline-block;padding:12px 32px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;line-height:1;">View Pipeline</a>
                               </td>
                             </tr>
                           </table>
@@ -406,11 +428,11 @@ function buildDigestEmailHtml(
           <!-- Footer -->
           <tr>
             <td style="padding:24px 0 0 0;text-align:center;">
-              <p style="color:#475569;font-size:12px;margin:0 0 6px 0;">© ${year} naitive. All rights reserved.</p>
-              <p style="color:#475569;font-size:12px;margin:0;">
-                <a href="https://fivelinenaitive.lovable.app/settings" style="color:#8B5CF6;text-decoration:underline;">Manage preferences</a>
+              <p style="color:#9ca3af;font-size:12px;margin:0 0 6px 0;">&copy; ${year} naitive. All rights reserved.</p>
+              <p style="color:#9ca3af;font-size:12px;margin:0;">
+                <a href="https://fivelinenaitive.lovable.app/settings" style="color:#7c3aed;text-decoration:underline;">Manage preferences</a>
                 &nbsp;|&nbsp;
-                <a href="https://fivelinenaitive.lovable.app/unsubscribe" style="color:#8B5CF6;text-decoration:underline;">Unsubscribe</a>
+                <a href="https://fivelinenaitive.lovable.app/unsubscribe" style="color:#7c3aed;text-decoration:underline;">Unsubscribe</a>
               </p>
             </td>
           </tr>
