@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Pencil, ChevronDown, Loader2, Trash2, TrendingUp } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, BarChart, LineChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Cell, ReferenceLine, LabelList } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
@@ -386,7 +387,10 @@ function GenericDashboardCard({
               stackId={visualization === 'stackedBar' ? `${cardId}-stack` : undefined}
               fill={i === 0 ? color : CHART_COLORS[i % CHART_COLORS.length]}
               name={key}
-              radius={visualization !== 'stackedBar' ? [4, 4, 0, 0] as any : undefined}
+              shape={visualization === 'stackedBar'
+                ? createGlassBarShape({ radius: 4, topSegmentKey: dataKeys[dataKeys.length - 1], dataKey: key })
+                : createGlassBarShape({ radius: 4 })
+              }
             >
               {negEnabled && trendData.map((entry: any, idx: number) => {
                 const val = entry[key];
