@@ -3,6 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine,
 } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { useMonthlyEntityProfit, type ProfitMonthBucket } from '@/hooks/useMonthlyEntityProfit';
 
 const formatCurrency = (value: number) => {
@@ -88,7 +89,7 @@ function ProfitBarChart({
               {hasNegative && (
                 <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1} />
               )}
-              <Bar dataKey="profit" radius={[6, 6, 0, 0]}>
+              <Bar dataKey="profit" shape={createGlassBarShape({ radius: 6 })}>
                 {months.map((m, i) => (
                   <Cell
                     key={i}
