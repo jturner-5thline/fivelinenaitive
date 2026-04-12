@@ -4,7 +4,6 @@ export { SalesBDROIDashboard } from './SalesBDROIDashboard';
 export { SalesTeamBoardDashboard } from './SalesTeamBoardDashboard';
 export { ConsolidatedDebtPipelineDashboard } from './ConsolidatedDebtPipelineDashboard';
 export { ControllerDashboard } from './ControllerDashboard';
-export { ControllerDashboard } from './ControllerDashboard';
 export { ExecutiveDashboard } from './ExecutiveDashboard';
 export { FinServFinancialMetricsDashboard } from './FinServFinancialMetricsDashboard';
 export { QuickBooksFinancialDashboard } from './QuickBooksFinancialDashboard';
