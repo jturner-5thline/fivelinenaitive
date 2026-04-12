@@ -16,7 +16,7 @@ import {
 const DEBT_REALM_ID = '193514877331929';
 const FINSERV_REALM_ID = '9341451968897660';
 
-// Credit card accounts – 5th Line Capital Advisors, LLC (realm 123146077561874)
+// Credit card accounts – sourced from multiple QuickBooks entities
 const CREDIT_CARD_REALM = '123146077561874';
 const CREDIT_CARD_ACCOUNTS = [
   { qbName: 'AMEX 41002',           displayName: 'AMEX 41002',        realm_id: CREDIT_CARD_REALM },
