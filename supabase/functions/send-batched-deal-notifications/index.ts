@@ -185,7 +185,7 @@ function buildDealCard(deal: DealRow, labels: Record<string, string>, activity: 
     const ac = lenderInfo.active;
     const od = lenderInfo.onDeck;
     const pa = lenderInfo.passed;
-    lenderLine = `<tr><td style="padding:0 20px 4px 20px;font-size:11px;color:#6b7280;">Active: <strong style="color:#9ca3af;">${ac}</strong> lender${ac === 1 ? '' : 's'}<span style="color:#d1d5db;margin:0 6px;">|</span>On deck: <strong style="color:#9ca3af;">${od}</strong> lender${od === 1 ? '' : 's'}<span style="color:#d1d5db;margin:0 6px;">|</span>Passed: <strong style="color:#9ca3af;">${pa}</strong> lender${pa === 1 ? '' : 's'}</td></tr>`;
+    lenderLine = `<tr><td style="padding:0 20px 4px 20px;font-size:11px;color:#6b7280;">Active: <strong style="color:#16a34a;">${ac}</strong> lender${ac === 1 ? '' : 's'}<span style="color:#d1d5db;margin:0 6px;">|</span>On deck: <strong style="color:#ea580c;">${od}</strong> lender${od === 1 ? '' : 's'}<span style="color:#d1d5db;margin:0 6px;">|</span>Passed: <strong style="color:#dc2626;">${pa}</strong> lender${pa === 1 ? '' : 's'}</td></tr>`;
   }
 
   const activityHtml = buildActivityBlock(activity, labels);
