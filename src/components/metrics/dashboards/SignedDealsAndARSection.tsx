@@ -8,7 +8,7 @@ import {
   PieChart, Pie, Legend,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
-import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
+import { PieGlassDefs, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDealsSignedMonthlySeries, useFinServClientsSignedMonthlySeries, type MonthBucket } from '@/hooks/useSignedDealsMonthly';
 import { useOutstandingARByEntity } from '@/hooks/useOutstandingARByEntity';
