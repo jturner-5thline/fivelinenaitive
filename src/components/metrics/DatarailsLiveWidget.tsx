@@ -150,7 +150,7 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
   const dataKeys = seriesKeys.length > 0 ? seriesKeys : valueNames;
   const isLine = selectedType === 'line';
   const isStacked = selectedType === 'stackedBar';
-  const barRadius: [number, number, number, number] = [6, 6, 0, 0];
+  const barRadius: [number, number, number, number] = [3, 3, 0, 0];
   const trendLineColor = '#94A3B8';
 
   const trendData = showTrendLine ? chartData.map((entry: any) => {
