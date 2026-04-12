@@ -19,9 +19,11 @@ const FINSERV_REALM_ID = '9341451968897660';
 // Credit card accounts – 5th Line Capital Advisors, LLC (realm 123146077561874)
 const CREDIT_CARD_REALM = '123146077561874';
 const CREDIT_CARD_ACCOUNTS = [
-  { qbName: 'AMEX 41002',      displayName: 'AMEX 41002',      realm_id: CREDIT_CARD_REALM },
-  { qbName: 'Amex x82008',     displayName: 'Amex x82008',     realm_id: CREDIT_CARD_REALM },
-  { qbName: 'Ramp Visa x5454', displayName: 'Ramp Visa x5454', realm_id: CREDIT_CARD_REALM },
+  { qbName: 'AMEX 41002',           displayName: 'AMEX 41002',        realm_id: CREDIT_CARD_REALM },
+  { qbName: 'Amex x82008',          displayName: 'Amex x82008',       realm_id: CREDIT_CARD_REALM },
+  { qbName: 'Ramp Visa x5454',      displayName: 'Ramp Visa x5454',   realm_id: CREDIT_CARD_REALM },
+  { qbName: 'Wells Fargo CC #5733', displayName: 'Wells Fargo 5733',   realm_id: DEBT_REALM_ID },
+  { qbName: 'Wells Fargo CC #5758', displayName: 'Wells Fargo 5758',   realm_id: '9130350272677286' },
 ];
 
 const formatCurrency = (value: number) => {
