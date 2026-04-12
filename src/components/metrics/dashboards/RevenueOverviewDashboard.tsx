@@ -8,6 +8,7 @@ import { DollarSign, TrendingUp, Building2, Loader2 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
 } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { useQBStackedDebtRevenue, STACKED_CATEGORIES, type StackedDebtMonth } from '@/hooks/useQBStackedDebtRevenue';
 import { useQBStackedFinServRevenue, FINSERV_STACKED_CATEGORIES, type StackedFinServMonth } from '@/hooks/useQBStackedFinServRevenue';
 import {
@@ -132,7 +133,7 @@ function RevenueBarChart({
               />
               <Bar
                 dataKey="amount"
-                radius={[6, 6, 0, 0]}
+                shape={createGlassBarShape({ radius: 6 })}
                 cursor="pointer"
                 onClick={(d: MonthlyRevenue) => onBarClick(d.monthKey)}
               >
