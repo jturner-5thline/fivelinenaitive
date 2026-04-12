@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { type QuarterOption } from '@/hooks/useQBQuarterlyRevenue';
+import { isExcludedDealName } from '@/utils/excludedDeals';
 
 export interface StageEntryDeal {
   deal_id: string;
@@ -94,7 +95,7 @@ function useStageEntryMetric(
       });
     }
 
-    const deals = Array.from(seen.values());
+    const deals = Array.from(seen.values()).filter(d => !isExcludedDealName(d.company));
     return {
       count: deals.length,
       dollarVolume: deals.reduce((s, d) => s + d.value, 0),
@@ -137,15 +138,17 @@ function usePipelineAddedMetric(
   return useMemo(() => {
     if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading };
 
-    const deals: StageEntryDeal[] = data.map(d => ({
-      deal_id: d.id,
-      company: d.company ?? '—',
-      value: Number(d.value) || 0,
-      manager: d.manager,
-      current_stage: d.stage,
-      entered_at: d.created_at,
-      pipeline_id: d.pipeline_id ?? '',
-    }));
+    const deals: StageEntryDeal[] = data
+      .filter(d => !isExcludedDealName(d.company))
+      .map(d => ({
+        deal_id: d.id,
+        company: d.company ?? '—',
+        value: Number(d.value) || 0,
+        manager: d.manager,
+        current_stage: d.stage,
+        entered_at: d.created_at,
+        pipeline_id: d.pipeline_id ?? '',
+      }));
 
     return {
       count: deals.length,
@@ -193,7 +196,7 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
       .filter(d => {
         const status = (d.status || '').toLowerCase();
         const stage = (d.stage || '').toLowerCase();
-        return !excludedStatuses.includes(status) && !excludedStages.includes(stage);
+        return !excludedStatuses.includes(status) && !excludedStages.includes(stage) && !isExcludedDealName(d.company);
       })
       .map(d => ({
         deal_id: d.id,
