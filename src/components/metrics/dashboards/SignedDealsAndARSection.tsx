@@ -120,6 +120,12 @@ function OutstandingARPieChart() {
 
   const pieData = slices.map(s => ({ name: s.entity, value: s.balance }));
 
+  const legendItems = pieData.map((d, i) => ({
+    label: d.name,
+    value: formatCurrency(d.value),
+    color: PIE_COLORS[i],
+  }));
+
   return (
     <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
       <CardHeader className="pb-2 flex flex-row items-start justify-between">
@@ -133,7 +139,7 @@ function OutstandingARPieChart() {
         </div>
       </CardHeader>
       <CardContent>
-        <div style={{ height: 220 }}>
+        <div style={{ height: 170 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <PieGlassDefs colors={PIE_COLORS} />
@@ -142,16 +148,14 @@ function OutstandingARPieChart() {
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
-                cy="45%"
-                outerRadius={70}
-                innerRadius={35}
+                cy="50%"
+                outerRadius={65}
+                innerRadius={30}
                 paddingAngle={3}
-                label={({ name, value }: any) => `${name.split(',')[0]}: ${formatCurrency(value)}`}
-                labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
                 activeShape={GlassActiveShape}
               >
                 {pieData.map((_, i) => (
-                  <Cell key={i} fill={pieGlassFill(i)} stroke={PIE_COLORS[i]} strokeWidth={0.5} />
+                  <Cell key={i} fill={PIE_COLORS[i]} fillOpacity={0.75} stroke={PIE_COLORS[i]} strokeWidth={1} />
                 ))}
               </Pie>
               <Tooltip
@@ -169,6 +173,16 @@ function OutstandingARPieChart() {
               />
             </PieChart>
           </ResponsiveContainer>
+        </div>
+        {/* Below-chart legend */}
+        <div className="mt-2 space-y-1.5">
+          {legendItems.map((item, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color, opacity: 0.75 }} />
+              <span className="text-muted-foreground truncate flex-1" title={item.label}>{item.label}</span>
+              <span className="font-medium text-foreground flex-shrink-0">{item.value}</span>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
