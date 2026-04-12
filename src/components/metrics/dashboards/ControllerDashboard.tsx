@@ -270,6 +270,37 @@ export function ControllerDashboard() {
           </ResponsiveContainer>
         </div>
       </ChartCard>
+
+      {/* Firm Liquidity */}
+      <ChartCard
+        title="Firm Liquidity"
+        subtitle="All Connected Entities"
+        isLoading={firmLiquidity.isLoading}
+        isError={firmLiquidity.isError}
+        isEmpty={!firmLiquidity.data?.length}
+      >
+        <div className="h-[280px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={firmLiquidity.data} margin={{ bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                tickFormatter={(v) => truncateLabel(v)}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis
+                tickFormatter={formatCurrency}
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+              />
+              <Tooltip content={<CurrencyTooltip />} />
+              <Bar dataKey="balance" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </ChartCard>
     </div>
   );
 }
