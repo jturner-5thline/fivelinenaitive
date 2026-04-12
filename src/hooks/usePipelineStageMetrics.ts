@@ -196,7 +196,7 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
       .filter(d => {
         const status = (d.status || '').toLowerCase();
         const stage = (d.stage || '').toLowerCase();
-        return !excludedStatuses.includes(status) && !excludedStages.includes(stage);
+        return !excludedStatuses.includes(status) && !excludedStages.includes(stage) && !isExcludedDealName(d.company);
       })
       .map(d => ({
         deal_id: d.id,

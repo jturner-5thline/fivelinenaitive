@@ -124,7 +124,7 @@ export function generateRollingForecastMonths(): RollingMonth[] {
 }
 
 
-const EXCLUDED_NAMES = new Set(["test - niki's store", 'example deal']);
+import { isExcludedDealName } from '@/utils/excludedDeals';
 
 export function filterDashboardDeals(deals: Deal[]): Deal[] {
   return deals.filter(d => {
@@ -133,9 +133,7 @@ export function filterDashboardDeals(deals: Deal[]): Deal[] {
     if (stage.includes('on hold') || stage.includes('on-hold')) return false;
     if (status.includes('on hold') || status.includes('on-hold')) return false;
 
-    const name = (d.company || d.name || '').toLowerCase().trim();
-    if (EXCLUDED_NAMES.has(name)) return false;
-    if (name.startsWith('test ') || name === 'test') return false;
+    if (isExcludedDealName(d.company || d.name)) return false;
 
     return true;
   });
