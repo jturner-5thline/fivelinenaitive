@@ -90,6 +90,29 @@ function useCreditCardBalances() {
   });
 }
 
+/* ─── Firm Liquidity: Chase & M&T bank accounts across all realms ─── */
+function useFirmLiquidity() {
+  return useQuery({
+    queryKey: ['controller-firm-liquidity'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_accounts')
+        .select('name, current_balance, realm_id')
+        .eq('account_type', 'Bank')
+        .or('name.ilike.%chase%,name.ilike.%m&t%,name.ilike.%m & t%');
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => ({
+          name: row.name,
+          balance: Number(row.current_balance) || 0,
+        }))
+        .sort((a, b) => b.balance - a.balance);
+    },
+  });
+}
+
 /* ─── Shared chart card wrapper ─── */
 function ChartCard({
   title,
