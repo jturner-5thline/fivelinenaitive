@@ -78,10 +78,10 @@ function useCreditCardBalances() {
 
       return CREDIT_CARD_ACCOUNTS.map((acc) => {
         const match = (data ?? []).find(
-          (row) => row.name === acc.name && row.realm_id === acc.realm_id
+          (row) => row.name === acc.qbName && row.realm_id === acc.realm_id
         );
         return {
-          name: acc.name,
+          name: acc.displayName,
           balance: Math.abs(Number(match?.current_balance) || 0),
         };
       });
@@ -222,7 +222,7 @@ export function ControllerDashboard() {
       {/* Credit Card Balances */}
       <ChartCard
         title="Credit Card Balances"
-        subtitle="5th Line Capital, LLC"
+        subtitle="5th Line Capital Advisors, LLC"
         isLoading={creditCards.isLoading}
         isError={creditCards.isError}
         isEmpty={!creditCards.data?.length}
