@@ -116,7 +116,7 @@ export function QuickBooksFinancialDashboard() {
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(v: number, name: string) => [formatCurrency(v), name]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
                   <Legend />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue" radius={[3, 3, 0, 0]} />
                   <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={2} dot={{ r: 3 }} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -138,7 +138,7 @@ export function QuickBooksFinancialDashboard() {
                   <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v: number) => [formatCurrency(v), "Outstanding"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="value" radius={[3, 3, 0, 0]}>
                     {metrics.arAgingData.map((entry, index) => (
                       <Cell key={index} fill={index <= 1 ? "hsl(var(--primary))" : index <= 2 ? "hsl(var(--chart-4))" : "hsl(var(--destructive))"} />
                     ))}
