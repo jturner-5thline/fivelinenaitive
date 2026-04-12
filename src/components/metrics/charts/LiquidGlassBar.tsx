@@ -40,34 +40,59 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
 
   const uid = useId().replace(/:/g, '');
 
-  if (width <= 0 || height <= 0) return null;
+  if (width <= 0 || height === 0) return null;
 
-  const r = isTopSegment ? Math.min(radius, width / 2, height / 2) : 0;
+  const isNegative = height < 0;
+  const absHeight = Math.abs(height);
+  const r = isTopSegment ? Math.min(radius, width / 2, absHeight / 2) : 0;
 
-  // Build a rounded-top-corners rect path
-  const path =
-    `M${x},${y + height}` +
-    `V${y + r}` +
-    `Q${x},${y} ${x + r},${y}` +
-    `H${x + width - r}` +
-    `Q${x + width},${y} ${x + width},${y + r}` +
-    `V${y + height}` +
-    `Z`;
+  // For negative bars: y is the baseline (top of bar), bar extends downward by absHeight
+  // For positive bars: y is the top of the bar, bar extends downward by height
+  let path: string;
+  if (isNegative) {
+    // Bar goes from y (baseline) down to y + absHeight
+    // Round the BOTTOM corners (the exposed end)
+    if (isTopSegment && r > 0) {
+      path =
+        `M${x},${y}` +
+        `H${x + width}` +
+        `V${y + absHeight - r}` +
+        `Q${x + width},${y + absHeight} ${x + width - r},${y + absHeight}` +
+        `H${x + r}` +
+        `Q${x},${y + absHeight} ${x},${y + absHeight - r}` +
+        `V${y}` +
+        `Z`;
+    } else {
+      path = `M${x},${y}H${x + width}V${y + absHeight}H${x}Z`;
+    }
+  } else {
+    // Positive bar: round top corners
+    path =
+      `M${x},${y + absHeight}` +
+      `V${y + r}` +
+      `Q${x},${y} ${x + r},${y}` +
+      `H${x + width - r}` +
+      `Q${x + width},${y} ${x + width},${y + r}` +
+      `V${y + absHeight}` +
+      `Z`;
+  }
 
   const gradId = `glass-grad-${uid}`;
   const highlightId = `glass-hi-${uid}`;
 
+  // For negative bars, flip the gradient direction
+  const gradY1 = isNegative ? '1' : '0';
+  const gradY2 = isNegative ? '0' : '1';
+
   return (
     <g>
       <defs>
-        {/* Main gradient: lighter at top, slightly transparent at bottom */}
-        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradId} x1="0" y1={gradY1} x2="0" y2={gradY2}>
           <stop offset="0%" stopColor={fill} stopOpacity={0.95} />
           <stop offset="40%" stopColor={fill} stopOpacity={0.75} />
           <stop offset="100%" stopColor={fill} stopOpacity={0.55} />
         </linearGradient>
-        {/* Internal highlight: white shimmer at the very top */}
-        <linearGradient id={highlightId} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={highlightId} x1="0" y1={gradY1} x2="0" y2={gradY2}>
           <stop offset="0%" stopColor="white" stopOpacity={0.35} />
           <stop offset="30%" stopColor="white" stopOpacity={0.08} />
           <stop offset="100%" stopColor="white" stopOpacity={0} />
@@ -83,11 +108,11 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
       {/* Internal highlight overlay */}
       <path d={path} fill={`url(#${highlightId})`} />
 
-      {/* Thin top edge highlight */}
-      {isTopSegment && height > 4 && (
+      {/* Thin edge highlight */}
+      {isTopSegment && absHeight > 4 && (
         <rect
           x={x + 2}
-          y={y + 1}
+          y={isNegative ? y + absHeight - 2 : y + 1}
           width={Math.max(0, width - 4)}
           height={1}
           rx={0.5}
