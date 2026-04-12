@@ -114,7 +114,6 @@ const DASHBOARD_OPTIONS = [
   { id: 'pnl', name: 'P&L', isFavorite: false },
   { id: 'cash-flow', name: 'Cash Flow', isFavorite: false },
   { id: 'revenue-customers', name: 'Revenue & Customers', isFavorite: false },
-  { id: 'finserv-pipeline-metrics', name: 'Finserv Pipeline Metrics', isFavorite: false },
   { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false },
   { id: 'sales-team-board', name: 'Sales Team Board', isFavorite: false },
   { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false },
