@@ -401,7 +401,7 @@ function buildDigestEmailHtml(
                   </td>
                 </tr>` : ''}
 
-                ${quietDeals.length > 0 ? `<tr><td style="padding:0 28px;">${quietSection.replace(/^[\s\S]*?<tr>\s*<td[^>]*>/, '').replace(/<\/td>\s*<\/tr>\s*$/, '')}</td></tr>` : ''}
+                ${quietSectionHtml}
 
                 <!-- CTA -->
                 <tr>
