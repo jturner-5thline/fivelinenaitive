@@ -279,12 +279,56 @@ function buildEmailHtml(
   `;
 }
 
+/**
+ * Returns true if the given date (in America/New_York) is a valid business day
+ * for sending "Deals needing attention" emails.
+ * Blocked on: Saturday, Sunday, Jan 1, Jul 4, Dec 25.
+ */
+function shouldSendDealsNeedingAttentionEmail(date: Date, timezone = 'America/New_York'): { send: boolean; reason?: string } {
+  const localStr = date.toLocaleDateString('en-US', { timeZone: timezone, weekday: 'long', month: '2-digit', day: '2-digit' });
+  // localStr example: "Monday, 07/04"
+  const parts = localStr.split(', ');
+  const weekday = parts[0]; // e.g. "Monday"
+  const monthDay = parts[1]; // e.g. "07/04"
+
+  if (weekday === 'Saturday' || weekday === 'Sunday') {
+    return { send: false, reason: `weekend (${weekday})` };
+  }
+
+  const holidays: Record<string, string> = { '01/01': 'New Year\'s Day', '07/04': 'Independence Day', '12/25': 'Christmas Day' };
+  if (holidays[monthDay]) {
+    return { send: false, reason: `holiday (${monthDay} – ${holidays[monthDay]})` };
+  }
+
+  return { send: true };
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Parse body once to check for test mode
+    let bodyJson: any = {};
+    try { bodyJson = await req.json(); } catch { /* no body */ }
+    const isTestSend = bodyJson?.test === true;
+
+    const now = new Date();
+
+    // Business-day / holiday guard – skip on non-business days (bypass for test sends)
+    if (!isTestSend) {
+      const schedule = shouldSendDealsNeedingAttentionEmail(now);
+      if (!schedule.send) {
+        const msg = `Skipped Deals needing attention email: ${schedule.reason}`;
+        console.log(msg);
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: msg }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -299,7 +343,6 @@ const handler = async (req: Request): Promise<Response> => {
     if (settingsError) throw settingsError;
 
     const results: any[] = [];
-    const now = new Date();
 
     for (const settings of companySettings || []) {
       const config: StaleAlertConfig = {
