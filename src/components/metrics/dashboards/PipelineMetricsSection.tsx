@@ -112,7 +112,7 @@ function DrilldownModal({
           <Badge variant="secondary" className="text-xs font-mono">
             {formatCurrencyFull(total)}
           </Badge>
-          <span className="text-xs text-muted-foreground">Current pipeline snapshot</span>
+          <span className="text-xs text-muted-foreground">Filtered by selected period</span>
         </div>
 
         {deals.length === 0 ? (
@@ -242,7 +242,7 @@ export function PipelineMetricsSection() {
         <div>
           <h2 className="text-lg font-semibold text-foreground">Pipeline Metrics</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Board metrics = current snapshot · Signed metrics = stage-entry based · Click for detail
+            All metrics filtered by selected period · Click for detail
           </p>
         </div>
         <Select value={selectedQuarterValue} onValueChange={setSelectedQuarterValue}>
