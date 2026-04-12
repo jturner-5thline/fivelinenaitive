@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lock } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 
 interface SalesCommissionBoardProps {
   ownerName: string;
@@ -109,7 +110,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -136,7 +137,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -163,7 +164,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -193,7 +194,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -220,7 +221,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -250,7 +251,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -277,7 +278,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

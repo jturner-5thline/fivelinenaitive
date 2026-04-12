@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bar, BarChart, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Line, LineChart, Legend, Cell, PieChart, Pie } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
+import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 import type { StageFunnelItem, StageAgingItem, HealthMixItem, PipelineTrendPoint } from '@/hooks/useNaitivePipelineMetrics';
 
 const CHART_COLORS = [
@@ -29,7 +31,7 @@ export function NaitiveFunnelChart({ data }: { data: StageFunnelItem[] }) {
               contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }}
               formatter={(v: number, name: string) => [name === 'value' ? `$${v.toLocaleString()}` : v, name === 'value' ? 'Value' : 'Count']}
             />
-            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+            <Bar dataKey="count" shape={createGlassBarShape({ radius: 4 })}>
               {data.map((_, i) => (
                 <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
               ))}
@@ -80,7 +82,7 @@ export function NaitivAgingChart({ data }: { data: StageAgingItem[] }) {
             <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-20} textAnchor="end" height={50} />
             <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
             <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
-            <Bar dataKey="avgDays" radius={[4, 4, 0, 0]} name="Avg Days">
+            <Bar dataKey="avgDays" shape={createGlassBarShape({ radius: 4 })} name="Avg Days">
               {filtered.map((d, i) => (
                 <Cell key={i} fill={d.avgDays >= 14 ? 'hsl(var(--destructive))' : d.avgDays >= 7 ? 'hsl(45, 93%, 47%)' : 'hsl(var(--primary))'} />
               ))}
@@ -115,9 +117,10 @@ export function NaitivHealthMixChart({ data }: { data: HealthMixItem[] }) {
         <div className="flex items-center gap-4">
           <ResponsiveContainer width="50%" height={180}>
             <PieChart>
-              <Pie data={filtered} dataKey="count" nameKey="label" cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2}>
+              <PieGlassDefs colors={filtered.map(e => e.color)} />
+              <Pie data={filtered} dataKey="count" nameKey="label" cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} activeShape={GlassActiveShape}>
                 {filtered.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+                  <Cell key={i} fill={pieGlassFill(i)} stroke={entry.color} strokeWidth={0.5} />
                 ))}
               </Pie>
               <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />

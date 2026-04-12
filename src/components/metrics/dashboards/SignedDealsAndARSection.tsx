@@ -7,6 +7,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend,
 } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
+import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDealsSignedMonthlySeries, useFinServClientsSignedMonthlySeries, type MonthBucket } from '@/hooks/useSignedDealsMonthly';
 import { useOutstandingARByEntity } from '@/hooks/useOutstandingARByEntity';
@@ -90,7 +92,7 @@ function SignedBarChart({
                 }}
                 cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
               />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]} cursor="pointer" onClick={(d: MonthBucket) => onBarClick(d)}>
+              <Bar dataKey="count" shape={createGlassBarShape({ radius: 6 })} cursor="pointer" onClick={(d: MonthBucket) => onBarClick(d)}>
                 {months.map((m, i) => (
                   <Cell key={i} fill={m.count > 0 ? color : 'hsl(var(--muted))'} fillOpacity={m.count > 0 ? 0.85 : 0.3} />
                 ))}
@@ -134,6 +136,7 @@ function OutstandingARPieChart() {
         <div style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
+              <PieGlassDefs colors={PIE_COLORS} />
               <Pie
                 data={pieData}
                 dataKey="value"
@@ -145,9 +148,10 @@ function OutstandingARPieChart() {
                 paddingAngle={3}
                 label={({ name, value }: any) => `${name.split(',')[0]}: ${formatCurrency(value)}`}
                 labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                activeShape={GlassActiveShape}
               >
                 {pieData.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i]} fillOpacity={0.85} />
+                  <Cell key={i} fill={pieGlassFill(i)} stroke={PIE_COLORS[i]} strokeWidth={0.5} />
                 ))}
               </Pie>
               <Tooltip

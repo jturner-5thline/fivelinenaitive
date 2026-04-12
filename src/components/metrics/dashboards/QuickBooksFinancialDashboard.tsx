@@ -8,6 +8,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line, Area,
 } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
+import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 import { DollarSign, Users, FileText, AlertTriangle, TrendingUp, CreditCard, Percent } from 'lucide-react';
 
 const COLORS = [
@@ -165,7 +167,7 @@ export function QuickBooksFinancialDashboard() {
                     <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 9 }} />
                     <Tooltip formatter={(v: number) => [formatCurrency(v), "Revenue"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                    <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="revenue" shape={createGlassBarShape({ radius: 4 })}>
                       {metrics.topCustomers.map((_, index) => (
                         <Cell key={index} fill={COLORS[index % COLORS.length]} />
                       ))}
@@ -190,6 +192,7 @@ export function QuickBooksFinancialDashboard() {
               {metrics.invoiceStatusBreakdown.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
+                    <PieGlassDefs colors={COLORS} />
                     <Pie
                       data={metrics.invoiceStatusBreakdown}
                       cx="50%"
@@ -201,9 +204,10 @@ export function QuickBooksFinancialDashboard() {
                       nameKey="status"
                       label={({ status, count }) => `${status} (${count})`}
                       labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
+                      activeShape={GlassActiveShape}
                     >
                       {metrics.invoiceStatusBreakdown.map((_, index) => (
-                        <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={index} fill={pieGlassFill(index)} stroke={COLORS[index % COLORS.length]} strokeWidth={0.5} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(v: number) => [formatCurrency(v), "Value"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />

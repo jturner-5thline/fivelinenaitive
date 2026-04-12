@@ -8,6 +8,7 @@ import { DollarSign, TrendingUp, Building2, Loader2 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
 } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { useQBStackedDebtRevenue, STACKED_CATEGORIES, type StackedDebtMonth } from '@/hooks/useQBStackedDebtRevenue';
 import { useQBStackedFinServRevenue, FINSERV_STACKED_CATEGORIES, type StackedFinServMonth } from '@/hooks/useQBStackedFinServRevenue';
 import {
@@ -132,7 +133,7 @@ function RevenueBarChart({
               />
               <Bar
                 dataKey="amount"
-                radius={[6, 6, 0, 0]}
+                shape={createGlassBarShape({ radius: 6 })}
                 cursor="pointer"
                 onClick={(d: MonthlyRevenue) => onBarClick(d.monthKey)}
               >
@@ -353,7 +354,7 @@ function StackedDebtRevenueChart({
                 wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
                 formatter={(value) => STACKED_CATEGORIES.find(c => c.key === value)?.label ?? value}
               />
-              {STACKED_CATEGORIES.map(cat => (
+              {STACKED_CATEGORIES.map((cat, catIdx) => (
                 <Bar
                   key={cat.key}
                   dataKey={cat.key}
@@ -362,6 +363,11 @@ function StackedDebtRevenueChart({
                   fillOpacity={0.85}
                   cursor="pointer"
                   onClick={(d: StackedDebtMonth) => onBarClick(d.monthKey, cat.key)}
+                  shape={createGlassBarShape({
+                    radius: 4,
+                    topSegmentKey: STACKED_CATEGORIES[STACKED_CATEGORIES.length - 1].key,
+                    dataKey: cat.key,
+                  })}
                 />
               ))}
             </BarChart>
@@ -446,7 +452,13 @@ function StackedGenericRevenueChart({
               />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} formatter={(value) => categories.find(c => c.key === value)?.label ?? value} />
               {categories.map(cat => (
-                <Bar key={cat.key} dataKey={cat.key} stackId="stack" fill={cat.color} fillOpacity={0.85} cursor="pointer" onClick={(d: Record<string, unknown>) => onBarClick(d.monthKey as string, cat.key)} />
+                <Bar key={cat.key} dataKey={cat.key} stackId="stack" fill={cat.color} fillOpacity={0.85} cursor="pointer" onClick={(d: Record<string, unknown>) => onBarClick(d.monthKey as string, cat.key)}
+                  shape={createGlassBarShape({
+                    radius: 4,
+                    topSegmentKey: categories[categories.length - 1].key,
+                    dataKey: cat.key,
+                  })}
+                />
               ))}
             </BarChart>
           </ResponsiveContainer>

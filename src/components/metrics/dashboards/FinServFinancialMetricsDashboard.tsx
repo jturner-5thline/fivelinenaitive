@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, ComposedChart, Legend } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -118,7 +119,7 @@ export function FinServFinancialMetricsDashboard() {
                     name === 'grossProfitPercent' ? 'Gross Profit %' : 'Gross Profit'
                   ]} />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="grossProfit" fill="hsl(var(--primary))" name="Gross Profit" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="grossProfit" fill="hsl(var(--primary))" name="Gross Profit" shape={createGlassBarShape({ radius: 4 })} />
                   <Line yAxisId="right" type="monotone" dataKey="grossProfitPercent" stroke="hsl(var(--chart-2))" name="Gross Profit %" strokeWidth={2} dot={{ r: 4 }} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -139,7 +140,7 @@ export function FinServFinancialMetricsDashboard() {
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" name="Operating Profit" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" fill="hsl(var(--primary))" name="Operating Profit" shape={createGlassBarShape({ radius: 4 })} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -165,7 +166,7 @@ export function FinServFinancialMetricsDashboard() {
                   <Bar 
                     dataKey="value" 
                     fill="hsl(var(--primary))" 
-                    radius={[4, 4, 0, 0]}
+                    shape={createGlassBarShape({ radius: 4 })}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -209,7 +210,7 @@ export function FinServFinancialMetricsDashboard() {
                   <XAxis dataKey="month" tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={50} />
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="amount" fill="hsl(var(--destructive))" name="Variable Billing" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="amount" fill="hsl(var(--destructive))" name="Variable Billing" shape={createGlassBarShape({ radius: 4 })} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -230,7 +231,7 @@ export function FinServFinancialMetricsDashboard() {
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
                   <Legend />
-                  <Bar dataKey="hours" fill="hsl(var(--primary))" name="Hours" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="hours" fill="hsl(var(--primary))" name="Hours" shape={createGlassBarShape({ radius: 4 })} />
                   <Line type="monotone" dataKey="recurringFee" stroke="hsl(var(--chart-2))" name="Recurring Advisory Fee" strokeWidth={2} dot={{ r: 3 }} />
                 </ComposedChart>
               </ResponsiveContainer>

@@ -12,6 +12,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 
 const DEBT_REALM_ID = '193514877331929';
 const FINSERV_REALM_ID = '9341451968897660';
@@ -207,7 +208,7 @@ export function ControllerDashboard() {
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                 />
                 <Tooltip content={<CurrencyTooltip />} />
-                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -237,7 +238,7 @@ export function ControllerDashboard() {
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                 />
                 <Tooltip content={<CurrencyTooltip />} />
-                <Bar dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" fill="hsl(var(--chart-2))" shape={createGlassBarShape({ radius: 4 })} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -265,7 +266,7 @@ export function ControllerDashboard() {
                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
               />
               <Tooltip content={<CurrencyTooltip />} />
-              <Bar dataKey="balance" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="balance" fill="hsl(var(--chart-3))" shape={createGlassBarShape({ radius: 4 })} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -296,7 +297,7 @@ export function ControllerDashboard() {
                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
               />
               <Tooltip content={<CurrencyTooltip />} />
-              <Bar dataKey="balance" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="balance" fill="hsl(var(--chart-4))" shape={createGlassBarShape({ radius: 4 })} />
             </BarChart>
           </ResponsiveContainer>
         </div>
