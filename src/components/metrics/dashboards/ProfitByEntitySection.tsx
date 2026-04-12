@@ -43,17 +43,14 @@ function ProfitBarChart({
     );
   }
 
-  // Render all bars using absolute values (magnitude) so nothing goes below x-axis.
-  // Negative months get a red fill; positive months get the entity color.
-  const chartData = months.map(m => ({
-    label: m.label,
-    magnitude: Math.abs(m.profit),
-    profit: m.profit, // keep original for tooltips
-    isNegative: m.profit < 0,
-  }));
+  const hasNegative = months.some(m => m.profit < 0);
 
-  const maxVal = Math.max(...chartData.map(d => d.magnitude), 0);
-  const padding = maxVal * 0.15 || 1000;
+  // Auto-scale: include 0 in range, pad so bars don't touch edges
+  const minVal = Math.min(...months.map(m => m.profit), 0);
+  const maxVal = Math.max(...months.map(m => m.profit), 0);
+  const range = Math.max(maxVal - minVal, 1000);
+  const domainMin = minVal - range * 0.12;
+  const domainMax = maxVal + range * 0.12;
 
   return (
     <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
@@ -70,7 +67,7 @@ function ProfitBarChart({
       <CardContent>
         <div style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+            <BarChart data={months} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
               <XAxis
                 dataKey="label"
@@ -79,17 +76,14 @@ function ProfitBarChart({
                 tickLine={false}
               />
               <YAxis
-                domain={[0, maxVal + padding]}
-                tickFormatter={(v: number) => formatCurrency(v)}
+                domain={[domainMin, domainMax]}
+                tickFormatter={formatCurrency}
                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
-                formatter={(_v: number, _name: string, props: { payload?: { profit?: number } }) => {
-                  const real = props?.payload?.profit ?? 0;
-                  return [formatCurrencyFull(real), real < 0 ? 'Loss' : 'Profit'];
-                }}
+                formatter={(v: number) => [formatCurrencyFull(v), v < 0 ? 'Loss' : 'Profit']}
                 labelFormatter={(label) => `${label} · ${entityName}`}
                 contentStyle={{
                   backgroundColor: 'hsl(var(--popover))',
@@ -100,12 +94,15 @@ function ProfitBarChart({
                 }}
                 cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
               />
-              <Bar dataKey="magnitude" shape={createGlassBarShape({ radius: 6 })}>
-                {chartData.map((d, i) => (
+              {hasNegative && (
+                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1} strokeOpacity={0.6} />
+              )}
+              <Bar dataKey="profit" shape={createGlassBarShape({ radius: 6 })}>
+                {months.map((m, i) => (
                   <Cell
                     key={i}
-                    fill={d.isNegative ? 'hsl(0, 72%, 51%)' : color}
-                    fillOpacity={d.isNegative ? 0.75 : 0.85}
+                    fill={m.profit >= 0 ? color : 'hsl(0, 72%, 51%)'}
+                    fillOpacity={m.profit >= 0 ? 0.85 : 0.75}
                   />
                 ))}
               </Bar>
@@ -116,7 +113,6 @@ function ProfitBarChart({
     </Card>
   );
 }
-
 export function ProfitByEntitySection() {
   const debt = useMonthlyEntityProfit('5th Line Capital Advisors, LLC', 3);
   const finserv = useMonthlyEntityProfit('5th Line Financial Services, LLC', 3);
