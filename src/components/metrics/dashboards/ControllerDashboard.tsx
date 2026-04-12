@@ -16,12 +16,13 @@ import {
 const DEBT_REALM_ID = '193514877331929';
 const FINSERV_REALM_ID = '9341451968897660';
 
-// Credit card accounts span multiple realms
+// Credit card accounts – sourced from 5th Line Capital Advisors, LLC entity group
+// Each account lives in the realm where QuickBooks stores it
 const CREDIT_CARD_ACCOUNTS = [
-  { name: 'AMEX 41002', realm_id: '123146077561874' },
-  { name: 'Amex x82008', realm_id: '123146077561874' },
-  { name: 'Wells Fargo CC #5733', realm_id: DEBT_REALM_ID },
-  { name: 'Wells Fargo CC #5758', realm_id: '9130350272677286' },
+  { qbName: 'AMEX 41002',           displayName: 'AMEX 41002',        realm_id: '123146077561874' },
+  { qbName: 'Amex x82008',          displayName: 'AMEX 82008',        realm_id: '123146077561874' },
+  { qbName: 'Wells Fargo CC #5733', displayName: 'Wells Fargo 5733',  realm_id: DEBT_REALM_ID },
+  { qbName: 'Wells Fargo CC #5758', displayName: 'Wells Fargo 5758',  realm_id: '9130350272677286' },
 ];
 
 const formatCurrency = (value: number) => {
