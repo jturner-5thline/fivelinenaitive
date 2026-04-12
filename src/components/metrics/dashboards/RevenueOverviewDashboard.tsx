@@ -460,7 +460,6 @@ function StackedGenericRevenueChart({
                   })}
                 />
               ))}
-              ))}
             </BarChart>
           </ResponsiveContainer>
         </div>
