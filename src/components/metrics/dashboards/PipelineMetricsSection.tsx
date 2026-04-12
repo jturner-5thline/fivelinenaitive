@@ -112,7 +112,7 @@ function DrilldownModal({
           <Badge variant="secondary" className="text-xs font-mono">
             {formatCurrencyFull(total)}
           </Badge>
-          <span className="text-xs text-muted-foreground">Stage-entry based · First entry only</span>
+          <span className="text-xs text-muted-foreground">Current pipeline snapshot</span>
         </div>
 
         {deals.length === 0 ? (
@@ -181,7 +181,7 @@ export function PipelineMetricsSection() {
       isLoading: metrics.dealsOnBoard.isLoading,
       deals: metrics.dealsOnBoard.deals,
       color: 'hsl(var(--primary))',
-      drilldownTitle: 'Deals on the Board — NDA/Needs List Sent',
+      drilldownTitle: 'Deals on the Board — Active Pipeline',
     },
     {
       id: 'debt-dollar-on-board',
@@ -191,7 +191,7 @@ export function PipelineMetricsSection() {
       isLoading: metrics.debtDollarOnBoard.isLoading,
       deals: metrics.debtDollarOnBoard.deals,
       color: 'hsl(var(--chart-2))',
-      drilldownTitle: 'Debt $ on the Board — NDA/Needs List Sent',
+      drilldownTitle: 'Debt $ on the Board — Active Pipeline',
     },
     {
       id: 'debt-deals-signed',
@@ -242,7 +242,7 @@ export function PipelineMetricsSection() {
         <div>
           <h2 className="text-lg font-semibold text-foreground">Pipeline Metrics</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Stage-entry based · First entry per deal · Click for detail
+            Board metrics = current snapshot · Signed metrics = stage-entry based · Click for detail
           </p>
         </div>
         <Select value={selectedQuarterValue} onValueChange={setSelectedQuarterValue}>
