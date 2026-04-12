@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lock, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
+import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -176,7 +178,7 @@ export function ExecutiveDashboard() {
                   <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <YAxis dataKey="stage" type="category" width={90} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -195,6 +197,7 @@ export function ExecutiveDashboard() {
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
+                  <PieGlassDefs colors={COLORS} />
                   <Pie
                     data={dealsByTypeData}
                     cx="50%"
@@ -206,9 +209,10 @@ export function ExecutiveDashboard() {
                     nameKey="type"
                     label={({ type, percent }) => `${type} (${percent}%)`}
                     labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
+                    activeShape={GlassActiveShape}
                   >
                     {dealsByTypeData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={pieGlassFill(index)} stroke={COLORS[index % COLORS.length]} strokeWidth={0.5} />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -232,8 +236,8 @@ export function ExecutiveDashboard() {
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
                   <Legend />
-                  <Bar dataKey="inflow" fill="hsl(var(--success))" name="Inflow" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="outflow" fill="hsl(var(--destructive))" name="Outflow" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="inflow" fill="hsl(var(--success))" name="Inflow" shape={createGlassBarShape({ radius: 4 })} />
+                  <Bar dataKey="outflow" fill="hsl(var(--destructive))" name="Outflow" shape={createGlassBarShape({ radius: 4 })} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -262,8 +266,8 @@ export function ExecutiveDashboard() {
                   ]} 
                 />
                 <Legend />
-                <Bar yAxisId="left" dataKey="closed" fill="hsl(var(--primary))" name="Deals Closed" radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="right" dataKey="value" fill="hsl(var(--chart-2))" name="Deal Value" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="left" dataKey="closed" fill="hsl(var(--primary))" name="Deals Closed" shape={createGlassBarShape({ radius: 4 })} />
+                <Bar yAxisId="right" dataKey="value" fill="hsl(var(--chart-2))" name="Deal Value" shape={createGlassBarShape({ radius: 4 })} />
               </BarChart>
             </ResponsiveContainer>
           </div>
