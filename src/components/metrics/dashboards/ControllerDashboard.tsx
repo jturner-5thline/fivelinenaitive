@@ -176,6 +176,7 @@ function CurrencyTooltip({ active, payload, label }: any) {
 export function ControllerDashboard() {
   const finservRevenue = useRevenueByClient(FINSERV_REALM_ID);
   const debtRevenue = useRevenueByClient(DEBT_REALM_ID);
+  const firmLiquidity = useFirmLiquidity();
   const creditCards = useCreditCardBalances();
 
   return (
