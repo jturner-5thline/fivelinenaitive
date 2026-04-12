@@ -95,13 +95,9 @@ import {
   IncomeBoardDashboard,
   SalesBDROIDashboard,
   SalesTeamBoardDashboard,
-  WeeklyCashflowDashboard,
   HarvestMonthlyTrackingDashboard,
-  SalesCommissionBoardDashboard,
-  ChandlerSalesCommissionDashboard,
   ConsolidatedDebtPipelineDashboard,
   ControllerDashboard,
-  DealStageTimelineDashboard,
   ExecutiveDashboard,
   FinServFinancialMetricsDashboard,
   QuickBooksFinancialDashboard,
@@ -127,15 +123,9 @@ const DASHBOARD_OPTIONS = [
   { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false },
   { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false },
   { id: 'executive-dashboard', name: 'Executive Dashboard', isFavorite: false },
-  { id: 'deal-stage-timeline', name: 'Deal Stage Timeline', isFavorite: false },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false },
-  { id: 'weekly-cashflow', name: 'Weekly Cashflow', isFavorite: false },
   { id: 'harvest-monthly-tracking', name: 'Harvest Monthly Tracking', isFavorite: false },
   { id: 'flor-sales-commission', name: 'Flor Sales Commission Board', isFavorite: false },
-  { id: 'james-sales-commission', name: 'James Sales Commission Board', isFavorite: false },
-  { id: 'niki-sales-commission', name: 'Niki Sales Commission Board', isFavorite: false },
-  { id: 'paz-sales-commission', name: 'Paz Sales Commission Board', isFavorite: false },
-  { id: 'chandler-sales-commission', name: 'Chandler Sales Commission Board', isFavorite: false },
   { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false },
   { id: 'management-review', name: 'Management Review', isFavorite: false },
 ];
@@ -2133,16 +2123,10 @@ export default function Metrics() {
             {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
-            {selectedDashboard === 'weekly-cashflow' && <WeeklyCashflowDashboard />}
             {selectedDashboard === 'harvest-monthly-tracking' && <HarvestMonthlyTrackingDashboard />}
             {selectedDashboard === 'flor-sales-commission' && <SalesCommissionBoardDashboard ownerName="Flor" />}
-            {selectedDashboard === 'james-sales-commission' && <SalesCommissionBoardDashboard ownerName="James Turner" />}
-            {selectedDashboard === 'niki-sales-commission' && <SalesCommissionBoardDashboard ownerName="Niki Heikali" />}
-            {selectedDashboard === 'paz-sales-commission' && <SalesCommissionBoardDashboard ownerName="Paz" />}
-            {selectedDashboard === 'chandler-sales-commission' && <ChandlerSalesCommissionDashboard />}
             {selectedDashboard === 'consolidated-debt-pipeline' && <ConsolidatedDebtPipelineDashboard />}
             {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
-            {selectedDashboard === 'deal-stage-timeline' && <DealStageTimelineDashboard />}
             {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
