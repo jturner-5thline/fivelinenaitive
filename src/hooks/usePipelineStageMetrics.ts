@@ -157,19 +157,24 @@ function usePipelineAddedMetric(
 }
 
 /**
- * Returns ALL deals currently in a specific pipeline (current snapshot, not stage-entry based).
- * Excludes closed-won, closed-lost, and on-hold deals to reflect the "active board".
+ * Returns deals added to a specific pipeline within the selected quarter.
+ * Excludes closed-won, closed-lost, on-hold, and archived deals.
  */
-function useCurrentPipelineDeals(pipelineId: string): StageMetricResult {
+function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): StageMetricResult {
   const { user } = useAuth();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['current-pipeline-deals', pipelineId],
+    queryKey: ['pipeline-deals-in-period', pipelineId, quarter.value],
     queryFn: async () => {
+      const startDate = quarter.months[0].start;
+      const endDate = quarter.months[quarter.months.length - 1].end;
+
       const { data: rows, error } = await supabase
         .from('deals')
         .select('id, company, value, manager, stage, pipeline_id, created_at, status')
         .eq('pipeline_id', pipelineId)
+        .gte('created_at', startDate)
+        .lte('created_at', endDate + 'T23:59:59.999Z')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -181,7 +186,6 @@ function useCurrentPipelineDeals(pipelineId: string): StageMetricResult {
   return useMemo(() => {
     if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading };
 
-    // Exclude deals that are clearly no longer "on the board"
     const excludedStatuses = ['closed-won', 'closed-lost', 'on-hold', 'archived'];
     const excludedStages = ['closed-won', 'closed-lost'];
 
@@ -229,8 +233,8 @@ export interface PipelineMetrics {
 }
 
 export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics {
-  // Deals on Board & Debt $ on Board: ALL deals currently in the active pipeline (snapshot)
-  const dealsOnBoard = useCurrentPipelineDeals(ACTIVE_PIPELINE_ID);
+  // Deals on Board & Debt $ on Board: deals added to active pipeline within the selected quarter
+  const dealsOnBoard = usePipelineDealsInPeriod(ACTIVE_PIPELINE_ID, quarter);
 
   // Signed metrics remain stage-entry based
   const debtDealsSigned = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
@@ -239,7 +243,7 @@ export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics
 
   return {
     dealsOnBoard,
-    debtDollarOnBoard: dealsOnBoard, // Same deal universe, widget shows $ instead of count
+    debtDollarOnBoard: dealsOnBoard,
     debtDealsSigned,
     debtDollarSigned: debtDealsSigned,
     finservDealsOnBoard,
