@@ -309,10 +309,9 @@ function buildDigestEmailHtml(
   if (milestonesCompleted > 0) summaryChips.push(`<span style="display:inline-block;background:#f0fdf4;color:#16a34a;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-right:6px;margin-bottom:4px;">✓ ${milestonesCompleted} Milestone${milestonesCompleted !== 1 ? 's' : ''}</span>`);
   const chipsHtml = summaryChips.length > 0 ? `<div style="margin-top:12px;">${summaryChips.join('')}</div>` : '';
 
-  const quietSection = quietDeals.length > 0 ? `
-    <!-- Quiet Deals -->
+  const quietSectionHtml = quietDeals.length > 0 ? `
     <tr>
-      <td style="padding:24px 0 0 0;">
+      <td style="padding:24px 28px 0 28px;">
         <p style="margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:#9ca3af;font-weight:600;">Other Active Deals (${quietDeals.length})</p>
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff;border-radius:10px;border:1px solid #e5e7eb;">
           <thead>
