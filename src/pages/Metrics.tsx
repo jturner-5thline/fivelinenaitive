@@ -92,11 +92,8 @@ import {
   ManagementSnapshotDashboard,
   type EditableManagementSnapshotCardId,
   type ManagementSnapshotEditableConfig,
-  IncomeBoardDashboard,
   SalesBDROIDashboard,
   SalesTeamBoardDashboard,
-  SalesCommissionBoardDashboard,
-  HarvestMonthlyTrackingDashboard,
   ConsolidatedDebtPipelineDashboard,
   ControllerDashboard,
   ExecutiveDashboard,
@@ -117,7 +114,6 @@ const DASHBOARD_OPTIONS = [
   { id: 'pnl', name: 'P&L', isFavorite: false },
   { id: 'cash-flow', name: 'Cash Flow', isFavorite: false },
   { id: 'revenue-customers', name: 'Revenue & Customers', isFavorite: false },
-  { id: 'income-board', name: 'Income Board', isFavorite: false },
   { id: 'finserv-pipeline-metrics', name: 'Finserv Pipeline Metrics', isFavorite: false },
   { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false },
   { id: 'sales-team-board', name: 'Sales Team Board', isFavorite: false },
@@ -125,8 +121,6 @@ const DASHBOARD_OPTIONS = [
   { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false },
   { id: 'executive-dashboard', name: 'Executive Dashboard', isFavorite: false },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false },
-  { id: 'harvest-monthly-tracking', name: 'Harvest Monthly Tracking', isFavorite: false },
-  { id: 'flor-sales-commission', name: 'Flor Sales Commission Board', isFavorite: false },
   { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false },
   { id: 'management-review', name: 'Management Review', isFavorite: false },
 ];
@@ -2121,11 +2115,8 @@ export default function Metrics() {
                 })}
               </ManagementSnapshotDashboard>
             )}
-            {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
-            {selectedDashboard === 'harvest-monthly-tracking' && <HarvestMonthlyTrackingDashboard />}
-            {selectedDashboard === 'flor-sales-commission' && <SalesCommissionBoardDashboard ownerName="Flor" />}
             {selectedDashboard === 'consolidated-debt-pipeline' && <ConsolidatedDebtPipelineDashboard />}
             {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
             {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
