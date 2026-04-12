@@ -179,12 +179,13 @@ function buildActivityBlock(notifications: PendingNotification[], labels: Record
 function buildDealCard(deal: DealRow, labels: Record<string, string>, activity: PendingNotification[], lenderInfo: DealLenderInfo | null): string {
   const hasActivity = activity.length > 0;
 
-  // Passed lenders metadata line
+  // Lender counts metadata line
   let lenderLine = '';
   if (lenderInfo) {
-    const passedCount = lenderInfo.passed;
-    const passedLabel = passedCount === 1 ? 'lender' : 'lenders';
-    lenderLine = `<tr><td style="padding:0 20px 4px 20px;font-size:11px;color:#6b7280;">Passed: <strong style="color:#9ca3af;">${passedCount}</strong> ${passedLabel}</td></tr>`;
+    const ac = lenderInfo.active;
+    const od = lenderInfo.onDeck;
+    const pa = lenderInfo.passed;
+    lenderLine = `<tr><td style="padding:0 20px 4px 20px;font-size:11px;color:#6b7280;">Active: <strong style="color:#9ca3af;">${ac}</strong> lender${ac === 1 ? '' : 's'}<span style="color:#d1d5db;margin:0 6px;">|</span>On deck: <strong style="color:#9ca3af;">${od}</strong> lender${od === 1 ? '' : 's'}<span style="color:#d1d5db;margin:0 6px;">|</span>Passed: <strong style="color:#9ca3af;">${pa}</strong> lender${pa === 1 ? '' : 's'}</td></tr>`;
   }
 
   const activityHtml = buildActivityBlock(activity, labels);
@@ -286,14 +287,18 @@ function buildDigestEmailHtml(
   const quietRows = quietDeals.map(d => {
     const dl = getDealLabels(d);
     const li = lenderInfoByDeal?.[d.id];
-    const lenderCol = li ? String(li.passed) : '—';
+    const qActive = li ? String(li.active) : '—';
+    const qOnDeck = li ? String(li.onDeck) : '—';
+    const qPassed = li ? String(li.passed) : '—';
     return `<tr>
       <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:12px;">
         <a href="https://fivelinenaitive.lovable.app/deal/${d.id}" style="color:#111827;text-decoration:none;font-weight:500;">${d.company}</a>
       </td>
       <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">${stagePill(d.stage, dl)}</td>
       <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;">${statusPill(d.status, dl)}</td>
-      <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;color:#9ca3af;font-size:11px;text-align:center;" title="Passed lenders">${lenderCol}</td>
+      <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;color:#9ca3af;font-size:11px;text-align:center;">${qActive}</td>
+      <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;color:#9ca3af;font-size:11px;text-align:center;">${qOnDeck}</td>
+      <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;color:#9ca3af;font-size:11px;text-align:center;">${qPassed}</td>
       <td style="padding:8px 8px;border-bottom:1px solid #f3f4f6;color:#111827;font-size:12px;text-align:right;white-space:nowrap;font-weight:500;">${formatCurrency(d.value)}</td>
     </tr>`;
   }).join('');
@@ -316,6 +321,8 @@ function buildDigestEmailHtml(
               <th style="padding:8px 12px;text-align:left;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Deal</th>
               <th style="padding:8px 8px;text-align:left;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Stage</th>
               <th style="padding:8px 8px;text-align:left;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Status</th>
+              <th style="padding:8px 8px;text-align:center;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Active</th>
+              <th style="padding:8px 8px;text-align:center;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">On Deck</th>
               <th style="padding:8px 8px;text-align:center;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Passed</th>
               <th style="padding:8px 8px;text-align:right;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;font-weight:600;">Value</th>
             </tr>
