@@ -364,7 +364,7 @@ function StackedDebtRevenueChart({
                   cursor="pointer"
                   onClick={(d: StackedDebtMonth) => onBarClick(d.monthKey, cat.key)}
                   shape={createGlassBarShape({
-                    radius: 4,
+                    radius: 3,
                     topSegmentKey: STACKED_CATEGORIES[STACKED_CATEGORIES.length - 1].key,
                     dataKey: cat.key,
                   })}
@@ -454,7 +454,7 @@ function StackedGenericRevenueChart({
               {categories.map(cat => (
                 <Bar key={cat.key} dataKey={cat.key} stackId="stack" fill={cat.color} fillOpacity={0.85} cursor="pointer" onClick={(d: Record<string, unknown>) => onBarClick(d.monthKey as string, cat.key)}
                   shape={createGlassBarShape({
-                    radius: 4,
+                    radius: 3,
                     topSegmentKey: categories[categories.length - 1].key,
                     dataKey: cat.key,
                   })}
