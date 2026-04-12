@@ -16,8 +16,12 @@ const formatCurrency = (value: number) => {
   return neg ? `(${formatted})` : formatted;
 };
 
-const formatCurrencyFull = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 });
+const formatCurrencyFull = (value: number) => {
+  const neg = value < 0;
+  const abs = Math.abs(value);
+  const str = abs.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 });
+  return neg ? `(${str})` : str;
+};
 
 function ProfitBarChart({
   title,
@@ -44,13 +48,14 @@ function ProfitBarChart({
   }
 
   const hasNegative = months.some(m => m.profit < 0);
+  const hasPositive = months.some(m => m.profit > 0);
 
   // Auto-scale: include 0 in range, pad so bars don't touch edges
   const minVal = Math.min(...months.map(m => m.profit), 0);
   const maxVal = Math.max(...months.map(m => m.profit), 0);
   const range = Math.max(maxVal - minVal, 1000);
-  const domainMin = minVal - range * 0.12;
-  const domainMax = maxVal + range * 0.12;
+  const domainMin = minVal - range * 0.15;
+  const domainMax = maxVal + range * 0.15;
 
   return (
     <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
@@ -60,19 +65,26 @@ function ProfitBarChart({
           <p className="text-xs text-muted-foreground mt-0.5">Operating Profit · {entityName.split(',')[0]}</p>
         </div>
         <div className="text-right">
-          <p className={`text-lg font-bold ${total < 0 ? 'text-red-400' : 'text-foreground'}`}>{formatCurrency(total)}</p>
+          <p className={`text-lg font-semibold tabular-nums ${total < 0 ? 'text-red-400' : 'text-foreground'}`}>
+            {formatCurrency(total)}
+          </p>
           <p className="text-[10px] text-muted-foreground">Last 3 Months</p>
         </div>
       </CardHeader>
       <CardContent>
         <div style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={months} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
+            <BarChart data={months} margin={{ top: 8, right: 8, left: -6, bottom: 0 }}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                strokeOpacity={0.3}
+                vertical={false}
+              />
               <XAxis
                 dataKey="label"
                 tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                axisLine={{ stroke: 'hsl(var(--border))' }}
+                axisLine={{ stroke: 'hsl(var(--border))', strokeOpacity: 0.5 }}
                 tickLine={false}
               />
               <YAxis
@@ -81,28 +93,36 @@ function ProfitBarChart({
                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                 axisLine={false}
                 tickLine={false}
+                width={52}
               />
               <Tooltip
                 formatter={(v: number) => [formatCurrencyFull(v), v < 0 ? 'Loss' : 'Profit']}
-                labelFormatter={(label) => `${label} · ${entityName}`}
+                labelFormatter={(label) => `${label} · ${entityName.split(',')[0]}`}
                 contentStyle={{
                   backgroundColor: 'hsl(var(--popover))',
                   border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: '12px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
                   color: 'hsl(var(--popover-foreground))',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 }}
-                cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
+                cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.1 }}
               />
-              {hasNegative && (
-                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1} strokeOpacity={0.6} />
+              {/* Zero baseline – more prominent than gridlines */}
+              {(hasNegative || hasPositive) && (
+                <ReferenceLine
+                  y={0}
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeWidth={1.5}
+                  strokeOpacity={0.5}
+                />
               )}
-              <Bar dataKey="profit" shape={createGlassBarShape({ radius: 6 })}>
+              <Bar dataKey="profit" shape={createGlassBarShape({ radius: 3 })}>
                 {months.map((m, i) => (
                   <Cell
                     key={i}
-                    fill={m.profit >= 0 ? color : 'hsl(0, 72%, 51%)'}
-                    fillOpacity={m.profit >= 0 ? 0.85 : 0.75}
+                    fill={m.profit >= 0 ? color : 'hsl(0, 65%, 48%)'}
+                    fillOpacity={0.85}
                   />
                 ))}
               </Bar>
@@ -113,6 +133,7 @@ function ProfitBarChart({
     </Card>
   );
 }
+
 export function ProfitByEntitySection() {
   const debt = useMonthlyEntityProfit('5th Line Capital Advisors, LLC', 3);
   const finserv = useMonthlyEntityProfit('5th Line Financial Services, LLC', 3);
@@ -122,7 +143,7 @@ export function ProfitByEntitySection() {
       <div>
         <h2 className="text-lg font-semibold text-foreground">Profit by Entity</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Rolling last 3 months · QuickBooks operating profit / EBITDA
+          Rolling last 3 months · QuickBooks operating profit
         </p>
       </div>
 

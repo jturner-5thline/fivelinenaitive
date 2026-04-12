@@ -110,7 +110,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 3 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -137,7 +137,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
+                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 3 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -164,7 +164,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
+                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 3 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -194,7 +194,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 3 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -221,7 +221,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
+                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 3 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -251,7 +251,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 3 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -278,7 +278,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
+                    <Bar dataKey="amount" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 3 })} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

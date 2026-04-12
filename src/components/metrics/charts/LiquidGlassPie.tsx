@@ -1,29 +1,28 @@
 /**
- * Liquid Glass Pie/Donut cell renderer for Recharts.
- * Adds glossy highlight and depth to each segment.
+ * Refined Glass Pie/Donut cell renderer for Recharts.
+ * Subtle depth and polish without overpowering the data.
  */
 import { useId } from 'react';
 import { Sector } from 'recharts';
 
-/** Custom active shape for Pie with glass effect */
+/** Custom active shape for Pie with restrained glass effect */
 export function GlassActiveShape(props: Record<string, unknown>) {
   const {
-    cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value,
+    cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill,
   } = props as {
     cx: number; cy: number; innerRadius: number; outerRadius: number;
     startAngle: number; endAngle: number; fill: string;
-    payload: { name?: string }; percent: number; value: number;
   };
 
   return (
     <g>
-      {/* Expanded outer glow */}
+      {/* Subtle outer glow on hover */}
       <Sector
         cx={cx} cy={cy}
-        innerRadius={innerRadius - 2}
-        outerRadius={(outerRadius as number) + 6}
+        innerRadius={innerRadius - 1}
+        outerRadius={(outerRadius as number) + 4}
         startAngle={startAngle} endAngle={endAngle}
-        fill={fill} opacity={0.2}
+        fill={fill} opacity={0.12}
       />
       {/* Main sector */}
       <Sector
@@ -31,32 +30,32 @@ export function GlassActiveShape(props: Record<string, unknown>) {
         innerRadius={innerRadius}
         outerRadius={outerRadius}
         startAngle={startAngle} endAngle={endAngle}
-        fill={fill} opacity={0.85}
+        fill={fill} opacity={0.82}
       />
-      {/* Inner highlight ring */}
+      {/* Subtle inner rim */}
       <Sector
         cx={cx} cy={cy}
         innerRadius={innerRadius}
-        outerRadius={innerRadius + 3}
+        outerRadius={innerRadius + 2}
         startAngle={startAngle} endAngle={endAngle}
-        fill="white" opacity={0.15}
+        fill="white" opacity={0.08}
       />
     </g>
   );
 }
 
 /**
- * SVG defs block to inject glass gradient overlays for pie charts.
+ * SVG defs block for pie charts – restrained radial glass overlay.
  * Place inside the PieChart component.
  */
 export function PieGlassDefs({ colors }: { colors: string[] }) {
   return (
     <defs>
       {colors.map((color, i) => (
-        <radialGradient key={i} id={`pie-glass-${i}`} cx="30%" cy="30%" r="70%">
-          <stop offset="0%" stopColor="white" stopOpacity={0.25} />
-          <stop offset="50%" stopColor={color} stopOpacity={0.8} />
-          <stop offset="100%" stopColor={color} stopOpacity={0.6} />
+        <radialGradient key={i} id={`pie-glass-${i}`} cx="35%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="white" stopOpacity={0.1} />
+          <stop offset="40%" stopColor={color} stopOpacity={0.78} />
+          <stop offset="100%" stopColor={color} stopOpacity={0.65} />
         </radialGradient>
       ))}
     </defs>

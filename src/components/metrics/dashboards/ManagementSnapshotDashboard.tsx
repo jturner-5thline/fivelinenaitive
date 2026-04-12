@@ -388,8 +388,8 @@ function GenericDashboardCard({
               fill={i === 0 ? color : CHART_COLORS[i % CHART_COLORS.length]}
               name={key}
               shape={visualization === 'stackedBar'
-                ? createGlassBarShape({ radius: 4, topSegmentKey: dataKeys[dataKeys.length - 1], dataKey: key })
-                : createGlassBarShape({ radius: 4 })
+                ? createGlassBarShape({ radius: 3, topSegmentKey: dataKeys[dataKeys.length - 1], dataKey: key })
+                : createGlassBarShape({ radius: 3 })
               }
             >
               {negEnabled && trendData.map((entry: any, idx: number) => {
