@@ -156,6 +156,60 @@ function usePipelineAddedMetric(
   }, [data, isLoading]);
 }
 
+/**
+ * Returns ALL deals currently in a specific pipeline (current snapshot, not stage-entry based).
+ * Excludes closed-won, closed-lost, and on-hold deals to reflect the "active board".
+ */
+function useCurrentPipelineDeals(pipelineId: string): StageMetricResult {
+  const { user } = useAuth();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['current-pipeline-deals', pipelineId],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('deals')
+        .select('id, company, value, manager, stage, pipeline_id, created_at, status')
+        .eq('pipeline_id', pipelineId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return rows ?? [];
+    },
+    enabled: !!user,
+  });
+
+  return useMemo(() => {
+    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading };
+
+    // Exclude deals that are clearly no longer "on the board"
+    const excludedStatuses = ['closed-won', 'closed-lost', 'on-hold', 'archived'];
+    const excludedStages = ['closed-won', 'closed-lost'];
+
+    const activeDeals: StageEntryDeal[] = data
+      .filter(d => {
+        const status = (d.status || '').toLowerCase();
+        const stage = (d.stage || '').toLowerCase();
+        return !excludedStatuses.includes(status) && !excludedStages.includes(stage);
+      })
+      .map(d => ({
+        deal_id: d.id,
+        company: d.company ?? '—',
+        value: Number(d.value) || 0,
+        manager: d.manager,
+        current_stage: d.stage,
+        entered_at: d.created_at,
+        pipeline_id: d.pipeline_id ?? '',
+      }));
+
+    return {
+      count: activeDeals.length,
+      dollarVolume: activeDeals.reduce((s, d) => s + d.value, 0),
+      deals: activeDeals,
+      isLoading,
+    };
+  }, [data, isLoading]);
+}
+
 // 5th Line company's pipeline IDs
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
@@ -167,22 +221,25 @@ const FS_ACTIVE_CLIENT_STAGE = 'fs-active-client';
 
 export interface PipelineMetrics {
   dealsOnBoard: StageMetricResult;
-  debtDollarOnBoard: StageMetricResult; // same data as dealsOnBoard
+  debtDollarOnBoard: StageMetricResult;
   debtDealsSigned: StageMetricResult;
-  debtDollarSigned: StageMetricResult; // same data as debtDealsSigned
+  debtDollarSigned: StageMetricResult;
   finservDealsOnBoard: StageMetricResult;
   finservClientsSigned: StageMetricResult;
 }
 
 export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics {
-  const dealsOnBoard = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  // Deals on Board & Debt $ on Board: ALL deals currently in the active pipeline (snapshot)
+  const dealsOnBoard = useCurrentPipelineDeals(ACTIVE_PIPELINE_ID);
+
+  // Signed metrics remain stage-entry based
   const debtDealsSigned = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const finservDealsOnBoard = usePipelineAddedMetric(FINSERV_PIPELINE_ID, quarter);
   const finservClientsSigned = useStageEntryMetric(FS_ACTIVE_CLIENT_STAGE, quarter, FINSERV_PIPELINE_ID);
 
   return {
     dealsOnBoard,
-    debtDollarOnBoard: dealsOnBoard, // Same underlying data, widget shows $ instead of count
+    debtDollarOnBoard: dealsOnBoard, // Same deal universe, widget shows $ instead of count
     debtDealsSigned,
     debtDollarSigned: debtDealsSigned,
     finservDealsOnBoard,
