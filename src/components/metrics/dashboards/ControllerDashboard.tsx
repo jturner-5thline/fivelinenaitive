@@ -90,6 +90,29 @@ function useCreditCardBalances() {
   });
 }
 
+/* ─── Firm Liquidity: Chase & M&T bank accounts across all realms ─── */
+function useFirmLiquidity() {
+  return useQuery({
+    queryKey: ['controller-firm-liquidity'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_accounts')
+        .select('name, current_balance, realm_id')
+        .eq('account_type', 'Bank')
+        .or('name.ilike.%chase%,name.ilike.%m&t%,name.ilike.%m & t%');
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => ({
+          name: row.name,
+          balance: Number(row.current_balance) || 0,
+        }))
+        .sort((a, b) => b.balance - a.balance);
+    },
+  });
+}
+
 /* ─── Shared chart card wrapper ─── */
 function ChartCard({
   title,
@@ -153,6 +176,7 @@ function CurrencyTooltip({ active, payload, label }: any) {
 export function ControllerDashboard() {
   const finservRevenue = useRevenueByClient(FINSERV_REALM_ID);
   const debtRevenue = useRevenueByClient(DEBT_REALM_ID);
+  const firmLiquidity = useFirmLiquidity();
   const creditCards = useCreditCardBalances();
 
   return (
@@ -242,6 +266,37 @@ export function ControllerDashboard() {
               />
               <Tooltip content={<CurrencyTooltip />} />
               <Bar dataKey="balance" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </ChartCard>
+
+      {/* Firm Liquidity */}
+      <ChartCard
+        title="Firm Liquidity"
+        subtitle="All Connected Entities"
+        isLoading={firmLiquidity.isLoading}
+        isError={firmLiquidity.isError}
+        isEmpty={!firmLiquidity.data?.length}
+      >
+        <div className="h-[280px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={firmLiquidity.data} margin={{ bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                tickFormatter={(v) => truncateLabel(v)}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis
+                tickFormatter={formatCurrency}
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+              />
+              <Tooltip content={<CurrencyTooltip />} />
+              <Bar dataKey="balance" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
