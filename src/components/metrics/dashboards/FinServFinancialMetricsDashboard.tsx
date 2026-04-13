@@ -247,9 +247,13 @@ export function FinServFinancialMetricsDashboard() {
                   <BarChart data={profits.quarters}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
-                    <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
+                    <YAxis
+                      tickFormatter={fmtCurrency}
+                      tick={{ fontSize: 10 }}
+                      domain={[(min: number) => Math.min(min, 0), (max: number) => Math.max(max, 0)]}
+                    />
                     <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Operating Profit']} />
-                    <ReferenceLine y={0} stroke="hsl(var(--border))" />
+                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} />
                     <Bar dataKey="operatingProfit" fill="hsl(var(--primary))" name="Operating Profit" shape={createGlassBarShape({ radius: 4 })}>
                       {profits.quarters.map((entry, i) => (
                         <Cell key={i} fill={entry.operatingProfit >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
