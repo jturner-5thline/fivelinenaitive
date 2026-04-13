@@ -56,6 +56,35 @@ const ALERT_TRIGGERS = ['term_sheet_request', 'nda_request', 'info_request'];
 // Hot engagement threshold
 const HOT_ENGAGEMENT_THRESHOLD = 30;
 
+// Check if a deal is in a notification-suppressed state
+async function isDealSuppressed(supabase: any, dealId: string): Promise<boolean> {
+  const { data: deal } = await supabase
+    .from('deals')
+    .select('status, stage, pipeline_id')
+    .eq('id', dealId)
+    .maybeSingle();
+  
+  if (!deal) return false;
+  
+  const status = (deal.status || '').toLowerCase();
+  const stage = (deal.stage || '').toLowerCase();
+  
+  if (status === 'archived' || status === 'on-hold' || status === 'on_hold') return true;
+  if (stage === 'on-hold' || stage === 'on_hold') return true;
+  
+  // Check if pipeline is "In Development"
+  if (deal.pipeline_id) {
+    const { data: pipeline } = await supabase
+      .from('deal_pipelines')
+      .select('name')
+      .eq('id', deal.pipeline_id)
+      .maybeSingle();
+    if (pipeline && pipeline.name.toLowerCase().includes('in development')) return true;
+  }
+  
+  return false;
+}
+
 // Alert type to title/message mapping
 function getAlertContent(alertType: string, dealName: string, lenderName?: string, message?: string, engagementScore?: number) {
   const lender = lenderName || 'A lender';
