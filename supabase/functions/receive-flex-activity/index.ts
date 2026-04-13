@@ -369,8 +369,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Send email notification to the deal manager
-      if (internalDealId) {
+      // Send email notification to the deal manager (skip if deal is suppressed)
+      if (internalDealId && !(await isDealSuppressed(supabase, internalDealId))) {
         const { data: deal } = await supabase
           .from('deals')
           .select('company, user_id, manager')
@@ -588,8 +588,9 @@ Deno.serve(async (req) => {
         
         let alertSent = false;
 
-        // Send alerts for high-priority events — prefer deal manager over deal creator
-        if (deal && ALERT_TRIGGERS.includes(event.event_type)) {
+        // Send alerts for high-priority events — skip if deal is suppressed
+        const suppressed = await isDealSuppressed(supabase, dealId);
+        if (deal && ALERT_TRIGGERS.includes(event.event_type) && !suppressed) {
           let alertUserId = deal.user_id;
 
           // Resolve deal manager name to user_id
