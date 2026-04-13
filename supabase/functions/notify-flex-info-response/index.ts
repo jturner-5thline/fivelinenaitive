@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,7 @@ interface NotifyPayload {
   user_email?: string;
   lender_name?: string;
   company_name?: string;
+  denial_message?: string;
 }
 
 Deno.serve(async (req) => {
