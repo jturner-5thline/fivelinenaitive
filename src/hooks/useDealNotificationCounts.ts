@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
+import { isDealNotificationSuppressedById } from '@/utils/dealNotificationSuppression';
 let instanceCounter = 0;
 
 // Batch an array into chunks to avoid URL length limits
