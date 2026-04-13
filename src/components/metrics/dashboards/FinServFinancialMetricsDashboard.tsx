@@ -1,16 +1,435 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { BarChart3 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
+  LineChart, Line, ComposedChart, Legend, Cell, ReferenceLine,
+} from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
+import {
+  useFinServTotalRevenue,
+  useFinServQuarterlyProfits,
+  useFinServRevenueByClient,
+  useFinServCashflow,
+  useFinServActiveClients,
+} from '@/hooks/useFinServFinancialMetrics';
+import {
+  useQBStackedFinServRevenue,
+  FINSERV_STACKED_CATEGORIES,
+} from '@/hooks/useQBStackedFinServRevenue';
+import {
+  buildQuarterOptions,
+  getCurrentQuarter,
+  type QuarterOption,
+} from '@/hooks/useQBQuarterlyRevenue';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+// ────────────────────────────────────────────────────────────
+// Formatters
+// ────────────────────────────────────────────────────────────
+
+const fmtCurrency = (v: number) => {
+  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(1)}k`;
+  return `$${v.toFixed(0)}`;
+};
+
+const fmtCurrencyFull = (v: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
+
+const fmtPct = (v: number) => `${v.toFixed(1)}%`;
+
+// ────────────────────────────────────────────────────────────
+// Shared widget wrappers
+// ────────────────────────────────────────────────────────────
+
+function WidgetLoading() {
+  return (
+    <div className="space-y-3 p-4">
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="h-[180px] w-full" />
+    </div>
+  );
+}
+
+function WidgetError({ message }: { message?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+      <AlertCircle className="h-8 w-8 mb-2 text-destructive/60" />
+      <p className="text-sm">{message || 'Failed to load data'}</p>
+    </div>
+  );
+}
+
+function WidgetEmpty({ message }: { message?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+      <p className="text-sm">{message || 'No data for this period'}</p>
+    </div>
+  );
+}
+
+function PlaceholderWidget({ title }: { title: string }) {
+  return (
+    <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Badge variant="outline" className="w-fit text-xs">Monthly · Past 6 months</Badge>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <Clock className="h-8 w-8 mb-2 opacity-40" />
+          <p className="text-sm font-medium">Formula pending</p>
+          <p className="text-xs mt-1 opacity-60">This widget is configured but awaiting calculation logic</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function VarianceIndicator({ value, suffix = '' }: { value: number; suffix?: string }) {
+  if (value === 0)
+    return <span className="text-xs text-muted-foreground flex items-center gap-0.5"><Minus className="h-3 w-3" /> 0{suffix}</span>;
+  if (value > 0)
+    return <span className="text-xs text-green-500 flex items-center gap-0.5"><TrendingUp className="h-3 w-3" /> +{suffix === '%' ? fmtPct(value) : fmtCurrency(value)}</span>;
+  return <span className="text-xs text-red-500 flex items-center gap-0.5"><TrendingDown className="h-3 w-3" /> {suffix === '%' ? fmtPct(value) : fmtCurrency(value)}</span>;
+}
+
+// ────────────────────────────────────────────────────────────
+// Dashboard
+// ────────────────────────────────────────────────────────────
 
 export function FinServFinancialMetricsDashboard() {
+  const quarterOpts = useMemo(() => buildQuarterOptions(8), []);
+  const [selectedQuarter, setSelectedQuarter] = useState<QuarterOption>(getCurrentQuarter());
+
+  // Data hooks
+  const totalRev = useFinServTotalRevenue(selectedQuarter);
+  const profits = useFinServQuarterlyProfits(6);
+  const revenueByClient = useFinServRevenueByClient(selectedQuarter, selectedQuarter.months.length - 1);
+  const cashflow = useFinServCashflow();
+  const stacked = useQBStackedFinServRevenue(selectedQuarter);
+  const activeClients = useFinServActiveClients();
+
   return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <Card className="max-w-md w-full">
-        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-          <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-1">FinServ Financial Metrics</h3>
-          <p className="text-sm text-muted-foreground">No widgets configured for this dashboard.</p>
+    <div className="space-y-6">
+      {/* Quarter selector */}
+      <div className="flex items-center gap-3">
+        <Select
+          value={selectedQuarter.value}
+          onValueChange={(v) => {
+            const q = quarterOpts.find(o => o.value === v);
+            if (q) setSelectedQuarter(q);
+          }}
+        >
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {quarterOpts.map(q => (
+              <SelectItem key={q.value} value={q.value} className="text-xs">{q.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* ── Row 0: Active Clients KPI ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+          <CardContent className="p-4">
+            {activeClients.isLoading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : activeClients.error ? (
+              <WidgetError />
+            ) : (
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Active Clients</p>
+                <div className="flex items-end gap-3 mt-1">
+                  <span className="text-3xl font-bold text-foreground">{activeClients.currentCount}</span>
+                  <VarianceIndicator value={activeClients.variance} />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">vs prior period ({activeClients.priorCount})</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Row 1: Total Revenue ── */}
+      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+          <Badge variant="outline" className="w-fit text-xs">Monthly · {selectedQuarter.label}</Badge>
+        </CardHeader>
+        <CardContent>
+          {totalRev.isLoading ? <WidgetLoading /> : totalRev.error ? <WidgetError /> : totalRev.months.every(m => m.amount === 0) ? <WidgetEmpty /> : (
+            <div className="h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={totalRev.months}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Revenue']} />
+                  <Bar dataKey="amount" fill="hsl(var(--primary))" name="Revenue" shape={createGlassBarShape({ radius: 4 })} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* ── Row 2: Gross Profit $ + Gross Margin % ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Gross Profit $</CardTitle>
+            <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
+          </CardHeader>
+          <CardContent>
+            {profits.isLoading ? <WidgetLoading /> : profits.quarters.every(q => q.grossProfit === 0) ? <WidgetEmpty /> : (
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={profits.quarters}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                    <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Gross Profit']} />
+                    <Bar dataKey="grossProfit" fill="hsl(var(--chart-2))" name="Gross Profit" shape={createGlassBarShape({ radius: 4 })} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Gross Profit Margin %</CardTitle>
+            <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
+          </CardHeader>
+          <CardContent>
+            {profits.isLoading ? <WidgetLoading /> : profits.quarters.every(q => q.grossMargin === 0) ? <WidgetEmpty /> : (
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={profits.quarters}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                    <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} domain={[0, 100]} />
+                    <Tooltip formatter={(v: number) => [fmtPct(v), 'Gross Margin']} />
+                    <Bar dataKey="grossMargin" fill="hsl(160, 65%, 50%)" name="Gross Margin %" shape={createGlassBarShape({ radius: 4 })} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Row 3: Operating Profit $ + Operating Margin % ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Operating Profit $</CardTitle>
+            <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
+          </CardHeader>
+          <CardContent>
+            {profits.isLoading ? <WidgetLoading /> : profits.quarters.every(q => q.operatingProfit === 0) ? <WidgetEmpty /> : (
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={profits.quarters}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                    <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Operating Profit']} />
+                    <ReferenceLine y={0} stroke="hsl(var(--border))" />
+                    <Bar dataKey="operatingProfit" fill="hsl(var(--primary))" name="Operating Profit" shape={createGlassBarShape({ radius: 4 })}>
+                      {profits.quarters.map((entry, i) => (
+                        <Cell key={i} fill={entry.operatingProfit >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Operating Margin %</CardTitle>
+            <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
+          </CardHeader>
+          <CardContent>
+            {profits.isLoading ? <WidgetLoading /> : profits.quarters.every(q => q.operatingMargin === 0) ? <WidgetEmpty /> : (
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={profits.quarters}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                    <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(v: number) => [fmtPct(v), 'Operating Margin']} />
+                    <ReferenceLine y={0} stroke="hsl(var(--border))" />
+                    <Bar dataKey="operatingMargin" fill="hsl(35, 85%, 55%)" name="Operating Margin %" shape={createGlassBarShape({ radius: 4 })}>
+                      {profits.quarters.map((entry, i) => (
+                        <Cell key={i} fill={entry.operatingMargin >= 0 ? 'hsl(35, 85%, 55%)' : 'hsl(var(--destructive))'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Row 4: FinServ Cashflow ── */}
+      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">FinServ Cashflow</CardTitle>
+          <Badge variant="outline" className="w-fit text-xs">Monthly · Last 12 months</Badge>
+        </CardHeader>
+        <CardContent>
+          {cashflow.isLoading ? <WidgetLoading /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
+            <div className="h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={cashflow.points}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={50} />
+                  <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Free Cash Flow']} />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" />
+                  <Bar dataKey="value" fill="hsl(var(--primary))" name="Cash Flow" shape={createGlassBarShape({ radius: 4 })}>
+                    {cashflow.points.map((entry, i) => (
+                      <Cell key={i} fill={entry.value >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
+                    ))}
+                  </Bar>
+                  <Line type="monotone" dataKey="value" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={false} name="Trend" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Row 5: Active Clients trend ── */}
+      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
+          <Badge variant="outline" className="w-fit text-xs">Monthly · Past 6 months</Badge>
+        </CardHeader>
+        <CardContent>
+          {activeClients.isLoading ? <WidgetLoading /> : activeClients.error ? <WidgetError /> : activeClients.trend.every(t => t.count === 0) ? <WidgetEmpty message="No active FinServ clients yet" /> : (
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={activeClients.trend}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip formatter={(v: number, name: string) => [
+                    name === 'Trend' ? v : v,
+                    name,
+                  ]} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" name="Active Clients" shape={createGlassBarShape({ radius: 4 })} />
+                  <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ r: 3 }} name="Trend" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Row 6: Revenue Change by Client ── */}
+      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Revenue Change by Client</CardTitle>
+          <Badge variant="outline" className="w-fit text-xs">
+            {revenueByClient.selectedMonthLabel} vs {revenueByClient.priorMonthLabel}
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          {revenueByClient.isLoading ? <WidgetLoading /> : revenueByClient.error ? <WidgetError /> : revenueByClient.clients.length === 0 ? <WidgetEmpty /> : (
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueByClient.clients.slice(0, 15)} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis
+                    dataKey="client"
+                    tick={{ fontSize: 9 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    interval={0}
+                  />
+                  <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(v: number, name: string) => [fmtCurrencyFull(v), name]}
+                    labelFormatter={(label) => `Client: ${label}`}
+                  />
+                  <Legend />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" />
+                  <Bar dataKey="current" fill="hsl(var(--primary))" name={revenueByClient.selectedMonthLabel} shape={createGlassBarShape({ radius: 4, topSegmentKey: 'current', dataKey: 'current' })} />
+                  <Bar dataKey="variance" name="Variance" shape={createGlassBarShape({ radius: 4 })}>
+                    {revenueByClient.clients.slice(0, 15).map((entry, i) => (
+                      <Cell key={i} fill={entry.variance >= 0 ? 'hsl(160, 65%, 50%)' : 'hsl(var(--destructive))'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Row 7: Income by Product/Service (stacked) ── */}
+      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Income by Product/Service</CardTitle>
+          <Badge variant="outline" className="w-fit text-xs">Monthly · {selectedQuarter.label} · Excl. null customers</Badge>
+        </CardHeader>
+        <CardContent>
+          {stacked.isLoading ? <WidgetLoading /> : stacked.months.every(m => m.totalRevenue === 0) ? <WidgetEmpty /> : (
+            <div className="h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stacked.months}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(v: number) => [fmtCurrencyFull(v)]} />
+                  <Legend />
+                  {FINSERV_STACKED_CATEGORIES.map((cat, idx) => (
+                    <Bar
+                      key={cat.key}
+                      dataKey={cat.key}
+                      stackId="income"
+                      fill={cat.color}
+                      name={cat.label}
+                      shape={createGlassBarShape({
+                        radius: 4,
+                        topSegmentKey: FINSERV_STACKED_CATEGORIES[FINSERV_STACKED_CATEGORIES.length - 1].key,
+                        dataKey: cat.key,
+                      })}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Row 8: Placeholder widgets ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PlaceholderWidget title="Revenue per Hour" />
+        <PlaceholderWidget title="Profit per Hour" />
+      </div>
     </div>
   );
 }
