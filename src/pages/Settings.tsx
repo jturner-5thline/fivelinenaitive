@@ -33,6 +33,7 @@ import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemp
 import { KPICardSettings } from '@/components/settings/KPICardSettings';
 import { AIConfigurationSettings } from '@/components/settings/AIConfigurationSettings';
 import { OutboundEmailTemplatesSettings } from '@/components/settings/OutboundEmailTemplatesSettings';
+import { EmailWorkflowsSettings } from '@/components/settings/EmailWorkflowsSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
@@ -281,6 +282,7 @@ export default function Settings() {
                   {isVisible('email-snippets') && <EmailSnippetsSettings />}
                   {isVisible('email-labels') && <EmailLabelsSettings />}
                   {isVisible('email-templates-outbound') && <OutboundEmailTemplatesSettings isAdmin={isAdmin} />}
+                  <EmailWorkflowsSettings isAdmin={isAdmin} />
                   {isVisible('distribution-stats') && <DistributionStatsSettings />}
                 </TabsContent>
 
