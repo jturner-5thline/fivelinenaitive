@@ -621,8 +621,8 @@ Deno.serve(async (req) => {
           alertSent = true;
         }
 
-        // Check for hot engagement after each event
-        if (deal) {
+        // Check for hot engagement after each event (skip if suppressed)
+        if (deal && !suppressed) {
           await checkAndTriggerHotEngagement(supabase, dealId, deal.company, deal.user_id);
         }
 
