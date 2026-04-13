@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
+import { isDealNotificationSuppressedById } from '@/utils/dealNotificationSuppression';
 
 /**
  * Fetches the total count of actionable FLEx info notifications
@@ -26,7 +27,7 @@ export function useMyDealNotifications() {
       // Find deals where current user is manager or analyst
       const { data: deals, error: dealsError } = await supabase
         .from('deals')
-        .select('id, status, stage')
+        .select('id, status, stage, pipeline_id')
         .or(`manager.eq.${displayName},analyst.eq.${displayName}`);
 
       if (dealsError) {
@@ -41,9 +42,9 @@ export function useMyDealNotifications() {
         return;
       }
 
-      // Exclude archived and closed-lost deals from notification counts
+      // Exclude suppressed deals (archived, on-hold, In Development pipeline)
       const activeDeals = (deals || []).filter(
-        (d: any) => d.status !== 'archived' && d.stage !== 'closed-lost'
+        (d: any) => !isDealNotificationSuppressedById(d)
       );
       if (activeDeals.length === 0) {
         setCount(0);

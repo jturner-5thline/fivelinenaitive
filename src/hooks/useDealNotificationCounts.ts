@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
+import { isDealNotificationSuppressedById } from '@/utils/dealNotificationSuppression';
 let instanceCounter = 0;
 
 // Batch an array into chunks to avoid URL length limits
@@ -28,18 +29,22 @@ export function useDealNotificationCounts(dealIds: string[]) {
     try {
       // Batch deal ID lookups in chunks of 50 to avoid URL length limits
       const dealChunks = chunk(dealIds, 50);
-      const allActiveDeals: { id: string; stage: string }[] = [];
+      const allActiveDeals: { id: string; stage: string; status: string; pipeline_id: string | null }[] = [];
 
       for (const ids of dealChunks) {
         const { data: activeDeals } = await supabase
           .from('deals')
-          .select('id, stage')
-          .in('id', ids)
-          .not('status', 'in', '("archived","in_development")');
-        if (activeDeals) allActiveDeals.push(...activeDeals);
+          .select('id, stage, status, pipeline_id')
+          .in('id', ids);
+        if (activeDeals) allActiveDeals.push(...(activeDeals as any[]));
       }
 
-      const activeDealIds = allActiveDeals
+      // Filter out suppressed deals
+      const nonSuppressedDeals = allActiveDeals.filter(
+        (deal) => !isDealNotificationSuppressedById(deal)
+      );
+
+      const activeDealIds = nonSuppressedDeals
         .filter((deal) => isPostSubmissionDealStage(deal.stage))
         .map((deal) => deal.id);
       if (activeDealIds.length === 0) {

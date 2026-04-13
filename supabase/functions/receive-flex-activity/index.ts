@@ -56,6 +56,35 @@ const ALERT_TRIGGERS = ['term_sheet_request', 'nda_request', 'info_request'];
 // Hot engagement threshold
 const HOT_ENGAGEMENT_THRESHOLD = 30;
 
+// Check if a deal is in a notification-suppressed state
+async function isDealSuppressed(supabase: any, dealId: string): Promise<boolean> {
+  const { data: deal } = await supabase
+    .from('deals')
+    .select('status, stage, pipeline_id')
+    .eq('id', dealId)
+    .maybeSingle();
+  
+  if (!deal) return false;
+  
+  const status = (deal.status || '').toLowerCase();
+  const stage = (deal.stage || '').toLowerCase();
+  
+  if (status === 'archived' || status === 'on-hold' || status === 'on_hold') return true;
+  if (stage === 'on-hold' || stage === 'on_hold') return true;
+  
+  // Check if pipeline is "In Development"
+  if (deal.pipeline_id) {
+    const { data: pipeline } = await supabase
+      .from('deal_pipelines')
+      .select('name')
+      .eq('id', deal.pipeline_id)
+      .maybeSingle();
+    if (pipeline && pipeline.name.toLowerCase().includes('in development')) return true;
+  }
+  
+  return false;
+}
+
 // Alert type to title/message mapping
 function getAlertContent(alertType: string, dealName: string, lenderName?: string, message?: string, engagementScore?: number) {
   const lender = lenderName || 'A lender';
@@ -340,8 +369,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Send email notification to the deal manager
-      if (internalDealId) {
+      // Send email notification to the deal manager (skip if deal is suppressed)
+      if (internalDealId && !(await isDealSuppressed(supabase, internalDealId))) {
         const { data: deal } = await supabase
           .from('deals')
           .select('company, user_id, manager')
@@ -559,8 +588,9 @@ Deno.serve(async (req) => {
         
         let alertSent = false;
 
-        // Send alerts for high-priority events — prefer deal manager over deal creator
-        if (deal && ALERT_TRIGGERS.includes(event.event_type)) {
+        // Send alerts for high-priority events — skip if deal is suppressed
+        const suppressed = await isDealSuppressed(supabase, dealId);
+        if (deal && ALERT_TRIGGERS.includes(event.event_type) && !suppressed) {
           let alertUserId = deal.user_id;
 
           // Resolve deal manager name to user_id
@@ -591,8 +621,8 @@ Deno.serve(async (req) => {
           alertSent = true;
         }
 
-        // Check for hot engagement after each event
-        if (deal) {
+        // Check for hot engagement after each event (skip if suppressed)
+        if (deal && !suppressed) {
           await checkAndTriggerHotEngagement(supabase, dealId, deal.company, deal.user_id);
         }
 

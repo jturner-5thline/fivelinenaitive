@@ -18807,6 +18807,10 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_deal_notification_suppressed: {
+        Args: { _deal_id: string }
+        Returns: boolean
+      }
       is_demo_user: { Args: { _user_id: string }; Returns: boolean }
       is_same_company_as_user: {
         Args: { _current_user_id: string; _deal_owner_id: string }
