@@ -92,6 +92,7 @@ import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
+import { DealDetailSideNavigation } from '@/components/deal/DealDetailSideNavigation';
 
 import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
@@ -5188,6 +5189,14 @@ export default function DealDetail() {
         dealStatus={deal.status}
         dealManager={deal.manager}
         dealNotes={deal.notes}
+      />
+
+      {/* Floating left/right pipeline navigation arrows */}
+      <DealDetailSideNavigation
+        currentDealId={deal.id}
+        pipelineId={deal.pipelineId}
+        dealClass={deal.dealClass}
+        companyId={company?.id}
       />
     </>
   );
