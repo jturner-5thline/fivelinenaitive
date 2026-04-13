@@ -81,7 +81,8 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
     notificationId: string, 
     notificationDealId: string, 
     status: 'approved' | 'denied',
-    notification: FlexInfoNotification
+    notification: FlexInfoNotification,
+    denialMessage?: string
   ) => {
     try {
       const { error } = await supabase.functions.invoke('notify-flex-info-response', {
@@ -92,14 +93,18 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
           user_email: notification.user_email,
           lender_name: notification.lender_name,
           company_name: notification.company_name,
+          denial_message: denialMessage,
         },
       });
       
       if (error) {
         console.error('Error notifying Flex:', error);
+        return false;
       }
+      return true;
     } catch (error) {
       console.error('Error calling notify-flex-info-response:', error);
+      return false;
     }
   }, []);
 
@@ -131,11 +136,17 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
     }
   }, [notifyFlex]);
 
-  const denyAccess = useCallback(async (notificationId: string) => {
+  const denyAccess = useCallback(async (notificationId: string, denialMessage?: string) => {
     const notification = notificationsRef.current.find(n => n.id === notificationId);
     if (!notification) return false;
 
     try {
+      // Send denial email to the lender first — only mark as denied if send succeeds
+      if (denialMessage && notification.user_email) {
+        const sent = await notifyFlex(notificationId, notification.deal_id, 'denied', notification, denialMessage);
+        if (!sent) return false;
+      }
+
       const { error } = await supabase
         .from('flex_info_notifications')
         .update({ status: 'denied' })
@@ -149,8 +160,10 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
         )
       );
 
-      // Notify Flex about the denial
-      notifyFlex(notificationId, notification.deal_id, 'denied', notification);
+      // If no message was provided (legacy path), still notify Flex
+      if (!denialMessage || !notification.user_email) {
+        notifyFlex(notificationId, notification.deal_id, 'denied', notification);
+      }
 
       return true;
     } catch (error) {
