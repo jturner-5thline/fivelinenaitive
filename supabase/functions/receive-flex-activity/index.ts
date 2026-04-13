@@ -441,7 +441,7 @@ Deno.serve(async (req) => {
         // Get deal info for alerts
         const { data: deal } = await supabase
           .from("deals")
-          .select("company, user_id")
+          .select("company, user_id, manager")
           .eq("id", dealId)
           .single();
 
