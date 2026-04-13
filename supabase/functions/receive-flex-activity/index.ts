@@ -559,14 +559,31 @@ Deno.serve(async (req) => {
         
         let alertSent = false;
 
-        // Send alerts for high-priority events
+        // Send alerts for high-priority events — prefer deal manager over deal creator
         if (deal && ALERT_TRIGGERS.includes(event.event_type)) {
+          let alertUserId = deal.user_id;
+
+          // Resolve deal manager name to user_id
+          if (deal.manager) {
+            const managerName = deal.manager.trim().toLowerCase();
+            const { data: managerProfile } = await supabase
+              .from('profiles')
+              .select('user_id')
+              .or(`display_name.ilike.${managerName},first_name.ilike.${managerName}`)
+              .limit(1)
+              .maybeSingle();
+
+            if (managerProfile?.user_id) {
+              alertUserId = managerProfile.user_id;
+            }
+          }
+
           await sendFlexAlert(
             supabase,
             event.event_type,
             dealId,
             deal.company,
-            deal.user_id,
+            alertUserId,
             event.lender_name,
             event.lender_email,
             event.message
