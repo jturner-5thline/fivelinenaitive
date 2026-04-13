@@ -40,6 +40,7 @@ export async function checkStageChangeWorkflows(
 ): Promise<void> {
   if (!isFifthLine(ctx.companyId)) return;
 
+  // 1. Legacy code-defined workflows
   const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
     w => w.triggerType === 'stage_enter' && w.triggerStage === newStage
   );
@@ -47,6 +48,9 @@ export async function checkStageChangeWorkflows(
   for (const workflow of matched) {
     await createPromptFromWorkflow(workflow, ctx, `Deal moved to stage "${newStage}"${oldStage ? ` from "${oldStage}"` : ''}`);
   }
+
+  // 2. DB-stored email_workflows (stage_enter trigger type)
+  await checkDbStageWorkflows(ctx, newStage, oldStage);
 }
 
 /**
