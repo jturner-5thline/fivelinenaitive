@@ -5189,6 +5189,14 @@ export default function DealDetail() {
         dealManager={deal.manager}
         dealNotes={deal.notes}
       />
+
+      {/* Floating left/right pipeline navigation arrows */}
+      <DealDetailSideNavigation
+        currentDealId={deal.id}
+        pipelineId={deal.pipelineId}
+        dealClass={deal.dealClass}
+        companyId={company?.id}
+      />
     </>
   );
 }
