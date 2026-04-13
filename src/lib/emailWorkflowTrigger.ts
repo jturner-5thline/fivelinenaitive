@@ -257,13 +257,18 @@ async function checkDbStageWorkflows(
       .limit(1);
     if (pendingPrompt && pendingPrompt.length > 0) continue;
 
-    // Resolve template
+    // Resolve template — skip prompt if template is inactive or missing
     const { data: template } = await supabase
       .from('outbound_email_templates' as any)
       .select('*')
       .eq('id', wf.email_template_id)
       .eq('is_active', true)
       .maybeSingle();
+
+    if (!template) {
+      console.warn(`[email-workflow] Skipping workflow "${wf.name}": mapped template is inactive or missing`);
+      continue;
+    }
 
     const subject = mergeTemplate(
       (template as any)?.subject_line || wf.default_subject || '',
