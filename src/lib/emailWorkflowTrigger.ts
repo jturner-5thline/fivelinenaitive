@@ -40,6 +40,7 @@ export async function checkStageChangeWorkflows(
 ): Promise<void> {
   if (!isFifthLine(ctx.companyId)) return;
 
+  // 1. Legacy code-defined workflows
   const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
     w => w.triggerType === 'stage_enter' && w.triggerStage === newStage
   );
@@ -47,6 +48,9 @@ export async function checkStageChangeWorkflows(
   for (const workflow of matched) {
     await createPromptFromWorkflow(workflow, ctx, `Deal moved to stage "${newStage}"${oldStage ? ` from "${oldStage}"` : ''}`);
   }
+
+  // 2. DB-stored email_workflows (stage_enter trigger type)
+  await checkDbStageWorkflows(ctx, newStage, oldStage);
 }
 
 /**
@@ -200,5 +204,117 @@ async function resolveRecipients(
       return [{ name: 'Deal Manager', email: '' }];
     default:
       return [];
+  }
+}
+
+/**
+ * Check DB-stored email_workflows for stage_enter triggers.
+ * Normalizes stage names (lowercase, trimmed) for robust matching.
+ * Handles preventDuplicateSend and logs events to email_workflow_events.
+ */
+async function checkDbStageWorkflows(
+  ctx: TriggerContext,
+  newStage: string,
+  oldStage?: string
+): Promise<void> {
+  // Fetch active stage_enter workflows for this company
+  const { data: workflows } = await supabase
+    .from('email_workflows' as any)
+    .select('*')
+    .eq('company_id', ctx.companyId)
+    .eq('is_active', true)
+    .eq('show_in_deal_prompt', true)
+    .eq('trigger_type', 'stage_enter');
+
+  if (!workflows || workflows.length === 0) return;
+
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const newNorm = normalize(newStage);
+
+  for (const wf of workflows as any[]) {
+    const stageNorm = normalize(wf.stage_name || '');
+    if (stageNorm !== newNorm) continue;
+
+    // Duplicate prevention: check if already sent for this workflow + deal
+    if (wf.prevent_duplicate_send) {
+      const { data: existing } = await supabase
+        .from('email_workflow_events' as any)
+        .select('id')
+        .eq('workflow_id', wf.id)
+        .eq('deal_id', ctx.dealId)
+        .eq('status', 'sent')
+        .limit(1);
+      if (existing && existing.length > 0) continue;
+    }
+
+    // Also skip if a pending prompt already exists for this workflow+deal
+    const { data: pendingPrompt } = await supabase
+      .from('deal_email_prompts')
+      .select('id')
+      .eq('deal_id', ctx.dealId)
+      .eq('workflow_key', wf.id)
+      .eq('status', 'pending')
+      .limit(1);
+    if (pendingPrompt && pendingPrompt.length > 0) continue;
+
+    // Resolve template
+    const { data: template } = await supabase
+      .from('outbound_email_templates' as any)
+      .select('*')
+      .eq('id', wf.email_template_id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    const subject = mergeTemplate(
+      (template as any)?.subject_line || wf.default_subject || '',
+      ctx
+    );
+    const bodyHtml = mergeTemplate(
+      (template as any)?.body_rich_text || `<p>Email template not found. Please configure it in Settings → Email.</p>`,
+      ctx
+    );
+
+    const recipients = await resolveRecipients(
+      (wf.audience || 'client').toLowerCase(),
+      ctx
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const triggerReason = `Triggered because deal entered "${wf.stage_name}" (${wf.trigger_event})`;
+
+    const { data: promptData } = await supabase.from('deal_email_prompts').insert({
+      deal_id: ctx.dealId,
+      company_id: ctx.companyId,
+      workflow_key: wf.id,
+      workflow_name: wf.name,
+      trigger_reason: triggerReason,
+      email_template_number: wf.email_template_number,
+      recipients_json: recipients,
+      cc_json: [],
+      merged_subject: subject,
+      merged_body_html: bodyHtml,
+      status: 'pending',
+      metadata: {
+        workflow_id: wf.id,
+        template_id: wf.email_template_id,
+        triggered_by: user?.id || null,
+        sequence_type: wf.sequence_type,
+        audience: wf.audience,
+        comm_type: wf.comm_type,
+        requires_approval: wf.requires_approval,
+        prevent_duplicate_send: wf.prevent_duplicate_send,
+      },
+    } as any).select().single();
+
+    // Log to email_workflow_events
+    await supabase.from('email_workflow_events' as any).insert({
+      workflow_id: wf.id,
+      deal_id: ctx.dealId,
+      company_id: ctx.companyId,
+      email_template_id: wf.email_template_id,
+      prompt_id: (promptData as any)?.id || null,
+      status: 'pending_approval',
+      prompt_shown_at: new Date().toISOString(),
+    } as any);
   }
 }

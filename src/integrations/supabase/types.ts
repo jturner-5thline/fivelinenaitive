@@ -8526,6 +8526,181 @@ export type Database = {
         }
         Relationships: []
       }
+      email_workflow_events: {
+        Row: {
+          approved_at: string | null
+          company_id: string
+          created_at: string
+          deal_id: string
+          deferred_at: string | null
+          dismissed_at: string | null
+          email_template_id: string | null
+          id: string
+          prompt_id: string | null
+          prompt_shown_at: string | null
+          sent_at: string | null
+          sent_by_user_id: string | null
+          status: string
+          triggered_at: string
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          company_id: string
+          created_at?: string
+          deal_id: string
+          deferred_at?: string | null
+          dismissed_at?: string | null
+          email_template_id?: string | null
+          id?: string
+          prompt_id?: string | null
+          prompt_shown_at?: string | null
+          sent_at?: string | null
+          sent_by_user_id?: string | null
+          status?: string
+          triggered_at?: string
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          company_id?: string
+          created_at?: string
+          deal_id?: string
+          deferred_at?: string | null
+          dismissed_at?: string | null
+          email_template_id?: string | null
+          id?: string
+          prompt_id?: string | null
+          prompt_shown_at?: string | null
+          sent_at?: string | null
+          sent_by_user_id?: string | null
+          status?: string
+          triggered_at?: string
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_workflow_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_workflow_events_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_workflow_events_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "deal_email_prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_workflow_events_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "email_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_workflows: {
+        Row: {
+          action_type: string
+          audience: string | null
+          auto_recommend_cc: boolean
+          comm_type: string | null
+          company_id: string
+          created_at: string
+          default_subject: string | null
+          email_template_id: string | null
+          email_template_number: number | null
+          email_template_title: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          pipeline_name: string | null
+          prevent_duplicate_send: boolean
+          requires_approval: boolean
+          send_timing: string | null
+          sequence_type: string
+          show_in_deal_prompt: boolean
+          stage_name: string | null
+          trigger_event: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          action_type?: string
+          audience?: string | null
+          auto_recommend_cc?: boolean
+          comm_type?: string | null
+          company_id: string
+          created_at?: string
+          default_subject?: string | null
+          email_template_id?: string | null
+          email_template_number?: number | null
+          email_template_title?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          pipeline_name?: string | null
+          prevent_duplicate_send?: boolean
+          requires_approval?: boolean
+          send_timing?: string | null
+          sequence_type?: string
+          show_in_deal_prompt?: boolean
+          stage_name?: string | null
+          trigger_event: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          audience?: string | null
+          auto_recommend_cc?: boolean
+          comm_type?: string | null
+          company_id?: string
+          created_at?: string
+          default_subject?: string | null
+          email_template_id?: string | null
+          email_template_number?: number | null
+          email_template_title?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          pipeline_name?: string | null
+          prevent_duplicate_send?: boolean
+          requires_approval?: boolean
+          send_timing?: string | null
+          sequence_type?: string
+          show_in_deal_prompt?: boolean
+          stage_name?: string | null
+          trigger_event?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_workflows_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       error_logs: {
         Row: {
           created_at: string
