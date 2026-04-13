@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,7 @@ interface NotifyPayload {
   user_email?: string;
   lender_name?: string;
   company_name?: string;
+  denial_message?: string;
 }
 
 Deno.serve(async (req) => {
@@ -196,6 +198,7 @@ Deno.serve(async (req) => {
           lender_name: payload.lender_name,
           user_email: payload.user_email,
           company_name: payload.company_name,
+          denial_message: payload.denial_message || null,
           flex_notified: flexNotified,
           flex_response: flexResponse,
           responder_name: responderName,
@@ -207,9 +210,93 @@ Deno.serve(async (req) => {
       console.error("Failed to log activity:", logError);
     }
 
+    // Send denial email to the lender if message provided
+    let denialEmailSent = false;
+    if (payload.status === "denied" && payload.denial_message && payload.user_email) {
+      try {
+        const resendApiKey = Deno.env.get("RESEND_API_KEY");
+        if (resendApiKey) {
+          const resend = new Resend(resendApiKey);
+
+          // Get deal company name
+          const { data: dealInfo } = await supabaseAdmin
+            .from("deals")
+            .select("company")
+            .eq("id", payload.deal_id)
+            .maybeSingle();
+
+          const dealName = dealInfo?.company || "a deal";
+          const lenderFirstName = payload.lender_name?.split(" ")[0] || "there";
+          const messageHtml = payload.denial_message.replace(/\n/g, "<br>");
+          const appUrl = "https://naitive.co";
+
+          await resend.emails.send({
+            from: "naitive <noreply@updates.naitive.co>",
+            reply_to: profile?.email || "support@naitive.co",
+            to: [payload.user_email],
+            subject: `naitive: Update on your information request for ${dealName}`,
+            text: `Hi ${lenderFirstName},\n\n${payload.denial_message}\n\nBest regards,\n${responderName}`,
+            html: `
+              <!DOCTYPE html>
+              <html lang="en">
+              <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Information Request Update</title>
+              </head>
+              <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f5f5f5;">
+                  <tr>
+                    <td align="center" style="padding: 40px 20px;">
+                      <table role="presentation" width="500" cellspacing="0" cellpadding="0" border="0" style="max-width: 500px; background: #ffffff; border-radius: 8px; overflow: hidden;">
+                        <tr>
+                          <td style="background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%); padding: 24px 40px; text-align: center;">
+                            <span style="font-size: 36px;">📋</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 32px 40px;">
+                            <h1 style="color: #1a1a1a; font-size: 20px; font-weight: 600; margin: 0 0 16px 0;">Information Request Update</h1>
+                            <p style="color: #4a4a4a; font-size: 15px; line-height: 1.7; margin: 0 0 16px 0;">Hi ${lenderFirstName},</p>
+                            <div style="background-color: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 3px solid #8B5CF6;">
+                              <p style="color: #4a4a4a; font-size: 15px; line-height: 1.7; margin: 0;">${messageHtml}</p>
+                            </div>
+                            <p style="color: #6b7280; font-size: 14px; margin: 0;">Best regards,<br><strong>${responderName}</strong></p>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 24px 40px; border-top: 1px solid #eeeeee; text-align: center;">
+                            <p style="color: #888888; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} naitive. All rights reserved.</p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </body>
+              </html>
+            `,
+          });
+
+          denialEmailSent = true;
+          console.log(`Denial email sent to ${payload.user_email}`);
+        } else {
+          console.log("RESEND_API_KEY not configured, skipping denial email to lender");
+        }
+      } catch (emailError) {
+        console.error("Failed to send denial email to lender:", emailError);
+        // Return error so the client knows the email failed
+        return new Response(
+          JSON.stringify({ error: "Failed to send denial message to lender" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     console.log("Info request response processed successfully", {
       status: payload.status,
       flexNotified,
+      denialEmailSent,
     });
 
     return new Response(
