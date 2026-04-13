@@ -92,6 +92,7 @@ import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
+import { DealDetailSideNavigation } from '@/components/deal/DealDetailSideNavigation';
 
 import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
