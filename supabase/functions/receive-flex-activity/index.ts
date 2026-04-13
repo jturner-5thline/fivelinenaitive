@@ -298,9 +298,9 @@ Deno.serve(async (req) => {
 
       console.log(`Info request stored for deal ${company_name} from ${user_email || user_name}`);
 
-      // Auto-add lender to deal_lenders if we can resolve the internal deal_id
-      if (user_name && deal_id) {
-        // Try to resolve internal deal_id from flex_sync_history
+      // Try to resolve internal deal_id from flex_sync_history
+      let internalDealId: string | null = null;
+      if (deal_id) {
         const { data: syncRecord } = await supabase
           .from('flex_sync_history')
           .select('deal_id')
@@ -308,32 +308,77 @@ Deno.serve(async (req) => {
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
+        internalDealId = syncRecord?.deal_id || null;
+      }
 
-        if (syncRecord?.deal_id) {
-          const lenderName = user_name.trim();
-          const { data: existingLender } = await supabase
+      // Auto-add lender to deal_lenders
+      if (user_name && internalDealId) {
+        const lenderName = user_name.trim();
+        const { data: existingLender } = await supabase
+          .from('deal_lenders')
+          .select('id')
+          .eq('deal_id', internalDealId)
+          .ilike('name', lenderName)
+          .limit(1)
+          .maybeSingle();
+
+        if (!existingLender) {
+          const { error: lenderErr } = await supabase
             .from('deal_lenders')
-            .select('id')
-            .eq('deal_id', syncRecord.deal_id)
-            .ilike('name', lenderName)
-            .limit(1)
-            .maybeSingle();
+            .insert({
+              deal_id: internalDealId,
+              name: lenderName,
+              stage: 'identified',
+              notes: `Auto-added from FLEx info request${user_email ? ` (${user_email})` : ''}`,
+            });
 
-          if (!existingLender) {
-            const { error: lenderErr } = await supabase
-              .from('deal_lenders')
-              .insert({
-                deal_id: syncRecord.deal_id,
-                name: lenderName,
-                stage: 'identified',
-                notes: `Auto-added from FLEx info request${user_email ? ` (${user_email})` : ''}`,
-              });
+          if (lenderErr) {
+            console.error('Failed to auto-add lender from info request:', lenderErr);
+          } else {
+            console.log(`Auto-added lender "${lenderName}" to deal ${internalDealId} from FLEx info request`);
+          }
+        }
+      }
 
-            if (lenderErr) {
-              console.error('Failed to auto-add lender from info request:', lenderErr);
-            } else {
-              console.log(`Auto-added lender "${lenderName}" to deal ${syncRecord.deal_id} from FLEx info request`);
-            }
+      // Send email notification to the deal manager
+      if (internalDealId) {
+        const { data: deal } = await supabase
+          .from('deals')
+          .select('company, user_id, manager')
+          .eq('id', internalDealId)
+          .maybeSingle();
+
+        if (deal) {
+          let managerUserId: string | null = null;
+
+          // Resolve manager name to user_id via profiles
+          if (deal.manager) {
+            const managerName = deal.manager.trim().toLowerCase();
+            const { data: managerProfile } = await supabase
+              .from('profiles')
+              .select('user_id')
+              .or(`display_name.ilike.${managerName},first_name.ilike.${managerName}`)
+              .limit(1)
+              .maybeSingle();
+
+            managerUserId = managerProfile?.user_id || null;
+          }
+
+          // Fall back to deal creator if no manager found
+          const notifyUserId = managerUserId || deal.user_id;
+
+          if (notifyUserId) {
+            console.log(`Sending info request email alert to ${managerUserId ? 'deal manager' : 'deal creator'}: ${notifyUserId}`);
+            await sendFlexAlert(
+              supabase,
+              'info_request',
+              internalDealId,
+              deal.company || company_name || 'Unknown Deal',
+              notifyUserId,
+              user_name,
+              user_email,
+              undefined
+            );
           }
         }
       }
