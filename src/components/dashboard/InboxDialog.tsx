@@ -122,16 +122,15 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     return [...inboxEmails, ...uniqueSent];
   }, [messages, sentMessages, cachedInboxEmails]);
 
-  const handleRefresh = useCallback(() => {
-    listMessages({ maxResults: 50, labelIds: ['INBOX'] });
-    // Also refresh sent
-    import('@/integrations/supabase/client').then(({ supabase }) => {
-      supabase.functions.invoke('gmail-messages', {
+  const handleRefresh = useCallback(async () => {
+    // Sequential: inbox first, then sent, to avoid Nylas rate limits
+    await listMessages({ maxResults: 50, labelIds: ['INBOX'] });
+    try {
+      const { data, error } = await supabase.functions.invoke('gmail-messages', {
         body: { action: 'list', max_results: 50, label_ids: ['SENT'] },
-      }).then(({ data, error }) => {
-        if (!error && data?.messages) setSentMessages(data.messages);
       });
-    });
+      if (!error && data?.messages) setSentMessages(data.messages);
+    } catch { /* ignore */ }
   }, [listMessages]);
 
   if (!status.connected) {
