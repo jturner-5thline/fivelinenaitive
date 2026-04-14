@@ -83,9 +83,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   terms_discussion: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   due_diligence: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
   scheduling: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-  internal: 'bg-muted text-muted-foreground border-border',
-  newsletter: 'bg-muted text-muted-foreground border-border',
-  other: 'bg-muted text-muted-foreground border-border',
+  internal: 'bg-muted text-muted-foreground border-muted',
+  newsletter: 'bg-muted text-muted-foreground border-muted',
+  other: 'bg-muted text-muted-foreground border-muted',
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -115,11 +115,11 @@ function EmailDetailHeader({ email, onClose }: { email: EnrichedEmail; onClose: 
   const SIcon = sentiment.icon;
 
   return (
-    <div className="px-6 pt-6 pb-4 border-b border-border/60 shrink-0">
+    <div className="px-6 pt-6 pb-4 border-b border-white/[0.06] shrink-0">
       <div className="flex items-start justify-between gap-3">
         {/* Sender info */}
         <div className="flex items-center gap-3 min-w-0">
-          <div className="h-10 w-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-semibold text-primary shrink-0">
+          <div className="h-10 w-10 rounded-full bg-primary/15 border border-primary/20 flex items-center justify-center text-sm font-semibold text-primary shrink-0 backdrop-blur-sm">
             {getInitials(email.from_name)}
           </div>
           <div className="min-w-0">
@@ -143,7 +143,7 @@ function EmailDetailHeader({ email, onClose }: { email: EnrichedEmail; onClose: 
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
+          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors shrink-0"
         >
           <X className="h-4 w-4" />
         </button>
@@ -157,11 +157,11 @@ function EmailDetailHeader({ email, onClose }: { email: EnrichedEmail; onClose: 
       {/* Tags row */}
       <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
         {analysis?.category && analysis.category !== 'other' && (
-          <Badge variant="outline" className={cn('text-[10px] h-5 px-2', CATEGORY_COLORS[analysis.category])}>
+          <Badge variant="outline" className={cn('text-[10px] h-5 px-2 border-white/[0.08]', CATEGORY_COLORS[analysis.category])}>
             {CATEGORY_LABELS[analysis.category] || analysis.category}
           </Badge>
         )}
-        <Badge variant="outline" className={cn('text-[10px] h-5 px-2 gap-1', sentiment.className, 'border-current/20')}>
+        <Badge variant="outline" className={cn('text-[10px] h-5 px-2 gap-1 border-white/[0.08]', sentiment.className)}>
           <SIcon className="h-3 w-3" />
           {sentiment.label}
         </Badge>
@@ -206,7 +206,7 @@ function AIAnalysisPanel({ email }: { email: EnrichedEmail }) {
       : [];
 
   return (
-    <div className="mx-6 rounded-lg border border-primary/15 bg-primary/[0.03] p-4">
+    <div className="mx-6 rounded-lg border border-primary/10 bg-primary/[0.04] backdrop-blur-sm p-4">
       <div className="flex items-center gap-2 mb-2.5">
         <div className="p-1 rounded-md bg-primary/10">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -225,7 +225,7 @@ function AIAnalysisPanel({ email }: { email: EnrichedEmail }) {
           {intents.map((intent, i) => (
             <span
               key={i}
-              className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/15 capitalize"
+              className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/10 capitalize"
             >
               {intent}
             </span>
@@ -252,10 +252,10 @@ function SuggestedActionCard({
   return (
     <div
       className={cn(
-        'rounded-lg border p-3 transition-all duration-200',
-        isApproved && 'border-emerald-500/30 bg-emerald-500/[0.04]',
-        isRejected && 'border-destructive/20 bg-destructive/[0.03] opacity-60',
-        isPending && 'border-border/60 bg-background/50 hover:border-border'
+        'rounded-lg border p-3 transition-all duration-200 backdrop-blur-sm',
+        isApproved && 'border-emerald-500/20 bg-emerald-500/[0.06]',
+        isRejected && 'border-destructive/15 bg-destructive/[0.04] opacity-60',
+        isPending && 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1]'
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -265,10 +265,10 @@ function SuggestedActionCard({
             <Badge
               variant="outline"
               className={cn(
-                'text-[9px] h-4 px-1.5 gap-0.5',
+                'text-[9px] h-4 px-1.5 gap-0.5 border-white/[0.08]',
                 action.executorType === 'ai'
-                  ? 'text-primary border-primary/20'
-                  : 'text-muted-foreground border-border'
+                  ? 'text-primary'
+                  : 'text-muted-foreground'
               )}
             >
               {action.executorType === 'ai' ? (
@@ -327,7 +327,7 @@ function ApprovalProgressFooter({
   const canExecute = approvedAI.length > 0;
 
   return (
-    <div className="px-6 py-4 border-t border-border/60 shrink-0 flex items-center justify-between gap-3">
+    <div className="px-6 py-4 border-t border-white/[0.06] shrink-0 flex items-center justify-between gap-3 bg-white/[0.02]">
       <span className="text-xs text-muted-foreground">
         <span className="font-medium text-foreground">{approved.length}</span> of{' '}
         <span className="font-medium text-foreground">{total}</span> approved
@@ -378,7 +378,7 @@ export function EmailDetailModal({ email, open, onOpenChange }: EmailDetailModal
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl w-[95vw] max-h-[85vh] p-0 flex flex-col overflow-hidden gap-0"
+        className="max-w-2xl w-[95vw] max-h-[85vh] p-0 flex flex-col overflow-hidden gap-0 border-white/[0.06] bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/40"
       >
         <EmailDetailHeader email={email} onClose={() => onOpenChange(false)} />
 

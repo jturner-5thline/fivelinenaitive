@@ -21,9 +21,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   terms_discussion: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   due_diligence: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
   scheduling: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-  internal: 'bg-muted text-muted-foreground border-border',
-  newsletter: 'bg-muted text-muted-foreground border-border',
-  other: 'bg-muted text-muted-foreground border-border',
+  internal: 'bg-muted text-muted-foreground border-muted',
+  newsletter: 'bg-muted text-muted-foreground border-muted',
+  other: 'bg-muted text-muted-foreground border-muted',
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -51,6 +51,9 @@ const PRIORITY_STYLES: Record<string, string> = {
   low: 'opacity-80',
 };
 
+// Glass card wrapper class
+const GLASS_CARD = 'h-full flex flex-col border-white/[0.06] bg-card/80 backdrop-blur-md shadow-glass';
+
 function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => void }) {
   const navigate = useNavigate();
   const analysis = email.analysis;
@@ -64,11 +67,13 @@ function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => voi
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       className={cn(
-        'flex items-start gap-3 p-2.5 rounded-lg border group cursor-pointer transition-all duration-150',
-        'hover:bg-muted/40 hover:border-border/80 hover:shadow-sm',
-        'active:scale-[0.995] active:bg-muted/50',
+        'flex items-start gap-3 p-2.5 rounded-lg border group cursor-pointer transition-all duration-200',
+        'hover:bg-white/[0.04] hover:border-white/[0.1] hover:shadow-sm',
+        'active:scale-[0.995]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-        !email.is_read ? 'bg-primary/5 border-primary/20' : 'bg-background/50 border-border/40',
+        !email.is_read
+          ? 'bg-primary/[0.06] border-primary/15'
+          : 'bg-white/[0.02] border-white/[0.06]',
         PRIORITY_STYLES[analysis?.priority || 'medium']
       )}
     >
@@ -87,7 +92,7 @@ function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => voi
             <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
           )}
           {analysis?.category && analysis.category !== 'other' && (
-            <Badge variant="outline" className={cn('text-[9px] h-4 px-1.5 shrink-0', CATEGORY_COLORS[analysis.category])}>
+            <Badge variant="outline" className={cn('text-[9px] h-4 px-1.5 shrink-0 border-white/[0.08]', CATEGORY_COLORS[analysis.category])}>
               {CATEGORY_LABELS[analysis.category] || analysis.category}
             </Badge>
           )}
@@ -162,7 +167,7 @@ export function EmailIntelligenceWidget() {
   // Loading state — checking Gmail connection
   if (isStatusLoading) {
     return (
-      <Card className="h-full flex flex-col border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
+      <Card className={GLASS_CARD}>
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-medium flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -181,7 +186,7 @@ export function EmailIntelligenceWidget() {
   // Not connected state
   if (!status.connected) {
     return (
-      <Card className="h-full flex flex-col border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
+      <Card className={GLASS_CARD}>
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-medium flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -198,7 +203,7 @@ export function EmailIntelligenceWidget() {
               Link your email in Integrations to see your inbox here.
             </p>
           </div>
-          <Button variant="outline" size="sm" className="mt-1" onClick={() => navigate('/integrations')}>
+          <Button variant="outline" size="sm" className="mt-1 border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.08]" onClick={() => navigate('/integrations')}>
             Go to Integrations
           </Button>
         </CardContent>
@@ -209,12 +214,12 @@ export function EmailIntelligenceWidget() {
   // Loading
   if (isLoading && emails.length === 0) {
     return (
-      <Card className="h-full flex flex-col border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
+      <Card className={GLASS_CARD}>
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-medium flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             Email Intelligence
-            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30">Connected</Badge>
+            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/20 bg-green-500/[0.06]">Connected</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -244,15 +249,15 @@ export function EmailIntelligenceWidget() {
 
   return (
     <>
-      <Card className="h-full flex flex-col border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
+      <Card className={GLASS_CARD}>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-medium flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
               Email Intelligence
-              <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30">Live</Badge>
+              <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/20 bg-green-500/[0.06]">Live</Badge>
               {isAnalyzing && (
-                <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30 animate-pulse">
+                <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/20 bg-amber-400/[0.06] animate-pulse">
                   Analyzing...
                 </Badge>
               )}
@@ -261,7 +266,7 @@ export function EmailIntelligenceWidget() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="h-7 w-7 p-0 hover:bg-white/[0.06]"
                 onClick={() => syncEmails(true)}
                 disabled={isLoading}
               >
@@ -270,7 +275,7 @@ export function EmailIntelligenceWidget() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs gap-1"
+                className="h-7 text-xs gap-1 hover:bg-white/[0.06]"
                 onClick={() => navigate('/email-intelligence')}
               >
                 <Inbox className="h-3 w-3" />
