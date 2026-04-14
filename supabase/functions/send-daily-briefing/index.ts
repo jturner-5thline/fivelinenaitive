@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     // Invoke send-transactional-email directly via fetch with service role auth
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
     const response = await fetch(
       `${supabaseUrl}/functions/v1/send-transactional-email`,
       {
@@ -51,6 +52,7 @@ Deno.serve(async (req) => {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${serviceRoleKey}`,
+          "apikey": anonKey,
         },
         body: JSON.stringify({
           templateName: "daily-briefing-ready",
