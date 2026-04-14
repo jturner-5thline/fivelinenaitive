@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { RecipientField, emailStringToArray, emailArrayToString } from './RecipientField';
+import { useEmailContacts } from '@/hooks/useEmailContacts';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
@@ -81,8 +83,8 @@ function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
 
 export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, initialDraft, onDraftChange, onFieldBlur, saveStatus = 'idle', tokenContext }: InlineReplyComposerProps) {
   const [to] = useState(initialDraft?.to ?? replyTo.to_email);
-  const [cc, setCc] = useState(initialDraft?.cc ?? '');
-  const [bcc, setBcc] = useState(initialDraft?.bcc ?? '');
+  const [ccRecipients, setCcRecipients] = useState<string[]>(emailStringToArray(initialDraft?.cc ?? ''));
+  const [bccRecipients, setBccRecipients] = useState<string[]>(emailStringToArray(initialDraft?.bcc ?? ''));
   const [subject] = useState(initialDraft?.subject ?? `Re: ${replyTo.subject}`);
   const [body, setBody] = useState(initialDraft?.body ?? '');
   const [showCcBcc, setShowCcBcc] = useState(false);
@@ -90,6 +92,7 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
   const [attachments, setAttachments] = useState<string[]>(initialDraft?.attachments ?? []);
   const [isExpanded, setIsExpanded] = useState(!!initialDraft?.body);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { search } = useEmailContacts();
 
   // Auto-focus textarea when expanded
   useEffect(() => {
@@ -99,14 +102,14 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
   }, [isExpanded]);
 
   const getCurrentDraft = useCallback((): ReplyDraft => ({
-    to, cc, bcc, subject, body, attachments,
+    to, cc: emailArrayToString(ccRecipients), bcc: emailArrayToString(bccRecipients), subject, body, attachments,
     threadId: replyTo.threadId,
     toName: replyTo.to_name,
-  }), [to, cc, bcc, subject, body, attachments, replyTo]);
+  }), [to, ccRecipients, bccRecipients, subject, body, attachments, replyTo]);
 
   useEffect(() => {
     onDraftChange?.(getCurrentDraft());
-  }, [to, cc, bcc, subject, body, attachments]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [to, ccRecipients, bccRecipients, subject, body, attachments]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasContent = body.trim().length > 0 || attachments.length > 0;
 
@@ -299,14 +302,26 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
       {/* Cc/Bcc fields — only when toggled */}
       {showCcBcc && (
         <div className="px-4 py-1.5 space-y-1 border-b border-border/50">
-          <div className="flex items-center gap-2">
-            <Label className="text-[11px] text-muted-foreground w-6 shrink-0">Cc</Label>
-            <Input value={cc} onChange={e => setCc(e.target.value)} onBlur={handleBlur} placeholder="cc@example.com" className="h-6 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-[11px] text-muted-foreground w-6 shrink-0">Bcc</Label>
-            <Input value={bcc} onChange={e => setBcc(e.target.value)} onBlur={handleBlur} placeholder="bcc@example.com" className="h-6 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
-          </div>
+          <RecipientField
+            label="Cc"
+            recipients={ccRecipients}
+            onChange={setCcRecipients}
+            search={search}
+            placeholder="cc@example.com"
+            labelClassName="w-6"
+            inputClassName="h-6 text-xs"
+            onBlur={handleBlur}
+          />
+          <RecipientField
+            label="Bcc"
+            recipients={bccRecipients}
+            onChange={setBccRecipients}
+            search={search}
+            placeholder="bcc@example.com"
+            labelClassName="w-6"
+            inputClassName="h-6 text-xs"
+            onBlur={handleBlur}
+          />
         </div>
       )}
 
