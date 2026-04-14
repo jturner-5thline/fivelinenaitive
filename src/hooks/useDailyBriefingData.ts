@@ -334,6 +334,8 @@ export function useOperationalData(enabled: boolean) {
       if (error) throw new Error(error.message);
       if (data?.error && !data?.projects) throw new Error(data.error);
       return data as {
+        error?: string;
+        fallback?: boolean;
         summary: {
           total_projects: number;
           overdue_count: number;
