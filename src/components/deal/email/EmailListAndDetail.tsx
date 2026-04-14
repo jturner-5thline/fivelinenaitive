@@ -797,7 +797,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         e.preventDefault();
         handleReply();
       }
-      if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toast.info('Forward coming soon'); }
+      if (e.key === 'f' || e.key === 'F') { e.preventDefault(); handleForward(); }
       if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
     };
     window.addEventListener('keydown', handler);
