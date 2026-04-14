@@ -118,11 +118,37 @@ const isDemoUser = (email?: string) => email === 'demo@5thline.co' || email === 
 let cachedMessages: GmailMessage[] = [];
 let cachedStatus: GmailStatus | null = null;
 
+const GMAIL_STATUS_KEY = 'naitive_gmail_status';
+
+function loadPersistedStatus(): GmailStatus | null {
+  try {
+    const raw = localStorage.getItem(GMAIL_STATUS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as GmailStatus;
+    // If persisted status says connected, trust it for instant hydration
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function persistStatus(status: GmailStatus) {
+  try {
+    localStorage.setItem(GMAIL_STATUS_KEY, JSON.stringify(status));
+  } catch { /* ignore */ }
+}
+
+function clearPersistedStatus() {
+  try { localStorage.removeItem(GMAIL_STATUS_KEY); } catch { /* ignore */ }
+}
+
 export function useGmail() {
   const { user } = useAuth();
   const isDemo = isDemoUser(user?.email ?? undefined);
-  const [status, setStatus] = useState<GmailStatus>(() => cachedStatus || { connected: false });
-  const [isStatusLoading, setIsStatusLoading] = useState(!cachedStatus);
+  const initialStatus = cachedStatus || loadPersistedStatus() || { connected: false };
+  const hasInitialStatus = !!(cachedStatus || loadPersistedStatus());
+  const [status, setStatus] = useState<GmailStatus>(() => initialStatus);
+  const [isStatusLoading, setIsStatusLoading] = useState(!hasInitialStatus);
   const [messages, setMessages] = useState<GmailMessage[]>(() => cachedMessages);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
