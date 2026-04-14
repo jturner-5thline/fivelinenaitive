@@ -141,7 +141,7 @@ function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => voi
 
 export function EmailIntelligenceWidget() {
   const { toggles } = useDashboardLayout();
-  const { status } = useGmail();
+  const { status, isStatusLoading } = useGmail();
   const { emails, stats, isLoading, isAnalyzing, syncEmails } = useEmailIntelligence();
   const navigate = useNavigate();
   const [selectedEmail, setSelectedEmail] = useState<EnrichedEmail | null>(null);
@@ -158,6 +158,25 @@ export function EmailIntelligenceWidget() {
     setIsModalOpen(open);
     if (!open) setSelectedEmail(null);
   };
+
+  // Loading state — checking Gmail connection
+  if (isStatusLoading) {
+    return (
+      <Card className="h-full flex flex-col border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Email Intelligence
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col gap-3 pt-2">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-16 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Not connected state
   if (!status.connected) {
