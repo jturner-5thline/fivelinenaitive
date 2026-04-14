@@ -114,15 +114,15 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
   };
 
   const getCurrentDraft = useCallback((): ReplyDraft => ({
-    to, cc, bcc, subject, body, attachments,
+    to: emailArrayToString(toRecipients), cc: emailArrayToString(ccRecipients), bcc: emailArrayToString(bccRecipients), subject, body, attachments,
     threadId: initialDraft.threadId,
     toName: initialDraft.toName,
-  }), [to, cc, bcc, subject, body, attachments, initialDraft]);
+  }), [toRecipients, ccRecipients, bccRecipients, subject, body, attachments, initialDraft]);
 
   // Notify parent of draft changes
   useEffect(() => {
     onDraftChange?.(getCurrentDraft());
-  }, [to, cc, bcc, subject, body, attachments]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [toRecipients, ccRecipients, bccRecipients, subject, body, attachments]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasContent = body.trim().length > 0 || attachments.length > 0;
 
@@ -154,19 +154,20 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
 
   const executeSend = async () => {
     clearPreSendAlert();
-    if (!to.trim()) { toast.error('Please add a recipient'); return; }
+    if (toRecipients.length === 0) { toast.error('Please add a recipient'); return; }
 
     setIsSending(true);
     await new Promise(r => setTimeout(r, 1200));
 
-    const recipientName = to.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const toEmail = toRecipients[0];
+    const recipientName = toEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     onSend({
       subject,
       from_name: 'You',
       from_email: 'jturner@5thline.co',
       to_name: recipientName,
-      to_email: to.trim(),
+      to_email: toRecipients.join(', '),
       snippet: body.substring(0, 120),
       body_preview: body,
       received_at: new Date().toISOString(),
@@ -182,11 +183,11 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
     });
 
     setIsSending(false);
-    toast.success('Email sent successfully', { description: `To: ${to}`, icon: '✉️' });
+    toast.success('Email sent successfully', { description: `To: ${toRecipients.join(', ')}`, icon: '✉️' });
   };
 
   const handleSend = () => {
-    if (!to.trim()) { toast.error('Please add a recipient'); return; }
+    if (toRecipients.length === 0) { toast.error('Please add a recipient'); return; }
     const passed = runChecks({ subject, body, attachments });
     if (passed) executeSend();
   };
@@ -301,22 +302,43 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
       {/* Fields */}
       <div className="px-3 py-2 space-y-1.5 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Label className="text-[11px] text-muted-foreground w-8 shrink-0">To</Label>
-          <Input value={to} onChange={e => setTo(e.target.value)} onBlur={handleBlur} placeholder="recipient@example.com" className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
+          <RecipientField
+            label="To"
+            recipients={toRecipients}
+            onChange={setToRecipients}
+            search={search}
+            placeholder="recipient@example.com"
+            className="flex-1"
+            labelClassName="w-8"
+            inputClassName="h-7 text-xs"
+            onBlur={handleBlur}
+          />
           <Button variant="ghost" size="sm" className="text-[10px] text-muted-foreground h-6 px-1.5 shrink-0" onClick={() => setShowCcBcc(!showCcBcc)}>
             Cc/Bcc {showCcBcc ? <ChevronUp className="h-2.5 w-2.5 ml-0.5" /> : <ChevronDown className="h-2.5 w-2.5 ml-0.5" />}
           </Button>
         </div>
         {showCcBcc && (
           <>
-            <div className="flex items-center gap-2">
-              <Label className="text-[11px] text-muted-foreground w-8 shrink-0">Cc</Label>
-              <Input value={cc} onChange={e => setCc(e.target.value)} onBlur={handleBlur} className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-[11px] text-muted-foreground w-8 shrink-0">Bcc</Label>
-              <Input value={bcc} onChange={e => setBcc(e.target.value)} onBlur={handleBlur} className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
-            </div>
+            <RecipientField
+              label="Cc"
+              recipients={ccRecipients}
+              onChange={setCcRecipients}
+              search={search}
+              className="flex-1"
+              labelClassName="w-8"
+              inputClassName="h-7 text-xs"
+              onBlur={handleBlur}
+            />
+            <RecipientField
+              label="Bcc"
+              recipients={bccRecipients}
+              onChange={setBccRecipients}
+              search={search}
+              className="flex-1"
+              labelClassName="w-8"
+              inputClassName="h-7 text-xs"
+              onBlur={handleBlur}
+            />
           </>
         )}
         <div className="flex items-center gap-2">
