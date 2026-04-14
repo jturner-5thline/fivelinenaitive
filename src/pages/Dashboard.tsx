@@ -265,6 +265,19 @@ export default function Dashboard() {
                 </Card>
               }
             />
+            {isJTurner && (
+              <Card
+                className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+                onClick={() => setIsBriefingOpen(true)}
+              >
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--accent)/0.2),inset_0_1px_1px_hsl(var(--accent)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-accent/20 before:to-transparent before:rounded-xl">
+                    <Newspaper className="relative z-10 h-7 w-7 text-accent-foreground" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Daily Briefing</span>
+                </div>
+              </Card>
+            )}
           </div>
           </HintTooltip>
 
