@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useUiPreference } from '@/hooks/useUiPreference';
+import { filterEmailsByCategory, EMAIL_CATEGORY_TABS, type EmailCategoryTab } from '@/utils/emailClassifier';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -189,6 +190,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [activeItemId, setActiveItemId] = useState<string>('all_inbox');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [chipFilter, setChipFilter] = useState<ChipFilter>(null);
+  const [categoryTab, setCategoryTab] = useState<EmailCategoryTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
@@ -318,6 +320,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   const filteredEmails = useMemo(() => {
     let filtered = emails.filter(activeItem.filterFn);
+    // Category tab filter (shared classifier)
+    if (categoryTab !== 'all') {
+      filtered = filterEmailsByCategory(filtered, categoryTab);
+    }
     if (viewFilter === 'unread') filtered = filtered.filter(e => !e.is_read);
     if (viewFilter === 'needs_response') filtered = filtered.filter(e => e.needs_response);
     if (chipFilter === 'recent') filtered = filtered.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
@@ -346,7 +352,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, searchQuery, searchFilters]);
+  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters]);
 
   const currentThread = useMemo(() => {
     if (!selectedThread) return null;
@@ -937,7 +943,24 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               )}
             </div>
 
-            {/* Active filter chips */}
+            {/* Category tabs — matches Daily Briefing classification */}
+            <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/30">
+              {EMAIL_CATEGORY_TABS.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setCategoryTab(t.key)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-[10px] font-medium transition-all duration-150 border',
+                    categoryTab === t.key
+                      ? 'bg-primary/20 text-primary border-primary/30'
+                      : 'text-muted-foreground border-transparent hover:bg-muted/40 hover:text-foreground'
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
             {activeFilterChips.length > 0 && (
               <div className="flex flex-wrap gap-1 px-3 py-1.5 border-b border-border/30">
                 {activeFilterChips.map(chip => (
