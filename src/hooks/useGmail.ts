@@ -253,8 +253,12 @@ export function useGmail() {
 
       if (error) throw error;
       
-      setStatus({ connected: false });
+      const disconnected = { connected: false };
+      setStatus(disconnected);
+      cachedStatus = disconnected;
+      clearPersistedStatus();
       setMessages([]);
+      cachedMessages = [];
       setError(null);
     } catch (err: any) {
       console.error('Gmail disconnect error:', err);
