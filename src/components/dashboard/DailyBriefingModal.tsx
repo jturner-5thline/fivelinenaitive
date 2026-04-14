@@ -158,38 +158,22 @@ const NEWS_CATEGORY_CONFIG: Record<string, { icon: React.ElementType; badge: str
   general: { icon: Newspaper, badge: 'Update', variant: 'outline' },
 };
 
-// ── Tab: Catch Up & News ───────────────────────────────────────
+// ── Tab: Catch Up & News (non-deal general updates only) ───────
 function CatchUpTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
   const { data, isLoading } = useCatchUpData(enabled);
-  const [detail, setDetail] = useState<NewsItem | null>(null);
 
   if (isLoading || !data) return <TabSkeleton />;
 
-  const { alerts, highlights, newsItems } = data;
+  // Only show alerts that are NOT deal-related
+  const generalAlerts = data.alerts.filter((a: any) => !a.deal_id);
 
   return (
     <div className="relative h-full">
-      {detail && (
-        <DetailPopup title={detail.title} onClose={() => setDetail(null)}>
-          <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">{detail.summary}</div>
-            {detail.meta?.from_name && <div className="text-sm"><strong>From:</strong> {detail.meta.from_name}</div>}
-            {detail.meta?.lender_name && <div className="text-sm"><strong>Lender:</strong> {detail.meta.lender_name}</div>}
-            {detail.timestamp && <div className="text-sm"><strong>Time:</strong> {format(new Date(detail.timestamp), 'PPp')}</div>}
-            {detail.action && (
-              <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(detail.action!.path)}>
-                {detail.action.label} <ExternalLink className="h-3 w-3 ml-1" />
-              </Button>
-            )}
-          </div>
-        </DetailPopup>
-      )}
-
-      <Section title="Priority Alerts">
-        {alerts.length === 0 ? (
-          <EmptySection message="No priority alerts in this window" />
+      <Section title="General Alerts">
+        {generalAlerts.length === 0 ? (
+          <EmptySection message="No general alerts — deal-specific alerts are in Pipeline & Clients" />
         ) : (
-          alerts.map((a: any) => (
+          generalAlerts.map((a: any) => (
             <BriefingRow
               key={a.id}
               icon={AlertCircle}
@@ -197,56 +181,13 @@ function CatchUpTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (pa
               subtitle={a.user_display_name || undefined}
               badge={a.activity_type}
               time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
-              onClick={() => setDetail({
-                id: a.id,
-                category: 'general',
-                title: a.description,
-                summary: `${a.activity_type} by ${a.user_display_name || 'System'}`,
-                timestamp: a.created_at,
-                action: a.deal_id ? { label: 'Open Deal', path: `/deal/${a.deal_id}` } : undefined,
-              })}
             />
           ))
         )}
       </Section>
 
-      <Section title="Today's Highlights">
-        {highlights.length === 0 ? (
-          <EmptySection message="No noteworthy highlights in this window" />
-        ) : (
-          highlights.map((h: any, i: number) => (
-            <BriefingRow
-              key={i}
-              icon={TrendingUp}
-              title={h.label}
-              subtitle={h.value}
-              badge="Summary"
-              badgeVariant="outline"
-            />
-          ))
-        )}
-      </Section>
-
-      <Section title="What Happened — News Feed">
-        {newsItems.length === 0 ? (
-          <EmptySection message="No catch-up items in this window" />
-        ) : (
-          newsItems.map((item: NewsItem) => {
-            const cfg = NEWS_CATEGORY_CONFIG[item.category] || NEWS_CATEGORY_CONFIG.general;
-            return (
-              <BriefingRow
-                key={item.id}
-                icon={cfg.icon}
-                title={item.title}
-                subtitle={item.summary}
-                badge={cfg.badge}
-                badgeVariant={cfg.variant}
-                time={item.timestamp ? formatDistanceToNow(new Date(item.timestamp), { addSuffix: true }) : ''}
-                onClick={() => setDetail(item)}
-              />
-            );
-          })
-        )}
+      <Section title="Cross-Functional Updates">
+        <EmptySection message="Non-deal catch-up items will appear here as more cross-functional data sources are connected" />
       </Section>
     </div>
   );
