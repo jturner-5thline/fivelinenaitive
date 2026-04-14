@@ -396,6 +396,7 @@ export default function Dashboard() {
           </Tabs>
         </div>
       </div>
+      {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
     </>
   );
 }
