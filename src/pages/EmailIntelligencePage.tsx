@@ -23,9 +23,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   terms_discussion: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   due_diligence: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
   scheduling: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-  internal: 'bg-muted text-muted-foreground border-border',
-  newsletter: 'bg-muted text-muted-foreground border-border',
-  other: 'bg-muted text-muted-foreground border-border',
+  internal: 'bg-muted text-muted-foreground border-muted',
+  newsletter: 'bg-muted text-muted-foreground border-muted',
+  other: 'bg-muted text-muted-foreground border-muted',
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -109,7 +109,7 @@ export default function EmailIntelligencePage() {
   if (!status.connected) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
-        <Card className="max-w-md w-full">
+        <Card className="max-w-md w-full border-white/[0.06] bg-card/80 backdrop-blur-md">
           <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
             <Mail className="h-10 w-10 text-primary" />
             <p className="font-medium">Connect your Gmail</p>
@@ -126,7 +126,7 @@ export default function EmailIntelligencePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+          <Button variant="ghost" size="sm" className="hover:bg-white/[0.06]" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             Dashboard
           </Button>
@@ -142,11 +142,17 @@ export default function EmailIntelligencePage() {
         </div>
         <div className="flex items-center gap-2">
           {isAnalyzing && (
-            <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30 animate-pulse">
+            <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/20 bg-amber-400/[0.06] animate-pulse">
               Analyzing...
             </Badge>
           )}
-          <Button variant="outline" size="sm" onClick={() => syncEmails(true)} disabled={isLoading}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.08]"
+            onClick={() => syncEmails(true)}
+            disabled={isLoading}
+          >
             <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', isLoading && 'animate-spin')} />
             Sync
           </Button>
@@ -167,16 +173,16 @@ export default function EmailIntelligencePage() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Search emails..."
-            className="pl-8 h-8 text-xs"
+            className="pl-8 h-8 text-xs border-white/[0.08] bg-white/[0.03] focus:bg-white/[0.05]"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[140px] h-8 text-xs">
+          <SelectTrigger className="w-[140px] h-8 text-xs border-white/[0.08] bg-white/[0.03]">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="border-white/[0.08] bg-card/95 backdrop-blur-xl">
             <SelectItem value="all">All Categories</SelectItem>
             {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
               <SelectItem key={key} value={key}>{label}</SelectItem>
@@ -184,10 +190,10 @@ export default function EmailIntelligencePage() {
           </SelectContent>
         </Select>
         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-          <SelectTrigger className="w-[120px] h-8 text-xs">
+          <SelectTrigger className="w-[120px] h-8 text-xs border-white/[0.08] bg-white/[0.03]">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="border-white/[0.08] bg-card/95 backdrop-blur-xl">
             <SelectItem value="all">All Priority</SelectItem>
             <SelectItem value="high">High</SelectItem>
             <SelectItem value="medium">Medium</SelectItem>
@@ -195,10 +201,10 @@ export default function EmailIntelligencePage() {
           </SelectContent>
         </Select>
         <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
-          <SelectTrigger className="w-[120px] h-8 text-xs">
+          <SelectTrigger className="w-[120px] h-8 text-xs border-white/[0.08] bg-white/[0.03]">
             <SelectValue placeholder="Sentiment" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="border-white/[0.08] bg-card/95 backdrop-blur-xl">
             <SelectItem value="all">All Sentiment</SelectItem>
             <SelectItem value="positive">Positive</SelectItem>
             <SelectItem value="neutral">Neutral</SelectItem>
@@ -208,10 +214,10 @@ export default function EmailIntelligencePage() {
         </Select>
         {dealOptions.length > 0 && (
           <Select value={dealFilter} onValueChange={setDealFilter}>
-            <SelectTrigger className="w-[160px] h-8 text-xs">
+            <SelectTrigger className="w-[160px] h-8 text-xs border-white/[0.08] bg-white/[0.03]">
               <SelectValue placeholder="Deal" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="border-white/[0.08] bg-card/95 backdrop-blur-xl">
               <SelectItem value="all">All Deals</SelectItem>
               {dealOptions.map(d => (
                 <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
@@ -224,7 +230,7 @@ export default function EmailIntelligencePage() {
       {/* Email List */}
       <div className="space-y-2">
         {filteredEmails.length === 0 ? (
-          <Card>
+          <Card className="border-white/[0.06] bg-card/80 backdrop-blur-md">
             <CardContent className="py-8 text-center">
               <p className="text-sm text-muted-foreground">
                 {emails.length === 0 ? 'No emails synced yet.' : 'No emails match your filters.'}
@@ -247,11 +253,11 @@ function StatCard({
   label: string; value: number; icon: any; accent?: boolean; warn?: boolean; danger?: boolean;
 }) {
   return (
-    <Card className="border-primary/5">
+    <Card className="border-white/[0.06] bg-card/80 backdrop-blur-md">
       <CardContent className="p-3 flex items-center gap-3">
         <div className={cn(
           'p-2 rounded-lg',
-          danger ? 'bg-destructive/10' : warn ? 'bg-amber-500/10' : accent ? 'bg-primary/10' : 'bg-muted'
+          danger ? 'bg-destructive/10' : warn ? 'bg-amber-500/10' : accent ? 'bg-primary/10' : 'bg-white/[0.04]'
         )}>
           <Icon className={cn(
             'h-4 w-4',
@@ -275,8 +281,8 @@ function EmailCard({ email, onReanalyze }: { email: EnrichedEmail; onReanalyze: 
 
   return (
     <Card className={cn(
-      'transition-colors hover:bg-muted/20',
-      !email.is_read && 'border-primary/20 bg-primary/5',
+      'transition-all duration-200 border-white/[0.06] bg-card/80 backdrop-blur-md hover:bg-white/[0.04] hover:border-white/[0.1]',
+      !email.is_read && 'border-primary/15 bg-primary/[0.04]',
       analysis?.priority === 'high' && 'border-l-2 border-l-destructive/50'
     )}>
       <CardContent className="p-3">
@@ -291,7 +297,7 @@ function EmailCard({ email, onReanalyze }: { email: EnrichedEmail; onReanalyze: 
               </p>
               {!email.is_read && <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
               {analysis?.category && analysis.category !== 'other' && (
-                <Badge variant="outline" className={cn('text-[9px] h-4 px-1.5', CATEGORY_COLORS[analysis.category])}>
+                <Badge variant="outline" className={cn('text-[9px] h-4 px-1.5 border-white/[0.08]', CATEGORY_COLORS[analysis.category])}>
                   {CATEGORY_LABELS[analysis.category] || analysis.category}
                 </Badge>
               )}
@@ -359,7 +365,7 @@ function EmailCard({ email, onReanalyze }: { email: EnrichedEmail; onReanalyze: 
             {analysis?.extracted_data && Object.keys(analysis.extracted_data).length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {Object.entries(analysis.extracted_data).slice(0, 5).map(([key, value]) => (
-                  <Badge key={key} variant="secondary" className="text-[9px] h-4">
+                  <Badge key={key} variant="secondary" className="text-[9px] h-4 bg-white/[0.04] border-white/[0.08]">
                     {key}: {String(value)}
                   </Badge>
                 ))}
