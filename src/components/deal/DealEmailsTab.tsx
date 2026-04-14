@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useUiPreference } from '@/hooks/useUiPreference';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -134,6 +135,45 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [readingPaneExpanded, setReadingPaneExpanded] = useState(false);
+
+  // ─── Resizable middle column ───────────────────────────────
+  const DEFAULT_INBOX_WIDTH = 260;
+  const MIN_INBOX_WIDTH = 180;
+  const MAX_INBOX_WIDTH = 450;
+  const [savedInboxWidth, persistInboxWidth] = useUiPreference<number>('email_inbox_column_width', DEFAULT_INBOX_WIDTH);
+  const [liveInboxWidth, setLiveInboxWidth] = useState<number | null>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
+
+  const inboxWidth = liveInboxWidth ?? savedInboxWidth;
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    dragStartWidth.current = inboxWidth;
+
+    const onMove = (ev: MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta = ev.clientX - dragStartX.current;
+      const newW = Math.max(MIN_INBOX_WIDTH, Math.min(MAX_INBOX_WIDTH, dragStartWidth.current + delta));
+      setLiveInboxWidth(newW);
+    };
+
+    const onUp = () => {
+      isDragging.current = false;
+      setLiveInboxWidth(prev => {
+        if (prev != null) persistInboxWidth(prev);
+        return prev;
+      });
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [inboxWidth, persistInboxWidth]);
   const [activeItemId, setActiveItemId] = useState<string>('all_inbox');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [chipFilter, setChipFilter] = useState<ChipFilter>(null);
@@ -659,11 +699,23 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           </div>
 
           {/* ─── Middle: Email list ─── */}
-          <div className={cn(
-            'border-r border-white/[0.06] flex flex-col min-w-0 overflow-hidden bg-card/30 backdrop-blur-sm transition-all duration-200',
-            readingPaneExpanded ? 'hidden' :
-            (currentThread || composeOpen) ? 'hidden md:flex md:w-[240px] md:shrink-0' : 'flex-1'
-          )}>
+          <div
+            className={cn(
+              'relative flex flex-col min-w-0 overflow-hidden bg-card/30 backdrop-blur-sm transition-[opacity] duration-200',
+              readingPaneExpanded ? 'hidden' :
+              (currentThread || composeOpen) ? 'hidden md:flex shrink-0' : 'flex-1'
+            )}
+            style={(currentThread || composeOpen) && !readingPaneExpanded ? { width: inboxWidth } : undefined}
+          >
+            {/* Resize handle on right edge */}
+            {(currentThread || composeOpen) && !readingPaneExpanded && (
+              <div
+                onMouseDown={handleResizeStart}
+                className="absolute right-0 top-0 bottom-0 w-[5px] z-20 cursor-col-resize group hover:bg-primary/20 transition-colors"
+              >
+                <div className="absolute right-0 top-0 bottom-0 w-px bg-white/[0.06] group-hover:bg-primary/40 transition-colors" />
+              </div>
+            )}
             {/* Search bar — full-width, flat, Outlook style */}
             <div className="px-2 py-1.5 border-b border-white/[0.06]">
               <div className="relative flex gap-1">
