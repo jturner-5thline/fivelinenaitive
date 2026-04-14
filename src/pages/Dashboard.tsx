@@ -216,7 +216,7 @@ export default function Dashboard() {
             onDismiss={() => dismissHint('dashboard-quick-actions')}
             side="bottom"
           >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-3 gap-3 md:gap-4">
             <Card
               className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
               onClick={() => setCalendarOpen(true)}
@@ -249,18 +249,6 @@ export default function Dashboard() {
                       <Zap className="relative z-10 h-7 w-7 text-success" />
                     </div>
                     <span className="text-sm font-medium text-foreground">Quick Prompts</span>
-                  </div>
-                </Card>
-              }
-            />
-            <CreateDealDialog
-              trigger={
-                <Card className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--primary)/0.2),inset_0_1px_1px_hsl(var(--primary)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-primary/20 before:to-transparent before:rounded-xl">
-                      <Briefcase className="relative z-10 h-7 w-7 text-primary" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">Create New Deal</span>
                   </div>
                 </Card>
               }
