@@ -17,6 +17,17 @@ export const EMAIL_CATEGORY_TABS = [
   { key: 'asana_projects' as const, label: 'Asana & Projects' },
 ] as const;
 
+/**
+ * Optional context about the user's own organisation so we can exclude
+ * self-referencing matches (e.g. "5th Line Capital" appearing in a subject).
+ */
+export interface ClassifierOrgContext {
+  /** The org's own company name (lowercase) */
+  orgName?: string;
+  /** The org's own domains (e.g. ['5thline.co']) */
+  orgDomains?: string[];
+}
+
 export type EmailCategoryTab = 'all' | EmailCategory;
 
 // ── Exclusion lists ────────────────────────────────────────────
