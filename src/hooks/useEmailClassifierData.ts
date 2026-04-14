@@ -41,7 +41,7 @@ function nameTokens(name: string): string[] {
  * by `classifyEmail`.  Lightweight and memo'd so it doesn't re-fetch
  * on every render.
  */
-export function useEmailClassifierData(): ClassifierEntity[] {
+export function useEmailClassifierData(): { entities: ClassifierEntity[]; orgCtx: ClassifierOrgContext } {
   const { deals } = useDealsContext();
   const { company } = useCompany();
 
@@ -126,4 +126,23 @@ export function useEmailClassifierData(): ClassifierEntity[] {
 
     return entities;
   }, [deals, crmCompanies]);
+
+  const orgCtx = useMemo<ClassifierOrgContext>(() => {
+    const ctx: ClassifierOrgContext = {};
+    if (company?.name) ctx.orgName = company.name.trim().toLowerCase();
+    if (company?.primary_domain) {
+      const d = normaliseDomain(company.primary_domain);
+      ctx.orgDomains = d ? [d] : [];
+      // Also add domains array if available
+      if (company.domains && Array.isArray(company.domains)) {
+        for (const dom of company.domains) {
+          const nd = normaliseDomain(dom);
+          if (nd && !ctx.orgDomains.includes(nd)) ctx.orgDomains.push(nd);
+        }
+      }
+    }
+    return ctx;
+  }, [company]);
+
+  return { entities, orgCtx };
 }
