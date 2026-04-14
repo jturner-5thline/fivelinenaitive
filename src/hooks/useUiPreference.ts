@@ -26,8 +26,8 @@ export function useUiPreference<T>(key: string, defaultValue: T) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
 
-      const { data } = await supabase
-        .from('user_ui_preferences' as any)
+      const { data } = await (supabase as any)
+        .from('user_ui_preferences')
         .select('preference_value')
         .eq('user_id', user.id)
         .eq('preference_key', key)
@@ -37,7 +37,7 @@ export function useUiPreference<T>(key: string, defaultValue: T) {
       loaded.current = true;
 
       if (data?.preference_value != null) {
-        const dbVal = (data as any).preference_value as T;
+        const dbVal = data.preference_value as T;
         setValue(dbVal);
         localStorage.setItem(`ui_pref_${key}`, JSON.stringify(dbVal));
       }
