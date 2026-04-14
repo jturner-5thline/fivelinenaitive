@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
 import { usePreSendChecks } from './usePreSendChecks';
 import { PreSendAlertDialog } from './PreSendAlertDialog';
+import { RecipientField, emailStringToArray } from './RecipientField';
+import { useEmailContacts } from '@/hooks/useEmailContacts';
 
 interface ComposeEmailDialogProps {
   open: boolean;
@@ -35,9 +37,9 @@ interface ComposeEmailDialogProps {
 }
 
 export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: ComposeEmailDialogProps) {
-  const [to, setTo] = useState(replyTo?.to_email || '');
-  const [cc, setCc] = useState('');
-  const [bcc, setBcc] = useState('');
+  const [toRecipients, setToRecipients] = useState<string[]>(replyTo?.to_email ? [replyTo.to_email] : []);
+  const [ccRecipients, setCcRecipients] = useState<string[]>([]);
+  const [bccRecipients, setBccRecipients] = useState<string[]>([]);
   const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject}` : '');
   const [body, setBody] = useState('');
   const [showCcBcc, setShowCcBcc] = useState(true);
@@ -45,11 +47,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const [attachments, setAttachments] = useState<string[]>([]);
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
+  const { search } = useEmailContacts();
 
   const resetForm = () => {
-    setTo(replyTo?.to_email || '');
-    setCc('');
-    setBcc('');
+    setToRecipients(replyTo?.to_email ? [replyTo.to_email] : []);
+    setCcRecipients([]);
+    setBccRecipients([]);
     setSubject(replyTo ? `Re: ${replyTo.subject}` : '');
     setBody('');
     setShowCcBcc(false);
@@ -58,21 +61,22 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
   const executeSend = async () => {
     clearPreSendAlert();
-    if (!to.trim()) {
+    if (toRecipients.length === 0) {
       toast.error('Please add a recipient');
       return;
     }
 
     setIsSending(true);
 
-    const recipientName = to.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const toEmail = toRecipients[0];
+    const recipientName = toEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     await onSend({
       subject,
       from_name: 'You',
       from_email: 'jturner@5thline.co',
       to_name: recipientName,
-      to_email: to.trim(),
+      to_email: toRecipients.join(', '),
       snippet: body.substring(0, 120),
       body_preview: body,
       received_at: new Date().toISOString(),
@@ -93,7 +97,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   };
 
   const handleSend = () => {
-    if (!to.trim()) { toast.error('Please add a recipient'); return; }
+    if (toRecipients.length === 0) { toast.error('Please add a recipient'); return; }
     const passed = runChecks({ subject, body, attachments });
     if (passed) executeSend();
   };
@@ -130,12 +134,14 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         <div className="px-5 py-3 space-y-3">
           {/* To field */}
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground w-10 shrink-0">To</Label>
-            <Input
-              value={to}
-              onChange={e => setTo(e.target.value)}
+            <RecipientField
+              label="To"
+              recipients={toRecipients}
+              onChange={setToRecipients}
+              search={search}
               placeholder="recipient@example.com"
-              className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent"
+              className="flex-1"
+              labelClassName="w-10"
             />
             <Button
               variant="ghost"
@@ -151,24 +157,22 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           {/* Cc/Bcc fields */}
           {showCcBcc && (
             <>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-10 shrink-0">Cc</Label>
-                <Input
-                  value={cc}
-                  onChange={e => setCc(e.target.value)}
-                  placeholder="cc@example.com"
-                  className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-10 shrink-0">Bcc</Label>
-                <Input
-                  value={bcc}
-                  onChange={e => setBcc(e.target.value)}
-                  placeholder="bcc@example.com"
-                  className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent"
-                />
-              </div>
+              <RecipientField
+                label="Cc"
+                recipients={ccRecipients}
+                onChange={setCcRecipients}
+                search={search}
+                placeholder="cc@example.com"
+                labelClassName="w-10"
+              />
+              <RecipientField
+                label="Bcc"
+                recipients={bccRecipients}
+                onChange={setBccRecipients}
+                search={search}
+                placeholder="bcc@example.com"
+                labelClassName="w-10"
+              />
             </>
           )}
 
