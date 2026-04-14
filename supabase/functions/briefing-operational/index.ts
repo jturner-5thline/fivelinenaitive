@@ -179,22 +179,12 @@ function normalizeTask(task: any, project: ProjectRecord, todayString: string): 
   };
 }
 
-// ── Fetch tasks for a single project ─────────────────────────
+// ── Fetch tasks for a single project (1 API call instead of 2) ──
 async function fetchProjectTasks(project: ProjectRecord, token: string, recentCutoff: string) {
-  const openParams = new URLSearchParams({ opt_fields: TASK_FIELDS, completed_since: 'now' });
-  const recentParams = new URLSearchParams({ opt_fields: TASK_FIELDS, completed_since: recentCutoff });
-
-  // Fetch open tasks first, then recently completed (sequential within a project)
-  const openTasks = await asanaFetchAll(`/projects/${project.gid}/tasks?${openParams}`, token);
-  await sleep(DELAY_MS);
-  const recentTasks = await asanaFetchAll(`/projects/${project.gid}/tasks?${recentParams}`, token);
-
-  const tasksById = new Map<string, any>();
-  for (const task of [...openTasks, ...recentTasks]) {
-    tasksById.set(task.gid, task);
-  }
-
-  return Array.from(tasksById.values());
+  // completed_since=recentCutoff returns all incomplete tasks PLUS tasks completed after the cutoff
+  const params = new URLSearchParams({ opt_fields: TASK_FIELDS, completed_since: recentCutoff });
+  const tasks = await asanaFetchAll(`/projects/${project.gid}/tasks?${params}`, token);
+  return tasks;
 }
 
 // ── Main handler ─────────────────────────────────────────────
