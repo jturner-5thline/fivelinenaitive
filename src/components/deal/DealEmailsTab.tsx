@@ -708,7 +708,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                               'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
                               searchFilters.dateRange === dr
                                 ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
-                                : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
+                                : 'bg-white/[0.03] border-white/[0.08] text-muted-foreground hover:text-foreground'
                             )}
                           >
                             {dr === 'all' ? 'All' : dr === 'today' ? 'Today' : dr === 'this_week' ? 'This Week' : 'This Month'}
@@ -724,7 +724,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                           'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
                           searchFilters.hasAttachments
                             ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
-                            : 'bg-muted/30 border-border/50 text-muted-foreground'
+                            : 'bg-white/[0.03] border-white/[0.08] text-muted-foreground'
                         )}
                       >
                         {searchFilters.hasAttachments ? 'Yes' : 'Any'}
@@ -741,7 +741,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                               'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
                               searchFilters.responseStatus === rs
                                 ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
-                                : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
+                                : 'bg-white/[0.03] border-white/[0.08] text-muted-foreground hover:text-foreground'
                             )}
                           >
                             {rs === 'all' ? 'All' : rs === 'needs_response' ? 'Needs Response' : 'Responded'}
