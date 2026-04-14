@@ -41,10 +41,8 @@ import {
   Trash2,
   Flag,
   Pin,
-  FolderInput,
   Maximize2,
   Minimize2,
-  PenLine,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
