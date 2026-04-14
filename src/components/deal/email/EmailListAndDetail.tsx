@@ -661,6 +661,69 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     setShowResumeBanner(false);
   }, [getReplyTarget, popOutDraft, loadDraft]);
 
+  const handleReplyAll = useCallback(() => {
+    if (popOutDraft) return;
+    const latest = thread.latestEmail;
+    const target = getReplyTarget();
+    // For Reply All, include CC from original email
+    const ccEmails = latest.from_name === 'You' ? '' : (latest.to_email !== target.to_email ? latest.to_email : '');
+    setReplyTo(target);
+    setInlineDraft({
+      to: target.to_email,
+      toName: target.to_name,
+      subject: thread.subject.startsWith('Re:') ? thread.subject : `Re: ${thread.subject}`,
+      body: '',
+      cc: ccEmails,
+      bcc: '',
+      attachments: [],
+      threadId: thread.threadId,
+    });
+    setShowResumeBanner(false);
+  }, [getReplyTarget, popOutDraft, thread]);
+
+  const handleForward = useCallback(() => {
+    if (popOutDraft) return;
+    const latest = thread.latestEmail;
+    const fwdSubject = thread.subject.startsWith('Fwd:') ? thread.subject : `Fwd: ${thread.subject}`;
+    const fwdBody = `\n\n---------- Forwarded message ----------\nFrom: ${latest.from_name} <${latest.from_email}>\nDate: ${latest.received_at}\nSubject: ${thread.subject}\n\n${latest.body_preview || latest.snippet || ''}`;
+    setReplyTo({ subject: fwdSubject, to_email: '', to_name: '', threadId: thread.threadId });
+    setInlineDraft({
+      to: '',
+      toName: '',
+      subject: fwdSubject,
+      body: fwdBody,
+      cc: '',
+      bcc: '',
+      attachments: [],
+      threadId: thread.threadId,
+    });
+    setShowResumeBanner(false);
+  }, [popOutDraft, thread]);
+
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const handleDelete = useCallback(async () => {
+    if (!onDelete || actionLoading) return;
+    setActionLoading('delete');
+    try {
+      onDelete(thread.latestEmail);
+      onBack();
+    } finally {
+      setActionLoading(null);
+    }
+  }, [onDelete, thread, onBack, actionLoading]);
+
+  const handleArchive = useCallback(async () => {
+    if (!onArchive || actionLoading) return;
+    setActionLoading('archive');
+    try {
+      onArchive(thread.latestEmail);
+      onBack();
+    } finally {
+      setActionLoading(null);
+    }
+  }, [onArchive, thread, onBack, actionLoading]);
+
   const handleDraftChange = useCallback((draft: ReplyDraft) => {
     updateDraft(draft);
   }, [updateDraft]);
