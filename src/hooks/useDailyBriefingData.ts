@@ -11,6 +11,16 @@ export function useBriefingWindow() {
 }
 
 // ── Catch Up tab data ─────────────────────────────────────────
+export interface NewsItem {
+  id: string;
+  category: 'pipeline' | 'email' | 'risk' | 'milestone' | 'general';
+  title: string;
+  summary: string;
+  timestamp: string;
+  action?: { label: string; path: string };
+  meta?: Record<string, any>;
+}
+
 export function useCatchUpData(enabled: boolean) {
   const { user } = useAuth();
   const { deals } = useDealsContext();
@@ -23,7 +33,7 @@ export function useCatchUpData(enabled: boolean) {
     queryFn: async () => {
       const { startISO, endISO } = window;
 
-      const [activityRes, stageChangeRes, milestonesRes] = await Promise.all([
+      const [activityRes, stageChangeRes, milestonesRes, emailCacheRes, emailAnalysisRes] = await Promise.all([
         supabase
           .from('activity_logs')
           .select('id, deal_id, activity_type, description, user_display_name, created_at, metadata')
@@ -33,22 +43,40 @@ export function useCatchUpData(enabled: boolean) {
           .limit(50),
         supabase
           .from('activity_logs')
-          .select('id, deal_id, activity_type, description, created_at')
+          .select('id, deal_id, activity_type, description, created_at, metadata')
           .in('activity_type', ['stage_change', 'lender_stage_change', 'deal_created'])
           .gte('created_at', startISO)
           .lte('created_at', endISO)
+          .order('created_at', { ascending: false })
           .limit(50),
         supabase
           .from('deal_milestones')
           .select('id, deal_id, title, status, due_date, completed')
           .eq('completed', false)
           .limit(50),
+        supabase
+          .from('email_cache')
+          .select('id, gmail_message_id, subject, snippet, from_email, from_name, received_at, is_read, labels')
+          .eq('user_id', user!.id)
+          .gte('received_at', startISO)
+          .lte('received_at', endISO)
+          .order('received_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('email_analysis')
+          .select('email_cache_id, category, sentiment, priority, summary, deal_name, follow_up_needed')
+          .gte('analyzed_at', startISO)
+          .limit(200),
       ]);
 
       const activities = activityRes.data || [];
       const stageChanges = stageChangeRes.data || [];
       const milestones = milestonesRes.data || [];
+      const emailCache = emailCacheRes.data || [];
+      const emailAnalysis = emailAnalysisRes.data || [];
+      const analysisMap = new Map(emailAnalysis.map(a => [a.email_cache_id, a]));
 
+      // Priority alerts (unchanged)
       const alerts = activities
         .filter(a => {
           const meta = a.metadata as any;
@@ -56,6 +84,7 @@ export function useCatchUpData(enabled: boolean) {
         })
         .slice(0, 10);
 
+      // Summary highlights (unchanged)
       const newDealCount = stageChanges.filter(sc => sc.activity_type === 'deal_created').length;
       const stageCount = stageChanges.filter(sc => sc.activity_type !== 'deal_created').length;
       const suppressedStatuses = ['archived', 'on-hold', 'on_hold'];
@@ -69,7 +98,99 @@ export function useCatchUpData(enabled: boolean) {
       if (riskCount > 0) highlights.push({ label: 'Attention Needed', value: `${riskCount} deal${riskCount === 1 ? '' : 's'} flagged or at risk` });
       if (overdueCount > 0) highlights.push({ label: 'Overdue Tasks', value: `${overdueCount} milestone${overdueCount === 1 ? '' : 's'} overdue` });
 
-      return { alerts, highlights, window };
+      // ── Build news items from existing data ──
+      const newsItems: NewsItem[] = [];
+
+      // 1. Notable stage changes (top 5)
+      const notableStageChanges = stageChanges
+        .filter(sc => sc.activity_type !== 'deal_created')
+        .slice(0, 5);
+      for (const sc of notableStageChanges) {
+        const meta = sc.metadata as any;
+        const dealName = deals.find(d => d.id === sc.deal_id)?.company || 'Unknown Deal';
+        const fromStage = meta?.from || 'previous stage';
+        const toStage = meta?.to || 'new stage';
+        const lenderName = meta?.lender_name;
+        newsItems.push({
+          id: `sc-${sc.id}`,
+          category: 'pipeline',
+          title: lenderName
+            ? `${lenderName} moved to ${toStage} on ${dealName}`
+            : `${dealName} moved to ${toStage}`,
+          summary: `Stage changed from ${fromStage} to ${toStage}${lenderName ? ` (lender: ${lenderName})` : ''}`,
+          timestamp: sc.created_at,
+          action: sc.deal_id ? { label: 'Open Deal', path: `/deal/${sc.deal_id}` } : undefined,
+          meta: { deal_id: sc.deal_id, ...meta },
+        });
+      }
+
+      // 2. New deals
+      const newDealChanges = stageChanges.filter(sc => sc.activity_type === 'deal_created').slice(0, 3);
+      for (const sc of newDealChanges) {
+        const dealName = deals.find(d => d.id === sc.deal_id)?.company || 'New Deal';
+        newsItems.push({
+          id: `nd-${sc.id}`,
+          category: 'pipeline',
+          title: `New deal added: ${dealName}`,
+          summary: sc.description || 'A new deal was created in the pipeline.',
+          timestamp: sc.created_at,
+          action: sc.deal_id ? { label: 'Open Deal', path: `/deal/${sc.deal_id}` } : undefined,
+        });
+      }
+
+      // 3. High-priority & follow-up emails
+      const importantEmails = emailCache
+        .filter(e => {
+          const analysis = analysisMap.get(e.id);
+          return analysis && (analysis.priority === 'high' || analysis.follow_up_needed);
+        })
+        .slice(0, 5);
+      for (const e of importantEmails) {
+        const analysis = analysisMap.get(e.id);
+        newsItems.push({
+          id: `em-${e.id}`,
+          category: 'email',
+          title: e.subject || '(no subject)',
+          summary: analysis?.summary || e.snippet || '',
+          timestamp: e.received_at || '',
+          action: { label: 'Open Email Intelligence', path: '/email-intelligence' },
+          meta: { from_name: e.from_name, from_email: e.from_email, priority: analysis?.priority, category: analysis?.category },
+        });
+      }
+
+      // 4. Risk deals
+      const riskDeals = activeDeals.filter(d => d.isFlagged).slice(0, 3);
+      for (const d of riskDeals) {
+        newsItems.push({
+          id: `risk-${d.id}`,
+          category: 'risk',
+          title: `${d.company} flagged for attention`,
+          summary: `Currently at stage "${d.stage}" — may need follow-up.`,
+          timestamp: new Date().toISOString(),
+          action: { label: 'Open Deal', path: `/deal/${d.id}` },
+        });
+      }
+
+      // 5. Overdue milestones
+      const overdueMilestones = milestones
+        .filter(m => m.due_date && new Date(m.due_date) < new Date())
+        .slice(0, 3);
+      for (const m of overdueMilestones) {
+        const dealName = deals.find(d => d.id === m.deal_id)?.company || 'Unknown Deal';
+        newsItems.push({
+          id: `ms-${m.id}`,
+          category: 'milestone',
+          title: `Overdue: ${m.title} — ${dealName}`,
+          summary: `Due ${m.due_date ? new Date(m.due_date).toLocaleDateString() : 'N/A'}, still incomplete.`,
+          timestamp: m.due_date || '',
+          action: m.deal_id ? { label: 'Open Deal', path: `/deal/${m.deal_id}` } : undefined,
+        });
+      }
+
+      // Sort news by timestamp desc
+      newsItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      return { alerts, highlights, newsItems, window };
     },
   });
 }

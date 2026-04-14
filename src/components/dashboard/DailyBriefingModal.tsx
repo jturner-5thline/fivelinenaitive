@@ -18,6 +18,7 @@ import {
   useFinancialData,
   usePipelineData,
   useOperationalData,
+  type NewsItem,
 } from '@/hooks/useDailyBriefingData';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
