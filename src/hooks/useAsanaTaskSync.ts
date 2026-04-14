@@ -139,7 +139,8 @@ export async function syncTaskToAsana(
     };
 
     if (task.due_date) {
-      taskData.due_on = task.due_date;
+      // Ensure YYYY-MM-DD format for Asana (strip any time/timezone suffix)
+      taskData.due_on = task.due_date.substring(0, 10);
     }
 
     if (assigneeGid) {
@@ -155,6 +156,8 @@ export async function syncTaskToAsana(
       console.warn('[AsanaSync] Warning: No section configured for project, task will be placed in default section');
       taskData.projects = [ctx.projectGid];
     }
+
+    console.log('[AsanaSync] Creating Asana task with payload:', JSON.stringify(taskData));
 
     const { data } = await supabase.functions.invoke('asana-proxy', {
       body: {
@@ -205,7 +208,7 @@ export async function updateTaskInAsana(
     }
 
     if ('due_date' in updates) {
-      asanaUpdates.due_on = updates.due_date || null;
+      asanaUpdates.due_on = updates.due_date ? updates.due_date.substring(0, 10) : null;
     }
 
     if ('assignee_email' in updates) {
