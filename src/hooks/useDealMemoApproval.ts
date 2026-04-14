@@ -293,27 +293,54 @@ export function useDealMemoApproval(
         console.error('Failed to create approval task:', taskError);
       }
 
-      // 5th Line specific: Always create a task for James Turner to review the deal memo
-      // This fires in addition to the normal approval chain task
-      if (nextApprover.userId !== JAMES_TURNER_USER_ID) {
+      // 5th Line specific: Create a review task for James Turner when a memo is submitted
+      // Only fires for deals in the 5th Line org and avoids duplicates
+      const orgCompanyId = membership?.company_id || deal?.company_id || null;
+      if (orgCompanyId === FIFTH_LINE_COMPANY_ID) {
+        const reviewTitle = `Review ${companyName} Memo`;
         const dealUrl = `${NAITIVE_BASE_URL}/deal/${dealId}`;
-        const { error: jamesTaskError } = await supabase
-          .from('tasks')
-          .insert({
-            title: `Review ${companyName} Deal Memo`,
-            assigned_to: JAMES_TURNER_USER_ID,
-            assigned_by: user.id,
-            deal_id: dealId,
-            company_id: membership?.company_id || deal?.company_id || null,
-            due_date: today,
-            status: 'not_started',
-            priority: 'high',
-            task_type: 'deal_memo_approval',
-            description: `A Deal Memo has been submitted for ${companyName}. Please review it here: ${dealUrl}`,
-          } as any);
 
-        if (jamesTaskError) {
-          console.error('Failed to create James Turner review task:', jamesTaskError);
+        // Duplicate check: skip if an open task with same title already exists for this deal
+        const { data: existingTasks } = await supabase
+          .from('tasks')
+          .select('id')
+          .eq('deal_id', dealId)
+          .eq('assigned_to', JAMES_TURNER_USER_ID)
+          .eq('title', reviewTitle)
+          .in('status', ['not_started', 'in_progress'])
+          .limit(1);
+
+        if (!existingTasks || existingTasks.length === 0) {
+          const dueDateBiz = addBusinessDays(new Date(), 2).toISOString().split('T')[0];
+
+          const { error: jamesTaskError } = await supabase
+            .from('tasks')
+            .insert({
+              title: reviewTitle,
+              assigned_to: JAMES_TURNER_USER_ID,
+              assigned_by: user.id,
+              deal_id: dealId,
+              company_id: orgCompanyId,
+              due_date: dueDateBiz,
+              status: 'not_started',
+              priority: 'high',
+              task_type: 'deal_memo_approval',
+              description: `A Deal Memo has been submitted for ${companyName}. Please review it here: ${dealUrl}`,
+            } as any);
+
+          if (jamesTaskError) {
+            console.error('Failed to create James Turner review task:', jamesTaskError);
+          } else {
+            // Send in-app notification
+            await supabase.from('flex_notifications').insert({
+              user_id: JAMES_TURNER_USER_ID,
+              deal_id: dealId,
+              alert_type: 'deal_memo_review',
+              title: `Memo ready for review: ${companyName}`,
+              message: `A Deal Memo for ${companyName} has been submitted and is ready for your review.`,
+              action_url: dealUrl,
+            } as any);
+          }
         }
       }
 
