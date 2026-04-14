@@ -554,9 +554,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   };
 
   return (
-    <Card className="overflow-hidden w-full max-w-full h-full flex flex-col border-0 rounded-none">
+    <Card className="overflow-hidden w-full max-w-full h-full flex flex-col border-0 rounded-none bg-transparent">
       {/* Outlook-style top toolbar */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b bg-[hsl(var(--email-toolbar-bg))]">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/[0.06] bg-card/60 backdrop-blur-sm">
         {/* New mail — outlined, Outlook style */}
         <Button
           variant="outline"
@@ -619,7 +619,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="flex h-full overflow-hidden max-w-full">
           {/* ─── Left: Outlook-style folder sidebar ─── */}
-          <div className="border-r flex-shrink-0 w-[200px] flex flex-col bg-[hsl(var(--email-sidebar-bg))]">
+          <div className="border-r border-white/[0.06] flex-shrink-0 w-[200px] flex flex-col bg-card/40 backdrop-blur-sm">
             <ScrollArea className="flex-1">
               <div className="py-1">
                 {/* Favorites */}
@@ -630,7 +630,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                   {favoritesSection.items.map(item => renderSidebarItem(item))}
                 </div>
 
-                <div className="mx-3 my-1 border-t border-border/30" />
+                <div className="mx-3 my-1 border-t border-white/[0.06]" />
 
                 {/* Folder sections */}
                 {foldersSections.map((section) => {
@@ -660,12 +660,12 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
           {/* ─── Middle: Email list ─── */}
           <div className={cn(
-            'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-[hsl(var(--email-list-bg))] transition-all duration-200',
+            'border-r border-white/[0.06] flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-card/30 backdrop-blur-sm transition-all duration-200',
             readingPaneExpanded ? 'hidden' :
             (currentThread || composeOpen) ? 'hidden md:flex md:w-[280px]' : 'flex-1 md:w-[280px]'
           )}>
             {/* Search bar — full-width, flat, Outlook style */}
-            <div className="px-2 py-1.5 border-b border-border/30">
+            <div className="px-2 py-1.5 border-b border-white/[0.06]">
               <div className="relative flex gap-1">
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -673,7 +673,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     placeholder="Search mail"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 h-8 text-xs bg-[hsl(var(--foreground)/0.04)] border-border/40 rounded"
+                    className="pl-8 h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]"
                   />
                 </div>
                 <Popover open={searchFiltersOpen} onOpenChange={setSearchFiltersOpen}>
