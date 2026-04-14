@@ -990,9 +990,9 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
                 </a>
               ))
             )}
-            {drilldown === 'today' && (today.length === 0
+            {drilldown === 'today' && (todayTasks.length === 0
               ? <p className="text-xs text-muted-foreground py-4 text-center">No items due today</p>
-              : today.map((t: any) => (
+              : todayTasks.map((t: any) => (
                 <a key={t.gid} href={t.permalink_url || `https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium truncate">{t.name}</p>
@@ -1005,9 +1005,9 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
                 </a>
               ))
             )}
-            {drilldown === 'upcoming' && (upcoming.length === 0
+            {drilldown === 'upcoming' && (upcomingTasks.length === 0
               ? <p className="text-xs text-muted-foreground py-4 text-center">No upcoming items</p>
-              : upcoming.map((t: any) => (
+              : upcomingTasks.map((t: any) => (
                 <a key={t.gid} href={t.permalink_url || `https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium truncate">{t.name}</p>
@@ -1062,7 +1062,7 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
       </Section>
 
       <Section title="Due Today">
-        {today.length === 0 ? <EmptySection message="No items due today" /> : today.map((item: any) => (
+        {todayTasks.length === 0 ? <EmptySection message="No items due today" /> : todayTasks.map((item: any) => (
           <BriefingRow
             key={item.gid}
             icon={ListChecks}
@@ -1077,7 +1077,7 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
       </Section>
 
       <Section title="Upcoming">
-        {upcoming.length === 0 ? <EmptySection message="No upcoming items" /> : upcoming.slice(0, 15).map((item: any) => (
+        {upcomingTasks.length === 0 ? <EmptySection message="No upcoming items" /> : upcomingTasks.slice(0, 15).map((item: any) => (
           <BriefingRow
             key={item.gid}
             icon={Clock}
