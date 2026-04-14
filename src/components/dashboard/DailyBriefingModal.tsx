@@ -970,10 +970,10 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
 
               <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
                 <div
+                  key={activeTab}
                   className={cn(
-                    'transition-all duration-300 ease-out',
-                    slideDirection === 'left' && 'animate-[slideInLeft_0.3s_ease-out]',
-                    slideDirection === 'right' && 'animate-[slideInRight_0.3s_ease-out]',
+                    slideDirection === 'left' && 'animate-slide-in-from-right',
+                    slideDirection === 'right' && 'animate-slide-in-from-left',
                   )}
                 >
                   {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
