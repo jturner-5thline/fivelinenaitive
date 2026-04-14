@@ -617,7 +617,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <EmailIntelligenceDialog open={intelligenceOpen} onOpenChange={setIntelligenceOpen} />
 
       <CardContent className="p-0 flex-1 min-h-0">
-        <div className="flex h-full overflow-hidden max-w-full">
+        <div className="flex h-full overflow-hidden max-w-full min-w-0">
           {/* ─── Left: Outlook-style folder sidebar ─── */}
           <div className="border-r border-white/[0.06] flex-shrink-0 w-[200px] flex flex-col bg-card/40 backdrop-blur-sm">
             <ScrollArea className="flex-1">
@@ -660,9 +660,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
           {/* ─── Middle: Email list ─── */}
           <div className={cn(
-            'border-r border-white/[0.06] flex-shrink-0 flex flex-col min-w-0 overflow-hidden bg-card/30 backdrop-blur-sm transition-all duration-200',
+            'border-r border-white/[0.06] flex flex-col min-w-0 overflow-hidden bg-card/30 backdrop-blur-sm transition-all duration-200',
             readingPaneExpanded ? 'hidden' :
-            (currentThread || composeOpen) ? 'hidden md:flex md:w-[280px]' : 'flex-1 md:w-[280px]'
+            (currentThread || composeOpen) ? 'hidden md:flex md:w-[260px] md:max-w-[260px] shrink-0' : 'flex-1'
           )}>
             {/* Search bar — full-width, flat, Outlook style */}
             <div className="px-2 py-1.5 border-b border-white/[0.06]">
