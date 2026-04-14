@@ -5,6 +5,19 @@ import { toast } from 'sonner';
 const ADMIN_EMAIL = 'jturner@5thline.co';
 const JAMES_TURNER_USER_ID = 'e3e13611-b7b7-4d2d-b52b-141434219e09';
 const NAITIVE_BASE_URL = 'https://fivelinenaitive.lovable.app';
+const FIFTH_LINE_COMPANY_ID = '44556c46-9127-4b12-b14e-d6fee784afcf';
+
+/** Calculate a date N business days from now (skips weekends) */
+function addBusinessDays(startDate: Date, days: number): Date {
+  const result = new Date(startDate);
+  let added = 0;
+  while (added < days) {
+    result.setDate(result.getDate() + 1);
+    const dow = result.getDay();
+    if (dow !== 0 && dow !== 6) added++;
+  }
+  return result;
+}
 
 export type ApprovalState = 'not_submitted' | 'pending' | 'approved' | 'rejected';
 export type ApprovalRole = 'analyst' | 'deal_manager' | 'admin' | null;
