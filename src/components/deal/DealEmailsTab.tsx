@@ -959,6 +959,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onToggleExpand={() => setReadingPaneExpanded(prev => !prev)}
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
+                onDelete={handleDeleteEmail}
+                onArchive={handleArchiveEmail}
                 onSendReply={async (emailData, threadId) => {
                   if (onGmailSend) {
                     const result = await onGmailSend({

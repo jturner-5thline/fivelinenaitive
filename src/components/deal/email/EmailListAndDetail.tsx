@@ -41,10 +41,8 @@ import {
   Trash2,
   Flag,
   Pin,
-  FolderInput,
   Maximize2,
   Minimize2,
-  PenLine,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
@@ -591,9 +589,11 @@ interface EmailDetailProps {
   onSendReply: (email: Omit<MockEmail, 'id' | 'threadId'>, threadId: string) => void;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  onDelete?: (email: MockEmail) => void;
+  onArchive?: (email: MockEmail) => void;
 }
 
-export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand }: EmailDetailProps) {
+export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive }: EmailDetailProps) {
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
   const [showAiAssist, setShowAiAssist] = useState(false);
@@ -658,6 +658,69 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     setReplyTo(getReplyTarget());
     setShowResumeBanner(false);
   }, [getReplyTarget, popOutDraft, loadDraft]);
+
+  const handleReplyAll = useCallback(() => {
+    if (popOutDraft) return;
+    const latest = thread.latestEmail;
+    const target = getReplyTarget();
+    // For Reply All, include CC from original email
+    const ccEmails = latest.from_name === 'You' ? '' : (latest.to_email !== target.to_email ? latest.to_email : '');
+    setReplyTo(target);
+    setInlineDraft({
+      to: target.to_email,
+      toName: target.to_name,
+      subject: thread.subject.startsWith('Re:') ? thread.subject : `Re: ${thread.subject}`,
+      body: '',
+      cc: ccEmails,
+      bcc: '',
+      attachments: [],
+      threadId: thread.threadId,
+    });
+    setShowResumeBanner(false);
+  }, [getReplyTarget, popOutDraft, thread]);
+
+  const handleForward = useCallback(() => {
+    if (popOutDraft) return;
+    const latest = thread.latestEmail;
+    const fwdSubject = thread.subject.startsWith('Fwd:') ? thread.subject : `Fwd: ${thread.subject}`;
+    const fwdBody = `\n\n---------- Forwarded message ----------\nFrom: ${latest.from_name} <${latest.from_email}>\nDate: ${latest.received_at}\nSubject: ${thread.subject}\n\n${latest.body_preview || latest.snippet || ''}`;
+    setReplyTo({ subject: fwdSubject, to_email: '', to_name: '', threadId: thread.threadId });
+    setInlineDraft({
+      to: '',
+      toName: '',
+      subject: fwdSubject,
+      body: fwdBody,
+      cc: '',
+      bcc: '',
+      attachments: [],
+      threadId: thread.threadId,
+    });
+    setShowResumeBanner(false);
+  }, [popOutDraft, thread]);
+
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const handleDelete = useCallback(async () => {
+    if (!onDelete || actionLoading) return;
+    setActionLoading('delete');
+    try {
+      onDelete(thread.latestEmail);
+      onBack();
+    } finally {
+      setActionLoading(null);
+    }
+  }, [onDelete, thread, onBack, actionLoading]);
+
+  const handleArchive = useCallback(async () => {
+    if (!onArchive || actionLoading) return;
+    setActionLoading('archive');
+    try {
+      onArchive(thread.latestEmail);
+      onBack();
+    } finally {
+      setActionLoading(null);
+    }
+  }, [onArchive, thread, onBack, actionLoading]);
 
   const handleDraftChange = useCallback((draft: ReplyDraft) => {
     updateDraft(draft);
@@ -732,7 +795,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         e.preventDefault();
         handleReply();
       }
-      if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toast.info('Forward coming soon'); }
+      if (e.key === 'f' || e.key === 'F') { e.preventDefault(); handleForward(); }
       if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
     };
     window.addEventListener('keydown', handler);
@@ -765,7 +828,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => toast.info('Reply All coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                <button onClick={handleReplyAll} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
                   <ReplyAll className="h-4 w-4 text-foreground/70" />
                   <span className="text-[10px] text-foreground/60">Reply All</span>
                 </button>
@@ -774,7 +837,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => toast.info('Forward coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                <button onClick={handleForward} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
                   <Forward className="h-4 w-4 text-foreground/70" />
                   <span className="text-[10px] text-foreground/60">Forward</span>
                 </button>
@@ -786,8 +849,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => toast.info('Delete coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
-                  <Trash2 className="h-4 w-4 text-foreground/70" />
+                <button
+                  onClick={handleDelete}
+                  disabled={!onDelete || actionLoading === 'delete'}
+                  className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {actionLoading === 'delete' ? <Loader2 className="h-4 w-4 animate-spin text-foreground/70" /> : <Trash2 className="h-4 w-4 text-foreground/70" />}
                   <span className="text-[10px] text-foreground/60">Delete</span>
                 </button>
               </TooltipTrigger>
@@ -795,8 +862,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => toast.info('Archive coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
-                  <Archive className="h-4 w-4 text-foreground/70" />
+                <button
+                  onClick={handleArchive}
+                  disabled={!onArchive || actionLoading === 'archive'}
+                  className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {actionLoading === 'archive' ? <Loader2 className="h-4 w-4 animate-spin text-foreground/70" /> : <Archive className="h-4 w-4 text-foreground/70" />}
                   <span className="text-[10px] text-foreground/60">Archive</span>
                 </button>
               </TooltipTrigger>
@@ -810,15 +881,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Flag</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button onClick={() => toast.info('Move coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
-                  <FolderInput className="h-4 w-4 text-foreground/70" />
-                  <span className="text-[10px] text-foreground/60">Move</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Move to folder</TooltipContent>
             </Tooltip>
 
             <div className="w-px h-8 bg-border/50 mx-1" />
