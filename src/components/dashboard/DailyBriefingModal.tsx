@@ -843,6 +843,7 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
   const { data, isLoading, error, refetch } = useOperationalData(enabled);
   const [detail, setDetail] = useState<any>(null);
   const [drilldown, setDrilldown] = useState<'projects' | 'past_due' | 'today' | 'upcoming' | null>(null);
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('__all__');
 
   if (isLoading || !data) return <TabSkeleton />;
 
