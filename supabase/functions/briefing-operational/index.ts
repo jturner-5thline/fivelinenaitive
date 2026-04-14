@@ -9,8 +9,8 @@ const corsHeaders = {
 const ASANA_API = "https://app.asana.com/api/1.0";
 const PORTFOLIO_GID = "1211488283335033";
 const RECENT_COMPLETED_DAYS = 7;
-const BATCH_SIZE = 2; // Process 2 projects at a time
-const DELAY_MS = 300; // 300ms between batches
+const BATCH_SIZE = 3; // Process 3 projects at a time
+const DELAY_MS = 200; // 200ms between batches
 const MAX_RETRIES = 3;
 
 const TASK_FIELDS = [
