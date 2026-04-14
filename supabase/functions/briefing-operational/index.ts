@@ -8,248 +8,330 @@ const corsHeaders = {
 
 const ASANA_API = "https://app.asana.com/api/1.0";
 const PORTFOLIO_GID = "1211488283335033";
+const RECENT_COMPLETED_DAYS = 7;
+const TASK_FIELDS = [
+  'name',
+  'assignee',
+  'assignee.name',
+  'due_on',
+  'completed',
+  'completed_at',
+  'memberships.section.name',
+  'permalink_url',
+  'modified_at',
+  'created_at',
+  'resource_subtype',
+].join(',');
+const PORTFOLIO_ITEM_FIELDS = [
+  'name',
+  'resource_type',
+  'resource_subtype',
+  'permalink_url',
+  'owner.name',
+  'owner.email',
+  'due_on',
+  'start_on',
+  'current_status_update.title',
+  'current_status_update.status_type',
+  'current_status_update.text',
+  'color',
+  'completed',
+  'archived',
+].join(',');
 
-async function asanaFetch(path: string, token: string) {
-  const res = await fetch(`${ASANA_API}${path}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+type ProjectRecord = {
+  gid: string;
+  name: string;
+  permalink_url: string | null;
+  owner: string | null;
+  owner_email: string | null;
+  due_on: string | null;
+  start_on: string | null;
+  color: string | null;
+  status_type: string | null;
+  status_title: string | null;
+  status_text: string | null;
+};
+
+type OperationalTask = {
+  gid: string;
+  name: string;
+  assignee: string | null;
+  due_on: string | null;
+  completed: boolean;
+  completed_at: string | null;
+  project_name: string;
+  project_gid: string;
+  project_permalink_url: string | null;
+  permalink_url: string | null;
+  section_name: string | null;
+  is_milestone: boolean;
+  days_overdue: number;
+  last_activity_at: string | null;
+};
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Asana API [${res.status}]: ${text}`);
-  }
-  return res.json();
 }
 
-async function asanaFetchAll(path: string, token: string): Promise<any[]> {
-  let all: any[] = [];
-  let url = `${ASANA_API}${path}`;
+function emptyPayload(error?: string) {
+  return {
+    error,
+    fallback: Boolean(error),
+    counts: {
+      projects: 0,
+      overdue: 0,
+      today: 0,
+      upcoming: 0,
+    },
+    summary: {
+      total_projects: 0,
+      overdue_count: 0,
+      due_today_count: 0,
+      upcoming_milestones_count: 0,
+      total_open_tasks: 0,
+    },
+    projects: [],
+    overdue: [],
+    today: [],
+    upcoming: [],
+    recentlyCompleted: [],
+  };
+}
+
+async function asanaFetchAll(pathOrUrl: string, token: string): Promise<any[]> {
+  let url = pathOrUrl.startsWith('http') ? pathOrUrl : `${ASANA_API}${pathOrUrl}`;
+  const items: any[] = [];
+
   while (url) {
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
+
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`Asana API [${res.status}]: ${text}`);
     }
+
     const json = await res.json();
-    all = all.concat(json.data || []);
-    url = json.next_page?.uri || null;
+    items.push(...(json.data || []));
+    url = json.next_page?.uri || '';
   }
-  return all;
+
+  return items;
+}
+
+function getTodayString() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today.toISOString().split('T')[0];
+}
+
+function getDaysOverdue(dueOn: string, todayString: string) {
+  const due = new Date(`${dueOn}T00:00:00`);
+  const today = new Date(`${todayString}T00:00:00`);
+  return Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function buildProjectTasksPath(projectGid: string, completedSince: string) {
+  const params = new URLSearchParams({
+    opt_fields: TASK_FIELDS,
+    completed_since: completedSince,
+  });
+
+  return `/projects/${projectGid}/tasks?${params.toString()}`;
+}
+
+async function collectProjectsFromPortfolio(
+  portfolioGid: string,
+  token: string,
+  seenPortfolios: Set<string>,
+  projectsById: Map<string, ProjectRecord>,
+) {
+  if (seenPortfolios.has(portfolioGid)) return;
+  seenPortfolios.add(portfolioGid);
+
+  const params = new URLSearchParams({ opt_fields: PORTFOLIO_ITEM_FIELDS });
+  const items = await asanaFetchAll(`/portfolios/${portfolioGid}/items?${params.toString()}`, token);
+
+  for (const item of items) {
+    const itemType = item.resource_type || item.resource_subtype;
+
+    if (itemType === 'portfolio') {
+      await collectProjectsFromPortfolio(item.gid, token, seenPortfolios, projectsById);
+      continue;
+    }
+
+    if (itemType !== 'project' || item.archived || item.completed) continue;
+
+    projectsById.set(item.gid, {
+      gid: item.gid,
+      name: item.name,
+      permalink_url: item.permalink_url || null,
+      owner: item.owner?.name || null,
+      owner_email: item.owner?.email || null,
+      due_on: item.due_on || null,
+      start_on: item.start_on || null,
+      color: item.color || null,
+      status_type: item.current_status_update?.status_type || null,
+      status_title: item.current_status_update?.title || null,
+      status_text: item.current_status_update?.text || null,
+    });
+  }
+}
+
+function normalizeTask(task: any, project: ProjectRecord, todayString: string): OperationalTask {
+  const dueOn = task.due_on || null;
+  const isOverdue = Boolean(dueOn && !task.completed && dueOn < todayString);
+
+  return {
+    gid: task.gid,
+    name: task.name,
+    assignee: task.assignee?.name || null,
+    due_on: dueOn,
+    completed: Boolean(task.completed),
+    completed_at: task.completed_at || null,
+    project_name: project.name,
+    project_gid: project.gid,
+    project_permalink_url: project.permalink_url,
+    permalink_url: task.permalink_url || null,
+    section_name: task.memberships?.find((membership: any) => membership.section?.name)?.section?.name || null,
+    is_milestone: task.resource_subtype === 'milestone',
+    days_overdue: isOverdue && dueOn ? getDaysOverdue(dueOn, todayString) : 0,
+    last_activity_at: task.completed_at || task.modified_at || task.created_at || null,
+  };
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Authenticate user
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
-    const authHeader = req.headers.get("Authorization") || "";
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const authHeader = req.headers.get('Authorization') || '';
     const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+
     const { data: { user }, error: userError } = await anonClient.auth.getUser();
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: 'Unauthorized', fallback: true }, 401);
     }
 
-    // Find user's Asana integration
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Get user's company
     const { data: membership } = await serviceClient
-      .from("company_members")
-      .select("company_id")
-      .eq("user_id", user.id)
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', user.id)
       .maybeSingle();
 
     if (!membership?.company_id) {
-      return new Response(JSON.stringify({ error: "No company found" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse(emptyPayload('No company found'));
     }
 
-    // Get Asana integration token
     const { data: integration } = await serviceClient
-      .from("integrations")
-      .select("id, config")
-      .eq("company_id", membership.company_id)
-      .eq("type", "asana")
-      .eq("status", "connected")
+      .from('integrations')
+      .select('id, config')
+      .eq('company_id', membership.company_id)
+      .eq('type', 'asana')
+      .eq('status', 'connected')
       .maybeSingle();
 
     if (!integration?.config?.api_token) {
-      return new Response(JSON.stringify({ 
-        error: "No Asana integration configured",
-        summary: { total_projects: 0, overdue_count: 0, due_today_count: 0, upcoming_milestones_count: 0, total_open_tasks: 0 },
-        projects: [],
-        overdue_tasks: [],
-        overdue_milestones: [],
-        today_items: [],
-        upcoming_milestones: [],
-        upcoming_tasks: [],
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse(emptyPayload('No Asana integration configured'));
     }
 
     const token = integration.config.api_token as string;
+    const todayString = getTodayString();
+    const recentCutoff = new Date(Date.now() - RECENT_COMPLETED_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Fetch portfolio items (projects)
-    const portfolioItems = await asanaFetchAll(
-      `/portfolios/${PORTFOLIO_GID}/items?opt_fields=name,owner.name,owner.email,due_on,start_on,current_status_update.title,current_status_update.status_type,current_status_update.text,color,completed,archived`,
-      token
-    );
+    const projectsById = new Map<string, ProjectRecord>();
+    await collectProjectsFromPortfolio(PORTFOLIO_GID, token, new Set<string>(), projectsById);
+    const projects = Array.from(projectsById.values()).sort((a, b) => a.name.localeCompare(b.name));
 
-    const activeProjects = portfolioItems.filter((p: any) => !p.archived && !p.completed);
+    const taskGroups = await Promise.all(projects.map(async (project) => {
+      const [openTasks, recentTasks] = await Promise.all([
+        asanaFetchAll(buildProjectTasksPath(project.gid, 'now'), token),
+        asanaFetchAll(buildProjectTasksPath(project.gid, recentCutoff), token),
+      ]);
 
-    // 2. For each active project, fetch tasks (limit to first 10 projects for perf)
-    const projectsToFetch = activeProjects.slice(0, 10);
-    const allTasks: any[] = [];
-    const projectMap: Record<string, string> = {};
-
-    await Promise.all(projectsToFetch.map(async (project: any) => {
-      try {
-        const tasks = await asanaFetchAll(
-          `/tasks?project=${project.gid}&opt_fields=name,completed,due_on,assignee.name,assignee.email,resource_subtype,notes,tags.name,created_at,modified_at&completed_since=now`,
-          token
-        );
-        for (const t of tasks) {
-          t._project_name = project.name;
-          t._project_gid = project.gid;
-          projectMap[project.gid] = project.name;
-          allTasks.push(t);
-        }
-      } catch (e) {
-        console.error(`Failed to fetch tasks for project ${project.name}:`, e);
+      const tasksById = new Map<string, any>();
+      for (const task of [...openTasks, ...recentTasks]) {
+        tasksById.set(task.gid, task);
       }
+
+      return {
+        project,
+        tasks: Array.from(tasksById.values()).map((task) => normalizeTask(task, project, todayString)),
+      };
     }));
 
-    // Separate milestones vs tasks
-    const milestones = allTasks.filter((t: any) => t.resource_subtype === 'milestone');
-    const regularTasks = allTasks.filter((t: any) => t.resource_subtype !== 'milestone');
+    const allTasks = taskGroups.flatMap((group) => group.tasks);
 
-    // Classify by date
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
+    const overdue = allTasks
+      .filter((task) => !task.completed && !!task.due_on && task.due_on < todayString)
+      .sort((a, b) => b.days_overdue - a.days_overdue || a.name.localeCompare(b.name));
 
-    function classifyDate(dueOn: string | null) {
-      if (!dueOn) return 'no_date';
-      if (dueOn < todayStr) return 'overdue';
-      if (dueOn === todayStr) return 'today';
-      return 'upcoming';
-    }
+    const today = allTasks
+      .filter((task) => !task.completed && task.due_on === todayString)
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-    function daysOverdue(dueOn: string): number {
-      const due = new Date(dueOn);
-      const diff = today.getTime() - due.getTime();
-      return Math.floor(diff / (1000 * 60 * 60 * 24));
-    }
+    const upcoming = allTasks
+      .filter((task) => !task.completed && !!task.due_on && task.due_on > todayString)
+      .sort((a, b) => (a.due_on || '').localeCompare(b.due_on || '') || a.name.localeCompare(b.name));
 
-    // Build structured response
-    const projects = activeProjects.map((p: any) => ({
-      gid: p.gid,
-      name: p.name,
-      owner: p.owner?.name || null,
-      owner_email: p.owner?.email || null,
-      due_on: p.due_on || null,
-      start_on: p.start_on || null,
-      color: p.color || null,
-      status_type: p.current_status_update?.status_type || null,
-      status_title: p.current_status_update?.title || null,
-      status_text: p.current_status_update?.text || null,
-    }));
+    const recentlyCompleted = allTasks
+      .filter((task) => task.completed && !!task.completed_at && task.completed_at >= recentCutoff)
+      .sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
 
-    const formatTask = (t: any) => ({
-      gid: t.gid,
-      name: t.name,
-      assignee: t.assignee?.name || null,
-      assignee_email: t.assignee?.email || null,
-      due_on: t.due_on || null,
-      completed: t.completed || false,
-      is_milestone: t.resource_subtype === 'milestone',
-      project_name: t._project_name,
-      project_gid: t._project_gid,
-      date_class: classifyDate(t.due_on),
-      days_overdue: t.due_on && classifyDate(t.due_on) === 'overdue' ? daysOverdue(t.due_on) : 0,
-      tags: (t.tags || []).map((tag: any) => tag.name),
+    const projectsWithStats = taskGroups.map(({ project, tasks }) => {
+      const lastActivityAt = tasks
+        .map((task) => task.last_activity_at)
+        .filter(Boolean)
+        .sort()
+        .at(-1) || null;
+
+      return {
+        ...project,
+        task_count: tasks.length,
+        last_activity_at: lastActivityAt,
+      };
     });
 
-    const overdueTasks = regularTasks
-      .filter((t: any) => classifyDate(t.due_on) === 'overdue')
-      .map(formatTask)
-      .sort((a: any, b: any) => b.days_overdue - a.days_overdue);
-
-    const overdueMilestones = milestones
-      .filter((t: any) => classifyDate(t.due_on) === 'overdue')
-      .map(formatTask)
-      .sort((a: any, b: any) => b.days_overdue - a.days_overdue);
-
-    const todayTasks = [...regularTasks, ...milestones]
-      .filter((t: any) => classifyDate(t.due_on) === 'today')
-      .map(formatTask);
-
-    const upcomingMilestones = milestones
-      .filter((t: any) => classifyDate(t.due_on) === 'upcoming')
-      .map(formatTask)
-      .sort((a: any, b: any) => (a.due_on || '').localeCompare(b.due_on || ''));
-
-    const upcomingTasks = regularTasks
-      .filter((t: any) => classifyDate(t.due_on) === 'upcoming')
-      .map(formatTask)
-      .sort((a: any, b: any) => (a.due_on || '').localeCompare(b.due_on || ''))
-      .slice(0, 20);
-
-    // Summary counts
-    const summary = {
-      total_projects: activeProjects.length,
-      overdue_count: overdueTasks.length + overdueMilestones.length,
-      due_today_count: todayTasks.length,
-      upcoming_milestones_count: upcomingMilestones.length,
-      total_open_tasks: regularTasks.length,
+    const counts = {
+      projects: projectsWithStats.length,
+      overdue: overdue.length,
+      today: today.length,
+      upcoming: upcoming.length,
     };
 
-    return new Response(JSON.stringify({
-      summary,
-      projects,
-      overdue_tasks: overdueTasks,
-      overdue_milestones: overdueMilestones,
-      today_items: todayTasks,
-      upcoming_milestones: upcomingMilestones,
-      upcoming_tasks: upcomingTasks,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return jsonResponse({
+      counts,
+      summary: {
+        total_projects: counts.projects,
+        overdue_count: counts.overdue,
+        due_today_count: counts.today,
+        upcoming_milestones_count: counts.upcoming,
+        total_open_tasks: overdue.length + today.length + upcoming.length,
+      },
+      projects: projectsWithStats,
+      overdue,
+      today,
+      upcoming,
+      recentlyCompleted,
     });
-
   } catch (error) {
-    console.error("briefing-operational error:", error);
-    return new Response(JSON.stringify({
-      error: error instanceof Error ? error.message : "Unknown error",
-      fallback: true,
-      summary: { total_projects: 0, overdue_count: 0, due_today_count: 0, upcoming_milestones_count: 0, total_open_tasks: 0 },
-      projects: [],
-      overdue_tasks: [],
-      overdue_milestones: [],
-      today_items: [],
-      upcoming_milestones: [],
-      upcoming_tasks: [],
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error('briefing-operational error:', error);
+    return jsonResponse(emptyPayload(error instanceof Error ? error.message : 'Unknown error'));
   }
 });
