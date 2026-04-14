@@ -94,12 +94,17 @@ serve(async (req: Request): Promise<Response> => {
     switch (action) {
       case "list": {
         const { max_results = 20, page_token, query } = requestData;
+        const labelIds = (requestData as any).label_ids as string[] | undefined;
 
         const params = new URLSearchParams({
           limit: String(max_results),
         });
         if (page_token) params.set("page_token", page_token);
         if (query) params.set("search_query_native", query);
+        
+        // Filter by folder/label — default to INBOX to exclude spam/trash/sent
+        const folder = labelIds?.[0] || "INBOX";
+        params.set("in", folder);
 
         const listResponse = await fetch(
           `${baseUrl}/messages?${params}`,
