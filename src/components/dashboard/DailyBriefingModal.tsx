@@ -867,11 +867,51 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
     );
   }
 
-  const counts = data.counts ?? { projects: 0, overdue: 0, today: 0, upcoming: 0 };
+  const rawCounts = data.counts ?? { projects: 0, overdue: 0, today: 0, upcoming: 0 };
   const projects = data.projects ?? [];
-  const overdue = data.overdue ?? [];
-  const today = data.today ?? [];
-  const upcoming = data.upcoming ?? [];
+  const rawOverdue = data.overdue ?? [];
+  const rawToday = data.today ?? [];
+  const rawUpcoming = data.upcoming ?? [];
+
+  // Build assignee options from all tasks
+  const assigneeOptions = React.useMemo(() => {
+    const all = [...rawOverdue, ...rawToday, ...rawUpcoming];
+    const map = new Map<string, number>();
+    let unassignedCount = 0;
+    for (const t of all) {
+      if (t.assignee) {
+        map.set(t.assignee, (map.get(t.assignee) || 0) + 1);
+      } else {
+        unassignedCount++;
+      }
+    }
+    const sorted = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    const opts: { value: string; label: string }[] = [
+      { value: '__all__', label: `All (${all.length})` },
+    ];
+    if (unassignedCount > 0) opts.push({ value: '__unassigned__', label: `Unassigned (${unassignedCount})` });
+    for (const [name, count] of sorted) {
+      opts.push({ value: name, label: `${name} (${count})` });
+    }
+    return opts;
+  }, [rawOverdue, rawToday, rawUpcoming]);
+
+  // Apply assignee filter
+  const filterByAssignee = (tasks: any[]) => {
+    if (assigneeFilter === '__all__') return tasks;
+    if (assigneeFilter === '__unassigned__') return tasks.filter(t => !t.assignee);
+    return tasks.filter(t => t.assignee === assigneeFilter);
+  };
+
+  const overdue = filterByAssignee(rawOverdue);
+  const today = filterByAssignee(rawToday);
+  const upcoming = filterByAssignee(rawUpcoming);
+  const counts = {
+    projects: rawCounts.projects,
+    overdue: overdue.length,
+    today: today.length,
+    upcoming: upcoming.length,
+  };
 
   const openAsana = (url?: string | null) => {
     if (!url) return;
