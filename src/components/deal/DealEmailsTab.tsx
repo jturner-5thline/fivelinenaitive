@@ -662,7 +662,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           <div className={cn(
             'border-r border-white/[0.06] flex flex-col min-w-0 overflow-hidden bg-card/30 backdrop-blur-sm transition-all duration-200',
             readingPaneExpanded ? 'hidden' :
-            (currentThread || composeOpen) ? 'hidden md:flex md:w-[260px] md:max-w-[260px] shrink-0' : 'flex-1'
+            (currentThread || composeOpen) ? 'hidden md:flex md:w-[240px] md:shrink-0' : 'flex-1'
           )}>
             {/* Search bar — full-width, flat, Outlook style */}
             <div className="px-2 py-1.5 border-b border-white/[0.06]">
