@@ -169,6 +169,25 @@ const TOPIC_COLORS: Record<string, string> = {
   'Agentic AI': 'bg-rose-500/20 text-rose-300 border-rose-500/30',
 };
 
+// Topic-based gradient backgrounds for image placeholders
+const TOPIC_GRADIENTS: Record<string, string> = {
+  'Venture Debt': 'from-blue-900/80 via-blue-800/40 to-slate-900/60',
+  'Interest Rates': 'from-amber-900/80 via-amber-800/40 to-slate-900/60',
+  'Venture Capital': 'from-emerald-900/80 via-emerald-800/40 to-slate-900/60',
+  'AI & Technology': 'from-violet-900/80 via-violet-800/40 to-slate-900/60',
+  'AI in Finance': 'from-cyan-900/80 via-cyan-800/40 to-slate-900/60',
+  'Agentic AI': 'from-rose-900/80 via-rose-800/40 to-slate-900/60',
+};
+
+const TOPIC_ICONS: Record<string, string> = {
+  'Venture Debt': '💰',
+  'Interest Rates': '📊',
+  'Venture Capital': '🚀',
+  'AI & Technology': '⚡',
+  'AI in Finance': '🏦',
+  'Agentic AI': '🤖',
+};
+
 const ALL_TOPICS = ['Venture Debt', 'Interest Rates', 'Venture Capital', 'AI & Technology', 'AI in Finance', 'Agentic AI'];
 
 interface NewsfeedItem {
