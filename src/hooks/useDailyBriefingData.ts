@@ -368,3 +368,6 @@ export function useOperationalData(enabled: boolean) {
         upcoming: Array<any>;
         recentlyCompleted: Array<any>;
       };
+    },
+  });
+}
