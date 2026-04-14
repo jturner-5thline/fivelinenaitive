@@ -1,10 +1,10 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
@@ -111,6 +111,8 @@ function StageColumn({
   );
 }
 
+const VIEWS = ['Dashboard', 'Pipeline'] as const;
+
 export default function NaitivePipeline() {
   const { hasAccess, isLoading: accessLoading } = useNaitivePipelineAccess();
   const { pipelineId, stages, deals, isLoading: dataLoading, refetch } = useNaitivePipelineData();
@@ -119,11 +121,19 @@ export default function NaitivePipeline() {
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
   const { getMilestonesForDeal, toggleMilestone } = useNaitiveStageMilestones(dealIds);
 
+  const [activeView, setActiveView] = useState<0 | 1>(0);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [dashboardCollapsed, setDashboardCollapsed] = useState(false);
+
+  const goTo = useCallback((target: 0 | 1) => {
+    if (target === activeView) return;
+    setSlideDirection(target > activeView ? 'left' : 'right');
+    setActiveView(target);
+    setTimeout(() => setSlideDirection(null), 350);
+  }, [activeView]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -244,101 +254,151 @@ export default function NaitivePipeline() {
                 {deals.length} {deals.length === 1 ? 'deal' : 'deals'} in pipeline
               </p>
             </div>
-            <CreateDealDialog
-              trigger={
-                <Button size="sm" className="gap-1.5">
-                  <Plus className="h-4 w-4" />
-                  Add Deal
-                </Button>
-              }
-               initialValues={{
-                 pipelineId: pipelineId || undefined,
-                  dealStage: stages[0]?.id || 'prospects',
-                 dealClass: 'naitive',
-               }}
-            />
-          </div>
-
-          {/* Dashboard Command Center */}
-          {!isLoading && deals.length > 0 && (
-            <div className="mb-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Pipeline Command Center</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1 text-xs text-muted-foreground h-7"
-                  onClick={() => setDashboardCollapsed(!dashboardCollapsed)}
-                >
-                  {dashboardCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
-                  {dashboardCollapsed ? 'Show' : 'Hide'}
-                </Button>
+            <div className="flex items-center gap-3">
+              {/* View toggle pills */}
+              <div className="flex items-center bg-muted rounded-lg p-0.5">
+                {VIEWS.map((label, i) => (
+                  <button
+                    key={label}
+                    onClick={() => goTo(i as 0 | 1)}
+                    className={cn(
+                      "px-3.5 py-1.5 text-xs font-medium rounded-md transition-all duration-200",
+                      activeView === i
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-
-              {!dashboardCollapsed && (
-                <div className="space-y-4 animate-in fade-in-0 slide-in-from-top-2 duration-300">
-                  {/* KPI Strip */}
-                  <NaitivePipelineKPIStrip kpis={kpis} />
-
-                  {/* Charts Row */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <NaitiveFunnelChart data={funnelData} />
-                    <NaitiveTrendChart data={trendData} />
-                    <NaitivAgingChart data={agingData} />
-                    <NaitivHealthMixChart data={healthMix} />
-                  </div>
-
-                  {/* Intelligence Row */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <NaitivePipelineHurdles hurdles={hurdles} />
-                    <NaitivePipelineNotifications notifications={notifications} />
-                    <NaitivePipelineRecommendations recommendations={recommendations} />
-                    <NaitivePipelinePartnerInfluence deals={deals} />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Pipeline Board */}
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : deals.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-                <FileX className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium">No deals yet</h3>
-              <p className="mt-1 text-sm text-muted-foreground max-w-md">
-                Get started by adding your first deal to the naitive pipeline.
-              </p>
               <CreateDealDialog
                 trigger={
-                  <Button className="mt-4 gap-1.5">
+                  <Button size="sm" className="gap-1.5">
                     <Plus className="h-4 w-4" />
-                    Add Your First Deal
+                    Add Deal
                   </Button>
                 }
-                 initialValues={{
-                   pipelineId: pipelineId || undefined,
-                   dealStage: stages[0]?.id || 'prospects',
-                   dealClass: 'naitive',
-                 }}
+                initialValues={{
+                  pipelineId: pipelineId || undefined,
+                  dealStage: stages[0]?.id || 'prospects',
+                  dealClass: 'naitive',
+                }}
               />
             </div>
-          ) : (
-            <>
-              <div className="flex justify-end mb-2">
-                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsFullscreen(true)}>
-                  <Maximize2 className="h-3.5 w-3.5" />
-                  Expand
-                </Button>
+          </div>
+
+          {/* View container with arrows */}
+          <div className="relative">
+            {/* Left arrow — visible on Pipeline view */}
+            {activeView === 1 && (
+              <button
+                onClick={() => goTo(0)}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 h-11 w-11 flex items-center justify-center rounded-full bg-background/80 backdrop-blur border border-border shadow-md hover:shadow-lg hover:bg-background transition-all duration-200"
+                aria-label="Go to Dashboard"
+              >
+                <ChevronLeft className="h-5 w-5 text-foreground" />
+              </button>
+            )}
+
+            {/* Right arrow — visible on Dashboard view */}
+            {activeView === 0 && !isLoading && deals.length > 0 && (
+              <button
+                onClick={() => goTo(1)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-20 h-11 w-11 flex items-center justify-center rounded-full bg-background/80 backdrop-blur border border-border shadow-md hover:shadow-lg hover:bg-background transition-all duration-200"
+                aria-label="Go to Pipeline"
+              >
+                <ChevronRight className="h-5 w-5 text-foreground" />
+              </button>
+            )}
+
+            {/* Animated content area */}
+            <div className="overflow-hidden">
+              <div
+                key={activeView}
+                className={cn(
+                  "transition-none",
+                  slideDirection === 'left' && "animate-[slideInFromRight_0.3s_ease-out]",
+                  slideDirection === 'right' && "animate-[slideInFromLeft_0.3s_ease-out]",
+                )}
+              >
+                {activeView === 0 ? (
+                  /* ── Dashboard View ── */
+                  isLoading ? (
+                    <div className="flex items-center justify-center py-20">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : deals.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+                        <FileX className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-medium">No deals yet</h3>
+                      <p className="mt-1 text-sm text-muted-foreground max-w-md">
+                        Get started by adding your first deal to the naitive pipeline.
+                      </p>
+                      <CreateDealDialog
+                        trigger={
+                          <Button className="mt-4 gap-1.5">
+                            <Plus className="h-4 w-4" />
+                            Add Your First Deal
+                          </Button>
+                        }
+                        initialValues={{
+                          pipelineId: pipelineId || undefined,
+                          dealStage: stages[0]?.id || 'prospects',
+                          dealClass: 'naitive',
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <NaitivePipelineKPIStrip kpis={kpis} />
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <NaitiveFunnelChart data={funnelData} />
+                        <NaitiveTrendChart data={trendData} />
+                        <NaitivAgingChart data={agingData} />
+                        <NaitivHealthMixChart data={healthMix} />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <NaitivePipelineHurdles hurdles={hurdles} />
+                        <NaitivePipelineNotifications notifications={notifications} />
+                        <NaitivePipelineRecommendations recommendations={recommendations} />
+                        <NaitivePipelinePartnerInfluence deals={deals} />
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  /* ── Pipeline Board View ── */
+                  isLoading ? (
+                    <div className="flex items-center justify-center py-20">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : deals.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+                        <FileX className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-medium">No deals yet</h3>
+                      <p className="mt-1 text-sm text-muted-foreground max-w-md">
+                        Get started by adding your first deal to the naitive pipeline.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-end mb-2">
+                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsFullscreen(true)}>
+                          <Maximize2 className="h-3.5 w-3.5" />
+                          Expand
+                        </Button>
+                      </div>
+                      {pipelineContent(false)}
+                    </>
+                  )
+                )}
               </div>
-              {pipelineContent(false)}
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </div>
 
