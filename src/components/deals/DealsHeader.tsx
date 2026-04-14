@@ -25,7 +25,8 @@ export function DealsHeader() {
   const { hasPageAccess } = usePageAccessFlags();
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-
+  const [isBriefingOpen, setIsBriefingOpen] = useState(false);
+  const isJTurner = user?.email === 'jturner@5thline.co';
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
