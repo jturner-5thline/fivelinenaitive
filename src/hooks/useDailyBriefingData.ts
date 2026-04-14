@@ -101,7 +101,7 @@ export function useDailyBriefingData(enabled: boolean) {
         // Milestones (upcoming/overdue)
         supabase
           .from('deal_milestones')
-          .select('id, deal_id, title, status, due_date, assignee, completed')
+          .select('id, deal_id, title, status, due_date, completed')
           .eq('completed', false)
           .order('due_date', { ascending: true })
           .limit(100),

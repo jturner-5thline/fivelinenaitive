@@ -324,7 +324,7 @@ function FinancialTab({ data, onNavigate }: { data: BriefingData; onNavigate: (p
 
 // ── Tab: Pipeline & Clients ────────────────────────────────────
 function PipelineTab({ data, onNavigate }: { data: BriefingData; onNavigate: (path: string) => void }) {
-  const { newDeals, riskDeals, stageChanges } = data.pipeline;
+  const { newDeals, riskDeals, stageChanges, recentActivity } = data.pipeline;
   const [detail, setDetail] = useState<any>(null);
 
   return (
@@ -335,7 +335,10 @@ function PipelineTab({ data, onNavigate }: { data: BriefingData; onNavigate: (pa
             {detail.company && <div className="text-sm"><strong>Company:</strong> {detail.company}</div>}
             {detail.stage && <div className="text-sm"><strong>Stage:</strong> {detail.stage}</div>}
             {detail.manager && <div className="text-sm"><strong>Manager:</strong> {detail.manager}</div>}
+            {detail.activity_type && <div className="text-sm"><strong>Type:</strong> {detail.activity_type}</div>}
             {detail.description && <div className="text-sm">{detail.description}</div>}
+            {detail.user_display_name && <div className="text-sm"><strong>By:</strong> {detail.user_display_name}</div>}
+            {detail.created_at && <div className="text-sm"><strong>Time:</strong> {format(new Date(detail.created_at), 'PPp')}</div>}
             <Button size="sm" variant="outline" onClick={() => onNavigate(`/deal/${detail.id || detail.deal_id}`)}>
               Open Deal <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
@@ -390,6 +393,25 @@ function PipelineTab({ data, onNavigate }: { data: BriefingData; onNavigate: (pa
               badge={d.isFlagged ? 'Flagged' : 'At Risk'}
               badgeVariant={d.isFlagged ? 'destructive' : 'secondary'}
               onClick={() => setDetail(d)}
+            />
+          ))
+        )}
+      </Section>
+
+      <Section title="Recent Pipeline Activity">
+        {recentActivity.length === 0 ? (
+          <EmptySection message="No pipeline activity since 5 PM ET yesterday" />
+        ) : (
+          recentActivity.map(a => (
+            <BriefingRow
+              key={a.id}
+              icon={Clock}
+              title={a.description}
+              subtitle={a.user_display_name || undefined}
+              badge={a.activity_type.replace(/_/g, ' ')}
+              badgeVariant="outline"
+              time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
+              onClick={() => setDetail(a)}
             />
           ))
         )}
