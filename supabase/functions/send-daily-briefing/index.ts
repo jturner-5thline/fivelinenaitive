@@ -42,13 +42,17 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Send the daily briefing notification email via transactional email system
-    const { error } = await supabase.functions.invoke(
-      "send-transactional-email",
+    // Invoke send-transactional-email directly via fetch with service role auth
+    const response = await fetch(
+      `${supabaseUrl}/functions/v1/send-transactional-email`,
       {
-        body: {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({
           templateName: "daily-briefing-ready",
           recipientEmail: TARGET_EMAIL,
           idempotencyKey: `daily-briefing-${now.toISOString().slice(0, 10)}`,
@@ -56,14 +60,15 @@ Deno.serve(async (req) => {
             name: "James",
             date: dateString,
           },
-        },
+        }),
       }
     );
 
-    if (error) {
-      console.error("Failed to send daily briefing email:", error);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to send daily briefing email:", response.status, errorText);
       return new Response(
-        JSON.stringify({ success: false, error: error.message }),
+        JSON.stringify({ success: false, error: errorText }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -71,7 +76,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[daily-briefing] Sent notification to ${TARGET_EMAIL}`);
+    const result = await response.json();
+    console.log(`[daily-briefing] Sent notification to ${TARGET_EMAIL}`, result);
     return new Response(
       JSON.stringify({ success: true, date: dateString }),
       {
