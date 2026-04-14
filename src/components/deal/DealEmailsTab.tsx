@@ -943,7 +943,24 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               )}
             </div>
 
-            {/* Active filter chips */}
+            {/* Category tabs — matches Daily Briefing classification */}
+            <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/30">
+              {EMAIL_CATEGORY_TABS.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setCategoryTab(t.key)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-[10px] font-medium transition-all duration-150 border',
+                    categoryTab === t.key
+                      ? 'bg-primary/20 text-primary border-primary/30'
+                      : 'text-muted-foreground border-transparent hover:bg-muted/40 hover:text-foreground'
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
             {activeFilterChips.length > 0 && (
               <div className="flex flex-wrap gap-1 px-3 py-1.5 border-b border-border/30">
                 {activeFilterChips.map(chip => (
