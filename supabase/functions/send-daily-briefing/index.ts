@@ -14,7 +14,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Check if today is a weekday (Mon-Fri) in Eastern Time
     const now = new Date();
     const dayFormatter = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
@@ -29,9 +28,7 @@ Deno.serve(async (req) => {
     });
 
     const dayOfWeek = dayFormatter.format(now);
-    const isWeekday = !["Saturday", "Sunday"].includes(dayOfWeek);
-
-    if (!isWeekday) {
+    if (["Saturday", "Sunday"].includes(dayOfWeek)) {
       return new Response(
         JSON.stringify({ skipped: true, reason: `Today is ${dayOfWeek}` }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -39,11 +36,8 @@ Deno.serve(async (req) => {
     }
 
     const dateString = dateFormatter.format(now);
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Use supabase-js client which handles auth headers automatically
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const { data, error } = await supabase.functions.invoke(
@@ -57,15 +51,14 @@ Deno.serve(async (req) => {
             name: "James",
             date: dateString,
           },
-        }),
+        },
       }
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Failed to send daily briefing email:", response.status, errorText);
+    if (error) {
+      console.error("Failed to send daily briefing email:", error);
       return new Response(
-        JSON.stringify({ success: false, error: errorText }),
+        JSON.stringify({ success: false, error: String(error) }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -73,13 +66,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const result = await response.json();
-    console.log(`[daily-briefing] Sent notification to ${TARGET_EMAIL}`, result);
+    console.log(`[daily-briefing] Sent notification to ${TARGET_EMAIL}`, data);
     return new Response(
-      JSON.stringify({ success: true, date: dateString }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ success: true, date: dateString, data }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("Error in send-daily-briefing:", err);
