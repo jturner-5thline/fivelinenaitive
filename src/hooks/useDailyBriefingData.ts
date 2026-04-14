@@ -7,8 +7,8 @@ import { getDailyBriefingWindow } from '@/utils/dailyBriefingWindow';
 export interface BriefingData {
   window: { startISO: string; endISO: string; label: string };
   catchUp: {
-    recentActivity: any[];
     alerts: any[];
+    highlights: { label: string; value: string }[];
   };
   email: {
     emails: any[];
@@ -21,6 +21,7 @@ export interface BriefingData {
     newDeals: any[];
     riskDeals: any[];
     stageChanges: any[];
+    recentActivity: any[];
   };
   operational: {
     milestones: any[];
@@ -100,7 +101,7 @@ export function useDailyBriefingData(enabled: boolean) {
         // Milestones (upcoming/overdue)
         supabase
           .from('deal_milestones')
-          .select('id, deal_id, title, status, due_date, assignee, completed')
+          .select('id, deal_id, title, status, due_date, completed')
           .eq('completed', false)
           .order('due_date', { ascending: true })
           .limit(100),
@@ -157,11 +158,21 @@ export function useDailyBriefingData(enabled: boolean) {
         })
         .slice(0, 10);
 
+      // Build executive highlights for Catch Up
+      const highlights: { label: string; value: string }[] = [];
+      if (newDeals.length > 0) highlights.push({ label: 'New Deals', value: `${newDeals.length} new opportunit${newDeals.length === 1 ? 'y' : 'ies'} added` });
+      if (stageChanges.filter(sc => sc.activity_type !== 'deal_created').length > 0)
+        highlights.push({ label: 'Pipeline Movement', value: `${stageChanges.filter(sc => sc.activity_type !== 'deal_created').length} stage changes` });
+      if (riskDeals.length > 0) highlights.push({ label: 'Attention Needed', value: `${riskDeals.length} deal${riskDeals.length === 1 ? '' : 's'} flagged or at risk` });
+      if (enrichedEmails.length > 0) highlights.push({ label: 'Emails', value: `${enrichedEmails.length} email${enrichedEmails.length === 1 ? '' : 's'} received` });
+      const overdueCount = milestones.filter(m => m.due_date && new Date(m.due_date) < new Date()).length;
+      if (overdueCount > 0) highlights.push({ label: 'Overdue Tasks', value: `${overdueCount} milestone${overdueCount === 1 ? '' : 's'} overdue` });
+
       return {
         window,
         catchUp: {
-          recentActivity: activities.slice(0, 20),
           alerts,
+          highlights,
         },
         email: {
           emails: enrichedEmails,
@@ -174,6 +185,7 @@ export function useDailyBriefingData(enabled: boolean) {
           newDeals,
           riskDeals,
           stageChanges: stageChanges.slice(0, 20),
+          recentActivity: activities.slice(0, 30),
         },
         operational: {
           milestones,
