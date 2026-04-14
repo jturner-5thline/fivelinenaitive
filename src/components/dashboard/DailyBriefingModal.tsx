@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -843,6 +843,62 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
   const { data, isLoading, error, refetch } = useOperationalData(enabled);
   const [detail, setDetail] = useState<any>(null);
   const [drilldown, setDrilldown] = useState<'projects' | 'past_due' | 'today' | 'upcoming' | null>(null);
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('__all__');
+
+  const rawOverdue = data?.overdue ?? [];
+  const rawToday = data?.today ?? [];
+  const rawUpcoming = data?.upcoming ?? [];
+  const projects = data?.projects ?? [];
+  const rawCounts = data?.counts ?? { projects: 0, overdue: 0, today: 0, upcoming: 0 };
+
+  // Build assignee options from all tasks
+  const assigneeOptions = useMemo(() => {
+    const all = [...rawOverdue, ...rawToday, ...rawUpcoming];
+    const map = new Map<string, number>();
+    let unassignedCount = 0;
+    for (const t of all) {
+      if (t.assignee) {
+        map.set(t.assignee, (map.get(t.assignee) || 0) + 1);
+      } else {
+        unassignedCount++;
+      }
+    }
+    const sorted = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    const opts: { value: string; label: string }[] = [
+      { value: '__all__', label: `All (${all.length})` },
+    ];
+    if (unassignedCount > 0) opts.push({ value: '__unassigned__', label: `Unassigned (${unassignedCount})` });
+    for (const [name, count] of sorted) {
+      opts.push({ value: name, label: `${name} (${count})` });
+    }
+    return opts;
+  }, [rawOverdue, rawToday, rawUpcoming]);
+
+  // Apply assignee filter
+  const overdue = useMemo(() => {
+    if (assigneeFilter === '__all__') return rawOverdue;
+    if (assigneeFilter === '__unassigned__') return rawOverdue.filter((t: any) => !t.assignee);
+    return rawOverdue.filter((t: any) => t.assignee === assigneeFilter);
+  }, [rawOverdue, assigneeFilter]);
+
+  const todayTasks = useMemo(() => {
+    if (assigneeFilter === '__all__') return rawToday;
+    if (assigneeFilter === '__unassigned__') return rawToday.filter((t: any) => !t.assignee);
+    return rawToday.filter((t: any) => t.assignee === assigneeFilter);
+  }, [rawToday, assigneeFilter]);
+
+  const upcomingTasks = useMemo(() => {
+    if (assigneeFilter === '__all__') return rawUpcoming;
+    if (assigneeFilter === '__unassigned__') return rawUpcoming.filter((t: any) => !t.assignee);
+    return rawUpcoming.filter((t: any) => t.assignee === assigneeFilter);
+  }, [rawUpcoming, assigneeFilter]);
+
+  const counts = useMemo(() => ({
+    projects: rawCounts.projects,
+    overdue: overdue.length,
+    today: todayTasks.length,
+    upcoming: upcomingTasks.length,
+  }), [rawCounts.projects, overdue.length, todayTasks.length, upcomingTasks.length]);
 
   if (isLoading || !data) return <TabSkeleton />;
 
@@ -865,12 +921,6 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
       </div>
     );
   }
-
-  const counts = data.counts ?? { projects: 0, overdue: 0, today: 0, upcoming: 0 };
-  const projects = data.projects ?? [];
-  const overdue = data.overdue ?? [];
-  const today = data.today ?? [];
-  const upcoming = data.upcoming ?? [];
 
   const openAsana = (url?: string | null) => {
     if (!url) return;
@@ -940,9 +990,9 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
                 </a>
               ))
             )}
-            {drilldown === 'today' && (today.length === 0
+            {drilldown === 'today' && (todayTasks.length === 0
               ? <p className="text-xs text-muted-foreground py-4 text-center">No items due today</p>
-              : today.map((t: any) => (
+              : todayTasks.map((t: any) => (
                 <a key={t.gid} href={t.permalink_url || `https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium truncate">{t.name}</p>
@@ -955,9 +1005,9 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
                 </a>
               ))
             )}
-            {drilldown === 'upcoming' && (upcoming.length === 0
+            {drilldown === 'upcoming' && (upcomingTasks.length === 0
               ? <p className="text-xs text-muted-foreground py-4 text-center">No upcoming items</p>
-              : upcoming.map((t: any) => (
+              : upcomingTasks.map((t: any) => (
                 <a key={t.gid} href={t.permalink_url || `https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium truncate">{t.name}</p>
@@ -996,6 +1046,27 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
         </div>
       </Section>
 
+      {/* Assignee filter */}
+      {assigneeOptions.length > 2 && (
+        <div className="px-1 pb-2">
+          <select
+            value={assigneeFilter}
+            onChange={(e) => setAssigneeFilter(e.target.value)}
+            className={cn(
+              'w-full rounded-lg px-3 py-2 text-xs',
+              'bg-white/[0.04] border border-white/[0.08] text-foreground',
+              'focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/30',
+              'backdrop-blur-sm appearance-none cursor-pointer',
+            )}
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+          >
+            {assigneeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <Section title="Past Due Items">
         {overdue.length === 0 ? <EmptySection message="No overdue items" /> : overdue.map((item: any) => (
           <BriefingRow
@@ -1012,7 +1083,7 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
       </Section>
 
       <Section title="Due Today">
-        {today.length === 0 ? <EmptySection message="No items due today" /> : today.map((item: any) => (
+        {todayTasks.length === 0 ? <EmptySection message="No items due today" /> : todayTasks.map((item: any) => (
           <BriefingRow
             key={item.gid}
             icon={ListChecks}
@@ -1027,7 +1098,7 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
       </Section>
 
       <Section title="Upcoming">
-        {upcoming.length === 0 ? <EmptySection message="No upcoming items" /> : upcoming.slice(0, 15).map((item: any) => (
+        {upcomingTasks.length === 0 ? <EmptySection message="No upcoming items" /> : upcomingTasks.slice(0, 15).map((item: any) => (
           <BriefingRow
             key={item.gid}
             icon={Clock}
