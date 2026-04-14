@@ -877,25 +877,92 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
         </DetailPopup>
       )}
 
+      {/* Stat card drilldown popups */}
+      {drilldown && (
+        <DetailPopup
+          title={
+            drilldown === 'projects' ? `Projects (${summary.total_projects})` :
+            drilldown === 'past_due' ? `Past Due (${summary.overdue_count})` :
+            drilldown === 'today' ? `Due Today (${summary.due_today_count})` :
+            `Upcoming (${summary.upcoming_milestones_count})`
+          }
+          onClose={() => setDrilldown(null)}
+        >
+          <div className="space-y-1 max-h-[350px] overflow-y-auto">
+            {drilldown === 'projects' && (projects.length === 0
+              ? <p className="text-xs text-muted-foreground py-4 text-center">No active projects</p>
+              : projects.map((p: any) => (
+                <a key={p.gid} href={`https://app.asana.com/0/${p.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
+                  <div>
+                    <p className="text-xs font-medium">{p.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{p.owner || 'No owner'}{p.status_type ? ` • ${p.status_type.replace('_', ' ')}` : ''}</p>
+                  </div>
+                  {p.due_on && <span className="text-[10px] text-muted-foreground/60">{format(new Date(p.due_on + 'T00:00:00'), 'MMM d')}</span>}
+                </a>
+              ))
+            )}
+            {drilldown === 'past_due' && (pastDueAll.length === 0
+              ? <p className="text-xs text-muted-foreground py-4 text-center">No overdue items — all clear</p>
+              : pastDueAll.map((t: any) => (
+                <a key={t.gid} href={`https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-destructive/30 transition-colors cursor-pointer')}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium truncate">{t.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{t.project_name}{t.assignee ? ` • ${t.assignee}` : ''}</p>
+                  </div>
+                  <div className="text-right ml-2 shrink-0">
+                    <p className="text-[10px] text-destructive font-medium">{t.days_overdue}d overdue</p>
+                    {t.due_on && <p className="text-[10px] text-muted-foreground/60">{format(new Date(t.due_on + 'T00:00:00'), 'MMM d')}</p>}
+                  </div>
+                </a>
+              ))
+            )}
+            {drilldown === 'today' && (today_items.length === 0
+              ? <p className="text-xs text-muted-foreground py-4 text-center">Nothing due today</p>
+              : today_items.map((t: any) => (
+                <a key={t.gid} href={`https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-amber-500/30 transition-colors cursor-pointer')}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium truncate">{t.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{t.project_name}{t.assignee ? ` • ${t.assignee}` : ''}</p>
+                  </div>
+                  {t.is_milestone && <Badge variant="outline" className="text-[10px] border-white/[0.08] ml-2">Milestone</Badge>}
+                </a>
+              ))
+            )}
+            {drilldown === 'upcoming' && (upcoming_milestones.length === 0
+              ? <p className="text-xs text-muted-foreground py-4 text-center">No upcoming milestones</p>
+              : upcoming_milestones.map((t: any) => (
+                <a key={t.gid} href={`https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium truncate">{t.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{t.project_name}{t.assignee ? ` • ${t.assignee}` : ''}</p>
+                  </div>
+                  {t.due_on && <span className="text-[10px] text-muted-foreground/60 ml-2">{format(new Date(t.due_on + 'T00:00:00'), 'MMM d')}</span>}
+                </a>
+              ))
+            )}
+          </div>
+        </DetailPopup>
+      )}
+
       {/* Operational Highlights */}
       <Section title="Operational Highlights">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <div className={cn(GLASS_CARD, 'p-3 text-center')}>
+          <div className={cn(GLASS_CARD, 'p-3 text-center cursor-pointer hover:border-primary/30 hover:scale-[1.02] transition-all')} onClick={() => setDrilldown('projects')}>
             <p className="text-xs text-muted-foreground/70">Projects</p>
             <p className="text-xl font-bold text-primary">{summary.total_projects}</p>
             <p className="text-[10px] text-muted-foreground/50">active</p>
           </div>
-          <div className={cn(GLASS_CARD, 'p-3 text-center')}>
+          <div className={cn(GLASS_CARD, 'p-3 text-center cursor-pointer hover:border-destructive/30 hover:scale-[1.02] transition-all')} onClick={() => setDrilldown('past_due')}>
             <p className="text-xs text-muted-foreground/70">Past Due</p>
             <p className={cn('text-xl font-bold', summary.overdue_count > 0 ? 'text-destructive' : 'text-emerald-400')}>{summary.overdue_count}</p>
             <p className="text-[10px] text-muted-foreground/50">items</p>
           </div>
-          <div className={cn(GLASS_CARD, 'p-3 text-center')}>
+          <div className={cn(GLASS_CARD, 'p-3 text-center cursor-pointer hover:border-amber-500/30 hover:scale-[1.02] transition-all')} onClick={() => setDrilldown('today')}>
             <p className="text-xs text-muted-foreground/70">Due Today</p>
             <p className={cn('text-xl font-bold', summary.due_today_count > 0 ? 'text-amber-400' : 'text-foreground')}>{summary.due_today_count}</p>
             <p className="text-[10px] text-muted-foreground/50">items</p>
           </div>
-          <div className={cn(GLASS_CARD, 'p-3 text-center')}>
+          <div className={cn(GLASS_CARD, 'p-3 text-center cursor-pointer hover:border-primary/30 hover:scale-[1.02] transition-all')} onClick={() => setDrilldown('upcoming')}>
             <p className="text-xs text-muted-foreground/70">Upcoming</p>
             <p className="text-xl font-bold text-foreground">{summary.upcoming_milestones_count}</p>
             <p className="text-[10px] text-muted-foreground/50">milestones</p>
