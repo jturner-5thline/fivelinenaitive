@@ -153,16 +153,20 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   const rowContent = (
     <div
       className={cn(
-        'group relative cursor-pointer transition-all duration-100 rounded-lg mx-1.5 my-0.5 border-l-2',
+        'group relative cursor-pointer transition-all duration-100 rounded-lg mx-1.5 my-0.5 overflow-hidden',
         isSelected
-          ? 'border-l-[hsl(var(--outlook-blue))] bg-[hsl(var(--outlook-blue)/0.08)]'
-          : 'border-l-transparent',
+          ? 'bg-[hsl(var(--outlook-blue)/0.08)]'
+          : '',
         !isSelected && 'hover:bg-[hsl(var(--foreground)/0.04)]',
       )}
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {/* Selected accent bar */}
+      {isSelected && (
+        <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[hsl(var(--outlook-blue))]" />
+      )}
       <div className="flex items-start gap-2.5 px-3 py-2 min-w-0">
         {/* Checkbox or avatar area */}
         <div className="relative flex items-center justify-center shrink-0 mt-0.5" style={{ width: 24, height: 24 }}>
