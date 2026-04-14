@@ -47,7 +47,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
 
   useEffect(() => {
     if (open && status.connected && !hasLoaded) {
-      listMessages({ maxResults: 50 });
+      listMessages({ maxResults: 50, labelIds: ['INBOX'] });
       setHasLoaded(true);
     }
   }, [open, status.connected, hasLoaded, listMessages]);
@@ -60,7 +60,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   const mappedEmails = useMemo(() => mapGmailToMockEmails(messages), [messages]);
 
   const handleRefresh = useCallback(() => {
-    listMessages({ maxResults: 50 });
+    listMessages({ maxResults: 50, labelIds: ['INBOX'] });
   }, [listMessages]);
 
   if (!status.connected) {
