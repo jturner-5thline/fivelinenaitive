@@ -153,12 +153,10 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   const rowContent = (
     <div
       className={cn(
-        'group relative cursor-pointer transition-all duration-100 border-l-2',
-        // Selected: thin blue left border, very subtle bg
+        'group relative cursor-pointer transition-all duration-100 rounded-lg mx-1.5 my-0.5 border-l-2',
         isSelected
           ? 'border-l-[hsl(var(--outlook-blue))] bg-[hsl(var(--outlook-blue)/0.08)]'
           : 'border-l-transparent',
-        // Hover
         !isSelected && 'hover:bg-[hsl(var(--foreground)/0.04)]',
       )}
       onClick={onSelect}
@@ -334,7 +332,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
 
    return (
     <ScrollArea className="h-full w-full">
-      <div className="divide-y divide-white/[0.06]">
+      <div className="space-y-0">
         {threads.map((thread) => (
           <ThreadListItem
             key={thread.threadId}
