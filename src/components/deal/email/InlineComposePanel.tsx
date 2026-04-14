@@ -39,9 +39,9 @@ interface InlineComposePanelProps {
 }
 
 export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePanelProps) {
-  const [to, setTo] = useState(replyTo?.to_email || '');
-  const [cc, setCc] = useState('');
-  const [bcc, setBcc] = useState('');
+  const [toRecipients, setToRecipients] = useState<string[]>(replyTo?.to_email ? [replyTo.to_email] : []);
+  const [ccRecipients, setCcRecipients] = useState<string[]>([]);
+  const [bccRecipients, setBccRecipients] = useState<string[]>([]);
   const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject}` : '');
   const [body, setBody] = useState('');
   const [showCcBcc, setShowCcBcc] = useState(true);
@@ -50,11 +50,12 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
+  const { search } = useEmailContacts();
 
   const resetForm = () => {
-    setTo(replyTo?.to_email || '');
-    setCc('');
-    setBcc('');
+    setToRecipients(replyTo?.to_email ? [replyTo.to_email] : []);
+    setCcRecipients([]);
+    setBccRecipients([]);
     setSubject(replyTo ? `Re: ${replyTo.subject}` : '');
     setBody('');
     setShowCcBcc(false);
