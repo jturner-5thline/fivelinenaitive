@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -7,7 +5,6 @@ const corsHeaders = {
 };
 
 const TARGET_EMAIL = "jturner@5thline.co";
-const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRna2tzdmF6cnV6Ymdoc3NueGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2NDk4MzksImV4cCI6MjA4MTIyNTgzOX0.rKbLgDEfCdQO4hv2_69-Q4r3RiH7_6hsTuwcn6JJpL8";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -40,19 +37,17 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Use anon key for the client (apikey header) but service role for Authorization
-    const supabase = createClient(supabaseUrl, ANON_KEY, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-      },
-    });
-
-    const { data, error } = await supabase.functions.invoke(
-      "send-transactional-email",
+    // Call send-transactional-email via raw fetch with proper headers
+    const response = await fetch(
+      `${supabaseUrl}/functions/v1/send-transactional-email`,
       {
-        body: {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceRoleKey}`,
+          "apikey": serviceRoleKey,
+        },
+        body: JSON.stringify({
           templateName: "daily-briefing-ready",
           recipientEmail: TARGET_EMAIL,
           idempotencyKey: `daily-briefing-${now.toISOString().slice(0, 10)}`,
@@ -60,14 +55,16 @@ Deno.serve(async (req) => {
             name: "James",
             date: dateString,
           },
-        },
+        }),
       }
     );
 
-    if (error) {
-      console.error("Failed to send daily briefing email:", error);
+    const responseText = await response.text();
+    console.log(`[daily-briefing] Response: ${response.status} ${responseText}`);
+
+    if (!response.ok) {
       return new Response(
-        JSON.stringify({ success: false, error: String(error) }),
+        JSON.stringify({ success: false, status: response.status, error: responseText }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -75,9 +72,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[daily-briefing] Sent notification to ${TARGET_EMAIL}`, data);
     return new Response(
-      JSON.stringify({ success: true, date: dateString, data }),
+      JSON.stringify({ success: true, date: dateString }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
