@@ -174,7 +174,7 @@ serve(async (req) => {
               resource: projectGid,
               target: targetUrl,
               filters: [
-                { resource_type: "task", action: "changed", fields: ["completed"] }
+                { resource_type: "task", action: "changed", fields: ["completed", "name", "due_on", "assignee"] }
               ]
             }
           }),
