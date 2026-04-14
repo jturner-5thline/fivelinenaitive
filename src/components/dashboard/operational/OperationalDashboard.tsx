@@ -1,20 +1,13 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronRight, ExternalLink, MoreHorizontal } from 'lucide-react';
+import { ChevronRight, MoreHorizontal, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import {
   Bar, BarChart, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Cell, PieChart, Pie, Legend,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
-import {
-  MOCK_KPIS,
-  MOCK_MILESTONE_OWNERSHIP,
-  MOCK_OVERDUE_BUCKETS,
-  MOCK_PROJECT_OVERVIEW,
-  MOCK_PROJECT_STATUS,
-  MOCK_PROJECTS_DUE,
-} from './operationalMockData';
+import { differenceInDays, parseISO, isAfter, isBefore, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
 
 // ── Glass surface tokens ───────────────────────────────────────
 const GLASS_CARD = 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-lg';
@@ -40,6 +33,25 @@ const TOOLTIP_STYLE = {
   borderRadius: 8,
   fontSize: 11,
 };
+
+// ── Types ──────────────────────────────────────────────────────
+interface OperationalData {
+  counts: { projects: number; overdue: number; today: number; upcoming: number };
+  projects: Array<any>;
+  overdue: Array<any>;
+  today: Array<any>;
+  upcoming: Array<any>;
+  recentlyCompleted?: Array<any>;
+  error?: string;
+  partial?: boolean;
+}
+
+interface OperationalDashboardProps {
+  data: OperationalData | null;
+  isLoading: boolean;
+  error?: Error | null;
+  onRefetch?: () => void;
+}
 
 // ── KPI Card ───────────────────────────────────────────────────
 function KPICard({ label, value, description }: { label: string; value: string; description: string }) {
@@ -70,7 +82,6 @@ function ChartCard({
 }) {
   return (
     <div className={cn(GLASS_CARD, 'flex flex-col overflow-hidden')}>
-      {/* Header */}
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="text-xs font-semibold text-foreground truncate">{title}</h3>
@@ -84,9 +95,7 @@ function ChartCard({
           <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
       </div>
-      {/* Chart body */}
       <div className="flex-1 px-2 pb-1">{children}</div>
-      {/* Footer */}
       {onSeeAll && (
         <button
           onClick={onSeeAll}
@@ -114,15 +123,183 @@ function PieLegend({ items }: { items: { label: string; color: string; count: nu
   );
 }
 
+// ── Derived metrics from real data ─────────────────────────────
+function useDerivedMetrics(data: OperationalData | null) {
+  return useMemo(() => {
+    if (!data) return null;
+
+    const now = new Date();
+    const twoWeeksOut = addDays(now, 14);
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+    // All tasks combined
+    const allTasks = [...(data.overdue ?? []), ...(data.today ?? []), ...(data.upcoming ?? [])];
+    const completedTasks = data.recentlyCompleted ?? [];
+
+    // KPI 1: Milestones due in next 2 weeks (from today + upcoming, filter milestones with due_on in range)
+    const milestonesNext2Weeks = allTasks.filter(t => {
+      if (t.completed) return false;
+      if (!t.due_on) return false;
+      const due = parseISO(t.due_on);
+      return (isAfter(due, startOfDay(now)) || t.due_on === now.toISOString().slice(0, 10)) &&
+        isBefore(due, endOfDay(twoWeeksOut)) && t.is_milestone;
+    }).length;
+
+    // KPI 2: Overdue milestones
+    const overdueMilestones = (data.overdue ?? []).filter((t: any) => t.is_milestone).length;
+
+    // KPI 3: Avg time to complete milestone (from recently completed milestones)
+    const completedMilestones = completedTasks.filter((t: any) => t.is_milestone && t.completed_at);
+    let avgTimeToComplete = 0;
+    if (completedMilestones.length > 0) {
+      const totalDays = completedMilestones.reduce((sum: number, t: any) => {
+        // Use last_activity_at as created proxy if no created_at available
+        const created = t.created_at ? parseISO(t.created_at) : (t.last_activity_at ? parseISO(t.last_activity_at) : null);
+        const completed = parseISO(t.completed_at);
+        if (!created) return sum;
+        return sum + Math.max(0, differenceInDays(completed, created));
+      }, 0);
+      avgTimeToComplete = totalDays / completedMilestones.length;
+    }
+
+    // KPI 4: Completed projects
+    const completedProjects = (data.projects ?? []).filter((p: any) =>
+      p.status_type === 'complete' || p.status_type === 'achieved'
+    ).length;
+
+    // Chart 1: This week's milestones by assignee
+    const thisWeekMilestones = allTasks.filter(t => {
+      if (t.completed) return false;
+      if (!t.due_on) return false;
+      const due = parseISO(t.due_on);
+      return !isBefore(due, startOfDay(weekStart)) && !isAfter(due, endOfDay(weekEnd));
+    });
+    const milestoneByAssignee = new Map<string, number>();
+    thisWeekMilestones.forEach(t => {
+      const name = t.assignee || 'Unassigned';
+      milestoneByAssignee.set(name, (milestoneByAssignee.get(name) || 0) + 1);
+    });
+    const milestoneOwnership = Array.from(milestoneByAssignee.entries())
+      .map(([assignee, count]) => ({ assignee, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Chart 2: Overdue milestones by project
+    const overdueByProject = new Map<string, number>();
+    (data.overdue ?? []).forEach((t: any) => {
+      const proj = t.project_name || 'Unknown';
+      overdueByProject.set(proj, (overdueByProject.get(proj) || 0) + 1);
+    });
+    const overdueBuckets = Array.from(overdueByProject.entries())
+      .map(([project, count]) => ({ project, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+
+    // Chart 3: Projects overview by status groups
+    const statusGroups = new Map<string, { onTrack: number; atRisk: number; offTrack: number }>();
+    (data.projects ?? []).forEach((p: any) => {
+      // Use a simple bucket based on first word or full name
+      const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+      if (!statusGroups.has(bucket)) statusGroups.set(bucket, { onTrack: 0, atRisk: 0, offTrack: 0 });
+      const g = statusGroups.get(bucket)!;
+      const st = (p.status_type || '').toLowerCase();
+      if (st === 'on_track' || st === 'on track' || st === 'green') g.onTrack++;
+      else if (st === 'at_risk' || st === 'at risk' || st === 'yellow') g.atRisk++;
+      else if (st === 'off_track' || st === 'off track' || st === 'red') g.offTrack++;
+      else g.onTrack++; // default to on track if no status
+    });
+    const projectOverview = Array.from(statusGroups.entries())
+      .map(([bucket, v]) => ({ bucket, ...v }))
+      .slice(0, 6);
+
+    // Chart 4: Projects by status (pie)
+    const statusCounts = { onTrack: 0, atRisk: 0, offTrack: 0, onHold: 0 };
+    (data.projects ?? []).forEach((p: any) => {
+      const st = (p.status_type || '').toLowerCase();
+      if (st === 'on_track' || st === 'on track' || st === 'green') statusCounts.onTrack++;
+      else if (st === 'at_risk' || st === 'at risk' || st === 'yellow') statusCounts.atRisk++;
+      else if (st === 'off_track' || st === 'off track' || st === 'red') statusCounts.offTrack++;
+      else if (st === 'on_hold' || st === 'on hold') statusCounts.onHold++;
+      else statusCounts.onTrack++;
+    });
+    const projectStatus = [
+      { status: 'On track', count: statusCounts.onTrack, color: STATUS_COLORS['On track'] },
+      { status: 'At risk', count: statusCounts.atRisk, color: STATUS_COLORS['At risk'] },
+      { status: 'Off track', count: statusCounts.offTrack, color: STATUS_COLORS['Off track'] },
+      { status: 'On hold', count: statusCounts.onHold, color: STATUS_COLORS['On hold'] },
+    ].filter(s => s.count > 0);
+
+    // Chart 5: Projects due within next 2 weeks
+    const projectsDueNext2 = (data.projects ?? []).filter((p: any) => {
+      if (!p.due_on) return false;
+      const due = parseISO(p.due_on);
+      return isAfter(due, startOfDay(now)) && isBefore(due, endOfDay(twoWeeksOut));
+    });
+    const projectsDueBuckets = projectsDueNext2.length > 0
+      ? [{ bucket: 'Due in 2 weeks', count: projectsDueNext2.length }]
+      : [{ bucket: 'Due in 2 weeks', count: 0 }];
+
+    return {
+      kpis: [
+        { label: 'Milestones Next 2 Weeks', value: String(milestonesNext2Weeks), description: 'Open milestones due within 14 days' },
+        { label: 'Overdue Milestones', value: String(overdueMilestones), description: 'Incomplete milestones past due' },
+        { label: 'Avg. Time to Comp. Milestone', value: completedMilestones.length > 0 ? `${avgTimeToComplete.toFixed(2)} d` : '— d', description: 'Avg duration open → completed' },
+        { label: 'Completed Projects', value: String(completedProjects), description: 'Projects with completed status' },
+      ],
+      milestoneOwnership,
+      overdueBuckets,
+      projectOverview,
+      projectStatus,
+      projectsDueBuckets,
+    };
+  }, [data]);
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────
-export function OperationalDashboard() {
-  // Future: replace mock data with live Naitive data hooks
-  const kpis = MOCK_KPIS;
-  const milestoneOwnership = MOCK_MILESTONE_OWNERSHIP;
-  const overdueBuckets = MOCK_OVERDUE_BUCKETS;
-  const projectOverview = MOCK_PROJECT_OVERVIEW;
-  const projectStatus = MOCK_PROJECT_STATUS;
-  const projectsDue = MOCK_PROJECTS_DUE;
+export function OperationalDashboard({ data, isLoading, error, onRefetch }: OperationalDashboardProps) {
+  const metrics = useDerivedMetrics(data);
+
+  if (isLoading || !data) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className={cn(GLASS_CARD, 'p-4 min-h-[88px] animate-pulse')}>
+              <div className="h-2 w-20 bg-white/[0.06] rounded mb-3" />
+              <div className="h-6 w-12 bg-white/[0.08] rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  const hasData = data.counts && (data.counts.projects > 0 || data.counts.overdue > 0 || data.counts.today > 0 || data.counts.upcoming > 0);
+  if ((error || data.error) && !hasData) {
+    const rawMsg = data.error || (error instanceof Error ? error.message : 'Unable to load operational data');
+    const isRateLimit = rawMsg.includes('429') || rawMsg.toLowerCase().includes('rate limit');
+    const msg = isRateLimit
+      ? 'Asana data is temporarily unavailable due to rate limits. Please try again in a moment.'
+      : rawMsg;
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-3">
+        <AlertCircle className="w-8 h-8 text-destructive/60" />
+        <p className="text-sm text-muted-foreground text-center max-w-xs">{msg}</p>
+        {onRefetch && (
+          <button onClick={onRefetch} className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+            <RefreshCw className="h-3 w-3" /> Retry
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!metrics) return null;
+
+  const { kpis, milestoneOwnership, overdueBuckets, projectOverview, projectStatus, projectsDueBuckets } = metrics;
 
   const handleSeeAll = () => {
     // Future: open drilldown or navigate
@@ -130,6 +307,13 @@ export function OperationalDashboard() {
 
   return (
     <div className="space-y-4">
+      {/* Partial data warning */}
+      {data.partial && (
+        <div className="text-[10px] text-amber-400/70 bg-amber-400/[0.06] rounded px-3 py-1.5 border border-amber-400/10">
+          Some projects could not be loaded due to rate limits. Showing partial data.
+        </div>
+      )}
+
       {/* ── Row 1: KPI Summary Cards ──────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         {kpis.map((kpi) => (
@@ -140,116 +324,100 @@ export function OperationalDashboard() {
       {/* ── Row 2: Charts grid ────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {/* Chart 1: This Week's Milestones (pie) */}
-        <ChartCard title="This Week's Milestones" filterCount={2} onSeeAll={handleSeeAll}>
-          <div className="flex items-center gap-2 py-2">
-            <ResponsiveContainer width="55%" height={160}>
-              <PieChart>
-                <PieGlassDefs colors={milestoneOwnership.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])} />
-                <Pie
-                  data={milestoneOwnership}
-                  dataKey="count"
-                  nameKey="assignee"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={32}
-                  outerRadius={60}
-                  paddingAngle={3}
-                  activeShape={GlassActiveShape}
-                >
-                  {milestoneOwnership.map((_, i) => (
-                    <Cell key={i} fill={pieGlassFill(i)} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={0.5} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-              </PieChart>
-            </ResponsiveContainer>
-            <PieLegend
-              items={milestoneOwnership.map((m, i) => ({
-                label: m.assignee,
-                color: CHART_COLORS[i % CHART_COLORS.length],
-                count: m.count,
-              }))}
-            />
-          </div>
+        <ChartCard title="This Week's Milestones" filterCount={milestoneOwnership.length} onSeeAll={handleSeeAll}>
+          {milestoneOwnership.length === 0 ? (
+            <div className="flex items-center justify-center h-[160px] text-xs text-muted-foreground/60">No milestones this week</div>
+          ) : (
+            <div className="flex items-center gap-2 py-2">
+              <ResponsiveContainer width="55%" height={160}>
+                <PieChart>
+                  <PieGlassDefs colors={milestoneOwnership.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])} />
+                  <Pie data={milestoneOwnership} dataKey="count" nameKey="assignee" cx="50%" cy="50%" innerRadius={32} outerRadius={60} paddingAngle={3} activeShape={GlassActiveShape}>
+                    {milestoneOwnership.map((_, i) => (
+                      <Cell key={i} fill={pieGlassFill(i)} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={0.5} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                </PieChart>
+              </ResponsiveContainer>
+              <PieLegend items={milestoneOwnership.map((m, i) => ({ label: m.assignee, color: CHART_COLORS[i % CHART_COLORS.length], count: m.count }))} />
+            </div>
+          )}
         </ChartCard>
 
         {/* Chart 2: Overdue Milestones (bar) */}
         <ChartCard title="Overdue Milestones" onSeeAll={handleSeeAll}>
-          <ResponsiveContainer width="100%" height={170}>
-            <BarChart data={overdueBuckets} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="project" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <Bar dataKey="count" shape={createGlassBarShape({ radius: 3 })} name="Overdue">
-                {overdueBuckets.map((_, i) => (
-                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {overdueBuckets.length === 0 ? (
+            <div className="flex items-center justify-center h-[170px] text-xs text-muted-foreground/60">No overdue items</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={170}>
+              <BarChart data={overdueBuckets} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="project" tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-15} textAnchor="end" height={40} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Bar dataKey="count" shape={createGlassBarShape({ radius: 3 })} name="Overdue">
+                  {overdueBuckets.map((_, i) => (
+                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </ChartCard>
 
         {/* Chart 3: Projects Overview (grouped bar) */}
-        <ChartCard title="Projects Overview" filterCount={3} onSeeAll={handleSeeAll}>
-          <ResponsiveContainer width="100%" height={170}>
-            <BarChart data={projectOverview} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="bucket" tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground))' }} interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <Legend wrapperStyle={{ fontSize: 9 }} />
-              <Bar dataKey="onTrack" name="On track" fill={STATUS_COLORS['On track']} radius={[3, 3, 0, 0]} barSize={14} />
-              <Bar dataKey="atRisk" name="At risk" fill={STATUS_COLORS['At risk']} radius={[3, 3, 0, 0]} barSize={14} />
-              <Bar dataKey="offTrack" name="Off track" fill={STATUS_COLORS['Off track']} radius={[3, 3, 0, 0]} barSize={14} />
-            </BarChart>
-          </ResponsiveContainer>
+        <ChartCard title="Projects Overview" filterCount={projectOverview.length} onSeeAll={handleSeeAll}>
+          {projectOverview.length === 0 ? (
+            <div className="flex items-center justify-center h-[170px] text-xs text-muted-foreground/60">No projects</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={170}>
+              <BarChart data={projectOverview} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="bucket" tick={{ fontSize: 7, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-15} textAnchor="end" height={45} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Legend wrapperStyle={{ fontSize: 9 }} />
+                <Bar dataKey="onTrack" name="On track" fill={STATUS_COLORS['On track']} radius={[3, 3, 0, 0]} barSize={14} />
+                <Bar dataKey="atRisk" name="At risk" fill={STATUS_COLORS['At risk']} radius={[3, 3, 0, 0]} barSize={14} />
+                <Bar dataKey="offTrack" name="Off track" fill={STATUS_COLORS['Off track']} radius={[3, 3, 0, 0]} barSize={14} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </ChartCard>
 
         {/* Chart 4: Projects by Status (pie) */}
         <ChartCard title="Projects by Status" onSeeAll={handleSeeAll}>
-          <div className="flex items-center gap-2 py-2">
-            <ResponsiveContainer width="55%" height={160}>
-              <PieChart>
-                <PieGlassDefs colors={projectStatus.map((s) => s.color)} />
-                <Pie
-                  data={projectStatus}
-                  dataKey="count"
-                  nameKey="status"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={32}
-                  outerRadius={60}
-                  paddingAngle={3}
-                  activeShape={GlassActiveShape}
-                >
-                  {projectStatus.map((entry, i) => (
-                    <Cell key={i} fill={pieGlassFill(i)} stroke={entry.color} strokeWidth={0.5} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-              </PieChart>
-            </ResponsiveContainer>
-            <PieLegend
-              items={projectStatus.map((s) => ({
-                label: s.status,
-                color: s.color,
-                count: s.count,
-              }))}
-            />
-          </div>
+          {projectStatus.length === 0 ? (
+            <div className="flex items-center justify-center h-[160px] text-xs text-muted-foreground/60">No project data</div>
+          ) : (
+            <div className="flex items-center gap-2 py-2">
+              <ResponsiveContainer width="55%" height={160}>
+                <PieChart>
+                  <PieGlassDefs colors={projectStatus.map(s => s.color)} />
+                  <Pie data={projectStatus} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={32} outerRadius={60} paddingAngle={3} activeShape={GlassActiveShape}>
+                    {projectStatus.map((entry, i) => (
+                      <Cell key={i} fill={pieGlassFill(i)} stroke={entry.color} strokeWidth={0.5} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                </PieChart>
+              </ResponsiveContainer>
+              <PieLegend items={projectStatus.map(s => ({ label: s.status, color: s.color, count: s.count }))} />
+            </div>
+          )}
         </ChartCard>
 
         {/* Chart 5: Projects Due within Next 2 Weeks (bar) */}
         <ChartCard title="Projects Due within Next 2 Weeks" onSeeAll={handleSeeAll}>
           <ResponsiveContainer width="100%" height={170}>
-            <BarChart data={projectsDue} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
+            <BarChart data={projectsDueBuckets} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="bucket" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval={0} />
               <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
               <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Bar dataKey="count" shape={createGlassBarShape({ radius: 3 })} name="Projects Due">
-                {projectsDue.map((_, i) => (
+                {projectsDueBuckets.map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
               </Bar>
