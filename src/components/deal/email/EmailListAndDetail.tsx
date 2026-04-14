@@ -334,7 +334,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
 
    return (
     <ScrollArea className="h-full w-full">
-      <div className="divide-y divide-border/30">
+      <div className="divide-y divide-white/[0.06]">
         {threads.map((thread) => (
           <ThreadListItem
             key={thread.threadId}
@@ -398,7 +398,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
 
   return (
     <div ref={messageRef} className={cn(
-      'border-b border-border/30 transition-all duration-100 min-w-0 overflow-hidden',
+      'border-b border-white/[0.06] transition-all duration-100 min-w-0 overflow-hidden',
       expanded ? 'bg-card/40' : 'hover:bg-[hsl(var(--foreground)/0.02)]'
     )}>
       <button
@@ -567,7 +567,7 @@ function CollapsedMessagesBar({ count, onExpand, threadEmails }: { count: number
       {/* Expand bar */}
       <button
         onClick={onExpand}
-        className="w-full flex items-center gap-3 px-5 py-2 border-y border-border/30 bg-muted/10 hover:bg-muted/20 transition-all group"
+        className="w-full flex items-center gap-3 px-5 py-2 border-y border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-all group"
       >
         <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-[12px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
@@ -746,7 +746,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       <div className="flex h-full relative overflow-hidden">
         <div className="flex flex-col flex-1 min-w-0 bg-[hsl(var(--email-reading-bg))]">
           {/* Outlook-style command bar */}
-          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b bg-[hsl(var(--email-toolbar-bg))] shrink-0">
+          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-white/[0.06] bg-card/40 backdrop-blur-sm shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -947,7 +947,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             />
           )}
 
-          <div className="px-6 pt-5 pb-4 border-b border-border/30">
+          <div className="px-6 pt-5 pb-4 border-b border-white/[0.06]">
             {/* Large subject heading */}
             <h2 className="text-xl font-semibold text-foreground leading-snug mb-3">{thread.subject}</h2>
             
@@ -1056,7 +1056,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 <div className="px-5 mb-3">
                   <button
                     onClick={handleReply}
-                    className="w-full flex items-center gap-2 px-4 py-3 border border-border/40 text-muted-foreground hover:border-[hsl(var(--outlook-blue)/0.3)] hover:bg-[hsl(var(--outlook-blue)/0.04)] hover:text-foreground transition-all"
+                    className="w-full flex items-center gap-2 px-4 py-3 border border-white/[0.08] text-muted-foreground hover:border-[hsl(var(--outlook-blue)/0.3)] hover:bg-[hsl(var(--outlook-blue)/0.04)] hover:text-foreground transition-all"
                   >
                     <Reply className="h-4 w-4" />
                     <span className="text-sm">Click to reply...</span>
