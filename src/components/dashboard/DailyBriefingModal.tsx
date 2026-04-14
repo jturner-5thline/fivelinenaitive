@@ -845,8 +845,8 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
   const [drilldown, setDrilldown] = useState<'projects' | 'past_due' | 'today' | 'upcoming' | null>(null);
 
   if (isLoading || !data) return <TabSkeleton />;
-  if (error || data?.error) {
-    const msg = data?.error || (error instanceof Error ? error.message : 'Unknown error');
+  if (error || data?.error || !data?.counts) {
+    const msg = data?.error || (error instanceof Error ? error.message : 'Unable to load operational data');
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3">
         <AlertCircle className="w-8 h-8 text-destructive/60" />
@@ -856,7 +856,11 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
     );
   }
 
-  const { counts, projects, overdue, today, upcoming } = data;
+  const counts = data.counts ?? { projects: 0, overdue: 0, today: 0, upcoming: 0 };
+  const projects = data.projects ?? [];
+  const overdue = data.overdue ?? [];
+  const today = data.today ?? [];
+  const upcoming = data.upcoming ?? [];
 
   const openAsana = (url?: string | null) => {
     if (!url) return;
