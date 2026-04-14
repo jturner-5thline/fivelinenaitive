@@ -115,10 +115,6 @@ export function useEmailClassifierData(): ClassifierEntity[] {
         const d = normaliseDomain(ad);
         if (d) domains.push(d);
       }
-      if ((c as any).website) {
-        const d = normaliseDomain((c as any).website);
-        if (d && !domains.includes(d)) domains.push(d);
-      }
 
       entities.push({
         name: normName,
