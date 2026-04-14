@@ -520,14 +520,14 @@ function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path
   const { data, isLoading } = useEmailData(enabled);
   const [detail, setDetail] = useState<any>(null);
   const [subTab, setSubTab] = useState<EmailCategoryTab>('all');
-  const classifierEntities = useEmailClassifierData();
+  const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
 
   if (isLoading || !data) return <TabSkeleton />;
 
   const { emails } = data;
 
   // Classify each email once
-  const classified = emails.map((e: any) => ({ email: e, cats: classifyEmail(e, classifierEntities) }));
+  const classified = emails.map((e: any) => ({ email: e, cats: classifyEmail(e, classifierEntities, orgCtx) }));
 
   // Counts per sub-tab
   const counts: Record<EmailCategoryTab, number> = {

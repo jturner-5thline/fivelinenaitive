@@ -124,7 +124,7 @@ function isAutoReplyOrNewsletter(email: MockEmail): boolean {
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend }: DealEmailsTabProps) {
   const navigate = useNavigate();
-  const classifierEntities = useEmailClassifierData();
+  const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
   const [emails, setEmails] = useState<MockEmail[]>(() => {
     const source = externalEmails || initialMockEmails;
     return source.map(e => isAutoReplyOrNewsletter(e) ? { ...e, needs_response: false } : e);
@@ -324,7 +324,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     let filtered = emails.filter(activeItem.filterFn);
     // Category tab filter (shared classifier)
     if (categoryTab !== 'all') {
-      filtered = filterEmailsByCategory(filtered, categoryTab, classifierEntities);
+      filtered = filterEmailsByCategory(filtered, categoryTab, classifierEntities, orgCtx);
     }
     if (viewFilter === 'unread') filtered = filtered.filter(e => !e.is_read);
     if (viewFilter === 'needs_response') filtered = filtered.filter(e => e.needs_response);

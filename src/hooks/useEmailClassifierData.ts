@@ -3,6 +3,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { ClassifierOrgContext } from '@/utils/emailClassifier';
 
 /**
  * Lightweight record used by the email classifier to match emails
@@ -40,7 +41,7 @@ function nameTokens(name: string): string[] {
  * by `classifyEmail`.  Lightweight and memo'd so it doesn't re-fetch
  * on every render.
  */
-export function useEmailClassifierData(): ClassifierEntity[] {
+export function useEmailClassifierData(): { entities: ClassifierEntity[]; orgCtx: ClassifierOrgContext } {
   const { deals } = useDealsContext();
   const { company } = useCompany();
 
@@ -60,7 +61,7 @@ export function useEmailClassifierData(): ClassifierEntity[] {
     },
   });
 
-  return useMemo(() => {
+  const entities = useMemo(() => {
     const entities: ClassifierEntity[] = [];
     const seenNames = new Set<string>();
 
@@ -125,4 +126,16 @@ export function useEmailClassifierData(): ClassifierEntity[] {
 
     return entities;
   }, [deals, crmCompanies]);
+
+  const orgCtx = useMemo<ClassifierOrgContext>(() => {
+    const ctx: ClassifierOrgContext = {};
+    if (company?.name) ctx.orgName = company.name.trim().toLowerCase();
+    if (company?.website_url) {
+      const d = normaliseDomain(company.website_url);
+      ctx.orgDomains = d ? [d] : [];
+    }
+    return ctx;
+  }, [company]);
+
+  return { entities, orgCtx };
 }

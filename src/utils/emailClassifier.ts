@@ -17,6 +17,17 @@ export const EMAIL_CATEGORY_TABS = [
   { key: 'asana_projects' as const, label: 'Asana & Projects' },
 ] as const;
 
+/**
+ * Optional context about the user's own organisation so we can exclude
+ * self-referencing matches (e.g. "5th Line Capital" appearing in a subject).
+ */
+export interface ClassifierOrgContext {
+  /** The org's own company name (lowercase) */
+  orgName?: string;
+  /** The org's own domains (e.g. ['5thline.co']) */
+  orgDomains?: string[];
+}
+
 export type EmailCategoryTab = 'all' | EmailCategory;
 
 // ── Exclusion lists ────────────────────────────────────────────
@@ -255,12 +266,53 @@ function isMarketingOrPlatformNoise(email: Record<string, any>): boolean {
 
 // ── Confidence-scored classification ───────────────────────────
 
-const SCORE_DOMAIN_MATCH = 10;     // Domain match = instant qualify
-const SCORE_EXACT_NAME_SUBJECT = 6; // Exact entity name in subject
-const SCORE_EXACT_NAME_BODY = 4;    // Exact entity name in body/snippet
-const SCORE_TOKEN_MATCH = 2;        // All tokens present
-const SCORE_LEGACY_SIGNAL = 8;      // Legacy deal-linked flags
-const CONFIDENCE_THRESHOLD = 6;     // Minimum score to classify
+// An email qualifies for "Clients & Deals" ONLY via:
+//   Path A: domain match (sender/recipient domain = entity domain)  → instant
+//   Path B: legacy explicit deal-link flags                         → instant
+//   Path C: exact name in subject + at least one more signal        → qualifies
+// Fuzzy / token matches and body-only mentions are NEVER enough alone.
+
+const SCORE_DOMAIN_MATCH = 10;      // Participant domain = entity domain → instant
+const SCORE_LEGACY_SIGNAL = 10;     // Explicit deal linkage flags → instant
+const SCORE_EXACT_NAME_SUBJECT = 4; // Exact entity name in subject (needs more)
+const SCORE_EXACT_NAME_BODY = 2;    // Exact entity name in body (supplementary only)
+const SCORE_DOMAIN_IN_TEXT = 3;     // Entity domain mentioned in text (supplementary)
+const SCORE_TOKEN_MATCH = 1;        // Token match (very weak, supplementary)
+const CONFIDENCE_THRESHOLD = 8;     // High bar: domain match or legacy; name needs help
+
+/** Words that are too generic to be useful entity name matches */
+const GENERIC_FINANCE_WORDS = new Set([
+  'capital', 'advisors', 'advisory', 'partners', 'funding',
+  'finance', 'financial', 'group', 'holdings', 'ventures',
+  'management', 'investments', 'investment', 'consulting',
+  'solutions', 'services', 'associates', 'global', 'strategic',
+  'line', 'credit', 'lending', 'bank', 'trust',
+]);
+
+/**
+ * Check if an entity name is too generic / overlaps with the user's own org.
+ * Returns true if the name should be skipped for text-based matching.
+ */
+function isGenericOrSelfEntity(
+  entityName: string,
+  entityTokens: string[],
+  orgCtx?: ClassifierOrgContext,
+): boolean {
+  // Skip if entity name is a substring of the org's own name or vice-versa
+  if (orgCtx?.orgName) {
+    const on = orgCtx.orgName;
+    if (on.includes(entityName) || entityName.includes(on)) return true;
+  }
+
+  // Skip if ALL meaningful tokens are generic finance words
+  const meaningful = entityTokens.filter(t => t.length >= 3 && !GENERIC_FINANCE_WORDS.has(t));
+  if (meaningful.length === 0 && entityTokens.length > 0) return true;
+
+  // Skip very short names (≤5 chars) for text matching — too many false positives
+  if (entityName.length <= 5) return true;
+
+  return false;
+}
 
 /**
  * Classify an email into zero or more categories.
@@ -268,6 +320,7 @@ const CONFIDENCE_THRESHOLD = 6;     // Minimum score to classify
 export function classifyEmail(
   email: Record<string, any>,
   entities?: ClassifierEntity[],
+  orgCtx?: ClassifierOrgContext,
 ): EmailCategory[] {
   const cats: EmailCategory[] = [];
 
@@ -278,7 +331,7 @@ export function classifyEmail(
   const isNoise = isMarketingOrPlatformNoise(email);
 
   if (!isNoise) {
-    // Legacy flags (explicit deal linkage) — very strong
+    // Legacy flags (explicit deal linkage) — instant qualify
     const category = email.analysis?.category || email.category || '';
     if (
       ['deal_update', 'terms_discussion', 'due_diligence', 'lender_communication', 'follow_up_needed'].includes(category) ||
@@ -295,13 +348,21 @@ export function classifyEmail(
       const bodyText = [norm(email.snippet), norm(email.body_preview), norm(email.body_text)].join(' ');
       const emailDomains = collectDomains(email);
 
+      // Remove the user's own org domains from participant domains
+      const filteredEmailDomains = new Set(emailDomains);
+      if (orgCtx?.orgDomains) {
+        for (const od of orgCtx.orgDomains) {
+          filteredEmailDomains.delete(od);
+        }
+      }
+
       for (const entity of entities) {
         let entityScore = 0;
 
-        // 1. Domain match (strongest signal)
+        // Path A: Domain match — sender/recipient domain matches entity domain
         if (entity.domains.length > 0) {
           for (const entDomain of entity.domains) {
-            for (const ed of emailDomains) {
+            for (const ed of filteredEmailDomains) {
               if (ed === entDomain || ed.endsWith('.' + entDomain)) {
                 entityScore += SCORE_DOMAIN_MATCH;
                 break;
@@ -311,21 +372,39 @@ export function classifyEmail(
           }
         }
 
-        // 2. Exact name in subject (strong)
-        if (entity.name.length >= 4 && subjectLower.includes(entity.name)) {
-          entityScore += SCORE_EXACT_NAME_SUBJECT;
-        }
+        // For text-based matching, skip generic/self entities
+        if (entityScore < CONFIDENCE_THRESHOLD) {
+          const isGeneric = isGenericOrSelfEntity(entity.name, entity.tokens, orgCtx);
 
-        // 3. Exact name in body (moderate)
-        if (entityScore < CONFIDENCE_THRESHOLD && entity.name.length >= 4 && bodyText.includes(entity.name)) {
-          entityScore += SCORE_EXACT_NAME_BODY;
-        }
+          if (!isGeneric) {
+            // Exact name in subject (moderate — needs domain or body support)
+            if (entity.name.length >= 6 && subjectLower.includes(entity.name)) {
+              entityScore += SCORE_EXACT_NAME_SUBJECT;
+            }
 
-        // 4. Token match (weak — only contributes, doesn't qualify alone)
-        if (entityScore > 0 && entityScore < CONFIDENCE_THRESHOLD && entity.tokens.length >= 2) {
-          const searchText = buildSearchText(email);
-          if (containsName(searchText, entity.tokens)) {
-            entityScore += SCORE_TOKEN_MATCH;
+            // Exact name in body (weak — supplementary only)
+            if (entity.name.length >= 6 && bodyText.includes(entity.name)) {
+              entityScore += SCORE_EXACT_NAME_BODY;
+            }
+
+            // Entity domain mentioned in email text (supplementary)
+            if (entity.domains.length > 0) {
+              const searchText = buildSearchText(email);
+              for (const d of entity.domains) {
+                if (searchText.includes(d)) {
+                  entityScore += SCORE_DOMAIN_IN_TEXT;
+                  break;
+                }
+              }
+            }
+
+            // Token match (very weak — only ever supplementary)
+            if (entityScore > 0 && entity.tokens.length >= 2) {
+              const searchText = buildSearchText(email);
+              if (containsName(searchText, entity.tokens)) {
+                entityScore += SCORE_TOKEN_MATCH;
+              }
+            }
           }
         }
 
@@ -361,7 +440,8 @@ export function filterEmailsByCategory<T extends Record<string, any>>(
   emails: T[],
   tab: EmailCategoryTab,
   entities?: ClassifierEntity[],
+  orgCtx?: ClassifierOrgContext,
 ): T[] {
   if (tab === 'all') return emails;
-  return emails.filter(e => classifyEmail(e, entities).includes(tab));
+  return emails.filter(e => classifyEmail(e, entities, orgCtx).includes(tab));
 }
