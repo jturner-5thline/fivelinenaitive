@@ -367,12 +367,17 @@ export async function exportWriteUpToPdf({ data, owners, totalEquityRaised, deal
   }
 
   /* ── 7. Revenue Performance (data table instead of chart) ── */
+  const currentCalYear = new Date().getFullYear();
   const chartData = data.financialYears
     .map(fy => {
       const rev = parseNum(fy.revenue);
       const ebitda = parseNum(fy.ebitda);
       const gm = parsePct(fy.gross_margin);
-      return { year: fy.year, revenue: rev, ebitda, grossMargin: gm };
+      const yearMatch = fy.year?.match(/(\d{4})/);
+      const numYear = yearMatch ? parseInt(yearMatch[1], 10) : null;
+      const suffix = numYear !== null ? (numYear <= currentCalYear ? 'A' : 'P') : '';
+      const yearLabel = numYear !== null ? `${numYear}${suffix}` : fy.year;
+      return { year: yearLabel, revenue: rev, ebitda, grossMargin: gm };
     })
     .filter(d => d.year)
     .sort((a, b) => {
