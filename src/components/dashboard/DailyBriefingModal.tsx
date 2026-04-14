@@ -485,7 +485,12 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className="gap-1.5 text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-foreground data-[state=active]:shadow-[0_0_12px_hsl(var(--primary)/0.1)] border-0"
+                      className={cn(
+                        "gap-1.5 text-xs border-0 transition-all",
+                        activeTab === tab.value
+                          ? "bg-primary/15 text-foreground shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
+                          : "text-muted-foreground"
+                      )}
                     >
                       <Icon className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">{tab.label}</span>
@@ -496,31 +501,13 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
             </div>
 
             <div className="flex-1 overflow-hidden">
-              <TabsContent value="catchup" className="h-full mt-0 pt-0">
-                <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                  <CatchUpTab enabled={open && activeTab === 'catchup'} onNavigate={handleNavigate} />
-                </ScrollArea>
-              </TabsContent>
-              <TabsContent value="email" className="h-full mt-0 pt-0">
-                <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                  <EmailTab enabled={open && activeTab === 'email'} onNavigate={handleNavigate} />
-                </ScrollArea>
-              </TabsContent>
-              <TabsContent value="financial" className="h-full mt-0 pt-0">
-                <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                  <FinancialTab enabled={open && activeTab === 'financial'} onNavigate={handleNavigate} />
-                </ScrollArea>
-              </TabsContent>
-              <TabsContent value="pipeline" className="h-full mt-0 pt-0">
-                <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                  <PipelineTab enabled={open && activeTab === 'pipeline'} onNavigate={handleNavigate} />
-                </ScrollArea>
-              </TabsContent>
-              <TabsContent value="operational" className="h-full mt-0 pt-0">
-                <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                  <OperationalTab enabled={open && activeTab === 'operational'} onNavigate={handleNavigate} />
-                </ScrollArea>
-              </TabsContent>
+              <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
+                {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
+                {activeTab === 'email' && <EmailTab enabled={open} onNavigate={handleNavigate} />}
+                {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
+                {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} />}
+                {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} />}
+              </ScrollArea>
             </div>
           </Tabs>
         </div>
