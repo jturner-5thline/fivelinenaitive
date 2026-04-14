@@ -169,6 +169,25 @@ const TOPIC_COLORS: Record<string, string> = {
   'Agentic AI': 'bg-rose-500/20 text-rose-300 border-rose-500/30',
 };
 
+// Topic-based gradient backgrounds for image placeholders
+const TOPIC_GRADIENTS: Record<string, string> = {
+  'Venture Debt': 'from-blue-900/80 via-blue-800/40 to-slate-900/60',
+  'Interest Rates': 'from-amber-900/80 via-amber-800/40 to-slate-900/60',
+  'Venture Capital': 'from-emerald-900/80 via-emerald-800/40 to-slate-900/60',
+  'AI & Technology': 'from-violet-900/80 via-violet-800/40 to-slate-900/60',
+  'AI in Finance': 'from-cyan-900/80 via-cyan-800/40 to-slate-900/60',
+  'Agentic AI': 'from-rose-900/80 via-rose-800/40 to-slate-900/60',
+};
+
+const TOPIC_ICONS: Record<string, string> = {
+  'Venture Debt': '💰',
+  'Interest Rates': '📊',
+  'Venture Capital': '🚀',
+  'AI & Technology': '⚡',
+  'AI in Finance': '🏦',
+  'Agentic AI': '🤖',
+};
+
 const ALL_TOPICS = ['Venture Debt', 'Interest Rates', 'Venture Capital', 'AI & Technology', 'AI in Finance', 'Agentic AI'];
 
 interface NewsfeedItem {
@@ -222,21 +241,130 @@ function useNewsfeedData(enabled: boolean) {
   return { items, isLoading, error, refresh: () => fetchFeed(true) };
 }
 
-// ── Newsfeed skeleton ──────────────────────────────────────────
+// ── Image placeholder ──────────────────────────────────────────
+function TopicImage({ topic, className }: { topic: string; className?: string }) {
+  const gradient = TOPIC_GRADIENTS[topic] || 'from-slate-800/80 via-slate-700/40 to-slate-900/60';
+  const icon = TOPIC_ICONS[topic] || '📰';
+  return (
+    <div className={cn('relative overflow-hidden bg-gradient-to-br', gradient, className)}>
+      <div className="absolute inset-0 opacity-[0.07]" style={{
+        backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)',
+        backgroundSize: '40px 40px, 60px 60px, 50px 50px',
+      }} />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-2xl opacity-40 select-none">{icon}</span>
+      </div>
+      <div className="absolute inset-0 border border-white/[0.06] rounded-[inherit]" />
+    </div>
+  );
+}
+
+// ── Featured news tile ─────────────────────────────────────────
+function FeaturedNewsTile({ item }: { item: NewsfeedItem }) {
+  return (
+    <a
+      href={item.url !== '#' ? item.url : undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        GLASS_CARD,
+        'group overflow-hidden flex flex-col transition-all duration-200',
+        'hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_4px_20px_hsl(var(--primary)/0.1)]',
+        item.url !== '#' && 'cursor-pointer',
+      )}
+    >
+      <TopicImage topic={item.topic} className="w-full aspect-[2.4/1] rounded-t-lg" />
+      <div className="p-4 flex flex-col flex-1">
+        <div className="flex items-center gap-2 mb-2">
+          <span className={cn(
+            'px-2 py-0.5 rounded text-[10px] font-semibold border',
+            TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+          )}>
+            {item.topic}
+          </span>
+          <span className="text-[10px] text-muted-foreground/50">{item.source}</span>
+          <span className="text-[10px] text-muted-foreground/40 ml-auto">
+            {formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
+          </span>
+        </div>
+        <h4 className="text-sm font-semibold text-foreground leading-snug mb-1.5 line-clamp-2 group-hover:text-primary/90 transition-colors">
+          {item.headline}
+          {item.url !== '#' && <ExternalLink className="inline h-3 w-3 ml-1.5 text-muted-foreground/30 group-hover:text-primary/50" />}
+        </h4>
+        <p className="text-xs text-muted-foreground/60 line-clamp-2 flex-1">{item.summary}</p>
+      </div>
+    </a>
+  );
+}
+
+// ── Standard grid news tile ────────────────────────────────────
+function StandardNewsTile({ item }: { item: NewsfeedItem }) {
+  return (
+    <a
+      href={item.url !== '#' ? item.url : undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        GLASS_ROW,
+        'group overflow-hidden flex gap-0 transition-all duration-200',
+        'hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_2px_12px_hsl(var(--primary)/0.06)]',
+        item.url !== '#' && 'cursor-pointer',
+      )}
+    >
+      <TopicImage topic={item.topic} className="w-20 min-h-full shrink-0 rounded-l-lg" />
+      <div className="p-3 flex flex-col flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className={cn(
+            'px-1.5 py-px rounded text-[9px] font-semibold border',
+            TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+          )}>
+            {item.topic}
+          </span>
+          <span className="text-[9px] text-muted-foreground/40 truncate">{item.source}</span>
+          <span className="text-[9px] text-muted-foreground/30 ml-auto shrink-0">
+            {formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
+          </span>
+        </div>
+        <h5 className="text-[13px] font-medium text-foreground leading-snug line-clamp-2 mb-0.5 group-hover:text-primary/90 transition-colors">
+          {item.headline}
+        </h5>
+        <p className="text-[11px] text-muted-foreground/50 line-clamp-1">{item.summary}</p>
+      </div>
+    </a>
+  );
+}
+
+// ── Newsfeed grid skeleton ─────────────────────────────────────
 function NewsfeedSkeleton() {
   return (
-    <div className="space-y-3">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className={cn(GLASS_ROW, 'p-4 space-y-2')}>
-          <Skeleton className="h-4 w-3/4 bg-white/[0.06]" />
-          <Skeleton className="h-3 w-full bg-white/[0.04]" />
-          <Skeleton className="h-3 w-1/2 bg-white/[0.04]" />
-          <div className="flex gap-2">
-            <Skeleton className="h-5 w-20 rounded-full bg-white/[0.04]" />
-            <Skeleton className="h-5 w-16 rounded-full bg-white/[0.04]" />
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {[0, 1].map(i => (
+          <div key={i} className={cn(GLASS_CARD, 'overflow-hidden')}>
+            <Skeleton className="w-full aspect-[2.4/1] bg-white/[0.04]" />
+            <div className="p-4 space-y-2">
+              <div className="flex gap-2">
+                <Skeleton className="h-4 w-16 rounded bg-white/[0.06]" />
+                <Skeleton className="h-4 w-20 rounded bg-white/[0.04]" />
+              </div>
+              <Skeleton className="h-4 w-full bg-white/[0.06]" />
+              <Skeleton className="h-3 w-3/4 bg-white/[0.04]" />
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className={cn(GLASS_ROW, 'flex gap-0 overflow-hidden')}>
+            <Skeleton className="w-20 h-20 shrink-0 bg-white/[0.04]" />
+            <div className="p-3 space-y-1.5 flex-1">
+              <Skeleton className="h-3 w-16 rounded bg-white/[0.06]" />
+              <Skeleton className="h-3.5 w-full bg-white/[0.06]" />
+              <Skeleton className="h-2.5 w-2/3 bg-white/[0.04]" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -263,6 +391,8 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
   };
 
   const filtered = items.filter(item => activeTopics.has(item.topic));
+  const featured = filtered.slice(0, 2);
+  const standard = filtered.slice(2);
 
   if (isLoading && items.length === 0) return <NewsfeedSkeleton />;
 
@@ -280,7 +410,7 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
 
   return (
     <div className="space-y-4">
-      {/* Header with topic filters and refresh */}
+      {/* Filter chips + refresh */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap gap-1.5">
           {ALL_TOPICS.map(topic => (
@@ -309,46 +439,24 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
         </Button>
       </div>
 
-      {/* Feed */}
       {filtered.length === 0 ? (
         <EmptySection message="No news items match your selected topics" />
       ) : (
-        <div className="space-y-2">
-          {filtered.map(item => (
-            <a
-              key={item.id}
-              href={item.url !== '#' ? item.url : undefined}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                GLASS_ROW,
-                'block p-4 transition-all duration-200',
-                'hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
-                item.url !== '#' && 'cursor-pointer',
-              )}
-            >
-              <div className="flex items-start justify-between gap-3 mb-1.5">
-                <h5 className="text-sm font-medium text-foreground leading-snug flex-1">
-                  {item.headline}
-                  {item.url !== '#' && <ExternalLink className="inline h-3 w-3 ml-1.5 text-muted-foreground/40" />}
-                </h5>
-              </div>
-              <p className="text-xs text-muted-foreground/70 line-clamp-2 mb-2">{item.summary}</p>
-              <div className="flex items-center gap-2">
-                <span className={cn(
-                  'px-2 py-0.5 rounded-full text-[10px] font-medium border',
-                  TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
-                )}>
-                  {item.topic}
-                </span>
-                <span className="text-[10px] text-muted-foreground/50">{item.source}</span>
-                <span className="text-[10px] text-muted-foreground/40">
-                  {formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
-                </span>
-              </div>
-            </a>
-          ))}
-        </div>
+        <>
+          {/* Featured tiles — top 2 stories */}
+          {featured.length > 0 && (
+            <div className={cn('grid gap-3', featured.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2')}>
+              {featured.map(item => <FeaturedNewsTile key={item.id} item={item} />)}
+            </div>
+          )}
+
+          {/* Standard compact grid */}
+          {standard.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {standard.map(item => <StandardNewsTile key={item.id} item={item} />)}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
