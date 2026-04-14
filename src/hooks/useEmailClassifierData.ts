@@ -52,7 +52,7 @@ export function useEmailClassifierData(): ClassifierEntity[] {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('crm_companies')
-        .select('id, name, domain, additional_domains, website')
+        .select('id, name, domain, additional_domains')
         .eq('org_company_id', company!.id)
         .limit(500);
       if (error) throw error;
