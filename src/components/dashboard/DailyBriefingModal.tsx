@@ -21,6 +21,7 @@ import {
   useOperationalData,
   type NewsItem,
 } from '@/hooks/useDailyBriefingData';
+import { OperationalDashboard } from './operational/OperationalDashboard';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
