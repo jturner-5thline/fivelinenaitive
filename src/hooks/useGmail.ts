@@ -302,6 +302,12 @@ export function useGmail() {
 
       if (error) throw error;
       
+      // Don't overwrite messages on rate-limit fallback
+      if (data.fallback) {
+        setError(null);
+        return data;
+      }
+
       const fetchedMessages = data.messages || [];
       setMessages(fetchedMessages);
       cachedMessages = fetchedMessages;
