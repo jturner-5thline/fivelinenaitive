@@ -154,6 +154,22 @@ export function DealsHeader() {
               <TooltipContent>Customize widgets</TooltipContent>
             </Tooltip>
           )}
+          {isJTurner && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  onClick={() => setIsBriefingOpen(true)}
+                >
+                  <Newspaper className="h-4 w-4" />
+                  <span className="hidden sm:inline">Daily Briefing</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Daily Briefing</TooltipContent>
+            </Tooltip>
+          )}
           
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."
@@ -169,6 +185,7 @@ export function DealsHeader() {
       </div>
       <HeaderNotificationPreview />
       {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
+      {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
     </header>
   );
 }
