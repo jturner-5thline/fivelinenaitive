@@ -18,6 +18,48 @@ export interface OutboundEmailTemplate {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  template_type: string;
+  sequence_group_id: string | null;
+  sequence_step_key: string | null;
+  sequence_step_order: number | null;
+}
+
+export interface SequenceGroup {
+  groupId: string;
+  sequenceName: string;
+  steps: OutboundEmailTemplate[];
+}
+
+/** Group sequence_step templates into SequenceGroups; standalone templates are returned separately */
+export function groupTemplates(templates: OutboundEmailTemplate[]): {
+  standalone: OutboundEmailTemplate[];
+  sequences: SequenceGroup[];
+} {
+  const standalone: OutboundEmailTemplate[] = [];
+  const seqMap = new Map<string, OutboundEmailTemplate[]>();
+
+  for (const t of templates) {
+    if (t.template_type === 'sequence_step' && t.sequence_group_id) {
+      const arr = seqMap.get(t.sequence_group_id) || [];
+      arr.push(t);
+      seqMap.set(t.sequence_group_id, arr);
+    } else {
+      standalone.push(t);
+    }
+  }
+
+  const sequences: SequenceGroup[] = [];
+  for (const [groupId, steps] of seqMap) {
+    steps.sort((a, b) => (a.sequence_step_order ?? 0) - (b.sequence_step_order ?? 0));
+    sequences.push({
+      groupId,
+      sequenceName: steps[0]?.sequence_name || `Sequence ${groupId}`,
+      steps,
+    });
+  }
+  sequences.sort((a, b) => parseInt(a.groupId) - parseInt(b.groupId));
+
+  return { standalone, sequences };
 }
 
 export function useOutboundEmailTemplates() {
