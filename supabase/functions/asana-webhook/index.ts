@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 const ASANA_API = "https://app.asana.com/api/1.0";
+const TASK_OPT_FIELDS = "completed,name,due_on,assignee,assignee.email";
 
 function getSupabase() {
   return createClient(
@@ -43,11 +44,8 @@ serve(async (req) => {
   if (hookSecret) {
     console.log("Asana webhook handshake received");
 
-    // Store the secret: Asana sends this on the initial POST to the target URL
-    // We need to find the matching webhook record and store the secret
     const supabase = getSupabase();
     const url = new URL(req.url);
-    // Try to extract integration context from query params if present
     const integrationId = url.searchParams.get("integration_id");
     const projectGid = url.searchParams.get("project_gid");
 
@@ -93,10 +91,8 @@ serve(async (req) => {
 
     const supabase = getSupabase();
 
-    // Optionally verify signature if we have a webhook secret
-    // We'll try to look up the secret from the first event's parent project
+    // Optionally verify signature
     if (hookSignature) {
-      // Try to find any matching webhook secret to verify
       const { data: webhooks } = await supabase
         .from("asana_webhooks")
         .select("webhook_secret")
@@ -135,7 +131,7 @@ serve(async (req) => {
       // Look up the corresponding naitive task
       const { data: naitiveTask, error: lookupError } = await supabase
         .from("tasks")
-        .select("id, status, asana_task_gid")
+        .select("id, title, status, due_date, assigned_to, asana_task_gid, sync_source")
         .eq("asana_task_gid", taskGid)
         .maybeSingle();
 
@@ -149,8 +145,7 @@ serve(async (req) => {
         continue;
       }
 
-      // Find the integration token to fetch task details from Asana
-      // Look up which integration owns this task via the asana_webhooks table
+      // Find the integration token
       const { data: webhook } = await supabase
         .from("asana_webhooks")
         .select("integration_id")
@@ -180,8 +175,8 @@ serve(async (req) => {
         continue;
       }
 
-      // Fetch current completion status from Asana
-      const asanaRes = await fetch(`${ASANA_API}/tasks/${taskGid}?opt_fields=completed`, {
+      // Fetch full task details from Asana
+      const asanaRes = await fetch(`${ASANA_API}/tasks/${taskGid}?opt_fields=${TASK_OPT_FIELDS}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -191,40 +186,83 @@ serve(async (req) => {
       }
 
       const asanaData = await asanaRes.json();
-      const isCompleted = asanaData.data?.completed === true;
+      const asanaTask = asanaData.data;
+      if (!asanaTask) continue;
 
-      // Update naitive task
-      const currentStatus = naitiveTask.status;
-      const shouldBeStatus = isCompleted ? "complete" : "not_started";
+      // Build update payload — only include fields that actually changed
+      const updateData: Record<string, unknown> = {};
+      let hasChanges = false;
 
-      // Only update if status actually differs
-      if (
-        (isCompleted && currentStatus !== "complete" && currentStatus !== "completed") ||
-        (!isCompleted && (currentStatus === "complete" || currentStatus === "completed"))
-      ) {
-        const updateData: Record<string, unknown> = {
-          status: shouldBeStatus,
-        };
-
+      // 1. Completion status
+      const isCompleted = asanaTask.completed === true;
+      const naitiveIsComplete = naitiveTask.status === 'complete' || naitiveTask.status === 'completed';
+      if (isCompleted !== naitiveIsComplete) {
+        updateData.status = isCompleted ? 'complete' : 'not_started';
         if (isCompleted) {
           updateData.completed_at = new Date().toISOString();
         } else {
           updateData.completed_at = null;
         }
-
-        const { error: updateError } = await supabase
-          .from("tasks")
-          .update(updateData)
-          .eq("id", naitiveTask.id);
-
-        if (updateError) {
-          console.error(`Error updating naitive task ${naitiveTask.id}:`, updateError);
-        } else {
-          console.log(`Synced Asana task ${taskGid} → naitive task ${naitiveTask.id}: ${shouldBeStatus}`);
-        }
-      } else {
-        console.log(`Task ${taskGid} status unchanged, skipping update`);
+        hasChanges = true;
       }
+
+      // 2. Task name
+      if (asanaTask.name && asanaTask.name !== naitiveTask.title) {
+        updateData.title = asanaTask.name;
+        hasChanges = true;
+      }
+
+      // 3. Due date
+      const asanaDueOn = asanaTask.due_on || null;
+      const naitiveDueDate = naitiveTask.due_date || null;
+      if (asanaDueOn !== naitiveDueDate) {
+        updateData.due_date = asanaDueOn;
+        hasChanges = true;
+      }
+
+      // 4. Assignee (match by email)
+      const asanaAssigneeEmail = asanaTask.assignee?.email || null;
+      if (asanaAssigneeEmail) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("email", asanaAssigneeEmail)
+          .maybeSingle();
+
+        if (profile?.user_id && profile.user_id !== naitiveTask.assigned_to) {
+          updateData.assigned_to = profile.user_id;
+          hasChanges = true;
+        }
+      }
+
+      if (!hasChanges) {
+        console.log(`Task ${taskGid} no meaningful changes, skipping`);
+        continue;
+      }
+
+      // Set sync_source to prevent loop: Naitive→Asana sync will skip this update
+      updateData.sync_source = 'asana';
+
+      const { error: updateError } = await supabase
+        .from("tasks")
+        .update(updateData)
+        .eq("id", naitiveTask.id);
+
+      if (updateError) {
+        console.error(`Error updating naitive task ${naitiveTask.id}:`, updateError);
+      } else {
+        console.log(`Synced Asana task ${taskGid} → naitive task ${naitiveTask.id}:`, Object.keys(updateData).filter(k => k !== 'sync_source'));
+      }
+
+      // Clear sync_source after a short delay so subsequent user edits are not blocked
+      // We do this in-line since edge functions are short-lived
+      setTimeout(async () => {
+        await supabase
+          .from("tasks")
+          .update({ sync_source: null })
+          .eq("id", naitiveTask.id)
+          .eq("sync_source", "asana");
+      }, 2000);
     }
 
     return new Response(JSON.stringify({ ok: true }), {
@@ -234,7 +272,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Asana webhook error:", error);
     return new Response(JSON.stringify({ error: "Internal error" }), {
-      status: 200, // Return 200 to prevent Asana from retrying
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
