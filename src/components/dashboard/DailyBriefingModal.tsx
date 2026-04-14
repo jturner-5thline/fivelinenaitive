@@ -5,20 +5,42 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks,
   AlertCircle, ArrowRight, ExternalLink, Clock, TrendingUp,
-  FileText, Users, X, ChevronRight,
+  FileText, X, ChevronRight,
 } from 'lucide-react';
-import { useDailyBriefingData, type BriefingData } from '@/hooks/useDailyBriefingData';
+import {
+  useBriefingWindow,
+  useCatchUpData,
+  useEmailData,
+  useFinancialData,
+  usePipelineData,
+  useOperationalData,
+} from '@/hooks/useDailyBriefingData';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 interface DailyBriefingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+// ── Glass surface classes ──────────────────────────────────────
+const GLASS_SURFACE = 'bg-background/40 backdrop-blur-2xl border border-white/[0.06]';
+const GLASS_CARD = 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-lg';
+const GLASS_ROW = 'bg-white/[0.02] border border-white/[0.05] rounded-lg backdrop-blur-sm';
+
+// ── Loading skeleton for tab content ───────────────────────────
+function TabSkeleton() {
+  return (
+    <div className="space-y-3 p-1">
+      {[...Array(5)].map((_, i) => (
+        <Skeleton key={i} className="h-14 w-full rounded-lg bg-white/[0.04]" />
+      ))}
+    </div>
+  );
 }
 
 // ── Detail pop-up (nested inside the modal) ────────────────────
@@ -32,10 +54,10 @@ function DetailPopup({
   onClose: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-10 bg-background/95 backdrop-blur-sm flex flex-col rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border/50">
+    <div className="absolute inset-0 z-10 bg-background/90 backdrop-blur-2xl flex flex-col rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -47,8 +69,8 @@ function DetailPopup({
 // ── Empty state ────────────────────────────────────────────────
 function EmptySection({ message }: { message: string }) {
   return (
-    <div className="flex items-center gap-2 text-muted-foreground text-sm py-6 justify-center">
-      <AlertCircle className="h-4 w-4 opacity-50" />
+    <div className="flex items-center gap-2 text-muted-foreground/70 text-sm py-6 justify-center">
+      <AlertCircle className="h-4 w-4 opacity-40" />
       <span>{message}</span>
     </div>
   );
@@ -79,9 +101,10 @@ function BriefingRow({
       onClick={onClick}
       onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(); } }}
       className={cn(
-        'flex items-start gap-3 p-3 rounded-lg border border-border/40 bg-background/50',
-        'transition-colors duration-150',
-        onClick && 'cursor-pointer hover:bg-muted/40 hover:border-border/80',
+        GLASS_ROW,
+        'flex items-start gap-3 p-3',
+        'transition-all duration-200',
+        onClick && 'cursor-pointer hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
       )}
     >
       <div className="p-1.5 rounded-md bg-primary/10 shrink-0 mt-0.5">
@@ -93,12 +116,12 @@ function BriefingRow({
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {badge && (
-          <Badge variant={badgeVariant || 'secondary'} className="text-[10px]">
+          <Badge variant={badgeVariant || 'secondary'} className="text-[10px] border-white/[0.08]">
             {badge}
           </Badge>
         )}
         {time && <span className="text-[10px] text-muted-foreground whitespace-nowrap">{time}</span>}
-        {onClick && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+        {onClick && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />}
       </div>
     </div>
   );
@@ -108,16 +131,31 @@ function BriefingRow({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{title}</h4>
+      <h4 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2 px-0.5">{title}</h4>
       <div className="space-y-1.5">{children}</div>
     </div>
   );
 }
 
+// ── Glass stat card ────────────────────────────────────────────
+function GlassStatCard({ label, value, sub, color }: { label: string; value: string; sub: string; color: 'primary' | 'destructive' }) {
+  return (
+    <div className={cn(GLASS_CARD, 'p-4 text-center')}>
+      <p className="text-xs text-muted-foreground/70">{label}</p>
+      <p className={cn('text-xl font-bold', color === 'primary' ? 'text-primary' : 'text-destructive')}>{value}</p>
+      <p className="text-[10px] text-muted-foreground/50">{sub}</p>
+    </div>
+  );
+}
+
 // ── Tab: Catch Up & News ───────────────────────────────────────
-function CatchUpTab({ data, onNavigate }: { data: BriefingData; onNavigate: (path: string) => void }) {
+function CatchUpTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
+  const { data, isLoading } = useCatchUpData(enabled);
   const [detail, setDetail] = useState<any>(null);
-  const { alerts, highlights } = data.catchUp;
+
+  if (isLoading || !data) return <TabSkeleton />;
+
+  const { alerts, highlights } = data;
 
   return (
     <div className="relative h-full">
@@ -129,7 +167,7 @@ function CatchUpTab({ data, onNavigate }: { data: BriefingData; onNavigate: (pat
             <div className="text-sm"><strong>By:</strong> {detail.user_display_name || 'System'}</div>
             <div className="text-sm"><strong>Time:</strong> {format(new Date(detail.created_at), 'PPp')}</div>
             {detail.deal_id && (
-              <Button size="sm" variant="outline" onClick={() => onNavigate(`/deal/${detail.deal_id}`)}>
+              <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(`/deal/${detail.deal_id}`)}>
                 Open Deal <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
             )}
@@ -141,7 +179,7 @@ function CatchUpTab({ data, onNavigate }: { data: BriefingData; onNavigate: (pat
         {alerts.length === 0 ? (
           <EmptySection message="No priority alerts in this window" />
         ) : (
-          alerts.map(a => (
+          alerts.map((a: any) => (
             <BriefingRow
               key={a.id}
               icon={AlertCircle}
@@ -159,7 +197,7 @@ function CatchUpTab({ data, onNavigate }: { data: BriefingData; onNavigate: (pat
         {highlights.length === 0 ? (
           <EmptySection message="No noteworthy highlights in this window" />
         ) : (
-          highlights.map((h, i) => (
+          highlights.map((h: any, i: number) => (
             <BriefingRow
               key={i}
               icon={TrendingUp}
@@ -180,22 +218,16 @@ function CatchUpTab({ data, onNavigate }: { data: BriefingData; onNavigate: (pat
 }
 
 // ── Tab: Email ─────────────────────────────────────────────────
-function EmailTab({ data, onNavigate }: { data: BriefingData; onNavigate: (path: string) => void }) {
+function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
+  const { data, isLoading } = useEmailData(enabled);
   const [detail, setDetail] = useState<any>(null);
-  const { emails } = data.email;
 
-  const clientEmails = emails.filter(e => {
-    const cat = e.analysis?.category;
-    return cat === 'deal_update' || cat === 'terms_discussion' || cat === 'due_diligence';
-  });
-  const dealEmails = emails.filter(e => {
-    const cat = e.analysis?.category;
-    return cat === 'lender_communication' || cat === 'follow_up_needed';
-  });
-  const otherEmails = emails.filter(e => {
-    const cat = e.analysis?.category;
-    return !['deal_update', 'terms_discussion', 'due_diligence', 'lender_communication', 'follow_up_needed'].includes(cat || '');
-  });
+  if (isLoading || !data) return <TabSkeleton />;
+
+  const { emails } = data;
+  const clientEmails = emails.filter((e: any) => ['deal_update', 'terms_discussion', 'due_diligence'].includes(e.analysis?.category || ''));
+  const dealEmails = emails.filter((e: any) => ['lender_communication', 'follow_up_needed'].includes(e.analysis?.category || ''));
+  const otherEmails = emails.filter((e: any) => !['deal_update', 'terms_discussion', 'due_diligence', 'lender_communication', 'follow_up_needed'].includes(e.analysis?.category || ''));
 
   const renderEmails = (list: any[], label: string) => {
     if (list.length === 0) return <EmptySection message={`No ${label.toLowerCase()} in this window`} />;
@@ -223,7 +255,7 @@ function EmailTab({ data, onNavigate }: { data: BriefingData; onNavigate: (path:
             {detail.analysis?.summary && <div className="text-sm"><strong>AI Summary:</strong> {detail.analysis.summary}</div>}
             {detail.analysis?.deal_name && <div className="text-sm"><strong>Related Deal:</strong> {detail.analysis.deal_name}</div>}
             <div className="text-sm text-muted-foreground">{detail.snippet}</div>
-            <Button size="sm" variant="outline" onClick={() => onNavigate('/email-intelligence')}>
+            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate('/email-intelligence')}>
               Open Email Intelligence <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -244,12 +276,15 @@ function EmailTab({ data, onNavigate }: { data: BriefingData; onNavigate: (path:
 }
 
 // ── Tab: Financial ─────────────────────────────────────────────
-function FinancialTab({ data, onNavigate }: { data: BriefingData; onNavigate: (path: string) => void }) {
-  const { recentInvoices, recentExpenses } = data.financial;
+function FinancialTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
+  const { data, isLoading } = useFinancialData(enabled);
   const [detail, setDetail] = useState<any>(null);
 
-  const totalRev = recentInvoices.reduce((s, i) => s + (i.total_amt || 0), 0);
-  const totalExp = recentExpenses.reduce((s, e) => s + (e.total_amt || 0), 0);
+  if (isLoading || !data) return <TabSkeleton />;
+
+  const { recentInvoices, recentExpenses } = data;
+  const totalRev = recentInvoices.reduce((s: number, i: any) => s + (i.total_amt || 0), 0);
+  const totalExp = recentExpenses.reduce((s: number, e: any) => s + (e.total_amt || 0), 0);
 
   return (
     <div className="relative h-full">
@@ -259,7 +294,7 @@ function FinancialTab({ data, onNavigate }: { data: BriefingData; onNavigate: (p
             <div className="text-sm"><strong>Amount:</strong> ${(detail.total_amt || 0).toLocaleString()}</div>
             <div className="text-sm"><strong>Date:</strong> {detail.txn_date}</div>
             {detail.doc_number && <div className="text-sm"><strong>Invoice #:</strong> {detail.doc_number}</div>}
-            <Button size="sm" variant="outline" onClick={() => onNavigate('/metrics')}>
+            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate('/metrics')}>
               Open Financial Dashboard <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -267,20 +302,8 @@ function FinancialTab({ data, onNavigate }: { data: BriefingData; onNavigate: (p
       )}
 
       <div className="grid grid-cols-2 gap-3 mb-5">
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">Revenue (window)</p>
-            <p className="text-xl font-bold text-primary">${totalRev.toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground">{recentInvoices.length} invoices</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-destructive/5 border-destructive/20">
-          <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">Expenses (window)</p>
-            <p className="text-xl font-bold text-destructive">${totalExp.toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground">{recentExpenses.length} items</p>
-          </CardContent>
-        </Card>
+        <GlassStatCard label="Revenue (window)" value={`$${totalRev.toLocaleString()}`} sub={`${recentInvoices.length} invoices`} color="primary" />
+        <GlassStatCard label="Expenses (window)" value={`$${totalExp.toLocaleString()}`} sub={`${recentExpenses.length} items`} color="destructive" />
       </div>
 
       <Section title="Weekly Cashflow">
@@ -288,28 +311,11 @@ function FinancialTab({ data, onNavigate }: { data: BriefingData; onNavigate: (p
           <EmptySection message="No financial transactions in this window" />
         ) : (
           <>
-            {recentInvoices.map(inv => (
-              <BriefingRow
-                key={inv.id}
-                icon={TrendingUp}
-                title={`${inv.customer_name || 'Client'} — $${(inv.total_amt || 0).toLocaleString()}`}
-                subtitle={inv.doc_number ? `Invoice #${inv.doc_number}` : undefined}
-                badge="Revenue"
-                badgeVariant="default"
-                time={inv.txn_date}
-                onClick={() => setDetail(inv)}
-              />
+            {recentInvoices.map((inv: any) => (
+              <BriefingRow key={inv.id} icon={TrendingUp} title={`${inv.customer_name || 'Client'} — $${(inv.total_amt || 0).toLocaleString()}`} subtitle={inv.doc_number ? `Invoice #${inv.doc_number}` : undefined} badge="Revenue" badgeVariant="default" time={inv.txn_date} onClick={() => setDetail(inv)} />
             ))}
-            {recentExpenses.map(exp => (
-              <BriefingRow
-                key={exp.id}
-                icon={DollarSign}
-                title={`${(exp as any).vendor_name || 'Expense'} — $${(exp.total_amt || 0).toLocaleString()}`}
-                badge="Expense"
-                badgeVariant="destructive"
-                time={exp.txn_date}
-                onClick={() => setDetail(exp)}
-              />
+            {recentExpenses.map((exp: any) => (
+              <BriefingRow key={exp.id} icon={DollarSign} title={`${exp.vendor_name || 'Expense'} — $${(exp.total_amt || 0).toLocaleString()}`} badge="Expense" badgeVariant="destructive" time={exp.txn_date} onClick={() => setDetail(exp)} />
             ))}
           </>
         )}
@@ -323,9 +329,13 @@ function FinancialTab({ data, onNavigate }: { data: BriefingData; onNavigate: (p
 }
 
 // ── Tab: Pipeline & Clients ────────────────────────────────────
-function PipelineTab({ data, onNavigate }: { data: BriefingData; onNavigate: (path: string) => void }) {
-  const { newDeals, riskDeals, stageChanges, recentActivity } = data.pipeline;
+function PipelineTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
+  const { data, isLoading } = usePipelineData(enabled);
   const [detail, setDetail] = useState<any>(null);
+
+  if (isLoading || !data) return <TabSkeleton />;
+
+  const { newDeals, riskDeals, stageChanges, recentActivity } = data;
 
   return (
     <div className="relative h-full">
@@ -339,7 +349,7 @@ function PipelineTab({ data, onNavigate }: { data: BriefingData; onNavigate: (pa
             {detail.description && <div className="text-sm">{detail.description}</div>}
             {detail.user_display_name && <div className="text-sm"><strong>By:</strong> {detail.user_display_name}</div>}
             {detail.created_at && <div className="text-sm"><strong>Time:</strong> {format(new Date(detail.created_at), 'PPp')}</div>}
-            <Button size="sm" variant="outline" onClick={() => onNavigate(`/deal/${detail.id || detail.deal_id}`)}>
+            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(`/deal/${detail.id || detail.deal_id}`)}>
               Open Deal <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -347,87 +357,43 @@ function PipelineTab({ data, onNavigate }: { data: BriefingData; onNavigate: (pa
       )}
 
       <Section title="New Opportunities">
-        {newDeals.length === 0 ? (
-          <EmptySection message="No new deals added in this window" />
-        ) : (
-          newDeals.map(d => (
-            <BriefingRow
-              key={d.id}
-              icon={GitBranch}
-              title={d.company}
-              subtitle={`Stage: ${d.stage} • Manager: ${d.manager || 'Unassigned'}`}
-              badge="New"
-              badgeVariant="default"
-              onClick={() => setDetail(d)}
-            />
-          ))
-        )}
+        {newDeals.length === 0 ? <EmptySection message="No new deals added in this window" /> : newDeals.map((d: any) => (
+          <BriefingRow key={d.id} icon={GitBranch} title={d.company} subtitle={`Stage: ${d.stage} • Manager: ${d.manager || 'Unassigned'}`} badge="New" badgeVariant="default" onClick={() => setDetail(d)} />
+        ))}
       </Section>
 
       <Section title="Stage Changes">
-        {stageChanges.length === 0 ? (
-          <EmptySection message="No stage changes in this window" />
-        ) : (
-          stageChanges.filter(sc => sc.activity_type !== 'deal_created').map(sc => (
-            <BriefingRow
-              key={sc.id}
-              icon={ArrowRight}
-              title={sc.description}
-              time={formatDistanceToNow(new Date(sc.created_at), { addSuffix: true })}
-              onClick={() => setDetail(sc)}
-            />
-          ))
-        )}
+        {stageChanges.length === 0 ? <EmptySection message="No stage changes in this window" /> : stageChanges.filter((sc: any) => sc.activity_type !== 'deal_created').map((sc: any) => (
+          <BriefingRow key={sc.id} icon={ArrowRight} title={sc.description} time={formatDistanceToNow(new Date(sc.created_at), { addSuffix: true })} onClick={() => setDetail(sc)} />
+        ))}
       </Section>
 
       <Section title="Potential Pipeline & Client Risks">
-        {riskDeals.length === 0 ? (
-          <EmptySection message="No risk signals detected" />
-        ) : (
-          riskDeals.map(d => (
-            <BriefingRow
-              key={d.id}
-              icon={AlertCircle}
-              title={d.company}
-              subtitle={`${d.isFlagged ? 'Flagged' : 'Stale'} • Stage: ${d.stage}`}
-              badge={d.isFlagged ? 'Flagged' : 'At Risk'}
-              badgeVariant={d.isFlagged ? 'destructive' : 'secondary'}
-              onClick={() => setDetail(d)}
-            />
-          ))
-        )}
+        {riskDeals.length === 0 ? <EmptySection message="No risk signals detected" /> : riskDeals.map((d: any) => (
+          <BriefingRow key={d.id} icon={AlertCircle} title={d.company} subtitle={`${d.isFlagged ? 'Flagged' : 'Stale'} • Stage: ${d.stage}`} badge={d.isFlagged ? 'Flagged' : 'At Risk'} badgeVariant={d.isFlagged ? 'destructive' : 'secondary'} onClick={() => setDetail(d)} />
+        ))}
       </Section>
 
       <Section title="Recent Pipeline Activity">
-        {recentActivity.length === 0 ? (
-          <EmptySection message="No pipeline activity since 5 PM ET yesterday" />
-        ) : (
-          recentActivity.map(a => (
-            <BriefingRow
-              key={a.id}
-              icon={Clock}
-              title={a.description}
-              subtitle={a.user_display_name || undefined}
-              badge={a.activity_type.replace(/_/g, ' ')}
-              badgeVariant="outline"
-              time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
-              onClick={() => setDetail(a)}
-            />
-          ))
-        )}
+        {recentActivity.length === 0 ? <EmptySection message="No pipeline activity since 5 PM ET yesterday" /> : recentActivity.map((a: any) => (
+          <BriefingRow key={a.id} icon={Clock} title={a.description} subtitle={a.user_display_name || undefined} badge={a.activity_type.replace(/_/g, ' ')} badgeVariant="outline" time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })} onClick={() => setDetail(a)} />
+        ))}
       </Section>
     </div>
   );
 }
 
 // ── Tab: Operational & Projects ────────────────────────────────
-function OperationalTab({ data, onNavigate }: { data: BriefingData; onNavigate: (path: string) => void }) {
-  const { milestones } = data.operational;
+function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
+  const { data, isLoading } = useOperationalData(enabled);
   const [detail, setDetail] = useState<any>(null);
 
-  const overdue = milestones.filter(m => m.due_date && isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date)));
-  const todayItems = milestones.filter(m => m.due_date && isToday(new Date(m.due_date)));
-  const upcoming = milestones.filter(m => m.due_date && !isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date))).slice(0, 10);
+  if (isLoading || !data) return <TabSkeleton />;
+
+  const { milestones } = data;
+  const overdue = milestones.filter((m: any) => m.due_date && isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date)));
+  const todayItems = milestones.filter((m: any) => m.due_date && isToday(new Date(m.due_date)));
+  const upcoming = milestones.filter((m: any) => m.due_date && !isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date))).slice(0, 10);
 
   return (
     <div className="relative h-full">
@@ -436,10 +402,9 @@ function OperationalTab({ data, onNavigate }: { data: BriefingData; onNavigate: 
           <div className="space-y-3">
             <div className="text-sm"><strong>Task:</strong> {detail.title}</div>
             <div className="text-sm"><strong>Status:</strong> {detail.status || 'Open'}</div>
-            {(detail as any).assignee && <div className="text-sm"><strong>Assignee:</strong> {(detail as any).assignee}</div>}
             {detail.due_date && <div className="text-sm"><strong>Due:</strong> {format(new Date(detail.due_date), 'PPP')}</div>}
             {detail.deal_id && (
-              <Button size="sm" variant="outline" onClick={() => onNavigate(`/deal/${detail.deal_id}`)}>
+              <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(`/deal/${detail.deal_id}`)}>
                 Open Deal <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
             )}
@@ -448,59 +413,21 @@ function OperationalTab({ data, onNavigate }: { data: BriefingData; onNavigate: 
       )}
 
       <Section title="Overdue Tasks">
-        {overdue.length === 0 ? (
-          <EmptySection message="No overdue tasks" />
-        ) : (
-          overdue.map(m => (
-            <BriefingRow
-              key={m.id}
-              icon={AlertCircle}
-              title={m.title}
-              subtitle={m.assignee ? `Assigned to: ${m.assignee}` : undefined}
-              badge="Overdue"
-              badgeVariant="destructive"
-              time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''}
-              onClick={() => setDetail(m)}
-            />
-          ))
-        )}
+        {overdue.length === 0 ? <EmptySection message="No overdue tasks" /> : overdue.map((m: any) => (
+          <BriefingRow key={m.id} icon={AlertCircle} title={m.title} badge="Overdue" badgeVariant="destructive" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
+        ))}
       </Section>
 
       <Section title="Due Today">
-        {todayItems.length === 0 ? (
-          <EmptySection message="Nothing due today" />
-        ) : (
-          todayItems.map(m => (
-            <BriefingRow
-              key={m.id}
-              icon={ListChecks}
-              title={m.title}
-              subtitle={m.assignee ? `Assigned to: ${m.assignee}` : undefined}
-              badge="Today"
-              time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''}
-              onClick={() => setDetail(m)}
-            />
-          ))
-        )}
+        {todayItems.length === 0 ? <EmptySection message="Nothing due today" /> : todayItems.map((m: any) => (
+          <BriefingRow key={m.id} icon={ListChecks} title={m.title} badge="Today" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
+        ))}
       </Section>
 
       <Section title="Upcoming Milestones">
-        {upcoming.length === 0 ? (
-          <EmptySection message="No upcoming milestones" />
-        ) : (
-          upcoming.map(m => (
-            <BriefingRow
-              key={m.id}
-              icon={FileText}
-              title={m.title}
-              subtitle={m.assignee ? `Assigned to: ${m.assignee}` : undefined}
-              badge={m.status || 'open'}
-              badgeVariant="outline"
-              time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''}
-              onClick={() => setDetail(m)}
-            />
-          ))
-        )}
+        {upcoming.length === 0 ? <EmptySection message="No upcoming milestones" /> : upcoming.map((m: any) => (
+          <BriefingRow key={m.id} icon={FileText} title={m.title} badge={m.status || 'open'} badgeVariant="outline" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
+        ))}
       </Section>
     </div>
   );
@@ -512,13 +439,14 @@ const TABS = [
   { value: 'email', label: 'Email', icon: Mail },
   { value: 'financial', label: 'Financial', icon: DollarSign },
   { value: 'pipeline', label: 'Pipeline & Clients', icon: GitBranch },
-  { value: 'operational', label: 'Operational & Projects', icon: ListChecks },
+  { value: 'operational', label: 'Operational', icon: ListChecks },
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
 export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalProps) {
   const navigate = useNavigate();
-  const { data, isLoading } = useDailyBriefingData(open);
+  const window = useBriefingWindow();
+  const [activeTab, setActiveTab] = useState('catchup');
 
   const handleNavigate = (path: string) => {
     onOpenChange(false);
@@ -528,72 +456,73 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 border border-border/50 bg-background overflow-hidden"
+        className={cn(
+          'max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden rounded-2xl',
+          'bg-background/60 backdrop-blur-3xl',
+          'border border-white/[0.06]',
+          'shadow-[0_32px_80px_-20px_hsl(var(--primary)/0.25),inset_0_1px_0_hsl(0_0%_100%/0.04)]',
+        )}
         overlayClassName="bg-black/80"
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
             <div>
-              <h2 className="text-lg font-bold text-foreground">Daily Briefing</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {data?.window.label || 'Since 5 PM ET yesterday'} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
+              <h2 className="text-lg font-bold text-foreground tracking-tight">Daily Briefing</h2>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">
+                {window.label} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
               </p>
             </div>
           </div>
 
-          {/* Tabs */}
-          {isLoading || !data ? (
-            <div className="flex-1 p-6 space-y-4">
-              {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-lg" />
-              ))}
+          {/* Tabs — render shell immediately, no blocking */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+            <div className="px-6 pt-3 bg-white/[0.01]">
+              <TabsList className="w-full bg-white/[0.03] border border-white/[0.05] backdrop-blur-xl">
+                {TABS.map(tab => {
+                  const Icon = tab.icon;
+                  return (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className="gap-1.5 text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-foreground data-[state=active]:shadow-[0_0_12px_hsl(var(--primary)/0.1)] border-0"
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{tab.label}</span>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
             </div>
-          ) : (
-            <Tabs defaultValue="catchup" className="flex-1 flex flex-col overflow-hidden">
-              <div className="px-6 pt-3">
-                <TabsList className="w-full">
-                  {TABS.map(tab => {
-                    const Icon = tab.icon;
-                    return (
-                      <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 text-xs">
-                        <Icon className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">{tab.label}</span>
-                      </TabsTrigger>
-                    );
-                  })}
-                </TabsList>
-              </div>
 
-              <div className="flex-1 overflow-hidden">
-                <TabsContent value="catchup" className="h-full mt-0 pt-0">
-                  <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                    <CatchUpTab data={data} onNavigate={handleNavigate} />
-                  </ScrollArea>
-                </TabsContent>
-                <TabsContent value="email" className="h-full mt-0 pt-0">
-                  <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                    <EmailTab data={data} onNavigate={handleNavigate} />
-                  </ScrollArea>
-                </TabsContent>
-                <TabsContent value="financial" className="h-full mt-0 pt-0">
-                  <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                    <FinancialTab data={data} onNavigate={handleNavigate} />
-                  </ScrollArea>
-                </TabsContent>
-                <TabsContent value="pipeline" className="h-full mt-0 pt-0">
-                  <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                    <PipelineTab data={data} onNavigate={handleNavigate} />
-                  </ScrollArea>
-                </TabsContent>
-                <TabsContent value="operational" className="h-full mt-0 pt-0">
-                  <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                    <OperationalTab data={data} onNavigate={handleNavigate} />
-                  </ScrollArea>
-                </TabsContent>
-              </div>
-            </Tabs>
-          )}
+            <div className="flex-1 overflow-hidden">
+              <TabsContent value="catchup" className="h-full mt-0 pt-0">
+                <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
+                  <CatchUpTab enabled={open && activeTab === 'catchup'} onNavigate={handleNavigate} />
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="email" className="h-full mt-0 pt-0">
+                <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
+                  <EmailTab enabled={open && activeTab === 'email'} onNavigate={handleNavigate} />
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="financial" className="h-full mt-0 pt-0">
+                <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
+                  <FinancialTab enabled={open && activeTab === 'financial'} onNavigate={handleNavigate} />
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="pipeline" className="h-full mt-0 pt-0">
+                <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
+                  <PipelineTab enabled={open && activeTab === 'pipeline'} onNavigate={handleNavigate} />
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="operational" className="h-full mt-0 pt-0">
+                <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
+                  <OperationalTab enabled={open && activeTab === 'operational'} onNavigate={handleNavigate} />
+                </ScrollArea>
+              </TabsContent>
+            </div>
+          </Tabs>
         </div>
       </DialogContent>
     </Dialog>
