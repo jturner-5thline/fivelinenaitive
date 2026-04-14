@@ -64,17 +64,18 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
 
   const executeSend = async () => {
     clearPreSendAlert();
-    if (!to.trim()) { toast.error('Please add a recipient'); return; }
+    if (toRecipients.length === 0) { toast.error('Please add a recipient'); return; }
     setIsSending(true);
 
-    const recipientName = to.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const toEmail = toRecipients[0];
+    const recipientName = toEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     await onSend({
       subject,
       from_name: 'You',
       from_email: 'jturner@5thline.co',
       to_name: recipientName,
-      to_email: to.trim(),
+      to_email: toRecipients.join(', '),
       snippet: body.substring(0, 120),
       body_preview: body,
       received_at: new Date().toISOString(),
@@ -95,7 +96,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
   };
 
   const handleSend = () => {
-    if (!to.trim()) { toast.error('Please add a recipient'); return; }
+    if (toRecipients.length === 0) { toast.error('Please add a recipient'); return; }
     const passed = runChecks({ subject, body, attachments });
     if (passed) executeSend();
   };
@@ -156,12 +157,14 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
         <div className="px-5 py-3 space-y-3">
           {/* To field */}
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground w-10 shrink-0">To</Label>
-            <Input
-              value={to}
-              onChange={e => setTo(e.target.value)}
+            <RecipientField
+              label="To"
+              recipients={toRecipients}
+              onChange={setToRecipients}
+              search={search}
               placeholder="recipient@example.com"
-              className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent"
+              className="flex-1"
+              labelClassName="w-10"
             />
             <Button
               variant="ghost"
@@ -176,14 +179,22 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
 
           {showCcBcc && (
             <>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-10 shrink-0">Cc</Label>
-                <Input value={cc} onChange={e => setCc(e.target.value)} placeholder="cc@example.com" className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-10 shrink-0">Bcc</Label>
-                <Input value={bcc} onChange={e => setBcc(e.target.value)} placeholder="bcc@example.com" className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
-              </div>
+              <RecipientField
+                label="Cc"
+                recipients={ccRecipients}
+                onChange={setCcRecipients}
+                search={search}
+                placeholder="cc@example.com"
+                labelClassName="w-10"
+              />
+              <RecipientField
+                label="Bcc"
+                recipients={bccRecipients}
+                onChange={setBccRecipients}
+                search={search}
+                placeholder="bcc@example.com"
+                labelClassName="w-10"
+              />
             </>
           )}
 
@@ -229,7 +240,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo }: InlineComposePa
             }
             onDraftGenerated={(draft) => setBody(draft)}
             currentSubject={subject}
-            currentTo={to}
+            currentTo={toRecipients.join(', ')}
           />
           <Separator orientation="vertical" className="h-4 mx-1" />
           <EmailTemplatePicker
