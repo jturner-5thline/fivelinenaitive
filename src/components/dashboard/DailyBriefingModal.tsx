@@ -510,32 +510,65 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
   );
 }
 
+// ── Email sub-tab types ────────────────────────────────────────
+type EmailSubTab = 'all' | 'clients_deals' | 'asana_projects';
+
+function classifyEmail(e: any): EmailSubTab[] {
+  const cats: EmailSubTab[] = [];
+  const category = e.analysis?.category || '';
+  const fromEmail = (e.from_email || '').toLowerCase();
+  const subject = (e.subject || '').toLowerCase();
+
+  // Clients & Deals
+  if (['deal_update', 'terms_discussion', 'due_diligence', 'lender_communication', 'follow_up_needed'].includes(category) ||
+      e.analysis?.deal_name) {
+    cats.push('clients_deals');
+  }
+
+  // Asana & Projects
+  if (fromEmail.includes('asana.com') || fromEmail.includes('mail.asana.com') ||
+      subject.includes('asana') || (e.snippet || '').toLowerCase().includes('asana')) {
+    cats.push('asana_projects');
+  }
+
+  return cats;
+}
+
+const EMAIL_SUB_TABS: { key: EmailSubTab; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'clients_deals', label: 'Clients & Deals' },
+  { key: 'asana_projects', label: 'Asana & Projects' },
+];
+
 // ── Tab: Email ─────────────────────────────────────────────────
 function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
   const { data, isLoading } = useEmailData(enabled);
   const [detail, setDetail] = useState<any>(null);
+  const [subTab, setSubTab] = useState<EmailSubTab>('all');
 
   if (isLoading || !data) return <TabSkeleton />;
 
   const { emails } = data;
-  const clientEmails = emails.filter((e: any) => ['deal_update', 'terms_discussion', 'due_diligence'].includes(e.analysis?.category || ''));
-  const dealEmails = emails.filter((e: any) => ['lender_communication', 'follow_up_needed'].includes(e.analysis?.category || ''));
-  const otherEmails = emails.filter((e: any) => !['deal_update', 'terms_discussion', 'due_diligence', 'lender_communication', 'follow_up_needed'].includes(e.analysis?.category || ''));
 
-  const renderEmails = (list: any[], label: string) => {
-    if (list.length === 0) return <EmptySection message={`No ${label.toLowerCase()} in this window`} />;
-    return list.map((e: any) => (
-      <BriefingRow
-        key={e.id}
-        icon={Mail}
-        title={e.subject || '(no subject)'}
-        subtitle={`${e.from_name || e.from_email || 'Unknown'} — ${e.analysis?.summary || e.snippet || ''}`}
-        badge={e.analysis?.category?.replace(/_/g, ' ') || 'email'}
-        badgeVariant={e.analysis?.priority === 'high' ? 'destructive' : 'secondary'}
-        time={e.received_at ? formatDistanceToNow(new Date(e.received_at), { addSuffix: true }) : ''}
-        onClick={() => setDetail(e)}
-      />
-    ));
+  // Classify each email once
+  const classified = emails.map((e: any) => ({ email: e, cats: classifyEmail(e) }));
+
+  // Counts per sub-tab
+  const counts: Record<EmailSubTab, number> = {
+    all: emails.length,
+    clients_deals: classified.filter(c => c.cats.includes('clients_deals')).length,
+    asana_projects: classified.filter(c => c.cats.includes('asana_projects')).length,
+  };
+
+  // Filtered list
+  const filtered = subTab === 'all'
+    ? emails
+    : classified.filter(c => c.cats.includes(subTab)).map(c => c.email);
+
+  const EMPTY_MESSAGES: Record<EmailSubTab, string> = {
+    all: 'No emails found in this window.',
+    clients_deals: 'No client or deal emails since yesterday.',
+    asana_projects: 'No Asana emails since yesterday.',
   };
 
   return (
@@ -555,14 +588,48 @@ function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path
         </DetailPopup>
       )}
 
-      {emails.length === 0 ? (
-        <EmptySection message="No emails found in this window. Live data not yet connected or no emails received." />
+      {/* Sub-tab pills */}
+      <div className="flex items-center gap-1.5 mb-4">
+        {EMAIL_SUB_TABS.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setSubTab(t.key)}
+            className={cn(
+              'px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 border',
+              subTab === t.key
+                ? 'bg-primary/15 text-primary border-primary/30'
+                : 'bg-white/[0.03] text-muted-foreground/70 border-white/[0.06] hover:bg-white/[0.06] hover:text-foreground/80',
+            )}
+          >
+            {t.label}
+            <span className={cn(
+              'ml-1.5 text-[10px] tabular-nums',
+              subTab === t.key ? 'text-primary/70' : 'text-muted-foreground/40',
+            )}>
+              {counts[t.key]}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Email list */}
+      {filtered.length === 0 ? (
+        <EmptySection message={EMPTY_MESSAGES[subTab]} />
       ) : (
-        <>
-          <Section title="Client Emails">{renderEmails(clientEmails, 'client emails')}</Section>
-          <Section title="Deal & Lender Emails">{renderEmails(dealEmails, 'deal emails')}</Section>
-          <Section title="Other / Project Emails">{renderEmails(otherEmails, 'other emails')}</Section>
-        </>
+        <div className="space-y-1.5">
+          {filtered.map((e: any) => (
+            <BriefingRow
+              key={e.id}
+              icon={Mail}
+              title={e.subject || '(no subject)'}
+              subtitle={`${e.from_name || e.from_email || 'Unknown'} — ${e.analysis?.summary || e.snippet || ''}`}
+              badge={e.analysis?.category?.replace(/_/g, ' ') || 'email'}
+              badgeVariant={e.analysis?.priority === 'high' ? 'destructive' : 'secondary'}
+              time={e.received_at ? formatDistanceToNow(new Date(e.received_at), { addSuffix: true }) : ''}
+              onClick={() => setDetail(e)}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
