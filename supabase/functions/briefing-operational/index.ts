@@ -239,8 +239,16 @@ serve(async (req) => {
     console.error("briefing-operational error:", error);
     return new Response(JSON.stringify({
       error: error instanceof Error ? error.message : "Unknown error",
+      fallback: true,
+      summary: { total_projects: 0, overdue_count: 0, due_today_count: 0, upcoming_milestones_count: 0, total_open_tasks: 0 },
+      projects: [],
+      overdue_tasks: [],
+      overdue_milestones: [],
+      today_items: [],
+      upcoming_milestones: [],
+      upcoming_tasks: [],
     }), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
