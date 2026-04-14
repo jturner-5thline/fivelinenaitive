@@ -189,6 +189,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [activeItemId, setActiveItemId] = useState<string>('all_inbox');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [chipFilter, setChipFilter] = useState<ChipFilter>(null);
+  const [categoryTab, setCategoryTab] = useState<EmailCategoryTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
@@ -318,6 +319,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   const filteredEmails = useMemo(() => {
     let filtered = emails.filter(activeItem.filterFn);
+    // Category tab filter (shared classifier)
+    if (categoryTab !== 'all') {
+      filtered = filterEmailsByCategory(filtered, categoryTab);
+    }
     if (viewFilter === 'unread') filtered = filtered.filter(e => !e.is_read);
     if (viewFilter === 'needs_response') filtered = filtered.filter(e => e.needs_response);
     if (chipFilter === 'recent') filtered = filtered.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
@@ -346,7 +351,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, searchQuery, searchFilters]);
+  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters]);
 
   const currentThread = useMemo(() => {
     if (!selectedThread) return null;
