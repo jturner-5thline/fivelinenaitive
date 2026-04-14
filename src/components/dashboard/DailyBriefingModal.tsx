@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks,
   AlertCircle, ArrowRight, ExternalLink, Clock, TrendingUp,
-  FileText, X, ChevronRight, RefreshCw,
+  FileText, X, ChevronRight, ChevronLeft, RefreshCw,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
