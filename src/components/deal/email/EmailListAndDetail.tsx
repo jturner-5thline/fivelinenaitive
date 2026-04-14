@@ -746,7 +746,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       <div className="flex h-full relative overflow-hidden">
         <div className="flex flex-col flex-1 min-w-0 bg-[hsl(var(--email-reading-bg))]">
           {/* Outlook-style command bar */}
-          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b bg-[hsl(var(--email-toolbar-bg))] shrink-0">
+          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-white/[0.06] bg-card/40 backdrop-blur-sm shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
             </Button>
