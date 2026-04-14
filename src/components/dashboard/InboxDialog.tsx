@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react';
@@ -6,6 +6,8 @@ import { useGmail } from '@/hooks/useGmail';
 import { useNavigate } from 'react-router-dom';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { MockEmail } from '@/components/deal/email/mockEmailData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface InboxDialogProps {
   open: boolean;
@@ -15,12 +17,12 @@ interface InboxDialogProps {
 // Map Gmail messages to MockEmail format for DealEmailsTab compatibility
 function mapGmailToMockEmails(gmailMessages: any[], folderOverride: 'inbox' | 'sent' | 'drafts' = 'inbox'): MockEmail[] {
   return gmailMessages.map((msg) => ({
-    id: msg.id,
-    threadId: msg.thread_id || msg.id,
+    id: msg.id || msg.gmail_message_id,
+    threadId: msg.thread_id || msg.id || msg.gmail_message_id,
     subject: msg.subject || '(No subject)',
     from_name: msg.from_name || msg.from_email || 'Unknown',
     from_email: msg.from_email || '',
-    to_name: (msg.to_names || [])[0] || 'You',
+    to_name: (msg.to_names || msg.to_emails || [])[0] || 'You',
     to_email: (msg.to_emails || [])[0] || '',
     snippet: msg.snippet || '',
     body_preview: msg.body_text || msg.body_html || msg.snippet || '',
@@ -42,52 +44,75 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     status, messages, isLoading,
     listMessages, sendEmail,
   } = useGmail();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [hasLoaded, setHasLoaded] = useState(false);
   const [sentMessages, setSentMessages] = useState<any[]>([]);
   const [isSentLoading, setIsSentLoading] = useState(false);
+  const [cachedInboxEmails, setCachedInboxEmails] = useState<any[]>([]);
+  const sentFetchedRef = useRef(false);
 
-  // Fetch inbox messages
+  // Fetch inbox messages, then sent messages sequentially to avoid rate limits
   useEffect(() => {
-    if (open && status.connected && !hasLoaded) {
-      listMessages({ maxResults: 50, labelIds: ['INBOX'] });
-      setHasLoaded(true);
-    }
-  }, [open, status.connected, hasLoaded, listMessages]);
+    if (!open || !status.connected || hasLoaded) return;
 
-  // Fetch sent messages separately
-  useEffect(() => {
-    if (open && status.connected && hasLoaded && sentMessages.length === 0 && !isSentLoading) {
-      setIsSentLoading(true);
-      // Use the same gmail hook but with SENT label
-      import('@/integrations/supabase/client').then(({ supabase }) => {
-        supabase.functions.invoke('gmail-messages', {
-          body: {
-            action: 'list',
-            max_results: 50,
-            label_ids: ['SENT'],
-          },
-        }).then(({ data, error }) => {
+    setHasLoaded(true);
+
+    const fetchAll = async () => {
+      // 1. Fetch inbox
+      const inboxResult = await listMessages({ maxResults: 50, labelIds: ['INBOX'] });
+
+      // If inbox returned fallback/empty due to rate limit, load from cache
+      if (!inboxResult?.messages?.length && user) {
+        const { data: cached } = await supabase
+          .from('email_cache')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('received_at', { ascending: false })
+          .limit(50);
+        if (cached?.length) {
+          setCachedInboxEmails(cached);
+        }
+      }
+
+      // 2. Fetch sent AFTER inbox to avoid concurrent Nylas requests
+      if (!sentFetchedRef.current) {
+        setIsSentLoading(true);
+        sentFetchedRef.current = true;
+        try {
+          const { data, error } = await supabase.functions.invoke('gmail-messages', {
+            body: {
+              action: 'list',
+              max_results: 50,
+              label_ids: ['SENT'],
+            },
+          });
           if (!error && data?.messages) {
             setSentMessages(data.messages);
           }
-          setIsSentLoading(false);
-        }).catch(() => setIsSentLoading(false));
-      });
-    }
-  }, [open, status.connected, hasLoaded, sentMessages.length, isSentLoading]);
+        } catch { /* ignore */ }
+        setIsSentLoading(false);
+      }
+    };
+
+    fetchAll();
+  }, [open, status.connected, hasLoaded, listMessages, user]);
 
   // Reset load flag when dialog closes
   useEffect(() => {
     if (!open) {
       setHasLoaded(false);
       setSentMessages([]);
+      setCachedInboxEmails([]);
+      sentFetchedRef.current = false;
     }
   }, [open]);
 
   // Combine inbox + sent into a single dataset with correct folder tags
+  // Use API messages if available, fall back to cached emails
   const mappedEmails = useMemo(() => {
-    const inboxEmails = mapGmailToMockEmails(messages, 'inbox');
+    const inboxSource = messages.length > 0 ? messages : cachedInboxEmails;
+    const inboxEmails = mapGmailToMockEmails(inboxSource, 'inbox');
     const sentEmails = mapGmailToMockEmails(sentMessages, 'sent');
 
     // Deduplicate: if an email appears in both inbox and sent (e.g. self-sent), prefer inbox
@@ -95,7 +120,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     const uniqueSent = sentEmails.filter(e => !seenIds.has(e.id));
 
     return [...inboxEmails, ...uniqueSent];
-  }, [messages, sentMessages]);
+  }, [messages, sentMessages, cachedInboxEmails]);
 
   const handleRefresh = useCallback(() => {
     listMessages({ maxResults: 50, labelIds: ['INBOX'] });
