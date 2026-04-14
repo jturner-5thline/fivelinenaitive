@@ -842,6 +842,7 @@ function StatusChip({ status }: { status: string | null }) {
 function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
   const { data, isLoading, error } = useOperationalData(enabled);
   const [detail, setDetail] = useState<any>(null);
+  const [drilldown, setDrilldown] = useState<'projects' | 'past_due' | 'today' | 'upcoming' | null>(null);
 
   if (isLoading || !data) return <TabSkeleton />;
   if (error || data?.error) {
