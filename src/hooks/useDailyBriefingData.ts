@@ -332,10 +332,15 @@ export function useOperationalData(enabled: boolean) {
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('briefing-operational');
       if (error) throw new Error(error.message);
-      if (data?.error && !data?.projects) throw new Error(data.error);
       return data as {
         error?: string;
         fallback?: boolean;
+        counts: {
+          projects: number;
+          overdue: number;
+          today: number;
+          upcoming: number;
+        };
         summary: {
           total_projects: number;
           overdue_count: number;
@@ -346,6 +351,7 @@ export function useOperationalData(enabled: boolean) {
         projects: Array<{
           gid: string;
           name: string;
+          permalink_url: string | null;
           owner: string | null;
           owner_email: string | null;
           due_on: string | null;
@@ -354,12 +360,13 @@ export function useOperationalData(enabled: boolean) {
           status_type: string | null;
           status_title: string | null;
           status_text: string | null;
+          task_count: number;
+          last_activity_at: string | null;
         }>;
-        overdue_tasks: Array<any>;
-        overdue_milestones: Array<any>;
-        today_items: Array<any>;
-        upcoming_milestones: Array<any>;
-        upcoming_tasks: Array<any>;
+        overdue: Array<any>;
+        today: Array<any>;
+        upcoming: Array<any>;
+        recentlyCompleted: Array<any>;
       };
     },
   });

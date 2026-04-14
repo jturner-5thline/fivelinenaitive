@@ -856,8 +856,12 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
     );
   }
 
-  const { summary, projects, overdue_tasks, overdue_milestones, today_items, upcoming_milestones, upcoming_tasks } = data;
-  const pastDueAll = [...overdue_milestones, ...overdue_tasks].sort((a, b) => b.days_overdue - a.days_overdue);
+  const { counts, projects, overdue, today, upcoming } = data;
+
+  const openAsana = (url?: string | null) => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="relative h-full">
@@ -868,23 +872,29 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
             {detail.project_name && <div className="text-sm"><strong>Project:</strong> {detail.project_name}</div>}
             {detail.assignee && <div className="text-sm"><strong>Assignee:</strong> {detail.assignee}</div>}
             {detail.owner && <div className="text-sm"><strong>Owner:</strong> {detail.owner}</div>}
+            {typeof detail.task_count === 'number' && <div className="text-sm"><strong>Task count:</strong> {detail.task_count}</div>}
             {detail.due_on && <div className="text-sm"><strong>Due:</strong> {format(new Date(detail.due_on + 'T00:00:00'), 'PPP')}</div>}
+            {detail.last_activity_at && <div className="text-sm"><strong>Last activity:</strong> {format(new Date(detail.last_activity_at), 'PPP')}</div>}
             {detail.days_overdue > 0 && <div className="text-sm text-destructive"><strong>{detail.days_overdue} day{detail.days_overdue !== 1 ? 's' : ''} overdue</strong></div>}
             {detail.status_type && <div className="flex items-center gap-2 text-sm"><strong>Status:</strong> <StatusChip status={detail.status_type} /></div>}
             {detail.status_text && <div className="text-sm text-muted-foreground mt-1">{detail.status_text}</div>}
             {detail.is_milestone && <Badge variant="outline" className="text-[10px] border-white/[0.08]">Milestone</Badge>}
+            {(detail.permalink_url || detail.project_permalink_url) && (
+              <button onClick={() => openAsana(detail.permalink_url || detail.project_permalink_url)} className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                Open in Asana <ExternalLink className="h-3 w-3" />
+              </button>
+            )}
           </div>
         </DetailPopup>
       )}
 
-      {/* Stat card drilldown popups */}
       {drilldown && (
         <DetailPopup
           title={
-            drilldown === 'projects' ? `Projects (${summary.total_projects})` :
-            drilldown === 'past_due' ? `Past Due (${summary.overdue_count})` :
-            drilldown === 'today' ? `Due Today (${summary.due_today_count})` :
-            `Upcoming (${summary.upcoming_milestones_count})`
+            drilldown === 'projects' ? `Projects (${counts.projects})` :
+            drilldown === 'past_due' ? `Past Due (${counts.overdue})` :
+            drilldown === 'today' ? `Due Today (${counts.today})` :
+            `Upcoming (${counts.upcoming})`
           }
           onClose={() => setDrilldown(null)}
         >
@@ -892,19 +902,19 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
             {drilldown === 'projects' && (projects.length === 0
               ? <p className="text-xs text-muted-foreground py-4 text-center">No active projects</p>
               : projects.map((p: any) => (
-                <a key={p.gid} href={`https://app.asana.com/0/${p.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
-                  <div>
-                    <p className="text-xs font-medium">{p.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{p.owner || 'No owner'}{p.status_type ? ` • ${p.status_type.replace('_', ' ')}` : ''}</p>
+                <a key={p.gid} href={p.permalink_url || `https://app.asana.com/0/${p.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium truncate">{p.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{p.task_count} tasks{p.last_activity_at ? ` • active ${format(new Date(p.last_activity_at), 'MMM d')}` : ''}</p>
                   </div>
-                  {p.due_on && <span className="text-[10px] text-muted-foreground/60">{format(new Date(p.due_on + 'T00:00:00'), 'MMM d')}</span>}
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 ml-2" />
                 </a>
               ))
             )}
-            {drilldown === 'past_due' && (pastDueAll.length === 0
-              ? <p className="text-xs text-muted-foreground py-4 text-center">No overdue items — all clear</p>
-              : pastDueAll.map((t: any) => (
-                <a key={t.gid} href={`https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-destructive/30 transition-colors cursor-pointer')}>
+            {drilldown === 'past_due' && (overdue.length === 0
+              ? <p className="text-xs text-muted-foreground py-4 text-center">No overdue items</p>
+              : overdue.map((t: any) => (
+                <a key={t.gid} href={t.permalink_url || `https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-destructive/30 transition-colors cursor-pointer')}>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium truncate">{t.name}</p>
                     <p className="text-[10px] text-muted-foreground">{t.project_name}{t.assignee ? ` • ${t.assignee}` : ''}</p>
@@ -916,22 +926,25 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
                 </a>
               ))
             )}
-            {drilldown === 'today' && (today_items.length === 0
-              ? <p className="text-xs text-muted-foreground py-4 text-center">Nothing due today</p>
-              : today_items.map((t: any) => (
-                <a key={t.gid} href={`https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-amber-500/30 transition-colors cursor-pointer')}>
+            {drilldown === 'today' && (today.length === 0
+              ? <p className="text-xs text-muted-foreground py-4 text-center">No items due today</p>
+              : today.map((t: any) => (
+                <a key={t.gid} href={t.permalink_url || `https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium truncate">{t.name}</p>
                     <p className="text-[10px] text-muted-foreground">{t.project_name}{t.assignee ? ` • ${t.assignee}` : ''}</p>
                   </div>
-                  {t.is_milestone && <Badge variant="outline" className="text-[10px] border-white/[0.08] ml-2">Milestone</Badge>}
+                  <div className="text-right ml-2 shrink-0">
+                    <p className="text-[10px] text-muted-foreground">{t.completed ? 'Completed' : 'Open'}</p>
+                    <p className="text-[10px] text-muted-foreground/60">Today</p>
+                  </div>
                 </a>
               ))
             )}
-            {drilldown === 'upcoming' && (upcoming_milestones.length === 0
-              ? <p className="text-xs text-muted-foreground py-4 text-center">No upcoming milestones</p>
-              : upcoming_milestones.map((t: any) => (
-                <a key={t.gid} href={`https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
+            {drilldown === 'upcoming' && (upcoming.length === 0
+              ? <p className="text-xs text-muted-foreground py-4 text-center">No upcoming items</p>
+              : upcoming.map((t: any) => (
+                <a key={t.gid} href={t.permalink_url || `https://app.asana.com/0/0/${t.gid}`} target="_blank" rel="noopener noreferrer" className={cn(GLASS_CARD, 'p-2.5 flex items-center justify-between hover:border-primary/30 transition-colors cursor-pointer')}>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium truncate">{t.name}</p>
                     <p className="text-[10px] text-muted-foreground">{t.project_name}{t.assignee ? ` • ${t.assignee}` : ''}</p>
@@ -944,81 +957,76 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
         </DetailPopup>
       )}
 
-      {/* Operational Highlights */}
       <Section title="Operational Highlights">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className={cn(GLASS_CARD, 'p-3 text-center cursor-pointer hover:border-primary/30 hover:scale-[1.02] transition-all')} onClick={() => setDrilldown('projects')}>
             <p className="text-xs text-muted-foreground/70">Projects</p>
-            <p className="text-xl font-bold text-primary">{summary.total_projects}</p>
+            <p className="text-xl font-bold text-primary">{counts.projects}</p>
             <p className="text-[10px] text-muted-foreground/50">active</p>
           </div>
           <div className={cn(GLASS_CARD, 'p-3 text-center cursor-pointer hover:border-destructive/30 hover:scale-[1.02] transition-all')} onClick={() => setDrilldown('past_due')}>
             <p className="text-xs text-muted-foreground/70">Past Due</p>
-            <p className={cn('text-xl font-bold', summary.overdue_count > 0 ? 'text-destructive' : 'text-emerald-400')}>{summary.overdue_count}</p>
+            <p className={cn('text-xl font-bold', counts.overdue > 0 ? 'text-destructive' : 'text-muted-foreground')}>{counts.overdue}</p>
             <p className="text-[10px] text-muted-foreground/50">items</p>
           </div>
-          <div className={cn(GLASS_CARD, 'p-3 text-center cursor-pointer hover:border-amber-500/30 hover:scale-[1.02] transition-all')} onClick={() => setDrilldown('today')}>
+          <div className={cn(GLASS_CARD, 'p-3 text-center cursor-pointer hover:border-primary/30 hover:scale-[1.02] transition-all')} onClick={() => setDrilldown('today')}>
             <p className="text-xs text-muted-foreground/70">Due Today</p>
-            <p className={cn('text-xl font-bold', summary.due_today_count > 0 ? 'text-amber-400' : 'text-foreground')}>{summary.due_today_count}</p>
+            <p className={cn('text-xl font-bold', counts.today > 0 ? 'text-primary' : 'text-muted-foreground')}>{counts.today}</p>
             <p className="text-[10px] text-muted-foreground/50">items</p>
           </div>
           <div className={cn(GLASS_CARD, 'p-3 text-center cursor-pointer hover:border-primary/30 hover:scale-[1.02] transition-all')} onClick={() => setDrilldown('upcoming')}>
             <p className="text-xs text-muted-foreground/70">Upcoming</p>
-            <p className="text-xl font-bold text-foreground">{summary.upcoming_milestones_count}</p>
-            <p className="text-[10px] text-muted-foreground/50">milestones</p>
+            <p className={cn('text-xl font-bold', counts.upcoming > 0 ? 'text-primary' : 'text-muted-foreground')}>{counts.upcoming}</p>
+            <p className="text-[10px] text-muted-foreground/50">tasks</p>
           </div>
         </div>
       </Section>
 
-      {/* Past Due Items */}
       <Section title="Past Due Items">
-        {pastDueAll.length === 0 ? <EmptySection message="No overdue items — all clear" /> : pastDueAll.map((item: any) => (
+        {overdue.length === 0 ? <EmptySection message="No overdue items" /> : overdue.map((item: any) => (
           <BriefingRow
             key={item.gid}
             icon={AlertCircle}
             title={item.name}
             subtitle={`${item.project_name}${item.assignee ? ` • ${item.assignee}` : ''}`}
-            badge={item.is_milestone ? 'Milestone' : `${item.days_overdue}d overdue`}
+            badge={`${item.days_overdue}d overdue`}
             badgeVariant="destructive"
             time={item.due_on ? format(new Date(item.due_on + 'T00:00:00'), 'MMM d') : ''}
-            onClick={() => setDetail(item)}
+            onClick={() => item.permalink_url ? openAsana(item.permalink_url) : setDetail(item)}
           />
         ))}
       </Section>
 
-      {/* Due Today */}
       <Section title="Due Today">
-        {today_items.length === 0 ? <EmptySection message="Nothing due today" /> : today_items.map((item: any) => (
+        {today.length === 0 ? <EmptySection message="No items due today" /> : today.map((item: any) => (
           <BriefingRow
             key={item.gid}
             icon={ListChecks}
             title={item.name}
             subtitle={`${item.project_name}${item.assignee ? ` • ${item.assignee}` : ''}`}
-            badge={item.is_milestone ? 'Milestone' : 'Task'}
-            badgeVariant={item.is_milestone ? 'default' : 'secondary'}
+            badge={item.completed ? 'Completed' : 'Open'}
+            badgeVariant={item.completed ? 'secondary' : 'default'}
             time="Today"
-            onClick={() => setDetail(item)}
+            onClick={() => item.permalink_url ? openAsana(item.permalink_url) : setDetail(item)}
           />
         ))}
       </Section>
 
-      {/* Upcoming Milestones */}
-      <Section title="Upcoming Milestones">
-        {upcoming_milestones.length === 0 ? <EmptySection message="No upcoming milestones" /> : upcoming_milestones.slice(0, 15).map((item: any) => (
+      <Section title="Upcoming">
+        {upcoming.length === 0 ? <EmptySection message="No upcoming items" /> : upcoming.slice(0, 15).map((item: any) => (
           <BriefingRow
             key={item.gid}
-            icon={FileText}
+            icon={Clock}
             title={item.name}
             subtitle={`${item.project_name}${item.assignee ? ` • ${item.assignee}` : ''}`}
-            badge="Milestone"
+            badge={item.is_milestone ? 'Milestone' : 'Task'}
             badgeVariant="outline"
             time={item.due_on ? format(new Date(item.due_on + 'T00:00:00'), 'MMM d') : ''}
-            onClick={() => setDetail(item)}
+            onClick={() => item.permalink_url ? openAsana(item.permalink_url) : setDetail(item)}
           />
         ))}
       </Section>
 
-      {/* Current Projects */}
       <Section title="Current Projects">
         {projects.length === 0 ? <EmptySection message="No active projects in portfolio" /> : (
           <div className="space-y-1.5">
@@ -1027,8 +1035,8 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
                 key={p.gid}
                 role="button"
                 tabIndex={0}
-                onClick={() => setDetail(p)}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetail(p); } }}
+                onClick={() => p.permalink_url ? openAsana(p.permalink_url) : setDetail(p)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); p.permalink_url ? openAsana(p.permalink_url) : setDetail(p); } }}
                 className={cn(
                   GLASS_ROW,
                   'p-3 cursor-pointer transition-all duration-200',
@@ -1041,9 +1049,10 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
                       <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
                       <StatusChip status={p.status_type} />
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground/60">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground/60 flex-wrap">
                       {p.owner && <span>Owner: {p.owner}</span>}
-                      {p.due_on && <span>Due: {format(new Date(p.due_on + 'T00:00:00'), 'MMM d, yyyy')}</span>}
+                      <span>Tasks: {p.task_count}</span>
+                      {p.last_activity_at && <span>Last activity: {format(new Date(p.last_activity_at), 'MMM d')}</span>}
                     </div>
                     {p.status_title && <p className="text-[11px] text-muted-foreground/50 mt-1 truncate">{p.status_title}</p>}
                   </div>
@@ -1054,24 +1063,6 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
           </div>
         )}
       </Section>
-
-      {/* Upcoming Tasks */}
-      {upcoming_tasks.length > 0 && (
-        <Section title="Upcoming Tasks">
-          {upcoming_tasks.slice(0, 10).map((item: any) => (
-            <BriefingRow
-              key={item.gid}
-              icon={Clock}
-              title={item.name}
-              subtitle={`${item.project_name}${item.assignee ? ` • ${item.assignee}` : ''}`}
-              badge="Task"
-              badgeVariant="outline"
-              time={item.due_on ? format(new Date(item.due_on + 'T00:00:00'), 'MMM d') : ''}
-              onClick={() => setDetail(item)}
-            />
-          ))}
-        </Section>
-      )}
     </div>
   );
 }
