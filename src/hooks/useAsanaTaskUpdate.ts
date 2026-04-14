@@ -44,7 +44,7 @@ export async function updateTaskInAsana(
     const asanaUpdates: Record<string, unknown> = {};
 
     if ('due_date' in updates) {
-      asanaUpdates.due_on = updates.due_date || null;
+      asanaUpdates.due_on = updates.due_date ? updates.due_date.substring(0, 10) : null;
     }
 
     if ('assignee_email' in updates) {

@@ -128,10 +128,12 @@ serve(async (req) => {
 
       case "create_task": {
         const resolvedToken = await resolveToken(token, integration_id);
+        console.log("Creating Asana task with data:", JSON.stringify(params.task_data));
         const data = await asanaFetch("/tasks", resolvedToken, {
           method: "POST",
           body: JSON.stringify({ data: params.task_data }),
         });
+        console.log("Asana task created:", JSON.stringify(data.data));
         result = { success: true, task: data.data };
         break;
       }
