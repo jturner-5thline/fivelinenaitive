@@ -61,7 +61,7 @@ export function useEmailClassifierData(): { entities: ClassifierEntity[]; orgCtx
     },
   });
 
-  return useMemo(() => {
+  const entities = useMemo(() => {
     const entities: ClassifierEntity[] = [];
     const seenNames = new Set<string>();
 
@@ -130,16 +130,9 @@ export function useEmailClassifierData(): { entities: ClassifierEntity[]; orgCtx
   const orgCtx = useMemo<ClassifierOrgContext>(() => {
     const ctx: ClassifierOrgContext = {};
     if (company?.name) ctx.orgName = company.name.trim().toLowerCase();
-    if (company?.primary_domain) {
-      const d = normaliseDomain(company.primary_domain);
+    if (company?.website_url) {
+      const d = normaliseDomain(company.website_url);
       ctx.orgDomains = d ? [d] : [];
-      // Also add domains array if available
-      if (company.domains && Array.isArray(company.domains)) {
-        for (const dom of company.domains) {
-          const nd = normaliseDomain(dom);
-          if (nd && !ctx.orgDomains.includes(nd)) ctx.orgDomains.push(nd);
-        }
-      }
     }
     return ctx;
   }, [company]);
