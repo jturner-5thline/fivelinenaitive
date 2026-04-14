@@ -184,15 +184,24 @@ export async function syncTaskToAsana(
 }
 
 /**
- * Update an existing Asana task's due date and/or assignee.
+ * Update an existing Asana task's name, due date, assignee, and/or completion.
  */
 export async function updateTaskInAsana(
   ctx: AsanaSyncContext,
   asanaTaskGid: string,
-  updates: { due_date?: string | null; assignee_email?: string | null }
+  updates: {
+    title?: string | null;
+    due_date?: string | null;
+    assignee_email?: string | null;
+    completed?: boolean;
+  }
 ): Promise<boolean> {
   try {
     const asanaUpdates: Record<string, unknown> = {};
+
+    if ('title' in updates && updates.title) {
+      asanaUpdates.name = updates.title;
+    }
 
     if ('due_date' in updates) {
       asanaUpdates.due_on = updates.due_date || null;
@@ -205,6 +214,10 @@ export async function updateTaskInAsana(
       } else {
         asanaUpdates.assignee = null;
       }
+    }
+
+    if ('completed' in updates) {
+      asanaUpdates.completed = updates.completed;
     }
 
     if (Object.keys(asanaUpdates).length === 0) return true;
