@@ -436,7 +436,7 @@ function OperationalTab({ data, onNavigate }: { data: BriefingData; onNavigate: 
           <div className="space-y-3">
             <div className="text-sm"><strong>Task:</strong> {detail.title}</div>
             <div className="text-sm"><strong>Status:</strong> {detail.status || 'Open'}</div>
-            {detail.assignee && <div className="text-sm"><strong>Assignee:</strong> {detail.assignee}</div>}
+            {(detail as any).assignee && <div className="text-sm"><strong>Assignee:</strong> {(detail as any).assignee}</div>}
             {detail.due_date && <div className="text-sm"><strong>Due:</strong> {format(new Date(detail.due_date), 'PPP')}</div>}
             {detail.deal_id && (
               <Button size="sm" variant="outline" onClick={() => onNavigate(`/deal/${detail.deal_id}`)}>
