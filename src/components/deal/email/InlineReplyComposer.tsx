@@ -83,8 +83,8 @@ function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
 
 export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, initialDraft, onDraftChange, onFieldBlur, saveStatus = 'idle', tokenContext }: InlineReplyComposerProps) {
   const [to] = useState(initialDraft?.to ?? replyTo.to_email);
-  const [cc, setCc] = useState(initialDraft?.cc ?? '');
-  const [bcc, setBcc] = useState(initialDraft?.bcc ?? '');
+  const [ccRecipients, setCcRecipients] = useState<string[]>(emailStringToArray(initialDraft?.cc ?? ''));
+  const [bccRecipients, setBccRecipients] = useState<string[]>(emailStringToArray(initialDraft?.bcc ?? ''));
   const [subject] = useState(initialDraft?.subject ?? `Re: ${replyTo.subject}`);
   const [body, setBody] = useState(initialDraft?.body ?? '');
   const [showCcBcc, setShowCcBcc] = useState(false);
@@ -92,6 +92,7 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
   const [attachments, setAttachments] = useState<string[]>(initialDraft?.attachments ?? []);
   const [isExpanded, setIsExpanded] = useState(!!initialDraft?.body);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { search } = useEmailContacts();
 
   // Auto-focus textarea when expanded
   useEffect(() => {
@@ -101,14 +102,14 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
   }, [isExpanded]);
 
   const getCurrentDraft = useCallback((): ReplyDraft => ({
-    to, cc, bcc, subject, body, attachments,
+    to, cc: emailArrayToString(ccRecipients), bcc: emailArrayToString(bccRecipients), subject, body, attachments,
     threadId: replyTo.threadId,
     toName: replyTo.to_name,
-  }), [to, cc, bcc, subject, body, attachments, replyTo]);
+  }), [to, ccRecipients, bccRecipients, subject, body, attachments, replyTo]);
 
   useEffect(() => {
     onDraftChange?.(getCurrentDraft());
-  }, [to, cc, bcc, subject, body, attachments]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [to, ccRecipients, bccRecipients, subject, body, attachments]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasContent = body.trim().length > 0 || attachments.length > 0;
 
