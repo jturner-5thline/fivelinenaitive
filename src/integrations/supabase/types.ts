@@ -12176,10 +12176,14 @@ export type Database = {
           created_by: string | null
           id: string
           is_active: boolean
+          sequence_group_id: string | null
           sequence_name: string | null
+          sequence_step_key: string | null
+          sequence_step_order: number | null
           sort_order: number | null
           subject_line: string
           template_number: number
+          template_type: string
           title: string
           updated_at: string
           updated_by: string | null
@@ -12192,10 +12196,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean
+          sequence_group_id?: string | null
           sequence_name?: string | null
+          sequence_step_key?: string | null
+          sequence_step_order?: number | null
           sort_order?: number | null
           subject_line: string
           template_number: number
+          template_type?: string
           title: string
           updated_at?: string
           updated_by?: string | null
@@ -12208,10 +12216,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean
+          sequence_group_id?: string | null
           sequence_name?: string | null
+          sequence_step_key?: string | null
+          sequence_step_order?: number | null
           sort_order?: number | null
           subject_line?: string
           template_number?: number
+          template_type?: string
           title?: string
           updated_at?: string
           updated_by?: string | null
