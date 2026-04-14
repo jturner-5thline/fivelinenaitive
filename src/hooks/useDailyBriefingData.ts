@@ -323,20 +323,42 @@ export function usePipelineData(enabled: boolean) {
   });
 }
 
-// ── Operational tab data ──────────────────────────────────────
+// ── Operational tab data (Asana portfolio) ───────────────────
 export function useOperationalData(enabled: boolean) {
   return useQuery({
-    queryKey: ['briefing-operational'],
+    queryKey: ['briefing-operational-asana'],
     enabled,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000, // 5 min cache
     queryFn: async () => {
-      const res = await supabase
-        .from('deal_milestones')
-        .select('id, deal_id, title, status, due_date, completed')
-        .eq('completed', false)
-        .order('due_date', { ascending: true })
-        .limit(100);
-      return { milestones: res.data || [] };
+      const { data, error } = await supabase.functions.invoke('briefing-operational');
+      if (error) throw new Error(error.message);
+      if (data?.error && !data?.projects) throw new Error(data.error);
+      return data as {
+        summary: {
+          total_projects: number;
+          overdue_count: number;
+          due_today_count: number;
+          upcoming_milestones_count: number;
+          total_open_tasks: number;
+        };
+        projects: Array<{
+          gid: string;
+          name: string;
+          owner: string | null;
+          owner_email: string | null;
+          due_on: string | null;
+          start_on: string | null;
+          color: string | null;
+          status_type: string | null;
+          status_title: string | null;
+          status_text: string | null;
+        }>;
+        overdue_tasks: Array<any>;
+        overdue_milestones: Array<any>;
+        today_items: Array<any>;
+        upcoming_milestones: Array<any>;
+        upcoming_tasks: Array<any>;
+      };
     },
   });
 }
