@@ -186,13 +186,18 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
     }
   }, [data, owners, totalEquityRaised, dealManager, disclaimer, isExporting]);
 
-  // Parse financial data for charts
+  // Parse financial data for charts — add A/P suffix to year labels
   const chartData = useMemo(() => {
+    const currentCalYear = new Date().getFullYear();
     return data.financialYears.map(fy => {
       const rev = parseNum(fy.revenue);
       const ebitda = parseNum(fy.ebitda);
       const gm = parsePct(fy.gross_margin);
-      return { year: fy.year, revenue: rev, ebitda, grossMargin: gm };
+      const yearMatch = fy.year?.match(/(\d{4})/);
+      const numYear = yearMatch ? parseInt(yearMatch[1], 10) : null;
+      const suffix = numYear !== null ? (numYear <= currentCalYear ? 'A' : 'P') : '';
+      const yearLabel = numYear !== null ? `${numYear}${suffix}` : fy.year;
+      return { year: yearLabel, revenue: rev, ebitda, grossMargin: gm };
     }).filter(d => d.year).sort((a, b) => {
       const parseYear = (y: string) => { const m = y.match(/(\d{4})/); return m ? parseInt(m[1], 10) : 0; };
       return parseYear(a.year) - parseYear(b.year);

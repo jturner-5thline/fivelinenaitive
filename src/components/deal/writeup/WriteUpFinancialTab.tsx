@@ -1018,8 +1018,8 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
 
             const metricItems = [
               { key: 'yoy_growth' as const, label: 'YoY Growth', value: yoyValue },
-              { key: 'this_year_revenue' as const, label: 'Current Year Revenue', value: currentYearData?.revenue ? formatCurrency(currentYearData.revenue) : null },
-              { key: 'last_year_revenue' as const, label: 'Prior Year Revenue', value: priorYearData?.revenue ? formatCurrency(priorYearData.revenue) : null },
+              { key: 'this_year_revenue' as const, label: `${calendarYear} Revenue`, value: currentYearData?.revenue ? formatCurrency(currentYearData.revenue) : null },
+              { key: 'last_year_revenue' as const, label: `${calendarYear - 1} Revenue`, value: priorYearData?.revenue ? formatCurrency(priorYearData.revenue) : null },
               { key: 'gross_margins' as const, label: 'Gross Margins', value: currentYearData?.gross_margin || data.grossMargins || null },
             ];
 

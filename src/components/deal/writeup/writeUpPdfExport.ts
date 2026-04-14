@@ -561,8 +561,7 @@ export async function exportWriteUpToPdf({ data, owners, totalEquityRaised, deal
 
   /* ── 10. Disclaimer ── */
   if (disclaimer && disclaimer.trim()) {
-    c.ensureSpace(60);
-    c.y += 10;
+    c.newPage();
     doc.setDrawColor(...C.tableBorder);
     doc.line(c.marginL, c.y, c.pageW - c.marginR, c.y);
     c.y += 14;
