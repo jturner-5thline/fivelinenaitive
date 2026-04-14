@@ -64,6 +64,17 @@ export default function Dashboard() {
     if (tab === 'news-feed') setDashboardTab('news-feed');
   }, [searchParams]);
 
+  // Auto-open Daily Briefing from email link (?briefing=true)
+  useEffect(() => {
+    if (isJTurner && searchParams.get('briefing') === 'true') {
+      setIsBriefingOpen(true);
+      // Clean up the URL params
+      searchParams.delete('briefing');
+      searchParams.delete('tab');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [isJTurner, searchParams, setSearchParams]);
+
   const handleDashboardTabChange = (tab: string) => {
     setDashboardTab(tab);
     if (tab === 'overview') {
