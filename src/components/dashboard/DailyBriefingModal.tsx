@@ -511,41 +511,14 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
   );
 }
 
-// ── Email sub-tab types ────────────────────────────────────────
-type EmailSubTab = 'all' | 'clients_deals' | 'asana_projects';
-
-function classifyEmail(e: any): EmailSubTab[] {
-  const cats: EmailSubTab[] = [];
-  const category = e.analysis?.category || '';
-  const fromEmail = (e.from_email || '').toLowerCase();
-  const subject = (e.subject || '').toLowerCase();
-
-  // Clients & Deals
-  if (['deal_update', 'terms_discussion', 'due_diligence', 'lender_communication', 'follow_up_needed'].includes(category) ||
-      e.analysis?.deal_name) {
-    cats.push('clients_deals');
-  }
-
-  // Asana & Projects
-  if (fromEmail.includes('asana.com') || fromEmail.includes('mail.asana.com') ||
-      subject.includes('asana') || (e.snippet || '').toLowerCase().includes('asana')) {
-    cats.push('asana_projects');
-  }
-
-  return cats;
-}
-
-const EMAIL_SUB_TABS: { key: EmailSubTab; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'clients_deals', label: 'Clients & Deals' },
-  { key: 'asana_projects', label: 'Asana & Projects' },
-];
+// ── Email sub-tab types (shared classifier) ────────────────────
+import { classifyEmail, filterEmailsByCategory, EMAIL_CATEGORY_TABS, type EmailCategoryTab } from '@/utils/emailClassifier';
 
 // ── Tab: Email ─────────────────────────────────────────────────
 function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
   const { data, isLoading } = useEmailData(enabled);
   const [detail, setDetail] = useState<any>(null);
-  const [subTab, setSubTab] = useState<EmailSubTab>('all');
+  const [subTab, setSubTab] = useState<EmailCategoryTab>('all');
 
   if (isLoading || !data) return <TabSkeleton />;
 
@@ -555,7 +528,7 @@ function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path
   const classified = emails.map((e: any) => ({ email: e, cats: classifyEmail(e) }));
 
   // Counts per sub-tab
-  const counts: Record<EmailSubTab, number> = {
+  const counts: Record<EmailCategoryTab, number> = {
     all: emails.length,
     clients_deals: classified.filter(c => c.cats.includes('clients_deals')).length,
     asana_projects: classified.filter(c => c.cats.includes('asana_projects')).length,
@@ -566,7 +539,7 @@ function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path
     ? emails
     : classified.filter(c => c.cats.includes(subTab)).map(c => c.email);
 
-  const EMPTY_MESSAGES: Record<EmailSubTab, string> = {
+  const EMPTY_MESSAGES: Record<EmailCategoryTab, string> = {
     all: 'No emails found in this window.',
     clients_deals: 'No client or deal emails since yesterday.',
     asana_projects: 'No Asana emails since yesterday.',
