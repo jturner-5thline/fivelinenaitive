@@ -124,7 +124,7 @@ function isAutoReplyOrNewsletter(email: MockEmail): boolean {
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend }: DealEmailsTabProps) {
   const navigate = useNavigate();
-  const classifierEntities = useEmailClassifierData();
+  const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
   const [emails, setEmails] = useState<MockEmail[]>(() => {
     const source = externalEmails || initialMockEmails;
     return source.map(e => isAutoReplyOrNewsletter(e) ? { ...e, needs_response: false } : e);
