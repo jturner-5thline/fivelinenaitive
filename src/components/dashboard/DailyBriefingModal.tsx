@@ -433,6 +433,56 @@ function PipelineTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (p
   );
 }
 
+// ── Tab: Operational & Projects ────────────────────────────────
+function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
+  const { data, isLoading } = useOperationalData(enabled);
+  const [detail, setDetail] = useState<any>(null);
+
+  if (isLoading || !data) return <TabSkeleton />;
+
+  const { milestones } = data;
+  const overdue = milestones.filter((m: any) => m.due_date && isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date)));
+  const todayItems = milestones.filter((m: any) => m.due_date && isToday(new Date(m.due_date)));
+  const upcoming = milestones.filter((m: any) => m.due_date && !isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date))).slice(0, 10);
+
+  return (
+    <div className="relative h-full">
+      {detail && (
+        <DetailPopup title={detail.title || 'Task Detail'} onClose={() => setDetail(null)}>
+          <div className="space-y-3">
+            <div className="text-sm"><strong>Task:</strong> {detail.title}</div>
+            <div className="text-sm"><strong>Status:</strong> {detail.status || 'Open'}</div>
+            {detail.due_date && <div className="text-sm"><strong>Due:</strong> {format(new Date(detail.due_date), 'PPP')}</div>}
+            {detail.deal_id && (
+              <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(`/deal/${detail.deal_id}`)}>
+                Open Deal <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+            )}
+          </div>
+        </DetailPopup>
+      )}
+
+      <Section title="Overdue Tasks">
+        {overdue.length === 0 ? <EmptySection message="No overdue tasks" /> : overdue.map((m: any) => (
+          <BriefingRow key={m.id} icon={AlertCircle} title={m.title} badge="Overdue" badgeVariant="destructive" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
+        ))}
+      </Section>
+
+      <Section title="Due Today">
+        {todayItems.length === 0 ? <EmptySection message="Nothing due today" /> : todayItems.map((m: any) => (
+          <BriefingRow key={m.id} icon={ListChecks} title={m.title} badge="Today" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
+        ))}
+      </Section>
+
+      <Section title="Upcoming Milestones">
+        {upcoming.length === 0 ? <EmptySection message="No upcoming milestones" /> : upcoming.map((m: any) => (
+          <BriefingRow key={m.id} icon={FileText} title={m.title} badge={m.status || 'open'} badgeVariant="outline" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
+        ))}
+      </Section>
+    </div>
+  );
+}
+
 // ── Tab icons & labels ─────────────────────────────────────────
 const TABS = [
   { value: 'catchup', label: 'Catch Up & News', icon: Newspaper },
