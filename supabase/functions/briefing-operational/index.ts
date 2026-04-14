@@ -93,7 +93,13 @@ serve(async (req) => {
     if (!integration?.config?.api_token) {
       return new Response(JSON.stringify({ 
         error: "No Asana integration configured",
-        projects: [], tasks: [], milestones: []
+        summary: { total_projects: 0, overdue_count: 0, due_today_count: 0, upcoming_milestones_count: 0, total_open_tasks: 0 },
+        projects: [],
+        overdue_tasks: [],
+        overdue_milestones: [],
+        today_items: [],
+        upcoming_milestones: [],
+        upcoming_tasks: [],
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
