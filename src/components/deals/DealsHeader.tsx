@@ -15,6 +15,8 @@ import { CreateDealDialog } from './CreateDealDialog';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DashboardModal } from '@/components/dashboard/DashboardModal';
+import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
+import { Newspaper } from 'lucide-react';
 
 export function DealsHeader() {
   const location = useLocation();
@@ -23,7 +25,8 @@ export function DealsHeader() {
   const { hasPageAccess } = usePageAccessFlags();
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-
+  const [isBriefingOpen, setIsBriefingOpen] = useState(false);
+  const isJTurner = user?.email === 'jturner@5thline.co';
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -151,6 +154,22 @@ export function DealsHeader() {
               <TooltipContent>Customize widgets</TooltipContent>
             </Tooltip>
           )}
+          {isJTurner && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  onClick={() => setIsBriefingOpen(true)}
+                >
+                  <Newspaper className="h-4 w-4" />
+                  <span className="hidden sm:inline">Daily Briefing</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Daily Briefing</TooltipContent>
+            </Tooltip>
+          )}
           
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."
@@ -166,6 +185,7 @@ export function DealsHeader() {
       </div>
       <HeaderNotificationPreview />
       {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
+      {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
     </header>
   );
 }
