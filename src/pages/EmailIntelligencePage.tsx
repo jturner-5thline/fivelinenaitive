@@ -49,7 +49,7 @@ const SENTIMENT_ICONS: Record<string, { icon: typeof TrendingUp; className: stri
 
 export default function EmailIntelligencePage() {
   const navigate = useNavigate();
-  const { status } = useGmail();
+  const { status, isStatusLoading } = useGmail();
   const { emails, stats, isLoading, isAnalyzing, syncEmails, reanalyzeEmail } = useEmailIntelligence();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,6 +94,17 @@ export default function EmailIntelligencePage() {
       return new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime();
     });
   }, [emails, searchQuery, categoryFilter, priorityFilter, sentimentFilter, dealFilter]);
+
+  if (isStatusLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-3">
+          <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Checking Gmail connection…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!status.connected) {
     return (
