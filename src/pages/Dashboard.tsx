@@ -26,7 +26,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { profile } = useProfile();
+  const isJTurner = user?.email === 'jturner@5thline.co';
+  const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const {
     presets,
     activePreset,
