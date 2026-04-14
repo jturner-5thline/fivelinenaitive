@@ -859,6 +859,27 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
   const navigate = useNavigate();
   const window = useBriefingWindow();
   const [activeTab, setActiveTab] = useState('catchup');
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
+
+  const currentIndex = TABS.findIndex(t => t.value === activeTab);
+  const canGoLeft = currentIndex > 0;
+  const canGoRight = currentIndex < TABS.length - 1;
+
+  const goTo = useCallback((direction: 'left' | 'right') => {
+    const next = direction === 'right' ? currentIndex + 1 : currentIndex - 1;
+    if (next < 0 || next >= TABS.length) return;
+    setSlideDirection(direction === 'right' ? 'left' : 'right');
+    setActiveTab(TABS[next].value);
+    // Clear animation class after transition
+    setTimeout(() => setSlideDirection(null), 300);
+  }, [currentIndex]);
+
+  const handleTabChange = useCallback((value: string) => {
+    const newIdx = TABS.findIndex(t => t.value === value);
+    setSlideDirection(newIdx > currentIndex ? 'left' : 'right');
+    setActiveTab(value);
+    setTimeout(() => setSlideDirection(null), 300);
+  }, [currentIndex]);
 
   const handleNavigate = (path: string) => {
     onOpenChange(false);
@@ -876,7 +897,7 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
         )}
         overlayClassName="bg-black/80"
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full relative">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
             <div>
@@ -887,8 +908,8 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
             </div>
           </div>
 
-          {/* Tabs — render shell immediately, no blocking */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
             <div className="px-6 pt-3 bg-white/[0.01]">
               <TabsList className="w-full bg-white/[0.03] border border-white/[0.05] backdrop-blur-xl">
                 {TABS.map(tab => {
@@ -912,13 +933,55 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
               </TabsList>
             </div>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden relative">
+              {/* Left arrow */}
+              {canGoLeft && (
+                <button
+                  onClick={() => goTo('left')}
+                  className={cn(
+                    'absolute left-1.5 top-1/2 -translate-y-1/2 z-20',
+                    'h-9 w-9 sm:h-10 sm:w-10 min-h-[44px] min-w-[44px] flex items-center justify-center',
+                    'rounded-full bg-white/[0.08] backdrop-blur-md border border-white/[0.1]',
+                    'text-muted-foreground hover:text-foreground hover:bg-white/[0.15] hover:shadow-lg',
+                    'transition-all duration-200',
+                  )}
+                  aria-label="Previous tab"
+                >
+                  <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                </button>
+              )}
+
+              {/* Right arrow */}
+              {canGoRight && (
+                <button
+                  onClick={() => goTo('right')}
+                  className={cn(
+                    'absolute right-1.5 top-1/2 -translate-y-1/2 z-20',
+                    'h-9 w-9 sm:h-10 sm:w-10 min-h-[44px] min-w-[44px] flex items-center justify-center',
+                    'rounded-full bg-white/[0.08] backdrop-blur-md border border-white/[0.1]',
+                    'text-muted-foreground hover:text-foreground hover:bg-white/[0.15] hover:shadow-lg',
+                    'transition-all duration-200',
+                  )}
+                  aria-label="Next tab"
+                >
+                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                </button>
+              )}
+
               <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
-                {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
-                {activeTab === 'email' && <EmailTab enabled={open} onNavigate={handleNavigate} />}
-                {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
-                {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} />}
-                {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} />}
+                <div
+                  className={cn(
+                    'transition-all duration-300 ease-out',
+                    slideDirection === 'left' && 'animate-[slideInLeft_0.3s_ease-out]',
+                    slideDirection === 'right' && 'animate-[slideInRight_0.3s_ease-out]',
+                  )}
+                >
+                  {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
+                  {activeTab === 'email' && <EmailTab enabled={open} onNavigate={handleNavigate} />}
+                  {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
+                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} />}
+                  {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} />}
+                </div>
               </ScrollArea>
             </div>
           </Tabs>
