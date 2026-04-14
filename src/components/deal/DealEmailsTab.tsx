@@ -148,14 +148,23 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   const inboxWidth = liveInboxWidth ?? savedInboxWidth;
 
+  const [isResizing, setIsResizing] = useState(false);
+
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     isDragging.current = true;
     dragStartX.current = e.clientX;
     dragStartWidth.current = inboxWidth;
+    setIsResizing(true);
+
+    // Disable text selection globally during drag
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
 
     const onMove = (ev: MouseEvent) => {
       if (!isDragging.current) return;
+      ev.preventDefault();
       const delta = ev.clientX - dragStartX.current;
       const newW = Math.max(MIN_INBOX_WIDTH, Math.min(MAX_INBOX_WIDTH, dragStartWidth.current + delta));
       setLiveInboxWidth(newW);
@@ -163,6 +172,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
     const onUp = () => {
       isDragging.current = false;
+      setIsResizing(false);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
       setLiveInboxWidth(prev => {
         if (prev != null) persistInboxWidth(prev);
         return prev;
@@ -707,13 +719,31 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             )}
             style={(currentThread || composeOpen) && !readingPaneExpanded ? { width: inboxWidth } : undefined}
           >
-            {/* Resize handle on right edge */}
+            {/* Resize handle on right edge — wide hit area, thin visible line */}
             {(currentThread || composeOpen) && !readingPaneExpanded && (
               <div
                 onMouseDown={handleResizeStart}
-                className="absolute right-0 top-0 bottom-0 w-[5px] z-20 cursor-col-resize group hover:bg-primary/20 transition-colors"
+                className={cn(
+                  "absolute right-[-6px] top-0 bottom-0 w-[12px] z-30 cursor-col-resize group",
+                  isResizing && "bg-primary/10"
+                )}
               >
-                <div className="absolute right-0 top-0 bottom-0 w-px bg-white/[0.06] group-hover:bg-primary/40 transition-colors" />
+                {/* Visible divider line */}
+                <div className={cn(
+                  "absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[2px] rounded-full transition-all duration-150",
+                  isResizing
+                    ? "bg-primary/60 shadow-[0_0_6px_hsl(var(--primary)/0.3)]"
+                    : "bg-white/[0.06] group-hover:bg-primary/40"
+                )} />
+                {/* Grip dots – centered vertically */}
+                <div className={cn(
+                  "absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex flex-col gap-1 transition-opacity duration-150",
+                  isResizing ? "opacity-80" : "opacity-0 group-hover:opacity-60"
+                )}>
+                  {[0,1,2].map(i => (
+                    <div key={i} className="w-1 h-1 rounded-full bg-primary/70" />
+                  ))}
+                </div>
               </div>
             )}
             {/* Search bar — full-width, flat, Outlook style */}
