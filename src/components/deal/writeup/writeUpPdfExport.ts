@@ -472,7 +472,10 @@ export async function exportWriteUpToPdf({ data, owners, totalEquityRaised, deal
 
     const body = data.financialYears.map(fy => {
       const fyAny = fy as any;
-      const row = [fy.year, fmtCurrency(fy.revenue)];
+      const ym = fy.year?.match(/(\d{4})/);
+      const ny = ym ? parseInt(ym[1], 10) : null;
+      const yearLabel = ny !== null ? `${ny}${ny <= currentCalYear ? 'A' : 'P'}` : fy.year;
+      const row = [yearLabel, fmtCurrency(fy.revenue)];
       if (hasRevGrowth) row.push(fyAny.rev_growth || '—');
       row.push(fy.gross_margin || '—');
       if (hasGmChange) row.push(fyAny.gross_margin_change || '—');
