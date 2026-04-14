@@ -129,8 +129,11 @@ export function useDailyBriefingData(enabled: boolean) {
       );
       const newDeals = deals.filter(d => dealCreatedIds.has(d.id));
 
-      // Identify risk deals: stale, at-risk, etc (active deals with old updates)
+      // Identify risk deals: flagged or stale
       const suppressedStatuses = ['archived', 'on-hold', 'on_hold'];
+      const inDevPipelineIds = deals
+        .filter(d => d.pipelineId && d.dealClass === 'naitive')
+        .map(d => d.pipelineId);
       const activeDeals = deals.filter(
         d => !suppressedStatuses.includes((d.status || '').toLowerCase())
       );

@@ -265,17 +265,17 @@ function FinancialTab({ data, onNavigate }: { data: BriefingData; onNavigate: (p
       )}
 
       <div className="grid grid-cols-2 gap-3 mb-5">
-        <Card className="bg-emerald-500/5 border-emerald-500/20">
+        <Card className="bg-primary/5 border-primary/20">
           <CardContent className="p-4 text-center">
             <p className="text-xs text-muted-foreground">Revenue (window)</p>
-            <p className="text-xl font-bold text-emerald-400">${totalRev.toLocaleString()}</p>
+            <p className="text-xl font-bold text-primary">${totalRev.toLocaleString()}</p>
             <p className="text-[10px] text-muted-foreground">{recentInvoices.length} invoices</p>
           </CardContent>
         </Card>
-        <Card className="bg-red-500/5 border-red-500/20">
+        <Card className="bg-destructive/5 border-destructive/20">
           <CardContent className="p-4 text-center">
             <p className="text-xs text-muted-foreground">Expenses (window)</p>
-            <p className="text-xl font-bold text-red-400">${totalExp.toLocaleString()}</p>
+            <p className="text-xl font-bold text-destructive">${totalExp.toLocaleString()}</p>
             <p className="text-[10px] text-muted-foreground">{recentExpenses.length} items</p>
           </CardContent>
         </Card>
