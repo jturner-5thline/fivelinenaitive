@@ -242,21 +242,141 @@ function useNewsfeedData(enabled: boolean) {
   return { items, isLoading, error, refresh: () => fetchFeed(true) };
 }
 
-// ── Image placeholder ──────────────────────────────────────────
-function TopicImage({ topic, className }: { topic: string; className?: string }) {
+// ── Image with fallback ─────────────────────────────────────────
+function NewsImage({ src, topic, className, variant = 'standard' }: { src?: string | null; topic: string; className?: string; variant?: 'featured' | 'standard' }) {
+  const [failed, setFailed] = useState(false);
   const gradient = TOPIC_GRADIENTS[topic] || 'from-slate-800/80 via-slate-700/40 to-slate-900/60';
   const icon = TOPIC_ICONS[topic] || '📰';
+  const hasImage = src && !failed;
+
   return (
     <div className={cn('relative overflow-hidden bg-gradient-to-br', gradient, className)}>
-      <div className="absolute inset-0 opacity-[0.07]" style={{
-        backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)',
-        backgroundSize: '40px 40px, 60px 60px, 50px 50px',
-      }} />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-2xl opacity-40 select-none">{icon}</span>
-      </div>
+      {hasImage ? (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          onError={() => setFailed(true)}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <>
+          <div className="absolute inset-0 opacity-[0.07]" style={{
+            backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)',
+            backgroundSize: '40px 40px, 60px 60px, 50px 50px',
+          }} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={cn('opacity-40 select-none', variant === 'featured' ? 'text-4xl' : 'text-2xl')}>{icon}</span>
+          </div>
+        </>
+      )}
+      {variant === 'featured' && hasImage && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      )}
       <div className="absolute inset-0 border border-white/[0.06] rounded-[inherit]" />
     </div>
+  );
+}
+
+// ── Featured news tile ─────────────────────────────────────────
+function FeaturedNewsTile({ item }: { item: NewsfeedItem }) {
+  const hasImage = !!item.image_url;
+  return (
+    <a
+      href={item.url !== '#' ? item.url : undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        GLASS_CARD,
+        'group overflow-hidden flex flex-col transition-all duration-200',
+        'hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_4px_20px_hsl(var(--primary)/0.1)]',
+        item.url !== '#' && 'cursor-pointer',
+      )}
+    >
+      <div className="relative">
+        <NewsImage src={item.image_url} topic={item.topic} className="w-full aspect-[2.4/1] rounded-t-lg" variant="featured" />
+        {hasImage && (
+          <div className="absolute bottom-0 left-0 right-0 p-4">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className={cn(
+                'px-2 py-0.5 rounded text-[10px] font-semibold border backdrop-blur-sm',
+                TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+              )}>
+                {item.topic}
+              </span>
+              <span className="text-[10px] text-white/60">{item.source}</span>
+              <span className="text-[10px] text-white/40 ml-auto">
+                {formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
+              </span>
+            </div>
+            <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2 drop-shadow-sm">
+              {item.headline}
+              {item.url !== '#' && <ExternalLink className="inline h-3 w-3 ml-1.5 text-white/40" />}
+            </h4>
+          </div>
+        )}
+      </div>
+      <div className="p-4 flex flex-col flex-1">
+        {!hasImage && (
+          <>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={cn(
+                'px-2 py-0.5 rounded text-[10px] font-semibold border',
+                TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+              )}>
+                {item.topic}
+              </span>
+              <span className="text-[10px] text-muted-foreground/50">{item.source}</span>
+              <span className="text-[10px] text-muted-foreground/40 ml-auto">
+                {formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
+              </span>
+            </div>
+            <h4 className="text-sm font-semibold text-foreground leading-snug mb-1.5 line-clamp-2 group-hover:text-primary/90 transition-colors">
+              {item.headline}
+              {item.url !== '#' && <ExternalLink className="inline h-3 w-3 ml-1.5 text-muted-foreground/30 group-hover:text-primary/50" />}
+            </h4>
+          </>
+        )}
+        <p className="text-xs text-muted-foreground/60 line-clamp-2 flex-1">{item.summary}</p>
+      </div>
+    </a>
+  );
+}
+
+// ── Standard grid news tile ────────────────────────────────────
+function StandardNewsTile({ item }: { item: NewsfeedItem }) {
+  return (
+    <a
+      href={item.url !== '#' ? item.url : undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        GLASS_ROW,
+        'group overflow-hidden flex gap-0 transition-all duration-200',
+        'hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_2px_12px_hsl(var(--primary)/0.06)]',
+        item.url !== '#' && 'cursor-pointer',
+      )}
+    >
+      <NewsImage src={item.image_url} topic={item.topic} className="w-20 min-h-full shrink-0 rounded-l-lg" variant="standard" />
+      <div className="p-3 flex flex-col flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className={cn(
+            'px-1.5 py-px rounded text-[9px] font-semibold border',
+            TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+          )}>
+            {item.topic}
+          </span>
+          <span className="text-[9px] text-muted-foreground/40 truncate">{item.source}</span>
+          <span className="text-[9px] text-muted-foreground/30 ml-auto shrink-0">
+            {formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
+          </span>
+        </div>
+        <h5 className="text-[13px] font-medium text-foreground leading-snug line-clamp-2 mb-0.5 group-hover:text-primary/90 transition-colors">
+          {item.headline}
+        </h5>
+        <p className="text-[11px] text-muted-foreground/50 line-clamp-1">{item.summary}</p>
+      </div>
+    </a>
   );
 }
 
