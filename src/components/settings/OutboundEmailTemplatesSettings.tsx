@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Plus, Search, X, Copy, Eye, Edit3, Save, RotateCcw, Mail, FileText, ChevronRight,
+  Plus, Search, X, Copy, Eye, Edit3, Save, RotateCcw, Mail, FileText, ChevronRight, ChevronDown, Layers,
 } from 'lucide-react';
 import {
   useOutboundEmailTemplates,
@@ -27,6 +27,8 @@ import {
   useToggleOutboundEmailTemplate,
   useNextTemplateNumber,
   OutboundEmailTemplate,
+  SequenceGroup,
+  groupTemplates,
 } from '@/hooks/useOutboundEmailTemplates';
 import { OutboundEmailBodyEditor } from './OutboundEmailBodyEditor';
 import { OutboundEmailPreview } from './OutboundEmailPreview';
@@ -35,7 +37,7 @@ interface Props {
   isAdmin: boolean;
 }
 
-type EditorMode = 'list' | 'edit' | 'preview';
+type EditorMode = 'list' | 'edit' | 'preview' | 'sequence';
 
 const MERGE_TAG_LIST = [
   '[FIRST NAME]', '[COMPANY NAME]', '[LENDER NAME]', '[CAPITAL ASK]',
@@ -45,7 +47,7 @@ const MERGE_TAG_LIST = [
   '[NUMBER OF LENDERS WITH INTROCUED STATUS OR MANAGEMENT CALL REQUESTED MILESTONE]',
   '[NUMBER OF LENDERS IN IN REVIEW STATUS]', '[NUMBER OF LENDERS MARKED AS PASSED]',
   '[LIST OF LENDERS WITH COMMENTS]', '[LIST OF LENDER NAMES THAT HAVE BEEN ADDED LATEST]',
-  '[LENDER NOTES]',
+  '[LENDER NOTES]', '[ITEMS IN DATA ROOM]', '[OUTSTANDING ITEMS]', '[CLOSED LOST REASONS]',
 ];
 
 function extractMergeTags(text: string): string[] {
@@ -67,6 +69,7 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingNavAction, setPendingNavAction] = useState<(() => void) | null>(null);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+  const [activeSequence, setActiveSequence] = useState<SequenceGroup | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -78,16 +81,19 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
     body_rich_text: '',
     body_plain_text: '',
     is_active: true,
+    template_type: 'standalone' as string,
+    sequence_group_id: null as string | null,
+    sequence_step_key: null as string | null,
+    sequence_step_order: null as number | null,
   });
 
-  const selectedTemplate = useMemo(() =>
-    templates?.find(t => t.id === selectedId) || null,
-    [templates, selectedId]
-  );
+  const { standalone, sequences } = useMemo(() => {
+    if (!templates) return { standalone: [], sequences: [] };
+    return groupTemplates(templates);
+  }, [templates]);
 
-  const filteredTemplates = useMemo(() => {
-    if (!templates) return [];
-    return templates.filter(t => {
+  const filteredStandalone = useMemo(() => {
+    return standalone.filter(t => {
       const matchesSearch = !searchQuery ||
         t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.sequence_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -98,7 +104,20 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
         (statusFilter === 'inactive' && !t.is_active);
       return matchesSearch && matchesStatus;
     });
-  }, [templates, searchQuery, statusFilter]);
+  }, [standalone, searchQuery, statusFilter]);
+
+  const filteredSequences = useMemo(() => {
+    return sequences.filter(seq => {
+      const matchesSearch = !searchQuery ||
+        seq.sequenceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        seq.groupId.includes(searchQuery) ||
+        seq.steps.some(s => s.title.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesStatus = statusFilter === 'all' ||
+        (statusFilter === 'active' && seq.steps.some(s => s.is_active)) ||
+        (statusFilter === 'inactive' && seq.steps.every(s => !s.is_active));
+      return matchesSearch && matchesStatus;
+    });
+  }, [sequences, searchQuery, statusFilter]);
 
   const detectedTags = useMemo(() => {
     const combined = formData.subject_line + ' ' + formData.body_rich_text;
@@ -124,6 +143,10 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
       body_rich_text: template.body_rich_text,
       body_plain_text: template.body_plain_text || '',
       is_active: template.is_active,
+      template_type: template.template_type || 'standalone',
+      sequence_group_id: template.sequence_group_id || null,
+      sequence_step_key: template.sequence_step_key || null,
+      sequence_step_order: template.sequence_step_order || null,
     });
     setSelectedId(template.id);
     setHasUnsavedChanges(false);
@@ -145,6 +168,10 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
         body_rich_text: '',
         body_plain_text: '',
         is_active: true,
+        template_type: 'standalone',
+        sequence_group_id: null,
+        sequence_step_key: null,
+        sequence_step_order: null,
       });
       setSelectedId(null);
       setHasUnsavedChanges(false);
@@ -163,12 +190,23 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
         body_rich_text: template.body_rich_text,
         body_plain_text: template.body_plain_text || '',
         is_active: true,
+        template_type: 'standalone',
+        sequence_group_id: null,
+        sequence_step_key: null,
+        sequence_step_order: null,
       });
       setSelectedId(null);
       setHasUnsavedChanges(true);
       setMode('edit');
     });
   }, [guardedNavigate, nextNumber]);
+
+  const handleOpenSequence = useCallback((seq: SequenceGroup) => {
+    guardedNavigate(() => {
+      setActiveSequence(seq);
+      setMode('sequence');
+    });
+  }, [guardedNavigate]);
 
   const handleSave = async () => {
     if (!formData.title.trim()) return;
@@ -181,6 +219,10 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
       body_rich_text: formData.body_rich_text,
       body_plain_text: formData.body_plain_text.trim() || null,
       is_active: formData.is_active,
+      template_type: formData.template_type,
+      sequence_group_id: formData.sequence_group_id,
+      sequence_step_key: formData.sequence_step_key,
+      sequence_step_order: formData.sequence_step_order,
     };
     if (formData.id) payload.id = formData.id;
     const result = await saveTemplate.mutateAsync(payload);
@@ -193,7 +235,12 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
 
   const handleCancel = () => {
     guardedNavigate(() => {
-      setMode('list');
+      if (mode === 'edit' && activeSequence) {
+        setMode('sequence');
+      } else {
+        setMode('list');
+        setActiveSequence(null);
+      }
       setSelectedId(null);
       setHasUnsavedChanges(false);
     });
@@ -228,9 +275,14 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
               <Plus className="h-3.5 w-3.5" /> New Template
             </Button>
           )}
-          {mode !== 'list' && (
-            <Button variant="ghost" size="sm" onClick={handleCancel} className="gap-1.5">
+          {mode === 'sequence' && (
+            <Button variant="ghost" size="sm" onClick={() => { setMode('list'); setActiveSequence(null); }} className="gap-1.5">
               <ChevronRight className="h-3.5 w-3.5 rotate-180" /> Back to list
+            </Button>
+          )}
+          {(mode === 'edit' || mode === 'preview') && (
+            <Button variant="ghost" size="sm" onClick={handleCancel} className="gap-1.5">
+              <ChevronRight className="h-3.5 w-3.5 rotate-180" /> {activeSequence ? 'Back to sequence' : 'Back to list'}
             </Button>
           )}
         </div>
@@ -279,7 +331,8 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
 
         {mode === 'list' && (
           <TemplateList
-            templates={filteredTemplates}
+            standalone={filteredStandalone}
+            sequences={filteredSequences}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             statusFilter={statusFilter}
@@ -288,6 +341,16 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
             onSelect={handleSelectTemplate}
             onDuplicate={handleDuplicate}
             onToggle={(t) => toggleTemplate.mutate({ id: t.id, is_active: !t.is_active })}
+            onOpenSequence={handleOpenSequence}
+          />
+        )}
+
+        {mode === 'sequence' && activeSequence && (
+          <SequenceDetailView
+            sequence={activeSequence}
+            isAdmin={isAdmin}
+            onSelectStep={handleSelectTemplate}
+            onToggleStep={(t) => toggleTemplate.mutate({ id: t.id, is_active: !t.is_active })}
           />
         )}
 
@@ -328,10 +391,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
 /* ---------- Sub-components ---------- */
 
 function TemplateList({
-  templates, searchQuery, setSearchQuery, statusFilter, setStatusFilter,
-  isAdmin, onSelect, onDuplicate, onToggle,
+  standalone, sequences, searchQuery, setSearchQuery, statusFilter, setStatusFilter,
+  isAdmin, onSelect, onDuplicate, onToggle, onOpenSequence,
 }: {
-  templates: OutboundEmailTemplate[];
+  standalone: OutboundEmailTemplate[];
+  sequences: SequenceGroup[];
   searchQuery: string;
   setSearchQuery: (v: string) => void;
   statusFilter: 'all' | 'active' | 'inactive';
@@ -340,6 +404,7 @@ function TemplateList({
   onSelect: (t: OutboundEmailTemplate) => void;
   onDuplicate: (t: OutboundEmailTemplate) => void;
   onToggle: (t: OutboundEmailTemplate) => void;
+  onOpenSequence: (seq: SequenceGroup) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -370,7 +435,7 @@ function TemplateList({
         </Select>
       </div>
 
-      {templates.length === 0 ? (
+      {standalone.length === 0 && sequences.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <FileText className="h-10 w-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm font-medium">No email templates found</p>
@@ -380,7 +445,8 @@ function TemplateList({
         </div>
       ) : (
         <div className="border rounded-lg divide-y">
-          {templates.map(t => (
+          {/* Standalone templates */}
+          {standalone.map(t => (
             <div
               key={t.id}
               className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors group"
@@ -414,8 +480,93 @@ function TemplateList({
               )}
             </div>
           ))}
+
+          {/* Sequence groups */}
+          {sequences.map(seq => {
+            const activeCount = seq.steps.filter(s => s.is_active).length;
+            return (
+              <div
+                key={`seq-${seq.groupId}`}
+                className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors group"
+                onClick={() => onOpenSequence(seq)}
+              >
+                <div className="w-8 h-8 rounded-md bg-accent/20 flex items-center justify-center shrink-0">
+                  <Layers className="h-4 w-4 text-accent-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium truncate">{seq.sequenceName}</p>
+                    <Badge variant="outline" className="text-[10px] shrink-0">
+                      {seq.steps.length} steps
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">
+                    Emails {seq.groupId}A–{seq.groupId}{String.fromCharCode(64 + seq.steps.length)} · {activeCount}/{seq.steps.length} active
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </div>
+            );
+          })}
         </div>
       )}
+    </div>
+  );
+}
+
+function SequenceDetailView({
+  sequence, isAdmin, onSelectStep, onToggleStep,
+}: {
+  sequence: SequenceGroup;
+  isAdmin: boolean;
+  onSelectStep: (t: OutboundEmailTemplate) => void;
+  onToggleStep: (t: OutboundEmailTemplate) => void;
+}) {
+  const activeCount = sequence.steps.filter(s => s.is_active).length;
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <Layers className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold text-base">{sequence.sequenceName}</h3>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {sequence.steps.length} steps · {activeCount} active · Emails {sequence.groupId}A–{sequence.groupId}{String.fromCharCode(64 + sequence.steps.length)}
+        </p>
+      </div>
+
+      <div className="border rounded-lg divide-y">
+        {sequence.steps.map((step, idx) => (
+          <div
+            key={step.id}
+            className="flex items-center gap-3 px-3 py-3 hover:bg-muted/50 cursor-pointer transition-colors group"
+            onClick={() => onSelectStep(step)}
+          >
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                {step.sequence_step_key}
+              </div>
+              <div className="hidden sm:block w-px h-4 bg-border" />
+              <span className="hidden sm:block text-[10px] text-muted-foreground font-mono">
+                Step {idx + 1}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{step.title}</p>
+              <p className="text-xs text-muted-foreground truncate">{step.subject_line}</p>
+            </div>
+            <Badge variant={step.is_active ? 'default' : 'secondary'} className="text-[10px] shrink-0">
+              {step.is_active ? 'Active' : 'Inactive'}
+            </Badge>
+            {isAdmin && (
+              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={e => { e.stopPropagation(); onToggleStep(step); }}>
+                <Switch checked={step.is_active} className="scale-75" />
+              </Button>
+            )}
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -435,6 +586,7 @@ function TemplateEditor({
   onToggleActive: () => void;
 }) {
   const disabled = !isAdmin;
+  const isSequenceStep = formData.template_type === 'sequence_step';
 
   return (
     <div className="space-y-4">
@@ -442,8 +594,14 @@ function TemplateEditor({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="font-medium text-sm">
-            {formData.id ? `Edit Template #${formData.template_number}` : 'New Template'}
+            {isSequenceStep
+              ? `Edit Step ${formData.sequence_group_id}${formData.sequence_step_key}`
+              : formData.id ? `Edit Template #${formData.template_number}` : 'New Template'
+            }
           </h3>
+          {isSequenceStep && (
+            <Badge variant="outline" className="text-[10px]">Sequence Step</Badge>
+          )}
           {hasUnsavedChanges && (
             <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">Unsaved</Badge>
           )}
@@ -469,7 +627,7 @@ function TemplateEditor({
             min={1}
             value={formData.template_number}
             onChange={e => updateField('template_number', parseInt(e.target.value) || 1)}
-            disabled={disabled}
+            disabled={disabled || isSequenceStep}
             className="h-8 text-sm"
           />
         </div>
@@ -492,7 +650,7 @@ function TemplateEditor({
             value={formData.sequence_name}
             onChange={e => updateField('sequence_name', e.target.value)}
             placeholder="Optional sequence name"
-            disabled={disabled}
+            disabled={disabled || isSequenceStep}
             className="h-8 text-sm"
           />
         </div>
