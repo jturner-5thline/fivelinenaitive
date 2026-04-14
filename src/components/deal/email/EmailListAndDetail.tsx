@@ -830,7 +830,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => toast.info('Reply All coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                <button onClick={handleReplyAll} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
                   <ReplyAll className="h-4 w-4 text-foreground/70" />
                   <span className="text-[10px] text-foreground/60">Reply All</span>
                 </button>
@@ -839,7 +839,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => toast.info('Forward coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
+                <button onClick={handleForward} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
                   <Forward className="h-4 w-4 text-foreground/70" />
                   <span className="text-[10px] text-foreground/60">Forward</span>
                 </button>
@@ -851,8 +851,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => toast.info('Delete coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
-                  <Trash2 className="h-4 w-4 text-foreground/70" />
+                <button
+                  onClick={handleDelete}
+                  disabled={!onDelete || actionLoading === 'delete'}
+                  className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {actionLoading === 'delete' ? <Loader2 className="h-4 w-4 animate-spin text-foreground/70" /> : <Trash2 className="h-4 w-4 text-foreground/70" />}
                   <span className="text-[10px] text-foreground/60">Delete</span>
                 </button>
               </TooltipTrigger>
@@ -860,8 +864,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => toast.info('Archive coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
-                  <Archive className="h-4 w-4 text-foreground/70" />
+                <button
+                  onClick={handleArchive}
+                  disabled={!onArchive || actionLoading === 'archive'}
+                  className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {actionLoading === 'archive' ? <Loader2 className="h-4 w-4 animate-spin text-foreground/70" /> : <Archive className="h-4 w-4 text-foreground/70" />}
                   <span className="text-[10px] text-foreground/60">Archive</span>
                 </button>
               </TooltipTrigger>
@@ -875,15 +883,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Flag</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button onClick={() => toast.info('Move coming soon')} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
-                  <FolderInput className="h-4 w-4 text-foreground/70" />
-                  <span className="text-[10px] text-foreground/60">Move</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Move to folder</TooltipContent>
             </Tooltip>
 
             <div className="w-px h-8 bg-border/50 mx-1" />
