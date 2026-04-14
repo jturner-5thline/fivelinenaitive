@@ -43,14 +43,8 @@ const DailyBriefingReadyEmail = ({ name, date }: DailyBriefingReadyProps) => (
           </Button>
         </Section>
 
-        <Text style={smallText}>
-          Or copy this link: {BRIEFING_URL}
-        </Text>
 
         <Hr style={divider} />
-        <Text style={footer}>
-          — The naitive team
-        </Text>
       </Container>
     </Body>
   </Html>
