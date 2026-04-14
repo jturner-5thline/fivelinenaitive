@@ -817,52 +817,184 @@ function PipelineTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (p
   );
 }
 
+// ── Asana status chip ──────────────────────────────────────────
+function StatusChip({ status }: { status: string | null }) {
+  if (!status) return null;
+  const colors: Record<string, string> = {
+    on_track: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    at_risk: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    off_track: 'bg-red-500/20 text-red-300 border-red-500/30',
+    on_hold: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+    complete: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  };
+  const label = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return (
+    <span className={cn(
+      'px-1.5 py-0.5 rounded text-[10px] font-semibold border whitespace-nowrap',
+      colors[status] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+    )}>
+      {label}
+    </span>
+  );
+}
+
 // ── Tab: Operational & Projects ────────────────────────────────
 function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
-  const { data, isLoading } = useOperationalData(enabled);
+  const { data, isLoading, error } = useOperationalData(enabled);
   const [detail, setDetail] = useState<any>(null);
 
   if (isLoading || !data) return <TabSkeleton />;
+  if (error) return <EmptySection message={`Failed to load operational data: ${error instanceof Error ? error.message : 'Unknown error'}`} />;
 
-  const { milestones } = data;
-  const overdue = milestones.filter((m: any) => m.due_date && isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date)));
-  const todayItems = milestones.filter((m: any) => m.due_date && isToday(new Date(m.due_date)));
-  const upcoming = milestones.filter((m: any) => m.due_date && !isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date))).slice(0, 10);
+  const { summary, projects, overdue_tasks, overdue_milestones, today_items, upcoming_milestones, upcoming_tasks } = data;
+  const pastDueAll = [...overdue_milestones, ...overdue_tasks].sort((a, b) => b.days_overdue - a.days_overdue);
 
   return (
     <div className="relative h-full">
       {detail && (
-        <DetailPopup title={detail.title || 'Task Detail'} onClose={() => setDetail(null)}>
+        <DetailPopup title={detail.name || 'Item Detail'} onClose={() => setDetail(null)}>
           <div className="space-y-3">
-            <div className="text-sm"><strong>Task:</strong> {detail.title}</div>
-            <div className="text-sm"><strong>Status:</strong> {detail.status || 'Open'}</div>
-            {detail.due_date && <div className="text-sm"><strong>Due:</strong> {format(new Date(detail.due_date), 'PPP')}</div>}
-            {detail.deal_id && (
-              <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(`/deal/${detail.deal_id}`)}>
-                Open Deal <ExternalLink className="h-3 w-3 ml-1" />
-              </Button>
-            )}
+            <div className="text-sm"><strong>Item:</strong> {detail.name}</div>
+            {detail.project_name && <div className="text-sm"><strong>Project:</strong> {detail.project_name}</div>}
+            {detail.assignee && <div className="text-sm"><strong>Assignee:</strong> {detail.assignee}</div>}
+            {detail.owner && <div className="text-sm"><strong>Owner:</strong> {detail.owner}</div>}
+            {detail.due_on && <div className="text-sm"><strong>Due:</strong> {format(new Date(detail.due_on + 'T00:00:00'), 'PPP')}</div>}
+            {detail.days_overdue > 0 && <div className="text-sm text-destructive"><strong>{detail.days_overdue} day{detail.days_overdue !== 1 ? 's' : ''} overdue</strong></div>}
+            {detail.status_type && <div className="flex items-center gap-2 text-sm"><strong>Status:</strong> <StatusChip status={detail.status_type} /></div>}
+            {detail.status_text && <div className="text-sm text-muted-foreground mt-1">{detail.status_text}</div>}
+            {detail.is_milestone && <Badge variant="outline" className="text-[10px] border-white/[0.08]">Milestone</Badge>}
           </div>
         </DetailPopup>
       )}
 
-      <Section title="Overdue Tasks">
-        {overdue.length === 0 ? <EmptySection message="No overdue tasks" /> : overdue.map((m: any) => (
-          <BriefingRow key={m.id} icon={AlertCircle} title={m.title} badge="Overdue" badgeVariant="destructive" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
+      {/* Operational Highlights */}
+      <Section title="Operational Highlights">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className={cn(GLASS_CARD, 'p-3 text-center')}>
+            <p className="text-xs text-muted-foreground/70">Projects</p>
+            <p className="text-xl font-bold text-primary">{summary.total_projects}</p>
+            <p className="text-[10px] text-muted-foreground/50">active</p>
+          </div>
+          <div className={cn(GLASS_CARD, 'p-3 text-center')}>
+            <p className="text-xs text-muted-foreground/70">Past Due</p>
+            <p className={cn('text-xl font-bold', summary.overdue_count > 0 ? 'text-destructive' : 'text-emerald-400')}>{summary.overdue_count}</p>
+            <p className="text-[10px] text-muted-foreground/50">items</p>
+          </div>
+          <div className={cn(GLASS_CARD, 'p-3 text-center')}>
+            <p className="text-xs text-muted-foreground/70">Due Today</p>
+            <p className={cn('text-xl font-bold', summary.due_today_count > 0 ? 'text-amber-400' : 'text-foreground')}>{summary.due_today_count}</p>
+            <p className="text-[10px] text-muted-foreground/50">items</p>
+          </div>
+          <div className={cn(GLASS_CARD, 'p-3 text-center')}>
+            <p className="text-xs text-muted-foreground/70">Upcoming</p>
+            <p className="text-xl font-bold text-foreground">{summary.upcoming_milestones_count}</p>
+            <p className="text-[10px] text-muted-foreground/50">milestones</p>
+          </div>
+        </div>
+      </Section>
+
+      {/* Past Due Items */}
+      <Section title="Past Due Items">
+        {pastDueAll.length === 0 ? <EmptySection message="No overdue items — all clear" /> : pastDueAll.map((item: any) => (
+          <BriefingRow
+            key={item.gid}
+            icon={AlertCircle}
+            title={item.name}
+            subtitle={`${item.project_name}${item.assignee ? ` • ${item.assignee}` : ''}`}
+            badge={item.is_milestone ? 'Milestone' : `${item.days_overdue}d overdue`}
+            badgeVariant="destructive"
+            time={item.due_on ? format(new Date(item.due_on + 'T00:00:00'), 'MMM d') : ''}
+            onClick={() => setDetail(item)}
+          />
         ))}
       </Section>
 
+      {/* Due Today */}
       <Section title="Due Today">
-        {todayItems.length === 0 ? <EmptySection message="Nothing due today" /> : todayItems.map((m: any) => (
-          <BriefingRow key={m.id} icon={ListChecks} title={m.title} badge="Today" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
+        {today_items.length === 0 ? <EmptySection message="Nothing due today" /> : today_items.map((item: any) => (
+          <BriefingRow
+            key={item.gid}
+            icon={ListChecks}
+            title={item.name}
+            subtitle={`${item.project_name}${item.assignee ? ` • ${item.assignee}` : ''}`}
+            badge={item.is_milestone ? 'Milestone' : 'Task'}
+            badgeVariant={item.is_milestone ? 'default' : 'secondary'}
+            time="Today"
+            onClick={() => setDetail(item)}
+          />
         ))}
       </Section>
 
+      {/* Upcoming Milestones */}
       <Section title="Upcoming Milestones">
-        {upcoming.length === 0 ? <EmptySection message="No upcoming milestones" /> : upcoming.map((m: any) => (
-          <BriefingRow key={m.id} icon={FileText} title={m.title} badge={m.status || 'open'} badgeVariant="outline" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
+        {upcoming_milestones.length === 0 ? <EmptySection message="No upcoming milestones" /> : upcoming_milestones.slice(0, 15).map((item: any) => (
+          <BriefingRow
+            key={item.gid}
+            icon={FileText}
+            title={item.name}
+            subtitle={`${item.project_name}${item.assignee ? ` • ${item.assignee}` : ''}`}
+            badge="Milestone"
+            badgeVariant="outline"
+            time={item.due_on ? format(new Date(item.due_on + 'T00:00:00'), 'MMM d') : ''}
+            onClick={() => setDetail(item)}
+          />
         ))}
       </Section>
+
+      {/* Current Projects */}
+      <Section title="Current Projects">
+        {projects.length === 0 ? <EmptySection message="No active projects in portfolio" /> : (
+          <div className="space-y-1.5">
+            {projects.map((p: any) => (
+              <div
+                key={p.gid}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetail(p)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetail(p); } }}
+                className={cn(
+                  GLASS_ROW,
+                  'p-3 cursor-pointer transition-all duration-200',
+                  'hover:bg-white/[0.06] hover:border-white/[0.1]',
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
+                      <StatusChip status={p.status_type} />
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground/60">
+                      {p.owner && <span>Owner: {p.owner}</span>}
+                      {p.due_on && <span>Due: {format(new Date(p.due_on + 'T00:00:00'), 'MMM d, yyyy')}</span>}
+                    </div>
+                    {p.status_title && <p className="text-[11px] text-muted-foreground/50 mt-1 truncate">{p.status_title}</p>}
+                  </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 mt-1 shrink-0" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      {/* Upcoming Tasks */}
+      {upcoming_tasks.length > 0 && (
+        <Section title="Upcoming Tasks">
+          {upcoming_tasks.slice(0, 10).map((item: any) => (
+            <BriefingRow
+              key={item.gid}
+              icon={Clock}
+              title={item.name}
+              subtitle={`${item.project_name}${item.assignee ? ` • ${item.assignee}` : ''}`}
+              badge="Task"
+              badgeVariant="outline"
+              time={item.due_on ? format(new Date(item.due_on + 'T00:00:00'), 'MMM d') : ''}
+              onClick={() => setDetail(item)}
+            />
+          ))}
+        </Section>
+      )}
     </div>
   );
 }
