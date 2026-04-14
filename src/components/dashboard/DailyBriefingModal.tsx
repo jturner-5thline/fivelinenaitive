@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -9,8 +9,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks,
   AlertCircle, ArrowRight, ExternalLink, Clock, TrendingUp,
-  FileText, X, ChevronRight,
+  FileText, X, ChevronRight, RefreshCw,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useBriefingWindow,
   useCatchUpData,
