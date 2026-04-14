@@ -384,9 +384,9 @@ function PipelineTab({ data, onNavigate }: { data: BriefingData; onNavigate: (pa
               key={d.id}
               icon={AlertCircle}
               title={d.company}
-              subtitle={`Flag: ${d.flagStatus || 'none'} • Stage: ${d.stage}`}
-              badge={d.flagStatus === 'red' ? 'High Risk' : 'At Risk'}
-              badgeVariant={d.flagStatus === 'red' ? 'destructive' : 'secondary'}
+              subtitle={`${d.isFlagged ? 'Flagged' : 'Stale'} • Stage: ${d.stage}`}
+              badge={d.isFlagged ? 'Flagged' : 'At Risk'}
+              badgeVariant={d.isFlagged ? 'destructive' : 'secondary'}
               onClick={() => setDetail(d)}
             />
           ))
