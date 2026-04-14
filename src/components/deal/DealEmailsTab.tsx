@@ -135,6 +135,45 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [readingPaneExpanded, setReadingPaneExpanded] = useState(false);
+
+  // ─── Resizable middle column ───────────────────────────────
+  const DEFAULT_INBOX_WIDTH = 260;
+  const MIN_INBOX_WIDTH = 180;
+  const MAX_INBOX_WIDTH = 450;
+  const [savedInboxWidth, persistInboxWidth] = useUiPreference<number>('email_inbox_column_width', DEFAULT_INBOX_WIDTH);
+  const [liveInboxWidth, setLiveInboxWidth] = useState<number | null>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
+
+  const inboxWidth = liveInboxWidth ?? savedInboxWidth;
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    dragStartWidth.current = inboxWidth;
+
+    const onMove = (ev: MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta = ev.clientX - dragStartX.current;
+      const newW = Math.max(MIN_INBOX_WIDTH, Math.min(MAX_INBOX_WIDTH, dragStartWidth.current + delta));
+      setLiveInboxWidth(newW);
+    };
+
+    const onUp = () => {
+      isDragging.current = false;
+      setLiveInboxWidth(prev => {
+        if (prev != null) persistInboxWidth(prev);
+        return prev;
+      });
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [inboxWidth, persistInboxWidth]);
   const [activeItemId, setActiveItemId] = useState<string>('all_inbox');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [chipFilter, setChipFilter] = useState<ChipFilter>(null);
