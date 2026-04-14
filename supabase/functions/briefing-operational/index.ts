@@ -87,7 +87,7 @@ serve(async (req) => {
       .select("id, config")
       .eq("company_id", membership.company_id)
       .eq("type", "asana")
-      .eq("is_active", true)
+      .eq("status", "connected")
       .maybeSingle();
 
     if (!integration?.config?.api_token) {
