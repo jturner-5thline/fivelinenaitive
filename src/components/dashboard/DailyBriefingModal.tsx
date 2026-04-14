@@ -844,7 +844,16 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
   const [detail, setDetail] = useState<any>(null);
 
   if (isLoading || !data) return <TabSkeleton />;
-  if (error) return <EmptySection message={`Failed to load operational data: ${error instanceof Error ? error.message : 'Unknown error'}`} />;
+  if (error || data?.error) {
+    const msg = data?.error || (error instanceof Error ? error.message : 'Unknown error');
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-3">
+        <AlertCircle className="w-8 h-8 text-destructive/60" />
+        <p className="text-sm text-muted-foreground text-center max-w-xs">{msg}</p>
+        <button onClick={() => onNavigate('/integrations')} className="text-xs text-primary hover:underline">Reconnect Asana →</button>
+      </div>
+    );
+  }
 
   const { summary, projects, overdue_tasks, overdue_milestones, today_items, upcoming_milestones, upcoming_tasks } = data;
   const pastDueAll = [...overdue_milestones, ...overdue_tasks].sort((a, b) => b.days_overdue - a.days_overdue);
