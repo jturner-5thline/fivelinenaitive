@@ -146,13 +146,14 @@ export async function syncTaskToAsana(
       taskData.assignee = assigneeGid;
     }
 
+    // Asana always requires workspace when using memberships
+    taskData.workspace = ctx.workspaceGid;
+
     if (ctx.projectGid && ctx.sectionGid) {
       taskData.memberships = [{ project: ctx.projectGid, section: ctx.sectionGid }];
     } else if (ctx.projectGid) {
       console.warn('[AsanaSync] Warning: No section configured for project, task will be placed in default section');
       taskData.projects = [ctx.projectGid];
-    } else {
-      taskData.workspace = ctx.workspaceGid;
     }
 
     const { data } = await supabase.functions.invoke('asana-proxy', {
