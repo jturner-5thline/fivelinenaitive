@@ -324,7 +324,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     let filtered = emails.filter(activeItem.filterFn);
     // Category tab filter (shared classifier)
     if (categoryTab !== 'all') {
-      filtered = filterEmailsByCategory(filtered, categoryTab);
+      filtered = filterEmailsByCategory(filtered, categoryTab, classifierEntities);
     }
     if (viewFilter === 'unread') filtered = filtered.filter(e => !e.is_read);
     if (viewFilter === 'needs_response') filtered = filtered.filter(e => e.needs_response);
