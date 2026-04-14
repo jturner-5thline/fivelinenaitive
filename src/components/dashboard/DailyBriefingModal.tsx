@@ -307,102 +307,126 @@ function FinancialTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (
 // ── Tab: Pipeline & Clients ────────────────────────────────────
 function PipelineTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
   const { data, isLoading } = usePipelineData(enabled);
-  const [detail, setDetail] = useState<any>(null);
+  const { data: catchUpData, isLoading: catchUpLoading } = useCatchUpData(enabled);
+  const [detail, setDetail] = useState<NewsItem | null>(null);
+  const [dealDetail, setDealDetail] = useState<any>(null);
 
-  if (isLoading || !data) return <TabSkeleton />;
+  if ((isLoading && !data) || (catchUpLoading && !catchUpData)) return <TabSkeleton />;
 
-  const { newDeals, riskDeals, stageChanges, recentActivity } = data;
+  const { newDeals, riskDeals, stageChanges, recentActivity } = data || { newDeals: [], riskDeals: [], stageChanges: [], recentActivity: [] };
+  const highlights = catchUpData?.highlights || [];
+  const newsItems = catchUpData?.newsItems || [];
+  const dealAlerts = (catchUpData?.alerts || []).filter((a: any) => a.deal_id);
 
   return (
     <div className="relative h-full">
       {detail && (
-        <DetailPopup title={detail.company || detail.description || 'Deal Detail'} onClose={() => setDetail(null)}>
+        <DetailPopup title={detail.title} onClose={() => setDetail(null)}>
           <div className="space-y-3">
-            {detail.company && <div className="text-sm"><strong>Company:</strong> {detail.company}</div>}
-            {detail.stage && <div className="text-sm"><strong>Stage:</strong> {detail.stage}</div>}
-            {detail.manager && <div className="text-sm"><strong>Manager:</strong> {detail.manager}</div>}
-            {detail.activity_type && <div className="text-sm"><strong>Type:</strong> {detail.activity_type}</div>}
-            {detail.description && <div className="text-sm">{detail.description}</div>}
-            {detail.user_display_name && <div className="text-sm"><strong>By:</strong> {detail.user_display_name}</div>}
-            {detail.created_at && <div className="text-sm"><strong>Time:</strong> {format(new Date(detail.created_at), 'PPp')}</div>}
-            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(`/deal/${detail.id || detail.deal_id}`)}>
+            <div className="text-sm text-muted-foreground">{detail.summary}</div>
+            {detail.meta?.from_name && <div className="text-sm"><strong>From:</strong> {detail.meta.from_name}</div>}
+            {detail.meta?.lender_name && <div className="text-sm"><strong>Lender:</strong> {detail.meta.lender_name}</div>}
+            {detail.timestamp && <div className="text-sm"><strong>Time:</strong> {format(new Date(detail.timestamp), 'PPp')}</div>}
+            {detail.action && (
+              <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(detail.action!.path)}>
+                {detail.action.label} <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+            )}
+          </div>
+        </DetailPopup>
+      )}
+      {dealDetail && !detail && (
+        <DetailPopup title={dealDetail.company || dealDetail.description || 'Deal Detail'} onClose={() => setDealDetail(null)}>
+          <div className="space-y-3">
+            {dealDetail.company && <div className="text-sm"><strong>Company:</strong> {dealDetail.company}</div>}
+            {dealDetail.stage && <div className="text-sm"><strong>Stage:</strong> {dealDetail.stage}</div>}
+            {dealDetail.manager && <div className="text-sm"><strong>Manager:</strong> {dealDetail.manager}</div>}
+            {dealDetail.activity_type && <div className="text-sm"><strong>Type:</strong> {dealDetail.activity_type}</div>}
+            {dealDetail.description && <div className="text-sm">{dealDetail.description}</div>}
+            {dealDetail.user_display_name && <div className="text-sm"><strong>By:</strong> {dealDetail.user_display_name}</div>}
+            {dealDetail.created_at && <div className="text-sm"><strong>Time:</strong> {format(new Date(dealDetail.created_at), 'PPp')}</div>}
+            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(`/deal/${dealDetail.id || dealDetail.deal_id}`)}>
               Open Deal <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
         </DetailPopup>
       )}
 
+      {dealAlerts.length > 0 && (
+        <Section title="Priority Deal Alerts">
+          {dealAlerts.map((a: any) => (
+            <BriefingRow
+              key={a.id}
+              icon={AlertCircle}
+              title={a.description}
+              subtitle={a.user_display_name || undefined}
+              badge={a.activity_type}
+              badgeVariant="destructive"
+              time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
+              onClick={() => setDetail({
+                id: a.id, category: 'general', title: a.description,
+                summary: `${a.activity_type} by ${a.user_display_name || 'System'}`,
+                timestamp: a.created_at,
+                action: a.deal_id ? { label: 'Open Deal', path: `/deal/${a.deal_id}` } : undefined,
+              })}
+            />
+          ))}
+        </Section>
+      )}
+
+      <Section title="Today's Highlights">
+        {highlights.length === 0 ? (
+          <EmptySection message="No noteworthy highlights in this window" />
+        ) : (
+          highlights.map((h: any, i: number) => (
+            <BriefingRow key={i} icon={TrendingUp} title={h.label} subtitle={h.value} badge="Summary" badgeVariant="outline" />
+          ))
+        )}
+      </Section>
+
+      <Section title="What Happened — News Feed">
+        {newsItems.length === 0 ? (
+          <EmptySection message="No deal-related news in this window" />
+        ) : (
+          newsItems.map((item: NewsItem) => {
+            const cfg = NEWS_CATEGORY_CONFIG[item.category] || NEWS_CATEGORY_CONFIG.general;
+            return (
+              <BriefingRow
+                key={item.id}
+                icon={cfg.icon}
+                title={item.title}
+                subtitle={item.summary}
+                badge={cfg.badge}
+                badgeVariant={cfg.variant}
+                time={item.timestamp ? formatDistanceToNow(new Date(item.timestamp), { addSuffix: true }) : ''}
+                onClick={() => setDetail(item)}
+              />
+            );
+          })
+        )}
+      </Section>
+
       <Section title="New Opportunities">
         {newDeals.length === 0 ? <EmptySection message="No new deals added in this window" /> : newDeals.map((d: any) => (
-          <BriefingRow key={d.id} icon={GitBranch} title={d.company} subtitle={`Stage: ${d.stage} • Manager: ${d.manager || 'Unassigned'}`} badge="New" badgeVariant="default" onClick={() => setDetail(d)} />
+          <BriefingRow key={d.id} icon={GitBranch} title={d.company} subtitle={`Stage: ${d.stage} • Manager: ${d.manager || 'Unassigned'}`} badge="New" badgeVariant="default" onClick={() => setDealDetail(d)} />
         ))}
       </Section>
 
       <Section title="Stage Changes">
         {stageChanges.length === 0 ? <EmptySection message="No stage changes in this window" /> : stageChanges.filter((sc: any) => sc.activity_type !== 'deal_created').map((sc: any) => (
-          <BriefingRow key={sc.id} icon={ArrowRight} title={sc.description} time={formatDistanceToNow(new Date(sc.created_at), { addSuffix: true })} onClick={() => setDetail(sc)} />
+          <BriefingRow key={sc.id} icon={ArrowRight} title={sc.description} time={formatDistanceToNow(new Date(sc.created_at), { addSuffix: true })} onClick={() => setDealDetail(sc)} />
         ))}
       </Section>
 
       <Section title="Potential Pipeline & Client Risks">
         {riskDeals.length === 0 ? <EmptySection message="No risk signals detected" /> : riskDeals.map((d: any) => (
-          <BriefingRow key={d.id} icon={AlertCircle} title={d.company} subtitle={`${d.isFlagged ? 'Flagged' : 'Stale'} • Stage: ${d.stage}`} badge={d.isFlagged ? 'Flagged' : 'At Risk'} badgeVariant={d.isFlagged ? 'destructive' : 'secondary'} onClick={() => setDetail(d)} />
+          <BriefingRow key={d.id} icon={AlertCircle} title={d.company} subtitle={`${d.isFlagged ? 'Flagged' : 'Stale'} • Stage: ${d.stage}`} badge={d.isFlagged ? 'Flagged' : 'At Risk'} badgeVariant={d.isFlagged ? 'destructive' : 'secondary'} onClick={() => setDealDetail(d)} />
         ))}
       </Section>
 
       <Section title="Recent Pipeline Activity">
         {recentActivity.length === 0 ? <EmptySection message="No pipeline activity since 5 PM ET yesterday" /> : recentActivity.map((a: any) => (
-          <BriefingRow key={a.id} icon={Clock} title={a.description} subtitle={a.user_display_name || undefined} badge={a.activity_type.replace(/_/g, ' ')} badgeVariant="outline" time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })} onClick={() => setDetail(a)} />
-        ))}
-      </Section>
-    </div>
-  );
-}
-
-// ── Tab: Operational & Projects ────────────────────────────────
-function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
-  const { data, isLoading } = useOperationalData(enabled);
-  const [detail, setDetail] = useState<any>(null);
-
-  if (isLoading || !data) return <TabSkeleton />;
-
-  const { milestones } = data;
-  const overdue = milestones.filter((m: any) => m.due_date && isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date)));
-  const todayItems = milestones.filter((m: any) => m.due_date && isToday(new Date(m.due_date)));
-  const upcoming = milestones.filter((m: any) => m.due_date && !isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date))).slice(0, 10);
-
-  return (
-    <div className="relative h-full">
-      {detail && (
-        <DetailPopup title={detail.title || 'Task Detail'} onClose={() => setDetail(null)}>
-          <div className="space-y-3">
-            <div className="text-sm"><strong>Task:</strong> {detail.title}</div>
-            <div className="text-sm"><strong>Status:</strong> {detail.status || 'Open'}</div>
-            {detail.due_date && <div className="text-sm"><strong>Due:</strong> {format(new Date(detail.due_date), 'PPP')}</div>}
-            {detail.deal_id && (
-              <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(`/deal/${detail.deal_id}`)}>
-                Open Deal <ExternalLink className="h-3 w-3 ml-1" />
-              </Button>
-            )}
-          </div>
-        </DetailPopup>
-      )}
-
-      <Section title="Overdue Tasks">
-        {overdue.length === 0 ? <EmptySection message="No overdue tasks" /> : overdue.map((m: any) => (
-          <BriefingRow key={m.id} icon={AlertCircle} title={m.title} badge="Overdue" badgeVariant="destructive" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
-        ))}
-      </Section>
-
-      <Section title="Due Today">
-        {todayItems.length === 0 ? <EmptySection message="Nothing due today" /> : todayItems.map((m: any) => (
-          <BriefingRow key={m.id} icon={ListChecks} title={m.title} badge="Today" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
-        ))}
-      </Section>
-
-      <Section title="Upcoming Milestones">
-        {upcoming.length === 0 ? <EmptySection message="No upcoming milestones" /> : upcoming.map((m: any) => (
-          <BriefingRow key={m.id} icon={FileText} title={m.title} badge={m.status || 'open'} badgeVariant="outline" time={m.due_date ? format(new Date(m.due_date), 'MMM d') : ''} onClick={() => setDetail(m)} />
+          <BriefingRow key={a.id} icon={Clock} title={a.description} subtitle={a.user_display_name || undefined} badge={a.activity_type.replace(/_/g, ' ')} badgeVariant="outline" time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })} onClick={() => setDealDetail(a)} />
         ))}
       </Section>
     </div>
