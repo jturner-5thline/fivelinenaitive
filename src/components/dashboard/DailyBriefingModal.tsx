@@ -198,6 +198,7 @@ interface NewsfeedItem {
   summary: string;
   url: string;
   topic: string;
+  image_url?: string | null;
 }
 
 // Session-level cache
