@@ -159,37 +159,197 @@ const NEWS_CATEGORY_CONFIG: Record<string, { icon: React.ElementType; badge: str
   general: { icon: Newspaper, badge: 'Update', variant: 'outline' },
 };
 
-// ── Tab: Catch Up & News (non-deal general updates only) ───────
-function CatchUpTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
-  const { data, isLoading } = useCatchUpData(enabled);
+// ── Topic badge colors ─────────────────────────────────────────
+const TOPIC_COLORS: Record<string, string> = {
+  'Venture Debt': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  'Interest Rates': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  'Venture Capital': 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  'AI & Technology': 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+  'AI in Finance': 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  'Agentic AI': 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+};
 
-  if (isLoading || !data) return <TabSkeleton />;
+const ALL_TOPICS = ['Venture Debt', 'Interest Rates', 'Venture Capital', 'AI & Technology', 'AI in Finance', 'Agentic AI'];
 
-  // Only show alerts that are NOT deal-related
-  const generalAlerts = data.alerts.filter((a: any) => !a.deal_id);
+interface NewsfeedItem {
+  id: string;
+  headline: string;
+  source: string;
+  published_at: string;
+  summary: string;
+  url: string;
+  topic: string;
+}
+
+// Session-level cache
+let newsfeedCache: { items: NewsfeedItem[]; fetchedAt: number } | null = null;
+
+function useNewsfeedData(enabled: boolean) {
+  const [items, setItems] = useState<NewsfeedItem[]>(newsfeedCache?.items || []);
+  const [isLoading, setIsLoading] = useState(!newsfeedCache);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  const fetchFeed = useCallback(async (force = false) => {
+    if (!force && newsfeedCache && Date.now() - newsfeedCache.fetchedAt < 30 * 60 * 1000) {
+      setItems(newsfeedCache.items);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('briefing-newsfeed');
+      if (fnError) throw new Error(fnError.message);
+      if (data?.error) throw new Error(data.error);
+      const fetched = data?.items || [];
+      newsfeedCache = { items: fetched, fetchedAt: Date.now() };
+      setItems(fetched);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load newsfeed');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (enabled && !fetchedRef.current) {
+      fetchedRef.current = true;
+      fetchFeed();
+    }
+  }, [enabled, fetchFeed]);
+
+  return { items, isLoading, error, refresh: () => fetchFeed(true) };
+}
+
+// ── Newsfeed skeleton ──────────────────────────────────────────
+function NewsfeedSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className={cn(GLASS_ROW, 'p-4 space-y-2')}>
+          <Skeleton className="h-4 w-3/4 bg-white/[0.06]" />
+          <Skeleton className="h-3 w-full bg-white/[0.04]" />
+          <Skeleton className="h-3 w-1/2 bg-white/[0.04]" />
+          <div className="flex gap-2">
+            <Skeleton className="h-5 w-20 rounded-full bg-white/[0.04]" />
+            <Skeleton className="h-5 w-16 rounded-full bg-white/[0.04]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Tab: Catch Up & News (AI-powered newsfeed) ─────────────────
+function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) => void }) {
+  const { items, isLoading, error, refresh } = useNewsfeedData(enabled);
+  const [activeTopics, setActiveTopics] = useState<Set<string>>(new Set(ALL_TOPICS));
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refresh();
+    setIsRefreshing(false);
+  };
+
+  const toggleTopic = (topic: string) => {
+    setActiveTopics(prev => {
+      const next = new Set(prev);
+      if (next.has(topic)) next.delete(topic);
+      else next.add(topic);
+      return next;
+    });
+  };
+
+  const filtered = items.filter(item => activeTopics.has(item.topic));
+
+  if (isLoading && items.length === 0) return <NewsfeedSkeleton />;
+
+  if (error && items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <AlertCircle className="h-8 w-8 text-destructive/60" />
+        <p className="text-sm text-muted-foreground text-center max-w-xs">{error}</p>
+        <Button variant="outline" size="sm" className="border-white/[0.08]" onClick={handleRefresh}>
+          <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative h-full">
-      <Section title="General Alerts">
-        {generalAlerts.length === 0 ? (
-          <EmptySection message="No general alerts — deal-specific alerts are in Pipeline & Clients" />
-        ) : (
-          generalAlerts.map((a: any) => (
-            <BriefingRow
-              key={a.id}
-              icon={AlertCircle}
-              title={a.description}
-              subtitle={a.user_display_name || undefined}
-              badge={a.activity_type}
-              time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
-            />
-          ))
-        )}
-      </Section>
+    <div className="space-y-4">
+      {/* Header with topic filters and refresh */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          {ALL_TOPICS.map(topic => (
+            <button
+              key={topic}
+              onClick={() => toggleTopic(topic)}
+              className={cn(
+                'px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-150',
+                activeTopics.has(topic)
+                  ? TOPIC_COLORS[topic] || 'bg-primary/20 text-primary border-primary/30'
+                  : 'bg-white/[0.02] text-muted-foreground/40 border-white/[0.04] hover:bg-white/[0.04]',
+              )}
+            >
+              {topic}
+            </button>
+          ))}
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
+        </Button>
+      </div>
 
-      <Section title="Cross-Functional Updates">
-        <EmptySection message="Non-deal catch-up items will appear here as more cross-functional data sources are connected" />
-      </Section>
+      {/* Feed */}
+      {filtered.length === 0 ? (
+        <EmptySection message="No news items match your selected topics" />
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(item => (
+            <a
+              key={item.id}
+              href={item.url !== '#' ? item.url : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                GLASS_ROW,
+                'block p-4 transition-all duration-200',
+                'hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
+                item.url !== '#' && 'cursor-pointer',
+              )}
+            >
+              <div className="flex items-start justify-between gap-3 mb-1.5">
+                <h5 className="text-sm font-medium text-foreground leading-snug flex-1">
+                  {item.headline}
+                  {item.url !== '#' && <ExternalLink className="inline h-3 w-3 ml-1.5 text-muted-foreground/40" />}
+                </h5>
+              </div>
+              <p className="text-xs text-muted-foreground/70 line-clamp-2 mb-2">{item.summary}</p>
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  'px-2 py-0.5 rounded-full text-[10px] font-medium border',
+                  TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+                )}>
+                  {item.topic}
+                </span>
+                <span className="text-[10px] text-muted-foreground/50">{item.source}</span>
+                <span className="text-[10px] text-muted-foreground/40">
+                  {formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
