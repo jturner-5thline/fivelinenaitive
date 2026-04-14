@@ -845,36 +845,14 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
   const [drilldown, setDrilldown] = useState<'projects' | 'past_due' | 'today' | 'upcoming' | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string>('__all__');
 
-  if (isLoading || !data) return <TabSkeleton />;
-
-  // Only show full error if we have zero usable data
-  const hasUsableData = data?.counts && (data.counts.projects > 0 || data.counts.overdue > 0 || data.counts.today > 0 || data.counts.upcoming > 0);
-  if ((error || data?.error || !data?.counts) && !hasUsableData) {
-    const rawMsg = data?.error || (error instanceof Error ? error.message : 'Unable to load operational data');
-    const isRateLimit = rawMsg.includes('429') || rawMsg.toLowerCase().includes('rate limit');
-    const msg = isRateLimit
-      ? 'Asana data is temporarily unavailable due to rate limits. Please try again in a moment.'
-      : rawMsg;
-    return (
-      <div className="flex flex-col items-center justify-center py-12 gap-3">
-        <AlertCircle className="w-8 h-8 text-destructive/60" />
-        <p className="text-sm text-muted-foreground text-center max-w-xs">{msg}</p>
-        <div className="flex gap-3">
-          <button onClick={() => refetch()} className="text-xs text-primary hover:underline">Retry</button>
-          <button onClick={() => onNavigate('/integrations')} className="text-xs text-muted-foreground hover:underline">Reconnect Asana →</button>
-        </div>
-      </div>
-    );
-  }
-
-  const rawCounts = data.counts ?? { projects: 0, overdue: 0, today: 0, upcoming: 0 };
-  const projects = data.projects ?? [];
-  const rawOverdue = data.overdue ?? [];
-  const rawToday = data.today ?? [];
-  const rawUpcoming = data.upcoming ?? [];
+  const rawOverdue = data?.overdue ?? [];
+  const rawToday = data?.today ?? [];
+  const rawUpcoming = data?.upcoming ?? [];
+  const projects = data?.projects ?? [];
+  const rawCounts = data?.counts ?? { projects: 0, overdue: 0, today: 0, upcoming: 0 };
 
   // Build assignee options from all tasks
-  const assigneeOptions = React.useMemo(() => {
+  const assigneeOptions = useMemo(() => {
     const all = [...rawOverdue, ...rawToday, ...rawUpcoming];
     const map = new Map<string, number>();
     let unassignedCount = 0;
@@ -897,21 +875,52 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
   }, [rawOverdue, rawToday, rawUpcoming]);
 
   // Apply assignee filter
-  const filterByAssignee = (tasks: any[]) => {
-    if (assigneeFilter === '__all__') return tasks;
-    if (assigneeFilter === '__unassigned__') return tasks.filter(t => !t.assignee);
-    return tasks.filter(t => t.assignee === assigneeFilter);
-  };
+  const overdue = useMemo(() => {
+    if (assigneeFilter === '__all__') return rawOverdue;
+    if (assigneeFilter === '__unassigned__') return rawOverdue.filter((t: any) => !t.assignee);
+    return rawOverdue.filter((t: any) => t.assignee === assigneeFilter);
+  }, [rawOverdue, assigneeFilter]);
 
-  const overdue = filterByAssignee(rawOverdue);
-  const today = filterByAssignee(rawToday);
-  const upcoming = filterByAssignee(rawUpcoming);
-  const counts = {
+  const todayTasks = useMemo(() => {
+    if (assigneeFilter === '__all__') return rawToday;
+    if (assigneeFilter === '__unassigned__') return rawToday.filter((t: any) => !t.assignee);
+    return rawToday.filter((t: any) => t.assignee === assigneeFilter);
+  }, [rawToday, assigneeFilter]);
+
+  const upcomingTasks = useMemo(() => {
+    if (assigneeFilter === '__all__') return rawUpcoming;
+    if (assigneeFilter === '__unassigned__') return rawUpcoming.filter((t: any) => !t.assignee);
+    return rawUpcoming.filter((t: any) => t.assignee === assigneeFilter);
+  }, [rawUpcoming, assigneeFilter]);
+
+  const counts = useMemo(() => ({
     projects: rawCounts.projects,
     overdue: overdue.length,
-    today: today.length,
-    upcoming: upcoming.length,
-  };
+    today: todayTasks.length,
+    upcoming: upcomingTasks.length,
+  }), [rawCounts.projects, overdue.length, todayTasks.length, upcomingTasks.length]);
+
+  if (isLoading || !data) return <TabSkeleton />;
+
+  // Only show full error if we have zero usable data
+  const hasUsableData = data?.counts && (data.counts.projects > 0 || data.counts.overdue > 0 || data.counts.today > 0 || data.counts.upcoming > 0);
+  if ((error || data?.error || !data?.counts) && !hasUsableData) {
+    const rawMsg = data?.error || (error instanceof Error ? error.message : 'Unable to load operational data');
+    const isRateLimit = rawMsg.includes('429') || rawMsg.toLowerCase().includes('rate limit');
+    const msg = isRateLimit
+      ? 'Asana data is temporarily unavailable due to rate limits. Please try again in a moment.'
+      : rawMsg;
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-3">
+        <AlertCircle className="w-8 h-8 text-destructive/60" />
+        <p className="text-sm text-muted-foreground text-center max-w-xs">{msg}</p>
+        <div className="flex gap-3">
+          <button onClick={() => refetch()} className="text-xs text-primary hover:underline">Retry</button>
+          <button onClick={() => onNavigate('/integrations')} className="text-xs text-muted-foreground hover:underline">Reconnect Asana →</button>
+        </div>
+      </div>
+    );
+  }
 
   const openAsana = (url?: string | null) => {
     if (!url) return;
