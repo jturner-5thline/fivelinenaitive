@@ -163,6 +163,7 @@ export function useGmail() {
       const demoStatus = { connected: true, connected_at: new Date().toISOString() };
       setStatus(demoStatus);
       cachedStatus = demoStatus;
+      persistStatus(demoStatus);
       setIsStatusLoading(false);
       return;
     }
@@ -173,10 +174,12 @@ export function useGmail() {
       if (error) throw error;
       setStatus(data);
       cachedStatus = data;
+      persistStatus(data);
       setError(null);
     } catch (err: any) {
       console.error('Gmail status error:', err);
       setError(err.message);
+      // Don't clear persisted status on transient errors — keep showing connected
     } finally {
       setIsStatusLoading(false);
     }
