@@ -13,26 +13,26 @@ interface InboxDialogProps {
 }
 
 // Map Gmail messages to MockEmail format for DealEmailsTab compatibility
-function mapGmailToMockEmails(gmailMessages: any[]): MockEmail[] {
+function mapGmailToMockEmails(gmailMessages: any[], folderOverride: 'inbox' | 'sent' | 'drafts' = 'inbox'): MockEmail[] {
   return gmailMessages.map((msg) => ({
     id: msg.id,
     threadId: msg.thread_id || msg.id,
     subject: msg.subject || '(No subject)',
     from_name: msg.from_name || msg.from_email || 'Unknown',
     from_email: msg.from_email || '',
-    to_name: 'You',
+    to_name: (msg.to_names || [])[0] || 'You',
     to_email: (msg.to_emails || [])[0] || '',
     snippet: msg.snippet || '',
     body_preview: msg.body_text || msg.body_html || msg.snippet || '',
     received_at: msg.received_at || new Date().toISOString(),
     is_read: msg.is_read ?? true,
     is_starred: msg.is_starred ?? false,
-    folder: 'inbox' as const,
+    folder: folderOverride,
     labels: msg.labels || [],
     has_attachments: false,
     is_linked_to_deal: false,
     is_follow_up: false,
-    needs_response: !msg.is_read,
+    needs_response: folderOverride === 'inbox' ? !msg.is_read : false,
     category: 'deal' as const,
   }));
 }
@@ -44,7 +44,10 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   } = useGmail();
   const navigate = useNavigate();
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [sentMessages, setSentMessages] = useState<any[]>([]);
+  const [isSentLoading, setIsSentLoading] = useState(false);
 
+  // Fetch inbox messages
   useEffect(() => {
     if (open && status.connected && !hasLoaded) {
       listMessages({ maxResults: 50, labelIds: ['INBOX'] });
@@ -52,15 +55,58 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     }
   }, [open, status.connected, hasLoaded, listMessages]);
 
+  // Fetch sent messages separately
+  useEffect(() => {
+    if (open && status.connected && hasLoaded && sentMessages.length === 0 && !isSentLoading) {
+      setIsSentLoading(true);
+      // Use the same gmail hook but with SENT label
+      import('@/integrations/supabase/client').then(({ supabase }) => {
+        supabase.functions.invoke('gmail-messages', {
+          body: {
+            action: 'list',
+            max_results: 50,
+            label_ids: ['SENT'],
+          },
+        }).then(({ data, error }) => {
+          if (!error && data?.messages) {
+            setSentMessages(data.messages);
+          }
+          setIsSentLoading(false);
+        }).catch(() => setIsSentLoading(false));
+      });
+    }
+  }, [open, status.connected, hasLoaded, sentMessages.length, isSentLoading]);
+
   // Reset load flag when dialog closes
   useEffect(() => {
-    if (!open) setHasLoaded(false);
+    if (!open) {
+      setHasLoaded(false);
+      setSentMessages([]);
+    }
   }, [open]);
 
-  const mappedEmails = useMemo(() => mapGmailToMockEmails(messages), [messages]);
+  // Combine inbox + sent into a single dataset with correct folder tags
+  const mappedEmails = useMemo(() => {
+    const inboxEmails = mapGmailToMockEmails(messages, 'inbox');
+    const sentEmails = mapGmailToMockEmails(sentMessages, 'sent');
+
+    // Deduplicate: if an email appears in both inbox and sent (e.g. self-sent), prefer inbox
+    const seenIds = new Set(inboxEmails.map(e => e.id));
+    const uniqueSent = sentEmails.filter(e => !seenIds.has(e.id));
+
+    return [...inboxEmails, ...uniqueSent];
+  }, [messages, sentMessages]);
 
   const handleRefresh = useCallback(() => {
     listMessages({ maxResults: 50, labelIds: ['INBOX'] });
+    // Also refresh sent
+    import('@/integrations/supabase/client').then(({ supabase }) => {
+      supabase.functions.invoke('gmail-messages', {
+        body: { action: 'list', max_results: 50, label_ids: ['SENT'] },
+      }).then(({ data, error }) => {
+        if (!error && data?.messages) setSentMessages(data.messages);
+      });
+    });
   }, [listMessages]);
 
   if (!status.connected) {
@@ -88,7 +134,6 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Fix #1: backdrop overlay with fade-in */}
       <DialogContent
         className="max-w-[95vw] w-[1400px] h-[85vh] p-0 flex flex-col overflow-hidden"
         overlayClassName="bg-black/50 transition-opacity duration-200"
@@ -98,7 +143,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
             dealId=""
             externalEmails={mappedEmails}
             onRefresh={handleRefresh}
-            isRefreshingExternal={isLoading}
+            isRefreshingExternal={isLoading || isSentLoading}
             onGmailSend={sendEmail}
           />
         </div>
