@@ -1067,6 +1067,7 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
         </div>
       )}
 
+      <Section title="Past Due Items">
         {overdue.length === 0 ? <EmptySection message="No overdue items" /> : overdue.map((item: any) => (
           <BriefingRow
             key={item.gid}
