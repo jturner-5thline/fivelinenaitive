@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
 import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Zap, Briefcase, LayoutTemplate, Newspaper } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
 import { useProfile } from '@/hooks/useProfile';
 import { useDashboardPresets, WidgetConfig, GridItem } from '@/hooks/useDashboardPresets';
@@ -24,7 +26,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { profile } = useProfile();
+  const isJTurner = user?.email === 'jturner@5thline.co';
+  const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const {
     presets,
     activePreset,
@@ -260,6 +265,19 @@ export default function Dashboard() {
                 </Card>
               }
             />
+            {isJTurner && (
+              <Card
+                className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+                onClick={() => setIsBriefingOpen(true)}
+              >
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--accent)/0.2),inset_0_1px_1px_hsl(var(--accent)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-accent/20 before:to-transparent before:rounded-xl">
+                    <Newspaper className="relative z-10 h-7 w-7 text-accent-foreground" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Daily Briefing</span>
+                </div>
+              </Card>
+            )}
           </div>
           </HintTooltip>
 
@@ -378,6 +396,7 @@ export default function Dashboard() {
           </Tabs>
         </div>
       </div>
+      {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
     </>
   );
 }
