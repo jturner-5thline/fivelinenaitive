@@ -699,11 +699,23 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           </div>
 
           {/* ─── Middle: Email list ─── */}
-          <div className={cn(
-            'border-r border-white/[0.06] flex flex-col min-w-0 overflow-hidden bg-card/30 backdrop-blur-sm transition-all duration-200',
-            readingPaneExpanded ? 'hidden' :
-            (currentThread || composeOpen) ? 'hidden md:flex md:w-[240px] md:shrink-0' : 'flex-1'
-          )}>
+          <div
+            className={cn(
+              'relative flex flex-col min-w-0 overflow-hidden bg-card/30 backdrop-blur-sm transition-[opacity] duration-200',
+              readingPaneExpanded ? 'hidden' :
+              (currentThread || composeOpen) ? 'hidden md:flex shrink-0' : 'flex-1'
+            )}
+            style={(currentThread || composeOpen) && !readingPaneExpanded ? { width: inboxWidth } : undefined}
+          >
+            {/* Resize handle on right edge */}
+            {(currentThread || composeOpen) && !readingPaneExpanded && (
+              <div
+                onMouseDown={handleResizeStart}
+                className="absolute right-0 top-0 bottom-0 w-[5px] z-20 cursor-col-resize group hover:bg-primary/20 transition-colors"
+              >
+                <div className="absolute right-0 top-0 bottom-0 w-px bg-white/[0.06] group-hover:bg-primary/40 transition-colors" />
+              </div>
+            )}
             {/* Search bar — full-width, flat, Outlook style */}
             <div className="px-2 py-1.5 border-b border-white/[0.06]">
               <div className="relative flex gap-1">
