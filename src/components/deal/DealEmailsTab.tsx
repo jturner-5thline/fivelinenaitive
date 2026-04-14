@@ -561,7 +561,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         <Button
           variant="outline"
           size="sm"
-          className="gap-1.5 text-xs h-8 px-4 border-[hsl(var(--outlook-blue)/0.4)] text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue)/0.08)]"
+          className="gap-1.5 text-xs h-8 px-4 border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue)/0.08)] bg-transparent"
           onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
         >
           <PenSquare className="h-3.5 w-3.5" />
@@ -593,7 +593,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               ].map(s => (
                 <div key={s.key} className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">{s.desc}</span>
-                  <kbd className="text-[10px] bg-muted border border-border rounded px-1.5 py-0.5 text-muted-foreground font-mono">{s.key}</kbd>
+                  <kbd className="text-[10px] bg-white/[0.04] border border-white/[0.08] rounded px-1.5 py-0.5 text-muted-foreground font-mono">{s.key}</kbd>
                 </div>
               ))}
             </div>
