@@ -117,12 +117,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 // ── Tab: Catch Up & News ───────────────────────────────────────
 function CatchUpTab({ data, onNavigate }: { data: BriefingData; onNavigate: (path: string) => void }) {
   const [detail, setDetail] = useState<any>(null);
-  const { recentActivity, alerts } = data.catchUp;
+  const { alerts, highlights } = data.catchUp;
 
   return (
     <div className="relative h-full">
       {detail && (
-        <DetailPopup title={detail.description || 'Activity Detail'} onClose={() => setDetail(null)}>
+        <DetailPopup title={detail.description || 'Alert Detail'} onClose={() => setDetail(null)}>
           <div className="space-y-3">
             <div className="text-sm"><strong>Type:</strong> {detail.activity_type}</div>
             <div className="text-sm"><strong>Description:</strong> {detail.description}</div>
@@ -155,23 +155,25 @@ function CatchUpTab({ data, onNavigate }: { data: BriefingData; onNavigate: (pat
         )}
       </Section>
 
-      <Section title="Recent Activity">
-        {recentActivity.length === 0 ? (
-          <EmptySection message="No activity since 5 PM ET yesterday" />
+      <Section title="Today's Highlights">
+        {highlights.length === 0 ? (
+          <EmptySection message="No noteworthy highlights in this window" />
         ) : (
-          recentActivity.map(a => (
+          highlights.map((h, i) => (
             <BriefingRow
-              key={a.id}
-              icon={Clock}
-              title={a.description}
-              subtitle={a.user_display_name || undefined}
-              badge={a.activity_type.replace(/_/g, ' ')}
+              key={i}
+              icon={TrendingUp}
+              title={h.label}
+              subtitle={h.value}
+              badge="Summary"
               badgeVariant="outline"
-              time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
-              onClick={() => setDetail(a)}
             />
           ))
         )}
+      </Section>
+
+      <Section title="Insights & Learnings">
+        <EmptySection message="No catch-up items in this window — insights will appear as more data sources are connected" />
       </Section>
     </div>
   );
