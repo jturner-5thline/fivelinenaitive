@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const TARGET_EMAIL = "jturner@5thline.co";
+const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRna2tzdmF6cnV6Ymdoc3NueGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2NDk4MzksImV4cCI6MjA4MTIyNTgzOX0.rKbLgDEfCdQO4hv2_69-Q4r3RiH7_6hsTuwcn6JJpL8";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -38,7 +39,15 @@ Deno.serve(async (req) => {
     const dateString = dateFormatter.format(now);
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Use anon key for the client (apikey header) but service role for Authorization
+    const supabase = createClient(supabaseUrl, ANON_KEY, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+      },
+    });
 
     const { data, error } = await supabase.functions.invoke(
       "send-transactional-email",
