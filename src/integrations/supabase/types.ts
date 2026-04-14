@@ -15546,6 +15546,7 @@ export type Database = {
           section_id: string | null
           start_date: string | null
           status: string
+          sync_source: string | null
           task_type: string
           title: string
           updated_at: string
@@ -15580,6 +15581,7 @@ export type Database = {
           section_id?: string | null
           start_date?: string | null
           status?: string
+          sync_source?: string | null
           task_type?: string
           title: string
           updated_at?: string
@@ -15614,6 +15616,7 @@ export type Database = {
           section_id?: string | null
           start_date?: string | null
           status?: string
+          sync_source?: string | null
           task_type?: string
           title?: string
           updated_at?: string
