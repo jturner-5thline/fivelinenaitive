@@ -1046,7 +1046,27 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
         </div>
       </Section>
 
-      <Section title="Past Due Items">
+      {/* Assignee filter */}
+      {assigneeOptions.length > 2 && (
+        <div className="px-1 pb-2">
+          <select
+            value={assigneeFilter}
+            onChange={(e) => setAssigneeFilter(e.target.value)}
+            className={cn(
+              'w-full rounded-lg px-3 py-2 text-xs',
+              'bg-white/[0.04] border border-white/[0.08] text-foreground',
+              'focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/30',
+              'backdrop-blur-sm appearance-none cursor-pointer',
+            )}
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+          >
+            {assigneeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
         {overdue.length === 0 ? <EmptySection message="No overdue items" /> : overdue.map((item: any) => (
           <BriefingRow
             key={item.gid}
