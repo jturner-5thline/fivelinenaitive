@@ -41,6 +41,8 @@ import { usePreSendChecks } from './usePreSendChecks';
 import { PreSendAlertDialog } from './PreSendAlertDialog';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 import type { TokenContext } from '@/hooks/useEmailSnippets';
+import { RecipientField, emailStringToArray, emailArrayToString } from './RecipientField';
+import { useEmailContacts } from '@/hooks/useEmailContacts';
 
 function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
   if (status === 'idle') return null;
