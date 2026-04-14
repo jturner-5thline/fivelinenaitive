@@ -543,73 +543,60 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         }
       }
 
-      // Asana sync: push due date / assignee updates (fire-and-forget)
-      if (updates.due_date !== undefined || updates.assigned_to !== undefined) {
-        const updatedTask = tasks.find(t => t.id === id);
-        const asanaTaskGid = (updatedTask as any)?.asana_task_gid;
+      // Asana sync: skip if this update was triggered by Asana webhook (loop prevention)
+      const updatedTask = tasks.find(t => t.id === id);
+      const asanaTaskGid = (updatedTask as any)?.asana_task_gid;
+      const syncSource = (updatedTask as any)?.sync_source;
 
-        if (asanaTaskGid) {
-          (async () => {
-            try {
-              const ctx = await getAsanaSyncContext((updatedTask as any)?.company_id || null);
-              if (!ctx) return;
+      if (asanaTaskGid && syncSource !== 'asana') {
+        (async () => {
+          try {
+            const ctx = await getAsanaSyncContext((updatedTask as any)?.company_id || null);
+            if (!ctx) return;
 
-              const asanaUpdates: { due_date?: string | null; assignee_email?: string | null } = {};
+            const asanaUpdates: { title?: string; due_date?: string | null; assignee_email?: string | null; completed?: boolean } = {};
 
-              if (updates.due_date !== undefined) {
-                asanaUpdates.due_date = updates.due_date || null;
+            // Name sync
+            if (updates.title !== undefined) {
+              asanaUpdates.title = updates.title;
+            }
+
+            // Due date sync
+            if (updates.due_date !== undefined) {
+              asanaUpdates.due_date = updates.due_date || null;
+            }
+
+            // Assignee sync
+            if (updates.assigned_to !== undefined) {
+              if (updates.assigned_to) {
+                const { data: assigneeProfile } = await supabase
+                  .from('profiles')
+                  .select('email')
+                  .eq('user_id', updates.assigned_to)
+                  .single();
+                asanaUpdates.assignee_email = assigneeProfile?.email || null;
+              } else {
+                asanaUpdates.assignee_email = null;
               }
+            }
 
-              if (updates.assigned_to !== undefined) {
-                if (updates.assigned_to) {
-                  const { data: assigneeProfile } = await supabase
-                    .from('profiles')
-                    .select('email')
-                    .eq('user_id', updates.assigned_to)
-                    .single();
+            // Completion sync
+            if (updates.status !== undefined) {
+              asanaUpdates.completed = updates.status === 'complete' || updates.status === 'completed';
+            }
 
-                  asanaUpdates.assignee_email = assigneeProfile?.email || null;
-                } else {
-                  asanaUpdates.assignee_email = null;
-                }
-              }
-
+            if (Object.keys(asanaUpdates).length > 0) {
               await updateTaskInAsana(ctx, asanaTaskGid, asanaUpdates);
-            } catch (e) {
-              console.error('Asana update sync failed:', e);
+              console.log('Asana sync pushed:', Object.keys(asanaUpdates));
             }
-          })();
-        }
-      }
+          } catch (e) {
+            console.error('Asana update sync failed:', e);
+          }
+        })();
 
-      // Asana sync: push completion status (fire-and-forget)
-      if (updates.status !== undefined) {
-        const updatedTask = tasks.find(t => t.id === id);
-        const asanaTaskGid = (updatedTask as any)?.asana_task_gid;
-
-        if (asanaTaskGid) {
-          (async () => {
-            try {
-              const ctx = await getAsanaSyncContext((updatedTask as any)?.company_id || '');
-              if (!ctx) return;
-
-              const isCompleted = updates.status === 'complete' || updates.status === 'completed';
-
-              await supabase.functions.invoke('asana-proxy', {
-                body: {
-                  action: 'update_task',
-                  integration_id: ctx.integrationId,
-                  task_gid: asanaTaskGid,
-                  data: { completed: isCompleted },
-                },
-              });
-
-              console.log('Asana completion sync:', isCompleted ? 'marked complete' : 'marked incomplete');
-            } catch (e) {
-              console.error('Asana completion sync failed:', e);
-            }
-          })();
-        }
+        // Clear sync_source if it was set by a previous Asana sync
+      } else if (syncSource === 'asana') {
+        console.log('Skipping Asana sync — update originated from Asana');
       }
     },
     onSuccess: () => {
