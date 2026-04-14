@@ -840,18 +840,28 @@ function StatusChip({ status }: { status: string | null }) {
 
 // ── Tab: Operational & Projects ────────────────────────────────
 function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
-  const { data, isLoading, error } = useOperationalData(enabled);
+  const { data, isLoading, error, refetch } = useOperationalData(enabled);
   const [detail, setDetail] = useState<any>(null);
   const [drilldown, setDrilldown] = useState<'projects' | 'past_due' | 'today' | 'upcoming' | null>(null);
 
   if (isLoading || !data) return <TabSkeleton />;
-  if (error || data?.error || !data?.counts) {
-    const msg = data?.error || (error instanceof Error ? error.message : 'Unable to load operational data');
+
+  // Only show full error if we have zero usable data
+  const hasUsableData = data?.counts && (data.counts.projects > 0 || data.counts.overdue > 0 || data.counts.today > 0 || data.counts.upcoming > 0);
+  if ((error || data?.error || !data?.counts) && !hasUsableData) {
+    const rawMsg = data?.error || (error instanceof Error ? error.message : 'Unable to load operational data');
+    const isRateLimit = rawMsg.includes('429') || rawMsg.toLowerCase().includes('rate limit');
+    const msg = isRateLimit
+      ? 'Asana data is temporarily unavailable due to rate limits. Please try again in a moment.'
+      : rawMsg;
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3">
         <AlertCircle className="w-8 h-8 text-destructive/60" />
         <p className="text-sm text-muted-foreground text-center max-w-xs">{msg}</p>
-        <button onClick={() => onNavigate('/integrations')} className="text-xs text-primary hover:underline">Reconnect Asana →</button>
+        <div className="flex gap-3">
+          <button onClick={() => refetch()} className="text-xs text-primary hover:underline">Retry</button>
+          <button onClick={() => onNavigate('/integrations')} className="text-xs text-muted-foreground hover:underline">Reconnect Asana →</button>
+        </div>
       </div>
     );
   }

@@ -328,13 +328,16 @@ export function useOperationalData(enabled: boolean) {
   return useQuery({
     queryKey: ['briefing-operational-asana'],
     enabled,
-    staleTime: 5 * 60_000, // 5 min cache
+    staleTime: 5 * 60_000, // 5 min client-side cache
+    retry: 1, // Don't spam retries on rate limit errors
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('briefing-operational');
       if (error) throw new Error(error.message);
       return data as {
         error?: string;
         fallback?: boolean;
+        partial?: boolean;
+        partialErrors?: number;
         counts: {
           projects: number;
           overdue: number;
