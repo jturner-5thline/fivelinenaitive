@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 const TARGET_EMAIL = "jturner@5thline.co";
-const SITE_NAME = "fivelinenaitive";
+const SITE_NAME = "naitive";
 const SENDER_DOMAIN = "notify.noreply.naitive.co";
 const FROM_DOMAIN = "noreply.naitive.co";
 
