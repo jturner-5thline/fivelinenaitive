@@ -3,6 +3,9 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { ClassifierOrgContext } from '@/utils/emailClassifier';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Lightweight record used by the email classifier to match emails
