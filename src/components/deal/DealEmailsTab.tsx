@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useUiPreference } from '@/hooks/useUiPreference';
 import { filterEmailsByCategory, EMAIL_CATEGORY_TABS, type EmailCategoryTab } from '@/utils/emailClassifier';
+import { useEmailClassifierData } from '@/hooks/useEmailClassifierData';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -123,6 +124,7 @@ function isAutoReplyOrNewsletter(email: MockEmail): boolean {
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend }: DealEmailsTabProps) {
   const navigate = useNavigate();
+  const classifierEntities = useEmailClassifierData();
   const [emails, setEmails] = useState<MockEmail[]>(() => {
     const source = externalEmails || initialMockEmails;
     return source.map(e => isAutoReplyOrNewsletter(e) ? { ...e, needs_response: false } : e);
@@ -322,7 +324,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     let filtered = emails.filter(activeItem.filterFn);
     // Category tab filter (shared classifier)
     if (categoryTab !== 'all') {
-      filtered = filterEmailsByCategory(filtered, categoryTab);
+      filtered = filterEmailsByCategory(filtered, categoryTab, classifierEntities);
     }
     if (viewFilter === 'unread') filtered = filtered.filter(e => !e.is_read);
     if (viewFilter === 'needs_response') filtered = filtered.filter(e => e.needs_response);
@@ -352,7 +354,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters]);
+  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities]);
 
   const currentThread = useMemo(() => {
     if (!selectedThread) return null;
