@@ -130,6 +130,14 @@ export default {
 			'mapping-flash': {
 				'0%': { backgroundColor: 'hsl(142 76% 36% / 0.25)' },
 				'100%': { backgroundColor: 'transparent' }
+			},
+			'slideInFromRight': {
+				from: { opacity: '0', transform: 'translateX(60px)' },
+				to: { opacity: '1', transform: 'translateX(0)' }
+			},
+			'slideInFromLeft': {
+				from: { opacity: '0', transform: 'translateX(-60px)' },
+				to: { opacity: '1', transform: 'translateX(0)' }
 			}
 		},
   		animation: {
