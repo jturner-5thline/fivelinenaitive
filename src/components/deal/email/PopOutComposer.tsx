@@ -72,15 +72,16 @@ interface PopOutComposerProps {
 }
 
 export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn, onDraftChange, onFieldBlur, saveStatus = 'idle', tokenContext }: PopOutComposerProps) {
-  const [to, setTo] = useState(initialDraft.to);
-  const [cc, setCc] = useState(initialDraft.cc);
-  const [bcc, setBcc] = useState(initialDraft.bcc);
+  const [toRecipients, setToRecipients] = useState<string[]>(emailStringToArray(initialDraft.to));
+  const [ccRecipients, setCcRecipients] = useState<string[]>(emailStringToArray(initialDraft.cc));
+  const [bccRecipients, setBccRecipients] = useState<string[]>(emailStringToArray(initialDraft.bcc));
   const [subject, setSubject] = useState(initialDraft.subject);
   const [body, setBody] = useState(initialDraft.body);
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<string[]>(initialDraft.attachments);
   const [minimized, setMinimized] = useState(false);
+  const { search } = useEmailContacts();
 
   // Dragging
   const [position, setPosition] = useState({ x: window.innerWidth - 520, y: window.innerHeight - 480 });
