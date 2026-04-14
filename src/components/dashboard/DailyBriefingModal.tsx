@@ -564,7 +564,7 @@ function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path
 
       {/* Sub-tab pills */}
       <div className="flex items-center gap-1.5 mb-4">
-        {EMAIL_SUB_TABS.map(t => (
+        {EMAIL_CATEGORY_TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setSubTab(t.key)}
