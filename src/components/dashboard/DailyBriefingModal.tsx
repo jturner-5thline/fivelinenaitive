@@ -854,11 +854,16 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
   // Build assignee options from all tasks
   const assigneeOptions = useMemo(() => {
     const all = [...rawOverdue, ...rawToday, ...rawUpcoming];
-    const map = new Map<string, number>();
+    const map = new Map<string, { count: number; firstName: string }>();
     let unassignedCount = 0;
     for (const t of all) {
       if (t.assignee) {
-        map.set(t.assignee, (map.get(t.assignee) || 0) + 1);
+        if (!map.has(t.assignee)) {
+          const firstName = t.assignee.split(' ')[0];
+          map.set(t.assignee, { count: 1, firstName });
+        } else {
+          map.get(t.assignee)!.count++;
+        }
       } else {
         unassignedCount++;
       }
@@ -867,10 +872,10 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
     const opts: { value: string; label: string }[] = [
       { value: '__all__', label: `All (${all.length})` },
     ];
-    if (unassignedCount > 0) opts.push({ value: '__unassigned__', label: `Unassigned (${unassignedCount})` });
-    for (const [name, count] of sorted) {
-      opts.push({ value: name, label: `${name} (${count})` });
+    for (const [name, { count, firstName }] of sorted) {
+      opts.push({ value: name, label: `${firstName} (${count})` });
     }
+    if (unassignedCount > 0) opts.push({ value: '__unassigned__', label: `Unassigned (${unassignedCount})` });
     return opts;
   }, [rawOverdue, rawToday, rawUpcoming]);
 
@@ -1046,24 +1051,29 @@ function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate:
         </div>
       </Section>
 
-      {/* Assignee filter */}
+      {/* Assignee pill filter */}
       {assigneeOptions.length > 2 && (
-        <div className="px-1 pb-2">
-          <select
-            value={assigneeFilter}
-            onChange={(e) => setAssigneeFilter(e.target.value)}
-            className={cn(
-              'w-full rounded-lg px-3 py-2 text-xs',
-              'bg-white/[0.04] border border-white/[0.08] text-foreground',
-              'focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/30',
-              'backdrop-blur-sm appearance-none cursor-pointer',
-            )}
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+        <div className="relative px-1 pb-2">
+          <div
+            className="flex gap-1.5 overflow-x-auto scrollbar-none pb-1"
+            style={{ maskImage: 'linear-gradient(to right, black 92%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 92%, transparent 100%)' }}
           >
             {assigneeOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <button
+                key={opt.value}
+                onClick={() => setAssigneeFilter(opt.value)}
+                className={cn(
+                  'shrink-0 rounded-full px-3 py-1 text-[11px] font-medium transition-all duration-150 whitespace-nowrap',
+                  'focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50',
+                  assigneeFilter === opt.value
+                    ? 'bg-primary text-primary-foreground shadow-[0_0_12px_hsl(var(--primary)/0.3)]'
+                    : 'bg-white/[0.05] border border-white/[0.1] text-muted-foreground hover:bg-white/[0.1] hover:text-foreground',
+                )}
+              >
+                {opt.label}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
       )}
 
