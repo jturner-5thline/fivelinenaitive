@@ -135,7 +135,7 @@ export function useDailyBriefingData(enabled: boolean) {
         d => !suppressedStatuses.includes((d.status || '').toLowerCase())
       );
       const riskDeals = activeDeals.filter(d => {
-        if (d.flagStatus === 'red' || d.flagStatus === 'yellow') return true;
+        if (d.isFlagged) return true;
         // Stale: no activity in 14 days
         const lastActivity = activities.find(a => a.deal_id === d.id);
         if (!lastActivity) {

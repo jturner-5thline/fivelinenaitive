@@ -15,6 +15,8 @@ import { CreateDealDialog } from './CreateDealDialog';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DashboardModal } from '@/components/dashboard/DashboardModal';
+import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
+import { Newspaper } from 'lucide-react';
 
 export function DealsHeader() {
   const location = useLocation();
