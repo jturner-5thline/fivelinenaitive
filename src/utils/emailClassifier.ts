@@ -269,16 +269,17 @@ function isMarketingOrPlatformNoise(email: Record<string, any>): boolean {
 // An email qualifies for "Clients & Deals" ONLY via:
 //   Path A: domain match (sender/recipient domain = entity domain)  → instant
 //   Path B: legacy explicit deal-link flags                         → instant
-//   Path C: exact name in subject + at least one more signal        → qualifies
+//   Path C: exact entity name in subject (non-generic, non-self)    → qualifies
+//   Path D: exact entity name in body + supplementary signal        → qualifies
 // Fuzzy / token matches and body-only mentions are NEVER enough alone.
 
 const SCORE_DOMAIN_MATCH = 10;      // Participant domain = entity domain → instant
 const SCORE_LEGACY_SIGNAL = 10;     // Explicit deal linkage flags → instant
-const SCORE_EXACT_NAME_SUBJECT = 4; // Exact entity name in subject (needs more)
-const SCORE_EXACT_NAME_BODY = 2;    // Exact entity name in body (supplementary only)
-const SCORE_DOMAIN_IN_TEXT = 3;     // Entity domain mentioned in text (supplementary)
-const SCORE_TOKEN_MATCH = 1;        // Token match (very weak, supplementary)
-const CONFIDENCE_THRESHOLD = 8;     // High bar: domain match or legacy; name needs help
+const SCORE_EXACT_NAME_SUBJECT = 8; // Exact entity name in subject → qualifies (generic names already filtered)
+const SCORE_EXACT_NAME_BODY = 4;    // Exact entity name in body (needs one more signal)
+const SCORE_DOMAIN_IN_TEXT = 4;     // Entity domain mentioned in text (supplementary)
+const SCORE_TOKEN_MATCH = 2;        // Token match (weak, supplementary)
+const CONFIDENCE_THRESHOLD = 8;     // Domain match, legacy, or subject name; body needs help
 
 /** Words that are too generic to be useful entity name matches */
 const GENERIC_FINANCE_WORDS = new Set([
