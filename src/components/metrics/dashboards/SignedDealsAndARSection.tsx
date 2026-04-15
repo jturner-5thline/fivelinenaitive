@@ -265,10 +265,8 @@ function DealsDrilldownModal({
 
 // ── Main section ──
 export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
-  // Derive month count from quarter date range
-  const monthCount = selectedQuarter.months.length;
-  const debtSigned = useDealsSignedMonthlySeries(monthCount);
-  const finservSigned = useFinServClientsSignedMonthlySeries(monthCount);
+  const debtSigned = useDealsSignedMonthlySeries(selectedQuarter.months);
+  const finservSigned = useFinServClientsSignedMonthlySeries(selectedQuarter.months);
   const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[] } | null>(null);
 
   return (
@@ -276,7 +274,7 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
       <div>
         <h2 className="text-lg font-semibold text-foreground">Signed Deals & AR</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Last {monthCount} months · {selectedQuarter.label} · Stage-entry based · Click bars for deal detail
+          {selectedQuarter.label} · Stage-entry based · Click bars for deal detail
         </p>
       </div>
 
