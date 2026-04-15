@@ -12,8 +12,6 @@ import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar'
 import { useQBStackedDebtRevenue, STACKED_CATEGORIES, type StackedDebtMonth } from '@/hooks/useQBStackedDebtRevenue';
 import { useQBStackedFinServRevenue, FINSERV_STACKED_CATEGORIES, type StackedFinServMonth } from '@/hooks/useQBStackedFinServRevenue';
 import {
-  buildQuarterOptions,
-  getCurrentQuarter,
   useQBQuarterlyRevenue,
   useQBCombinedQuarterlyRevenue,
   type QuarterOption,

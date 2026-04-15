@@ -5,8 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Users, DollarSign, FileCheck, Building2, UserCheck } from 'lucide-react';
 import {
-  buildQuarterOptions,
-  getCurrentQuarter,
   type QuarterOption,
 } from '@/hooks/useQBQuarterlyRevenue';
 import { usePipelineStageMetrics, type StageEntryDeal } from '@/hooks/usePipelineStageMetrics';
