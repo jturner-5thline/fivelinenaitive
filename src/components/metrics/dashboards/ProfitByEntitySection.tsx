@@ -68,7 +68,7 @@ function ProfitBarChart({
           <p className={`text-lg font-semibold tabular-nums ${total < 0 ? 'text-red-400' : 'text-foreground'}`}>
             {formatCurrency(total)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Last 3 Months</p>
+          <p className="text-[10px] text-muted-foreground">{months.length} Months</p>
         </div>
       </CardHeader>
       <CardContent>
@@ -135,16 +135,15 @@ function ProfitBarChart({
 }
 
 export function ProfitByEntitySection({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
-  const monthCount = selectedQuarter.months.length;
-  const debt = useMonthlyEntityProfit('5th Line Capital Advisors, LLC', monthCount);
-  const finserv = useMonthlyEntityProfit('5th Line Financial Services, LLC', monthCount);
+  const debt = useMonthlyEntityProfit('5th Line Capital Advisors, LLC', selectedQuarter.months);
+  const finserv = useMonthlyEntityProfit('5th Line Financial Services, LLC', selectedQuarter.months);
 
   return (
     <div className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold text-foreground">Profit by Entity</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Last {monthCount} completed months · {selectedQuarter.label} · QuickBooks operating profit
+          {selectedQuarter.label} · QuickBooks operating profit
         </p>
       </div>
 
