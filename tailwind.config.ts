@@ -138,6 +138,19 @@ export default {
 			'slideInFromLeft': {
 				from: { opacity: '0', transform: 'translateX(-60px)' },
 				to: { opacity: '1', transform: 'translateX(0)' }
+			},
+			'task-complete-pop': {
+				'0%': { transform: 'scale(1)' },
+				'40%': { transform: 'scale(1.25)' },
+				'100%': { transform: 'scale(1)' }
+			},
+			'task-check-draw': {
+				from: { strokeDashoffset: '12' },
+				to: { strokeDashoffset: '0' }
+			},
+			'task-row-settle': {
+				from: { opacity: '1', transform: 'translateX(0)' },
+				to: { opacity: '0.7', transform: 'translateX(0)' }
 			}
 		},
   		animation: {
@@ -151,7 +164,10 @@ export default {
   			'slide-in-from-left': 'slide-in-from-left 0.25s ease-out',
   			'pulse-highlight': 'pulse-highlight 1.5s ease-in-out 2',
 			'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
-			'mapping-flash': 'mapping-flash 600ms ease-out forwards'
+			'mapping-flash': 'mapping-flash 600ms ease-out forwards',
+			'task-complete-pop': 'task-complete-pop 300ms ease-out',
+			'task-check-draw': 'task-check-draw 250ms ease-out forwards',
+			'task-row-settle': 'task-row-settle 400ms ease-out forwards'
   		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',
