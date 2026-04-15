@@ -92,7 +92,7 @@ export default function WfTasks({ embedded }: { embedded?: boolean }) {
           <div className="flex items-center gap-1.5 min-w-0">
             <TaskCompletionCheckbox
               checked={isDone}
-              onChange={() => handleCycleStatus(task)}
+              onChange={() => handleToggleComplete(task)}
             />
             {!isDone && task.status === 'in_progress' && (
               <Clock className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
