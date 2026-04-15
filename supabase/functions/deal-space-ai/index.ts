@@ -637,11 +637,10 @@ ${Object.entries(byCategory).map(([cat, items]) => `  ${cat}:\n${(items as strin
   }
   if (!docInventory) docInventory = 'No documents uploaded yet.';
 
-  // ── Fetch actual document content if requested ──
+  // ── Fetch actual document content if requested (limited to avoid CPU timeout) ──
   let docContentBlock = '';
   if (opts?.includeDocContent && opts?.supabaseService) {
     const allDocs = [...dealSpaceDocs, ...dataRoomDocs];
-    // Filter by scope if applicable
     let docsToFetch = allDocs;
     if (opts.scope === 'financial') {
       const { data: financialFiles } = await supabase
@@ -658,14 +657,26 @@ ${Object.entries(byCategory).map(([cat, items]) => `  ${cat}:\n${(items as strin
       });
     }
 
+    // Limit to 3 smallest text-extractable docs to stay within CPU budget
+    const extractableDocs = docsToFetch
+      .filter((d: any) => {
+        const name = (d.name || '').toLowerCase();
+        const ct = (d.content_type || '').toLowerCase();
+        // Skip DOCX (mammoth is unreliable in edge runtime) and large binaries
+        if (name.endsWith('.docx') || name.endsWith('.pptx')) return false;
+        // Only attempt text, CSV, PDF, Excel
+        return ct.includes('text/') || ct.includes('csv') || ct.includes('pdf') || 
+               name.endsWith('.txt') || name.endsWith('.csv') || name.endsWith('.md') ||
+               name.endsWith('.xlsx') || name.endsWith('.pdf');
+      })
+      .sort((a: any, b: any) => (a.size_bytes || 0) - (b.size_bytes || 0))
+      .slice(0, 3);
+
     const chunks: string[] = [];
     let totalChars = 0;
 
-    for (const doc of docsToFetch) {
-      if (totalChars >= MAX_DOC_CONTENT_CHARS) {
-        chunks.push(`[Remaining ${docsToFetch.length - chunks.length} documents omitted due to context limit]`);
-        break;
-      }
+    for (const doc of extractableDocs) {
+      if (totalChars >= MAX_DOC_CONTENT_CHARS) break;
       try {
         const bucket = dealSpaceDocs.find((d: any) => d.id === doc.id) ? "deal-space" : "deal-attachments";
         const { data: fileData, error: downloadError } = await opts.supabaseService.storage.from(bucket).download(doc.file_path);
@@ -684,6 +695,9 @@ ${Object.entries(byCategory).map(([cat, items]) => `  ${cat}:\n${(items as strin
 
     if (chunks.length > 0) {
       docContentBlock = `\n**DOCUMENT CONTENT (${chunks.length} files extracted):**\n\n${chunks.join('\n\n---\n\n')}`;
+    }
+    if (docsToFetch.length > extractableDocs.length) {
+      docContentBlock += `\n[${docsToFetch.length - extractableDocs.length} additional documents available but not extracted to stay within compute limits]`;
     }
   }
 
