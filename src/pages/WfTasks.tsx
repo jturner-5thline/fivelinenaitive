@@ -72,15 +72,9 @@ export default function WfTasks({ embedded }: { embedded?: boolean }) {
     );
   }, [updateTask]);
 
-  const handleCycleStatus = useCallback((task: any) => {
-    if (task.status === 'open') {
-      updateTask.mutate({ taskId: task.id, status: 'in_progress' });
-    } else if (task.status === 'in_progress') {
-      handleComplete(task);
-    } else {
-      handleComplete(task); // done -> open
-    }
-  }, [updateTask, handleComplete]);
+  const handleToggleComplete = useCallback((task: any) => {
+    handleComplete(task); // done ↔ open toggle
+  }, [handleComplete]);
 
   const TaskCard = ({ task }: { task: any }) => {
     const isDone = task.status === 'done';
@@ -98,7 +92,7 @@ export default function WfTasks({ embedded }: { embedded?: boolean }) {
           <div className="flex items-center gap-1.5 min-w-0">
             <TaskCompletionCheckbox
               checked={isDone}
-              onChange={() => handleCycleStatus(task)}
+              onChange={() => handleToggleComplete(task)}
             />
             {!isDone && task.status === 'in_progress' && (
               <Clock className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
