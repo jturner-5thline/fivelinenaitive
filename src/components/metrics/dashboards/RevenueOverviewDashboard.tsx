@@ -468,11 +468,7 @@ function StackedGenericRevenueChart({
   );
 }
 
-export function RevenueQuarterlySection() {
-  const quarterOptions = useMemo(() => buildQuarterOptions(8), []);
-  const [selectedQuarterValue, setSelectedQuarterValue] = useState(() => getCurrentQuarter().value);
-  const selectedQuarter = quarterOptions.find(q => q.value === selectedQuarterValue) ?? quarterOptions[0];
-
+export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: QuarterOption }) {
   const [drilldown, setDrilldown] = useState<DrilldownData | null>(null);
 
   // Stacked Debt Revenue: 5th Line Capital Advisors LLC
@@ -489,26 +485,12 @@ export function RevenueQuarterlySection() {
 
   return (
     <div className="space-y-5">
-      {/* Header with quarter selector */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Revenue Overview</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Monthly revenue by entity · QuickBooks accrual basis · Click bars for detail
-          </p>
-        </div>
-        <Select value={selectedQuarterValue} onValueChange={setSelectedQuarterValue}>
-          <SelectTrigger className="w-[140px] h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {quarterOptions.map(q => (
-              <SelectItem key={q.value} value={q.value} className="text-xs">
-                {q.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Header */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">Revenue Overview</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Monthly revenue by entity · QuickBooks accrual basis · {selectedQuarter.label} · Click bars for detail
+        </p>
       </div>
 
       {/* 3 charts in a row */}
