@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
 import { RevenueQuarterlySection } from './RevenueOverviewDashboard';
 import { PipelineMetricsSection } from './PipelineMetricsSection';
@@ -482,6 +482,10 @@ interface ManagementSnapshotDashboardProps {
   hiddenCards?: EditableManagementSnapshotCardId[];
   gridLayout: GridLayoutItem[];
   onGridLayoutChange: (layout: GridLayoutItem[], immediate?: boolean) => void;
+  /** Global dashboard quarter selection */
+  selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption;
+  onQuarterChange: (value: string) => void;
+  quarterOptions: import('@/hooks/useQBQuarterlyRevenue').QuarterOption[];
   /** Additional widget elements (custom widgets) to include in the same grid */
   children?: React.ReactNode;
 }
@@ -495,6 +499,9 @@ export function ManagementSnapshotDashboard({
   hiddenCards = [],
   gridLayout,
   onGridLayoutChange,
+  selectedQuarter,
+  onQuarterChange,
+  quarterOptions,
   children,
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
