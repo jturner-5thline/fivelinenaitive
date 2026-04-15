@@ -623,16 +623,16 @@ export function ManagementSnapshotDashboard({
       </DraggableGridLayout>
 
       {/* Revenue Quarterly Section */}
-      <RevenueQuarterlySection />
+      <RevenueQuarterlySection selectedQuarter={selectedQuarter} />
 
       {/* Pipeline Metrics Section */}
-      <PipelineMetricsSection />
+      <PipelineMetricsSection selectedQuarter={selectedQuarter} />
 
       {/* Signed Deals & AR Section */}
-      <SignedDealsAndARSection />
+      <SignedDealsAndARSection selectedQuarter={selectedQuarter} />
 
       {/* Profit by Entity Section */}
-      <ProfitByEntitySection />
+      <ProfitByEntitySection selectedQuarter={selectedQuarter} />
     </div>
   );
 }
