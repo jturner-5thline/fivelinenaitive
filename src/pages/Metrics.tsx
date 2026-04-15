@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useState, useRef, useMemo, useEffect } from "react";
+import { buildQuarterOptions, getCurrentQuarter, type QuarterOption } from "@/hooks/useQBQuarterlyRevenue";
 import { format, subMonths, subDays, parseISO } from "date-fns";
 import {
   BarChart,
@@ -1414,6 +1415,14 @@ export default function Metrics() {
 
   const isCustomDashboard = selectedDashboard.startsWith('custom-');
   const activeCustomDashboard = customDashboards.find(d => d.id === selectedDashboard);
+
+  // ── Global dashboard quarter selector (Management Snapshot) ──
+  const dashboardQuarterOptions = useMemo(() => buildQuarterOptions(8), []);
+  const [dashboardQuarterValue, setDashboardQuarterValue] = useState(() => getCurrentQuarter().value);
+  const dashboardSelectedQuarter = useMemo(
+    () => dashboardQuarterOptions.find(q => q.value === dashboardQuarterValue) ?? dashboardQuarterOptions[0],
+    [dashboardQuarterOptions, dashboardQuarterValue],
+  );
   const allDashboardOptions = [
     ...DASHBOARD_OPTIONS,
     ...customDashboards.map(d => ({ id: d.id, name: d.name, isFavorite: false })),
