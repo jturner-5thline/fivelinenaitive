@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,6 +10,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem,
   DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { useDealSpaceConversations } from '@/hooks/useDealSpaceConversations';
 import { useDealSpaceDocuments } from '@/hooks/useDealSpaceDocuments';
@@ -25,11 +28,37 @@ interface DealSpaceAskAITabProps {
 type DocumentScope = 'all' | 'financial' | 'transcripts' | 'custom';
 
 const SCOPE_LABELS: Record<DocumentScope, string> = {
-  all: 'All Documents',
+  all: 'All Sources',
   financial: 'Financial Model Only',
   transcripts: 'Transcripts Only',
   custom: 'Custom',
 };
+
+// Source citation chip component
+function SourceCitations({ sources }: { sources?: string[] }) {
+  if (!sources || sources.length === 0) return null;
+
+  return (
+    <Collapsible>
+      <CollapsibleTrigger asChild>
+        <button className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors group">
+          <FileText className="h-3 w-3" />
+          <span>{sources.length} source{sources.length !== 1 ? 's' : ''} referenced</span>
+          <ChevronDown className="h-2.5 w-2.5 transition-transform group-data-[state=open]:rotate-180" />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {sources.map((source, i) => (
+            <Badge key={i} variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-muted/50 font-normal">
+              {source}
+            </Badge>
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents } = useDealSpaceDocuments(dealId);
@@ -48,13 +77,11 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [question, setQuestion] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  // scope and setScope come from useDealSpaceAI hook
   
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const totalDocuments = documents.length + financials.length;
 
-  // Deduplicate conversations by title — keep only the most recent one per unique title
   const deduplicatedConversations = useMemo(() => {
     const seen = new Map<string, typeof conversations[0]>();
     for (const conv of conversations) {
@@ -130,7 +157,7 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     "Generate a full lender-ready memo for this deal",
     "What are the key risks & hurdles for this deal?",
     "Summarize the current lender process & status",
-    "What are the key credit strengths?",
+    "What outstanding items need attention?",
   ];
 
   return (
@@ -143,14 +170,10 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
               Ask AI
             </CardTitle>
             <CardDescription>
-              Ask questions about your uploaded documents and financials
+              Ask questions about this deal's data, documents, and activity
             </CardDescription>
-            <p className="text-[10px] text-muted-foreground/60 mt-1 leading-relaxed">
-              💡 <strong>Ask AI</strong> answers document questions · <strong>Financial AI</strong> (Analysis tab) analyzes your model · <strong>naitive Assistant</strong> (bottom-right) for general help
-            </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Scope filter */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs">
@@ -160,11 +183,11 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuLabel className="text-xs">Document Scope</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs">Source Scope</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuRadioGroup value={scope} onValueChange={(v) => setScope(v as DocumentScope)}>
                   <DropdownMenuRadioItem value="all" className="text-xs">
-                    All Documents ({totalDocuments})
+                    All Sources
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="financial" className="text-xs">
                     Financial Model Only ({financials.length})
@@ -178,7 +201,7 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
 
             {totalDocuments > 0 && (
               <Badge variant="secondary" className="text-xs">
-                {totalDocuments} file{totalDocuments !== 1 ? 's' : ''} indexed
+                {totalDocuments} file{totalDocuments !== 1 ? 's' : ''}
               </Badge>
             )}
             <Button
@@ -190,6 +213,13 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
               History
             </Button>
           </div>
+        </div>
+        {/* Info banner */}
+        <div className="flex items-start gap-2 mt-2 p-2 rounded-md bg-muted/40 border border-border/50">
+          <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Ask AI analyzes <strong>lender statuses</strong>, <strong>deal notes</strong>, <strong>data room documents</strong>, <strong>outstanding items</strong>, <strong>call transcripts</strong>, and <strong>deal details</strong> to answer your questions.
+          </p>
         </div>
         {/* Active scope indicator */}
         {scope !== 'all' && (
@@ -235,25 +265,28 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-8">
                 <Bot className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-2">
                   {totalDocuments === 0 
-                    ? "Upload documents or financials to start"
-                    : "Ask questions about your documents"
+                    ? "Ask about lender statuses, notes, deal activity, and more"
+                    : "Ask questions about your deal data and documents"
                   }
                 </p>
-                {totalDocuments > 0 && (
-                  <div className="space-y-2 w-full max-w-sm">
-                    {suggestedQuestions.map((q, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setQuestion(q)}
-                        className="w-full text-left text-sm p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
+                {totalDocuments === 0 && (
+                  <p className="text-[11px] text-muted-foreground/60 mb-4 max-w-xs">
+                    No documents uploaded yet — but Ask AI can still analyze deal details, lender statuses, notes, outstanding items, and activity logs.
+                  </p>
                 )}
+                <div className="space-y-2 w-full max-w-sm">
+                  {suggestedQuestions.map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setQuestion(q)}
+                      className="w-full text-left text-sm p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="space-y-4 pr-4">
@@ -279,9 +312,12 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
                       )}
                     >
                       {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
-                        </div>
+                        <>
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          </div>
+                          <SourceCitations sources={msg.sources} />
+                        </>
                       ) : (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       )}
@@ -298,8 +334,9 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                       <Bot className="h-4 w-4 text-primary" />
                     </div>
-                    <div className="bg-muted rounded-lg p-3">
+                    <div className="bg-muted rounded-lg p-3 flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-xs text-muted-foreground">Analyzing deal data…</span>
                     </div>
                   </div>
                 )}
@@ -313,13 +350,13 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={totalDocuments === 0 ? "Upload documents first..." : "Ask about your documents..."}
-              disabled={totalDocuments === 0 || isAILoading}
+              placeholder="Ask about this deal..."
+              disabled={isAILoading}
               className="flex-1"
             />
             <Button
               onClick={handleSendQuestion}
-              disabled={!question.trim() || totalDocuments === 0 || isAILoading}
+              disabled={!question.trim() || isAILoading}
             >
               {isAILoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
