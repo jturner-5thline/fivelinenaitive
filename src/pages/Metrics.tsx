@@ -2100,6 +2100,9 @@ export default function Metrics() {
                 cardConfigs={managementSnapshotCardConfigs}
                 gridLayout={snapshotGridLayout}
                 onGridLayoutChange={saveSnapshotGridLayout}
+                selectedQuarter={dashboardSelectedQuarter}
+                onQuarterChange={setDashboardQuarterValue}
+                quarterOptions={dashboardQuarterOptions}
               >
                 {widgets.map((widget) => {
                   const isStat = getWidgetDisplayType(widget) === 'stat';
