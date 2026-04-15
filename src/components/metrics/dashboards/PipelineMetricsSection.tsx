@@ -1,12 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { Loader2, Users, DollarSign, FileCheck, Building2, UserCheck } from 'lucide-react';
 import {
-  buildQuarterOptions,
-  getCurrentQuarter,
   type QuarterOption,
 } from '@/hooks/useQBQuarterlyRevenue';
 import { usePipelineStageMetrics, type StageEntryDeal } from '@/hooks/usePipelineStageMetrics';
@@ -163,11 +161,7 @@ function DrilldownModal({
   );
 }
 
-export function PipelineMetricsSection() {
-  const quarterOptions = useMemo(() => buildQuarterOptions(8), []);
-  const [selectedQuarterValue, setSelectedQuarterValue] = useState(() => getCurrentQuarter().value);
-  const selectedQuarter = quarterOptions.find(q => q.value === selectedQuarterValue) ?? quarterOptions[0];
-
+export function PipelineMetricsSection({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
   const metrics = usePipelineStageMetrics(selectedQuarter);
 
   const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[] } | null>(null);
@@ -238,25 +232,11 @@ export function PipelineMetricsSection() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Pipeline Metrics</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            All metrics filtered by selected period · Click for detail
-          </p>
-        </div>
-        <Select value={selectedQuarterValue} onValueChange={setSelectedQuarterValue}>
-          <SelectTrigger className="w-[140px] h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {quarterOptions.map(q => (
-              <SelectItem key={q.value} value={q.value} className="text-xs">
-                {q.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">Pipeline Metrics</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          All metrics filtered by {selectedQuarter.label} · Click for detail
+        </p>
       </div>
 
       {/* 6 KPI cards in 3-col grid */}

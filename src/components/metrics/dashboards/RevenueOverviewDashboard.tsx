@@ -1,6 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -12,8 +11,6 @@ import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar'
 import { useQBStackedDebtRevenue, STACKED_CATEGORIES, type StackedDebtMonth } from '@/hooks/useQBStackedDebtRevenue';
 import { useQBStackedFinServRevenue, FINSERV_STACKED_CATEGORIES, type StackedFinServMonth } from '@/hooks/useQBStackedFinServRevenue';
 import {
-  buildQuarterOptions,
-  getCurrentQuarter,
   useQBQuarterlyRevenue,
   useQBCombinedQuarterlyRevenue,
   type QuarterOption,
@@ -468,11 +465,7 @@ function StackedGenericRevenueChart({
   );
 }
 
-export function RevenueQuarterlySection() {
-  const quarterOptions = useMemo(() => buildQuarterOptions(8), []);
-  const [selectedQuarterValue, setSelectedQuarterValue] = useState(() => getCurrentQuarter().value);
-  const selectedQuarter = quarterOptions.find(q => q.value === selectedQuarterValue) ?? quarterOptions[0];
-
+export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: QuarterOption }) {
   const [drilldown, setDrilldown] = useState<DrilldownData | null>(null);
 
   // Stacked Debt Revenue: 5th Line Capital Advisors LLC
@@ -489,26 +482,12 @@ export function RevenueQuarterlySection() {
 
   return (
     <div className="space-y-5">
-      {/* Header with quarter selector */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Revenue Overview</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Monthly revenue by entity · QuickBooks accrual basis · Click bars for detail
-          </p>
-        </div>
-        <Select value={selectedQuarterValue} onValueChange={setSelectedQuarterValue}>
-          <SelectTrigger className="w-[140px] h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {quarterOptions.map(q => (
-              <SelectItem key={q.value} value={q.value} className="text-xs">
-                {q.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Header */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">Revenue Overview</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Monthly revenue by entity · QuickBooks accrual basis · {selectedQuarter.label} · Click bars for detail
+        </p>
       </div>
 
       {/* 3 charts in a row */}

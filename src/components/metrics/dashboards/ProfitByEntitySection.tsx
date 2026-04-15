@@ -134,16 +134,17 @@ function ProfitBarChart({
   );
 }
 
-export function ProfitByEntitySection() {
-  const debt = useMonthlyEntityProfit('5th Line Capital Advisors, LLC', 3);
-  const finserv = useMonthlyEntityProfit('5th Line Financial Services, LLC', 3);
+export function ProfitByEntitySection({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
+  const monthCount = selectedQuarter.months.length;
+  const debt = useMonthlyEntityProfit('5th Line Capital Advisors, LLC', monthCount);
+  const finserv = useMonthlyEntityProfit('5th Line Financial Services, LLC', monthCount);
 
   return (
     <div className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold text-foreground">Profit by Entity</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Rolling last 3 months · QuickBooks operating profit
+          Last {monthCount} completed months · {selectedQuarter.label} · QuickBooks operating profit
         </p>
       </div>
 

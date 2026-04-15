@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
 import { RevenueQuarterlySection } from './RevenueOverviewDashboard';
 import { PipelineMetricsSection } from './PipelineMetricsSection';
@@ -7,7 +7,8 @@ import { ProfitByEntitySection } from './ProfitByEntitySection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Pencil, ChevronDown, Loader2, Trash2, TrendingUp } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar, Lock, Pencil, ChevronDown, Loader2, Trash2, TrendingUp } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, BarChart, LineChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Cell, ReferenceLine, LabelList } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { Button } from '@/components/ui/button';
@@ -482,6 +483,10 @@ interface ManagementSnapshotDashboardProps {
   hiddenCards?: EditableManagementSnapshotCardId[];
   gridLayout: GridLayoutItem[];
   onGridLayoutChange: (layout: GridLayoutItem[], immediate?: boolean) => void;
+  /** Global dashboard quarter selection */
+  selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption;
+  onQuarterChange: (value: string) => void;
+  quarterOptions: import('@/hooks/useQBQuarterlyRevenue').QuarterOption[];
   /** Additional widget elements (custom widgets) to include in the same grid */
   children?: React.ReactNode;
 }
@@ -495,6 +500,9 @@ export function ManagementSnapshotDashboard({
   hiddenCards = [],
   gridLayout,
   onGridLayoutChange,
+  selectedQuarter,
+  onQuarterChange,
+  quarterOptions,
   children,
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
@@ -575,6 +583,31 @@ export function ManagementSnapshotDashboard({
 
   return (
     <div className="space-y-6">
+      {/* Global Dashboard Period Selector */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Management Snapshot</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            All sections synchronized to the selected period
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Select value={selectedQuarter.value} onValueChange={onQuarterChange}>
+            <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {quarterOptions.map(q => (
+                <SelectItem key={q.value} value={q.value} className="text-xs">
+                  {q.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <DraggableGridLayout
         layout={gridLayout}
         onLayoutChange={onGridLayoutChange}
@@ -616,16 +649,16 @@ export function ManagementSnapshotDashboard({
       </DraggableGridLayout>
 
       {/* Revenue Quarterly Section */}
-      <RevenueQuarterlySection />
+      <RevenueQuarterlySection selectedQuarter={selectedQuarter} />
 
       {/* Pipeline Metrics Section */}
-      <PipelineMetricsSection />
+      <PipelineMetricsSection selectedQuarter={selectedQuarter} />
 
       {/* Signed Deals & AR Section */}
-      <SignedDealsAndARSection />
+      <SignedDealsAndARSection selectedQuarter={selectedQuarter} />
 
       {/* Profit by Entity Section */}
-      <ProfitByEntitySection />
+      <ProfitByEntitySection selectedQuarter={selectedQuarter} />
     </div>
   );
 }
