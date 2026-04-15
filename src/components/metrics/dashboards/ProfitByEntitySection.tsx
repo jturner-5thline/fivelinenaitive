@@ -68,7 +68,7 @@ function ProfitBarChart({
           <p className={`text-lg font-semibold tabular-nums ${total < 0 ? 'text-red-400' : 'text-foreground'}`}>
             {formatCurrency(total)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Last 3 Months</p>
+          <p className="text-[10px] text-muted-foreground">{months.length} Months</p>
         </div>
       </CardHeader>
       <CardContent>

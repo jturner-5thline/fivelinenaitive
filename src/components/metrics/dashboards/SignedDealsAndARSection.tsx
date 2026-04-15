@@ -61,7 +61,7 @@ function SignedBarChart({
         </div>
         <div className="text-right">
           <p className="text-lg font-bold text-foreground">{total}</p>
-          <p className="text-[10px] text-muted-foreground">Last 6 Months</p>
+          <p className="text-[10px] text-muted-foreground">{months.length} Months</p>
         </div>
       </CardHeader>
       <CardContent>
