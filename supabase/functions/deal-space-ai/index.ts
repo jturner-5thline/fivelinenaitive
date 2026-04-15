@@ -150,6 +150,7 @@ CRITICAL FORMATTING RULES — every response MUST follow this structure:
 - Use **bold** for key terms, labels, and emphasis within bullets.
 - NEVER output plain paragraphs when the content has multiple items — always use headings and lists.
 - Omit a section entirely if there is genuinely no data; do NOT hallucinate content.
+- CURRENCY FORMATTING: Always format dollar amounts using abbreviated notation: $6MM instead of $6,000,000, $15MM instead of $15,000,000, $1.5MM instead of $1,500,000, $500K instead of $500,000. Use K for thousands, MM for millions, B for billions.
 `;
 
 const MEMO_TEMPLATE_INSTRUCTIONS = `

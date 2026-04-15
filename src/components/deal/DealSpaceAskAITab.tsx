@@ -187,7 +187,9 @@ IMPORTANT INSTRUCTIONS:
 
 - For USE OF FUNDS: Pull from the deal write-up use_of_funds field.
 
-- For the data room link: Use the data_room_url from the write-up if available, otherwise note that a link should be inserted.`;
+- For the data room link: Use the data_room_url from the write-up if available, otherwise note that a link should be inserted.
+
+- CURRENCY FORMATTING: Always format dollar amounts using abbreviated notation: $6MM instead of $6,000,000, $15MM instead of $15,000,000, $1.5MM instead of $1,500,000, $500K instead of $500,000. Use K for thousands, MM for millions, B for billions.`;
 
   const handleDraftSubmission = useCallback(() => {
     setQuestion('');
