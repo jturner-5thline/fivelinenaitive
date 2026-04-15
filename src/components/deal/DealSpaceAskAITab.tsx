@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -153,6 +153,57 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     setIsHistoryOpen(false);
   }, [clearMessages]);
 
+  const DRAFT_SUBMISSION_PROMPT = `Draft a lender submission email using this exact template. Fill in ALL bracketed fields using the deal data available to you:
+
+Hi [LENDER NAME],
+
+There's a deal we're working on I wanted to send your way:
+
+[COMPANY NAME] is [Insert a one-paragraph company overview using the deal write-up description, memo narrative, pitch deck content, or call notes]
+
+The Company is seeking [DEAL SIZE from deal value] to [USE OF FUNDS from the deal write-up]
+
+I've attached the credit file [Include the data_room_url from the write-up as a hyperlink if available]. Inside, you'll find:
+
+A Deal Overview summarizing the company and the transaction ask along with the financials & supporting information.
+
+Let us know your initial thoughts or feedback!
+
+Thank you,
+
+IMPORTANT INSTRUCTIONS:
+
+- For LENDER NAME: Generate one version for each ACTIVE lender on this deal. If there are multiple active lenders, produce a separate email for each one.
+
+- For COMPANY NAME: Use the company name from the deal record.
+
+- For the company overview paragraph: Pull from the deal write-up description, memo narrative, company highlights, or any uploaded pitch deck / call notes. Keep it to one concise paragraph.
+
+- For DEAL SIZE: Use the deal value.
+
+- For USE OF FUNDS: Pull from the deal write-up use_of_funds field.
+
+- For the data room link: Use the data_room_url from the write-up if available, otherwise note that a link should be inserted.`;
+
+  const handleDraftSubmission = useCallback(() => {
+    setQuestion('');
+    sendMessage(DRAFT_SUBMISSION_PROMPT);
+    
+    (async () => {
+      let conversationId = selectedConversationId;
+      if (!conversationId) {
+        const newConvo = await createConversation('Draft Submission Email');
+        if (newConvo) {
+          conversationId = newConvo.id;
+          setSelectedConversationId(conversationId);
+        }
+      }
+      if (conversationId) {
+        await saveMessage(conversationId, 'user', DRAFT_SUBMISSION_PROMPT);
+      }
+    })();
+  }, [sendMessage, selectedConversationId, createConversation, saveMessage]);
+
   const suggestedQuestions = [
     "Generate a full lender-ready memo for this deal",
     "What are the key risks & hurdles for this deal?",
@@ -277,6 +328,14 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
                   </p>
                 )}
                 <div className="space-y-2 w-full max-w-sm">
+                  <button
+                    onClick={handleDraftSubmission}
+                    disabled={isAILoading}
+                    className="w-full text-left text-sm p-3 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-colors flex items-center gap-2.5 font-medium text-primary disabled:opacity-50"
+                  >
+                    <Mail className="h-4 w-4 flex-shrink-0" />
+                    Draft Submission Email
+                  </button>
                   {suggestedQuestions.map((q, i) => (
                     <button
                       key={i}
