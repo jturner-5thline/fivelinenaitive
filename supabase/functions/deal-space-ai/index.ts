@@ -416,6 +416,23 @@ async function buildDealContext(supabase: any, dealId: string, opts?: { includeD
   const transcripts = transcriptsResult.data || [];
   const checklistItems = checklistResult.data || [];
 
+  // Fetch contact names from master_lenders for lender contact resolution
+  let lenderContactMap: Record<string, string> = {};
+  if (lenders.length > 0) {
+    const lenderNames = lenders.map((l: any) => l.name).filter(Boolean);
+    if (lenderNames.length > 0) {
+      const { data: masterLenders } = await supabase
+        .from("master_lenders")
+        .select("name, contact_name")
+        .in("name", lenderNames);
+      if (masterLenders) {
+        for (const ml of masterLenders) {
+          if (ml.contact_name) lenderContactMap[ml.name] = ml.contact_name;
+        }
+      }
+    }
+  }
+
   // Track sources used
   const sourcesUsed: SourceRef[] = [];
 
@@ -505,6 +522,7 @@ ${flagNotes.map((n: any) => `- [${fmtDate(n.created_at)}] ${n.note}`).join('\n')
     lendersInfo = `
 **LENDERS (${lenders.length} total — ${activeLenders.length} active, ${passedLenders.length} passed):**
 ${lenders.map((l: any, i: number) => `${i + 1}. ${l.name}
+   - Contact: ${lenderContactMap[l.name] || 'N/A'}
    - Stage: ${l.stage || 'N/A'}${l.substage ? ` / ${l.substage}` : ''}
    - Status: ${l.tracking_status || 'Active'}
    ${l.quote_amount ? `- Quote: ${fmt(l.quote_amount)}${l.quote_rate ? ` @ ${l.quote_rate}%` : ''}${l.quote_term ? ` / ${l.quote_term}` : ''}` : ''}
