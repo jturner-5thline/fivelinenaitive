@@ -173,7 +173,11 @@ Thank you,
 
 IMPORTANT INSTRUCTIONS:
 
-- For LENDER NAME: Generate one version for each ACTIVE lender on this deal. If there are multiple active lenders, produce a separate email for each one.
+- Do NOT include any (Source:...) citations or source references in the email output. The email should be clean and ready to send.
+
+- Format the email with proper spacing: add a blank line between each paragraph/section of the email for readability. Use markdown line breaks (two newlines) between the greeting, the intro line, the company overview paragraph, the deal size line, the credit file line, the sign-off, etc.
+
+- For LENDER NAME: Use the FIRST NAME of the contact person associated with that lender. Look at the lender's contact information or contact name field. If the contact name is 'John Smith', use 'John'. If no contact first name is available, fall back to the lender institution name. Generate one version for each ACTIVE lender on this deal. If there are multiple active lenders, produce a separate email for each one.
 
 - For COMPANY NAME: Use the company name from the deal record.
 
