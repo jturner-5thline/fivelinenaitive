@@ -328,6 +328,14 @@ IMPORTANT INSTRUCTIONS:
                   </p>
                 )}
                 <div className="space-y-2 w-full max-w-sm">
+                  <button
+                    onClick={handleDraftSubmission}
+                    disabled={isAILoading}
+                    className="w-full text-left text-sm p-3 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-colors flex items-center gap-2.5 font-medium text-primary disabled:opacity-50"
+                  >
+                    <Mail className="h-4 w-4 flex-shrink-0" />
+                    Draft Submission Email
+                  </button>
                   {suggestedQuestions.map((q, i) => (
                     <button
                       key={i}
