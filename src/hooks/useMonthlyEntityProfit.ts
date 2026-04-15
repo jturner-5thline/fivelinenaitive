@@ -19,25 +19,23 @@ export interface ProfitMonthBucket {
   profit: number;
 }
 
-function buildMonthBuckets(n: number): { label: string; key: string; start: string; end: string }[] {
-  const now = new Date();
-  const buckets: { label: string; key: string; start: string; end: string }[] = [];
-  for (let i = n; i >= 1; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const endDate = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = d.toLocaleDateString('en-US', { month: 'short' }) + ' ' + String(d.getFullYear()).slice(2);
-    buckets.push({ label, key, start: `${key}-01`, end: `${key}-${endDate.getDate()}` });
-  }
-  return buckets;
+export type MonthDef = { key: string; label: string; start: string; end: string };
+
+function toMonthBuckets(months: MonthDef[]): { label: string; key: string; start: string; end: string }[] {
+  return months.map(m => ({
+    label: m.label + ' ' + m.key.slice(2, 4),
+    key: m.key,
+    start: m.start,
+    end: m.end,
+  }));
 }
 
-export function useMonthlyEntityProfit(entityName: string, monthsBack = 3) {
+export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthDef[]) {
   const { user } = useAuth();
   const realmId = ENTITY_REALM_MAP[entityName];
-  const buckets = useMemo(() => buildMonthBuckets(monthsBack), [monthsBack]);
-  const startDate = buckets[0].start;
-  const endDate = buckets[buckets.length - 1].end;
+  const buckets = useMemo(() => toMonthBuckets(quarterMonths), [quarterMonths]);
+  const startDate = buckets[0]?.start ?? '';
+  const endDate = buckets[buckets.length - 1]?.end ?? '';
 
   // Fetch revenue (invoices)
   const { data: invoices, isLoading: loadingRev } = useQuery({

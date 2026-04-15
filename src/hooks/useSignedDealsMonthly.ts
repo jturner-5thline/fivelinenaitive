@@ -17,34 +17,26 @@ export interface MonthBucket {
   deals: StageEntryDeal[];
 }
 
-/** Build last N month buckets ending with the current month, oldest first. */
-function buildMonthBuckets(n: number): { label: string; key: string; start: string; end: string }[] {
-  const now = new Date();
-  const buckets: { label: string; key: string; start: string; end: string }[] = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const endDate = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = d.toLocaleDateString('en-US', { month: 'short' }) + ' ' + String(d.getFullYear()).slice(2);
-    buckets.push({
-      label,
-      key,
-      start: `${key}-01`,
-      end: `${key}-${endDate.getDate()}`,
-    });
-  }
-  return buckets;
+type MonthDef = { key: string; label: string; start: string; end: string };
+
+function toMonthBuckets(months: MonthDef[]): { label: string; key: string; start: string; end: string }[] {
+  return months.map(m => ({
+    label: m.label + ' ' + m.key.slice(2, 4),
+    key: m.key,
+    start: m.start,
+    end: m.end,
+  }));
 }
 
 function useStageEntryMonthlySeries(
   targetStage: string,
   pipelineId: string,
-  monthCount = 6,
+  quarterMonths: MonthDef[],
 ) {
   const { user } = useAuth();
-  const buckets = useMemo(() => buildMonthBuckets(monthCount), [monthCount]);
-  const startDate = buckets[0].start;
-  const endDate = buckets[buckets.length - 1].end;
+  const buckets = useMemo(() => toMonthBuckets(quarterMonths), [quarterMonths]);
+  const startDate = buckets[0]?.start ?? '';
+  const endDate = buckets[buckets.length - 1]?.end ?? '';
 
   const { data, isLoading } = useQuery({
     queryKey: ['stage-entry-monthly', targetStage, pipelineId, startDate, endDate],
@@ -110,10 +102,10 @@ function useStageEntryMonthlySeries(
   }, [data, isLoading, buckets, pipelineId]);
 }
 
-export function useDealsSignedMonthlySeries(monthCount = 6) {
-  return useStageEntryMonthlySeries(FINAL_CREDIT_ITEMS_STAGE, ACTIVE_PIPELINE_ID, monthCount);
+export function useDealsSignedMonthlySeries(quarterMonths: MonthDef[]) {
+  return useStageEntryMonthlySeries(FINAL_CREDIT_ITEMS_STAGE, ACTIVE_PIPELINE_ID, quarterMonths);
 }
 
-export function useFinServClientsSignedMonthlySeries(monthCount = 6) {
-  return useStageEntryMonthlySeries(FS_ACTIVE_CLIENT_STAGE, FINSERV_PIPELINE_ID, monthCount);
+export function useFinServClientsSignedMonthlySeries(quarterMonths: MonthDef[]) {
+  return useStageEntryMonthlySeries(FS_ACTIVE_CLIENT_STAGE, FINSERV_PIPELINE_ID, quarterMonths);
 }
