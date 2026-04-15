@@ -96,7 +96,7 @@ export function useUserPermissions() {
 
   return {
     permissions,
-    hasPermission: (key: keyof UserPermissionState) => permissions[key] ?? true,
+    hasPermission: (key: keyof UserPermissionState) => permissions[key] ?? false,
     canAccessChatWidget: permissions.chatWidget,
     canExport: permissions.canExport,
     canBulkEdit: permissions.canBulkEdit,
