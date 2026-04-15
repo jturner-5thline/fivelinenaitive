@@ -155,6 +155,8 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
 
   const DRAFT_SUBMISSION_PROMPT = `Draft a lender submission email using this exact template. Fill in ALL bracketed fields using the deal data available to you:
 
+**Subject:** [COMPANY NAME] | [LENDER INSTITUTION NAME] - New Deal [DEAL AMOUNT]
+
 Hi [LENDER NAME],
 
 There's a deal we're working on I wanted to send your way:
@@ -175,7 +177,9 @@ IMPORTANT INSTRUCTIONS:
 
 - Do NOT include any (Source:...) citations or source references in the email output. The email should be clean and ready to send.
 
-- Format the email with proper spacing: add a blank line between each paragraph/section of the email for readability. Use markdown line breaks (two newlines) between the greeting, the intro line, the company overview paragraph, the deal size line, the credit file line, the sign-off, etc.
+- Format the email with proper spacing: add a blank line between each paragraph/section of the email for readability. Use markdown line breaks (two newlines) between the subject line, the greeting, the intro line, the company overview paragraph, the deal size line, the credit file line, the sign-off, etc.
+
+- SUBJECT LINE: Output a subject line at the very top of each email in this format: **Subject:** [COMPANY NAME] | [LENDER INSTITUTION NAME] - New Deal [DEAL AMOUNT]. The COMPANY NAME is the deal company name. The LENDER INSTITUTION NAME is the full lender institution/company name (not the contact first name). The DEAL AMOUNT uses abbreviated currency format. Separate the subject line from the greeting with a blank line.
 
 - For LENDER NAME: Use the FIRST NAME of the contact person associated with that lender. Look at the lender's contact information or contact name field. If the contact name is 'John Smith', use 'John'. If no contact first name is available, fall back to the lender institution name. Generate one version for each ACTIVE lender on this deal. If there are multiple active lenders, produce a separate email for each one.
 
