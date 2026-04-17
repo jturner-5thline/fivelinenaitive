@@ -143,13 +143,17 @@ export function aggregateDailyToWeekly(daily: DailyData | null | undefined): Wee
       netChange = totalReceipts - totalDisb + totalTransfers;
     }
 
+    // Ending Cash = Beginning Cash + Net Change (enforced)
+    const computedEndCash = Math.round(beginCash + netChange);
+    const addlLiquidity = mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey]?.values?.[weekStart] || 0) : 0;
+
     weekly[weekKey] = {
       week_num: weekNum,
       week_ending: endDate,
       "BEGINNING CASH": beginCash,
-      "ENDING CASH": endCash,
-      "Add'l Liquidity (Delayed Draw)": mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey]?.values?.[weekStart] || 0) : 0,
-      "TOTAL CASH ON HAND": endCash + (mtBalanceBeginKey ? Math.round(rows[mtBalanceBeginKey]?.values?.[weekStart] || 0) : 0),
+      "ENDING CASH": computedEndCash,
+      "Add'l Liquidity (Delayed Draw)": addlLiquidity,
+      "TOTAL CASH ON HAND": computedEndCash + addlLiquidity,
       "Revenue Deposits": Math.round(revDeposits),
       "Customer Payments": Math.round(custPay),
       "Consulting Fees": Math.round(consulting),
