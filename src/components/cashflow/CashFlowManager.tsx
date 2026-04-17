@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import type {
   DailyData, WeeklyData, SidebarData, RecurringTag,
   PlanSnapshot, UndoSnapshot, ActivityLogEntry, ExportArchiveEntry,
-  ExportFlag, RoleMode, ActiveTab, ThemeMode,
+  ExportFlag, RoleMode, ActiveTab, ThemeMode, WeeklyOverrides,
 } from './types';
 import {
   SEED_SIDEBAR_DATA,
@@ -231,7 +231,7 @@ export function CashFlowManager() {
       try {
         const { data, error } = await supabase
           .from('cash_flow_imports' as any)
-          .select('daily_data, recurring_tags')
+          .select('daily_data, recurring_tags, weekly_overrides')
           .eq('company_id', company.id)
           .maybeSingle();
 
@@ -245,6 +245,10 @@ export function CashFlowManager() {
           const rt = (data as any).recurring_tags;
           if (Array.isArray(rt)) {
             setRecurringTags(rt);
+          }
+          const wo = (data as any).weekly_overrides;
+          if (wo && typeof wo === 'object' && !Array.isArray(wo)) {
+            setWeeklyOverrides(wo as WeeklyOverrides);
           }
         }
       } catch (err) {
@@ -398,6 +402,7 @@ export function CashFlowManager() {
   const [role, setRole] = useState<RoleMode>('admin');
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [recurringTags, setRecurringTags] = useState<RecurringTag[]>([]);
+  const [weeklyOverrides, setWeeklyOverrides] = useState<WeeklyOverrides>({});
 
   // Auto-save daily data + recurring tags to DB when they change (debounced)
   useEffect(() => {
@@ -412,6 +417,7 @@ export function CashFlowManager() {
             company_id: company.id,
             daily_data: dailyData,
             recurring_tags: recurringTags,
+            weekly_overrides: weeklyOverrides,
             updated_at: new Date().toISOString(),
           } as any, { onConflict: 'company_id' });
       } catch (err) {
@@ -422,7 +428,7 @@ export function CashFlowManager() {
     return () => {
       if (dailySaveTimerRef.current) clearTimeout(dailySaveTimerRef.current);
     };
-  }, [company?.id, dailyData, recurringTags, role]);
+  }, [company?.id, dailyData, recurringTags, weeklyOverrides, role]);
 
   // Date filter with debounce
   const [filterYears, setFilterYears] = useState<string[]>([]);
@@ -456,7 +462,46 @@ export function CashFlowManager() {
 
   // Data accessors — stable references (use enhancedDailyData so cash-in items flow through)
   const rawDaily = useMemo(() => normalizeDailyData(role === 'viewer' && sandboxDaily ? sandboxDaily : enhancedDailyData), [role, sandboxDaily, enhancedDailyData]);
-  const rawWeekly = useMemo(() => normalizeWeeklyData(aggregateDailyToWeekly(rawDaily)), [rawDaily]);
+  const computedWeekly = useMemo(() => normalizeWeeklyData(aggregateDailyToWeekly(rawDaily)), [rawDaily]);
+
+  // Apply per-week Beginning/Ending Cash overrides on top of computed weekly values.
+  // Precedence: override > computed. When only Beginning is overridden, Ending is
+  // recomputed as overrideBegin + NET CHANGE so the same-week identity holds.
+  // Total Cash on Hand follows the resolved Ending Cash + Add'l Liquidity.
+  const rawWeekly = useMemo<WeeklyData>(() => {
+    if (!weeklyOverrides || Object.keys(weeklyOverrides).length === 0) return computedWeekly;
+    const out: WeeklyData = {};
+    for (const [key, entry] of Object.entries(computedWeekly)) {
+      const ov = weeklyOverrides[key];
+      if (!ov || (ov.beginningCash === undefined && ov.endingCash === undefined)) {
+        out[key] = entry;
+        continue;
+      }
+      const baseBegin = (entry['BEGINNING CASH'] as number) || 0;
+      const baseEnd = (entry['ENDING CASH'] as number) || 0;
+      const netChange = (entry['NET CHANGE'] as number) || 0;
+      const addl = (entry["Add'l Liquidity (Delayed Draw)"] as number) || 0;
+
+      const resolvedBegin = ov.beginningCash !== undefined ? ov.beginningCash : baseBegin;
+      let resolvedEnd: number;
+      if (ov.endingCash !== undefined) {
+        resolvedEnd = ov.endingCash;
+      } else if (ov.beginningCash !== undefined) {
+        resolvedEnd = Math.round(resolvedBegin + netChange);
+      } else {
+        resolvedEnd = baseEnd;
+      }
+
+      out[key] = {
+        ...entry,
+        'BEGINNING CASH': resolvedBegin,
+        'ENDING CASH': resolvedEnd,
+        'TOTAL CASH ON HAND': resolvedEnd + addl,
+      };
+    }
+    return out;
+  }, [computedWeekly, weeklyOverrides]);
+
   const rawSidebar = useMemo(() => normalizeSidebarData(role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData), [role, sandboxSidebar, sidebarData]);
 
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
@@ -654,6 +699,35 @@ export function CashFlowManager() {
     logAction(`Save plan: ${name}`);
   }, [rawWeekly, logAction]);
 
+  // Set or clear a Beginning/Ending Cash override for a specific week.
+  // Pass `value === null` to clear the override and revert to computed value.
+  const handleWeeklyCashOverride = useCallback(
+    (weekKey: string, field: 'beginningCash' | 'endingCash', value: number | null) => {
+      if (role !== 'admin') return;
+      setWeeklyOverrides(prev => {
+        const next = { ...prev };
+        const current = { ...(next[weekKey] || {}) };
+        if (value === null || Number.isNaN(value)) {
+          delete current[field];
+        } else {
+          current[field] = Math.round(value);
+        }
+        if (current.beginningCash === undefined && current.endingCash === undefined) {
+          delete next[weekKey];
+        } else {
+          next[weekKey] = current;
+        }
+        return next;
+      });
+      logAction(
+        value === null
+          ? `Clear ${field === 'beginningCash' ? 'Beginning' : 'Ending'} Cash override (${weekKey})`
+          : `Override ${field === 'beginningCash' ? 'Beginning' : 'Ending'} Cash → ${value} (${weekKey})`
+      );
+    },
+    [role, logAction]
+  );
+
   const handleArchive = useCallback((entry: { title: string; flags: ExportFlag[]; notes: string; weekCount: number; dateRange: string }) => {
     setArchiveEntries(prev => [...prev, {
       id: Date.now().toString(),
@@ -833,6 +907,8 @@ export function CashFlowManager() {
       ) : (
         <WeeklyReportTab
           weeklyData={filteredWeekly}
+          weeklyOverrides={weeklyOverrides}
+          onCashOverride={handleWeeklyCashOverride}
           sidebarData={rawSidebar}
           sidebarDbItems={sidebarDbItems}
           theme={theme}

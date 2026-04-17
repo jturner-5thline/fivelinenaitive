@@ -1128,6 +1128,7 @@ export type Database = {
           recurring_tags: Json | null
           row_structure: Json
           updated_at: string
+          weekly_overrides: Json
         }
         Insert: {
           company_id: string
@@ -1139,6 +1140,7 @@ export type Database = {
           recurring_tags?: Json | null
           row_structure?: Json
           updated_at?: string
+          weekly_overrides?: Json
         }
         Update: {
           company_id?: string
@@ -1150,6 +1152,7 @@ export type Database = {
           recurring_tags?: Json | null
           row_structure?: Json
           updated_at?: string
+          weekly_overrides?: Json
         }
         Relationships: [
           {

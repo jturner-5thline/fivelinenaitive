@@ -1,6 +1,6 @@
 import { useState, memo, useCallback } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode } from './types';
+import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
 import { WeeklySidebar } from './WeeklySidebar';
@@ -15,6 +15,8 @@ interface SidebarItem {
 
 interface WeeklyReportTabProps {
   weeklyData: WeeklyData;
+  weeklyOverrides?: WeeklyOverrides;
+  onCashOverride?: (weekKey: string, field: 'beginningCash' | 'endingCash', value: number | null) => void;
   sidebarData: SidebarData;
   sidebarDbItems: SidebarItem[];
   theme: ThemeMode;
@@ -65,12 +67,14 @@ const WEEKLY_ROW_ORDER = [
 ];
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
-  weeklyData, sidebarData, sidebarDbItems, theme, isAdmin,
+  weeklyData, weeklyOverrides, onCashOverride,
+  sidebarData, sidebarDbItems, theme, isAdmin,
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
   onExport, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
   const safeWeeklyData = weeklyData || {};
+  const safeOverrides = weeklyOverrides || {};
   const safeSidebarData: SidebarData = {
     cash_in_next_8_weeks: Array.isArray(sidebarData?.cash_in_next_8_weeks) ? sidebarData.cash_in_next_8_weeks : [],
     notes: Array.isArray(sidebarData?.notes) ? sidebarData.notes : [],
@@ -215,6 +219,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 if (!isTotal && collapsedSections[rowDef.section]) {
                   return null;
                 }
+                const isCashRow = rowDef.key === 'BEGINNING CASH' || rowDef.key === 'ENDING CASH';
+                const overrideField: 'beginningCash' | 'endingCash' | null = isCashRow
+                  ? (rowDef.key === 'BEGINNING CASH' ? 'beginningCash' : 'endingCash')
+                  : null;
                 return (
                   <tr key={rowDef.key} className={isTotal ? 'cf-total-row' : 'cf-indent'}>
                     <td className="cf-label-col">{rowDef.key}</td>
@@ -223,13 +231,48 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                       const displayVal = rowDef.section === 'disbursements' && !isTotal && val > 0 ? -val : val;
                       const planEntry = activePlan?.weeklyData?.[weekKey];
                       const planVal = planEntry ? ((planEntry[rowDef.key] as number) || 0) : null;
+                      const isOverridden = !!(isCashRow && overrideField && safeOverrides[weekKey]?.[overrideField] !== undefined);
+                      const editable = isAdmin && isCashRow && !!onCashOverride;
 
                       return (
                         <td
                           key={weekKey}
-                          className={displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}
+                          className={`${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}${isOverridden ? ' cf-cell-override' : ''}`}
+                          title={isOverridden ? 'Manually overridden — double-click to clear' : (editable ? 'Click to edit' : undefined)}
+                          onDoubleClick={isOverridden && editable && overrideField
+                            ? () => onCashOverride!(weekKey, overrideField, null)
+                            : undefined}
                         >
-                          <div>{fmtAbbrev(displayVal)}</div>
+                          {editable && overrideField ? (
+                            <input
+                              className="cf-cell-input"
+                              defaultValue={val}
+                              type="number"
+                              step="any"
+                              onBlur={(e) => {
+                                const raw = e.currentTarget.value.trim();
+                                if (raw === '') {
+                                  onCashOverride!(weekKey, overrideField, null);
+                                  return;
+                                }
+                                const parsed = Number(raw);
+                                if (!Number.isFinite(parsed)) return;
+                                if (parsed === val && !isOverridden) return;
+                                onCashOverride!(weekKey, overrideField, parsed);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
+                                if (e.key === 'Escape') {
+                                  (e.currentTarget as HTMLInputElement).value = String(val);
+                                  (e.currentTarget as HTMLInputElement).blur();
+                                }
+                              }}
+                              key={`${weekKey}-${val}-${isOverridden ? 'o' : 'c'}`}
+                            />
+                          ) : (
+                            <div>{fmtAbbrev(displayVal)}</div>
+                          )}
+                          {isOverridden && <span className="cf-override-dot" aria-hidden />}
                           {planVal !== null && renderVariance(val, planVal)}
                         </td>
                       );

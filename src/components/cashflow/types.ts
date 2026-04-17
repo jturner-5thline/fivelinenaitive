@@ -106,6 +106,16 @@ export type RoleMode = 'admin' | 'viewer';
 export type ActiveTab = 'daily' | 'weekly';
 export type ThemeMode = 'dark' | 'light';
 
+// Per-week manual overrides for cash position rows.
+// Keyed by week dateKey (same key used in WeeklyData). Each value may
+// override BEGINNING CASH and/or ENDING CASH for that specific week.
+// Precedence: override (if present) > computed value.
+export interface WeeklyCashOverride {
+  beginningCash?: number;
+  endingCash?: number;
+}
+export type WeeklyOverrides = Record<string, WeeklyCashOverride>;
+
 export const SECTION_KEYS = {
   BALANCE_BEGIN: 'balance_begin',
   BALANCE_END: 'balance_end',
