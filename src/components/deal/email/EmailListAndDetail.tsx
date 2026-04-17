@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
 import { AiAssistInlinePanel } from './AiAssistInlinePanel';
+import { AiAssistSidebar } from './AiAssistSidebar';
 import { AiDraftReviewPanel } from './AiDraftReviewPanel';
 import { LinkToDealPopover } from './LinkToDealPopover';
 import { Button } from '@/components/ui/button';
@@ -954,21 +955,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             )}
           </div>
 
-          {/* AI Assist inline panel */}
-          {showAiAssist && (
-            <AiAssistInlinePanel
-              thread={thread}
-              dealId={dealId}
-              onClose={() => setShowAiAssist(false)}
-              onInsertReply={(text) => {
-                handleReply();
-                setTimeout(() => {
-                  const target = getReplyTarget();
-                  setInlineDraft({ to: target.to_email, toName: target.to_name, body: text, subject: `Re: ${thread.subject}`, cc: '', bcc: '', attachments: [], threadId: thread.threadId });
-                }, 100);
-              }}
-            />
-          )}
+          {/* AI Assist sidebar is rendered as a flex sibling at the bottom of this component (see end of return). */}
 
           {/* AI Draft review panel */}
           {showAiDraft && (
@@ -1133,6 +1120,35 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </div>
           )}
         </div>
+
+        {/* AI Assist right-side sidebar — lives inside the email popup border */}
+        {showAiAssist && (
+          <AiAssistSidebar
+            thread={thread}
+            dealId={dealId}
+            dealName={linkedDealName || thread.dealName}
+            onClose={() => setShowAiAssist(false)}
+            onInsertDraft={(subject, body) => {
+              const target = getReplyTarget();
+              const finalSubject = subject?.startsWith('Re:') ? subject : `Re: ${thread.subject}`;
+              // If composer not open yet, open it
+              if (!replyTo) {
+                setReplyTo(target);
+              }
+              setInlineDraft({
+                to: target.to_email,
+                toName: target.to_name,
+                subject: finalSubject,
+                body,
+                cc: inlineDraft?.cc || '',
+                bcc: inlineDraft?.bcc || '',
+                attachments: inlineDraft?.attachments || [],
+                threadId: thread.threadId,
+              });
+              setShowResumeBanner(false);
+            }}
+          />
+        )}
       </div>
 
       {/* Pop-out composer */}
