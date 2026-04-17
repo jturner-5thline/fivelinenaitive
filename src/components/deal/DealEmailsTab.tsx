@@ -1315,47 +1315,81 @@ function InboxSummaryPane({ emails, classifierEntities, orgCtx, onSelectCategory
     return { totalUnread: unread.length, counts };
   }, [emails, classifierEntities, orgCtx]);
 
+  const totalLabel = summary.totalUnread === 1 ? 'unread message' : 'unread messages';
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
   return (
-    <div className="flex-1 flex items-center justify-center px-8 py-12">
-      <div className="w-full max-w-xs space-y-8">
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-            Inbox Summary
-          </p>
-          <p className="text-[11px] text-muted-foreground/60">Select an email to read</p>
+    <div className="flex-1 flex items-start justify-center overflow-auto">
+      <div
+        className="w-full max-w-[360px] px-10 pt-[14vh] pb-16"
+        style={{ fontFeatureSettings: '"ss01", "cv11", "tnum"' }}
+      >
+        {/* Overline — date + context */}
+        <div className="flex items-center gap-2.5 mb-14">
+          <span className="h-px w-6 bg-foreground/20" />
+          <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70 font-medium">
+            {dateLabel}
+          </span>
         </div>
 
-        <div>
-          <p className="text-5xl font-light text-foreground tabular-nums leading-none">
-            {summary.totalUnread}
-          </p>
-          <p className="mt-2 text-[11px] text-muted-foreground/70">
-            unread {summary.totalUnread === 1 ? 'message' : 'messages'}
-          </p>
+        {/* Hero metric */}
+        <div className="mb-3">
+          <div className="flex items-baseline gap-3">
+            <span className="text-[88px] font-extralight text-foreground leading-[0.85] tabular-nums tracking-[-0.04em]">
+              {summary.totalUnread}
+            </span>
+            <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/60 pb-2">
+              {totalLabel}
+            </span>
+          </div>
         </div>
 
-        <div className="space-y-px">
-          {summary.counts.map(c => (
-            <button
-              key={c.key}
-              onClick={() => onSelectCategory(c.key)}
-              className="w-full flex items-baseline justify-between py-1.5 text-left group"
-            >
-              <span className={cn(
-                'text-xs transition-colors',
-                c.count > 0 ? 'text-foreground/80 group-hover:text-foreground' : 'text-muted-foreground/40'
-              )}>
-                {c.label}
-              </span>
-              <span className={cn(
-                'text-xs tabular-nums transition-colors',
-                c.count > 0 ? 'text-foreground/80 group-hover:text-foreground' : 'text-muted-foreground/30'
-              )}>
-                {c.count}
-              </span>
-            </button>
-          ))}
+        {/* Soft accent rule */}
+        <div className="h-px w-12 bg-foreground/15 mb-10 mt-8" />
+
+        {/* Category breakdown — editorial metric list */}
+        <div className="space-y-0">
+          <p className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50 font-medium mb-4">
+            By category
+          </p>
+          {summary.counts.map((c, i) => {
+            const isLast = i === summary.counts.length - 1;
+            const muted = c.count === 0;
+            return (
+              <button
+                key={c.key}
+                onClick={() => onSelectCategory(c.key)}
+                className={cn(
+                  'w-full flex items-baseline justify-between py-3 text-left group transition-colors',
+                  !isLast && 'border-b border-foreground/[0.06]'
+                )}
+              >
+                <span className={cn(
+                  'text-[13px] tracking-tight transition-colors',
+                  muted
+                    ? 'text-muted-foreground/40'
+                    : 'text-foreground/85 group-hover:text-foreground'
+                )}>
+                  {c.label}
+                </span>
+                <span className={cn(
+                  'text-[15px] font-light tabular-nums tracking-tight transition-colors',
+                  muted
+                    ? 'text-muted-foreground/30'
+                    : 'text-foreground/90 group-hover:text-foreground'
+                )}>
+                  {c.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
+
+        {/* Helper text */}
+        <p className="mt-14 text-[11px] text-muted-foreground/45 tracking-tight">
+          Select a message to begin reading.
+        </p>
       </div>
     </div>
   );
