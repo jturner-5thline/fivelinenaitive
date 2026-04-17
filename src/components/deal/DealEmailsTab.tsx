@@ -130,7 +130,77 @@ function isAutoReplyOrNewsletter(email: MockEmail): boolean {
   return false;
 }
 
-export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating }: DealEmailsTabProps) {
+// Footer rendered below the email list to surface pagination state.
+// - Shows a subtle loading row when more pages are auto-loading or being fetched.
+// - Shows a "Load more" button when there are more pages but no auto-load is happening.
+// - Shows an end-of-inbox sentinel when fully loaded.
+// - Includes an IntersectionObserver sentinel that auto-fires onLoadMore on scroll.
+function PaginationFooter({
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
+  isAutoPaginating,
+  totalLoaded,
+}: {
+  onLoadMore?: () => void | Promise<void>;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  isAutoPaginating: boolean;
+  totalLoaded: number;
+}) {
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-trigger onLoadMore when the sentinel scrolls into view (infinite scroll).
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore || isLoadingMore || isAutoPaginating || !onLoadMore) return;
+    const io = new IntersectionObserver((entries) => {
+      const first = entries[0];
+      if (first?.isIntersecting) {
+        onLoadMore();
+      }
+    }, { root: null, rootMargin: '200px', threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, isLoadingMore, isAutoPaginating, onLoadMore]);
+
+  if (isAutoPaginating || isLoadingMore) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground border-t border-border/30">
+        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+        <span>Loading older messages…</span>
+      </div>
+    );
+  }
+
+  if (hasMore && onLoadMore) {
+    return (
+      <>
+        <div ref={sentinelRef} className="h-1" aria-hidden="true" />
+        <div className="flex items-center justify-center py-3 border-t border-border/30">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => onLoadMore()}
+          >
+            Load more older messages
+          </Button>
+        </div>
+      </>
+    );
+  }
+
+  if (totalLoaded > 0) {
+    return (
+      <div className="flex items-center justify-center py-4 text-[11px] text-muted-foreground/60 border-t border-border/30">
+        <span>End of inbox · {totalLoaded.toLocaleString()} messages loaded</span>
+      </div>
+    );
+  }
+
+  return null;
+}
   const navigate = useNavigate();
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
   const [emails, setEmails] = useState<MockEmail[]>(() => {
