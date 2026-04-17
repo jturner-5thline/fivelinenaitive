@@ -1003,7 +1003,20 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               <TooltipContent side="bottom" className="text-xs">AI-powered email analysis</TooltipContent>
             </Tooltip>
 
-
+            {hasUploadableAttachments && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowSendToDataRoom(true)}
+                    className="flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border border-transparent hover:bg-muted/40"
+                  >
+                    <FolderPlus className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />
+                    <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">To Data Room</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Send attachments to a deal's data room</TooltipContent>
+              </Tooltip>
+            )}
 
 
             <LinkToDealPopover
