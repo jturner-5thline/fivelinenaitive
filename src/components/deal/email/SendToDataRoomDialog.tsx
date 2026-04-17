@@ -290,7 +290,7 @@ export function SendToDataRoomDialog({
                 <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 block">
                   Deal
                 </label>
-                <Select value={selectedDealId} onValueChange={setSelectedDealId}>
+                <Select value={selectedDealId} onValueChange={handleUserSelectDeal}>
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Select a deal…" />
                   </SelectTrigger>
