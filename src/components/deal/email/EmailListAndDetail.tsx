@@ -408,11 +408,16 @@ function splitQuotedContent(body: string): { main: string; quoted: string | null
 }
 
 // ─── Thread Message Card ─────────────────────────────────────
-function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: { 
+function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threadId, threadSubject, threadEmails, dealId, dealName }: { 
   email: MockEmail; 
   isLatest: boolean; 
   defaultExpanded: boolean;
   onExpandChange?: (expanded: boolean) => void;
+  threadId: string;
+  threadSubject: string;
+  threadEmails: MockEmail[];
+  dealId?: string;
+  dealName?: string;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showQuoted, setShowQuoted] = useState(false);
@@ -541,7 +546,25 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
 
           {/* Attachments */}
           {hasRealAttachments && (
-            <EmailAttachmentList messageId={email.id} attachments={attachments} />
+            <EmailAttachmentList
+              messageId={email.id}
+              attachments={attachments}
+              sourceEmail={{
+                messageId: email.id,
+                threadId,
+                subject: threadSubject,
+                senderName: email.from_name,
+                senderEmail: email.from_email,
+              }}
+              threadData={{
+                subject: threadSubject,
+                threadId,
+                emails: threadEmails,
+                latestEmail: threadEmails[0] || email,
+              }}
+              linkedDealId={dealId}
+              linkedDealName={dealName}
+            />
           )}
           {showAttachmentsLoading && (
             <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
@@ -1154,6 +1177,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   email={email}
                   isLatest={idx === 0}
                   defaultExpanded={idx === 0 || userExpandedMessages.has(email.id)}
+                  threadId={thread.threadId}
+                  threadSubject={thread.subject}
+                  threadEmails={thread.emails}
+                  dealId={dealId}
+                  dealName={linkedDealName || thread.dealName}
                   onExpandChange={(exp) => {
                     setUserExpandedMessages(prev => {
                       const next = new Set(prev);
@@ -1176,6 +1204,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   email={email}
                   isLatest={false}
                   defaultExpanded={userExpandedMessages.has(email.id)}
+                  threadId={thread.threadId}
+                  threadSubject={thread.subject}
+                  threadEmails={thread.emails}
+                  dealId={dealId}
+                  dealName={linkedDealName || thread.dealName}
                   onExpandChange={(exp) => {
                     setUserExpandedMessages(prev => {
                       const next = new Set(prev);

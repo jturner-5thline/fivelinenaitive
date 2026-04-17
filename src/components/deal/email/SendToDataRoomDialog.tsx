@@ -35,6 +35,10 @@ interface Props {
   initialDealName?: string;
   /** Optional pre-fetched suggestion (so the AI Assist sidebar can hand it off without a re-call). */
   initialSuggestion?: DataRoomDestinationSuggestion | null;
+  /** If provided, only these attachment ids will be pre-included; others default to excluded. */
+  preselectedAttachmentIds?: string[];
+  /** Fires after a successful upload (uploaded > 0). Receives the destination deal name + count. */
+  onUploaded?: (info: { dealName: string; uploaded: number; failed: number }) => void;
 }
 
 function formatBytes(b: number): string {
@@ -54,6 +58,8 @@ export function SendToDataRoomDialog({
   initialDealId,
   initialDealName,
   initialSuggestion,
+  preselectedAttachmentIds,
+  onUploaded,
 }: Props) {
   const { suggest, commitUpload, suggesting, uploading } = useEmailToDataRoom();
   const [suggestion, setSuggestion] = useState<DataRoomDestinationSuggestion | null>(initialSuggestion || null);
@@ -104,14 +110,19 @@ export function SendToDataRoomDialog({
 
   // Apply suggestion → preselect deal + build plan
   useEffect(() => {
+    const preselectSet = preselectedAttachmentIds && preselectedAttachmentIds.length > 0
+      ? new Set(preselectedAttachmentIds)
+      : null;
+    const isPreselected = (att: EmailAttachment) =>
+      !preselectSet || (!!att.id && preselectSet.has(att.id));
+
     if (!suggestion) {
-      // No suggestion yet — initialize a default plan with all files included as 'materials'
       setPlan(
         visibleAttachments.map((a) => ({
           attachment: a,
           desiredName: a.filename || 'attachment',
           category: 'materials',
-          include: true,
+          include: isPreselected(a),
         })),
       );
       return;
@@ -124,16 +135,17 @@ export function SendToDataRoomDialog({
     setPlan(
       visibleAttachments.map((a) => {
         const m = perFileMap.get(a.filename || '');
+        const aiInclude = m?.include ?? true;
         return {
           attachment: a,
           desiredName: a.filename || 'attachment',
           category: m?.category || suggestion.default_category,
-          include: m?.include ?? true,
+          include: preselectSet ? isPreselected(a) : aiInclude,
         };
       }),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suggestion, visibleAttachments]);
+  }, [suggestion, visibleAttachments, preselectedAttachmentIds]);
 
   const selectedDealName =
     deals.find((d) => d.id === selectedDealId)?.company ||
@@ -161,6 +173,11 @@ export function SendToDataRoomDialog({
       plan,
     });
     if (result && result.uploaded > 0) {
+      onUploaded?.({
+        dealName: selectedDealName || 'Data Room',
+        uploaded: result.uploaded,
+        failed: result.failed,
+      });
       onClose();
     }
   };
