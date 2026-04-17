@@ -657,20 +657,20 @@ ${Object.entries(byCategory).map(([cat, items]) => `  ${cat}:\n${(items as strin
       });
     }
 
-    // Limit to 3 smallest text-extractable docs to stay within CPU budget
+    // Limit to 2 smallest plain-text docs to stay within 2s CPU budget.
+    // PDF/DOCX/XLSX/PPTX parsing in-runtime is too CPU-heavy and causes WORKER_RESOURCE_LIMIT.
     const extractableDocs = docsToFetch
       .filter((d: any) => {
         const name = (d.name || '').toLowerCase();
         const ct = (d.content_type || '').toLowerCase();
-        // Skip DOCX (mammoth is unreliable in edge runtime) and large binaries
-        if (name.endsWith('.docx') || name.endsWith('.pptx')) return false;
-        // Only attempt text, CSV, PDF, Excel
-        return ct.includes('text/') || ct.includes('csv') || ct.includes('pdf') || 
-               name.endsWith('.txt') || name.endsWith('.csv') || name.endsWith('.md') ||
-               name.endsWith('.xlsx') || name.endsWith('.pdf');
+        const isText = ct.includes('text/') || ct.includes('csv') || ct.includes('json') ||
+               name.endsWith('.txt') || name.endsWith('.csv') || name.endsWith('.md') || name.endsWith('.json');
+        // Skip files larger than 200KB even if text
+        const sizeOk = !d.size_bytes || d.size_bytes < 200_000;
+        return isText && sizeOk;
       })
       .sort((a: any, b: any) => (a.size_bytes || 0) - (b.size_bytes || 0))
-      .slice(0, 3);
+      .slice(0, 2);
 
     const chunks: string[] = [];
     let totalChars = 0;
