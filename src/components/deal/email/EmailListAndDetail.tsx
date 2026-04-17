@@ -408,11 +408,16 @@ function splitQuotedContent(body: string): { main: string; quoted: string | null
 }
 
 // ─── Thread Message Card ─────────────────────────────────────
-function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: { 
+function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threadId, threadSubject, threadEmails, dealId, dealName }: { 
   email: MockEmail; 
   isLatest: boolean; 
   defaultExpanded: boolean;
   onExpandChange?: (expanded: boolean) => void;
+  threadId: string;
+  threadSubject: string;
+  threadEmails: MockEmail[];
+  dealId?: string;
+  dealName?: string;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showQuoted, setShowQuoted] = useState(false);
