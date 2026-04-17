@@ -1,6 +1,6 @@
 import { useState, memo, useCallback } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode } from './types';
+import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
 import { WeeklySidebar } from './WeeklySidebar';
@@ -15,6 +15,8 @@ interface SidebarItem {
 
 interface WeeklyReportTabProps {
   weeklyData: WeeklyData;
+  weeklyOverrides?: WeeklyOverrides;
+  onCashOverride?: (weekKey: string, field: 'beginningCash' | 'endingCash', value: number | null) => void;
   sidebarData: SidebarData;
   sidebarDbItems: SidebarItem[];
   theme: ThemeMode;
