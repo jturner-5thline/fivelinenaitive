@@ -67,12 +67,14 @@ const WEEKLY_ROW_ORDER = [
 ];
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
-  weeklyData, sidebarData, sidebarDbItems, theme, isAdmin,
+  weeklyData, weeklyOverrides, onCashOverride,
+  sidebarData, sidebarDbItems, theme, isAdmin,
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
   onExport, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
   const safeWeeklyData = weeklyData || {};
+  const safeOverrides = weeklyOverrides || {};
   const safeSidebarData: SidebarData = {
     cash_in_next_8_weeks: Array.isArray(sidebarData?.cash_in_next_8_weeks) ? sidebarData.cash_in_next_8_weeks : [],
     notes: Array.isArray(sidebarData?.notes) ? sidebarData.notes : [],
