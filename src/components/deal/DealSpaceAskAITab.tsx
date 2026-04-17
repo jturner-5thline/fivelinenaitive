@@ -82,7 +82,13 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [question, setQuestion] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  
+
+  // Draft Submission runs as a structured product action — fully decoupled from the chat panel.
+  const [isDraftingEmail, setIsDraftingEmail] = useState(false);
+  const [draftEmailContent, setDraftEmailContent] = useState<string | null>(null);
+  const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  const [hasCopiedDraft, setHasCopiedDraft] = useState(false);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const totalDocuments = documents.length + financials.length;
