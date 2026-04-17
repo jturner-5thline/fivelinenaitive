@@ -907,6 +907,8 @@ export function CashFlowManager() {
       ) : (
         <WeeklyReportTab
           weeklyData={filteredWeekly}
+          weeklyOverrides={weeklyOverrides}
+          onCashOverride={handleWeeklyCashOverride}
           sidebarData={rawSidebar}
           sidebarDbItems={sidebarDbItems}
           theme={theme}
