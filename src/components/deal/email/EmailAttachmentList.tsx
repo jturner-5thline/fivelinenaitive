@@ -60,7 +60,7 @@ export function EmailAttachmentList({ messageId, attachments }: Props) {
 
   return (
     <div className="mt-5">
-      <div className="flex items-center gap-1.5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="flex items-center gap-1.5 mb-2 text-[11px] font-semibold text-[hsl(var(--email-text-secondary))] uppercase tracking-wide">
         <Paperclip className="h-3 w-3" />
         <span>{visible.length} {visible.length === 1 ? 'Attachment' : 'Attachments'}</span>
       </div>
@@ -78,21 +78,21 @@ export function EmailAttachmentList({ messageId, attachments }: Props) {
               onClick={() => handleDownload(att)}
               disabled={isDownloading || !att.id}
               className={cn(
-                'group flex items-center gap-3 p-2.5 rounded-md border border-white/[0.06] bg-card/40 hover:bg-card/70 hover:border-[hsl(var(--outlook-blue)/0.3)] transition-all text-left min-w-0',
+                'group flex items-center gap-3 p-2.5 rounded-md border border-[hsl(var(--email-border))] bg-card/60 hover:bg-card hover:border-[hsl(var(--outlook-blue)/0.4)] transition-all text-left min-w-0',
                 'disabled:opacity-60 disabled:cursor-not-allowed',
               )}
             >
-              <div className="flex items-center justify-center h-9 w-9 rounded bg-muted/40 shrink-0">
-                <Icon className="h-4 w-4 text-foreground/70" />
+              <div className="flex items-center justify-center h-9 w-9 rounded bg-muted/50 shrink-0">
+                <Icon className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-foreground truncate">{att.filename}</div>
-                <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                <div className="text-[13px] font-medium text-[hsl(var(--email-text-primary))] truncate">{att.filename}</div>
+                <div className="text-[11px] text-[hsl(var(--email-text-muted))] flex items-center gap-1.5">
                   <span>{label}</span>
                   {sizeLabel && <><span>·</span><span>{sizeLabel}</span></>}
                 </div>
               </div>
-              <div className="shrink-0 text-muted-foreground/70 group-hover:text-[hsl(var(--outlook-blue))]">
+              <div className="shrink-0 text-[hsl(var(--email-text-muted))] group-hover:text-[hsl(var(--outlook-blue))]">
                 {isDownloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
               </div>
             </button>

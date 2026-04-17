@@ -33,13 +33,13 @@ export function EmailBodyRenderer({ html, text, className }: Props) {
     return (
       <div
         className={cn(
-          'email-html-body text-[14px] leading-[1.7] text-foreground/90 max-w-full',
+          'email-html-body text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))] max-w-full',
           // Tighten up common HTML email patterns so they fit the panel
           '[&_*]:max-w-full [&_img]:h-auto [&_img]:rounded',
           '[&_table]:max-w-full [&_table]:!w-full [&_table]:border-collapse',
           '[&_p]:mb-3 [&_p:last-child]:mb-0',
           '[&_a]:text-[hsl(var(--outlook-blue))] [&_a]:underline [&_a]:underline-offset-2',
-          '[&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground/20 [&_blockquote]:pl-3 [&_blockquote]:my-2 [&_blockquote]:text-muted-foreground/90',
+          '[&_blockquote]:border-l-2 [&_blockquote]:border-[hsl(var(--outlook-blue)/0.35)] [&_blockquote]:pl-3 [&_blockquote]:my-2 [&_blockquote]:text-[hsl(var(--email-text-secondary))]',
           '[&_pre]:whitespace-pre-wrap [&_pre]:bg-muted/30 [&_pre]:p-2 [&_pre]:rounded [&_pre]:text-xs',
           '[&_code]:bg-muted/30 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs',
           'break-words',
@@ -54,7 +54,7 @@ export function EmailBodyRenderer({ html, text, className }: Props) {
   return (
     <div
       className={cn(
-        'text-[14px] leading-[1.7] text-foreground/90 max-w-full break-words',
+        'text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))] max-w-full break-words',
         className,
       )}
       style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
