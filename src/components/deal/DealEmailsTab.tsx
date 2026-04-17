@@ -999,6 +999,16 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onArchive={handleArchiveEmail}
                 onDelete={handleDeleteEmail}
               />
+              {/* Pagination footer: shows Load more, loading, or end-of-inbox */}
+              {(onLoadMore || hasMore || isLoadingMore || isAutoPaginating) && (
+                <PaginationFooter
+                  onLoadMore={onLoadMore}
+                  hasMore={!!hasMore}
+                  isLoadingMore={!!isLoadingMore}
+                  isAutoPaginating={!!isAutoPaginating}
+                  totalLoaded={filteredEmails.length}
+                />
+              )}
             </div>
           </div>
 
