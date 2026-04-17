@@ -609,21 +609,47 @@ CRITICAL RULES:
                         className="h-8 text-xs"
                       />
                     </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="w-16 text-muted-foreground">Subject:</span>
-                      <Input
-                        value={draft.subject}
-                        onChange={(e) => updateActiveDraft({ subject: e.target.value })}
-                        className="h-8 text-xs"
-                      />
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="w-16 text-muted-foreground">Subject:</span>
+                        <Input
+                          value={draft.subject}
+                          onChange={(e) => updateActiveDraft({ subject: e.target.value, isSubjectEdited: true })}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      {(draft.isSubjectEdited || appliedField === 'subject') && emailDrafts.length > 1 && (
+                        <div className="pl-[72px]">
+                          <button
+                            type="button"
+                            onClick={applySubjectToAll}
+                            className="text-[11px] text-primary hover:underline disabled:opacity-60"
+                            disabled={appliedField === 'subject'}
+                          >
+                            {appliedField === 'subject' ? '✓ Applied to all drafts' : 'Apply to all submissions'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1 flex-1 min-h-0">
                       <span className="text-xs text-muted-foreground">Body:</span>
                       <Textarea
                         value={draft.body}
-                        onChange={(e) => updateActiveDraft({ body: e.target.value })}
+                        onChange={(e) => updateActiveDraft({ body: e.target.value, isBodyEdited: true })}
                         className="flex-1 min-h-[260px] text-sm font-sans resize-none"
                       />
+                      {(draft.isBodyEdited || appliedField === 'body') && emailDrafts.length > 1 && (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={applyBodyToAll}
+                            className="text-[11px] text-primary hover:underline disabled:opacity-60"
+                            disabled={appliedField === 'body'}
+                          >
+                            {appliedField === 'body' ? '✓ Applied to all drafts' : 'Apply to all submissions'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       <Badge variant="outline" className="text-[10px] py-0 h-4">
