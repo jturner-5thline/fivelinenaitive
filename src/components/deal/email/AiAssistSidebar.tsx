@@ -233,6 +233,18 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             </div>
           )}
 
+          {/* Lender pass detection card */}
+          {showPassCard && passDetection && (
+            <LenderPassSidebarCard
+              detection={passDetection}
+              committing={passCommitting}
+              autoCommit={passAutoCommit}
+              onSetAutoCommit={setPassAutoCommit}
+              onConfirm={(reason) => confirmPass(reason)}
+              onDismiss={dismissPass}
+            />
+          )}
+
           {/* Result */}
           {!loading && !error && result && (
             <>
