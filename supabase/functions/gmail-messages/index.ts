@@ -12,9 +12,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface MessageRequest {
-  action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state";
+  action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state" | "get_attachment";
   message_id?: string;
   message_ids?: string[];
+  attachment_id?: string;
   to?: string[];
   cc?: string[];
   bcc?: string[];
@@ -24,6 +25,36 @@ interface MessageRequest {
   max_results?: number;
   page_token?: string;
   query?: string;
+}
+
+// Normalize Nylas attachment objects to a consistent shape.
+function normalizeAttachments(raw: any[]): Array<{
+  id: string;
+  filename: string;
+  content_type: string;
+  size: number;
+  is_inline: boolean;
+}> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((a: any) => a && (a.id || a.filename))
+    .map((a: any) => ({
+      id: String(a.id || ""),
+      filename: a.filename || a.name || "attachment",
+      content_type: a.content_type || a.contentType || "application/octet-stream",
+      size: Number(a.size || 0),
+      is_inline: !!(a.is_inline || a.content_disposition === "inline" || a.content_id),
+    }));
+}
+
+function pickBodyHtmlAndText(msg: any): { body_html: string; body_text: string } {
+  // Nylas v3 returns a single `body` field that is usually HTML when available.
+  // Be defensive: accept several shapes.
+  const rawBody = typeof msg.body === "string" ? msg.body : "";
+  const looksHtml = /<\w+[\s\S]*>/.test(rawBody);
+  const html = msg.body_html || (looksHtml ? rawBody : "") || "";
+  const text = msg.body_text || msg.plain_body || (!looksHtml ? rawBody : "") || "";
+  return { body_html: html, body_text: text };
 }
 
 function nylasHeaders() {
@@ -136,19 +167,25 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const items = listData.data || [];
-        const messages = items.map((msg: any) => ({
-          id: msg.id,
-          thread_id: msg.thread_id || msg.id,
-          subject: msg.subject || "",
-          from_email: msg.from?.[0]?.email || "",
-          from_name: msg.from?.[0]?.name || "",
-          to_emails: (msg.to || []).map((t: any) => t.email || ""),
-          snippet: msg.snippet || "",
-          is_read: !msg.unread,
-          is_starred: msg.starred || false,
-          labels: msg.folders || msg.labels || [],
-          received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
-        }));
+        const messages = items.map((msg: any) => {
+          const atts = normalizeAttachments(msg.attachments || msg.files || []);
+          const visibleAtts = atts.filter((a) => !a.is_inline);
+          return {
+            id: msg.id,
+            thread_id: msg.thread_id || msg.id,
+            subject: msg.subject || "",
+            from_email: msg.from?.[0]?.email || "",
+            from_name: msg.from?.[0]?.name || "",
+            to_emails: (msg.to || []).map((t: any) => t.email || ""),
+            snippet: msg.snippet || "",
+            is_read: !msg.unread,
+            is_starred: msg.starred || false,
+            labels: msg.folders || msg.labels || [],
+            received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
+            has_attachments: visibleAtts.length > 0,
+            attachment_count: visibleAtts.length,
+          };
+        });
 
         return new Response(JSON.stringify({
           messages,
@@ -183,6 +220,9 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const msg = msgData.data || msgData;
+        const { body_html, body_text } = pickBodyHtmlAndText(msg);
+        const allAtts = normalizeAttachments(msg.attachments || msg.files || []);
+        const visibleAtts = allAtts.filter((a) => !a.is_inline);
         const message = {
           id: msg.id,
           thread_id: msg.thread_id || msg.id,
@@ -192,12 +232,14 @@ serve(async (req: Request): Promise<Response> => {
           to_emails: (msg.to || []).map((t: any) => t.email || ""),
           cc_emails: (msg.cc || []).map((c: any) => c.email || ""),
           snippet: msg.snippet || "",
-          body_text: msg.body || "",
-          body_html: msg.body || "",
+          body_text,
+          body_html,
           is_read: !msg.unread,
           is_starred: msg.starred || false,
           labels: msg.folders || msg.labels || [],
           received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
+          attachments: visibleAtts,
+          has_attachments: visibleAtts.length > 0,
         };
 
         return new Response(JSON.stringify({ message }), {
@@ -459,6 +501,45 @@ serve(async (req: Request): Promise<Response> => {
         await Promise.all(workers);
 
         return new Response(JSON.stringify({ states }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "get_attachment": {
+        const { message_id, attachment_id } = requestData;
+        if (!message_id || !attachment_id) {
+          return new Response(JSON.stringify({ error: "message_id and attachment_id required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Nylas v3: download attachment binary; we proxy as base64 + content-type
+        const attResponse = await fetch(
+          `${baseUrl}/attachments/${attachment_id}/download?message_id=${encodeURIComponent(message_id)}`,
+          { headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "*/*" } }
+        );
+
+        if (!attResponse.ok) {
+          const errText = await attResponse.text().catch(() => "");
+          return new Response(JSON.stringify({ error: errText || "Failed to download attachment" }), {
+            status: attResponse.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const contentType = attResponse.headers.get("content-type") || "application/octet-stream";
+        const buf = new Uint8Array(await attResponse.arrayBuffer());
+        // Base64-encode for safe JSON transport
+        let binary = "";
+        const chunkSize = 0x8000;
+        for (let i = 0; i < buf.length; i += chunkSize) {
+          binary += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + chunkSize)));
+        }
+        const base64 = btoa(binary);
+
+        return new Response(JSON.stringify({ content_type: contentType, data: base64, size: buf.length }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
