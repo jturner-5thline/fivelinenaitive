@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Copy, Check, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Copy, Check, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, RotateCw } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
@@ -90,9 +90,10 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     to: string;
     subject: string;
     body: string;
-    status: 'draft' | 'approved' | 'sent';
+    status: 'draft' | 'approved' | 'sending' | 'sent' | 'failed';
     isSubjectEdited?: boolean;
     isBodyEdited?: boolean;
+    errorMessage?: string;
   };
   const [isDraftingEmail, setIsDraftingEmail] = useState(false);
   const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
@@ -306,15 +307,71 @@ CRITICAL RULES:
     }
   }, [updateActiveDraft, activeDraftIndex, emailDrafts.length]);
 
-  const handleSendDraft = useCallback(() => {
-    const draft = emailDrafts[activeDraftIndex];
+  // Native in-app send via the connected email account (Nylas-backed).
+  // No mailto:, no external clients — the request is fully handled inside the platform.
+  const sendDraftAtIndex = useCallback(async (index: number) => {
+    const draft = emailDrafts[index];
     if (!draft) return;
-    const to = encodeURIComponent(draft.to || '');
-    const subject = encodeURIComponent(draft.subject || '');
-    const body = encodeURIComponent(draft.body || '');
-    window.open(`mailto:${to}?subject=${subject}&body=${body}`, '_blank');
-    updateActiveDraft({ status: 'sent' });
-  }, [emailDrafts, activeDraftIndex, updateActiveDraft]);
+    const recipient = (draft.to || '').trim();
+    if (!recipient) {
+      setEmailDrafts((prev) => prev.map((d, i) => (
+        i === index ? { ...d, status: 'failed', errorMessage: 'Add a recipient email address before sending.' } : d
+      )));
+      return;
+    }
+    if (!draft.subject?.trim() || !draft.body?.trim()) {
+      setEmailDrafts((prev) => prev.map((d, i) => (
+        i === index ? { ...d, status: 'failed', errorMessage: 'Subject and body are required.' } : d
+      )));
+      return;
+    }
+
+    setEmailDrafts((prev) => prev.map((d, i) => (
+      i === index ? { ...d, status: 'sending', errorMessage: undefined } : d
+    )));
+
+    try {
+      // Convert plain-text body (with \n\n paragraphs) into simple HTML for delivery.
+      const bodyHtml = draft.body
+        .split(/\n{2,}/)
+        .map((para) => `<p>${para.replace(/\n/g, '<br/>').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`)
+        .join('');
+
+      const { data, error } = await supabase.functions.invoke('gmail-messages', {
+        body: {
+          action: 'send',
+          to: [recipient],
+          subject: draft.subject,
+          body: draft.body,
+          body_html: bodyHtml,
+        },
+      });
+      if (error) throw new Error(error.message || 'Send failed');
+      if (data?.error) throw new Error(data.error);
+
+      setEmailDrafts((prev) => prev.map((d, i) => (
+        i === index ? { ...d, status: 'sent', errorMessage: undefined } : d
+      )));
+      toast({ title: 'Email sent', description: `Sent to ${draft.lenderName}` });
+
+      // Auto-advance to next unsent draft, staying inside the modal.
+      setActiveDraftIndex((curr) => {
+        if (curr !== index) return curr;
+        const next = emailDrafts.findIndex((d, i) => i > index && d.status !== 'sent');
+        return next === -1 ? curr : next;
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to send email';
+      setEmailDrafts((prev) => prev.map((d, i) => (
+        i === index ? { ...d, status: 'failed', errorMessage: message } : d
+      )));
+      toast({ title: 'Send failed', description: message, variant: 'destructive' });
+    }
+  }, [emailDrafts]);
+
+  const handleSendDraft = useCallback(() => {
+    void sendDraftAtIndex(activeDraftIndex);
+  }, [sendDraftAtIndex, activeDraftIndex]);
 
   const suggestedQuestions = [
     "Generate a full lender-ready memo for this deal",
@@ -589,6 +646,8 @@ CRITICAL RULES:
                   >
                     {d.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
                     {d.status === 'approved' && <Check className="h-3 w-3" />}
+                    {d.status === 'sending' && <Loader2 className="h-3 w-3 animate-spin" />}
+                    {d.status === 'failed' && <AlertCircle className="h-3 w-3 text-destructive" />}
                     <span>{d.lenderName}</span>
                   </button>
                 ))}
@@ -651,11 +710,38 @@ CRITICAL RULES:
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <Badge variant="outline" className="text-[10px] py-0 h-4">
-                        {draft.status}
-                      </Badge>
-                      <span>Lender: {draft.lenderName}</span>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <Badge
+                          variant={draft.status === 'failed' ? 'destructive' : draft.status === 'sent' ? 'default' : 'outline'}
+                          className="text-[10px] py-0 h-4 gap-1"
+                        >
+                          {draft.status === 'sending' && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+                          {draft.status === 'sent' && <CheckCircle2 className="h-2.5 w-2.5" />}
+                          {draft.status === 'failed' && <AlertCircle className="h-2.5 w-2.5" />}
+                          {draft.status}
+                        </Badge>
+                        <span>Lender: {draft.lenderName}</span>
+                      </div>
+                      {draft.status === 'failed' && draft.errorMessage && (
+                        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1.5 text-[11px] text-destructive">
+                          <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span className="flex-1">{draft.errorMessage}</span>
+                          <button
+                            type="button"
+                            onClick={() => sendDraftAtIndex(activeDraftIndex)}
+                            className="inline-flex items-center gap-1 font-medium hover:underline"
+                          >
+                            <RotateCw className="h-3 w-3" /> Retry
+                          </button>
+                        </div>
+                      )}
+                      {draft.status === 'sent' && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-primary">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>Sent from your connected email account.</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -692,9 +778,30 @@ CRITICAL RULES:
             <Button
               size="sm"
               onClick={handleSendDraft}
-              disabled={isDraftingEmail || emailDrafts.length === 0}
+              disabled={
+                isDraftingEmail ||
+                emailDrafts.length === 0 ||
+                emailDrafts[activeDraftIndex]?.status === 'sending' ||
+                emailDrafts[activeDraftIndex]?.status === 'sent'
+              }
             >
-              <Send className="h-4 w-4 mr-1" /> Send
+              {emailDrafts[activeDraftIndex]?.status === 'sending' ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Sending…
+                </>
+              ) : emailDrafts[activeDraftIndex]?.status === 'sent' ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-1" /> Sent
+                </>
+              ) : emailDrafts[activeDraftIndex]?.status === 'failed' ? (
+                <>
+                  <RotateCw className="h-4 w-4 mr-1" /> Retry send
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-1" /> Send
+                </>
+              )}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setIsDraftDialogOpen(false)}>
               Close
