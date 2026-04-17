@@ -35,6 +35,8 @@ interface Props {
   initialDealName?: string;
   /** Optional pre-fetched suggestion (so the AI Assist sidebar can hand it off without a re-call). */
   initialSuggestion?: DataRoomDestinationSuggestion | null;
+  /** If provided, only these attachment ids will be pre-included; others default to excluded. */
+  preselectedAttachmentIds?: string[];
 }
 
 function formatBytes(b: number): string {
