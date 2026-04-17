@@ -206,24 +206,38 @@ IMPORTANT INSTRUCTIONS:
 
 - CURRENCY FORMATTING: Always format dollar amounts using abbreviated notation: $6MM instead of $6,000,000, $15MM instead of $15,000,000, $1.5MM instead of $1,500,000, $500K instead of $500,000. Use K for thousands, MM for millions, B for billions.`;
 
-  const handleDraftSubmission = useCallback(() => {
-    setQuestion('');
-    sendMessage(DRAFT_SUBMISSION_PROMPT);
-    
-    (async () => {
-      let conversationId = selectedConversationId;
-      if (!conversationId) {
-        const newConvo = await createConversation('Draft Submission Email');
-        if (newConvo) {
-          conversationId = newConvo.id;
-          setSelectedConversationId(conversationId);
-        }
-      }
-      if (conversationId) {
-        await saveMessage(conversationId, 'user', DRAFT_SUBMISSION_PROMPT);
-      }
-    })();
-  }, [sendMessage, selectedConversationId, createConversation, saveMessage]);
+  // Silent background handler — invokes the AI directly via the edge function,
+  // bypassing the chat hook entirely. The Ask AI panel is never touched.
+  const handleDraftSubmission = useCallback(async () => {
+    setIsDraftingEmail(true);
+    setDraftEmailContent(null);
+    setIsDraftDialogOpen(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('deal-space-ai', {
+        body: {
+          messages: [{ role: 'user', content: DRAFT_SUBMISSION_PROMPT }],
+          dealId,
+          scope: 'all',
+        },
+      });
+      if (error) throw new Error(error.message || 'Failed to draft email');
+      if (data?.error) throw new Error(data.error);
+      setDraftEmailContent(data?.content || '');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to draft submission email';
+      toast({ title: 'Draft failed', description: message, variant: 'destructive' });
+      setIsDraftDialogOpen(false);
+    } finally {
+      setIsDraftingEmail(false);
+    }
+  }, [dealId, DRAFT_SUBMISSION_PROMPT]);
+
+  const handleCopyDraft = useCallback(async () => {
+    if (!draftEmailContent) return;
+    await navigator.clipboard.writeText(draftEmailContent);
+    setHasCopiedDraft(true);
+    setTimeout(() => setHasCopiedDraft(false), 2000);
+  }, [draftEmailContent]);
 
   const suggestedQuestions = [
     "Generate a full lender-ready memo for this deal",
