@@ -417,6 +417,7 @@ export function CashFlowManager() {
             company_id: company.id,
             daily_data: dailyData,
             recurring_tags: recurringTags,
+            weekly_overrides: weeklyOverrides,
             updated_at: new Date().toISOString(),
           } as any, { onConflict: 'company_id' });
       } catch (err) {
@@ -427,7 +428,7 @@ export function CashFlowManager() {
     return () => {
       if (dailySaveTimerRef.current) clearTimeout(dailySaveTimerRef.current);
     };
-  }, [company?.id, dailyData, recurringTags, role]);
+  }, [company?.id, dailyData, recurringTags, weeklyOverrides, role]);
 
   // Date filter with debounce
   const [filterYears, setFilterYears] = useState<string[]>([]);
