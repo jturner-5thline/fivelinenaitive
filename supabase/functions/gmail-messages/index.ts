@@ -12,8 +12,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface MessageRequest {
-  action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete";
+  action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state";
   message_id?: string;
+  message_ids?: string[];
   to?: string[];
   cc?: string[];
   bcc?: string[];
@@ -400,6 +401,64 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "sync_state": {
+        // Lightweight delta sync: given a list of message IDs already loaded
+        // in the client, return the current is_read / is_starred / folders
+        // state for each. Used to reconcile read-state changes that happened
+        // in Gmail (or another mail client) since the messages were fetched.
+        const ids = (requestData.message_ids || []).filter(Boolean);
+        if (ids.length === 0) {
+          return new Response(JSON.stringify({ states: [] }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Cap to protect against runaway requests. Client should batch.
+        const capped = ids.slice(0, 200);
+
+        // Fetch each message's metadata in parallel with a small concurrency
+        // limit so we don't overwhelm Nylas.
+        const CONCURRENCY = 8;
+        const states: Array<{ id: string; is_read: boolean; is_starred: boolean; folders: string[]; missing?: boolean }> = [];
+
+        async function fetchOne(id: string) {
+          try {
+            const r = await fetch(`${baseUrl}/messages/${id}?fields=standard`, { headers });
+            if (r.status === 404) {
+              states.push({ id, is_read: true, is_starred: false, folders: [], missing: true });
+              return;
+            }
+            if (!r.ok) return; // swallow transient errors — we'll retry next poll
+            const body = await r.json();
+            const m = body.data || body;
+            states.push({
+              id,
+              is_read: !m.unread,
+              is_starred: !!m.starred,
+              folders: m.folders || m.labels || [],
+            });
+          } catch {
+            // Ignore single-message failures so the batch still succeeds.
+          }
+        }
+
+        // Simple worker pool
+        let cursor = 0;
+        const workers = Array.from({ length: Math.min(CONCURRENCY, capped.length) }, async () => {
+          while (cursor < capped.length) {
+            const i = cursor++;
+            await fetchOne(capped[i]);
+          }
+        });
+        await Promise.all(workers);
+
+        return new Response(JSON.stringify({ states }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
