@@ -30,7 +30,7 @@ serve(async (req) => {
       });
     }
 
-    const { action, dealId, emailData, threadData, draftType, customInstructions } = await req.json();
+    const { action, dealId, emailData, threadData, draftType, customInstructions, optionCount } = await req.json();
 
     // Validate input lengths
     const threadStr = JSON.stringify(threadData || {});
@@ -140,22 +140,56 @@ ${notes.map((n: any) => `- ${(n.content || n.note || "").substring(0, 200)} (${n
         const effectiveDraftType = draftType || "reply";
         const threadEmails = threadData?.emails || [];
         const latestEmail = threadEmails[0];
+        const wantThree = optionCount === 3;
 
         // Detect scheduling intent
         const fullBody = threadEmails.map((e: any) => e.body_preview || "").join(" ").toLowerCase();
         const hasSchedulingIntent = /\b(schedule|availability|calendar|meeting|call|slot|free|available|reschedule|time works|when can)\b/i.test(fullBody);
+
+        const optionsBlock = wantThree
+          ? `  "option_1_subject": "string — email subject line",
+  "option_1_body": "string — full email body text",
+  "option_1_tone_label": "Concise",
+  "option_1_rationale": "string — why this version works",
+  "option_2_subject": "string — same or similar subject",
+  "option_2_body": "string — full email body text",
+  "option_2_tone_label": "Balanced",
+  "option_2_rationale": "string — why this version works",
+  "option_3_subject": "string — same or similar subject",
+  "option_3_body": "string — full email body text",
+  "option_3_tone_label": "Detailed",
+  "option_3_rationale": "string — why this version works",
+  "recommended_option": 1 | 2 | 3,`
+          : `  "option_1_subject": "string — email subject line",
+  "option_1_body": "string — full email body text",
+  "option_1_tone_label": "string — e.g. 'Concise & Direct'",
+  "option_1_rationale": "string — why this version works",
+  "option_2_subject": "string — same or similar subject",
+  "option_2_body": "string — full email body text",
+  "option_2_tone_label": "string — e.g. 'Polished & Warm'",
+  "option_2_rationale": "string — why this version works",
+  "recommended_option": 1 or 2,`;
+
+        const generationRule = wantThree
+          ? `- Generate exactly 3 draft options:
+   • Option 1 — "Concise": shorter, direct, gets to the point in 2-4 sentences.
+   • Option 2 — "Balanced": polished professional default, 4-7 sentences, the strongest standard reply.
+   • Option 3 — "Detailed": more explanatory, includes relevant context and next steps; can run longer (still under ~250 words).
+- All three must convey the SAME intent and substance — they differ only in length, structure, and level of detail.
+- All three must sound like the same professional sender.`
+          : `- Generate exactly 2 draft options.
+- Both drafts must convey the SAME intent, recommendation, and tone.
+- They should differ only in wording, sentence structure, and phrasing — NOT in strategy or substance.
+- One may be slightly tighter/direct, the other slightly smoother/more polished.
+- Both must sound like the same professional sender.
+- Keep replies concise (under 150 words) unless complexity demands more.`;
 
         systemPrompt = `You are an expert debt advisory and capital markets professional drafting emails on behalf of the user. You write in a professional, polished, human tone suitable for dealmaking, lender relations, investor communications, and relationship management.
 
 CRITICAL RULES:
 - Use ONLY the provided structured context. Never fabricate deal facts, process status, attachment details, notes content, or scheduling availability.
 - If context is incomplete, note uncertainty — do NOT fill gaps with assumptions.
-- Generate exactly 2 draft options.
-- Both drafts must convey the SAME intent, recommendation, and tone.
-- They should differ only in wording, sentence structure, and phrasing — NOT in strategy or substance.
-- One may be slightly tighter/direct, the other slightly smoother/more polished.
-- Both must sound like the same professional sender.
-- Keep replies concise (under 150 words) unless complexity demands more.
+${generationRule}
 - Do NOT include email signatures — the app handles that.
 - Return ONLY valid JSON matching the required schema. No markdown fences, no commentary.
 ${hasSchedulingIntent ? "\n- SCHEDULING DETECTED: Only reference specific availability times if they were provided in the context. If no calendar data is provided, suggest the recipient propose times rather than inventing availability." : ""}
@@ -169,15 +203,7 @@ REQUIRED JSON SCHEMA:
   "missing_context_items": ["string array of what's missing, if any"],
   "used_deal_context": boolean,
   "used_calendar_context": boolean,
-  "option_1_subject": "string — email subject line",
-  "option_1_body": "string — full email body text",
-  "option_1_tone_label": "string — e.g. 'Concise & Direct'",
-  "option_1_rationale": "string — why this version works",
-  "option_2_subject": "string — same or similar subject",
-  "option_2_body": "string — full email body text",
-  "option_2_tone_label": "string — e.g. 'Polished & Warm'",
-  "option_2_rationale": "string — why this version works",
-  "recommended_option": 1 or 2,
+${optionsBlock}
   "recommended_option_reason": "string",
   "suggested_follow_up_actions": ["string array"],
   "cited_context_sources": ["string array of data sources used"]
