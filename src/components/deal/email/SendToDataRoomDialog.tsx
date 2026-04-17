@@ -173,6 +173,11 @@ export function SendToDataRoomDialog({
       plan,
     });
     if (result && result.uploaded > 0) {
+      onUploaded?.({
+        dealName: selectedDealName || 'Data Room',
+        uploaded: result.uploaded,
+        failed: result.failed,
+      });
       onClose();
     }
   };
