@@ -462,7 +462,46 @@ export function CashFlowManager() {
 
   // Data accessors — stable references (use enhancedDailyData so cash-in items flow through)
   const rawDaily = useMemo(() => normalizeDailyData(role === 'viewer' && sandboxDaily ? sandboxDaily : enhancedDailyData), [role, sandboxDaily, enhancedDailyData]);
-  const rawWeekly = useMemo(() => normalizeWeeklyData(aggregateDailyToWeekly(rawDaily)), [rawDaily]);
+  const computedWeekly = useMemo(() => normalizeWeeklyData(aggregateDailyToWeekly(rawDaily)), [rawDaily]);
+
+  // Apply per-week Beginning/Ending Cash overrides on top of computed weekly values.
+  // Precedence: override > computed. When only Beginning is overridden, Ending is
+  // recomputed as overrideBegin + NET CHANGE so the same-week identity holds.
+  // Total Cash on Hand follows the resolved Ending Cash + Add'l Liquidity.
+  const rawWeekly = useMemo<WeeklyData>(() => {
+    if (!weeklyOverrides || Object.keys(weeklyOverrides).length === 0) return computedWeekly;
+    const out: WeeklyData = {};
+    for (const [key, entry] of Object.entries(computedWeekly)) {
+      const ov = weeklyOverrides[key];
+      if (!ov || (ov.beginningCash === undefined && ov.endingCash === undefined)) {
+        out[key] = entry;
+        continue;
+      }
+      const baseBegin = (entry['BEGINNING CASH'] as number) || 0;
+      const baseEnd = (entry['ENDING CASH'] as number) || 0;
+      const netChange = (entry['NET CHANGE'] as number) || 0;
+      const addl = (entry["Add'l Liquidity (Delayed Draw)"] as number) || 0;
+
+      const resolvedBegin = ov.beginningCash !== undefined ? ov.beginningCash : baseBegin;
+      let resolvedEnd: number;
+      if (ov.endingCash !== undefined) {
+        resolvedEnd = ov.endingCash;
+      } else if (ov.beginningCash !== undefined) {
+        resolvedEnd = Math.round(resolvedBegin + netChange);
+      } else {
+        resolvedEnd = baseEnd;
+      }
+
+      out[key] = {
+        ...entry,
+        'BEGINNING CASH': resolvedBegin,
+        'ENDING CASH': resolvedEnd,
+        'TOTAL CASH ON HAND': resolvedEnd + addl,
+      };
+    }
+    return out;
+  }, [computedWeekly, weeklyOverrides]);
+
   const rawSidebar = useMemo(() => normalizeSidebarData(role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData), [role, sandboxSidebar, sidebarData]);
 
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
