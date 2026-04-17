@@ -366,6 +366,71 @@ Parse and extract all term sheet data from this email/thread. Identify any risk 
         break;
       }
 
+      case "detect_lender_pass": {
+        // Classify whether the latest inbound email is a lender pass/decline.
+        // Returns strict JSON for downstream UI confirmation.
+        const latestEmail = emailData || threadData?.latestEmail || threadData?.emails?.[0];
+        const senderEmail: string = (latestEmail?.from_email || "").toLowerCase();
+        const senderName: string = latestEmail?.from_name || "";
+        const senderDomain = senderEmail.split("@")[1] || "";
+
+        // Build lender candidate list from the deal so the model can match exactly.
+        let lenderCandidates: Array<{ id: string; name: string }> = [];
+        if (dealId) {
+          const { data: ls } = await supabase
+            .from("deal_lenders")
+            .select("id, name, stage")
+            .eq("deal_id", dealId);
+          lenderCandidates = (ls || []).map((l: any) => ({ id: l.id, name: l.name }));
+        }
+
+        systemPrompt = `You are a careful classifier deciding whether the LAST inbound email from a lender contact is a PASS / DECLINE on a debt deal.
+
+You return STRICT JSON with this schema:
+{
+  "is_pass": boolean,
+  "confidence": "low" | "medium" | "high",
+  "intent_category": "hard_pass" | "soft_pass" | "info_request" | "scheduling" | "internal_forward" | "other",
+  "reason_summary": "string — short, neutral, max ~140 chars (e.g. 'US team not a fit')",
+  "source_quote": "string — the single most decisive quoted sentence from the email, verbatim",
+  "matched_lender_name": "string — pick from candidates list, or empty string if none match",
+  "matched_lender_id": "string — id of matched lender from candidates, or empty string"
+}
+
+CLASSIFICATION RULES:
+- A PASS = the lender themselves clearly indicate they will not move forward on this opportunity.
+- High confidence = unambiguous decline language ("we have to pass", "we're declining", "not a fit", "unable to pursue").
+- Medium confidence = clear lean toward decline but slightly hedged ("after discussing internally we don't think this works for us right now").
+- Low confidence / not a pass = "circle back later", "need more info", scheduling messages, internal forwards, or any non-decline content.
+- A "soft" not-now ("circle back in 6 months", "interesting but timing isn't right") => intent_category="soft_pass" and is_pass=false unless extremely explicit.
+- An internal forward (someone forwarding the lender's reply rather than the lender writing it) => intent_category="internal_forward" and is_pass=false.
+- A request for more information => intent_category="info_request" and is_pass=false.
+- Never invent a quote. If unsure, use the most decisive sentence verbatim from the email body.
+
+LENDER MATCHING:
+- Use sender name, sender email domain, and email content to match the sender to ONE lender from the candidates list.
+- If no candidate is a clear match, return "" for matched_lender_name and matched_lender_id.
+
+Return ONLY the JSON object, no markdown fences, no commentary.`;
+
+        userPrompt = `${dealContext}
+
+LENDER CANDIDATES ON THIS DEAL:
+${lenderCandidates.length > 0 ? lenderCandidates.map(l => `- id=${l.id} name="${l.name}"`).join("\n") : "(none)"}
+
+INBOUND EMAIL TO CLASSIFY:
+From: ${senderName} <${senderEmail}>
+Sender domain: ${senderDomain}
+Subject: ${latestEmail?.subject || threadData?.subject || ""}
+Date: ${latestEmail?.received_at || ""}
+
+Body:
+${(latestEmail?.body_preview || latestEmail?.snippet || "").substring(0, 4000)}
+
+Classify this email per the rules. Return strict JSON only.`;
+        break;
+      }
+
       case "follow_up_sequence": {
         systemPrompt = `You are a deal follow-up strategist. Analyze an email thread and suggest a follow-up sequence strategy. Return a JSON object: { "status": "awaiting_response|ball_in_our_court|mutual_action|stale", "days_silent": number, "recommended_sequence": [{ "day": number, "action": "email|call|internal_note", "tone": "gentle|firm|urgent", "draft": "..." }], "escalation_trigger": "...", "context_notes": "..." }. day is the number of days from now. Limit to 3 follow-ups max. Each draft should be under 80 words.`;
         userPrompt = `${dealContext}
@@ -483,6 +548,65 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         });
       } catch (logErr) {
         console.error("Failed to log activity:", logErr);
+      }
+    }
+
+    // For detect_lender_pass, persist the detection so the UI can read/confirm it later.
+    if (action === "detect_lender_pass" && dealId && typeof parsed === "object" && !parsed.raw) {
+      try {
+        const latest = emailData || threadData?.latestEmail || threadData?.emails?.[0];
+        const messageId: string | undefined = latest?.gmail_message_id || latest?.id;
+
+        if (messageId) {
+          const isPass = !!parsed.is_pass;
+          const confidence = ["low", "medium", "high"].includes(parsed.confidence) ? parsed.confidence : "low";
+          const matchedId: string | null = parsed.matched_lender_id && typeof parsed.matched_lender_id === "string" && parsed.matched_lender_id.length > 0
+            ? parsed.matched_lender_id
+            : null;
+          const matchedName: string = parsed.matched_lender_name || "";
+
+          // Upsert by (gmail_message_id, deal_id) — only stamp/refresh if not already confirmed/dismissed.
+          const { data: existing } = await supabase
+            .from("lender_pass_detections")
+            .select("id, status")
+            .eq("gmail_message_id", messageId)
+            .eq("deal_id", dealId)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase.from("lender_pass_detections").insert({
+              deal_id: dealId,
+              deal_lender_id: matchedId,
+              lender_name: matchedName || latest?.from_name || "Unknown lender",
+              gmail_message_id: messageId,
+              thread_id: latest?.thread_id || threadData?.threadId || null,
+              sender_email: latest?.from_email || null,
+              sender_name: latest?.from_name || null,
+              confidence,
+              is_pass: isPass,
+              reason_summary: parsed.reason_summary || null,
+              source_quote: parsed.source_quote || null,
+              status: "pending",
+              raw_classification: parsed,
+            });
+          } else if (existing.status === "pending") {
+            // Refresh the latest classification but keep status pending.
+            await supabase
+              .from("lender_pass_detections")
+              .update({
+                deal_lender_id: matchedId,
+                lender_name: matchedName || latest?.from_name || "Unknown lender",
+                confidence,
+                is_pass: isPass,
+                reason_summary: parsed.reason_summary || null,
+                source_quote: parsed.source_quote || null,
+                raw_classification: parsed,
+              })
+              .eq("id", existing.id);
+          }
+        }
+      } catch (persistErr) {
+        console.error("Failed to persist lender pass detection:", persistErr);
       }
     }
 

@@ -17,6 +17,8 @@ import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { EmailThread } from './mockEmailData';
+import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
+import { LenderPassSidebarCard } from './LenderPassSidebarCard';
 
 /**
  * AiAssistSidebar
@@ -78,6 +80,23 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   const [result, setResult] = useState<DraftResult | null>(null);
   const [selected, setSelected] = useState<1 | 2 | 3>(2);
   const [showSources, setShowSources] = useState(false);
+
+  // Lender pass detection — shares state with the inline banner via the same row.
+  const passThreadData = {
+    subject: thread.subject,
+    threadId: thread.threadId,
+    emails: thread.emails,
+    latestEmail: thread.latestEmail,
+  };
+  const {
+    detection: passDetection,
+    committing: passCommitting,
+    autoCommit: passAutoCommit,
+    setAutoCommitPref: setPassAutoCommit,
+    confirmPass,
+    dismissPass,
+  } = useLenderPassDetection({ dealId, threadData: passThreadData, autoRun: !!dealId });
+  const showPassCard = !!passDetection && (passDetection.status === 'pending' || passDetection.status === 'confirmed') && (passDetection.is_pass || passDetection.status === 'confirmed');
 
   const generate = useCallback(async () => {
     setLoading(true);
@@ -212,6 +231,18 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 <RefreshCw className="h-3 w-3" /> Try again
               </Button>
             </div>
+          )}
+
+          {/* Lender pass detection card */}
+          {showPassCard && passDetection && (
+            <LenderPassSidebarCard
+              detection={passDetection}
+              committing={passCommitting}
+              autoCommit={passAutoCommit}
+              onSetAutoCommit={setPassAutoCommit}
+              onConfirm={(reason) => confirmPass(reason)}
+              onDismiss={dismissPass}
+            />
           )}
 
           {/* Result */}

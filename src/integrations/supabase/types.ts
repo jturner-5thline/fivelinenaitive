@@ -11154,6 +11154,93 @@ export type Database = {
           },
         ]
       }
+      lender_pass_detections: {
+        Row: {
+          confidence: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          deal_id: string
+          deal_lender_id: string | null
+          dismissed_at: string | null
+          dismissed_by: string | null
+          edited_reason: string | null
+          gmail_message_id: string
+          id: string
+          is_pass: boolean
+          lender_name: string
+          raw_classification: Json | null
+          reason_summary: string | null
+          sender_email: string | null
+          sender_name: string | null
+          source_quote: string | null
+          status: string
+          thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          deal_id: string
+          deal_lender_id?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          edited_reason?: string | null
+          gmail_message_id: string
+          id?: string
+          is_pass?: boolean
+          lender_name: string
+          raw_classification?: Json | null
+          reason_summary?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          source_quote?: string | null
+          status?: string
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          deal_id?: string
+          deal_lender_id?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          edited_reason?: string | null
+          gmail_message_id?: string
+          id?: string
+          is_pass?: boolean
+          lender_name?: string
+          raw_classification?: Json | null
+          reason_summary?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          source_quote?: string | null
+          status?: string
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_pass_detections_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_pass_detections_deal_lender_id_fkey"
+            columns: ["deal_lender_id"]
+            isOneToOne: false
+            referencedRelation: "deal_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_pass_patterns: {
         Row: {
           confidence_score: number | null
@@ -16157,6 +16244,27 @@ export type Database = {
           weekly_deal_summary_day_et?: string | null
           weekly_deal_summary_enabled?: boolean | null
           weekly_deal_summary_time_et?: string | null
+        }
+        Relationships: []
+      }
+      user_email_ai_preferences: {
+        Row: {
+          auto_commit_high_confidence_pass: boolean
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_commit_high_confidence_pass?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_commit_high_confidence_pass?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
