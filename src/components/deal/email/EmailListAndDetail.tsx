@@ -1177,6 +1177,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   email={email}
                   isLatest={idx === 0}
                   defaultExpanded={idx === 0 || userExpandedMessages.has(email.id)}
+                  threadId={thread.threadId}
+                  threadSubject={thread.subject}
+                  threadEmails={thread.emails}
+                  dealId={dealId}
+                  dealName={linkedDealName || thread.dealName}
                   onExpandChange={(exp) => {
                     setUserExpandedMessages(prev => {
                       const next = new Set(prev);
@@ -1199,6 +1204,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   email={email}
                   isLatest={false}
                   defaultExpanded={userExpandedMessages.has(email.id)}
+                  threadId={thread.threadId}
+                  threadSubject={thread.subject}
+                  threadEmails={thread.emails}
+                  dealId={dealId}
+                  dealName={linkedDealName || thread.dealName}
                   onExpandChange={(exp) => {
                     setUserExpandedMessages(prev => {
                       const next = new Set(prev);
