@@ -10,6 +10,14 @@ export type EmailCategory =
   | 'closed_lost'   // Closed lost
   | 'archive';      // Archived
 
+export interface EmailAttachment {
+  id: string;
+  filename: string;
+  content_type: string;
+  size: number;
+  is_inline?: boolean;
+}
+
 export interface MockEmail {
   id: string;
   threadId: string;
@@ -20,12 +28,19 @@ export interface MockEmail {
   to_email: string;
   snippet: string;
   body_preview: string;
+  /** Full HTML body when available (fetched lazily for real Gmail messages). */
+  body_html?: string;
+  /** Full plain-text body when available. */
+  body_text?: string;
+  /** True once the full body+attachments have been hydrated from the mail provider. */
+  body_loaded?: boolean;
   received_at: string;
   is_read: boolean;
   is_starred: boolean;
   folder: 'inbox' | 'sent' | 'drafts';
   labels: string[];
   has_attachments: boolean;
+  attachments?: EmailAttachment[];
   is_linked_to_deal: boolean;
   is_follow_up: boolean;
   needs_response: boolean;
