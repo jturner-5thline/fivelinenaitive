@@ -1070,6 +1070,51 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               </div>
             </div>
 
+            {/* AI search status / interpretation banner */}
+            {(aiSearch.isSearching || aiSearchActive || aiSearch.error) && (
+              <div className="px-3 py-1.5 border-b border-white/[0.06] bg-primary/[0.04]">
+                {aiSearch.isSearching ? (
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                    <span>Searching with AI…</span>
+                  </div>
+                ) : aiSearch.error ? (
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="text-destructive truncate">
+                      AI search unavailable — showing keyword matches instead.
+                    </span>
+                    <button
+                      onClick={() => { clearAISearch(); }}
+                      className="text-muted-foreground hover:text-foreground shrink-0"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                ) : aiSearch.result ? (
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Sparkles className="h-3 w-3 text-primary shrink-0" />
+                      <span className="text-muted-foreground shrink-0">AI Search:</span>
+                      <span className="text-foreground truncate" title={aiSearch.result.interpretation}>
+                        {aiSearch.result.interpretation}
+                      </span>
+                      <span className="text-muted-foreground shrink-0">
+                        · {aiSearch.result.rankedIds.length} {aiSearch.result.rankedIds.length === 1 ? 'result' : 'results'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => { clearAISearch(); setSearchQuery(''); }}
+                      className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+                      title="Return to inbox (Esc)"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
             {/* Header with label + bulk actions */}
             <div className="border-b border-border/30">
               {selectedIds.size > 0 ? (
