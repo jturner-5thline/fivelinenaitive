@@ -609,6 +609,8 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         console.error("Failed to persist lender pass detection:", persistErr);
       }
     }
+
+    return new Response(JSON.stringify({ result: parsed }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
