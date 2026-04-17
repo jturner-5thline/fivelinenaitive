@@ -12,8 +12,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface MessageRequest {
-  action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete";
+  action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state";
   message_id?: string;
+  message_ids?: string[];
   to?: string[];
   cc?: string[];
   bcc?: string[];
