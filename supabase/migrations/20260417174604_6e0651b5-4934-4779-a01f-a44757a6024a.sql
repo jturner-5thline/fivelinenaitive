@@ -1,0 +1,1 @@
+SELECT cron.unschedule('send-batched-deal-notifications');
