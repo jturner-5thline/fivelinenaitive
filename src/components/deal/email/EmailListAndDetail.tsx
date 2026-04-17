@@ -1278,6 +1278,32 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           tokenContext={snippetTokenContext}
         />
       )}
+
+      {/* Send to Data Room dialog */}
+      {showSendToDataRoom && (
+        <SendToDataRoomDialog
+          open={showSendToDataRoom}
+          onClose={() => setShowSendToDataRoom(false)}
+          attachments={latestAttachments}
+          messageId={latestMessageId}
+          threadData={{
+            subject: thread.subject,
+            threadId: thread.threadId,
+            emails: thread.emails,
+            latestEmail: thread.latestEmail,
+          }}
+          sourceEmail={{
+            messageId: latestMessageId,
+            threadId: thread.threadId,
+            subject: thread.subject,
+            senderName: thread.latestEmail.from_name,
+            senderEmail: thread.latestEmail.from_email,
+          }}
+          initialDealId={dealId}
+          initialDealName={linkedDealName}
+        />
+      )}
     </>
+
   );
 }
