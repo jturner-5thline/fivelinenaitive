@@ -386,7 +386,31 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
   const [showQuoted, setShowQuoted] = useState(false);
   const messageRef = useRef<HTMLDivElement>(null);
   const displayName = email.from_name === 'You' ? 'You' : email.from_name;
-  const { main: bodyMain, quoted: bodyQuoted } = splitQuotedContent(email.body_preview || '');
+
+  // Lazy-load the full body + attachments when this message is expanded.
+  const alreadyHasFullBody = !!(email.body_loaded || email.body_html || (email.body_text && email.body_text.length > 0));
+  const { data: fullData, loading: fullLoading } = useFullEmailMessage(
+    email.id,
+    expanded,
+    alreadyHasFullBody,
+  );
+
+  // Resolve the best available body: prefer freshly fetched HTML, then prop HTML,
+  // then fetched text, then prop text/preview snippet.
+  const resolvedHtml = fullData?.body_html || email.body_html || '';
+  const resolvedText = fullData?.body_text || email.body_text || email.body_preview || '';
+
+  // For plain-text bodies, split off the quoted reply chain so we can show/hide it.
+  const { main: textMain, quoted: textQuoted } = resolvedHtml
+    ? { main: '', quoted: null }
+    : splitQuotedContent(resolvedText);
+
+  // Resolve attachments from either the freshly fetched message or the original prop.
+  const attachments = (fullData?.attachments && fullData.attachments.length > 0)
+    ? fullData.attachments
+    : (email.attachments || []);
+  const hasRealAttachments = attachments.length > 0;
+  const showAttachmentsLoading = expanded && fullLoading && !hasRealAttachments && email.has_attachments;
 
   const toggleExpand = () => {
     const next = !expanded;
@@ -399,7 +423,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
 
   return (
     <div ref={messageRef} className={cn(
-      'border-b border-white/[0.06] transition-all duration-100 min-w-0 overflow-hidden',
+      'border-b border-white/[0.06] transition-all duration-100 min-w-0',
       expanded ? 'bg-card/40' : 'hover:bg-[hsl(var(--foreground)/0.02)]'
     )}>
       <button
@@ -416,6 +440,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {email.has_attachments && <Paperclip className="h-3 w-3 text-muted-foreground" />}
           <span className="text-[11px] text-muted-foreground">
             {format(new Date(email.received_at), 'MMM d, h:mm a')}
           </span>
@@ -424,15 +449,27 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
       </button>
 
       {expanded && (
-        <div className="px-6 pb-5 pl-[64px] min-w-0 overflow-hidden">
+        <div className="px-6 pb-5 pl-[64px] min-w-0">
           <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
-            {email.has_attachments && <Paperclip className="h-3 w-3" />}
           </div>
-          <div className="text-[14px] leading-[1.7] text-foreground/90 [&>p]:mb-3 max-w-full" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-            {bodyMain}
-          </div>
-          {bodyQuoted && (
+
+          {fullLoading && !alreadyHasFullBody && !resolvedHtml && !resolvedText && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Loading full message…</span>
+            </div>
+          )}
+
+          {/* Body — HTML preferred, plain text fallback */}
+          {resolvedHtml ? (
+            <EmailBodyRenderer html={resolvedHtml} />
+          ) : (
+            <EmailBodyRenderer text={textMain} />
+          )}
+
+          {/* Quoted text (only meaningful for plain text bodies) */}
+          {!resolvedHtml && textQuoted && (
             <div className="mt-4">
               {!showQuoted ? (
                 <button
@@ -452,19 +489,21 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
                     <span>Hide quoted text</span>
                   </button>
                   <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 leading-[1.65] max-w-full" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-                    {bodyQuoted}
+                    {textQuoted}
                   </div>
                 </>
               )}
             </div>
           )}
-          {email.has_attachments && (
-            <div className="mt-4 flex gap-2">
-              <div className="flex items-center gap-2 px-3 py-2 rounded border bg-muted/20 text-sm hover:bg-muted/40 transition-colors cursor-pointer">
-                <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-foreground/80">document.pdf</span>
-                <span className="text-[11px] text-muted-foreground">2.4 MB</span>
-              </div>
+
+          {/* Attachments */}
+          {hasRealAttachments && (
+            <EmailAttachmentList messageId={email.id} attachments={attachments} />
+          )}
+          {showAttachmentsLoading && (
+            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Loading attachments…</span>
             </div>
           )}
         </div>
