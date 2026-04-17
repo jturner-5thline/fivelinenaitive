@@ -546,7 +546,25 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
 
           {/* Attachments */}
           {hasRealAttachments && (
-            <EmailAttachmentList messageId={email.id} attachments={attachments} />
+            <EmailAttachmentList
+              messageId={email.id}
+              attachments={attachments}
+              sourceEmail={{
+                messageId: email.id,
+                threadId,
+                subject: threadSubject,
+                senderName: email.from_name,
+                senderEmail: email.from_email,
+              }}
+              threadData={{
+                subject: threadSubject,
+                threadId,
+                emails: threadEmails,
+                latestEmail: threadEmails[0] || email,
+              }}
+              linkedDealId={dealId}
+              linkedDealName={dealName}
+            />
           )}
           {showAttachmentsLoading && (
             <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
