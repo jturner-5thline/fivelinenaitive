@@ -276,6 +276,22 @@ CRITICAL RULES:
     setEmailDrafts((prev) => prev.map((d, i) => (i === activeDraftIndex ? { ...d, ...patch } : d)));
   }, [activeDraftIndex]);
 
+  const applySubjectToAll = useCallback(() => {
+    const source = emailDrafts[activeDraftIndex];
+    if (!source) return;
+    setEmailDrafts((prev) => prev.map((d) => ({ ...d, subject: source.subject, isSubjectEdited: false })));
+    setAppliedField('subject');
+    setTimeout(() => setAppliedField((f) => (f === 'subject' ? null : f)), 1800);
+  }, [emailDrafts, activeDraftIndex]);
+
+  const applyBodyToAll = useCallback(() => {
+    const source = emailDrafts[activeDraftIndex];
+    if (!source) return;
+    setEmailDrafts((prev) => prev.map((d) => ({ ...d, body: source.body, isBodyEdited: false })));
+    setAppliedField('body');
+    setTimeout(() => setAppliedField((f) => (f === 'body' ? null : f)), 1800);
+  }, [emailDrafts, activeDraftIndex]);
+
   const goToPrev = useCallback(() => {
     setActiveDraftIndex((i) => Math.max(0, i - 1));
   }, []);
