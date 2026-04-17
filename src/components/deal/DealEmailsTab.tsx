@@ -78,6 +78,14 @@ interface DealEmailsTabProps {
     cc?: string[];
     bcc?: string[];
   }) => Promise<any>;
+  /** Pagination — invoked when user clicks "Load more" or hits the auto-load sentinel */
+  onLoadMore?: () => void | Promise<void>;
+  /** True if there are more older messages available to load */
+  hasMore?: boolean;
+  /** True while a load-more request is in flight */
+  isLoadingMore?: boolean;
+  /** True while background auto-pagination is still draining the mailbox */
+  isAutoPaginating?: boolean;
 }
 
 type ViewFilter = 'all' | 'unread' | 'needs_response';
