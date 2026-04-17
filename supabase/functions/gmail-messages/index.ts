@@ -506,6 +506,45 @@ serve(async (req: Request): Promise<Response> => {
         });
       }
 
+      case "get_attachment": {
+        const { message_id, attachment_id } = requestData;
+        if (!message_id || !attachment_id) {
+          return new Response(JSON.stringify({ error: "message_id and attachment_id required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Nylas v3: download attachment binary; we proxy as base64 + content-type
+        const attResponse = await fetch(
+          `${baseUrl}/attachments/${attachment_id}/download?message_id=${encodeURIComponent(message_id)}`,
+          { headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "*/*" } }
+        );
+
+        if (!attResponse.ok) {
+          const errText = await attResponse.text().catch(() => "");
+          return new Response(JSON.stringify({ error: errText || "Failed to download attachment" }), {
+            status: attResponse.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const contentType = attResponse.headers.get("content-type") || "application/octet-stream";
+        const buf = new Uint8Array(await attResponse.arrayBuffer());
+        // Base64-encode for safe JSON transport
+        let binary = "";
+        const chunkSize = 0x8000;
+        for (let i = 0; i < buf.length; i += chunkSize) {
+          binary += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + chunkSize)));
+        }
+        const base64 = btoa(binary);
+
+        return new Response(JSON.stringify({ content_type: contentType, data: base64, size: buf.length }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       default:
         return new Response(JSON.stringify({ error: "Invalid action" }), {
           status: 400,
