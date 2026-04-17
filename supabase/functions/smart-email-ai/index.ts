@@ -30,7 +30,9 @@ serve(async (req) => {
       });
     }
 
-    const { action, dealId, emailData, threadData, draftType, customInstructions, optionCount } = await req.json();
+    const requestBody = await req.json();
+    const { action, dealId, emailData, threadData, draftType, customInstructions, optionCount } = requestBody;
+    const attachments = Array.isArray(requestBody?.attachments) ? requestBody.attachments : [];
 
     // Validate input lengths
     const threadStr = JSON.stringify(threadData || {});
