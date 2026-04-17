@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import type {
   DailyData, WeeklyData, SidebarData, RecurringTag,
   PlanSnapshot, UndoSnapshot, ActivityLogEntry, ExportArchiveEntry,
-  ExportFlag, RoleMode, ActiveTab, ThemeMode,
+  ExportFlag, RoleMode, ActiveTab, ThemeMode, WeeklyOverrides,
 } from './types';
 import {
   SEED_SIDEBAR_DATA,
