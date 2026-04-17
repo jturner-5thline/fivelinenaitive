@@ -158,7 +158,28 @@ export function SendToDataRoomDialog({
   const selectedDealName =
     deals.find((d) => d.id === selectedDealId)?.company ||
     (selectedDealId === initialDealId ? initialDealName : undefined) ||
-    suggestion?.suggested_deal_name;
+    (selectedDealId && selectedDealId === suggestion?.suggested_deal_id ? suggestion?.suggested_deal_name : undefined);
+
+  // Always include the resolved deal (initial + AI suggestion) in the dropdown so the
+  // Select control can render a matching <SelectItem> for `selectedDealId`. Without this,
+  // a suggested deal that's not in the first 200 active deals would leave the trigger blank.
+  const dealOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    deals.forEach((d) => map.set(d.id, d.company));
+    if (initialDealId && initialDealName && !map.has(initialDealId)) {
+      map.set(initialDealId, initialDealName);
+    }
+    if (
+      suggestion?.suggested_deal_id &&
+      suggestion?.suggested_deal_name &&
+      !map.has(suggestion.suggested_deal_id)
+    ) {
+      map.set(suggestion.suggested_deal_id, suggestion.suggested_deal_name);
+    }
+    return Array.from(map.entries())
+      .map(([id, company]) => ({ id, company }))
+      .sort((a, b) => a.company.localeCompare(b.company));
+  }, [deals, initialDealId, initialDealName, suggestion?.suggested_deal_id, suggestion?.suggested_deal_name]);
 
   const includedCount = plan.filter((p) => p.include).length;
   const canCommit = !!selectedDealId && includedCount > 0 && !uploading;
