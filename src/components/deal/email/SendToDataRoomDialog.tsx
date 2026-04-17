@@ -221,7 +221,7 @@ export function SendToDataRoomDialog({
                 </div>
               )}
               {!suggesting && suggestion && !suggestion.suggested_deal_name && (
-                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-500">
+                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-warning">
                   <AlertCircle className="h-3 w-3 shrink-0" />
                   <span>Couldn't auto-match a deal — pick one below.</span>
                 </div>
