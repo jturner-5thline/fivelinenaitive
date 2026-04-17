@@ -16,6 +16,8 @@ export interface EmailAttachment {
   content_type: string;
   size: number;
   is_inline?: boolean;
+  /** Original Content-ID header (no angle brackets). Used to resolve `cid:` references in HTML bodies. */
+  content_id?: string;
 }
 
 export interface MockEmail {
