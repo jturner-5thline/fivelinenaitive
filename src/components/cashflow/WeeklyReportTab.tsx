@@ -245,10 +245,14 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                         >
                           {editable && overrideField ? (
                             <input
-                              className="cf-cell-input"
-                              defaultValue={val}
-                              type="number"
-                              step="any"
+                              className={`cf-cell-input ${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}`}
+                              defaultValue={fmtAbbrev(displayVal)}
+                              type="text"
+                              inputMode="decimal"
+                              onFocus={(e) => {
+                                e.currentTarget.value = val === 0 ? '' : String(val);
+                                e.currentTarget.select();
+                              }}
                               onBlur={(e) => {
                                 const raw = e.currentTarget.value.trim();
                                 if (raw === '') {
@@ -256,14 +260,20 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                                   return;
                                 }
                                 const parsed = Number(raw);
-                                if (!Number.isFinite(parsed)) return;
-                                if (parsed === val && !isOverridden) return;
+                                if (!Number.isFinite(parsed)) {
+                                  e.currentTarget.value = fmtAbbrev(displayVal);
+                                  return;
+                                }
+                                if (parsed === val && !isOverridden) {
+                                  e.currentTarget.value = fmtAbbrev(displayVal);
+                                  return;
+                                }
                                 onCashOverride!(weekKey, overrideField, parsed);
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
                                 if (e.key === 'Escape') {
-                                  (e.currentTarget as HTMLInputElement).value = String(val);
+                                  (e.currentTarget as HTMLInputElement).value = fmtAbbrev(displayVal);
                                   (e.currentTarget as HTMLInputElement).blur();
                                 }
                               }}
