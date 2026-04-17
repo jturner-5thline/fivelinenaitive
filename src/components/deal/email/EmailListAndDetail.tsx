@@ -430,8 +430,8 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
 
   return (
     <div ref={messageRef} className={cn(
-      'border-b border-white/[0.06] transition-all duration-100 min-w-0',
-      expanded ? 'bg-card/40' : 'hover:bg-[hsl(var(--foreground)/0.02)]'
+      'border-b border-[hsl(var(--email-border))] transition-all duration-100 min-w-0',
+      expanded ? 'bg-card/50' : 'hover:bg-[hsl(var(--foreground)/0.03)]'
     )}>
       <button
         onClick={toggleExpand}
@@ -439,25 +439,30 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
       >
         <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="md" />
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className={cn('text-[13px] truncate', isLatest ? 'font-semibold' : 'font-medium text-foreground/80')}>
+          <span className={cn(
+            'text-[13px] truncate',
+            isLatest
+              ? 'font-semibold text-[hsl(var(--email-text-primary))]'
+              : 'font-medium text-[hsl(var(--email-text-secondary))]'
+          )}>
             {displayName}
           </span>
           {!expanded && (
-            <span className="text-xs text-muted-foreground truncate">{email.snippet}</span>
+            <span className="text-xs text-[hsl(var(--email-text-muted))] truncate">{email.snippet}</span>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {email.has_attachments && <Paperclip className="h-3 w-3 text-muted-foreground" />}
-          <span className="text-[11px] text-muted-foreground">
+          {email.has_attachments && <Paperclip className="h-3 w-3 text-[hsl(var(--email-text-muted))]" />}
+          <span className="text-[11px] text-[hsl(var(--email-text-muted))]">
             {format(new Date(email.received_at), 'MMM d, h:mm a')}
           </span>
-          {expanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="h-3 w-3 text-[hsl(var(--email-text-muted))]" /> : <ChevronRight className="h-3 w-3 text-[hsl(var(--email-text-muted))]" />}
         </div>
       </button>
 
       {expanded && (
         <div className="px-6 pb-5 pl-[64px] min-w-0">
-          <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 mb-3 text-xs text-[hsl(var(--email-text-muted))]">
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
           </div>
 
@@ -495,7 +500,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
                     <ChevronUp className="h-3.5 w-3.5" />
                     <span>Hide quoted text</span>
                   </button>
-                  <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 leading-[1.65] max-w-full" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                  <div className="border-l-2 border-[hsl(var(--outlook-blue)/0.35)] pl-4 text-[13px] text-[hsl(var(--email-text-secondary))] leading-[1.65] max-w-full" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                     {textQuoted}
                   </div>
                 </>
