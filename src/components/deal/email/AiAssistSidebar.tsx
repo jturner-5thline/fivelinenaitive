@@ -81,6 +81,23 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   const [selected, setSelected] = useState<1 | 2 | 3>(2);
   const [showSources, setShowSources] = useState(false);
 
+  // Lender pass detection — shares state with the inline banner via the same row.
+  const passThreadData = {
+    subject: thread.subject,
+    threadId: thread.threadId,
+    emails: thread.emails,
+    latestEmail: thread.latestEmail,
+  };
+  const {
+    detection: passDetection,
+    committing: passCommitting,
+    autoCommit: passAutoCommit,
+    setAutoCommitPref: setPassAutoCommit,
+    confirmPass,
+    dismissPass,
+  } = useLenderPassDetection({ dealId, threadData: passThreadData, autoRun: !!dealId });
+  const showPassCard = !!passDetection && (passDetection.status === 'pending' || passDetection.status === 'confirmed') && (passDetection.is_pass || passDetection.status === 'confirmed');
+
   const generate = useCallback(async () => {
     setLoading(true);
     setError(null);
