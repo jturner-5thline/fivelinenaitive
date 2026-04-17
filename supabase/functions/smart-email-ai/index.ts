@@ -226,7 +226,7 @@ ${customInstructions ? `\nUSER INSTRUCTIONS: ${customInstructions}` : ""}
 EMAIL THREAD "${threadData?.subject || ""}":
 ${threadForPrompt}
 
-Generate 2 closely-aligned draft ${effectiveDraftType} options based on the above context. Return strict JSON only.`;
+Generate ${wantThree ? 3 : 2} closely-aligned draft ${effectiveDraftType} options based on the above context. Return strict JSON only.`;
         break;
       }
 
