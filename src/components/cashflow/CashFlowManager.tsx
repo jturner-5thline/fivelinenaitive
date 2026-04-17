@@ -464,40 +464,67 @@ export function CashFlowManager() {
   const rawDaily = useMemo(() => normalizeDailyData(role === 'viewer' && sandboxDaily ? sandboxDaily : enhancedDailyData), [role, sandboxDaily, enhancedDailyData]);
   const computedWeekly = useMemo(() => normalizeWeeklyData(aggregateDailyToWeekly(rawDaily)), [rawDaily]);
 
-  // Apply per-week Beginning/Ending Cash overrides on top of computed weekly values.
-  // Precedence: override > computed. When only Beginning is overridden, Ending is
-  // recomputed as overrideBegin + NET CHANGE so the same-week identity holds.
-  // Total Cash on Hand follows the resolved Ending Cash + Add'l Liquidity.
+  // Sequential weekly resolver with roll-forward chain.
+  // Precedence per week:
+  //   Beginning Cash = explicit beginningCash override
+  //                  | else prior week's resolved Ending Cash (if any prior week exists)
+  //                  | else computed base Beginning Cash
+  //   Ending Cash    = explicit endingCash override
+  //                  | else resolved Beginning Cash + Net Change
+  // The resolved Ending Cash carries into the next week's Beginning Cash unless
+  // that next week has its own explicit override (which starts a new chain).
   const rawWeekly = useMemo<WeeklyData>(() => {
-    if (!weeklyOverrides || Object.keys(weeklyOverrides).length === 0) return computedWeekly;
+    const sortedKeys = Object.keys(computedWeekly).sort();
+    if (sortedKeys.length === 0) return computedWeekly;
+    const hasOverrides = weeklyOverrides && Object.keys(weeklyOverrides).length > 0;
+    if (!hasOverrides) return computedWeekly;
+
     const out: WeeklyData = {};
-    for (const [key, entry] of Object.entries(computedWeekly)) {
-      const ov = weeklyOverrides[key];
-      if (!ov || (ov.beginningCash === undefined && ov.endingCash === undefined)) {
-        out[key] = entry;
-        continue;
-      }
+    let prevResolvedEnd: number | null = null;
+
+    for (const key of sortedKeys) {
+      const entry = computedWeekly[key];
+      const ov = weeklyOverrides?.[key];
       const baseBegin = (entry['BEGINNING CASH'] as number) || 0;
       const baseEnd = (entry['ENDING CASH'] as number) || 0;
       const netChange = (entry['NET CHANGE'] as number) || 0;
       const addl = (entry["Add'l Liquidity (Delayed Draw)"] as number) || 0;
 
-      const resolvedBegin = ov.beginningCash !== undefined ? ov.beginningCash : baseBegin;
-      let resolvedEnd: number;
-      if (ov.endingCash !== undefined) {
-        resolvedEnd = ov.endingCash;
-      } else if (ov.beginningCash !== undefined) {
-        resolvedEnd = Math.round(resolvedBegin + netChange);
+      // Resolve Beginning Cash
+      let resolvedBegin: number;
+      if (ov?.beginningCash !== undefined) {
+        resolvedBegin = ov.beginningCash;
+      } else if (prevResolvedEnd !== null) {
+        // Chain from prior week's resolved ending cash
+        resolvedBegin = prevResolvedEnd;
       } else {
-        resolvedEnd = baseEnd;
+        resolvedBegin = baseBegin;
       }
 
-      out[key] = {
-        ...entry,
-        'BEGINNING CASH': resolvedBegin,
-        'ENDING CASH': resolvedEnd,
-        'TOTAL CASH ON HAND': resolvedEnd + addl,
-      };
+      // Resolve Ending Cash
+      let resolvedEnd: number;
+      if (ov?.endingCash !== undefined) {
+        resolvedEnd = ov.endingCash;
+      } else {
+        resolvedEnd = Math.round(resolvedBegin + netChange);
+      }
+
+      // Only emit a modified entry when values diverge from the base
+      const beginChanged = resolvedBegin !== baseBegin;
+      const endChanged = resolvedEnd !== baseEnd;
+
+      if (beginChanged || endChanged) {
+        out[key] = {
+          ...entry,
+          'BEGINNING CASH': resolvedBegin,
+          'ENDING CASH': resolvedEnd,
+          'TOTAL CASH ON HAND': resolvedEnd + addl,
+        };
+      } else {
+        out[key] = entry;
+      }
+
+      prevResolvedEnd = resolvedEnd;
     }
     return out;
   }, [computedWeekly, weeklyOverrides]);
