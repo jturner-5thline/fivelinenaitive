@@ -465,6 +465,63 @@ IMPORTANT INSTRUCTIONS:
           </div>
         </div>
       </CardContent>
+
+      {/* Draft Submission Email — dedicated output dialog (kept entirely separate from chat). */}
+      <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" />
+              Draft Submission Email
+            </DialogTitle>
+            <DialogDescription>
+              Generated from your deal data, lender list, and write-up. Review before sending.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto rounded-md border bg-muted/30 p-4 min-h-[200px]">
+            {isDraftingEmail ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Drafting submission email…
+              </div>
+            ) : draftEmailContent ? (
+              <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                <ReactMarkdown>{draftEmailContent}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No draft generated.</p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCopyDraft}
+              disabled={!draftEmailContent || isDraftingEmail}
+            >
+              {hasCopiedDraft ? (
+                <><Check className="h-4 w-4 mr-1.5" /> Copied</>
+              ) : (
+                <><Copy className="h-4 w-4 mr-1.5" /> Copy</>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDraftSubmission}
+              disabled={isDraftingEmail}
+            >
+              {isDraftingEmail ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1.5" />
+              )}
+              Regenerate
+            </Button>
+            <Button onClick={() => setIsDraftDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
