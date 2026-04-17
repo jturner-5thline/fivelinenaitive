@@ -737,7 +737,7 @@ CRITICAL RULES:
                         </div>
                       )}
                       {draft.status === 'sent' && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+                        <div className="flex items-center gap-1.5 text-[11px] text-primary">
                           <CheckCircle2 className="h-3 w-3" />
                           <span>Sent from your connected email account.</span>
                         </div>
