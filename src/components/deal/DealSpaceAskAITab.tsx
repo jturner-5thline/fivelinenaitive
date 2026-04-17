@@ -277,40 +277,6 @@ CRITICAL RULES:
     }
   }, [dealId, DRAFT_SUBMISSION_PROMPT]);
 
-  const updateActiveDraft = useCallback((patch: Partial<EmailDraft>) => {
-    setEmailDrafts((prev) => prev.map((d, i) => (i === activeDraftIndex ? { ...d, ...patch } : d)));
-  }, [activeDraftIndex]);
-
-  const applySubjectToAll = useCallback(() => {
-    const source = emailDrafts[activeDraftIndex];
-    if (!source) return;
-    setEmailDrafts((prev) => prev.map((d) => ({ ...d, subject: source.subject, isSubjectEdited: false })));
-    setAppliedField('subject');
-    setTimeout(() => setAppliedField((f) => (f === 'subject' ? null : f)), 1800);
-  }, [emailDrafts, activeDraftIndex]);
-
-  const applyBodyToAll = useCallback(() => {
-    const source = emailDrafts[activeDraftIndex];
-    if (!source) return;
-    setEmailDrafts((prev) => prev.map((d) => ({ ...d, body: source.body, isBodyEdited: false })));
-    setAppliedField('body');
-    setTimeout(() => setAppliedField((f) => (f === 'body' ? null : f)), 1800);
-  }, [emailDrafts, activeDraftIndex]);
-
-  const goToPrev = useCallback(() => {
-    setActiveDraftIndex((i) => Math.max(0, i - 1));
-  }, []);
-  const goToNext = useCallback(() => {
-    setActiveDraftIndex((i) => Math.min(emailDrafts.length - 1, i + 1));
-  }, [emailDrafts.length]);
-
-  const handleApproveDraft = useCallback(() => {
-    updateActiveDraft({ status: 'approved' });
-    if (activeDraftIndex < emailDrafts.length - 1) {
-      setActiveDraftIndex((i) => i + 1);
-    }
-  }, [updateActiveDraft, activeDraftIndex, emailDrafts.length]);
-
   // Native in-app send via the connected email account (Nylas-backed).
   // No mailto:, no external clients — the request is fully handled inside the platform.
   const sendDraftAtIndex = useCallback(async (index: number) => {
@@ -323,31 +289,32 @@ CRITICAL RULES:
       )));
       return;
     }
-    if (!draft.subject?.trim() || !draft.body?.trim()) {
+    if (!draft.subject?.trim() || !draft.bodyHtml?.trim()) {
       setEmailDrafts((prev) => prev.map((d, i) => (
         i === index ? { ...d, status: 'failed', errorMessage: 'Subject and body are required.' } : d
       )));
       return;
     }
 
+    const splitEmails = (s: string) =>
+      (s || '').split(',').map((x) => x.trim()).filter(Boolean);
+
     setEmailDrafts((prev) => prev.map((d, i) => (
       i === index ? { ...d, status: 'sending', errorMessage: undefined } : d
     )));
 
     try {
-      // Convert plain-text body (with \n\n paragraphs) into simple HTML for delivery.
-      const bodyHtml = draft.body
-        .split(/\n{2,}/)
-        .map((para) => `<p>${para.replace(/\n/g, '<br/>').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`)
-        .join('');
+      const plainTextFallback = draftBodyToPlainText(draft.bodyHtml);
 
       const { data, error } = await supabase.functions.invoke('gmail-messages', {
         body: {
           action: 'send',
           to: [recipient],
+          cc: splitEmails(draft.cc),
+          bcc: splitEmails(draft.bcc),
           subject: draft.subject,
-          body: draft.body,
-          body_html: bodyHtml,
+          body: plainTextFallback,
+          body_html: draft.bodyHtml,
         },
       });
       if (error) throw new Error(error.message || 'Send failed');
@@ -372,10 +339,6 @@ CRITICAL RULES:
       toast({ title: 'Send failed', description: message, variant: 'destructive' });
     }
   }, [emailDrafts]);
-
-  const handleSendDraft = useCallback(() => {
-    void sendDraftAtIndex(activeDraftIndex);
-  }, [sendDraftAtIndex, activeDraftIndex]);
 
   const suggestedQuestions = [
     "Generate a full lender-ready memo for this deal",
