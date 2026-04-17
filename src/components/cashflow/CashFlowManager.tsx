@@ -699,6 +699,35 @@ export function CashFlowManager() {
     logAction(`Save plan: ${name}`);
   }, [rawWeekly, logAction]);
 
+  // Set or clear a Beginning/Ending Cash override for a specific week.
+  // Pass `value === null` to clear the override and revert to computed value.
+  const handleWeeklyCashOverride = useCallback(
+    (weekKey: string, field: 'beginningCash' | 'endingCash', value: number | null) => {
+      if (role !== 'admin') return;
+      setWeeklyOverrides(prev => {
+        const next = { ...prev };
+        const current = { ...(next[weekKey] || {}) };
+        if (value === null || Number.isNaN(value)) {
+          delete current[field];
+        } else {
+          current[field] = Math.round(value);
+        }
+        if (current.beginningCash === undefined && current.endingCash === undefined) {
+          delete next[weekKey];
+        } else {
+          next[weekKey] = current;
+        }
+        return next;
+      });
+      logAction(
+        value === null
+          ? `Clear ${field === 'beginningCash' ? 'Beginning' : 'Ending'} Cash override (${weekKey})`
+          : `Override ${field === 'beginningCash' ? 'Beginning' : 'Ending'} Cash → ${value} (${weekKey})`
+      );
+    },
+    [role, logAction]
+  );
+
   const handleArchive = useCallback((entry: { title: string; flags: ExportFlag[]; notes: string; weekCount: number; dateRange: string }) => {
     setArchiveEntries(prev => [...prev, {
       id: Date.now().toString(),
