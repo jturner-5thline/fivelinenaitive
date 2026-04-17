@@ -84,7 +84,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
   // Resolve a deal from sender if no explicit dealId (Inbox popup case).
   const latestInbound = thread.emails.find((e) => e.from_name !== 'You') || thread.latestEmail;
-  const { resolvedDealId, resolvedDealName } = useThreadDealResolver({
+  const { resolvedDealId } = useThreadDealResolver({
     enabled: !dealId,
     senderEmail: latestInbound?.from_email,
     fallbackDealId: dealId && dealId.length > 0 ? dealId : undefined,
