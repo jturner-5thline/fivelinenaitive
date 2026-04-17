@@ -1235,7 +1235,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
           {/* ─── Right: Reading pane / Compose ─── */}
           <div className={cn(
-            'flex-1 flex flex-col min-w-0 overflow-hidden w-0 bg-[hsl(var(--email-reading-bg))]',
+            'flex-1 flex flex-col min-w-0 overflow-hidden w-0',
+            (currentThread || composeOpen) ? 'bg-[hsl(var(--email-reading-bg))]' : 'bg-card/30 backdrop-blur-sm',
             !currentThread && !composeOpen ? 'hidden md:flex' : 'flex'
           )}>
             {composeOpen ? (
@@ -1277,111 +1278,85 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 }}
               />
             ) : (
-              /* Inbox Command Center */
-              <ScrollArea className="flex-1">
-                <div className="p-6 space-y-6 max-w-2xl mx-auto">
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded border border-border/30 p-4 bg-card/40">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Total</span>
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{filteredEmails.length}</p>
-                    </div>
-                    <div className="rounded border border-border/30 p-4 bg-card/40">
-                      <div className="flex items-center gap-2 mb-2">
-                        <MailOpen className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Unread</span>
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{filteredUnread}</p>
-                    </div>
-                    <div className="rounded border border-amber-500/20 p-4 bg-amber-500/[0.04]">
-                      <div className="flex items-center gap-2 mb-2">
-                        <AlertTriangle className="h-4 w-4 text-amber-400" />
-                        <span className="text-xs text-amber-400/80">Needs Response</span>
-                      </div>
-                      <p className="text-2xl font-bold text-amber-400">{responseCount}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Priority Response Queue</h3>
-                    {responseQueue.length === 0 ? (
-                      <div className="rounded border border-border/20 p-4 text-center bg-card/30">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-400 mx-auto mb-1.5" />
-                        <p className="text-xs text-muted-foreground">All caught up!</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-0.5">
-                        {responseQueue.slice(0, 6).map(email => {
-                          const thread = allThreads.find(t => t.emails.some(e => e.id === email.id));
-                          return (
-                            <button
-                              key={email.id}
-                              onClick={() => {
-                                if (thread) {
-                                  setSelectedThread(thread);
-                                  setComposeOpen(false);
-                                }
-                              }}
-                              className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-muted/20 transition-colors text-left group"
-                            >
-                              <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-xs font-medium text-foreground truncate">{email.from_name}</span>
-                                  <span className="text-[10px] text-muted-foreground shrink-0">
-                                    {formatDistanceToNow(new Date(email.received_at), { addSuffix: true })}
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground truncate">{email.subject}</p>
-                              </div>
-                              <ArrowRight className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Quick Actions</h3>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 text-xs border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]"
-                        onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
-                      >
-                        <PenSquare className="h-3 w-3" />
-                        Compose
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 text-xs"
-                        onClick={() => navigate('/deals')}
-                      >
-                        <Briefcase className="h-3 w-3" />
-                        Pipeline
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 text-xs"
-                        onClick={() => navigate('/integrations')}
-                      >
-                        <Calendar className="h-3 w-3" />
-                        Calendar
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </ScrollArea>
+              /* Minimalist Inbox Summary — empty selection state */
+              <InboxSummaryPane
+                emails={emails}
+                classifierEntities={classifierEntities}
+                orgCtx={orgCtx}
+                onSelectCategory={setCategoryTab}
+              />
             )}
           </div>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Minimalist empty-state summary ────────────────────────────────
+interface InboxSummaryPaneProps {
+  emails: MockEmail[];
+  classifierEntities: any;
+  orgCtx: any;
+  onSelectCategory: (tab: EmailCategoryTab) => void;
+}
+
+function InboxSummaryPane({ emails, classifierEntities, orgCtx, onSelectCategory }: InboxSummaryPaneProps) {
+  const summary = useMemo(() => {
+    const inbox = emails.filter(e => e.folder === 'inbox');
+    const unread = inbox.filter(e => !e.is_read);
+    const counts = EMAIL_CATEGORY_TABS
+      .filter(t => t.key !== 'all')
+      .map(t => ({
+        key: t.key,
+        label: t.label,
+        count: filterEmailsByCategory(unread, t.key, classifierEntities, orgCtx).length,
+      }));
+    return { totalUnread: unread.length, counts };
+  }, [emails, classifierEntities, orgCtx]);
+
+  return (
+    <div className="flex-1 flex items-center justify-center px-8 py-12">
+      <div className="w-full max-w-xs space-y-8">
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+            Inbox Summary
+          </p>
+          <p className="text-[11px] text-muted-foreground/60">Select an email to read</p>
+        </div>
+
+        <div>
+          <p className="text-5xl font-light text-foreground tabular-nums leading-none">
+            {summary.totalUnread}
+          </p>
+          <p className="mt-2 text-[11px] text-muted-foreground/70">
+            unread {summary.totalUnread === 1 ? 'message' : 'messages'}
+          </p>
+        </div>
+
+        <div className="space-y-px">
+          {summary.counts.map(c => (
+            <button
+              key={c.key}
+              onClick={() => onSelectCategory(c.key)}
+              className="w-full flex items-baseline justify-between py-1.5 text-left group"
+            >
+              <span className={cn(
+                'text-xs transition-colors',
+                c.count > 0 ? 'text-foreground/80 group-hover:text-foreground' : 'text-muted-foreground/40'
+              )}>
+                {c.label}
+              </span>
+              <span className={cn(
+                'text-xs tabular-nums transition-colors',
+                c.count > 0 ? 'text-foreground/80 group-hover:text-foreground' : 'text-muted-foreground/30'
+              )}>
+                {c.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
