@@ -77,6 +77,27 @@ function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }
   );
 }
 
+// ─── AI Pass Detection Banner wrapper ────────────────────────
+function PassDetectionBanner({ thread, dealId }: { thread: EmailThread; dealId?: string }) {
+  const threadData = {
+    subject: thread.subject,
+    threadId: thread.threadId,
+    emails: thread.emails,
+    latestEmail: thread.latestEmail,
+  };
+  const { detection, hasPendingPass, committing, confirmPass, dismissPass } =
+    useLenderPassDetection({ dealId, threadData, autoRun: !!dealId });
+  if (!hasPendingPass || !detection) return null;
+  return (
+    <LenderPassBanner
+      detection={detection}
+      committing={committing}
+      onConfirm={(reason) => confirmPass(reason)}
+      onDismiss={dismissPass}
+    />
+  );
+}
+
 // ─── AI Summary Strip ────────────────────────────────────────
 function AiSummaryStrip({ email }: { email: MockEmail }) {
   if (!email.ai_summary) return null;
@@ -1082,7 +1103,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
           {/* Thread content - scrollable */}
           <ScrollArea className="flex-1 min-w-0">
-            <div className="py-2 space-y-0 min-w-0">
+            <div className="py-2 space-y-0 min-w-0 pb-24">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
@@ -1091,6 +1112,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               <div className="px-5 mb-2">
                 <ThreadLabelsBar threadId={thread.threadId} />
               </div>
+
+              {/* AI-detected lender pass banner */}
+              <PassDetectionBanner thread={thread} dealId={dealId} />
 
               {/* Messages */}
               {thread.emails.slice(0, shouldAutoCollapse && !olderExpanded ? VISIBLE_RECENT : undefined).map((email, idx) => (

@@ -17,6 +17,8 @@ import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { EmailThread } from './mockEmailData';
+import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
+import { LenderPassSidebarCard } from './LenderPassSidebarCard';
 
 /**
  * AiAssistSidebar
