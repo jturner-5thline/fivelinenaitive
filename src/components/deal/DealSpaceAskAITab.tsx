@@ -524,59 +524,136 @@ CRITICAL RULES:
         </div>
       </CardContent>
 
-      {/* Draft Submission Email — dedicated output dialog (kept entirely separate from chat). */}
+      {/* Draft Submission Email — multi-lender review modal (kept entirely separate from chat). */}
       <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-primary" />
-              Draft Submission Email
+              Draft Submission Emails
+              {!isDraftingEmail && emailDrafts.length > 0 && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  · {activeDraftIndex + 1} of {emailDrafts.length}
+                </span>
+              )}
             </DialogTitle>
             <DialogDescription>
-              Generated from your deal data, lender list, and write-up. Review before sending.
+              Review each lender-specific draft. Approve and send one at a time.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-auto rounded-md border bg-muted/30 p-4 min-h-[200px]">
-            {isDraftingEmail ? (
+          {isDraftingEmail ? (
+            <div className="flex-1 flex items-center justify-center min-h-[300px]">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Drafting submission email…
+                Generating drafts for each active lender…
               </div>
-            ) : draftEmailContent ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                <ReactMarkdown>{draftEmailContent}</ReactMarkdown>
+            </div>
+          ) : emailDrafts.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center min-h-[200px]">
+              <p className="text-sm text-muted-foreground">No drafts generated.</p>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col min-h-0 gap-3">
+              {/* Lender tabs / pager */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {emailDrafts.map((d, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveDraftIndex(i)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs whitespace-nowrap border transition-colors',
+                      i === activeDraftIndex
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted/50 hover:bg-muted border-border'
+                    )}
+                  >
+                    {d.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
+                    {d.status === 'approved' && <Check className="h-3 w-3" />}
+                    <span>{d.lenderName}</span>
+                  </button>
+                ))}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No draft generated.</p>
-            )}
-          </div>
 
-          <DialogFooter className="gap-2 sm:gap-2">
+              {/* Active email window */}
+              {(() => {
+                const draft = emailDrafts[activeDraftIndex];
+                if (!draft) return null;
+                return (
+                  <div className="flex-1 flex flex-col gap-2 overflow-auto rounded-md border bg-card p-3 min-h-0">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="w-16 text-muted-foreground">To:</span>
+                      <Input
+                        value={draft.to}
+                        onChange={(e) => updateActiveDraft({ to: e.target.value })}
+                        placeholder="recipient@example.com"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="w-16 text-muted-foreground">Subject:</span>
+                      <Input
+                        value={draft.subject}
+                        onChange={(e) => updateActiveDraft({ subject: e.target.value })}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 flex-1 min-h-0">
+                      <span className="text-xs text-muted-foreground">Body:</span>
+                      <Textarea
+                        value={draft.body}
+                        onChange={(e) => updateActiveDraft({ body: e.target.value })}
+                        className="flex-1 min-h-[260px] text-sm font-sans resize-none"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <Badge variant="outline" className="text-[10px] py-0 h-4">
+                        {draft.status}
+                      </Badge>
+                      <span>Lender: {draft.lenderName}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2 flex-wrap">
             <Button
               variant="outline"
-              onClick={handleCopyDraft}
-              disabled={!draftEmailContent || isDraftingEmail}
+              size="sm"
+              onClick={goToPrev}
+              disabled={isDraftingEmail || activeDraftIndex === 0}
             >
-              {hasCopiedDraft ? (
-                <><Check className="h-4 w-4 mr-1.5" /> Copied</>
-              ) : (
-                <><Copy className="h-4 w-4 mr-1.5" /> Copy</>
-              )}
+              <ChevronLeft className="h-4 w-4 mr-1" /> Previous
             </Button>
             <Button
               variant="outline"
-              onClick={handleDraftSubmission}
-              disabled={isDraftingEmail}
+              size="sm"
+              onClick={goToNext}
+              disabled={isDraftingEmail || activeDraftIndex >= emailDrafts.length - 1}
             >
-              {isDraftingEmail ? (
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-1.5" />
-              )}
-              Regenerate
+              Next <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
-            <Button onClick={() => setIsDraftDialogOpen(false)}>Close</Button>
+            <div className="flex-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleApproveDraft}
+              disabled={isDraftingEmail || emailDrafts.length === 0 || emailDrafts[activeDraftIndex]?.status === 'sent'}
+            >
+              <Check className="h-4 w-4 mr-1" /> Approve
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSendDraft}
+              disabled={isDraftingEmail || emailDrafts.length === 0}
+            >
+              <Send className="h-4 w-4 mr-1" /> Send
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setIsDraftDialogOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
