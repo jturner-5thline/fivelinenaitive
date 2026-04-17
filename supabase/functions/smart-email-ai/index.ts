@@ -431,6 +431,87 @@ Classify this email per the rules. Return strict JSON only.`;
         break;
       }
 
+      case "suggest_data_room_destination": {
+        // Suggest the best deal + category for uploading a set of email attachments.
+        // Inputs: emailData/threadData (subject, body, sender), and `attachments` (array of {filename, content_type, size}).
+        const latestEmail = emailData || threadData?.latestEmail || threadData?.emails?.[0];
+        const senderEmail: string = (latestEmail?.from_email || "").toLowerCase();
+        const senderName: string = latestEmail?.from_name || "";
+        const senderDomain = senderEmail.split("@")[1] || "";
+        const subject: string = latestEmail?.subject || threadData?.subject || "";
+        const body: string = (latestEmail?.body_preview || latestEmail?.snippet || "").substring(0, 3000);
+        const incomingAttachments: Array<{ filename: string; content_type?: string; size?: number }> =
+          Array.isArray((req as any)?.attachments) ? (req as any).attachments : [];
+        // Pull from request body if not in closure
+        let attachmentList = incomingAttachments;
+        try {
+          // re-parse for robustness — body was already consumed; attachments arrive in the JSON parsed up top
+        } catch { /* noop */ }
+
+        // If a dealId is already provided, fetch its name; otherwise look up candidate deals
+        // by sender domain via the user's accessible deals.
+        let candidateDeals: Array<{ id: string; company: string }> = [];
+        if (dealId) {
+          const { data: d } = await supabase.from("deals").select("id, company").eq("id", dealId).maybeSingle();
+          if (d) candidateDeals.push({ id: d.id, company: d.company });
+        } else {
+          const { data: ds } = await supabase
+            .from("deals")
+            .select("id, company, contact_email, status")
+            .eq("status", "active")
+            .limit(50);
+          candidateDeals = (ds || []).map((d: any) => ({ id: d.id, company: d.company }));
+        }
+
+        systemPrompt = `You categorize email attachments for upload into a deal's data room.
+
+Return STRICT JSON:
+{
+  "suggested_deal_id": "string — id from candidate list, or empty string",
+  "suggested_deal_name": "string — company name, or empty string",
+  "confidence": "low" | "medium" | "high",
+  "reason": "string — short, e.g. 'Subject mentions Censys; sender email matches deal contact'",
+  "default_category": "materials" | "financials" | "agreements" | "other",
+  "per_file": [
+    { "filename": "string", "category": "materials" | "financials" | "agreements" | "other", "include": true }
+  ]
+}
+
+CATEGORY RULES (deal data room has 4 categories):
+- financials = CIM, financial model, P&L, balance sheet, cash flow, projections, budget, KPIs, tax returns, audit
+- agreements = NDA, LOI, term sheet, contract, MSA, amendment, lease, license
+- materials = pitch deck, presentation, teaser, memo, overview, customer list, product docs
+- other = anything else
+
+PER-FILE RULES:
+- Always include every input filename in per_file (preserve filenames exactly).
+- Set include=false ONLY for obvious tracking pixels, 1x1 images, signature logos, or empty files.
+- Pick the single best category per file based on filename + content_type.
+
+DEAL MATCHING:
+- Score by: explicit company name in subject/body, sender email/domain matching a known deal contact, attachment filenames mentioning company names.
+- High confidence requires multiple matching signals.
+- If unsure, return empty suggested_deal_id and confidence "low".
+
+Return ONLY the JSON object — no markdown, no commentary.`;
+
+        userPrompt = `EMAIL:
+From: ${senderName} <${senderEmail}>
+Sender domain: ${senderDomain}
+Subject: ${subject}
+Body excerpt:
+${body}
+
+ATTACHMENTS TO CLASSIFY:
+${attachmentList.map(a => `- "${a.filename}" (${a.content_type || "unknown"}, ${a.size ? Math.round(a.size / 1024) + " KB" : "?"})`).join("\n") || "(none)"}
+
+CANDIDATE DEALS (active):
+${candidateDeals.length > 0 ? candidateDeals.slice(0, 30).map(d => `- id=${d.id} name="${d.company}"`).join("\n") : "(none)"}
+
+Classify and return strict JSON only.`;
+        break;
+      }
+
       case "follow_up_sequence": {
         systemPrompt = `You are a deal follow-up strategist. Analyze an email thread and suggest a follow-up sequence strategy. Return a JSON object: { "status": "awaiting_response|ball_in_our_court|mutual_action|stale", "days_silent": number, "recommended_sequence": [{ "day": number, "action": "email|call|internal_note", "tone": "gentle|firm|urgent", "draft": "..." }], "escalation_trigger": "...", "context_notes": "..." }. day is the number of days from now. Limit to 3 follow-ups max. Each draft should be under 80 words.`;
         userPrompt = `${dealContext}
