@@ -28,23 +28,33 @@ interface MessageRequest {
 }
 
 // Normalize Nylas attachment objects to a consistent shape.
+// `content_id` is preserved so the client can resolve `cid:` references in
+// HTML bodies (signature logos, embedded headshots, etc.).
 function normalizeAttachments(raw: any[]): Array<{
   id: string;
   filename: string;
   content_type: string;
   size: number;
   is_inline: boolean;
+  content_id?: string;
 }> {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter((a: any) => a && (a.id || a.filename))
-    .map((a: any) => ({
-      id: String(a.id || ""),
-      filename: a.filename || a.name || "attachment",
-      content_type: a.content_type || a.contentType || "application/octet-stream",
-      size: Number(a.size || 0),
-      is_inline: !!(a.is_inline || a.content_disposition === "inline" || a.content_id),
-    }));
+    .map((a: any) => {
+      // Nylas exposes content_id as either `content_id` or `contentId`. Strip
+      // angle brackets that some providers wrap around the value.
+      const rawCid = a.content_id || a.contentId || "";
+      const cid = typeof rawCid === "string" ? rawCid.replace(/^<|>$/g, "") : "";
+      return {
+        id: String(a.id || ""),
+        filename: a.filename || a.name || "attachment",
+        content_type: a.content_type || a.contentType || "application/octet-stream",
+        size: Number(a.size || 0),
+        is_inline: !!(a.is_inline || a.content_disposition === "inline" || cid),
+        content_id: cid || undefined,
+      };
+    });
 }
 
 function pickBodyHtmlAndText(msg: any): { body_html: string; body_text: string } {
@@ -223,6 +233,10 @@ serve(async (req: Request): Promise<Response> => {
         const { body_html, body_text } = pickBodyHtmlAndText(msg);
         const allAtts = normalizeAttachments(msg.attachments || msg.files || []);
         const visibleAtts = allAtts.filter((a) => !a.is_inline);
+        // Inline attachments power CID resolution for embedded images
+        // (signature logos, headshots). Surfaced separately so the client
+        // can rewrite `cid:` references without showing them as files.
+        const inlineAtts = allAtts.filter((a) => a.is_inline);
         const message = {
           id: msg.id,
           thread_id: msg.thread_id || msg.id,
@@ -239,6 +253,7 @@ serve(async (req: Request): Promise<Response> => {
           labels: msg.folders || msg.labels || [],
           received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
           attachments: visibleAtts,
+          inline_attachments: inlineAtts,
           has_attachments: visibleAtts.length > 0,
         };
 
