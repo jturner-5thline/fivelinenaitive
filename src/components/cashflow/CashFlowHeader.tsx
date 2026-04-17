@@ -135,10 +135,7 @@ export const CashFlowHeader = memo(function CashFlowHeader({
       </div>
 
       <div className="cf-tab-bar">
-        <button className={`cf-tab ${activeTab === 'daily' ? 'active' : ''}`} onClick={() => onTabChange('daily')}>
-          Daily Source
-        </button>
-        <button className={`cf-tab ${activeTab === 'weekly' ? 'active' : ''}`} onClick={() => onTabChange('weekly')}>
+        <button className="cf-tab active" onClick={() => onTabChange('weekly')}>
           Weekly Report
         </button>
       </div>
