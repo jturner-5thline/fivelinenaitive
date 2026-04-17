@@ -322,6 +322,50 @@
 .cf-grid td.cf-val-pos { color: var(--color-positive); }
 .cf-grid td.cf-val-neg { color: var(--color-negative); }
 
+/* Editable Beginning/Ending Cash cell */
+.cf-grid td .cf-cell-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 4px);
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  padding: 2px 4px;
+  outline: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.cf-grid td .cf-cell-input:hover {
+  background: var(--color-surface-offset);
+  border-color: var(--color-divider);
+}
+.cf-grid td .cf-cell-input:focus {
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+}
+/* Hide native number spinners for a cleaner spreadsheet feel */
+.cf-grid td .cf-cell-input::-webkit-outer-spin-button,
+.cf-grid td .cf-cell-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.cf-grid td .cf-cell-input[type=number] { -moz-appearance: textfield; }
+
+/* Overridden cell indicator */
+.cf-grid td.cf-cell-override { position: relative; }
+.cf-grid td.cf-cell-override .cf-override-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
 /* Section header rows */
 .cf-section-header td {
   font-weight: 700;
