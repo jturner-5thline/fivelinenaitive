@@ -60,10 +60,17 @@ export function SendToDataRoomDialog({
   const [suggestion, setSuggestion] = useState<DataRoomDestinationSuggestion | null>(initialSuggestion || null);
   const [deals, setDeals] = useState<DealOption[]>([]);
   const [selectedDealId, setSelectedDealId] = useState<string>(initialDealId || '');
+  const [userChangedDeal, setUserChangedDeal] = useState(false);
   const [defaultCategory, setDefaultCategory] = useState<DealAttachmentCategory>('materials');
   const [plan, setPlan] = useState<UploadPlanItem[]>([]);
   const [filesExpanded, setFilesExpanded] = useState(false);
   const [showDealPicker, setShowDealPicker] = useState(false);
+
+  // Wrap setSelectedDealId so explicit user changes lock out future auto-apply from suggestions
+  const handleUserSelectDeal = (id: string) => {
+    setUserChangedDeal(true);
+    setSelectedDealId(id);
+  };
 
   const visibleAttachments = useMemo(() => attachments.filter((a) => !a.is_inline && !!a.id), [attachments]);
 
