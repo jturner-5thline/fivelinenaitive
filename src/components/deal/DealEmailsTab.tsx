@@ -64,6 +64,8 @@ import { EmailList, EmailDetail } from './email/EmailListAndDetail';
 import { cn } from '@/lib/utils';
 import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
 import { InlineComposePanel } from './email/InlineComposePanel';
+import { useAIEmailSearch, AI_SEARCH_MIN_LENGTH } from '@/hooks/useAIEmailSearch';
+import { Sparkles, Loader2 } from 'lucide-react';
 
 interface DealEmailsTabProps {
   dealId: string;
@@ -290,6 +292,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     dealAssociation: 'all',
   });
 
+  // ── AI Search state ─────────────────────────────────────────
+  const aiSearch = useAIEmailSearch();
+  // True once the user has explicitly run an AI search for the current query.
+  // Until then, the search bar behaves as plain keyword search.
+  const [aiSearchActive, setAiSearchActive] = useState(false);
+  const lastAiQueryRef = useRef<string>('');
+
   // Counts
   const needsResponseCount = emails.filter(e => e.needs_response && e.folder === 'inbox').length;
   const starredCount = emails.filter(e => e.is_starred).length;
@@ -427,14 +436,65 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (searchFilters.responseStatus === 'needs_response') filtered = filtered.filter(e => e.needs_response);
     if (searchFilters.responseStatus === 'responded') filtered = filtered.filter(e => !e.needs_response);
     if (searchFilters.dealAssociation !== 'all') filtered = filtered.filter(e => e.deal_name === searchFilters.dealAssociation);
-    if (searchQuery.trim()) {
+
+    // ── Search: AI-ranked OR plain keyword ─────────────────────
+    if (aiSearchActive && aiSearch.result && aiSearch.result.rankedIds.length > 0) {
+      // Re-order `filtered` by AI ranking and drop emails Claude did not rank.
+      const order = new Map<string, number>();
+      aiSearch.result.rankedIds.forEach((id, idx) => order.set(id, idx));
+      filtered = filtered
+        .filter(e => order.has(e.id))
+        .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    } else if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
         e => e.subject.toLowerCase().includes(q) || e.from_name.toLowerCase().includes(q) || e.from_email.toLowerCase().includes(q) || e.snippet.toLowerCase().includes(q)
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities]);
+  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result]);
+
+  // Candidate set for AI search = the same list pre-search (so categories/folders
+  // narrow the AI search scope as the spec requires).
+  const aiSearchCandidates = useMemo(() => {
+    let base = emails.filter(activeItem.filterFn);
+    if (categoryTab !== 'all') {
+      base = filterEmailsByCategory(base, categoryTab, classifierEntities, orgCtx);
+    }
+    return base;
+  }, [emails, activeItem, categoryTab, classifierEntities, orgCtx]);
+
+  const runAISearch = useCallback(async () => {
+    const q = searchQuery.trim();
+    if (q.length < AI_SEARCH_MIN_LENGTH) {
+      toast.message('AI search needs a longer query', {
+        description: `Try at least ${AI_SEARCH_MIN_LENGTH} characters, e.g. "calendar invites I declined".`,
+      });
+      return;
+    }
+    if (aiSearchCandidates.length === 0) {
+      toast.message('No emails to search yet');
+      return;
+    }
+    lastAiQueryRef.current = q;
+    setAiSearchActive(true);
+    await aiSearch.search(q, aiSearchCandidates);
+  }, [searchQuery, aiSearchCandidates, aiSearch]);
+
+  const clearAISearch = useCallback(() => {
+    setAiSearchActive(false);
+    aiSearch.clear();
+    lastAiQueryRef.current = '';
+  }, [aiSearch]);
+
+  // If the user keeps typing after running an AI search, downgrade to keyword
+  // search until they explicitly run AI again. Avoids stale interpretations.
+  useEffect(() => {
+    if (aiSearchActive && searchQuery.trim() !== lastAiQueryRef.current) {
+      setAiSearchActive(false);
+    }
+  }, [searchQuery, aiSearchActive]);
+
 
   const currentThread = useMemo(() => {
     if (!selectedThread) return null;
@@ -838,13 +898,57 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             <div className="px-2 py-1.5 border-b border-white/[0.06]">
               <div className="relative flex gap-1">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  {aiSearch.isSearching ? (
+                    <Loader2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary animate-spin" />
+                  ) : aiSearchActive ? (
+                    <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  )}
                   <Input
-                    placeholder="Search mail"
+                    placeholder='Search mail with AI… e.g. "calendar invites I declined"'
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        runAISearch();
+                      } else if (e.key === 'Escape' && aiSearchActive) {
+                        e.preventDefault();
+                        clearAISearch();
+                        setSearchQuery('');
+                      }
+                    }}
+                    className={cn(
+                      'pl-8 pr-16 h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]',
+                      aiSearchActive && 'border-primary/40 focus:border-primary/60'
+                    )}
                   />
+                  {/* Inline AI / clear controls */}
+                  <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {aiSearchActive && (
+                      <button
+                        type="button"
+                        onClick={() => { clearAISearch(); setSearchQuery(''); }}
+                        className="text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1"
+                        aria-label="Clear AI search"
+                        title="Clear AI search (Esc)"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                    {searchQuery.trim().length >= AI_SEARCH_MIN_LENGTH && !aiSearch.isSearching && !aiSearchActive && (
+                      <button
+                        type="button"
+                        onClick={runAISearch}
+                        className="inline-flex items-center gap-1 rounded-sm bg-primary/15 hover:bg-primary/25 text-primary text-[10px] font-medium px-1.5 py-0.5 transition-colors"
+                        title="Search with AI (Enter)"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        AI
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <Popover open={searchFiltersOpen} onOpenChange={setSearchFiltersOpen}>
                   <PopoverTrigger asChild>
@@ -965,6 +1069,51 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 </Popover>
               </div>
             </div>
+
+            {/* AI search status / interpretation banner */}
+            {(aiSearch.isSearching || aiSearchActive || aiSearch.error) && (
+              <div className="px-3 py-1.5 border-b border-white/[0.06] bg-primary/[0.04]">
+                {aiSearch.isSearching ? (
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                    <span>Searching with AI…</span>
+                  </div>
+                ) : aiSearch.error ? (
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="text-destructive truncate">
+                      AI search unavailable — showing keyword matches instead.
+                    </span>
+                    <button
+                      onClick={() => { clearAISearch(); }}
+                      className="text-muted-foreground hover:text-foreground shrink-0"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                ) : aiSearch.result ? (
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Sparkles className="h-3 w-3 text-primary shrink-0" />
+                      <span className="text-muted-foreground shrink-0">AI Search:</span>
+                      <span className="text-foreground truncate" title={aiSearch.result.interpretation}>
+                        {aiSearch.result.interpretation}
+                      </span>
+                      <span className="text-muted-foreground shrink-0">
+                        · {aiSearch.result.rankedIds.length} {aiSearch.result.rankedIds.length === 1 ? 'result' : 'results'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => { clearAISearch(); setSearchQuery(''); }}
+                      className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+                      title="Return to inbox (Esc)"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )}
 
             {/* Header with label + bulk actions */}
             <div className="border-b border-border/30">
