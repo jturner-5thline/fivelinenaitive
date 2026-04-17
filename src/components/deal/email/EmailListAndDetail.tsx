@@ -1034,23 +1034,23 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             />
           )}
 
-          <div className="px-6 pt-5 pb-4 border-b border-white/[0.06]">
+          <div className="px-6 pt-5 pb-4 border-b border-[hsl(var(--email-border))]">
             {/* Large subject heading */}
-            <h2 className="text-xl font-semibold text-foreground leading-snug mb-3">{thread.subject}</h2>
+            <h2 className="text-xl font-semibold text-[hsl(var(--email-text-primary))] leading-snug mb-3">{thread.subject}</h2>
             
             {/* Sender info block */}
             <div className="flex items-start gap-3">
               <EmailAvatar name={senderName} email={senderEmail} size="md" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-foreground">{senderName}</span>
-                  <span className="text-xs text-muted-foreground">&lt;{senderEmail}&gt;</span>
+                  <span className="text-sm font-semibold text-[hsl(var(--email-text-primary))]">{senderName}</span>
+                  <span className="text-xs text-[hsl(var(--email-text-muted))]">&lt;{senderEmail}&gt;</span>
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
+                <div className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5">
                   {format(new Date(latest.received_at), 'EEEE, MMMM d, yyyy h:mm a')}
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  To: <span className="text-foreground/70">me</span>
+                <div className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5">
+                  To: <span className="text-[hsl(var(--email-text-secondary))]">me</span>
                   {linkedDealName && (
                     <span className="ml-2 text-[hsl(var(--outlook-blue))]">• Linked to: {linkedDealName}</span>
                   )}
@@ -1058,12 +1058,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               </div>
               {/* Thread count indicator */}
               {totalMessages > 1 && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                <div className="flex items-center gap-1 text-xs text-[hsl(var(--email-text-secondary))] shrink-0">
                   <MessageSquare className="h-3.5 w-3.5" />
                   <span>{totalMessages} messages</span>
                   <button
                     onClick={isFullyExpanded ? handleCollapseAll : handleExpandAll}
-                    className="ml-1 hover:text-foreground transition-colors"
+                    className="ml-1 hover:text-[hsl(var(--email-text-primary))] transition-colors"
                   >
                     {isFullyExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   </button>
