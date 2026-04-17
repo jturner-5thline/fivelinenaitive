@@ -91,11 +91,14 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     subject: string;
     body: string;
     status: 'draft' | 'approved' | 'sent';
+    isSubjectEdited?: boolean;
+    isBodyEdited?: boolean;
   };
   const [isDraftingEmail, setIsDraftingEmail] = useState(false);
   const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
   const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  const [appliedField, setAppliedField] = useState<'subject' | 'body' | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
