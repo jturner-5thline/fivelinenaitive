@@ -898,13 +898,57 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             <div className="px-2 py-1.5 border-b border-white/[0.06]">
               <div className="relative flex gap-1">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  {aiSearch.isSearching ? (
+                    <Loader2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary animate-spin" />
+                  ) : aiSearchActive ? (
+                    <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  )}
                   <Input
-                    placeholder="Search mail"
+                    placeholder='Search mail with AI… e.g. "calendar invites I declined"'
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        runAISearch();
+                      } else if (e.key === 'Escape' && aiSearchActive) {
+                        e.preventDefault();
+                        clearAISearch();
+                        setSearchQuery('');
+                      }
+                    }}
+                    className={cn(
+                      'pl-8 pr-16 h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]',
+                      aiSearchActive && 'border-primary/40 focus:border-primary/60'
+                    )}
                   />
+                  {/* Inline AI / clear controls */}
+                  <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {aiSearchActive && (
+                      <button
+                        type="button"
+                        onClick={() => { clearAISearch(); setSearchQuery(''); }}
+                        className="text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1"
+                        aria-label="Clear AI search"
+                        title="Clear AI search (Esc)"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                    {searchQuery.trim().length >= AI_SEARCH_MIN_LENGTH && !aiSearch.isSearching && !aiSearchActive && (
+                      <button
+                        type="button"
+                        onClick={runAISearch}
+                        className="inline-flex items-center gap-1 rounded-sm bg-primary/15 hover:bg-primary/25 text-primary text-[10px] font-medium px-1.5 py-0.5 transition-colors"
+                        title="Search with AI (Enter)"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        AI
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <Popover open={searchFiltersOpen} onOpenChange={setSearchFiltersOpen}>
                   <PopoverTrigger asChild>
