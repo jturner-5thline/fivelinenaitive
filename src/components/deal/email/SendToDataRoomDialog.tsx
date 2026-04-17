@@ -316,7 +316,7 @@ export function SendToDataRoomDialog({
                     <SelectValue placeholder="Select a deal…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {deals.map((d) => (
+                    {dealOptions.map((d) => (
                       <SelectItem key={d.id} value={d.id} className="text-xs">
                         {d.company}
                       </SelectItem>
